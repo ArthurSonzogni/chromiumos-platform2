@@ -51,7 +51,6 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   void Decrypt(const std::string& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
-               bool locked_to_single_user,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
   void VerifyKey(const std::string& account_id,
@@ -64,7 +63,6 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
-      bool locked_to_single_user,
       int attempt_number,
       DecryptCallback callback);
 
@@ -85,7 +83,6 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
-      bool locked_to_single_user,
       int attempt_number,
       DecryptCallback original_callback,
       TPMStatusOr<GenerateNewOrDecryptResult> result);

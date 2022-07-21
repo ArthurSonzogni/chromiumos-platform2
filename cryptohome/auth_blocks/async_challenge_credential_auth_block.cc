@@ -257,7 +257,6 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
   challenge_credentials_helper_->Decrypt(
       std::move(account_id_), std::move(public_key_info),
       cc_state->keyset_challenge_info.value(),
-      auth_input.locked_to_single_user.value_or(false),
       std::move(key_challenge_service_),
       base::BindOnce(&AsyncChallengeCredentialAuthBlock::DeriveContinue,
                      weak_factory_.GetWeakPtr(), std::move(callback),

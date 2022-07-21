@@ -33,7 +33,6 @@ class RecoveryCryptoTpmBackend;
 
 using TpmKeyHandle = uint32_t;
 
-class SignatureSealingBackend;
 class Tpm;
 
 inline constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
@@ -481,11 +480,6 @@ class Tpm {
   // Due to the privacy reasons, this id must not be used for any purpose other
   // than verifying RMA unlock eligibility.
   virtual bool GetRsuDeviceId(std::string* device_id) = 0;
-
-  // Get a pointer to the SignatureSealingBackend object, which is used for
-  // performing signature-sealing operations. Returns nullptr if the
-  // implementation does not support signature-sealing operations.
-  virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
 
   // Get a pointer to the RecoveryCryptoBackend object, which is used for
   // performing recovery-crypto operations. Returns nullptr if the

@@ -33,6 +33,10 @@ namespace cryptohome {
 
 namespace {
 
+// Size, in bytes, of the secret value that will be sealed by HWSec signature
+// sealing.
+constexpr int kSecretSizeBytes = 32;
+
 // Returns the signature algorithm that should be used for signing salt from the
 // set of algorithms supported by the given key. Returns nullopt when no
 // suitable algorithm was found.
@@ -53,6 +57,24 @@ ChooseSaltSignatureAlgorithm(
   return currently_chosen_algorithm;
 }
 
+using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
+
+HwsecAlgorithm ConvertAlgorithm(
+    structure::ChallengeSignatureAlgorithm algorithm) {
+  switch (algorithm) {
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha256;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha384;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
+  }
+  NOTREACHED();
+  return static_cast<HwsecAlgorithm>(algorithm);
+}
+
 }  // namespace
 
 ChallengeCredentialsGenerateNewOperation::
@@ -69,7 +91,7 @@ ChallengeCredentialsGenerateNewOperation::
       public_key_info_(public_key_info),
       obfuscated_username_(obfuscated_username),
       completion_callback_(std::move(completion_callback)),
-      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
+      hwsec_(tpm_->GetHwsec()) {}
 
 ChallengeCredentialsGenerateNewOperation::
     ~ChallengeCredentialsGenerateNewOperation() = default;
@@ -104,7 +126,7 @@ void ChallengeCredentialsGenerateNewOperation::Abort(TPMStatus status) {
 }
 
 TPMStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
-  if (!signature_sealing_backend_) {
+  if (!hwsec_) {
     LOG(ERROR) << "Signature sealing is disabled";
     return MakeStatus<CryptohomeTPMError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewNoBackend),
@@ -182,21 +204,41 @@ ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
 }
 
 TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
-  SecureBlob local_tpm_protected_secret_value;
-  if (hwsec::Status err = signature_sealing_backend_->CreateSealedSecret(
-          public_key_info_.public_key_spki_der,
-          public_key_info_.signature_algorithm, obfuscated_username_,
-          &local_tpm_protected_secret_value, &tpm_sealed_secret_data_);
-      !err.ok()) {
-    LOG(ERROR) << "Failed to create TPM-protected secret: " << err;
-    TPMStatus status = MakeStatus<CryptohomeTPMError>(std::move(err));
+  hwsec::StatusOr<SecureBlob> tpm_protected_secret_value =
+      hwsec_->GetRandomSecureBlob(kSecretSizeBytes);
+  if (!tpm_protected_secret_value.ok()) {
+    LOG(ERROR) << "Failed to generated random secure blob: "
+               << tpm_protected_secret_value.status();
+    TPMStatus status = MakeStatus<CryptohomeTPMError>(
+        std::move(tpm_protected_secret_value).status());
+    return MakeStatus<CryptohomeTPMError>(
+               CRYPTOHOME_ERR_LOC(kLocChalCredGenRandFailed))
+        .Wrap(std::move(status));
+  }
+
+  std::vector<HwsecAlgorithm> key_sealing_algorithms;
+  for (auto algo : public_key_info_.signature_algorithm) {
+    key_sealing_algorithms.push_back(ConvertAlgorithm(algo));
+  }
+
+  hwsec::StatusOr<hwsec::SignatureSealedData> sealed_data =
+      hwsec_->SealWithSignatureAndCurrentUser(
+          obfuscated_username_, tpm_protected_secret_value.value(),
+          public_key_info_.public_key_spki_der, key_sealing_algorithms);
+  if (!sealed_data.ok()) {
+    LOG(ERROR) << "Failed to create hardware-protected secret: "
+               << sealed_data.status();
+    TPMStatus status =
+        MakeStatus<CryptohomeTPMError>(std::move(sealed_data).status());
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewSealFailed))
         .Wrap(std::move(status));
   }
-  DCHECK(local_tpm_protected_secret_value.size());
-  tpm_protected_secret_value_ =
-      std::make_unique<SecureBlob>(std::move(local_tpm_protected_secret_value));
+
+  tpm_protected_secret_value_ = std::make_unique<SecureBlob>(
+      std::move(tpm_protected_secret_value).value());
+  tpm_sealed_secret_data_ = std::move(sealed_data).value();
+
   return OkStatus<CryptohomeTPMError>();
 }
 

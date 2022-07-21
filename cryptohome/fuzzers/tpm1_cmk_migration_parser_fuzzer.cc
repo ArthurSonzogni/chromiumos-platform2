@@ -15,6 +15,9 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <libhwsec/backend/tpm1/static_utils.h>
+#include <libhwsec/overalls/overalls.h>
+#include <libhwsec/overalls/overalls_api.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -25,13 +28,13 @@
 #include <trousers/tss.h>
 
 #include "cryptohome/fuzzers/blob_mutator.h"
-#include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
+using hwsec::overalls::GetOveralls;
 using hwsec_foundation::Sha1;
 
 namespace {
@@ -402,9 +405,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       &fuzzed_data_provider, &key12_blob, &migration_random_blob, &cmk_pubkey,
       &fuzzed_cmk_pubkey_digest, &fuzzed_msa_composite_digest);
 
-  ScopedRSA migrated_blob = cryptohome::ExtractCmkPrivateKeyFromMigratedBlob(
-      key12_blob, migration_random_blob, cmk_pubkey, fuzzed_cmk_pubkey_digest,
-      fuzzed_msa_composite_digest, environment.migration_destination_rsa.get());
+  hwsec::StatusOr<ScopedRSA> migrated_blob =
+      hwsec::ExtractCmkPrivateKeyFromMigratedBlob(
+          *GetOveralls(), key12_blob, migration_random_blob, cmk_pubkey,
+          fuzzed_cmk_pubkey_digest, fuzzed_msa_composite_digest,
+          *environment.migration_destination_rsa.get());
 
   return 0;
 }

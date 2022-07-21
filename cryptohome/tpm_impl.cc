@@ -1885,10 +1885,6 @@ bool TpmImpl::GetRsuDeviceId(std::string* device_id) {
   return false;
 }
 
-SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
-  return &signature_sealing_backend_;
-}
-
 cryptorecovery::RecoveryCryptoTpmBackend* TpmImpl::GetRecoveryCryptoBackend() {
   return &recovery_crypto_backend_;
 }

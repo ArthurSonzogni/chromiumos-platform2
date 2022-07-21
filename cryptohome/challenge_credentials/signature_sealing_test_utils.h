@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_SIGNATURE_SEALING_BACKEND_TEST_UTILS_H_
-#define CRYPTOHOME_SIGNATURE_SEALING_BACKEND_TEST_UTILS_H_
+#ifndef CRYPTOHOME_CHALLENGE_CREDENTIALS_SIGNATURE_SEALING_TEST_UTILS_H_
+#define CRYPTOHOME_CHALLENGE_CREDENTIALS_SIGNATURE_SEALING_TEST_UTILS_H_
 
 #include <cstdint>
 #include <map>
@@ -11,14 +11,11 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/key.pb.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
-#include "cryptohome/signature_sealing_backend.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 
 namespace cryptohome {
-
-class MockSignatureSealingBackend;
-class MockUnsealingSession;
 
 // Creates the SignatureSealedData protobuf message filled with some fake
 // values.
@@ -26,8 +23,7 @@ hwsec::SignatureSealedData MakeFakeSignatureSealedData(
     const brillo::Blob& public_key_spki_der);
 
 // Helper for setting up mock expectation and mock response for the
-// signature-sealed secret creation functionality (the
-// MockSignatureSealingBackend::CreateSealedSecret() method).
+// signature-sealed secret creation functionality
 //
 // This class follows the "builder" pattern - i.e., first use the set_*()
 // methods to set up expected parameters, and then call one of the SetUp*Mock()
@@ -35,7 +31,7 @@ hwsec::SignatureSealedData MakeFakeSignatureSealedData(
 class SignatureSealedCreationMocker final {
  public:
   explicit SignatureSealedCreationMocker(
-      MockSignatureSealingBackend* mock_backend);
+      hwsec::MockCryptohomeFrontend* mock_hwsec);
   SignatureSealedCreationMocker(const SignatureSealedCreationMocker&) = delete;
   SignatureSealedCreationMocker& operator=(
       const SignatureSealedCreationMocker&) = delete;
@@ -46,14 +42,14 @@ class SignatureSealedCreationMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
+      const std::vector<hwsec::CryptohomeFrontend::SignatureSealingAlgorithm>&
           key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_obfuscated_username(const std::string& obfuscated_username) {
     obfuscated_username_ = obfuscated_username;
   }
-  void set_secret_value(const brillo::Blob& secret_value) {
+  void set_secret_value(const brillo::SecureBlob& secret_value) {
     secret_value_ = secret_value;
   }
 
@@ -64,17 +60,16 @@ class SignatureSealedCreationMocker final {
   void SetUpFailingMock();
 
  private:
-  MockSignatureSealingBackend* const mock_backend_;
+  hwsec::MockCryptohomeFrontend* const mock_hwsec_;
   brillo::Blob public_key_spki_der_;
-  std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms_;
+  std::vector<hwsec::CryptohomeFrontend::SignatureSealingAlgorithm>
+      key_algorithms_;
   std::string obfuscated_username_;
-  brillo::Blob secret_value_;
+  brillo::SecureBlob secret_value_;
 };
 
 // Helper for setting up mock expectation and mock response for the
-// unsealing functionality of signature-sealed secret (see
-// MockSignatureSealingBackend::CreateUnsealingSession() and
-// MockUnsealingSession).
+// unsealing functionality of signature-sealed secret
 //
 // This class follows the "builder" pattern - i.e., first use the set_*()
 // methods to set up expected parameters and values to be returned, and then
@@ -83,7 +78,7 @@ class SignatureSealedCreationMocker final {
 class SignatureSealedUnsealingMocker final {
  public:
   explicit SignatureSealedUnsealingMocker(
-      MockSignatureSealingBackend* mock_backend);
+      hwsec::MockCryptohomeFrontend* mock_hwsec);
   SignatureSealedUnsealingMocker(const SignatureSealedUnsealingMocker&) =
       delete;
   SignatureSealedUnsealingMocker& operator=(
@@ -95,12 +90,12 @@ class SignatureSealedUnsealingMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
+      const std::vector<hwsec::CryptohomeFrontend::SignatureSealingAlgorithm>&
           key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_chosen_algorithm(
-      structure::ChallengeSignatureAlgorithm chosen_algorithm) {
+      hwsec::CryptohomeFrontend::SignatureSealingAlgorithm chosen_algorithm) {
     chosen_algorithm_ = chosen_algorithm;
   }
   void set_challenge_value(const brillo::Blob& challenge_value) {
@@ -109,7 +104,7 @@ class SignatureSealedUnsealingMocker final {
   void set_challenge_signature(const brillo::Blob& challenge_signature) {
     challenge_signature_ = challenge_signature;
   }
-  void set_secret_value(const brillo::Blob& secret_value) {
+  void set_secret_value(const brillo::SecureBlob& secret_value) {
     secret_value_ = secret_value;
   }
 
@@ -127,18 +122,19 @@ class SignatureSealedUnsealingMocker final {
   void SetUpUnsealingNotCalledMock();
 
  private:
-  MockUnsealingSession* AddSessionCreationMock();
+  void AddSessionCreationMock();
 
-  MockSignatureSealingBackend* const mock_backend_;
+  hwsec::MockCryptohomeFrontend* const mock_hwsec_;
   brillo::Blob public_key_spki_der_;
-  std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms_;
-  structure::ChallengeSignatureAlgorithm chosen_algorithm_ =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+  std::vector<hwsec::CryptohomeFrontend::SignatureSealingAlgorithm>
+      key_algorithms_;
+  hwsec::CryptohomeFrontend::SignatureSealingAlgorithm chosen_algorithm_ =
+      hwsec::CryptohomeFrontend::SignatureSealingAlgorithm::kRsassaPkcs1V15Sha1;
   brillo::Blob challenge_value_;
   brillo::Blob challenge_signature_;
-  brillo::Blob secret_value_;
+  brillo::SecureBlob secret_value_;
 };
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_SIGNATURE_SEALING_BACKEND_TEST_UTILS_H_
+#endif  // CRYPTOHOME_CHALLENGE_CREDENTIALS_SIGNATURE_SEALING_TEST_UTILS_H_

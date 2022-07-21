@@ -43,7 +43,6 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/signature_sealing_backend.h"
 
 #if USE_TPM1
 #include <trousers/scoped_tss_type.h>
@@ -63,6 +62,8 @@ using hwsec_foundation::Sha256;
 namespace cryptohome {
 
 namespace {
+
+constexpr int kSecretSizeBytes = 32;
 
 // Performs common tests for an auth block against correct/wrong passwords.
 bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
@@ -471,14 +472,15 @@ bool TpmLiveTest::NvramTest() {
 
 namespace {
 
+using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
+
 struct SignatureSealedSecretTestCaseParam {
   SignatureSealedSecretTestCaseParam(
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
-          supported_algorithms,
-      std::optional<structure::ChallengeSignatureAlgorithm> expected_algorithm,
+      const std::vector<HwsecAlgorithm>& supported_algorithms,
+      std::optional<HwsecAlgorithm> expected_algorithm,
       int openssl_algorithm_nid)
       : test_case_description(test_case_description),
         tpm(tpm),
@@ -494,9 +496,8 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
-          supported_algorithms,
-      structure::ChallengeSignatureAlgorithm expected_algorithm,
+      const std::vector<HwsecAlgorithm>& supported_algorithms,
+      HwsecAlgorithm expected_algorithm,
       int openssl_algorithm_nid) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms,
@@ -507,8 +508,7 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
-          supported_algorithms) {
+      const std::vector<HwsecAlgorithm>& supported_algorithms) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms, {}, 0);
   }
@@ -518,15 +518,13 @@ struct SignatureSealedSecretTestCaseParam {
   std::string test_case_description;
   Tpm* tpm;
   int key_size_bits;
-  std::vector<structure::ChallengeSignatureAlgorithm> supported_algorithms;
-  std::optional<structure::ChallengeSignatureAlgorithm> expected_algorithm;
+  std::vector<HwsecAlgorithm> supported_algorithms;
+  std::optional<HwsecAlgorithm> expected_algorithm;
   int openssl_algorithm_nid;
 };
 
 class SignatureSealedSecretTestCase final {
  public:
-  using UnsealingSession = SignatureSealingBackend::UnsealingSession;
-
   explicit SignatureSealedSecretTestCase(
       SignatureSealedSecretTestCaseParam param)
       : param_(std::move(param)) {
@@ -652,11 +650,7 @@ class SignatureSealedSecretTestCase final {
   const std::string kObfuscatedUsername = "obfuscated_username";
   const std::set<uint32_t> kPcrIndexes{kTpmSingleUserPCR};
 
-  Tpm* tpm() { return param_.tpm; }
-
-  SignatureSealingBackend* backend() {
-    return tpm()->GetSignatureSealingBackend();
-  }
+  hwsec::CryptohomeFrontend* hwsec() { return param_.tpm->GetHwsec(); }
 
   static bool GenerateRsaKey(int key_size_bits,
                              crypto::ScopedEVP_PKEY* pkey,
@@ -687,28 +681,43 @@ class SignatureSealedSecretTestCase final {
 
   bool CreateSecret(SecureBlob* secret_value,
                     hwsec::SignatureSealedData* sealed_secret_data) {
-    if (hwsec::Status err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
-            secret_value, sealed_secret_data);
-        !err.ok()) {
-      LOG(ERROR) << "Error creating signature-sealed secret: " << err;
+    hwsec::StatusOr<SecureBlob> secret =
+        hwsec()->GetRandomSecureBlob(kSecretSizeBytes);
+    if (!secret.ok()) {
+      LOG(ERROR) << "Failed to generated random secure blob: "
+                 << std::move(secret).status();
       return false;
     }
+
+    hwsec::StatusOr<hwsec::SignatureSealedData> sealed_data =
+        hwsec()->SealWithSignatureAndCurrentUser(kObfuscatedUsername,
+                                                 secret.value(), key_spki_der_,
+                                                 param_.supported_algorithms);
+    if (!sealed_data.ok()) {
+      LOG(ERROR) << "Failed to generated random secure blob: "
+                 << std::move(sealed_data).status();
+      return false;
+    }
+
+    *secret_value = secret.value();
+    *sealed_secret_data = sealed_data.value();
     return true;
   }
 
   bool CheckSecretCreationFails() {
-    SecureBlob secret_value;
-    hwsec::SignatureSealedData sealed_secret_data;
-    if (hwsec::Status err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
-            &secret_value, &sealed_secret_data);
-        !err.ok()) {
+    SecureBlob secret(kSecretSizeBytes, 'x');
+
+    hwsec::StatusOr<hwsec::SignatureSealedData> sealed_data =
+        hwsec()->SealWithSignatureAndCurrentUser(kObfuscatedUsername, secret,
+                                                 key_spki_der_,
+                                                 param_.supported_algorithms);
+    if (!sealed_data.ok()) {
       // TODO(b/174816474): check the error message is expected.
       LOG(INFO) << "Successfully failed to create signature-sealed secret: "
-                << err;
+                << std::move(sealed_data).status();
       return true;
     }
+
     LOG(ERROR) << "Error: secret creation completed unexpectedly";
     return false;
   }
@@ -717,21 +726,19 @@ class SignatureSealedSecretTestCase final {
               Blob* challenge_value,
               Blob* challenge_signature,
               SecureBlob* unsealed_value) {
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      LOG(ERROR) << "Error starting the unsealing session: " << err;
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms);
+    if (!result.ok()) {
+      LOG(ERROR) << "Error starting the challenge: "
+                 << std::move(result).status();
       return false;
     }
-    if (unsealing_session->GetChallengeAlgorithm() !=
-        *param_.expected_algorithm) {
+    if (result->algorithm != *param_.expected_algorithm) {
       LOG(ERROR) << "Wrong challenge signature algorithm";
       return false;
     }
-    *challenge_value = unsealing_session->GetChallengeValue();
+    *challenge_value = result->challenge;
     if (challenge_value->empty()) {
       LOG(ERROR) << "The challenge is empty";
       return false;
@@ -741,115 +748,122 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
-    if (hwsec::Status err =
-            unsealing_session->Unseal(*challenge_signature, unsealed_value);
-        !err.ok()) {
-      LOG(ERROR) << "Error unsealing the secret: " << err;
+    hwsec::StatusOr<brillo::SecureBlob> secret = hwsec()->UnsealWithChallenge(
+        result->challenge_id, *challenge_signature);
+    if (!secret.ok()) {
+      LOG(ERROR) << "Error unsealing the secret: "
+                 << std::move(secret).status();
       return false;
     }
-    if (unsealed_value->empty()) {
+    if (secret.value().empty()) {
       LOG(ERROR) << "Error: empty unsealing result";
       return false;
     }
+    *unsealed_value = std::move(secret).value();
     return true;
   }
 
   bool CheckUnsealingFailsWithOldSignature(
       const hwsec::SignatureSealedData& sealed_secret_data,
       const Blob& challenge_signature) {
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      LOG(ERROR) << "Error starting the unsealing session: " << err;
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms);
+    if (!result.ok()) {
+      LOG(ERROR) << "Error starting the challenge: "
+                 << std::move(result).status();
       return false;
     }
-    SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
-        nullptr) {
+
+    hwsec::StatusOr<brillo::SecureBlob> secret =
+        hwsec()->UnsealWithChallenge(result->challenge_id, challenge_signature);
+    if (secret.ok()) {
       LOG(ERROR)
           << "Error: unsealing completed with an old challenge signature";
       return false;
     }
+
     return true;
   }
 
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
       const hwsec::SignatureSealedData& sealed_secret_data) {
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      LOG(ERROR) << "Error starting the unsealing session: " << err;
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms);
+    if (!result.ok()) {
+      LOG(ERROR) << "Error starting the challenge: "
+                 << std::move(result).status();
       return false;
     }
+
     const int wrong_openssl_algorithm_nid =
         param_.openssl_algorithm_nid == NID_sha1 ? NID_sha256 : NID_sha1;
     Blob challenge_signature;
-    if (!SignWithKey(unsealing_session->GetChallengeValue(),
-                     wrong_openssl_algorithm_nid, &challenge_signature)) {
+    if (!SignWithKey(result->challenge, wrong_openssl_algorithm_nid,
+                     &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
-    SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
-        nullptr) {
+
+    hwsec::StatusOr<brillo::SecureBlob> secret =
+        hwsec()->UnsealWithChallenge(result->challenge_id, challenge_signature);
+    if (secret.ok()) {
       LOG(ERROR) << "Error: unsealing completed with a wrong signature";
       return false;
     }
+
     return true;
   }
 
   bool CheckUnsealingFailsWithBadSignature(
       const hwsec::SignatureSealedData& sealed_secret_data) {
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      LOG(ERROR) << "Error starting the unsealing session: " << err;
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms);
+    if (!result.ok()) {
+      LOG(ERROR) << "Error starting the challenge: "
+                 << std::move(result).status();
       return false;
     }
+
     Blob challenge_signature;
-    if (!SignWithKey(unsealing_session->GetChallengeValue(),
-                     param_.openssl_algorithm_nid, &challenge_signature)) {
+    if (!SignWithKey(result->challenge, param_.openssl_algorithm_nid,
+                     &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
     challenge_signature.front() ^= 1;
-    SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
-        nullptr) {
+
+    hwsec::StatusOr<brillo::SecureBlob> secret =
+        hwsec()->UnsealWithChallenge(result->challenge_id, challenge_signature);
+    if (secret.ok()) {
       LOG(ERROR) << "Error: unsealing completed with a wrong signature";
       return false;
     }
+
     return true;
   }
 
   bool CheckUnsealingFailsWithWrongAlgorithm(
       const hwsec::SignatureSealedData& sealed_secret_data) {
-    const structure::ChallengeSignatureAlgorithm wrong_algorithm =
-        *param_.expected_algorithm ==
-                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1
-            ? structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256
-            : structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, {wrong_algorithm}, kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      // TODO(b/174816474): check the error message is expected.
-      return true;
-    } else {
+    const HwsecAlgorithm wrong_algorithm =
+        *param_.expected_algorithm == HwsecAlgorithm::kRsassaPkcs1V15Sha1
+            ? HwsecAlgorithm::kRsassaPkcs1V15Sha256
+            : HwsecAlgorithm::kRsassaPkcs1V15Sha1;
+
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_,
+            std::vector<HwsecAlgorithm>{wrong_algorithm});
+    if (result.ok()) {
       LOG(ERROR) << "Error: unsealing session creation completed with a "
                     "wrong algorithm";
       return false;
     }
+
+    // TODO(b/174816474): check the error message is expected.
+    return true;
   }
 
   bool CheckUnsealingFailsWithWrongKey(
@@ -861,45 +875,46 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating the other RSA key";
       return false;
     }
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      // TODO(b/174816474): check the error message is expected.
-      return true;
-    } else {
+
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, other_key_spki_der,
+            param_.supported_algorithms);
+    if (result.ok()) {
       LOG(ERROR)
           << "Error: unsealing session creation completed with a wrong key";
       return false;
     }
+
+    // TODO(b/174816474): check the error message is expected.
+    return true;
   }
 
   bool CheckUnsealingFail(
       const hwsec::SignatureSealedData& sealed_secret_data) {
-    std::unique_ptr<UnsealingSession> unsealing_session;
-    if (hwsec::Status err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            kPcrIndexes,
-            /*locked_to_single_user=*/false, &unsealing_session);
-        !err.ok()) {
-      // TODO(yich): check the error message is expected.
-      LOG(INFO) << "Failed to starting the unsealing session: " << err;
+    hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> result =
+        hwsec()->ChallengeWithSignatureAndCurrentUser(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms);
+    if (!result.ok()) {
+      LOG(ERROR) << "Successful failed to create challenge: "
+                 << std::move(result).status();
       return true;
     }
+
     Blob challenge_signature;
-    if (!SignWithKey(unsealing_session->GetChallengeValue(),
-                     param_.openssl_algorithm_nid, &challenge_signature)) {
+    if (!SignWithKey(result->challenge, param_.openssl_algorithm_nid,
+                     &challenge_signature)) {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
-    SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
-        nullptr) {
+
+    hwsec::StatusOr<brillo::SecureBlob> secret =
+        hwsec()->UnsealWithChallenge(result->challenge_id, challenge_signature);
+    if (secret.ok()) {
       LOG(ERROR) << "Error: unsealing completed with changed PCRs";
       return false;
     }
+
     return true;
   }
 
@@ -943,62 +958,51 @@ class SignatureSealedSecretTestCase final {
 
 bool TpmLiveTest::SignatureSealedSecretTest() {
   using TestCaseParam = SignatureSealedSecretTestCaseParam;
-  if (!tpm_->GetSignatureSealingBackend()) {
-    // Not supported by the Tpm implementation, just skip the test.
-    return true;
-  }
   LOG(INFO) << "SignatureSealedSecretTest started";
   std::vector<TestCaseParam> test_case_params;
   for (int key_size_bits : {1024, 2048}) {
     test_case_params.push_back(TestCaseParam::MakeSuccessful(
-        "SHA-1", tpm_, key_size_bits,
-        {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
-        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
+        "SHA-1", tpm_, key_size_bits, {HwsecAlgorithm::kRsassaPkcs1V15Sha1},
+        HwsecAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
     if (tpm_->GetVersion() == Tpm::TPM_1_2) {
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-256", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256}));
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-384", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384}));
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-512", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-256", tpm_, key_size_bits,
+                                     {HwsecAlgorithm::kRsassaPkcs1V15Sha256}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-384", tpm_, key_size_bits,
+                                     {HwsecAlgorithm::kRsassaPkcs1V15Sha384}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-512", tpm_, key_size_bits,
+                                     {HwsecAlgorithm::kRsassaPkcs1V15Sha512}));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
-          NID_sha1));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha256,
+           HwsecAlgorithm::kRsassaPkcs1V15Sha1},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
     } else {
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "SHA-256", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-          NID_sha256));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha256},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha256, NID_sha256));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "SHA-384", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
-          NID_sha384));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha384},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "SHA-512", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
-          NID_sha512));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha512},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha512, NID_sha512));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-384,SHA-256,SHA-512}", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
-          NID_sha384));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha384,
+           HwsecAlgorithm::kRsassaPkcs1V15Sha256,
+           HwsecAlgorithm::kRsassaPkcs1V15Sha512},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-          NID_sha256));
+          {HwsecAlgorithm::kRsassaPkcs1V15Sha1,
+           HwsecAlgorithm::kRsassaPkcs1V15Sha256},
+          HwsecAlgorithm::kRsassaPkcs1V15Sha256, NID_sha256));
     }
   }
 

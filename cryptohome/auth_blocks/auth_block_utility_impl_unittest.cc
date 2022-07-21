@@ -1080,9 +1080,8 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
   auth_block_utility_impl_->SetSingleUseKeyChallengeService(
       std::move(mock_key_challenge_service), credentials.username());
 
-  EXPECT_CALL(challenge_credentials_helper_,
-              Decrypt(kUser, _, _, /*locked_to_single_user=*/false, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
+  EXPECT_CALL(challenge_credentials_helper_, Decrypt(kUser, _, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>(scrypt_passkey);
         std::move(callback).Run(
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(

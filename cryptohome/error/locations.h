@@ -55,7 +55,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredDecryptCantStartProcessing = 114,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
   kLocChalCredDecryptOperationAborted = 115,
-  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  /* =Obsolete= */
   kLocChalCredDecryptNoSignatureSealingBackend = 116,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
   kLocChalCredDecryptNoPubKeySigSize = 117,
@@ -1073,6 +1073,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionDeriveFailedInLoadUSS = 623,
   /* ./auth_blocks/async_challenge_credential_auth_block.cc */
   kLocAsyncChalCredAuthBlockNoInputAuthInDerive = 624,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoHwsecBackend = 625,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptUnsealingResponseNoChallenge = 626,
+  /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
+  kLocChalCredGenRandFailed = 627,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -1341,10 +1341,6 @@ bool Tpm2Impl::GetRsuDeviceId(std::string* device_id) {
   return trunks->tpm_utility->GetRsuDeviceId(device_id) == TPM_RC_SUCCESS;
 }
 
-SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {
-  return &signature_sealing_backend_;
-}
-
 cryptorecovery::RecoveryCryptoTpmBackend* Tpm2Impl::GetRecoveryCryptoBackend() {
   return &recovery_crypto_backend_;
 }

@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
@@ -33,8 +34,45 @@ using hwsec::TPMRetryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
+using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 
 namespace cryptohome {
+
+namespace {
+
+HwsecAlgorithm ConvertToHwsecAlgorithm(
+    structure::ChallengeSignatureAlgorithm algorithm) {
+  switch (algorithm) {
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha256;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha384;
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+      return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
+  }
+  NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
+  return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
+}
+
+structure::ChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
+    HwsecAlgorithm algorithm) {
+  switch (algorithm) {
+    case HwsecAlgorithm::kRsassaPkcs1V15Sha1:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+    case HwsecAlgorithm::kRsassaPkcs1V15Sha256:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+    case HwsecAlgorithm::kRsassaPkcs1V15Sha384:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
+    case HwsecAlgorithm::kRsassaPkcs1V15Sha512:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+  }
+  NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
+  return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+}
+
+}  // namespace
 
 ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     KeyChallengeService* key_challenge_service,
@@ -42,16 +80,14 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
-    bool locked_to_single_user,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
       account_id_(account_id),
       public_key_info_(public_key_info),
       keyset_challenge_info_(keyset_challenge_info),
-      locked_to_single_user_(locked_to_single_user),
       completion_callback_(std::move(completion_callback)),
-      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
+      hwsec_(tpm_->GetHwsec()) {}
 
 ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
     default;
@@ -78,9 +114,9 @@ void ChallengeCredentialsDecryptOperation::Abort(TPMStatus status) {
 
 StatusChain<CryptohomeTPMError>
 ChallengeCredentialsDecryptOperation::StartProcessing() {
-  if (!signature_sealing_backend_) {
+  if (!hwsec_) {
     return MakeStatus<CryptohomeTPMError>(
-        CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoSignatureSealingBackend),
+        CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoHwsecBackend),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         TPMRetryAction::kNoRetry);
   }
@@ -165,33 +201,32 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         TPMRetryAction::kNoRetry);
   }
-  const std::vector<structure::ChallengeSignatureAlgorithm>
-      key_sealing_algorithms = public_key_info_.signature_algorithm;
 
-  // Get the PCR set from the empty user PCR map.
-  std::map<uint32_t, brillo::Blob> pcr_map =
-      tpm_->GetPcrMap("", locked_to_single_user_);
-  std::set<uint32_t> pcr_set;
-  for (const auto& [pcr_index, pcr_value] : pcr_map) {
-    pcr_set.insert(pcr_index);
+  std::vector<HwsecAlgorithm> key_sealing_algorithms;
+  for (auto algo : public_key_info_.signature_algorithm) {
+    key_sealing_algorithms.push_back(ConvertToHwsecAlgorithm(algo));
   }
 
-  auto status = MakeStatus<CryptohomeTPMError>(
-      signature_sealing_backend_->CreateUnsealingSession(
+  hwsec::StatusOr<hwsec::CryptohomeFrontend::ChallengeResult> challenge =
+      hwsec_->ChallengeWithSignatureAndCurrentUser(
           keyset_challenge_info_.sealed_secret,
-          public_key_info_.public_key_spki_der, key_sealing_algorithms, pcr_set,
-          locked_to_single_user_, &unsealing_session_));
-  if (!status.ok()) {
+          public_key_info_.public_key_spki_der, key_sealing_algorithms);
+  if (!challenge.ok()) {
+    TPMStatus status =
+        MakeStatus<CryptohomeTPMError>(std::move(challenge).status());
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(
                    kLocChalCredDecryptCreateUnsealingSessionFailed),
                NoErrorAction())
         .Wrap(std::move(status));
   }
+
+  challenge_id_ = challenge.value().challenge_id;
+
   MakeKeySignatureChallenge(
       account_id_, public_key_info_.public_key_spki_der,
-      unsealing_session_->GetChallengeValue(),
-      unsealing_session_->GetChallengeAlgorithm(),
+      challenge.value().challenge,
+      ConvertFromHwsecAlgorithm(challenge.value().algorithm),
       base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
@@ -223,14 +258,24 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     // |this| can be already destroyed at this point.
     return;
   }
-  SecureBlob unsealed_secret;
+
   std::unique_ptr<brillo::Blob> challenge_signature =
       std::move(challenge_signature_status).value();
-  auto status = MakeStatus<CryptohomeTPMError>(
-      unsealing_session_->Unseal(*challenge_signature, &unsealed_secret));
-  if (!status.ok()) {
-    // TODO(crbug.com/842791): Determine the retry action based on the type of
-    // the error.
+
+  if (!challenge_id_.has_value()) {
+    Resolve(MakeStatus<CryptohomeTPMError>(
+        CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoChallenge),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        TPMRetryAction::kNoRetry));
+    return;
+  }
+
+  hwsec::StatusOr<brillo::SecureBlob> unsealed_secret =
+      hwsec_->UnsealWithChallenge(challenge_id_.value(), *challenge_signature);
+
+  if (!unsealed_secret.ok()) {
+    TPMStatus status =
+        MakeStatus<CryptohomeTPMError>(std::move(unsealed_secret).status());
     Resolve(MakeStatus<CryptohomeTPMError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealFailed),
                 NoErrorAction())
@@ -238,7 +283,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     // |this| can be already destroyed at this point.
     return;
   }
-  unsealed_secret_ = std::make_unique<SecureBlob>(unsealed_secret);
+  unsealed_secret_ = std::make_unique<SecureBlob>(unsealed_secret.value());
   ProceedIfChallengesDone();
 }
 

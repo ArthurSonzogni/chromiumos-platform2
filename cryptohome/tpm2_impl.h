@@ -28,7 +28,6 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
-#include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 #include "cryptohome/tpm.h"
 
 namespace trunks {
@@ -140,7 +139,6 @@ class Tpm2Impl : public Tpm {
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool GetRsuDeviceId(std::string* device_id) override;
-  SignatureSealingBackend* GetSignatureSealingBackend() override;
   cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() override;
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
@@ -237,7 +235,6 @@ class Tpm2Impl : public Tpm {
   // explicitly requesting the update or from dbus signal.
   tpm_manager::LocalData last_tpm_manager_data_;
 
-  SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
   cryptorecovery::RecoveryCryptoTpm2BackendImpl recovery_crypto_backend_{this};
 
   std::unique_ptr<hwsec::Factory> hwsec_factory_;

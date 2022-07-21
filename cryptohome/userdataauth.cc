@@ -1830,10 +1830,6 @@ void UserDataAuth::DoChallengeResponseMount(
     // Home directory already exist and we are not doing ephemeral mount, so
     // we'll decrypt existing VaultKeyset.
 
-    // TODO(b/203994461): This should be handled inside the auth block.
-    bool locked_to_single_user =
-        platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-
     // Note: We don't need the |signature_challenge_info| when we are decrypting
     // the challenge credential, because the keyset managerment doesn't need to
     // read the |signature_challenge_info| from the credentials in this case.
@@ -1843,7 +1839,7 @@ void UserDataAuth::DoChallengeResponseMount(
     challenge_credentials_helper_->Decrypt(
         account_id, proto::FromProto(public_key_info),
         proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
-        locked_to_single_user, std::move(key_challenge_service),
+        std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
             base::Unretained(this), request, mount_args, std::move(on_done)));
@@ -2914,14 +2910,10 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
   const ChallengePublicKeyInfo& public_key_info =
       authorization.key().data().challenge_response_key(0);
 
-  // TODO(b/203994461): This should be handled inside the auth block.
-  bool locked_to_single_user =
-      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-
   challenge_credentials_helper_->Decrypt(
       account_id, proto::FromProto(public_key_info),
       proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
-      locked_to_single_user, std::move(key_challenge_service),
+      std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
                      base::Unretained(this), request, std::move(on_done)));
 }

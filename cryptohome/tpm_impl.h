@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm1_backend_impl.h"
-#include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -116,7 +115,6 @@ class TpmImpl : public Tpm {
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool GetRsuDeviceId(std::string* device_id) override;
-  SignatureSealingBackend* GetSignatureSealingBackend() override;
   cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() override;
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
@@ -295,9 +293,6 @@ class TpmImpl : public Tpm {
   // Tpm Context information
   trousers::ScopedTssContext tpm_context_;
 
-  // A single instance of the backend for signature-sealing operations that is
-  // returned from GetSignatureSealingBackend().
-  SignatureSealingBackendTpm1Impl signature_sealing_backend_{this};
   // A single instance of the backend for cryptohome-recovery operations that is
   // returned from GetRecoveryCryptoBackend().
   cryptorecovery::RecoveryCryptoTpm1BackendImpl recovery_crypto_backend_{this};

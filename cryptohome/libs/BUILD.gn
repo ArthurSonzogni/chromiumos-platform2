@@ -394,7 +394,6 @@ static_library("libcrostpm") {
   if (use.tpm2) {
     sources += [
       "../cryptorecovery/recovery_crypto_tpm2_backend_impl.cc",
-      "../signature_sealing_backend_tpm2_impl.cc",
       "../tpm2_impl.cc",
     ]
     libs += [ "trunks" ]
@@ -402,7 +401,6 @@ static_library("libcrostpm") {
   if (use.tpm) {
     sources += [
       "../cryptorecovery/recovery_crypto_tpm1_backend_impl.cc",
-      "../signature_sealing_backend_tpm1_impl.cc",
       "../tpm1_static_utils.cc",
       "../tpm_impl.cc",
       "../tpm_metrics.cc",

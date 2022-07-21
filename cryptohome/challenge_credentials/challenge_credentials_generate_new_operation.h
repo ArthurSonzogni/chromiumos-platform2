@@ -14,12 +14,12 @@
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
-#include "cryptohome/signature_sealing_backend.h"
 
 namespace cryptohome {
 
@@ -95,7 +95,7 @@ class ChallengeCredentialsGenerateNewOperation final
   const structure::ChallengePublicKeyInfo public_key_info_;
   const std::string obfuscated_username_;
   CompletionCallback completion_callback_;
-  SignatureSealingBackend* const signature_sealing_backend_;
+  hwsec::CryptohomeFrontend* const hwsec_;
   brillo::Blob salt_;
   structure::ChallengeSignatureAlgorithm salt_signature_algorithm_ =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;

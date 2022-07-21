@@ -8,19 +8,20 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
-#include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -53,7 +54,6 @@ class ChallengeCredentialsDecryptOperation final
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
-      bool locked_to_single_user,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;
@@ -95,11 +95,10 @@ class ChallengeCredentialsDecryptOperation final
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;
-  const bool locked_to_single_user_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
-  SignatureSealingBackend* const signature_sealing_backend_;
-  std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session_;
+  hwsec::CryptohomeFrontend* const hwsec_;
+  std::optional<hwsec::CryptohomeFrontend::ChallengeID> challenge_id_;
   std::unique_ptr<brillo::SecureBlob> unsealed_secret_;
   base::WeakPtrFactory<ChallengeCredentialsDecryptOperation> weak_ptr_factory_{
       this};

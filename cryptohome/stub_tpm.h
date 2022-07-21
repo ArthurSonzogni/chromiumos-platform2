@@ -166,9 +166,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool GetRsuDeviceId(std::string* device_id) override { return false; }
-  SignatureSealingBackend* GetSignatureSealingBackend() override {
-    return nullptr;
-  }
   cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend()
       override {
     return nullptr;

@@ -28,24 +28,26 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
+#include "cryptohome/challenge_credentials/signature_sealing_test_utils.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_key_challenge_service.h"
-#include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/proto_bindings/key.pb.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
-#include "cryptohome/signature_sealing_backend_test_utils.h"
 
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
+
+using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 
 using testing::_;
 using testing::AtLeast;
@@ -461,10 +463,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
           },
   };
 
-  EXPECT_CALL(
-      challenge_credentials_helper_,
-      Decrypt(kFakeAccountId, _, _, /*locked_to_single_user=*/true, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
+  EXPECT_CALL(challenge_credentials_helper_,
+              Decrypt(kFakeAccountId, _, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>(scrypt_passkey);
         std::move(callback).Run(
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
@@ -513,8 +514,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
   };
 
   EXPECT_CALL(challenge_credentials_helper_,
-              Decrypt(kFakeAccountId, _, _, _, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
+              Decrypt(kFakeAccountId, _, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
             kErrorLocationPlaceholder,
             ErrorActionSet({ErrorAction::kIncorrectAuth}),
@@ -612,8 +613,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
       });
 
   EXPECT_CALL(challenge_credentials_helper_,
-              Decrypt(kFakeAccountId, _, _, _, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&& callback) {
+              Decrypt(kFakeAccountId, _, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
         std::move(callback).Run(
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
@@ -660,10 +661,6 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
           data->assign(length, 0);
           return nullptr;
         });
-    EXPECT_CALL(tpm_, GetSignatureSealingBackend())
-        .WillRepeatedly(Return(&sealing_backend_));
-    EXPECT_CALL(tpm_, GetPcrMap(_, _))
-        .WillRepeatedly(Return(std::map<uint32_t, brillo::Blob>()));
 
     challenge_credentials_helper_ =
         std::make_unique<ChallengeCredentialsHelperImpl>(&tpm_);
@@ -680,10 +677,11 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
         std::move(owned_key_challenge_service), kFakeAccountId);
   }
 
-  void BackendWillSeal(
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
-          key_algorithms) {
-    SignatureSealedCreationMocker mocker(&sealing_backend_);
+  void BackendWillSeal(const std::vector<HwsecAlgorithm>& key_algorithms) {
+    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetRandomSecureBlob(_))
+        .WillOnce(ReturnValue(kTpmProtectedSecret));
+
+    SignatureSealedCreationMocker mocker(tpm_.get_mock_hwsec());
     mocker.set_public_key_spki_der(kPublicKeySpkiDer);
     mocker.set_key_algorithms(key_algorithms);
     mocker.set_obfuscated_username(kObfuscatedUsername);
@@ -691,10 +689,9 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
     mocker.SetUpSuccessfulMock();
   }
 
-  void BackendWillUnseal(
-      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      structure::ChallengeSignatureAlgorithm unsealing_algorithm) {
-    SignatureSealedUnsealingMocker mocker(&sealing_backend_);
+  void BackendWillUnseal(const std::vector<HwsecAlgorithm>& key_algorithms,
+                         HwsecAlgorithm unsealing_algorithm) {
+    SignatureSealedUnsealingMocker mocker(tpm_.get_mock_hwsec());
     mocker.set_public_key_spki_der(kPublicKeySpkiDer);
     mocker.set_key_algorithms(key_algorithms);
     mocker.set_chosen_algorithm(unsealing_algorithm);
@@ -776,13 +773,12 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
 
  private:
   const std::string kFakeAccountId = "account_id";
-  const brillo::Blob kTpmProtectedSecret =
-      brillo::BlobFromString("tpm_protected_secret");
+  const brillo::SecureBlob kTpmProtectedSecret =
+      brillo::SecureBlob("tpm_protected_secret");
   const brillo::Blob kChallengeResponse = brillo::BlobFromString("signature");
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
 
   base::test::TaskEnvironment task_environment_;
-  NiceMock<MockSignatureSealingBackend> sealing_backend_;
   NiceMock<MockTpm> tpm_;
   std::unique_ptr<ChallengeCredentialsHelperImpl> challenge_credentials_helper_;
   std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
@@ -792,6 +788,7 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
 
 // Verifies that Derive succeeds on the output of Create.
 TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
+  constexpr auto kHwsecAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kAlgorithm =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
@@ -806,7 +803,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
 
   // Setup: create an auth block state.
   CreateAuthBlock();
-  BackendWillSeal({kAlgorithm});
+  BackendWillSeal({kHwsecAlgorithm});
   ChallengesWillRespond(kChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> created_key_blobs;
   std::unique_ptr<AuthBlockState> auth_block_state;
@@ -821,7 +818,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
 
   // Test: run the derivation.
   CreateAuthBlock();
-  BackendWillUnseal({kAlgorithm}, kAlgorithm);
+  BackendWillUnseal({kHwsecAlgorithm}, kHwsecAlgorithm);
   ChallengesWillRespond(kChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> derived_key_blobs;
   ASSERT_THAT(RunDerive(kAuthInput, *auth_block_state, derived_key_blobs),
@@ -839,12 +836,16 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
 // algorithms are used for salt and for the TPM-backed secret.
 TEST_F(AsyncChallengeCredentialAuthBlockFullTest,
        DeriveCreatedDifferentAlgorithms) {
+  constexpr auto kHwsecSaltAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kSaltAlgorithm =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kSaltChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
+  constexpr auto kHwsecTpmAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha1;
   constexpr auto kTpmAlgorithm =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   constexpr auto kTpmChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
+  const std::vector<HwsecAlgorithm> kHwsecAlgorithms = {kHwsecTpmAlgorithm,
+                                                        kHwsecSaltAlgorithm};
   const std::vector<structure::ChallengeSignatureAlgorithm> kAlgorithms = {
       kTpmAlgorithm, kSaltAlgorithm};
   const AuthInput kAuthInput{
@@ -858,7 +859,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest,
 
   // Setup: create an auth block state.
   CreateAuthBlock();
-  BackendWillSeal(kAlgorithms);
+  BackendWillSeal(kHwsecAlgorithms);
   ChallengesWillRespond(kSaltChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> created_key_blobs;
   std::unique_ptr<AuthBlockState> auth_block_state;
@@ -873,7 +874,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest,
 
   // Test: run the derivation.
   CreateAuthBlock();
-  BackendWillUnseal(kAlgorithms, kTpmAlgorithm);
+  BackendWillUnseal(kHwsecAlgorithms, kHwsecTpmAlgorithm);
   ChallengesWillRespond(kSaltChallengeAlgorithm);
   ChallengesWillRespond(kTpmChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> derived_key_blobs;
