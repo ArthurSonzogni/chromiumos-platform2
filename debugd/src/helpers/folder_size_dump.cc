@@ -213,7 +213,7 @@ uint64_t ObfuscateSize(uint64_t size) {
   uint64_t result = size;
 
   // Count the number of bits set.
-  auto ct = 64 - base::bits::CountLeadingZeroBits64(size);
+  auto ct = 64 - base::bits::CountLeadingZeroBits(size);
 
   // Only keep the 2 most significant bits.
   if (ct > 2) {
