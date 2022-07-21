@@ -41,7 +41,30 @@ TEST_F(BackendTpm1Test, GetScopedTssContext) {
   EXPECT_EQ(result->value(), kFakeContext);
 }
 
-TEST_F(BackendTpm1Test, GetTssUserContext) {
+TEST_F(BackendTpm1Test, GetTssContext) {
+  TSS_HCONTEXT kFakeContext = 0x1234;
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Context_Connect(kFakeContext, nullptr))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  auto result = backend_->GetTssContext();
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(*result, kFakeContext);
+
+  // Run again to check the cache works correctly.
+  result = backend_->GetTssContext();
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(*result, kFakeContext);
+}
+
+TEST_F(BackendTpm1Test, GetUserTpmHandle) {
   TSS_HCONTEXT kFakeContext = 0x1234;
   TSS_HTPM kFakeTpm = 0x5678;
 
@@ -59,16 +82,14 @@ TEST_F(BackendTpm1Test, GetTssUserContext) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result = backend_->GetTssUserContext();
+  auto result = backend_->GetUserTpmHandle();
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(result->context, kFakeContext);
-  EXPECT_EQ(result->tpm_handle, kFakeTpm);
+  EXPECT_EQ(*result, kFakeTpm);
 
   // Run again to check the cache works correctly.
-  result = backend_->GetTssUserContext();
+  result = backend_->GetUserTpmHandle();
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(result->context, kFakeContext);
-  EXPECT_EQ(result->tpm_handle, kFakeTpm);
+  EXPECT_EQ(*result, kFakeTpm);
 }
 
 }  // namespace hwsec

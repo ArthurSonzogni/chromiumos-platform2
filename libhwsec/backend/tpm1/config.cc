@@ -75,20 +75,21 @@ StatusOr<OperationPolicy> ConfigTpm1::ToOperationPolicy(
 }
 
 Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
-  ASSIGN_OR_RETURN(const TssTpmContext& user_context,
-                   backend_.GetTssUserContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
   brillo::Blob extention = Sha1(brillo::BlobFromString(current_user));
 
   uint32_t new_pcr_value_length = 0;
-  ScopedTssMemory new_pcr_value(overalls, user_context.context);
+  ScopedTssMemory new_pcr_value(overalls, context);
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrExtend(
-                      user_context.tpm_handle, kCurrentUserPcr,
-                      extention.size(), extention.data(), nullptr,
-                      &new_pcr_value_length, new_pcr_value.ptr())))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrExtend(
+          tpm_handle, kCurrentUserPcr, extention.size(), extention.data(),
+          nullptr, &new_pcr_value_length, new_pcr_value.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_PcrExtend");
 
   return OkStatus();
@@ -120,17 +121,17 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToPcrMap(
 }
 
 StatusOr<brillo::Blob> ConfigTpm1::ReadPcr(uint32_t pcr_index) {
-  ASSIGN_OR_RETURN(const TssTpmContext& user_context,
-                   backend_.GetTssUserContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
   uint32_t length = 0;
-  ScopedTssMemory buffer(overalls, user_context.context);
+  ScopedTssMemory buffer(overalls, context);
 
-  RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrRead(
-          user_context.tpm_handle, pcr_index, &length, buffer.ptr())))
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrRead(
+                      tpm_handle, pcr_index, &length, buffer.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_PcrRead");
 
   return brillo::Blob(buffer.value(), buffer.value() + length);

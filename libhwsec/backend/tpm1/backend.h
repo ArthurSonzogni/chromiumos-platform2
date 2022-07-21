@@ -252,13 +252,10 @@ class BackendTpm1 : public Backend {
   struct OverallsContext {
     overalls::Overalls& overalls;
   };
-  struct TssTpmContext {
-    TSS_HCONTEXT context;
-    TSS_HTPM tpm_handle;
-  };
 
   StatusOr<ScopedTssContext> GetScopedTssContext();
-  StatusOr<TssTpmContext> GetTssUserContext();
+  StatusOr<TSS_HCONTEXT> GetTssContext();
+  StatusOr<TSS_HTPM> GetUserTpmHandle();
 
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
@@ -280,8 +277,8 @@ class BackendTpm1 : public Backend {
 
   OverallsContext overall_context_;
 
-  ScopedTssContext tss_user_context_;
-  std::optional<TssTpmContext> tss_user_context_cache_;
+  std::optional<ScopedTssContext> tss_context_;
+  std::optional<ScopedTssObject<TSS_HTPM>> user_tpm_handle_;
 
   StateTpm1 state_{*this};
   DAMitigationTpm1 da_mitigation_{*this};
@@ -298,7 +295,8 @@ class BackendTpm1 : public Backend {
   MiddlewareDerivative middleware_derivative_;
 
   FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetScopedTssContext);
-  FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetTssUserContext);
+  FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetTssContext);
+  FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetUserTpmHandle);
 };
 
 }  // namespace hwsec

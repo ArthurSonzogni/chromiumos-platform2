@@ -31,24 +31,24 @@ StatusOr<bool> SealingTpm1::IsSupported() {
 
 StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
     const brillo::SecureBlob& auth_value) {
-  ASSIGN_OR_RETURN(const TssTpmContext& user_context,
-                   backend_.GetTssUserContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
-  ScopedTssKey enc_handle(overalls, user_context.context);
+  ScopedTssKey enc_handle(overalls, context);
 
   // Create the enc_handle.
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
-                      user_context.context, TSS_OBJECT_TYPE_ENCDATA,
-                      TSS_ENCDATA_SEAL, enc_handle.ptr())))
+                      context, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
+                      enc_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
   // Get the TPM usage policy object and set the auth_value.
   TSS_HPOLICY tpm_usage_policy;
-  RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_GetPolicyObject(
-          user_context.tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetPolicyObject(
+                      tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
       .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
 
   brillo::SecureBlob mutable_auth_value = auth_value;
@@ -75,8 +75,7 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
                    backend_.key_management_.GetKeyData(srk.GetKey()));
 
-  ASSIGN_OR_RETURN(const TssTpmContext& user_context,
-                   backend_.GetTssUserContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
@@ -86,11 +85,11 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   // Create a PCRS object to hold pcr_index and pcr_value.
-  ScopedTssPcrs pcrs(overalls, user_context.context);
+  ScopedTssPcrs pcrs(overalls, context);
   if (!settings.empty()) {
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
-                        user_context.context, TSS_OBJECT_TYPE_PCRS,
-                        TSS_PCRS_STRUCT_INFO, pcrs.ptr())))
+    RETURN_IF_ERROR(
+        MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+            context, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO, pcrs.ptr())))
         .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
     for (const auto& map_pair : settings) {
@@ -121,7 +120,7 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
       .WithStatus<TPMError>("Failed to call Ospi_Data_Seal");
 
   // Extract the sealed value.
-  ScopedTssMemory enc_data(overalls, user_context.context);
+  ScopedTssMemory enc_data(overalls, context);
   uint32_t length = 0;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
                       auth_value_key, TSS_TSPATTRIB_ENCDATA_BLOB,
@@ -154,8 +153,7 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
                    backend_.key_management_.GetKeyData(srk.GetKey()));
 
-  ASSIGN_OR_RETURN(const TssTpmContext& user_context,
-                   backend_.GetTssUserContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
   overalls::Overalls& overalls = backend_.overall_context_.overalls;
 
@@ -176,7 +174,7 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
   // Unseal using the SRK.
-  ScopedTssSecureMemory dec_data(overalls, user_context.context);
+  ScopedTssSecureMemory dec_data(overalls, context);
   uint32_t length = 0;
   RETURN_IF_ERROR(
       MakeStatus<TPM1Error>(overalls.Ospi_Data_Unseal(
