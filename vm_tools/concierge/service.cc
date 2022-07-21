@@ -899,23 +899,20 @@ static std::optional<std::string> GameModeToForegroundVmName(
 void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
-  if (!memory_margins_) {
-    // Lazily initialize memory_margins_. Done here so we don't delay VM startup
-    // with a D-Bus call.
-    memory_margins_ = GetMemoryMargins();
-    if (!memory_margins_) {
-      LOG(ERROR) << "Failed to get ChromeOS memory margins, stopping balloon "
-                 << "policy";
-      balloon_resizing_timer_.Stop();
-      return;
-    }
+
+  std::optional<MemoryMargins> memory_margins = GetMemoryMargins();
+  if (!memory_margins) {
+    LOG(ERROR) << "Failed to get ChromeOS memory margins, stopping balloon "
+               << "policy";
+    balloon_resizing_timer_.Stop();
+    return;
   }
 
   std::vector<std::pair<uint32_t, BalloonStats>> balloon_stats;
   std::vector<uint32_t> ids;
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
-    if (!vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name())) {
+    if (!vm->GetBalloonPolicy(*memory_margins, vm_entry.first.name())) {
       // Skip VMs that don't have a memory policy. It may just not be ready
       // yet.
       continue;
@@ -931,14 +928,16 @@ void Service::RunBalloonPolicy() {
   }
 
   if (!USE_CROSVM_SIBLINGS) {
-    FinishBalloonPolicy(std::move(balloon_stats));
+    FinishBalloonPolicy(*memory_margins, std::move(balloon_stats));
   } else {
-    mms_->GetBalloonStats(ids, base::BindOnce(&Service::FinishBalloonPolicy,
-                                              weak_ptr_factory_.GetWeakPtr()));
+    mms_->GetBalloonStats(
+        ids, base::BindOnce(&Service::FinishBalloonPolicy,
+                            weak_ptr_factory_.GetWeakPtr(), *memory_margins));
   }
 }
 
-void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
+void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
+                                  TaggedBalloonStats stats) {
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
     return;
@@ -980,7 +979,7 @@ void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
     }
     BalloonStats stats = stats_iter->second;
     const std::unique_ptr<BalloonPolicyInterface>& policy =
-        vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name());
+        vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
 
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&

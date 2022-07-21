@@ -331,6 +331,7 @@ class Service final {
   std::optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
   void FinishBalloonPolicy(
+      MemoryMargins memory_margins,
       std::vector<std::pair<uint32_t, BalloonStats>> stats);
 
   bool ListVmDisksInLocation(const std::string& cryptohome_id,
@@ -464,10 +465,6 @@ class Service final {
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
-
-  // A cache for the result of GetMemoryMargins, so we don't need to query it
-  // every balloon_resizing_timer_ tick.
-  std::optional<MemoryMargins> memory_margins_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
