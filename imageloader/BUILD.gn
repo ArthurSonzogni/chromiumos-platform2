@@ -60,8 +60,8 @@ proto_library("protos") {
 
 generate_dbus_adaptors("imageloader-adaptors") {
   dbus_adaptors_out_dir = "include/imageloader/dbus_adaptors"
-  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
-  sources = [ "dbus_adaptors/org.chromium.ImageLoaderInterface.xml" ]
+  dbus_service_config = "dbus/dbus-service-config.json"
+  sources = [ "dbus/org.chromium.ImageLoaderInterface.xml" ]
 }
 
 shared_library("libimageloader-manifest") {
@@ -135,12 +135,12 @@ install_config("install_seccomp_policy") {
 }
 
 install_config("install_dbus_config") {
-  sources = [ "dbus_permissions/org.chromium.ImageLoader.conf" ]
+  sources = [ "dbus/org.chromium.ImageLoader.conf" ]
   install_path = "/etc/dbus-1/system.d"
 }
 
 install_config("install_dbus_service") {
-  sources = [ "dbus_service/org.chromium.ImageLoader.service" ]
+  sources = [ "dbus/org.chromium.ImageLoader.service" ]
   install_path = "/usr/share/dbus-1/system-services"
 }
 
