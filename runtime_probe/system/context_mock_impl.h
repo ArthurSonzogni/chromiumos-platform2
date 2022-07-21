@@ -11,7 +11,7 @@
 #include <debugd/dbus-proxy-mocks.h>
 
 #include "runtime_probe/system/context.h"
-#include "runtime_probe/system/fake_helper_invoker.h"
+#include "runtime_probe/system/helper_invoker_direct_impl.h"
 
 namespace runtime_probe {
 
@@ -24,7 +24,7 @@ class ContextMockImpl : public Context {
     return &mock_debugd_proxy_;
   };
 
-  HelperInvoker* helper_invoker() override { return &fake_helper_invoker_; }
+  HelperInvoker* helper_invoker() override { return &helper_invoker_direct_; }
 
   const base::FilePath& root_dir() override { return root_dir_; }
 
@@ -34,7 +34,7 @@ class ContextMockImpl : public Context {
 
  private:
   testing::StrictMock<org::chromium::debugdProxyMock> mock_debugd_proxy_;
-  FakeHelperInvoker fake_helper_invoker_;
+  HelperInvokerDirectImpl helper_invoker_direct_;
 
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;

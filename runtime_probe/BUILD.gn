@@ -27,9 +27,9 @@ pkg_config("target_defaults") {
     "system_api",
     "vboot_host",
   ]
-  defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
+# TODO(chungsheng): We should consider moving these into a subdirectory.
 source_set("lib") {
   sources = [
     "component_category.cc",
@@ -45,28 +45,32 @@ source_set("lib") {
   configs += [ ":target_defaults" ]
   deps = [
     "//runtime_probe/functions",
-    "//runtime_probe/system",
+    "//runtime_probe/system:system_base",
     "//runtime_probe/utils",
   ]
-  if (!use.factory_runtime_probe) {
-    sources += [ "daemon.cc" ]
-    deps += [ ":dbus-adaptors" ]
-  }
+}
+
+source_set("daemon") {
+  sources = [ "daemon.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":dbus-adaptors" ]
 }
 
 executable("runtime_probe") {
   sources = [ "runtime_probe.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":lib" ]
-  if (use.factory_runtime_probe) {
-    output_name = "factory_runtime_probe"
-    install_path = "bin"
-  }
+  assert_no_deps = [ "//runtime_probe/system:context_factory" ]
+  deps = [
+    ":daemon",
+    ":lib",
+    "//runtime_probe/system:context_production",
+  ]
 }
 
 if (use.test) {
   executable("unittest_runner") {
     sources = [
+      "daemon_test.cc",
       "field_converter_test.cc",
       "probe_config_loader_impl_test.cc",
       "probe_config_test.cc",
@@ -83,15 +87,12 @@ if (use.test) {
       "testdata/test.txt",
     ]
     deps = [
+      ":daemon",
       ":lib",
       "//common-mk/testrunner",
       "//runtime_probe/functions:test",
       "//runtime_probe/utils:test",
     ]
-    if (!use.factory_runtime_probe) {
-      sources += [ "daemon_test.cc" ]
-      deps += [ ":dbus-adaptors" ]
-    }
   }
 }
 

@@ -15,14 +15,10 @@ class HelperInvokerDirectImpl : public HelperInvoker {
   using HelperInvoker::HelperInvoker;
 
  public:
-  // Invoke the helper replica by running the subprocess directly.
+  // Invoke the helper directly in the same process.
   //
-  // The implementation is only available when |USE_FACTORY_RUNTIME_PROBE| is
-  // set.  `factory_runtime_probe` is specialized for the factory environment.
-  // It is designed to be able to run without helps from the rootfs.  Hence
-  // `debugd` can't help in this scenario.  Combining with the fact that
-  // security is not a critical factor in the factory environment, calling
-  // subprocesses directly becomes a valid alternative.
+  // The implementation is used by factory_runtime_probe and unit tests. In
+  // factory, we don't want to sandbox the helper.
   bool Invoke(const ProbeFunction* probe_function,
               const std::string& probe_statement_str,
               std::string* result) const override;

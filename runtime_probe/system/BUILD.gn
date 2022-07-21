@@ -10,26 +10,37 @@ pkg_config("target_defaults") {
     "libchrome",
     "libdebugd-client",
   ]
-  defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
-source_set("system") {
+source_set("system_base") {
   sources = [
     "context.cc",
     "context_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  if (use.factory_runtime_probe) {
-    sources += [
-      "context_factory_impl.cc",
-      "helper_invoker_direct_impl.cc",
-    ]
-  } else {
-    sources += [
-      "context_runtime_impl.cc",
-      "helper_invoker_debugd_impl.cc",
-    ]
-  }
+}
+
+source_set("helper_invoker_direct") {
+  sources = [ "helper_invoker_direct_impl.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("context_factory") {
+  sources = [ "context_factory_impl.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":helper_invoker_direct",
+    ":system_base",
+  ]
+}
+
+source_set("context_production") {
+  sources = [
+    "context_runtime_impl.cc",
+    "helper_invoker_debugd_impl.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":system_base" ]
 }
 
 if (use.test) {
@@ -38,13 +49,14 @@ if (use.test) {
   }
 
   source_set("test_utils") {
-    sources = [
-      "context_mock_impl.cc",
-      "fake_helper_invoker.cc",
-    ]
+    sources = [ "context_mock_impl.cc" ]
     public_configs = [
       ":target_defaults",
       ":test_pkg_deps",
+    ]
+    deps = [
+      ":helper_invoker_direct",
+      ":system_base",
     ]
   }
 }

@@ -5,53 +5,16 @@
 #include "runtime_probe/system/helper_invoker_direct_impl.h"
 
 #include <string>
-#include <utility>
-#include <vector>
 
-#include <base/command_line.h>
-#include <base/logging.h>
-#include <base/strings/stringprintf.h>
-#include <brillo/process/process.h>
-
-#include "runtime_probe/utils/pipe_utils.h"
+#include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
-
-static_assert(USE_FACTORY_RUNTIME_PROBE,
-              "The compiler should never reach " __FILE__
-              " while building a regular runtime_probe.");
 
 bool HelperInvokerDirectImpl::Invoke(const ProbeFunction* probe_function,
                                      const std::string& probe_statement_str,
                                      std::string* result) const {
-  brillo::ProcessImpl helper_proc;
-  helper_proc.AddArg(
-      base::CommandLine::ForCurrentProcess()->GetProgram().value());
-  helper_proc.AddArg("--helper");
-  helper_proc.AddArg(
-      base::StringPrintf("--log_level=%d", logging::GetMinLogLevel()));
-  helper_proc.AddArg(probe_statement_str);
-  helper_proc.RedirectInput("/dev/null");
-  helper_proc.RedirectUsingPipe(STDOUT_FILENO, false);
-  helper_proc.RedirectUsingPipe(STDERR_FILENO, false);
-
-  if (!helper_proc.Start()) {
-    LOG(ERROR) << "Failed to start the helper process.";
-    return false;
-  }
-
-  std::vector<std::stirng> out;
-  bool res = ReadNonblockingPipeToString(
-      {helper_proc.GetPipe(STDOUT_FILENO), helper_proc.GetPipe(STDERR_FILENO)},
-      &out);
-  if (out[1].size()) {
-    LOG(INFO) << "Helper stderr:\n"
-              << "^--------------------------------------------------------^\n"
-              << out[1]
-              << "$--------------------------------------------------------$";
-  }
-  *result = std::move(out[0]);
-  return res;
+  int res = probe_function->EvalInHelper(result);
+  return res == 0;
 }
 
 }  // namespace runtime_probe
