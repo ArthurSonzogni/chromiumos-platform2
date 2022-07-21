@@ -26,6 +26,7 @@ faccessat2: 1
 faccessat: 1
 fcntl: 1
 fstatfs: 1
+futex: 1
 getdents64: 1
 getegid: 1
 geteuid: 1
@@ -69,6 +70,7 @@ setsid: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX
 syncfs: 1
+tgkill: 1
 wait4: 1
 write: 1
 writev: 1
