@@ -33,7 +33,7 @@ pub fn get_syslog_logger(ident: String) -> Result<BasicLogger> {
         syslog::unix(Formatter3164 {
             facility: Facility::LOG_USER,
             hostname: None,
-            pid: getpid(),
+            pid: getpid() as u32,
             process: ident,
         })
         .map_err(Error::SyslogUnix)?,
