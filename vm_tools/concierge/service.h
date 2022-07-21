@@ -70,6 +70,7 @@ class Service final {
     base::FilePath initrd;
     base::FilePath rootfs;
     base::FilePath bios;
+    base::FilePath pflash;
     base::FilePath tools_disk;
     bool is_trusted_image;
 
@@ -361,6 +362,7 @@ class Service final {
       const std::optional<base::ScopedFD>& rootfs_fd,
       const std::optional<base::ScopedFD>& initrd_fd,
       const std::optional<base::ScopedFD>& bios_fd,
+      const std::optional<base::ScopedFD>& pflash_fd,
       bool is_termina,
       std::string* failure_reason);
 

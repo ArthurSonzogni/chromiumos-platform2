@@ -118,6 +118,11 @@ VmBuilder& VmBuilder::SetBios(base::FilePath bios) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetPflash(base::FilePath pflash) {
+  pflash_ = std::move(pflash);
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetRootfs(const struct Rootfs& rootfs) {
   rootfs_ = rootfs;
   return *this;
@@ -462,6 +467,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (!bios_.empty())
     args.emplace_back("--bios", bios_.value());
+
+  if (!pflash_.empty())
+    args.emplace_back("--pflash", "path=" + pflash_.value());
 
   if (vm_memory_id_) {
     std::string mms_control_socket = "/run/mms_control_";

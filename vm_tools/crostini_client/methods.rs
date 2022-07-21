@@ -443,6 +443,7 @@ pub struct UserDisks {
     pub initrd: Option<String>,
     pub extra_disk: Option<String>,
     pub bios: Option<String>,
+    pub pflash: Option<String>,
 }
 
 #[derive(Clone)]
@@ -1330,6 +1331,18 @@ impl Methods {
             disk_files.push(
                 OpenOptions::new()
                     .read(true)
+                    .custom_flags(libc::O_NOFOLLOW)
+                    .open(&path)?,
+            );
+        }
+
+        // User-specified pflash.
+        if let Some(path) = user_disks.pflash {
+            request.fds.push(StartVmRequest_FdType::PFLASH);
+            disk_files.push(
+                OpenOptions::new()
+                    .read(true)
+                    .write(true)
                     .custom_flags(libc::O_NOFOLLOW)
                     .open(&path)?,
             );

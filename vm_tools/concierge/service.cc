@@ -1599,7 +1599,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   vm_info->set_storage_ballooning(request.storage_ballooning());
 
   std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
-      bios_fd;
+      bios_fd, pflash_fd;
   for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
     if (!reader->PopFileDescriptor(&fd)) {
@@ -1624,6 +1624,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
         break;
       case StartVmRequest_FdType_BIOS:
         bios_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_PFLASH:
+        pflash_fd = std::move(fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType
@@ -1658,9 +1661,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   string failure_reason;
-  VMImageSpec image_spec =
-      GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd,
-                   classification == VmInfo::TERMINA, &failure_reason);
+  VMImageSpec image_spec = GetImageSpec(
+      request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd, pflash_fd,
+      classification == VmInfo::TERMINA, &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1685,6 +1688,17 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     if (!failure_reason.empty()) {
       LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
       response.set_failure_reason("BIOS path does not exist");
+      return response;
+    }
+  }
+
+  if (!image_spec.pflash.empty()) {
+    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.pflash,
+                                          O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM pflash path: " << image_spec.pflash.value();
+      response.set_failure_reason("pflash path does not exist");
       return response;
     }
   }
@@ -1964,6 +1978,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmBuilder vm_builder;
   vm_builder.SetKernel(std::move(image_spec.kernel))
       .SetBios(std::move(image_spec.bios))
+      .SetPflash(std::move(image_spec.pflash))
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
@@ -4463,6 +4478,7 @@ Service::VMImageSpec Service::GetImageSpec(
     const std::optional<base::ScopedFD>& rootfs_fd,
     const std::optional<base::ScopedFD>& initrd_fd,
     const std::optional<base::ScopedFD>& bios_fd,
+    const std::optional<base::ScopedFD>& pflash_fd,
     bool is_termina,
     string* failure_reason) {
   DCHECK(failure_reason);
@@ -4475,7 +4491,7 @@ Service::VMImageSpec Service::GetImageSpec(
   // specifying kernel and rootfs image.
   bool is_trusted_image = is_termina;
 
-  base::FilePath kernel, rootfs, initrd, bios;
+  base::FilePath kernel, rootfs, initrd, bios, pflash;
   if (kernel_fd.has_value()) {
     // User-chosen kernel is untrusted.
     is_trusted_image = false;
@@ -4530,6 +4546,18 @@ Service::VMImageSpec Service::GetImageSpec(
                .Append(base::NumberToString(raw_fd));
   }
 
+  if (pflash_fd.has_value()) {
+    // User-chosen pflash is untrusted.
+    is_trusted_image = false;
+
+    int raw_fd = pflash_fd.value().get();
+    *failure_reason = RemoveCloseOnExec(raw_fd);
+    if (!failure_reason->empty())
+      return {};
+    pflash = base::FilePath(kProcFileDescriptorsPath)
+                 .Append(base::NumberToString(raw_fd));
+  }
+
   base::FilePath vm_path;
   // As a legacy fallback, use the component rather than the DLC.
   //
@@ -4569,6 +4597,7 @@ Service::VMImageSpec Service::GetImageSpec(
       .initrd = std::move(initrd),
       .rootfs = std::move(rootfs),
       .bios = std::move(bios),
+      .pflash = std::move(pflash),
       .tools_disk = std::move(tools_disk),
       .is_trusted_image = is_trusted_image,
   };

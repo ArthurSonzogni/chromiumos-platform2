@@ -57,6 +57,7 @@ class VmBuilder {
   VmBuilder& SetKernel(base::FilePath kernel);
   VmBuilder& SetInitrd(base::FilePath initrd);
   VmBuilder& SetBios(base::FilePath bios);
+  VmBuilder& SetPflash(base::FilePath pflash);
   VmBuilder& SetRootfs(const struct Rootfs& rootfs);
   VmBuilder& SetCpus(int32_t cpus);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
@@ -135,6 +136,7 @@ class VmBuilder {
   base::FilePath kernel_;
   base::FilePath initrd_;
   base::FilePath bios_;
+  base::FilePath pflash_;
   std::optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
   std::optional<uint32_t> vsock_cid_;

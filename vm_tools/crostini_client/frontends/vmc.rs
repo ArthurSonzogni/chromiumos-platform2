@@ -277,6 +277,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "path to a custom bios image. Only valid on untrusted VMs.",
             "PATH",
         );
+        opts.optopt(
+            "",
+            "pflash",
+            "path to a r/w bios flash image. Only valid on untrusted VMs.",
+            "PATH",
+        );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
 
@@ -318,6 +324,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             extra_disk: matches.opt_str("extra-disk"),
             initrd: matches.opt_str("initrd"),
             bios: matches.opt_str("bios"),
+            pflash: matches.opt_str("pflash"),
         };
 
         self.metrics_send_sample("Vm.VmcStart");
