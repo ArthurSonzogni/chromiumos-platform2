@@ -117,6 +117,8 @@ class VmBuilder {
   std::optional<SiblingStartCommands> BuildSiblingCmds(
       std::vector<VvuDeviceInfo> vvu_devices_info) const;
 
+  static void SetValidWaylandRegexForTesting(char* regex);
+
  private:
   bool HasValidWaylandSockets() const;
 

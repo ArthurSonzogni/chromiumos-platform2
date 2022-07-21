@@ -10,6 +10,7 @@
 
 #include <base/strings/string_util.h>
 #include <base/logging.h>
+#include <re2/re2.h>
 
 #include "base/files/file_path.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -19,8 +20,10 @@ namespace concierge {
 namespace {
 // Path to the default wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
-constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
+constexpr char kValidWaylandSocketRegex[] =
+    "/run/wayland/concierge/[^/]+/wayland-0";
 
+constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 constexpr char kVvuProxySocketPathFormat[] = "/run/crosvm-vvu%02d.sock";
 
 // Returns the common part of the command line for invoking different type of
@@ -599,23 +602,28 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   return cmds;
 }
 
+namespace {
+const char* g_valid_wayland_regex = nullptr;
+}
+
+void VmBuilder::SetValidWaylandRegexForTesting(char* regex) {
+  g_valid_wayland_regex = regex;
+}
+
 bool VmBuilder::HasValidWaylandSockets() const {
   if (wayland_sockets_.empty())
     return true;
+  if (!g_valid_wayland_regex) {
+    g_valid_wayland_regex = kValidWaylandSocketRegex;
+  }
   // The "primary" wayland socket must be either the default socket, or of the
   // form "/run/wayland/concierge/<something>/wayland-0".
   if (wayland_sockets_.front() != kWaylandSocket) {
     std::vector<std::string> primary_wayland_path_components =
-        base::FilePath(wayland_sockets_.front()).GetComponents();
-    if (primary_wayland_path_components.size() != 6 ||
-        primary_wayland_path_components[0] != "/" ||
-        primary_wayland_path_components[1] != "run" ||
-        primary_wayland_path_components[2] != "wayland" ||
-        primary_wayland_path_components[3] != "concierge" ||
-        primary_wayland_path_components[4].empty() ||
-        primary_wayland_path_components[5] != "wayland-0") {
+        base::FilePath().GetComponents();
+    RE2 re(g_valid_wayland_regex);
+    if (!re.FullMatch(wayland_sockets_.front(), re))
       return false;
-    }
   }
   return true;
 }

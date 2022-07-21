@@ -175,6 +175,7 @@ static_library("libconcierge") {
     "libqcow_utils",
     "libshill-client",
     "protobuf",
+    "re2",
     "system_api",
     "vboot_host",
     "vm_protos",
