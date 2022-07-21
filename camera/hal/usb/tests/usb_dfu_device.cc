@@ -310,7 +310,7 @@ bool UsbDfuDevice::Attach() const {
 
 bool UsbDfuDevice::Reset() const {
   int ret = libusb_reset_device(handle_);
-  if (ret < 0) {
+  if (ret < 0 && ret != LIBUSB_ERROR_NOT_FOUND) {
     LOG(ERROR) << "Failed to reset USB device: " << libusb_error_name(ret);
     return false;
   }
