@@ -55,8 +55,10 @@ set_tid_address: 1
 prlimit64: 1
 
 # The following are syscalls enabled by -L in minijail.
-# Document those syscalls here because runtime_probe daemon doesn't use -L by default.
-socket: arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0 || arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
+# Document those syscalls here because runtime_probe daemon doesn't use -L by
+# default.
+socket: arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0 || \
+        arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
 lseek: 1
 connect: 1
 

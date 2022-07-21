@@ -6,7 +6,12 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":runtime_probe" ]
+  deps = [
+    ":runtime_probe",
+    "//runtime_probe/dbus",
+    "//runtime_probe/init",
+    "//runtime_probe/sandbox",
+  ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
@@ -60,6 +65,7 @@ executable("runtime_probe") {
   sources = [ "runtime_probe.cc" ]
   configs += [ ":target_defaults" ]
   assert_no_deps = [ "//runtime_probe/system:context_factory" ]
+  install_path = "bin"
   deps = [
     ":daemon",
     ":lib",
@@ -86,6 +92,7 @@ if (use.test) {
       "testdata/probe_config.json",
       "testdata/test.txt",
     ]
+    run_test = true
     deps = [
       ":daemon",
       ":lib",
