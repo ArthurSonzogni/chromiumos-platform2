@@ -122,7 +122,7 @@ impl Hiberlog {
             flush_threshold: FLUSH_THRESHOLD,
             to_kmsg: false,
             out: HiberlogOut::Syslog,
-            pid: std::process::id(),
+            pid: std::process::id() as u32,
             syslogger,
         })
     }
@@ -485,7 +485,7 @@ fn create_syslogger() -> BasicLogger {
         facility: Facility::LOG_USER,
         hostname: None,
         process: "hiberman".into(),
-        pid: std::process::id() as i32,
+        pid: std::process::id() as u32,
     };
 
     let logger = syslog::unix(formatter).expect("Could not connect to syslog");
