@@ -287,7 +287,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -354,7 +354,7 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -412,7 +412,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -463,7 +463,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -521,7 +521,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -573,7 +573,7 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
   brillo::dbus_utils::FileDescriptor lifeline_fd;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
          const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
@@ -720,7 +720,7 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
       nullptr);
 
   std::vector<std::string> restricted_files_paths;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](std::vector<std::string>* restricted_files_paths,
          const std::vector<uint8_t>& proto_blob) {
         CheckFilesTransferResponse response;
