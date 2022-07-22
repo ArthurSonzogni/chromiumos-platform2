@@ -168,9 +168,6 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"mwifiex_sdio", WirelessDriver::MWIFIEX},
       {"rtw_pci", WirelessDriver::RTW88},
       {"rtw_8822ce", WirelessDriver::RTW88},
-      // TODO(b/235298690): Remove the old module name rtw89_pci once the driver
-      // update lands on 5.10 kernel.
-      {"rtw89_pci", WirelessDriver::RTW89},
       {"rtw89_8852ae", WirelessDriver::RTW89},
       {"mt7921e", WirelessDriver::MTK},
       {"mt7921s", WirelessDriver::MTK},
