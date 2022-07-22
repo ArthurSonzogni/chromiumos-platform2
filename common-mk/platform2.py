@@ -12,10 +12,10 @@ import collections
 import glob
 import json
 import os
+import shlex
 
 import common_utils
 import ebuild_function
-import six
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
@@ -399,7 +399,7 @@ class Platform2(object):
                     v = str(v).lower()
                 elif isinstance(v, list):
                     v = to_gn_list(v)
-                elif isinstance(v, six.string_types):
+                elif isinstance(v, str):
                     v = to_gn_string(v)
                 else:
                     raise AssertionError(
@@ -656,10 +656,7 @@ class Platform2(object):
         """Outputs the installation commands of ebuild as a standard output."""
         install_cmd_list = self.configure_install()
         for install_cmd in install_cmd_list:
-            # An error occurs at six.moves.shlex_quote when running pylint.
-            # https://github.com/PyCQA/pylint/issues/1965
-            # pylint: disable=too-many-function-args
-            print(" ".join(six.moves.shlex_quote(arg) for arg in install_cmd))
+            print(" ".join(shlex.quote(x) for x in install_cmd))
 
 
 def unwrap_value(metadata, attr, default=None):
