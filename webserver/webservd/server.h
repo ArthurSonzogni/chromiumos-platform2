@@ -41,7 +41,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   ~Server();
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Overrides from org::chromium::WebServer::ServerInterface.
   std::string Ping() override;

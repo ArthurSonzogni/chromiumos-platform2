@@ -47,12 +47,12 @@ DBusProtocolHandler::~DBusProtocolHandler() {
 }
 
 void DBusProtocolHandler::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting ProtocolHandler.", true));
-  sequencer->OnAllTasksCompletedCall(completion_callback);
+  sequencer->OnAllTasksCompletedCall(std::move(completion_callback));
 }
 
 ExportedObjectManager* DBusProtocolHandler::GetObjectManager() const {

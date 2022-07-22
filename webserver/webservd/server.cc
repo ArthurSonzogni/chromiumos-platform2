@@ -80,7 +80,7 @@ Server::Server(ExportedObjectManager* object_manager,
 Server::~Server() {}
 
 void Server::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+    AsyncEventSequencer::CompletionAction completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
 
@@ -100,7 +100,7 @@ void Server::RegisterAsync(
     pair.second->RegisterAsync(
         sequencer->GetHandler("Failed exporting ProtocolHandler.", false));
   }
-  sequencer->OnAllTasksCompletedCall(completion_callback);
+  sequencer->OnAllTasksCompletedCall(std::move(completion_callback));
 }
 
 void Server::OnFirewallServiceOnline() {

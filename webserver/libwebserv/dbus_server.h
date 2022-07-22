@@ -50,12 +50,11 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   // server comes up and down.
   // Note that we can Connect() even before the webserver attaches to D-Bus,
   // and appropriate state will be built up when the webserver appears on D-Bus.
-  void Connect(
-      const scoped_refptr<dbus::Bus>& bus,
-      const std::string& service_name,
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
-      const base::Closure& on_server_online,
-      const base::Closure& on_server_offline);
+  void Connect(const scoped_refptr<dbus::Bus>& bus,
+               const std::string& service_name,
+               brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb,
+               const base::Closure& on_server_online,
+               const base::Closure& on_server_offline);
 
   ProtocolHandler* GetDefaultHttpHandler() override;
 

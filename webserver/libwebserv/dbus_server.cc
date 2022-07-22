@@ -114,14 +114,14 @@ DBusServer::DBusServer()
 void DBusServer::Connect(
     const scoped_refptr<dbus::Bus>& bus,
     const std::string& service_name,
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb,
     const base::Closure& on_server_online,
     const base::Closure& on_server_offline) {
   service_name_ = service_name;
   dbus_object_.reset(new brillo::dbus_utils::DBusObject{
       nullptr, bus, dbus_adaptor_->GetObjectPath()});
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(cb);
+  dbus_object_->RegisterAsync(std::move(cb));
   on_server_online_ = on_server_online;
   on_server_offline_ = on_server_offline;
   object_manager_.reset(new org::chromium::WebServer::ObjectManagerProxy{bus});

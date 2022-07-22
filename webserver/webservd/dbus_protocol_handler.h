@@ -45,7 +45,7 @@ class DBusProtocolHandler final
   ~DBusProtocolHandler();
 
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Returns the instance of D-Bus exported object manager.
   brillo::dbus_utils::ExportedObjectManager* GetObjectManager() const;
