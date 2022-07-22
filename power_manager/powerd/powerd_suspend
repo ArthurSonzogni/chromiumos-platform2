@@ -340,8 +340,8 @@ else
   # For hibernate/S4, invoke the hiberman helper process to take us all the way
   # down.
   if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
+    error="Failed to hibernate"
     /usr/sbin/hiberman hibernate
-    error=
 
   else
     # Echo freeze to /sys/power/state on platforms that support suspend to idle.
