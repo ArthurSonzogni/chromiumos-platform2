@@ -111,7 +111,7 @@ TEST_F(VtpmServiceTest, GetResponseWorkerThread) {
   std::unique_ptr<MockDBusMethodResponse<SendCommandResponse>> response(
       new MockDBusMethodResponse<SendCommandResponse>());
   std::string response_message;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](base::RunLoop* run_loop, std::string* response_message,
          const SendCommandResponse& response) {
         *response_message = response.response();
@@ -131,7 +131,7 @@ TEST_F(VtpmServiceTest, GetResponseNoWorkerThread) {
   std::unique_ptr<MockDBusMethodResponse<SendCommandResponse>> response(
       new MockDBusMethodResponse<SendCommandResponse>());
   std::string response_message;
-  response->set_return_callback(base::BindRepeating(
+  response->set_return_callback(base::BindOnce(
       [](base::RunLoop* run_loop, std::string* response_message,
          const SendCommandResponse& response) {
         *response_message = response.response();
