@@ -160,7 +160,7 @@ fn dispatch_cmd(dispatcher: &Dispatcher, args: Vec<String>) {
                     eprintln!("ERROR: too many arguments");
                     ret = 1;
                 }
-                let list = ["exit", "help", "help_advanced", "ping", "top"];
+                let list = ["help", "help_advanced", "ping", "top"];
                 if dispatcher.help_string(&mut stdout(), Some(&list)).is_err() {
                     panic!();
                 }
