@@ -36,20 +36,18 @@ using ::chromeos::federated::mojom::StringList;
 using ::chromeos::federated::mojom::ValueList;
 using ::chromeos::federated::mojom::ValueListPtr;
 
-ValueListPtr CreateInt64List(const std::vector<int64_t>& values) {
+ValueListPtr CreateStringList(const std::vector<std::string>& values) {
   ValueListPtr value_list = ValueList::New();
-  value_list->set_int64_list(Int64List::New());
-  value_list->get_int64_list()->value = std::vector<int64_t>();
-  value_list->get_int64_list()->value = values;
+  value_list->set_string_list(StringList::New());
+  value_list->get_string_list()->value = values;
   return value_list;
 }
 
-ExamplePtr CreateExamplePtr() {
+ExamplePtr CreateExamplePtr(const std::string& query) {
   ExamplePtr example = Example::New();
   example->features = Features::New();
   auto& feature_map = example->features->feature;
-  feature_map["int_feature1"] = CreateInt64List({1, 2, 3, 4, 5});
-  feature_map["int_feature2"] = CreateInt64List({10, 20, 30, 40, 50});
+  feature_map["query"] = CreateStringList({query});
 
   return example;
 }
@@ -152,11 +150,13 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   } else {
 #if USE_LOCAL_FEDERATED_SERVER
     DVLOG(1) << "Successfully connect to database, inserts examples for test.";
-    for (size_t i = 0; i < 10; i++) {
+    std::vector<std::string> queries = {"hey", "hey", "hey", "wow", "wow",
+                                        "yay", "yay", "yay", "yay", "aha"};
+    std::for_each(queries.begin(), queries.end(), [this](auto& query) {
       OnExampleReceived("analytics_test_population",
-                        ConvertToTensorFlowExampleProto(CreateExamplePtr())
+                        ConvertToTensorFlowExampleProto(CreateExamplePtr(query))
                             .SerializeAsString());
-    }
+    });
 #endif
   }
 }
