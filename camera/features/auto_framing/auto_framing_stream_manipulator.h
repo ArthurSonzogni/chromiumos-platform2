@@ -68,7 +68,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     // Number of frames per second to run detection. The actual rate is capped
     // by the detection speed. Setting zero means one-shot detection for each
     // auto-framing enabled period.
-    float detection_rate = 0.1f;
+    float detection_rate = 0.0f;
 
     // Delay when enabling auto-framing.
     base::TimeDelta enable_delay = base::Seconds(0.5);
