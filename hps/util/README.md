@@ -70,22 +70,6 @@ In stage 0, the hardware is running a RO boot loader that
 is used to verify the stage 1 RW firmware, allow updating of the RW firmware,
 and launching to the stage 1 firmware.
 
-With the module in stage 0, the```boot``` command can be
-used to take the module through its startup sequence:
- - verify the stage 1 RW code.
- - check the application version.
- - if necessary update both the MCU flash and the SPI flash.
- - enable the application processing of the module
-
-```bash
-hps --bus=/dev/i2c-15 boot 11 appl-firmware spi-blob
-...
-hps --bus=/dev/i2c-15 status
-...
-reg 2 = 0225  # 0x0200 is application running
-...
-```
-
 The sequence to start the module can be performed manually
 by sending the appropriate commands to launch to stage 1, and
 then to enable application processing (and if necessary at each
