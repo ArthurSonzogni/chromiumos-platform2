@@ -31,6 +31,9 @@ namespace cryptohome {
 
 extern const char kDefaultHomeDir[];
 extern const char kEphemeralCryptohomeRootContext[];
+extern const char kBindMountMigrationXattrName[];
+extern const char kBindMountMigratingStage[];
+extern const char kBindMountMigratedStage[];
 
 // Objects that implement MountHelperInterface can perform mount operations.
 // This interface will be used as we transition all cryptohome mounts to be
@@ -169,9 +172,16 @@ class MountHelper : public MountHelperInterface {
 
   // If |bind_mount_downloads_| flag is set, bind mounts |user_home|/Downloads
   // to |user_home|/MyFiles/Downloads so Files app can manage MyFiles as user
-  // volume instead of just Downloads. If the flag is not set, moves the data
-  // to the from |user_home|/Downloads to |user_home|/MyFiles/Downloads.
+  // volume instead of just Downloads. If the flag is not set, calls
+  // `MoveDownloadsToMyFiles` to migrate the user's Downloads from
+  // |user_home|/Downloads to |user_home|/MyFiles/Downloads.
   bool HandleMyFilesDownloads(const base::FilePath& user_home);
+
+  // Attempts a migration of user's Download directory from
+  // |user_home|/Downloads to |user_home|/MyFiles/Downloads. Returns true if the
+  // migration is considered a success or has already occurred and false in all
+  // other scenarios.
+  bool MoveDownloadsToMyFiles(const base::FilePath& user_home);
 
   // Copies the skeleton directory to the user's cryptohome.
   void CopySkeleton(const FilePath& destination) const;

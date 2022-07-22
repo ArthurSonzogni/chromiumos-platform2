@@ -99,25 +99,30 @@ std::vector<DirectoryACL> GetCacheSubdirectories(const FilePath& dir) {
        kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid}};
 }
 
-std::vector<DirectoryACL> GetCommonSubdirectories(const FilePath& dir) {
+std::vector<DirectoryACL> GetCommonSubdirectories(const FilePath& dir,
+                                                  bool bind_mount_downloads) {
   auto result = std::vector<DirectoryACL>{
       {dir.Append(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
       {dir.Append(kUserHomeSuffix), kAccessMode, kChronosUid,
        kChronosAccessGid},
-      {dir.Append(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode,
-       kChronosUid, kChronosAccessGid},
       {dir.Append(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode,
        kChronosUid, kChronosAccessGid},
       {dir.Append(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
        kAccessMode, kChronosUid, kChronosAccessGid},
   };
+  if (bind_mount_downloads) {
+    result.push_back({dir.Append(kUserHomeSuffix).Append(kDownloadsDir),
+                      kAccessMode, kChronosUid, kChronosAccessGid});
+  }
   auto cache_subdirs = GetCacheSubdirectories(dir);
   result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
   return result;
 }
 
-std::vector<DirectoryACL> GetDmcryptSubdirectories(const FilePath& dir) {
-  auto data_volume_subdirs = GetCommonSubdirectories(dir.Append(kMountDir));
+std::vector<DirectoryACL> GetDmcryptSubdirectories(const FilePath& dir,
+                                                   bool bind_mount_downloads) {
+  auto data_volume_subdirs =
+      GetCommonSubdirectories(dir.Append(kMountDir), bind_mount_downloads);
   auto cache_volume_subdirs =
       GetCacheSubdirectories(dir.Append(kDmcryptCacheDir));
 
@@ -219,9 +224,64 @@ bool SetTrackingXattr(Platform* platform,
   return success;
 }
 
+// Identifies the pre-migration and post-migration stages of the ~/Downloads
+// bind mount migration.
+enum class BindMountMigrationStage {
+  MIGRATED = 0,
+  MIGRATING = 1,
+  UNKNOWN = 2,
+};
+
+BindMountMigrationStage GetDownloadsBindMountMigrationXattr(
+    Platform* platform, const FilePath& path) {
+  std::string xattr;
+  if (!platform->GetExtendedFileAttributeAsString(
+          path, kBindMountMigrationXattrName, &xattr)) {
+    PLOG(ERROR) << "Unable to get xattr on " << path;
+    return BindMountMigrationStage::UNKNOWN;
+  }
+  if (xattr == kBindMountMigratingStage) {
+    return BindMountMigrationStage::MIGRATING;
+  }
+  if (xattr == kBindMountMigratedStage) {
+    return BindMountMigrationStage::MIGRATED;
+  }
+  return BindMountMigrationStage::UNKNOWN;
+}
+
+bool SetDownloadsBindMountMigrationXattr(Platform* platform,
+                                         const FilePath& path,
+                                         BindMountMigrationStage stage) {
+  std::string stage_xattr;
+  switch (stage) {
+    case BindMountMigrationStage::MIGRATED:
+      stage_xattr = kBindMountMigratedStage;
+      break;
+    case BindMountMigrationStage::MIGRATING:
+      stage_xattr = kBindMountMigratingStage;
+      break;
+    default:
+      break;
+  }
+  return platform->SetExtendedFileAttribute(path, kBindMountMigrationXattrName,
+                                            stage_xattr.c_str(),
+                                            stage_xattr.size());
+}
+
 }  // namespace
 
 const char kDefaultHomeDir[] = "/home/chronos/user";
+
+// The extended attribute name used to designate the ~/Downloads folder pre and
+// post migration.
+constexpr char kBindMountMigrationXattrName[] = "user.BindMountMigration";
+
+// Prior to moving ~/Downloads to ~/MyFiles/Downloads set the xattr above to
+// this value.
+constexpr char kBindMountMigratingStage[] = "migrating";
+
+// After moving ~/Downloads to ~/MyFiles/Downloads set the xattr to this value.
+constexpr char kBindMountMigratedStage[] = "migrated";
 
 MountHelper::MountHelper(bool legacy_mount,
                          bool bind_mount_downloads,
@@ -407,7 +467,8 @@ bool MountHelper::IsFirstMountComplete(
 
   // Generate the set of the top level nodes that a mount creates.
   std::unordered_set<FilePath> initial_nodes;
-  for (const auto& dir : GetCommonSubdirectories(mount_point)) {
+  for (const auto& dir :
+       GetCommonSubdirectories(mount_point, bind_mount_downloads_)) {
     initial_nodes.insert(dir.path);
   }
   std::unique_ptr<cryptohome::FileEnumerator> skel_enumerator(
@@ -454,24 +515,157 @@ bool MountHelper::MountLegacyHome(const FilePath& from) {
 }
 
 bool MountHelper::HandleMyFilesDownloads(const base::FilePath& user_home) {
-  const FilePath downloads = user_home.Append(kDownloadsDir);
-  const FilePath downloads_in_myfiles =
-      user_home.Append(kMyFilesDir).Append(kDownloadsDir);
-
-  if (!bind_mount_downloads_) {
-    MigrateDirectory(downloads_in_myfiles, downloads);
+  // If the flag to not bind mount ~/Downloads to ~/MyFiles/Downloads is
+  // enabled, then attempt to (one-time) migrate the folder. In the event this
+  // fails, fallback to the bind mount logic and try again on the next mount.
+  if (!bind_mount_downloads_ && MoveDownloadsToMyFiles(user_home)) {
     return true;
   }
 
+  const FilePath downloads = user_home.Append(kDownloadsDir);
+  const FilePath downloads_in_myfiles =
+      user_home.Append(kMyFilesDir).Append(kDownloadsDir);
   // User could have saved files in MyFiles/Downloads in case cryptohome
   // crashed and bind mounts were removed by error. See crbug.com/1080730.
   // Move the files back to Download unless a file already exists.
   int migrated_items = MigrateDirectory(downloads, downloads_in_myfiles);
   ReportMaskedDownloadsItems(migrated_items);
 
-  if (!BindAndPush(downloads, downloads_in_myfiles))
+  if (!BindAndPush(downloads, downloads_in_myfiles)) {
     return false;
+  }
 
+  return true;
+}
+
+bool MountHelper::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
+  const base::FilePath downloads_in_my_files =
+      user_home.Append(kMyFilesDir).Append(kDownloadsDir);
+  const base::FilePath downloads = user_home.Append(kDownloadsDir);
+  const base::FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
+
+  // Check if the migration has successfully completed on a prior run.
+  BindMountMigrationStage downloads_in_my_files_stage =
+      GetDownloadsBindMountMigrationXattr(platform_, downloads_in_my_files);
+  if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATED) {
+    LOG(INFO) << "Downloads bind mount already completed";
+    return true;
+  }
+
+  // If ~/Downloads doesn't exist and ~/MyFiles/Downloads does exist, this might
+  // be a freshly setup cryptohome or the previous xattr setting failed. Update
+  // the xattr accordingly and if this fails cryptohome is still in a usable
+  // state so return true.
+  if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATING ||
+      (!platform_->FileExists(downloads) &&
+       platform_->FileExists(downloads_in_my_files))) {
+    if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATING) {
+      LOG(INFO) << "Downloads bind mount previously completed, but xattr not "
+                   "set correctly";
+      ReportDownloadsBindMountMigrationStatus(
+          DownloadsBindMountMigrationStatus::kSettingMigratedPreviouslyFailed);
+    } else {
+      LOG(INFO) << "Potentially a new cryptohome, setting migrated xattr";
+    }
+    bool success = SetDownloadsBindMountMigrationXattr(
+        platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
+    if (!success) {
+      LOG(ERROR) << "Failed to update Downloads bind mount xattr to migrated";
+      ReportDownloadsBindMountMigrationStatus(
+          DownloadsBindMountMigrationStatus::kUpdatingXattrFailed);
+    }
+    return true;
+  }
+
+  // In the case migration needs to occur, move all files from
+  // ~/MyFiles/Downloads to ~/Downloads to ensure there's none left in the
+  // directory before migration.
+  int migrated_items = MigrateDirectory(downloads, downloads_in_my_files);
+  ReportMaskedDownloadsItems(migrated_items);
+
+  // In the event ~/Downloads, ~/Downloads-backup and ~/MyFiles/Downloads exists
+  // we want to remove the ~/Downloads-backup to ensure the migration can
+  // continue cleanly.
+  if (platform_->FileExists(downloads) &&
+      platform_->FileExists(downloads_backup)) {
+    // If we fail to remove ~/Downloads-backup this will not enable a clean
+    // backup of ~/MyFiles/Downloads to ~/Downloads-backup so exit.
+    if (!platform_->DeletePathRecursively(downloads_backup)) {
+      ReportDownloadsBindMountMigrationStatus(
+          DownloadsBindMountMigrationStatus::kCleanupFailed);
+      LOG(ERROR) << "Can't proceed with Downloads bind mount migration as "
+                    "backup folder still exists";
+      return false;
+    }
+  }
+
+  // Set the xattr for the ~/Downloads directory to be "MIGRATING", if this
+  // fails don't continue as the filesystem is in a good state to continue with
+  // the bind mount and a migration can be done at a later stage.
+  if (!SetDownloadsBindMountMigrationXattr(
+          platform_, downloads, BindMountMigrationStage::MIGRATING)) {
+    LOG(ERROR) << "Failed setting the Downloads folder with migration xattr";
+    return false;
+  }
+
+  // The directory structure should now only have ~/Downloads and
+  // ~/MyFiles/Downloads so the migration can start from here.
+  if (!platform_->Rename(downloads_in_my_files, downloads_backup)) {
+    ReportDownloadsBindMountMigrationStatus(
+        DownloadsBindMountMigrationStatus::kBackupFailed);
+    LOG(ERROR) << "Can't proceed with Downloads bind mount migration as "
+                  "Downloads backup failed";
+    return false;
+  }
+
+  // Attempt to rename ~/Downloads to ~/MyFiles/Downloads, on success this
+  // will ensure the following 2 folders exist:
+  //   - ~/Downloads-backup, ~/MyFiles/Downloads
+  if (!platform_->Rename(downloads, downloads_in_my_files)) {
+    // Attempt to restore the ~/Downloads-backup folder back to
+    // ~/MyFiles/Downloads to ensure the upcoming bind mount has a destination.
+    if (!platform_->Rename(downloads_backup, downloads_in_my_files)) {
+      // This is not a good state to be in, the bind mount will fail as there
+      // will be no target because the user's directories are created prior to
+      // this stage.
+      // This will effectively leave ~/Downloads-backup and ~/Downloads
+      // both having failed to rename. This indicates some sort of file system
+      // corruption and may require the user to remove their profile to restore.
+      ReportDownloadsBindMountMigrationStatus(
+          DownloadsBindMountMigrationStatus::kRestoreFailed);
+      LOG(ERROR) << "Failed restoring Downloads from previous backup";
+    } else {
+      // Successfully restored ~/Downloads-backup to ~/MyFiles/Downloads
+      // however the migration was unsuccessful. This will leave both
+      // ~/Downloads and ~/MyFiles/Downloads so on next login the migration can
+      // try again.
+      ReportDownloadsBindMountMigrationStatus(
+          DownloadsBindMountMigrationStatus::kFailedMovingToMyFiles);
+      LOG(ERROR) << "Failed moving Downloads into MyFiles but successfully "
+                    "restored the backup directory";
+    }
+    return false;
+  }
+
+  // The migration has completed successfully, to ensure no further migrations
+  // occur update the xattr to be "migrated". If this fails, the cryptohome is
+  // usable and next time this migration logic runs it will try and update the
+  // xattr again.
+  bool set_migration_stage_success = SetDownloadsBindMountMigrationXattr(
+      platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
+  if (!set_migration_stage_success) {
+    ReportDownloadsBindMountMigrationStatus(
+        DownloadsBindMountMigrationStatus::kFailedSettingMigratedXattr);
+    LOG(ERROR)
+        << "Failed to set the Downloads bind mount migration xattr to migrated";
+    return true;
+  }
+
+  // This is considered the point of no return. The migration has, for all
+  // intents and purposes, successfully completed.
+  ReportDownloadsBindMountMigrationStatus(
+      DownloadsBindMountMigrationStatus::kSuccess);
+  LOG(INFO) << "Downloads bind mount migration successful";
   return true;
 }
 
@@ -680,7 +874,7 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
 
   // Create <vault_path>/user and <vault_path>/root.
   std::ignore = CreateVaultDirectoryStructure(
-      platform_, GetCommonSubdirectories(vault_path));
+      platform_, GetCommonSubdirectories(vault_path, bind_mount_downloads_));
 
   // b/115997660: Mount eCryptfs after creating the tracked subdirectories.
   if (!MountAndPush(vault_path, mount_point, "ecryptfs", ecryptfs_options)) {
@@ -695,9 +889,9 @@ void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
   std::ignore = CreateVaultDirectoryStructure(
-      platform_, GetCommonSubdirectories(mount_point));
-  std::ignore =
-      SetTrackingXattr(platform_, GetCommonSubdirectories(mount_point));
+      platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
+  std::ignore = SetTrackingXattr(
+      platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
 }
 
 bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
@@ -727,7 +921,8 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
   }
 
   std::ignore = CreateVaultDirectoryStructure(
-      platform_, GetDmcryptSubdirectories(UserPath(obfuscated_username)));
+      platform_, GetDmcryptSubdirectories(UserPath(obfuscated_username),
+                                          bind_mount_downloads_));
 
   return true;
 }
@@ -898,8 +1093,9 @@ StorageStatus MountHelper::PerformEphemeralMount(
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
 
-  if (!CreateVaultDirectoryStructure(platform_,
-                                     GetCommonSubdirectories(mount_point))) {
+  if (!CreateVaultDirectoryStructure(
+          platform_,
+          GetCommonSubdirectories(mount_point, bind_mount_downloads_))) {
     return StorageStatus::Make(FROM_HERE,
                                "Can't create vault structure for ephemeral",
                                MOUNT_ERROR_FATAL);

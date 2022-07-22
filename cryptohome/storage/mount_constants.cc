@@ -13,6 +13,7 @@ constexpr char kDefaultSharedUser[] = "chronos";
 
 constexpr char kCacheDir[] = "Cache";
 constexpr char kDownloadsDir[] = "Downloads";
+constexpr char kDownloadsBackupDir[] = "Downloads-backup";
 constexpr char kMyFilesDir[] = "MyFiles";
 constexpr char kGCacheDir[] = "GCache";
 constexpr char kGCacheVersion1Dir[] = "v1";

@@ -113,6 +113,8 @@ constexpr char kFetchUssExperimentConfigRetries[] =
 constexpr char kUssExperimentFlag[] =
     "Cryptohome.UssExperiment.UssExperimentFlag";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
+constexpr char kDownloadsBindMountMigrationStatusHistogram[] =
+    "Cryptohome.DownloadsBindMountMigrationStatus";
 
 constexpr char kNumUserHomeDirectories[] =
     "Platform.DiskUsage.NumUserHomeDirectories";
@@ -875,6 +877,16 @@ void ReportMaskedDownloadsItems(int num_items) {
   constexpr int kMin = 1, kMax = 1000, kNumBuckets = 20;
   g_metrics->SendToUMA(kMaskedDownloadsItems, num_items, kMin, kMax,
                        kNumBuckets);
+}
+
+void ReportDownloadsBindMountMigrationStatus(
+    DownloadsBindMountMigrationStatus status) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kDownloadsBindMountMigrationStatusHistogram, static_cast<int>(status),
+      static_cast<int>(DownloadsBindMountMigrationStatus::kMaxValue));
 }
 
 void ReportCryptohomeErrorHashedStack(const uint32_t hashed) {

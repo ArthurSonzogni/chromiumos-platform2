@@ -53,6 +53,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -66,6 +67,7 @@ using hwsec_foundation::SecureBlobToHex;
 using ::cryptohome::storage::testing::IsError;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::InSequence;
@@ -332,7 +334,8 @@ void CheckUserMountPoints(Platform* platform,
 
 void CheckUserMountPaths(Platform* platform,
                          const base::FilePath& base_path,
-                         bool expect_present) {
+                         bool expect_present,
+                         bool downloads_bind_mount) {
   // The path itself.
   // TODO(dlunev): the mount paths should be cleaned up upon unmount.
   if (expect_present) {
@@ -341,8 +344,13 @@ void CheckUserMountPaths(Platform* platform,
   }
 
   // Subdirectories
-  CheckExistanceAndPermissions(platform, base_path.Append(kDownloadsDir), 0750,
-                               kChronosUid, kChronosAccessGid, expect_present);
+  if (downloads_bind_mount) {
+    CheckExistanceAndPermissions(platform, base_path.Append(kDownloadsDir),
+                                 0750, kChronosUid, kChronosAccessGid,
+                                 expect_present);
+  } else {
+    ASSERT_FALSE(platform->DirectoryExists(base_path.Append(kDownloadsDir)));
+  }
 
   CheckExistanceAndPermissions(platform, base_path.Append(kMyFilesDir), 0750,
                                kChronosUid, kChronosAccessGid, expect_present);
@@ -442,7 +450,7 @@ class PersistentSystemTest : public ::testing::Test {
   void VerifyFS(const std::string& username,
                 MountType type,
                 bool expect_present,
-                bool downloads_bind_mount = true) {
+                bool downloads_bind_mount) {
     const std::string obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     if (type == MountType::ECRYPTFS) {
@@ -469,13 +477,13 @@ class PersistentSystemTest : public ::testing::Test {
     };
 
     for (const auto& base_path : user_vault_and_mounts) {
-      ASSERT_NO_FATAL_FAILURE(
-          CheckUserMountPaths(&platform_, base_path, expect_present));
+      ASSERT_NO_FATAL_FAILURE(CheckUserMountPaths(
+          &platform_, base_path, expect_present, downloads_bind_mount));
       ASSERT_NO_FATAL_FAILURE(CheckSkel(&platform_, base_path, expect_present));
     }
 
     if (type == MountType::DIR_CRYPTO && expect_present) {
-      CheckTrackingXattr(username);
+      CheckTrackingXattr(username, downloads_bind_mount);
     }
   }
 
@@ -635,7 +643,8 @@ class PersistentSystemTest : public ::testing::Test {
     }
   }
 
-  void CheckTrackingXattr(const std::string& username) {
+  void CheckTrackingXattr(const std::string& username,
+                          bool downloads_bind_mount) {
     const std::string obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath mount_point =
@@ -669,10 +678,12 @@ class PersistentSystemTest : public ::testing::Test {
         kTrackedDirectoryNameAttribute, &result));
     ASSERT_THAT(result, Eq(kCacheDir));
 
-    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
-        mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir),
-        kTrackedDirectoryNameAttribute, &result));
-    ASSERT_THAT(result, Eq(kDownloadsDir));
+    if (downloads_bind_mount) {
+      ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+          mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir),
+          kTrackedDirectoryNameAttribute, &result));
+      ASSERT_THAT(result, Eq(kDownloadsDir));
+    }
 
     ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
         mount_point.Append(kUserHomeSuffix).Append(kMyFilesDir),
@@ -740,7 +751,8 @@ TEST_F(PersistentSystemTest, BindDownloads) {
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig)),
       IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   mnt_helper.UnmountAll();
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
@@ -763,7 +775,8 @@ TEST_F(PersistentSystemTest, BindDownloads) {
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig)),
       IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   mnt_helper.UnmountAll();
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
@@ -792,20 +805,18 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
 
   SetHomedir(kUser);
-  MountHelper mnt_helper(true /*legacy_mount*/,
-                         false /* bind_mount_downloads */, &platform_);
+  MountHelper helper_downloads_mounted(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/true, &platform_);
 
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
+  ASSERT_THAT(helper_downloads_mounted.PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
+              IsOk());
   VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/false);
+           /*downloads_bind_mount=*/true);
 
-  mnt_helper.UnmountAll();
-  // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  helper_downloads_mounted.UnmountAll();
 
   const std::string obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
@@ -818,23 +829,25 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
                                       .Append(kFile),
                                   kContent));
 
-  ASSERT_THAT(
-      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
-                              SecureBlobToHex(keyset.KeyReference().fek_sig),
-                              SecureBlobToHex(keyset.KeyReference().fnek_sig)),
-      IsOk());
+  MountHelper helper_downloads_unmounted(
+      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
+
+  ASSERT_THAT(helper_downloads_unmounted.PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset.KeyReference().fnek_sig)),
+              IsOk());
   VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
            /*downloads_bind_mount=*/false);
 
-  mnt_helper.UnmountAll();
+  helper_downloads_unmounted.UnmountAll();
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 
-  // The file should migrate to user/MyFiles/Downloads
-  ASSERT_FALSE(
-      platform_.FileExists(dircrypto_mount_point.Append(kUserHomeSuffix)
-                               .Append(kDownloadsDir)
-                               .Append(kFile)));
+  // The entire directory under `kDownloadsDir` should be migrated including the
+  // test file that was written.
+  ASSERT_FALSE(platform_.DirectoryExists(
+      dircrypto_mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir)));
   std::string result;
   ASSERT_TRUE(
       platform_.ReadFileToString(dircrypto_mount_point.Append(kUserHomeSuffix)
@@ -959,10 +972,12 @@ TEST_F(PersistentSystemTest, Dmcrypt_MountUnmount) {
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig)),
       IsOk());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   mnt_helper.UnmountAll();
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 }
 
 TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
@@ -976,20 +991,23 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
 
   MockPreclearKeyring(/*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 
   ASSERT_FALSE(
       platform_.FileExists(base::FilePath(kHomeChronosUser).Append(kFile)));
 
   MockPreclearKeyring(/*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   std::string result;
   ASSERT_TRUE(platform_.ReadFileToString(
@@ -997,7 +1015,8 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
   ASSERT_THAT(result, kContent);
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 }
 
 // TODO(dlunev): Add V2 policy test.
@@ -1015,14 +1034,16 @@ TEST_F(PersistentSystemTest,
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
                             /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false,
+  // /*downloads_bind_mount=*/true);
 
   // ASSERT_FALSE(
   // platform_.FileExists(base::FilePath(kHomeChronosUser).Append(kFile)));
@@ -1031,7 +1052,8 @@ TEST_F(PersistentSystemTest,
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   std::string result;
   ASSERT_TRUE(platform_.ReadFileToString(
@@ -1040,7 +1062,8 @@ TEST_F(PersistentSystemTest,
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false,
+  // /*downloads_bind_mount=*/true);
 }
 
 TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
@@ -1053,10 +1076,12 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
 
   MockPreclearKeyring(/*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 
   options = {
       .block_ecryptfs = true,
@@ -1120,8 +1145,9 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
           [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
       MigrationType::FULL));
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  // VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
+  // /*downloads_bind_mount=*/true); VerifyFS(kUser, MountType::DIR_CRYPTO,
+  // /*expect_present=*/false, /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
   const std::string obfuscated_username =
@@ -1138,7 +1164,8 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   std::string result;
   ASSERT_TRUE(platform_.ReadFileToString(
@@ -1147,7 +1174,8 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false,
+  // /*downloads_bind_mount=*/true);
 }
 
 TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
@@ -1188,8 +1216,10 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
       base::BindRepeating(
           [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
       MigrationType::FULL));
-  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
   const std::string obfuscated_username =
@@ -1204,7 +1234,8 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
   };
   MockPreclearKeyring(/*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   std::string result;
   ASSERT_TRUE(platform_.ReadFileToString(
@@ -1212,7 +1243,8 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
   ASSERT_THAT(result, kContent);
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 }
 
 TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
@@ -1257,8 +1289,10 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
       base::BindRepeating(
           [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
       MigrationType::FULL));
-  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false,
+  // /*downloads_bind_mount=*/true);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
   const std::string obfuscated_username =
@@ -1273,7 +1307,8 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
   };
   MockPreclearKeyring(/*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true,
+           /*downloads_bind_mount=*/true);
 
   std::string result;
   ASSERT_TRUE(platform_.ReadFileToString(
@@ -1281,7 +1316,8 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
   ASSERT_THAT(result, kContent);
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
-  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false,
+           /*downloads_bind_mount=*/true);
 }
 
 }  // namespace
@@ -1332,8 +1368,7 @@ class EphemeralSystemTest : public ::testing::Test {
         .Append(obfuscated_username);
   }
 
-  void VerifyFS(const std::string& username,
-                bool expect_present) {
+  void VerifyFS(const std::string& username, bool expect_present) {
     CheckLoopDev(username, expect_present);
     ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
         &platform_, username, EphemeralMountPoint(username), expect_present));
@@ -1349,7 +1384,7 @@ class EphemeralSystemTest : public ::testing::Test {
 
     for (const auto& base_path : user_vault_and_mounts) {
       ASSERT_NO_FATAL_FAILURE(
-          CheckUserMountPaths(&platform_, base_path, expect_present));
+          CheckUserMountPaths(&platform_, base_path, expect_present, true));
       ASSERT_NO_FATAL_FAILURE(CheckSkel(&platform_, base_path, expect_present));
     }
   }
@@ -1361,8 +1396,7 @@ class EphemeralSystemTest : public ::testing::Test {
   }
 
  private:
-  void CheckLoopDev(const std::string& username,
-                    bool expect_present) {
+  void CheckLoopDev(const std::string& username, bool expect_present) {
     const base::FilePath ephemeral_backing_file =
         EphemeralBackingFile(username);
     const base::FilePath ephemeral_mount_point = EphemeralMountPoint(username);
@@ -1480,6 +1514,329 @@ TEST_F(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
               IsError(MOUNT_ERROR_FATAL));
 
   VerifyFS(kUser, /*expect_present=*/false);
+}
+
+class DownloadsBindMountMigrationTest : public PersistentSystemTest {
+ public:
+  void SetUp() override {
+    PersistentSystemTest::SetUp();
+
+    keyset_ = FileSystemKeyset::CreateRandom();
+
+    const base::FilePath dircrypto_mount_mount =
+        GetUserMountDirectory(brillo::cryptohome::home::SanitizeUserName(kUser))
+            .Append(kUserHomeSuffix);
+    downloads_ = dircrypto_mount_mount.Append(kDownloadsDir);
+    downloads_in_my_files_ =
+        dircrypto_mount_mount.Append(kMyFilesDir).Append(kDownloadsDir);
+    downloads_backup_ = dircrypto_mount_mount.Append(kDownloadsBackupDir);
+
+    SetHomedir(kUser);
+  }
+
+  std::unique_ptr<MountHelper> CreateMounter(bool bind_mount_downloads) {
+    return std::make_unique<MountHelper>(/*legacy_mount=*/true,
+                                         bind_mount_downloads, &platform_);
+  }
+
+  StorageStatus PerformMount(MountHelper* helper) {
+    return helper->PerformMount(
+        MountType::DIR_CRYPTO, kUser,
+        SecureBlobToHex(keyset_.KeyReference().fek_sig),
+        SecureBlobToHex(keyset_.KeyReference().fnek_sig));
+  }
+
+  void VerifyFileSystemMounted(bool bind_mount_downloads) {
+    VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
+             bind_mount_downloads);
+  }
+
+  bool CreateTestFileAtPath(const FilePath& path) {
+    return platform_.WriteStringToFile(path, kContent);
+  }
+
+  bool ExpectFileContentsCorrect(const FilePath& path) {
+    std::string result;
+    EXPECT_TRUE(platform_.ReadFileToString(path, &result));
+    return result == kContent;
+  }
+
+  std::string GetMigrationXattr(const FilePath& path) {
+    std::string xattr;
+    if (!platform_.GetExtendedFileAttributeAsString(
+            path, kBindMountMigrationXattrName, &xattr)) {
+      return "";
+    }
+    return xattr;
+  }
+
+  bool SetMigrationXattr(const FilePath& path, const std::string& xattr) {
+    return platform_.SetExtendedFileAttribute(
+        path, kBindMountMigrationXattrName, xattr.c_str(), xattr.size());
+  }
+
+  std::unique_ptr<MountHelper> SetUpAndVerifyUserHome(
+      bool bind_mount_downloads) {
+    // Create a mounter that sets up ~/Downloads bind mounted to
+    // ~/MyFiles/Downloads and mount it.
+    std::unique_ptr<MountHelper> helper = CreateMounter(bind_mount_downloads);
+    EXPECT_THAT(PerformMount(helper.get()), IsOk());
+
+    // Verify that the bind mount was created successfully.
+    VerifyFileSystemMounted(bind_mount_downloads);
+    EXPECT_EQ(platform_.IsDirectoryMounted(downloads_in_my_files_),
+              bind_mount_downloads);
+
+    return helper;
+  }
+
+ protected:
+  base::FilePath downloads_;
+  base::FilePath downloads_in_my_files_;
+  base::FilePath downloads_backup_;
+  FileSystemKeyset keyset_;
+
+  const std::string kContent = "some_content";
+};
+
+TEST_F(DownloadsBindMountMigrationTest,
+       DownloadsIsMigratedToMyFilesSuccessfully) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Create a test file in ~/Downloads, which we expect to move to
+  // ~/MyFiles/Downloads after migration.
+  const FilePath test_file_path = downloads_.Append("test_file_name");
+  ASSERT_TRUE(CreateTestFileAtPath(test_file_path));
+
+  // Unmount the helper with the file system still in tact.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Mount the user home without a bind mount Downloads.
+  helper = SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Expect the file has been moved to the new location (not just bind mounted)
+  // and the contents match and that the extended attribute has been set to
+  // "migrated".
+  ASSERT_TRUE(ExpectFileContentsCorrect(
+      downloads_in_my_files_.Append(test_file_path.BaseName())));
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest, NewMountSetsXattrOnFirstMount) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Ensure the directory has the right xattr set.
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       MountPreviouslyMigratedButNotUpdatedXattrGetsUpdatedOnNextMount) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Update the xattr on ~/MyFiles/Downloads to be the "migrating" instead of
+  // "migrated".
+  EXPECT_TRUE(
+      SetMigrationXattr(downloads_in_my_files_, kBindMountMigratingStage));
+
+  // Unmount the helper with the file system still in tact, then remount it.
+  helper->UnmountAll();
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Ensure the directory gets the xattr updated.
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FilesInMyFilesDownloadsShouldBeMovedBeforeMigration) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // In the event the ~/MyFiles/Downloads bind mount fails and files are written
+  // there, they should be moved prior to migrating ~/Downloads to
+  // ~/MyFiles/Downloads.
+  const FilePath test_file_path =
+      downloads_in_my_files_.Append("test_file_name");
+  ASSERT_TRUE(CreateTestFileAtPath(test_file_path));
+
+  // Unmount the helper with the file system still in tact.
+  helper->UnmountAll();
+  helper.reset();
+
+  helper = SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Expect the file has been moved to the new location (not just bind mounted)
+  // and the contents match and that the extended attribute has been set to
+  // "migrated".
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_file_path));
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FailingToCleanUpTheBackupFolderShouldFallbackToBindMount) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Create the backup directory.
+  ASSERT_TRUE(platform_.CreateDirectory(downloads_backup_));
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Create a mounter that doesn't bind mount at all and mount it.
+  helper = CreateMounter(/*bind_mount_downloads=*/false);
+
+  // Ignore all other calls to DeletePathRecursively but when the
+  // ~/Downloads-backup call is made, return false to mock failing to remove the
+  // backup folder.
+  EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(AnyNumber());
+  EXPECT_CALL(platform_, DeletePathRecursively(downloads_backup_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFileSystemMounted(/*bind_mount_downloads=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       FailingToSetTheXattrBeforeMigratingShouldFallback) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Create a mounter that doesn't bind mount at all and mount it.
+  helper = CreateMounter(/*bind_mount_downloads=*/false);
+
+  // Ignore all other calls to SetExtendedFileAttribute but when the
+  // "migrating" call is made, return false to mock failing to set the xattr.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(
+                             downloads_, kBindMountMigrationXattrName, _, _))
+      .WillOnce(Return(false));
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFileSystemMounted(/*bind_mount_downloads=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       IfRenamingMyFilesDownloadsToDownloadsBackupFailsFallbackToBindMount) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Create a mounter that doesn't bind mount at all.
+  helper = CreateMounter(/*bind_mount_downloads=*/false);
+
+  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
+  // call is made, return false to mock a failure.
+  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
+  EXPECT_CALL(platform_, Rename(downloads_in_my_files_, downloads_backup_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFileSystemMounted(/*bind_mount_downloads=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       IfRenamingDownloadsToMyFilesFailsTheBackupIsRestored) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Create a mounter that doesn't bind mount at all.
+  helper = CreateMounter(/*bind_mount_downloads=*/false);
+
+  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
+  // call is made, return false to mock a failure.
+  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
+  EXPECT_CALL(platform_, Rename(downloads_, downloads_in_my_files_))
+      .WillOnce(Return(false));
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that the underlying filesystem has fallen back to bind mounting.
+  VerifyFileSystemMounted(/*bind_mount_downloads=*/true);
+  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(DownloadsBindMountMigrationTest,
+       SettingTheXattrToMigratedFailingShouldNotFallback) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
+
+  // Unmount the helper with the file system still in tact, reset the helper to
+  // setup a new one with the downloads bind mount disabled.
+  helper->UnmountAll();
+  helper.reset();
+
+  // Create a mounter that doesn't bind mount at all.
+  helper = CreateMounter(/*bind_mount_downloads=*/false);
+
+  // Ignore all other calls to SetExtendedFileAttribute but when the
+  // "migrated" call is made, return false to mock failing to set the xattr.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .Times(AnyNumber());
+  EXPECT_CALL(platform_,
+              SetExtendedFileAttribute(downloads_in_my_files_,
+                                       kBindMountMigrationXattrName, _, _))
+      .WillOnce(Return(false));
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that the underlying filesystem has not fallen back to bind mounting.
+  VerifyFileSystemMounted(/*bind_mount_downloads=*/false);
+  ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+}
+
+TEST_F(
+    DownloadsBindMountMigrationTest,
+    IfANewDownloadsFolderIsCreatedAfterMigrationItShouldNotRetriggerMigration) {
+  std::unique_ptr<MountHelper> helper =
+      SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Create a test file in ~/Downloads and expect that neither get moved as the
+  // migration has stabilised already.
+  ASSERT_TRUE(platform_.CreateDirectory(downloads_));
+  const FilePath test_downloads_file_path =
+      downloads_.Append("test_downloads_file");
+  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_file_path));
+
+  // Create a test file in ~/MyFiles/Downloads and expect that neither get moved
+  // as the migration has stabilised already.
+  const FilePath test_downloads_in_my_files_file_path =
+      downloads_in_my_files_.Append("test_downloads_in_my_files_file");
+  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_in_my_files_file_path));
+
+  // Unmount and remount.
+  helper->UnmountAll();
+  ASSERT_THAT(PerformMount(helper.get()), IsOk());
+
+  // Verify that ~/MyFiles/Downloads is not mounted and that all the files
+  // reside in the correct places, not having been migrated.
+  ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_file_path));
+  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_in_my_files_file_path));
 }
 
 }  // namespace

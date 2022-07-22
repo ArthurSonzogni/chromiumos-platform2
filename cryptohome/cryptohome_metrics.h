@@ -437,6 +437,21 @@ enum class AttestationOpsStatus {
   kMaxValue
 };
 
+// List of possible results from migrating the files at ~/MyFiles to
+// ~/MyFiles/Downloads. These values are persisted to logs. Entries should not
+// be renumbered and numeric values should never be reused.
+enum class DownloadsBindMountMigrationStatus {
+  kSuccess = 0,
+  kSettingMigratedPreviouslyFailed = 1,
+  kUpdatingXattrFailed = 2,
+  kCleanupFailed = 3,
+  kBackupFailed = 4,
+  kRestoreFailed = 5,
+  kFailedMovingToMyFiles = 6,
+  kFailedSettingMigratedXattr = 7,
+  kMaxValue = kFailedMovingToMyFiles
+};
+
 // Just to make sure I count correctly.
 static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 110,
               "DeprecatedApiEvent Enum miscounted");
@@ -800,6 +815,11 @@ void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics);
 // and bind mounting. This only records the top-level items but does not record
 // items in sub-directories.
 void ReportMaskedDownloadsItems(int num_items);
+
+// Reports the overall status after attempting to migrate a user's ~/Downloads
+// to ~/MyFiles/Downloads.
+void ReportDownloadsBindMountMigrationStatus(
+    DownloadsBindMountMigrationStatus status);
 
 // Cryptohome Error Reporting related UMAs
 
