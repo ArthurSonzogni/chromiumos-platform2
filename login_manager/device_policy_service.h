@@ -112,12 +112,11 @@ class DevicePolicyService : public PolicyService {
   // OnPolicyPersisted() is.
   virtual bool UpdateSystemSettings(Completion completion);
 
-  // Sets the block_devmode and check_enrollment flags in the VPD to 0
-  // in the background. Also set block_devmode=0 in system properties.
-  // If the update VPD process could be started in the background
-  // |vpd_process_| is responsible for running |completion|;
-  // otherwise, the completion is run with an error.
-  virtual void ClearForcedReEnrollmentFlags(Completion completion);
+  // Sets the block_devmode flag in the VPD to 0 in the background. Also set
+  // block_devmode=0 in system properties. If the update VPD process could be
+  // started in the background |vpd_process_| is responsible for running
+  // |completion|; otherwise, the completion is run with an error.
+  virtual void ClearBlockDevmode(Completion completion);
 
   // Validates the remote device wipe command received from the server.
   virtual bool ValidateRemoteDeviceWipeCommand(

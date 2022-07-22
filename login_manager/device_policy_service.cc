@@ -608,8 +608,8 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
                      std::move(completion)));
 }
 
-void DevicePolicyService::ClearForcedReEnrollmentFlags(Completion completion) {
-  LOG(WARNING) << "Clear enrollment requested";
+void DevicePolicyService::ClearBlockDevmode(Completion completion) {
+  LOG(WARNING) << "Clear block_devmode requested";
   // The block_devmode system property needs to be set to 0 as well to unblock
   // dev mode. It is stored independently from VPD and firmware management
   // parameters.
@@ -621,9 +621,7 @@ void DevicePolicyService::ClearForcedReEnrollmentFlags(Completion completion) {
   }
   auto split_callback = base::SplitOnceCallback(std::move(completion));
   if (!vpd_process_->RunInBackground(
-          {{Crossystem::kBlockDevmode, "0"},
-           {Crossystem::kCheckEnrollment, "0"}},
-          false,
+          {{Crossystem::kBlockDevmode, "0"}}, false,
           base::BindOnce(&HandleVpdUpdateCompletion, false,
                          std::move(split_callback.first)))) {
     std::move(split_callback.second)
