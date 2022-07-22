@@ -56,6 +56,7 @@ static_library("libpermission_broker") {
     "deny_unsafe_hidraw_device_rule.cc",
     "deny_usb_device_class_rule.cc",
     "deny_usb_vendor_id_rule.cc",
+    "deny_vell_keyboard_device_rule.cc",
     "hidraw_subsystem_udev_rule.cc",
     "libusb_wrapper.cc",
     "permission_broker.cc",

@@ -36,6 +36,7 @@
 #include "permission_broker/deny_unsafe_hidraw_device_rule.h"
 #include "permission_broker/deny_usb_device_class_rule.h"
 #include "permission_broker/deny_usb_vendor_id_rule.h"
+#include "permission_broker/deny_vell_keyboard_device_rule.h"
 #include "permission_broker/libusb_wrapper.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/usb_control.h"
@@ -51,6 +52,7 @@ using permission_broker::DenyUninitializedDeviceRule;
 using permission_broker::DenyUnsafeHidrawDeviceRule;
 using permission_broker::DenyUsbDeviceClassRule;
 using permission_broker::DenyUsbVendorIdRule;
+using permission_broker::DenyVellKeyboardDeviceRule;
 using permission_broker::PermissionBroker;
 
 namespace {
@@ -88,6 +90,7 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
   rule_engine_.AddRule(new DenyFwUpdateHidrawDeviceRule());
+  rule_engine_.AddRule(new DenyVellKeyboardDeviceRule());
 }
 
 PermissionBroker::~PermissionBroker() = default;
