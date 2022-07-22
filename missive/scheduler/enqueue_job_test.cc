@@ -96,7 +96,7 @@ class EnqueueJobTest : public ::testing::Test {
 
 TEST_F(EnqueueJobTest, CompletesSuccessfully) {
   response_->set_return_callback(
-      base::BindRepeating([](const EnqueueRecordResponse& response) {
+      base::BindOnce([](const EnqueueRecordResponse& response) {
         EXPECT_EQ(response.status().code(), error::OK);
       }));
   auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
@@ -122,7 +122,7 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
 
 TEST_F(EnqueueJobTest, CancelsSuccessfully) {
   Status failure_status(error::INTERNAL, "Failing for tests");
-  response_->set_return_callback(base::BindRepeating(
+  response_->set_return_callback(base::BindOnce(
       [](Status status, const EnqueueRecordResponse& response) {
         EXPECT_TRUE(response.status().code() == status.error_code());
       },
