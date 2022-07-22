@@ -130,7 +130,7 @@ class WorkerBridgeTest : public testing::Test {
   void RunTakeSnapshot(bool expected_result) {
     std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool>> response(
         new brillo::dbus_utils::MockDBusMethodResponse<bool>(nullptr));
-    response->set_return_callback(base::BindRepeating(
+    response->set_return_callback(base::BindOnce(
         [](bool expected_result, const bool& success) {
           EXPECT_EQ(expected_result, success);
         },
@@ -145,7 +145,7 @@ class WorkerBridgeTest : public testing::Test {
     std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool, bool>>
         response(new brillo::dbus_utils::MockDBusMethodResponse<bool, bool>(
             nullptr));
-    response->set_return_callback(base::BindRepeating(
+    response->set_return_callback(base::BindOnce(
         [](bool expected_result, bool expected_last, const bool& success,
            const bool& last) {
           EXPECT_EQ(expected_result, success);
