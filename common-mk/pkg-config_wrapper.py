@@ -22,11 +22,18 @@ import sys
 
 def get_shell_output(cmd):
     """Run |cmd| and return output as a list."""
-    output = subprocess.check_output(cmd, encoding="utf-8")
-    return shlex.split(output)
+    result = subprocess.run(
+        cmd, encoding="utf-8", stdout=subprocess.PIPE, check=False
+    )
+    if result.returncode:
+        sys.exit(result.returncode)
+    return shlex.split(result.stdout)
 
 
 def main(argv):
+    if len(argv) < 2:
+        sys.exit(f"Usage: {sys.argv[0]} <pkg-config> <modules>")
+
     cflags = get_shell_output(argv + ["--cflags"])
     libs = []
     lib_dirs = []
