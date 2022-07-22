@@ -23,7 +23,7 @@
 namespace federated {
 namespace {
 
-constexpr char kServiceUri[] = "https+test://127.0.0.1:8888";
+constexpr char kServiceUri[] = "https://127.0.0.1:8791";
 constexpr char kApiKey[] = "";
 constexpr char kDlcId[] = "fcp";
 constexpr char kFederatedComputationLibraryName[] = "libfcp.so";
