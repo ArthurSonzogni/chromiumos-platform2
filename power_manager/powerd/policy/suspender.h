@@ -165,7 +165,7 @@ class Suspender : public SuspendDelayObserver,
         base::TimeDelta suspend_duration_) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
-    virtual void ShutDownForFailedSuspend() = 0;
+    virtual void ShutDownForFailedSuspend(bool hibernate) = 0;
 
     // Shuts the system down in response to the ShutdownFromSuspend determining
     // the system should shut down.
@@ -379,8 +379,9 @@ class Suspender : public SuspendDelayObserver,
   State HandleDarkResume(Delegate::SuspendResult result);
 
   // Helper method called by HandleNormalResume() or HandleDarkResume() in
-  // response to a failed or canceled suspend attempt.
-  State HandleUnsuccessfulSuspend(Delegate::SuspendResult result);
+  // response to a failed or canceled suspend or hibernation attempt.
+  State HandleUnsuccessfulSuspend(Delegate::SuspendResult result,
+                                  bool hibernate);
 
   // Starts |resuspend_timer_| to send EVENT_READY_TO_RESUSPEND after |delay|.
   void ScheduleResuspend(const base::TimeDelta& delay);

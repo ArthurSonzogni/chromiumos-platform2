@@ -774,7 +774,7 @@ Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result,
     return State::IDLE;
   }
 
-  return HandleUnsuccessfulSuspend(result);
+  return HandleUnsuccessfulSuspend(result, from_hibernate);
 }
 
 Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
@@ -783,7 +783,7 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
   if (result == Delegate::SuspendResult::FAILURE ||
       (result == Delegate::SuspendResult::CANCELED &&
        current_num_attempts_ > max_retries_))
-    return HandleUnsuccessfulSuspend(result);
+    return HandleUnsuccessfulSuspend(result, false);
 
   // Save the first run's number of attempts so it can be reported later.
   if (!initial_num_attempts_)
@@ -815,14 +815,15 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
 }
 
 Suspender::State Suspender::HandleUnsuccessfulSuspend(
-    Delegate::SuspendResult result) {
+    Delegate::SuspendResult result, bool hibernate) {
   DCHECK_NE(result, Delegate::SuspendResult::SUCCESS);
 
   if (current_num_attempts_ > max_retries_) {
-    LOG(ERROR) << "Unsuccessfully attempted to suspend "
+    LOG(ERROR) << "Unsuccessfully attempted to "
+               << (hibernate ? "hibernate " : "suspend ")
                << current_num_attempts_ << " times; shutting down";
     // Don't call FinishRequest(); we want the backlight to stay off.
-    delegate_->ShutDownForFailedSuspend();
+    delegate_->ShutDownForFailedSuspend(hibernate);
     return State::SHUTTING_DOWN;
   }
 

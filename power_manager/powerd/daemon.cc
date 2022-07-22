@@ -940,8 +940,9 @@ void Daemon::GenerateDarkResumeMetrics(
                                                 suspend_duration);
 }
 
-void Daemon::ShutDownForFailedSuspend() {
-  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::SUSPEND_FAILED);
+void Daemon::ShutDownForFailedSuspend(bool hibernate) {
+  ShutDown(ShutdownMode::POWER_OFF, hibernate ? ShutdownReason::HIBERNATE_FAILED
+                                              : ShutdownReason::SUSPEND_FAILED);
 }
 
 void Daemon::ShutDownFromSuspend() {

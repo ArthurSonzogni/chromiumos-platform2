@@ -306,6 +306,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "system-update";
     case ShutdownReason::OTHER_REQUEST_TO_POWERD:
       return "other-request-to-powerd";
+    case ShutdownReason::HIBERNATE_FAILED:
+      return "hibernate-failed";
   }
   NOTREACHED() << "Unhandled shutdown reason " << static_cast<int>(reason);
   return "unknown";

@@ -181,7 +181,7 @@ class Daemon :
       const std::vector<policy::Suspender::DarkResumeInfo>&
           dark_resume_wake_durations,
       base::TimeDelta suspend_duration) override;
-  void ShutDownForFailedSuspend() override;
+  void ShutDownForFailedSuspend(bool hibernate) override;
   void ShutDownFromSuspend() override;
 
   // Overridden from policy::WifiController::Delegate:

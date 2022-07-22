@@ -497,6 +497,8 @@ enum class ShutdownReason {
   SYSTEM_UPDATE = 5,
   // Unclassified external request sent to powerd by another process.
   OTHER_REQUEST_TO_POWERD = 7,
+  // Multiple hibernate attempts failed.
+  HIBERNATE_FAILED = 8,
 };
 
 enum class WifiRegDomain {
