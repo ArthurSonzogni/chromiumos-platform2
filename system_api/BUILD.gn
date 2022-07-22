@@ -357,13 +357,16 @@ goproto_library("system_api-vm_cicerone-goprotos") {
 proto_library("system_api-vm_concierge-protos") {
   proto_in_dir = "dbus/vm_concierge"
   proto_out_dir = "include/vm_concierge/proto_bindings"
+  proto_lib_dirs = [ "dbus" ]
   sources = [ "${proto_in_dir}/concierge_service.proto" ]
+  deps = [ ":system_api-arc-protos" ]
   standalone = true
 }
 
 goproto_library("system_api-vm_concierge-goprotos") {
   proto_in_dir = "dbus/vm_concierge"
   proto_out_dir = "go/src/"
+  proto_lib_dirs = [ "dbus" ]
   sources = [ "${proto_in_dir}/concierge_service.proto" ]
 }
 
@@ -646,16 +649,10 @@ goproto_library("system_api-shadercached-goprotos") {
 }
 
 proto_library("system_api-arc-protos") {
-  proto_in_dir = "dbus/arc"
-  proto_out_dir = "include/arc"
-  sources = [ "${proto_in_dir}/arc.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/arc/arc.proto" ]
   standalone = true
-
-  # Override optimize_for option in proto file.
-  # Needed for fuzz targets using libprotobuf-mutator.
-  if (use.fuzzer) {
-    gen_cpp_mode = "speed"
-  }
 }
 
 goproto_library("system_api-arc-goprotos") {

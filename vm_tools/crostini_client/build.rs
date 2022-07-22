@@ -142,6 +142,9 @@ const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::new("dbus/vm_launch", "launch.proto"),
 ];
 
+/// A list of proto files to generate Rust bindings for without dbus_constants.h.
+const PROTOS: &[SystemApiDbus] = &[SystemApiDbus::new("dbus", "arc/arc.proto")];
+
 fn main() {
     let system_api_root = match env::var("SYSROOT") {
         Ok(path) => PathBuf::from(path).join("usr/include/chromeos"),
@@ -160,6 +163,13 @@ fn main() {
             input_paths.push(input_path);
         }
         api.parse_constants(&system_api_root, &mut constants);
+    }
+    for proto in PROTOS {
+        if let Some(input_path) = proto.get_input_path(&system_api_root) {
+            generator.input(&input_path);
+            generator.include(proto.get_include_path(&system_api_root));
+            input_paths.push(input_path);
+        }
     }
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());

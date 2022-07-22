@@ -9,6 +9,8 @@ option optimize_for = LITE_RUNTIME;
 package vm_tools.concierge;
 option go_package = "chromiumos/system_api/vm_concierge_proto";
 
+import "arc/arc.proto";
+
 // Specification of the key components of a VM.
 //
 // TODO(crbug/1121046): This spec may be insufficient for DLC, consider
@@ -447,6 +449,9 @@ message StartArcVmRequest {
   //       as that disables swap - which can be done more appropriately by
   //       setting |guest_zram_size| to zero.
   int32 guest_swappiness = 33;
+
+  // List of parameters that are shared by ARCVM and container.
+  arc.StartArcMiniInstanceRequest mini_instance_request = 34;
 }
 
 enum VmStatus {
