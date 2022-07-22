@@ -114,6 +114,10 @@ constexpr int kDefaultHighMemDeviceThreshold = 5500;
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 
+// Constants for querying the ChromeOS channel
+constexpr char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
+constexpr char kUnknown[] = "unknown";
+
 // The amount of time after VM creation that we should wait to refresh counters
 // bassed on the zone watermarks, since they can change during boot.
 constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
@@ -130,6 +134,10 @@ void SetIntInVsockBuffer(uint8_t* buf, size_t index, int val) {
   std::memcpy(&buf[sizeof(int) * index], &val, sizeof(int));
   return;
 }
+
+constexpr int kLogdConfigSizeSmall = 256;   // kBytes
+constexpr int kLogdConfigSizeMed = 512;     // kBytes
+constexpr int kLogdConfigSizeLarge = 1024;  // kBytes
 
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was
@@ -200,10 +208,7 @@ bool ShutdownArcVm(int cid) {
 // Returns the value of ChromeOS channel From Lsb Release
 // "unknown" if the value does not end with "-channel"
 std::string GetChromeOsChannelFromLsbRelease() {
-  constexpr const char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
-  constexpr const char kUnknown[] = "unknown";
   const std::string kChannelSuffix = "-channel";
-
   std::string value;
   base::SysInfo::GetLsbReleaseValue(kChromeOsReleaseTrack, &value);
 
@@ -874,12 +879,17 @@ void ArcVm::HandleLmkdVsockRead() {
 
 // static
 std::vector<std::string> ArcVm::GetKernelParams(
-    crossystem::Crossystem* cros_system,
-    int seneschal_server_port,
-    const StartArcVmRequest& request) {
+    const crossystem::Crossystem& cros_system,
+    const StartArcVmRequest& request,
+    int seneschal_server_port) {
   // Build the plugin params.
-  bool is_dev_mode = cros_system->VbGetSystemPropertyInt("cros_debug") == 1;
+  bool is_dev_mode = cros_system.VbGetSystemPropertyInt("cros_debug") == 1;
+  // Whether the host is on VM or not.
+  bool is_host_on_vm = cros_system.VbGetSystemPropertyInt("inside_vm") == 1;
   std::string channel = GetChromeOsChannelFromLsbRelease();
+  arc::StartArcMiniInstanceRequest mini_instance_request =
+      request.mini_instance_request();
+
   std::vector<std::string> params = {
       "root=/dev/vda",
       "init=/init",
@@ -888,12 +898,21 @@ std::vector<std::string> ArcVm::GetKernelParams(
       // for example.
       "androidboot.hardware=bertha",
       "androidboot.container=1",
+      base::StringPrintf("androidboot.host_is_in_vm=%d", is_host_on_vm),
       base::StringPrintf("androidboot.dev_mode=%d", is_dev_mode),
       base::StringPrintf("androidboot.disable_runas=%d", !is_dev_mode),
       "androidboot.chromeos_channel=" + channel,
       base::StringPrintf("androidboot.seneschal_server_port=%d",
                          seneschal_server_port),
       base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE),
+      base::StringPrintf("androidboot.arc_custom_tabs=%d",
+                         mini_instance_request.arc_custom_tabs_experiment()),
+      base::StringPrintf("androidboot.arc_file_picker=%d",
+                         mini_instance_request.arc_file_picker_experiment()),
+      base::StringPrintf("androidboot.enable_notifications_refresh=%d",
+                         mini_instance_request.enable_notifications_refresh()),
+      base::StringPrintf("androidboot.lcd_density=%d",
+                         mini_instance_request.lcd_density()),
       "androidboot.arc.primary_display_rotation=" +
           StartArcVmRequest::DisplayOrientation_Name(
               request.panel_orientation()),
@@ -905,6 +924,14 @@ std::vector<std::string> ArcVm::GetKernelParams(
       // See http://b/235866242#comment23 for the context.
       // TODO(b/241051098): Re-enable it once this workaround is not needed.
       "softlockup_panic=0",
+      "androidboot.enable_consumer_auto_update_toggle=" +
+          std::to_string(
+              mini_instance_request.enable_consumer_auto_update_toggle()),
+      base::StringPrintf("androidboot.keyboard_shortcut_helper_integration=%d",
+                         request.enable_keyboard_shortcut_helper_integration()),
+      base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",
+                         request.enable_virtio_blk_data()),
+      base::StringPrintf("androidboot.zram_size=%d", request.guest_zram_size()),
   };
 
   auto mglru_reclaim_interval = request.mglru_reclaim_interval();
@@ -917,16 +944,149 @@ std::vector<std::string> ArcVm::GetKernelParams(
                        std::to_string(mglru_reclaim_swappiness));
     }
   }
+  LOG(INFO) << base::StringPrintf("Setting ARCVM guest's zram size to %d",
+                                  request.guest_zram_size());
+
+  if (request.enable_rw())
+    params.push_back("rw");
 
   auto guest_swappiness = request.guest_swappiness();
   if (guest_swappiness > 0) {
     params.push_back(
         base::StringPrintf("sysctl.vm.swappiness=%d", guest_swappiness));
   }
+
   // We run vshd under a restricted domain on non-test images.
   // (go/arcvm-android-sh-restricted)
   if (channel == "testimage")
     params.push_back("androidboot.vshd_service_override=vshd_for_test");
+  if (request.enable_gmscore_lmk_protection())
+    params.push_back("androidboot.arc_enable_gmscore_lmk_protection=1");
+  if (request.enable_broadcast_anr_prenotify())
+    params.push_back("androidboot.arc.broadcast_anr_prenotify=1");
+  if (request.vm_memory_psi_period() >= 0) {
+    // Since Android performs parameter validation, not doing it here.
+    params.push_back(
+        base::StringPrintf("androidboot.arcvm_metrics_mem_psi_period=%d",
+                           request.vm_memory_psi_period()));
+  }
+
+  // Set logcat size, only if configured to one of the few supported sizes.
+  int logd_config_size = request.logd_config_size();
+  switch (logd_config_size) {
+    case -1:  // Logd config disabled
+      break;
+    case kLogdConfigSizeSmall:
+      params.push_back("androidboot.arcvm.logd.size=256K");
+      break;
+    case kLogdConfigSizeMed:
+      params.push_back("androidboot.arcvm.logd.size=512K");
+      break;
+    case kLogdConfigSizeLarge:
+      params.push_back("androidboot.arcvm.logd.size=1M");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid logd size ignored: ["
+                   << logd_config_size << "]";
+      break;
+  }
+
+  switch (request.ureadahead_mode()) {
+    case vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_DISABLED:
+      break;
+    case vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_READAHEAD:
+      params.push_back("androidboot.arcvm_ureadahead_mode=readahead");
+      break;
+    case vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_GENERATE:
+      params.push_back("androidboot.arcvm_ureadahead_mode=generate");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid ureadahead mode ignored: ["
+                   << request.ureadahead_mode() << "]";
+      break;
+  }
+
+  switch (request.native_bridge_experiment()) {
+    case vm_tools::concierge::StartArcVmRequest::BINARY_TRANSLATION_TYPE_NONE:
+      params.push_back("androidboot.native_bridge=0");
+      break;
+    case vm_tools::concierge::StartArcVmRequest::
+        BINARY_TRANSLATION_TYPE_HOUDINI:
+      params.push_back("androidboot.native_bridge=libhoudini.so");
+      break;
+    case vm_tools::concierge::StartArcVmRequest::
+        BINARY_TRANSLATION_TYPE_NDK_TRANSLATION:
+      params.push_back("androidboot.native_bridge=libndk_translation.so");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid Native Bridge ignored: ["
+                   << request.native_bridge_experiment() << "]";
+      break;
+  }
+
+  switch (request.usap_profile()) {
+    case vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_DEFAULT:
+      break;
+    case vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_4G:
+      params.push_back("androidboot.usap_profile=4G");
+      break;
+    case vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_8G:
+      params.push_back("androidboot.usap_profile=8G");
+      break;
+    case vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_16G:
+      params.push_back("androidboot.usap_profile=16G");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid USAP Profile ignored: ["
+                   << request.usap_profile() << "]";
+      break;
+  }
+
+  if (mini_instance_request.arc_generate_pai())
+    params.push_back("androidboot.arc_generate_pai=1");
+  if (mini_instance_request.disable_download_provider())
+    params.push_back("androidboot.disable_download_provider=1");
+  // Only add boot property if flag to disable media store maintenance is set.
+  if (mini_instance_request.disable_media_store_maintenance()) {
+    params.push_back("androidboot.disable_media_store_maintenance=1");
+    LOG(INFO) << "MediaStore maintenance task(s) are disabled";
+  }
+  if (mini_instance_request.enable_tts_caching())
+    params.push_back("androidboot.arc.tts.caching=1");
+
+  switch (mini_instance_request.play_store_auto_update()) {
+    case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_DEFAULT:
+      break;
+    case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_ON:
+      params.push_back("androidboot.play_store_auto_update=1");
+      break;
+    case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_OFF:
+      params.push_back("androidboot.play_store_auto_update=0");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid Auto Update type ignored: ["
+                   << mini_instance_request.play_store_auto_update() << "]";
+      break;
+  }
+
+  switch (mini_instance_request.dalvik_memory_profile()) {
+    case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_DEFAULT:
+    case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_4G:
+      // Use the 4G profile for devices with 4GB RAM or less.
+      params.push_back("androidboot.arc_dalvik_memory_profile=4G");
+      break;
+    case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_8G:
+      params.push_back("androidboot.arc_dalvik_memory_profile=8G");
+      break;
+    case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_16G:
+      params.push_back("androidboot.arc_dalvik_memory_profile=16G");
+      break;
+    default:
+      LOG(WARNING) << "WARNING: Invalid Dalvik memory profile type ignored: ["
+                   << mini_instance_request.dalvik_memory_profile() << "]";
+      break;
+  }
+
   return params;
 }
 

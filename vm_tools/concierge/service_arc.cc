@@ -364,7 +364,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
   crossystem::CrossystemImpl cros_system;
   std::vector<std::string> params =
-      ArcVm::GetKernelParams(&cros_system, seneschal_server_port, request);
+      ArcVm::GetKernelParams(cros_system, request, seneschal_server_port);
   params.insert(params.end(),
                 std::make_move_iterator(request.mutable_params()->begin()),
                 std::make_move_iterator(request.mutable_params()->end()));

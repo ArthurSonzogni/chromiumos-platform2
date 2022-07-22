@@ -383,7 +383,8 @@ message StartArcVmRequest {
   uint32 rootfs_block_size = 15;
 
   // Option to enable disable consumer auto update toggle.
-  bool enable_consumer_auto_update_toggle = 16;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool enable_consumer_auto_update_toggle = 16 [deprecated = true];
 
   // Display orientation in clock-wise degrees. ORIENTATION_90 means the panel's
   // right side is the top side of the natural device orientation.
@@ -405,19 +406,23 @@ message StartArcVmRequest {
   bool lock_guest_memory = 18;
 
   // Whether the file picker experiment feature is enabled.
-  bool enable_arc_file_picker_experiment = 19;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool enable_arc_file_picker_experiment = 19 [deprecated = true];
 
   // Whether the custom tabs experiment feature is enabled.
-  bool enable_custom_tabs_experiment = 20;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool enable_custom_tabs_experiment = 20 [deprecated = true];
 
   // Whether the keyboard shortcut helper integration feature is enabled.
   bool enable_keyboard_shortcut_helper_integration = 21;
 
   // Whether the notifications refresh is enabled.
-  bool enable_notifications_refresh = 22;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool enable_notifications_refresh = 22 [deprecated = true];
 
   // Whether the tts caching feature is enabled.
-  bool enable_tts_caching = 23;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool enable_tts_caching = 23 [deprecated = true];
 
   // Whether gmscore lmk protection is enabled.
   bool enable_gmscore_lmk_protection = 24;
@@ -435,13 +440,16 @@ message StartArcVmRequest {
   int32 vm_memory_psi_period = 28;
 
   // Whether media store maintenance is disabled
-  bool disable_media_store_maintenance = 29;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool disable_media_store_maintenance = 29 [deprecated = true];
 
   // Whether Play auto install is generated
-  bool arc_generate_play_auto_install = 30;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool arc_generate_play_auto_install = 30 [deprecated = true];
 
   // Whether download provider is disabled
-  bool disable_download_provider = 31;
+  // deprecated: exists in StartArcMiniInstanceRequest
+  bool disable_download_provider = 31 [deprecated = true];
 
   // Size of Guest Zram in bytes
   int32 guest_zram_size = 32;
