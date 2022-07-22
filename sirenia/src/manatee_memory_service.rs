@@ -120,7 +120,7 @@ struct GetBalloonStatsResp {
     all_stats: Vec<TaggedBalloonStats>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq, PartialEq)]
 struct BalloonDelta {
     id: u32,
     #[serde(with = "i64_from_double")]
@@ -359,6 +359,20 @@ struct CrosVmClient {
     balloon_size: u64,
 }
 
+impl CrosVmClient {
+    fn clamp_balloon_delta(&self, delta: i64) -> i64 {
+        let new_size = if delta > 0 {
+            self.balloon_size
+                .saturating_add(delta as u64)
+                .min(self.mem_size)
+        } else {
+            self.balloon_size
+                .saturating_sub(delta.saturating_abs() as u64)
+        };
+        new_size as i64 - self.balloon_size as i64
+    }
+}
+
 // About the flow for starting a new VM:
 //
 // MMS implements a small state machine for managing startup of new
@@ -428,6 +442,60 @@ macro_rules! dispatch_message {
     };
 }
 
+fn calculate_target_deltas(
+    clients: &BTreeMap<u32, CrosVmClient>,
+    deltas: &[BalloonDelta],
+) -> Result<(Vec<BalloonDelta>, Vec<BalloonDelta>)> {
+    let mut ids = BTreeSet::new();
+    let mut total_delta = 0;
+    let pagesize = pagesize();
+    let mut inflates = Vec::new();
+    let mut deflates = Vec::new();
+
+    for delta in deltas {
+        if delta.delta % (pagesize as i64) != 0 {
+            bail!("invalid balloon config {:?}", delta);
+        }
+        if !ids.insert(delta.id) {
+            bail!("duplicate id {}", delta.id);
+        }
+
+        let client = clients
+            .get(&delta.id)
+            .with_context(|| format!("unknown target id {}", delta.id))?;
+
+        let clamped_delta = BalloonDelta {
+            id: delta.id,
+            delta: client.clamp_balloon_delta(delta.delta),
+        };
+        total_delta += clamped_delta.delta;
+        match clamped_delta.delta.cmp(&0) {
+            Ordering::Greater => inflates.push(clamped_delta),
+            Ordering::Less => deflates.push(clamped_delta),
+            Ordering::Equal => (),
+        };
+    }
+
+    if total_delta != 0 {
+        // When |total_delta| is positive, we need to inflate less. Go through the
+        // list of balloons we're inflating and cut out |total_delta| inflation.
+        // Note that since |total_delta| is at most the sum of all of the deltas
+        // across all balloons we're inflating, we're guaranteed that we can cut
+        // |total_delta| down to 0. Similar logic applies if delta is negative.
+        for delta in if total_delta > 0 {
+            inflates.iter_mut()
+        } else {
+            deflates.iter_mut()
+        } {
+            let client = clients.get(&delta.id).expect("missing client");
+            let new_delta = client.clamp_balloon_delta(delta.delta.saturating_sub(total_delta));
+            total_delta += new_delta - delta.delta;
+            delta.delta = new_delta;
+        }
+    }
+    Ok((inflates, deflates))
+}
+
 impl CtrlHandler {
     fn new(connection: Transport, state: Rc<RefCell<MmsState>>) -> Self {
         CtrlHandler { connection, state }
@@ -466,73 +534,33 @@ impl CtrlHandler {
         GetBalloonStatsResp { all_stats }
     }
 
-    fn validate_rebalance_deltas(&self, deltas: &[BalloonDelta]) -> Result<()> {
-        let state = self.state.borrow();
-        let mut ids = BTreeSet::new();
-        let mut total_delta = 0;
-        let pagesize = pagesize();
-        for delta in deltas {
-            if delta.delta % (pagesize as i64) != 0 {
-                bail!("invalid balloon config {:?}", delta);
-            }
-            if !ids.insert(delta.id) {
-                bail!("duplicate id {}", delta.id);
-            }
-
-            let client = state
-                .clients
-                .get(&delta.id)
-                .with_context(|| format!("unknown target id {}", delta.id))?;
-            let new_size = if delta.delta > 0 {
-                client.balloon_size.checked_add(delta.delta as u64)
-            } else {
-                delta
-                    .delta
-                    .checked_abs()
-                    .and_then(|d| client.balloon_size.checked_sub(d as u64))
-            }
-            // Also catches underflow
-            .with_context(|| format!("balloon overflow {} {}", client.balloon_size, delta.delta))?;
-
-            if new_size > client.mem_size {
-                bail!("overinflate balloon {} {}", new_size, client.mem_size);
-            }
-
-            total_delta += delta.delta;
-        }
-        if total_delta != 0 {
-            bail!("unbalanced config {}", total_delta);
-        }
-
-        Ok(())
-    }
-
     fn handle_rebalance_memory(
         &mut self,
         RebalanceMemoryMsg { deltas }: &RebalanceMemoryMsg,
     ) -> RebalanceMemoryResp {
-        if let Err(err) = self.validate_rebalance_deltas(deltas) {
-            error!("Invalid rebalance: {:?}", err);
-            return RebalanceMemoryResp {
-                actual_deltas: deltas
-                    .iter()
-                    .map(|delta| ActualBalloonDelta {
-                        id: delta.id,
-                        delta: 0,
-                    })
-                    .collect(),
-            };
-        }
-
         let mut state = self.state.borrow_mut();
+
+        let (inflates, deflates) = match calculate_target_deltas(&state.clients, deltas) {
+            Ok(res) => res,
+            Err(err) => {
+                error!("Invalid rebalance: {:?}", err);
+                return RebalanceMemoryResp {
+                    actual_deltas: deltas
+                        .iter()
+                        .map(|delta| ActualBalloonDelta {
+                            id: delta.id,
+                            delta: 0,
+                        })
+                        .collect(),
+                };
+            }
+        };
+
         let mut slack: i64 = 0;
         let mut actual_deltas = Vec::new();
 
         // Inflate balloons to reclaim their memory.
-        for delta in deltas {
-            if delta.delta <= 0 {
-                continue;
-            }
+        for delta in inflates {
             let client = state.clients.get_mut(&delta.id).unwrap();
             let actual_delta = adjust_balloon(client, delta.delta);
             if actual_delta != delta.delta {
@@ -549,10 +577,7 @@ impl CtrlHandler {
         }
 
         // Deflate balloons to give reclaimed memory to other VMs
-        for delta in deltas {
-            if delta.delta >= 0 {
-                continue;
-            }
+        for delta in deflates {
             let client = state.clients.get_mut(&delta.id).unwrap();
             let adjusted_delta = -cmp::min(delta.delta.abs(), slack);
             let actual_delta = adjust_balloon(client, adjusted_delta);
@@ -1027,4 +1052,107 @@ fn main() {
     }
 
     info!("ManaTEE memory service exiting");
+}
+
+#[cfg(test)]
+mod test {
+    use libsirenia::sys::dev_null;
+
+    use super::*;
+
+    #[allow(non_upper_case_globals)]
+    const u_MiB: u64 = 1024 * 1024;
+    #[allow(non_upper_case_globals)]
+    const MiB: i64 = 1024 * 1024;
+
+    fn create_clients(mem_size: &[u64]) -> BTreeMap<u32, CrosVmClient> {
+        mem_size
+            .iter()
+            .enumerate()
+            .map(|(idx, size)| {
+                (
+                    idx as u32,
+                    CrosVmClient {
+                        client: Transport::from_files(
+                            dev_null().expect("/dev/null failed"),
+                            dev_null().expect("/dev/null failed"),
+                        ),
+                        mem_size: *size,
+                        balloon_size: 0,
+                        internal_balloon_allocation: 0,
+                    },
+                )
+            })
+            .collect()
+    }
+
+    fn create_deltas(deltas: &[i64]) -> Vec<BalloonDelta> {
+        deltas
+            .iter()
+            .enumerate()
+            .map(|(idx, delta)| BalloonDelta {
+                id: idx as u32,
+                delta: *delta,
+            })
+            .collect()
+    }
+
+    fn create_tagged_deltas(deltas: &[(u32, i64)]) -> Vec<BalloonDelta> {
+        deltas
+            .iter()
+            .map(|(id, delta)| BalloonDelta {
+                id: *id,
+                delta: *delta,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_balloon_overinflate() {
+        let mut clients = create_clients(&[5 * u_MiB, 10 * u_MiB]);
+        clients.get_mut(&0).unwrap().balloon_size = 3 * u_MiB;
+        clients.get_mut(&1).unwrap().balloon_size = 9 * u_MiB;
+
+        // Overinflate client 1
+        let (inflate, deflate) =
+            calculate_target_deltas(&clients, &create_deltas(&[-3 * MiB, 3 * MiB]))
+                .expect("failed to get deltas");
+
+        assert_eq!(inflate, create_tagged_deltas(&[(1, MiB)]));
+        assert_eq!(deflate, create_tagged_deltas(&[(0, -MiB)]));
+    }
+
+    #[test]
+    fn test_balloon_underinflate() {
+        let mut clients = create_clients(&[5 * u_MiB, 10 * u_MiB]);
+        clients.get_mut(&0).unwrap().balloon_size = u_MiB;
+        clients.get_mut(&1).unwrap().balloon_size = 5 * u_MiB;
+
+        // Underinflate client 0
+        let (inflate, deflate) =
+            calculate_target_deltas(&clients, &create_deltas(&[-2 * MiB, 2 * MiB]))
+                .expect("failed to get deltas");
+
+        assert_eq!(inflate, create_tagged_deltas(&[(1, MiB)]),);
+        assert_eq!(deflate, create_tagged_deltas(&[(0, -MiB)]),);
+    }
+
+    #[test]
+    fn test_balloon_overinflate_multiple() {
+        let mut clients = create_clients(&[5 * u_MiB, 5 * u_MiB, 5 * u_MiB, 10 * u_MiB]);
+        clients.get_mut(&0).unwrap().balloon_size = 4 * u_MiB;
+        clients.get_mut(&1).unwrap().balloon_size = 5 * u_MiB;
+        clients.get_mut(&2).unwrap().balloon_size = u_MiB;
+        clients.get_mut(&3).unwrap().balloon_size = 9 * u_MiB;
+
+        // Overinflate clients 0 and 1
+        let (inflate, deflate) = calculate_target_deltas(
+            &clients,
+            &create_deltas(&[2 * MiB, 2 * MiB, 3 * MiB, -7 * MiB]),
+        )
+        .expect("failed to get deltas");
+
+        assert_eq!(inflate, create_tagged_deltas(&[(0, MiB), (2, 3 * MiB),]));
+        assert_eq!(deflate, create_tagged_deltas(&[(3, -4 * MiB)]));
+    }
 }
