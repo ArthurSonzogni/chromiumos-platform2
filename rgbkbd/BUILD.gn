@@ -93,7 +93,6 @@ if (use.test) {
       "internal_rgb_keyboard_test.cc",
       "keyboard_backlight_logger_test.cc",
       "rgb_keyboard_controller_test.cc",
-      "rgbkbd_daemon_test.cc",
     ]
     configs += [
       "//common-mk:test",
