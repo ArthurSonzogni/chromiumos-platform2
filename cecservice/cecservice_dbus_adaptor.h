@@ -30,7 +30,7 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // org::chromium::CecServiceInterface overrides; D-Bus methods.
   void GetTvsPowerStatus(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

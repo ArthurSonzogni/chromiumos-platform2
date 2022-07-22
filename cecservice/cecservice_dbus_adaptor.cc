@@ -35,9 +35,9 @@ CecServiceDBusAdaptor::CecServiceDBusAdaptor(scoped_refptr<dbus::Bus> bus)
 CecServiceDBusAdaptor::~CecServiceDBusAdaptor() = default;
 
 void CecServiceDBusAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(std::move(cb));
 }
 
 bool CecServiceDBusAdaptor::SendStandByToAllDevices(brillo::ErrorPtr* error) {
