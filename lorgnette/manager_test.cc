@@ -72,7 +72,7 @@ std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>>
 BuildMockDBusResponse(T* response) {
   auto dbus_response =
       std::make_unique<MockDBusMethodResponse<std::vector<uint8_t>>>();
-  dbus_response->set_return_callback(base::BindRepeating(
+  dbus_response->set_return_callback(base::BindOnce(
       [](T* response_out, const std::vector<uint8_t>& serialized_response) {
         ASSERT_TRUE(response_out);
         ASSERT_TRUE(response_out->ParseFromArray(serialized_response.data(),
