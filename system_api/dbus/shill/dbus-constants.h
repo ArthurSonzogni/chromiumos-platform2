@@ -615,6 +615,11 @@ const char kSecurityClassNone[] = "none";
 const char kSecurityClassWep[] = "wep";
 const char kSecurityClassPsk[] = "psk";
 const char kSecurityClass8021x[] = "802_1x";
+// These two are deprecated.  Use kSecurityClass* equivalents above.
+// TODO(b/226138492) Remove this once references in Chrome and Shill are
+// removed.
+const char kSecurityPsk[] = "psk";
+const char kSecurity8021x[] = "802_1x";
 
 // WiFi Security options.
 const char kSecurityNone[] = "none";
