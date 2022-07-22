@@ -939,6 +939,33 @@ impl Debug for MmsBridge {
     }
 }
 
+struct Args {
+    cros_mem_bytes: u64,
+    mms_bridge: UnixSeqpacket,
+}
+
+fn parse_args() -> Result<Args> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 3 {
+        bail!("incorrect number of arguments");
+    }
+
+    let cros_mem_bytes = args[1]
+        .parse::<u64>()
+        .context("error parsing cros memory size")?
+        .checked_mul(1024 * 1024)
+        .context("cros memory size overflow")?;
+
+    let mms_bridge = UnixSeqpacket::connect(PathBuf::from(&args[2]))
+        .context("error connecting to MMS bridge")?;
+
+    Ok(Args {
+        cros_mem_bytes,
+        mms_bridge,
+    })
+}
+
 fn main() {
     if let Err(e) = syslog::init(IDENT.to_string(), true /* log_to_stderr */) {
         eprintln!("Failed to initialize syslog: {}", e);
@@ -946,29 +973,13 @@ fn main() {
     }
     info!("starting ManaTEE memory service: {}", BUILD_TIMESTAMP);
 
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        error!("Usage: manatee_memory_service <CrOS guest memory in MiB> <MMS bridge socket path>");
-        return;
-    }
-    let cros_mem = match args[1].parse::<u64>() {
-        Ok(cros_mem) => match cros_mem.checked_mul(1024 * 1024) {
-            Some(cros_mem) => cros_mem,
-            None => {
-                error!("Cros memory size overflow: {}", cros_mem);
-                return;
-            }
-        },
+    let args = match parse_args() {
+        Ok(args) => args,
         Err(e) => {
-            error!("Error parsing cros memory size: {:?}", e);
-            return;
-        }
-    };
-
-    let bridge = match UnixSeqpacket::connect(PathBuf::from(&args[2])) {
-        Ok(bridge) => bridge,
-        Err(e) => {
-            error!("Error connecting to MMS bridge {:?}", e);
+            error!("Failed to parse args: {:#}", e);
+            error!("Usage: manatee_memory_service mem_size mms_bridge");
+            error!("  mem_size: CrOS guest memory size in MiB");
+            error!("  mms_bridge: path of Trichechus's MMS bridge socket");
             return;
         }
     };
@@ -993,7 +1004,7 @@ fn main() {
         CROS_GUEST_ID,
         CrosVmClient {
             client: crosvm_client,
-            mem_size: cros_mem,
+            mem_size: args.cros_mem_bytes,
             balloon_size: 0,
         },
     );
@@ -1005,7 +1016,7 @@ fn main() {
         starting_vm_state: None,
         next_id: CROS_GUEST_ID + 1,
     }));
-    let mms_bridge = MmsBridge::new(bridge, state);
+    let mms_bridge = MmsBridge::new(args.mms_bridge, state);
 
     let mut ctx = EventMultiplexer::new().unwrap();
     ctx.add_event(Box::new(mms_bridge)).unwrap();
