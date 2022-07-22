@@ -55,6 +55,7 @@
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
+#include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "libpasswordprovider/fake_password_provider.h"
@@ -82,7 +83,6 @@
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
-#include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/secret_util.h"
@@ -275,8 +275,8 @@ constexpr char kLoginScreenStoragePath[] = "login_screen_storage";
 #if USE_CHEETS
 constexpr char kDefaultLocale[] = "en_US";
 
-UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
-  UpgradeArcContainerRequest request;
+arc::UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
+  arc::UpgradeArcContainerRequest request;
   request.set_account_id(kSaneEmail);
   request.set_locale(kDefaultLocale);
   return request;
@@ -554,7 +554,7 @@ class SessionManagerImplTest : public ::testing::Test,
     }
 
     StartArcInstanceExpectationsBuilder& SetPlayStoreAutoUpdate(
-        StartArcMiniContainerRequest_PlayStoreAutoUpdate v) {
+        arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate v) {
       play_store_auto_update_ = v;
       return *this;
     }
@@ -565,7 +565,7 @@ class SessionManagerImplTest : public ::testing::Test,
     }
 
     StartArcInstanceExpectationsBuilder& SetDalvikMemoryProfile(
-        StartArcMiniContainerRequest_DalvikMemoryProfile v) {
+        arc::StartArcMiniInstanceRequest_DalvikMemoryProfile v) {
       dalvik_memory_profile_ = v;
       return *this;
     }
@@ -606,12 +606,12 @@ class SessionManagerImplTest : public ::testing::Test,
       }
 
       switch (play_store_auto_update_) {
-        case StartArcMiniContainerRequest::AUTO_UPDATE_DEFAULT:
+        case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_DEFAULT:
           break;
-        case StartArcMiniContainerRequest::AUTO_UPDATE_ON:
+        case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_ON:
           result.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
           break;
-        case StartArcMiniContainerRequest::AUTO_UPDATE_OFF:
+        case arc::StartArcMiniInstanceRequest::AUTO_UPDATE_OFF:
           result.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
           break;
         default:
@@ -619,15 +619,15 @@ class SessionManagerImplTest : public ::testing::Test,
       }
 
       switch (dalvik_memory_profile_) {
-        case StartArcMiniContainerRequest::MEMORY_PROFILE_DEFAULT:
+        case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_DEFAULT:
           break;
-        case StartArcMiniContainerRequest::MEMORY_PROFILE_4G:
+        case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_4G:
           result.emplace_back("DALVIK_MEMORY_PROFILE=4G");
           break;
-        case StartArcMiniContainerRequest::MEMORY_PROFILE_8G:
+        case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_8G:
           result.emplace_back("DALVIK_MEMORY_PROFILE=8G");
           break;
-        case StartArcMiniContainerRequest::MEMORY_PROFILE_16G:
+        case arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_16G:
           result.emplace_back("DALVIK_MEMORY_PROFILE=16G");
           break;
         default:
@@ -650,11 +650,13 @@ class SessionManagerImplTest : public ::testing::Test,
     bool enable_notification_refresh_ = false;
     bool enable_tts_caching_ = false;
     bool arc_generate_pai_ = false;
-    StartArcMiniContainerRequest_PlayStoreAutoUpdate play_store_auto_update_ =
-        StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT;
+    arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate
+        play_store_auto_update_ = arc::
+            StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT;
     int arc_lcd_density_ = -1;
-    StartArcMiniContainerRequest_DalvikMemoryProfile dalvik_memory_profile_ =
-        StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT;
+    arc::StartArcMiniInstanceRequest_DalvikMemoryProfile
+        dalvik_memory_profile_ =
+            arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_DEFAULT;
   };
 
   class UpgradeContainerExpectationsBuilder {
@@ -893,7 +895,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->StartArcMiniContainer(
-        &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+        &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
     VerifyAndClearExpectations();
   }
 #endif
@@ -1123,7 +1125,9 @@ class SessionManagerImplTest : public ::testing::Test,
 class SessionManagerPackagesCacheTest
     : public SessionManagerImplTest,
       public testing::WithParamInterface<
-          std::tuple<UpgradeArcContainerRequest_PackageCacheMode, bool, bool>> {
+          std::tuple<arc::UpgradeArcContainerRequest_PackageCacheMode,
+                     bool,
+                     bool>> {
  public:
   SessionManagerPackagesCacheTest() = default;
   SessionManagerPackagesCacheTest(const SessionManagerPackagesCacheTest&) =
@@ -1137,7 +1141,7 @@ class SessionManagerPackagesCacheTest
 class SessionManagerPlayStoreAutoUpdateTest
     : public SessionManagerImplTest,
       public testing::WithParamInterface<
-          StartArcMiniContainerRequest_PlayStoreAutoUpdate> {
+          arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate> {
  public:
   SessionManagerPlayStoreAutoUpdateTest() = default;
   SessionManagerPlayStoreAutoUpdateTest(
@@ -1151,7 +1155,7 @@ class SessionManagerPlayStoreAutoUpdateTest
 class SessionManagerDalvikMemoryProfileTest
     : public SessionManagerImplTest,
       public testing::WithParamInterface<
-          StartArcMiniContainerRequest_DalvikMemoryProfile> {
+          arc::StartArcMiniInstanceRequest_DalvikMemoryProfile> {
  public:
   SessionManagerDalvikMemoryProfileTest() = default;
   SessionManagerDalvikMemoryProfileTest(
@@ -2525,7 +2529,7 @@ TEST_F(SessionManagerImplTest, StopArcInstance) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
 
   EXPECT_TRUE(impl_->StopArcInstance(&error, std::string() /*account_id*/,
@@ -2553,7 +2557,7 @@ TEST_F(SessionManagerImplTest, StopArcInstance_BackupsArcBugReport) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
 
   EXPECT_TRUE(
@@ -2578,7 +2582,7 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(android_container_.running());
 
@@ -2622,7 +2626,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -2686,7 +2690,7 @@ TEST_F(SessionManagerImplTest,
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   EXPECT_CALL(*init_controller_,
               TriggerImpulseWithTimeoutAndError(
@@ -2741,8 +2745,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithManagementTransition) {
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_management_transition(
-      login_manager::
-          UpgradeArcContainerRequest_ManagementTransition_CHILD_TO_REGULAR);
+      arc::UpgradeArcContainerRequest_ManagementTransition_CHILD_TO_REGULAR);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(
@@ -2754,7 +2757,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithManagementTransition) {
 TEST_F(SessionManagerImplTest, DisableMediaStoreMaintenance) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_disable_media_store_maintenance(true);
 
   // First, start ARC for login screen.
@@ -2784,7 +2787,7 @@ TEST_F(SessionManagerImplTest,
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_enable_consumer_auto_update_toggle(true);
 
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -2805,7 +2808,7 @@ TEST_F(SessionManagerImplTest,
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_enable_consumer_auto_update_toggle(false);
 
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -2815,7 +2818,7 @@ TEST_F(SessionManagerImplTest,
 TEST_F(SessionManagerImplTest, DisableDownloadProvider) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_disable_download_provider(true);
 
   // First, start ARC for login screen.
@@ -2834,7 +2837,7 @@ TEST_F(SessionManagerImplTest, DisableDownloadProvider) {
 TEST_F(SessionManagerImplTest, DisableUreadahead) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_disable_ureadahead(true);
 
   // First, start ARC for login screen.
@@ -2853,7 +2856,7 @@ TEST_F(SessionManagerImplTest, DisableUreadahead) {
 TEST_F(SessionManagerImplTest, EnableNotificationRefresh) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_enable_notifications_refresh(true);
 
   // First, start ARC for login screen.
@@ -2872,7 +2875,7 @@ TEST_F(SessionManagerImplTest, EnableNotificationRefresh) {
 TEST_F(SessionManagerImplTest, EnableTTSCaching) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_enable_tts_caching(true);
 
   // First, start ARC for login screen.
@@ -2900,18 +2903,19 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   bool skip_packages_cache_setup = false;
   bool copy_cache_setup = false;
   switch (std::get<0>(GetParam())) {
-    case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
+    case arc::
+        UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       skip_packages_cache_setup = true;
       [[fallthrough]];
-    case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
+    case arc::UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
       copy_cache_setup = true;
       break;
-    case UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
+    case arc::UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
       break;
     default:
       NOTREACHED();
@@ -2953,16 +2957,17 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     SessionManagerPackagesCacheTest,
     ::testing::Combine(
-        ::testing::Values(UpgradeArcContainerRequest::DEFAULT,
-                          UpgradeArcContainerRequest::COPY_ON_INIT,
-                          UpgradeArcContainerRequest::SKIP_SETUP_COPY_ON_INIT),
+        ::testing::Values(
+            arc::UpgradeArcContainerRequest::DEFAULT,
+            arc::UpgradeArcContainerRequest::COPY_ON_INIT,
+            arc::UpgradeArcContainerRequest::SKIP_SETUP_COPY_ON_INIT),
         ::testing::Bool(),
         ::testing::Bool()));
 
 TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_play_store_auto_update(GetParam());
 
   // First, start ARC for login screen.
@@ -2983,14 +2988,15 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     SessionManagerPlayStoreAutoUpdateTest,
     ::testing::ValuesIn(
-        {StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT,
-         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON,
-         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF}));
+        {arc::StartArcMiniInstanceRequest::AUTO_UPDATE_DEFAULT,
+         arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON,
+         arc::
+             StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF}));
 
 TEST_P(SessionManagerDalvikMemoryProfileTest, DalvikMemoryProfile) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_dalvik_memory_profile(GetParam());
 
   // First, start ARC for login screen.
@@ -3010,10 +3016,11 @@ TEST_P(SessionManagerDalvikMemoryProfileTest, DalvikMemoryProfile) {
 INSTANTIATE_TEST_SUITE_P(
     ,
     SessionManagerDalvikMemoryProfileTest,
-    ::testing::ValuesIn({StartArcMiniContainerRequest::MEMORY_PROFILE_DEFAULT,
-                         StartArcMiniContainerRequest::MEMORY_PROFILE_4G,
-                         StartArcMiniContainerRequest::MEMORY_PROFILE_8G,
-                         StartArcMiniContainerRequest::MEMORY_PROFILE_16G}));
+    ::testing::ValuesIn(
+        {arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_DEFAULT,
+         arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_4G,
+         arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_8G,
+         arc::StartArcMiniInstanceRequest::MEMORY_PROFILE_16G}));
 
 TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   ExpectAndRunStartSession(kSaneEmail);
@@ -3027,7 +3034,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -3081,7 +3088,7 @@ TEST_F(SessionManagerImplTest,
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -3214,7 +3221,7 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_native_bridge_experiment(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -3231,7 +3238,7 @@ TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_arc_file_picker_experiment(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -3248,7 +3255,7 @@ TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_arc_custom_tabs_experiment(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -3265,7 +3272,7 @@ TEST_F(SessionManagerImplTest, ArcGeneratePai) {
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_arc_generate_pai(true);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -3283,7 +3290,7 @@ TEST_F(SessionManagerImplTest, ArcLcdDensity) {
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   request.set_lcd_density(arc_lcd_density);
   // Use for login screen mode for minimalistic test.
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -3294,7 +3301,7 @@ TEST_F(SessionManagerImplTest, ArcNoSession) {
   SetUpArcMiniContainer();
 
   brillo::ErrorPtr error;
-  UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
+  arc::UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
   EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
@@ -3313,7 +3320,7 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
                                   ArcContainerStopReason::LOW_DISK_SPACE)))
       .Times(1);
 
-  UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
+  arc::UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
   EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
@@ -3351,13 +3358,14 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->StartArcMiniContainer(
-        &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+        &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
     EXPECT_FALSE(error.get());
   }
 
   {
     brillo::ErrorPtr error;
-    UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
+    arc::UpgradeArcContainerRequest request =
+        CreateUpgradeArcContainerRequest();
     EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
     EXPECT_FALSE(error.get());
   }
@@ -3393,7 +3401,7 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -3505,7 +3513,7 @@ TEST_F(SessionManagerImplTest, ArcUnavailable) {
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
+      &error, SerializeAsBlob(arc::StartArcMiniInstanceRequest())));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }

@@ -8,6 +8,8 @@ group("all") {
   deps = [
     ":libsystem_api",
     ":system_api-anomaly_detector-protos",
+    ":system_api-arc-goprotos",
+    ":system_api-arc-protos",
     ":system_api-attestation-goprotos",
     ":system_api-attestation-protos",
     ":system_api-authpolicy-protos",
@@ -202,7 +204,6 @@ proto_library("system_api-login_manager-protos") {
   proto_in_dir = "dbus/login_manager"
   proto_out_dir = "include/login_manager/proto_bindings"
   sources = [
-    "${proto_in_dir}/arc.proto",
     "${proto_in_dir}/login_screen_storage.proto",
     "${proto_in_dir}/policy_descriptor.proto",
   ]
@@ -627,4 +628,23 @@ goproto_library("system_api-shadercached-goprotos") {
   proto_in_dir = "dbus/shadercached"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/shadercached.proto" ]
+}
+
+proto_library("system_api-arc-protos") {
+  proto_in_dir = "dbus/arc"
+  proto_out_dir = "include/arc"
+  sources = [ "${proto_in_dir}/arc.proto" ]
+  standalone = true
+
+  # Override optimize_for option in proto file.
+  # Needed for fuzz targets using libprotobuf-mutator.
+  if (use.fuzzer) {
+    gen_cpp_mode = "speed"
+  }
+}
+
+goproto_library("system_api-arc-goprotos") {
+  proto_in_dir = "dbus/arc"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/arc.proto" ]
 }

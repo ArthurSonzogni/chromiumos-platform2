@@ -18,9 +18,9 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "arc/arc.pb.h"
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "login_manager/dbus_util.h"
-#include "login_manager/proto_bindings/arc.pb.h"
 
 namespace login_manager {
 

@@ -41,6 +41,10 @@
 class Crossystem;
 class InstallAttributesReader;
 
+namespace arc {
+class UpgradeArcContainerRequest;
+}  // namespace arc
+
 namespace dbus {
 class Bus;
 class ObjectProxy;
@@ -59,7 +63,6 @@ class PolicyKey;
 class ProcessManagerServiceInterface;
 class StartArcMiniContainerRequest;
 class SystemUtils;
-class UpgradeArcContainerRequest;
 class UserPolicyServiceFactory;
 class VpdProcess;
 
@@ -468,7 +471,7 @@ class SessionManagerImpl
 
   // Creates environment variables passed to upstart for container upgrade.
   std::vector<std::string> CreateUpgradeArcEnvVars(
-      const UpgradeArcContainerRequest& request,
+      const arc::UpgradeArcContainerRequest& request,
       const std::string& account_id,
       pid_t pid);
 

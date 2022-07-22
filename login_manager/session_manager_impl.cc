@@ -50,6 +50,7 @@
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
+#include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/arc_sideload_status_interface.h"
@@ -66,7 +67,6 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/process_manager_service_interface.h"
-#include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/regen_mitigator.h"
@@ -161,8 +161,8 @@ const unsigned int kCpuSharesBackground = 64;
 
 // Workaround for a presubmit check about long lines.
 constexpr auto
-    kStartArcMiniContainerRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT =
-        StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT;
+    kStartArcMiniInstanceRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT = arc::
+        StartArcMiniInstanceRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT;
 #endif
 
 // The interval used to periodically check if time sync was done by tlsdated.
@@ -1389,10 +1389,10 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
 bool SessionManagerImpl::StartArcMiniContainer(
     brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
 #if USE_CHEETS
-  StartArcMiniContainerRequest request;
+  arc::StartArcMiniInstanceRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
-                         "StartArcMiniContainerRequest parsing failed.");
+                         "StartArcMiniInstanceRequest parsing failed.");
     return false;
   }
 
@@ -1426,12 +1426,13 @@ bool SessionManagerImpl::StartArcMiniContainer(
   }
 
   switch (request.play_store_auto_update()) {
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
+    case arc::
+        StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
       break;
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
+    case arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
       env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
       break;
-    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
+    case arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
       env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
       break;
     default:
@@ -1440,15 +1441,16 @@ bool SessionManagerImpl::StartArcMiniContainer(
   }
 
   switch (request.dalvik_memory_profile()) {
-    case kStartArcMiniContainerRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT:
+    case kStartArcMiniInstanceRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT:
       break;
-    case StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_4G:
+    case arc::StartArcMiniInstanceRequest_DalvikMemoryProfile_MEMORY_PROFILE_4G:
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=4G");
       break;
-    case StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_8G:
+    case arc::StartArcMiniInstanceRequest_DalvikMemoryProfile_MEMORY_PROFILE_8G:
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=8G");
       break;
-    case StartArcMiniContainerRequest_DalvikMemoryProfile_MEMORY_PROFILE_16G:
+    case arc::
+        StartArcMiniInstanceRequest_DalvikMemoryProfile_MEMORY_PROFILE_16G:
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=16G");
       break;
     default:
@@ -1476,7 +1478,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
   base::ScopedClosureRunner scoped_runner(base::BindOnce(
       &SessionManagerImpl::OnContinueArcBootFailed, base::Unretained(this)));
 
-  UpgradeArcContainerRequest request;
+  arc::UpgradeArcContainerRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
                          "UpgradeArcContainerRequest parsing failed.");
@@ -2062,7 +2064,7 @@ bool SessionManagerImpl::StartArcContainer(
 }
 
 std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
-    const UpgradeArcContainerRequest& request,
+    const arc::UpgradeArcContainerRequest& request,
     const std::string& account_id,
     pid_t pid) {
   // Only allow for managed account if the policies allow it.
@@ -2090,15 +2092,16 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
                          request.disable_ureadahead())};
 
   switch (request.packages_cache_mode()) {
-    case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
+    case arc::
+        UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       env_vars.emplace_back("SKIP_PACKAGES_CACHE_SETUP=1");
       env_vars.emplace_back("COPY_PACKAGES_CACHE=1");
       break;
-    case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
+    case arc::UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
       env_vars.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
       env_vars.emplace_back("COPY_PACKAGES_CACHE=1");
       break;
-    case UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
+    case arc::UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
       env_vars.emplace_back("SKIP_PACKAGES_CACHE_SETUP=0");
       env_vars.emplace_back("COPY_PACKAGES_CACHE=0");
       break;

@@ -6,11 +6,14 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
-package login_manager;
+package arc;
+option go_package = "chromiumos/system_api/arc_proto";
 
 // ARC start options sent from Chrome to session manager. This message is used
-// in the SessionManagerInterface.StartArcMiniContainer method.
-message StartArcMiniContainerRequest {
+// in the SessionManagerInterface.StartArcMiniContainer method for ARC
+// container. It is also being used by concierge when the device is running on
+// ARCVM.
+message StartArcMiniInstanceRequest {
   enum PlayStoreAutoUpdate {
     // Play Store auto-update is left unchanged.
     AUTO_UPDATE_DEFAULT = 0;
