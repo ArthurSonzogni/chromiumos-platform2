@@ -42,49 +42,54 @@ AresClient::~AresClient() {
   ares_library_cleanup();
 }
 
-void AresClient::OnFileCanReadWithoutBlocking(ares_channel channel,
-                                              ares_socket_t socket_fd) {
-  ares_process_fd(channel, socket_fd, ARES_SOCKET_BAD);
+void AresClient::ProcessFd(ares_channel channel,
+                           ares_socket_t read_fd,
+                           ares_socket_t write_fd) {
+  // Remove the watchers before ares potentially closing the watched fd in
+  // ares_process_fd. Watching a closed fd is discouraged.
+  ClearWatchers(channel);
+  ares_process_fd(channel, read_fd, write_fd);
   UpdateWatchers(channel);
 }
 
-void AresClient::OnFileCanWriteWithoutBlocking(ares_channel channel,
-                                               ares_socket_t socket_fd) {
-  ares_process_fd(channel, ARES_SOCKET_BAD, socket_fd);
-  UpdateWatchers(channel);
+void AresClient::ClearWatchers(ares_channel channel) {
+  read_watchers_.erase(channel);
+  write_watchers_.erase(channel);
 }
 
 void AresClient::UpdateWatchers(ares_channel channel) {
-  ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
-  int action_bits = ares_getsock(channel, sockets, ARES_GETSOCK_MAXNUM);
-
-  auto read_watchers = read_watchers_.find(channel);
-  auto write_watchers = write_watchers_.find(channel);
-  if (read_watchers == read_watchers_.end() ||
-      write_watchers == write_watchers_.end()) {
+  // Only update watchers if the channel is still valid.
+  if (!base::Contains(channels_inflight_, channel)) {
     return;
   }
 
-  // Clear the watchers and rebuild it. This is necessary because ares does not
-  // provide a utility to notify unused sockets.
-  read_watchers->second.clear();
-  write_watchers->second.clear();
+  // Rebuild the watchers. This is necessary because ares does not provide a
+  // utility to notify for unused sockets.
+  const auto& [read_watchers, read_emplaced] = read_watchers_.emplace(
+      channel,
+      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>());
+  const auto& [write_watchers, write_emplaced] = write_watchers_.emplace(
+      channel,
+      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>());
+
+  ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
+  int action_bits = ares_getsock(channel, sockets, ARES_GETSOCK_MAXNUM);
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       read_watchers->second.emplace_back(
           base::FileDescriptorWatcher::WatchReadable(
               sockets[i],
-              base::BindRepeating(&AresClient::OnFileCanReadWithoutBlocking,
+              base::BindRepeating(&AresClient::ProcessFd,
                                   weak_factory_.GetWeakPtr(), channel,
-                                  sockets[i])));
+                                  sockets[i], ARES_SOCKET_BAD)));
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
       write_watchers->second.emplace_back(
           base::FileDescriptorWatcher::WatchWritable(
               sockets[i],
-              base::BindRepeating(&AresClient::OnFileCanWriteWithoutBlocking,
+              base::BindRepeating(&AresClient::ProcessFd,
                                   weak_factory_.GetWeakPtr(), channel,
-                                  sockets[i])));
+                                  ARES_SOCKET_BAD, sockets[i])));
     }
   }
 }
@@ -139,7 +144,7 @@ void AresClient::ResetTimeout(ares_channel channel) {
   if (!base::Contains(channels_inflight_, channel)) {
     return;
   }
-  ares_process_fd(channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
+  ProcessFd(channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
 
   struct timeval max_tv, ret_tv;
   struct timeval* tv;
@@ -239,16 +244,9 @@ bool AresClient::Resolve(const unsigned char* msg,
 
   // Start timeout handler.
   channels_inflight_.emplace(channel);
+  UpdateWatchers(channel);
   ResetTimeout(channel);
 
-  // Set up file descriptor watchers.
-  read_watchers_.emplace(
-      channel,
-      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>());
-  write_watchers_.emplace(
-      channel,
-      std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>());
-  UpdateWatchers(channel);
   return true;
 }
 }  // namespace dns_proxy

@@ -85,12 +85,12 @@ class AresClient {
                     std::unique_ptr<uint8_t[]> msg,
                     int len);
 
-  // Callback called whenever an event is ready to be handled by ares on
-  // |socket_fd|.
-  void OnFileCanReadWithoutBlocking(ares_channel channel,
-                                    ares_socket_t socket_fd);
-  void OnFileCanWriteWithoutBlocking(ares_channel channel,
-                                     ares_socket_t socket_fd);
+  // Process an ares event for |channel|. If |read_fd| or |write_fd| is passed,
+  // it checks for a read or write event for the fd. Otherwise, it checks for
+  // the timeout in the |channel|.
+  void ProcessFd(ares_channel channel,
+                 ares_socket_t write_fd,
+                 ares_socket_t read_fd);
 
   // Reset the current timeout callback and process all timed out requests.
   void ResetTimeout(ares_channel channel);
@@ -99,6 +99,12 @@ class AresClient {
   // queries.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
   ares_channel InitChannel(const std::string& name_server, int type);
+
+  // Stop watching file descriptors given by ares's channel |channel|. This must
+  // be done before any ares processing because ares might close the watched
+  // fd. Watching a closed fd is discouraged for potentially dangerous race
+  // condition with a newly created fd.
+  void ClearWatchers(ares_channel channel);
 
   // Update file descriptors to be watched.
   // |read_watchers_| and |write_watchers_| stores the watchers.
