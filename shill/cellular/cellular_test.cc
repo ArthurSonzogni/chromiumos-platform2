@@ -2148,8 +2148,8 @@ TEST_P(CellularTest, BuildApnTryList) {
   apn_try_list = device_->BuildApnTryList();
   ASSERT_EQ(apn_try_list.size(), apn_list.size() + 1u);
   EXPECT_EQ(apn_try_list[0], custom_apn);
-  EXPECT_EQ(apn_try_list[1], apn1);
-  EXPECT_EQ(apn_try_list[2], apn2);
+  EXPECT_EQ(apn_try_list[1], apn2);  // MODB sorted based on last_good_apn
+  EXPECT_EQ(apn_try_list[2], apn1);
 
   // Set the custom APN to an existing APN
   service->set_apn_info_for_testing(apn1);

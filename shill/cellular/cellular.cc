@@ -2134,17 +2134,39 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     }
   }
 
+  // Ensure all Modem APNs are added before MODB APNs.
+  for (auto apn : apn_list_) {
+    DCHECK(base::Contains(apn, cellular::kApnSource));
+    // Verify all APNs are either from the Modem or MODB.
+    DCHECK(apn[cellular::kApnSource] == cellular::kApnSourceModem ||
+           apn[cellular::kApnSource] == cellular::kApnSourceMoDb);
+    if (apn[cellular::kApnSource] != cellular::kApnSourceModem)
+      continue;
+    apn_try_list.push_back(apn);
+  }
+  // Add MODB APNs and update the origin of the custom APN.
+  int index_of_first_modb_apn = apn_try_list.size();
   for (auto apn : apn_list_) {
     if (custom_apn_info && CompareApns(*custom_apn_info, apn)) {
       // If |custom_apn_info| is not null, it is located at the first position
       // of |apn_try_list|, and we update the APN source for it.
-      apn_try_list[0][cellular::kApnSource] = cellular::kApnSourceMoDb;
+      apn_try_list[0][cellular::kApnSource] = apn[cellular::kApnSource];
       continue;
     }
-    if (last_good_apn_info && CompareApns(*last_good_apn_info, apn)) {
+
+    bool is_same_as_last_good_apn =
+        last_good_apn_info && CompareApns(*last_good_apn_info, apn);
+    if (is_same_as_last_good_apn)
       add_last_good_apn = false;
+
+    if (apn[cellular::kApnSource] == cellular::kApnSourceMoDb) {
+      if (is_same_as_last_good_apn) {
+        apn_try_list.insert(apn_try_list.begin() + index_of_first_modb_apn,
+                            apn);
+      } else {
+        apn_try_list.push_back(apn);
+      }
     }
-    apn_try_list.push_back(apn);
   }
 
   // The last good APN will be a last-ditch effort to connect in case the APN
