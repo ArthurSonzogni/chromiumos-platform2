@@ -264,8 +264,6 @@ class WiFiService : public Service {
       Metrics::WiFiDisconnectionType type,
       IEEE_80211::WiFiReasonCode disconnect_reason);
 
-  uint64_t session_tag() const { return session_tag_; }
-
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
@@ -293,8 +291,8 @@ class WiFiService : public Service {
 
  private:
   friend class WiFiServiceSecurityTest;
-  friend class WiFiServiceTest;                     // SetPassphrase
-  friend class WiFiServiceFuzzer;                   // SetPassphrase
+  friend class WiFiServiceTest;    // SetPassphrase, session_tag
+  friend class WiFiServiceFuzzer;  // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
@@ -453,6 +451,8 @@ class WiFiService : public Service {
   void SetWiFi(const WiFiRefPtr& new_wifi);
 
   Metrics::WiFiConnectionAttemptInfo ConnectionAttemptInfo() const;
+
+  uint64_t session_tag() const { return session_tag_; }
 
   // Clock for time-related events.
   static std::unique_ptr<base::Clock> clock_;

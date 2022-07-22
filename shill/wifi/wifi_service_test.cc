@@ -195,6 +195,10 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service->ConnectionAttemptInfo();
   }
 
+  uint64_t GetSessionTag(const WiFiServiceRefPtr& service) const {
+    return service->session_tag();
+  }
+
  private:
   MockManager mock_manager_;
   MockNetlinkManager netlink_manager_;
@@ -2333,7 +2337,7 @@ TEST_F(WiFiServiceTest, RandomizationBlocklist) {
 TEST_F(WiFiServiceTest, SessionTagDefaultIsInvalid) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
   // On creation, the session tag associated with the service is invalid.
-  EXPECT_EQ(service->session_tag(), WiFiService::kSessionTagInvalid);
+  EXPECT_EQ(GetSessionTag(service), WiFiService::kSessionTagInvalid);
 }
 
 TEST_F(WiFiServiceTest, SessionTagCreatedNotInvalid) {
@@ -2343,7 +2347,7 @@ TEST_F(WiFiServiceTest, SessionTagCreatedNotInvalid) {
   // After emitting a "connection attempt" event, the session tag is no longer
   // invalid.
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   EXPECT_NE(session_tag, WiFiService::kSessionTagInvalid);
 }
 
@@ -2355,9 +2359,9 @@ TEST_F(WiFiServiceTest, SessionTagNotReused) {
   // When we emit 2 different "connection attempt" events it means they belong
   // to different sessions, therefore the tags are different.
   service->EmitConnectionAttemptEvent();
-  session_tag1 = service->session_tag();
+  session_tag1 = GetSessionTag(service);
   service->EmitConnectionAttemptEvent();
-  session_tag2 = service->session_tag();
+  session_tag2 = GetSessionTag(service);
   EXPECT_NE(session_tag1, session_tag2);
 }
 
@@ -2367,10 +2371,10 @@ TEST_F(WiFiServiceTest, SessionTagConstantForFullSuccessfulConnection) {
 
   // Emit a "connection attempt" event, which will create the session tag.
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   // Connection attempt succeeded, the session tag is the same.
   service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
-  EXPECT_EQ(session_tag, service->session_tag());
+  EXPECT_EQ(session_tag, GetSessionTag(service));
 }
 
 TEST_F(WiFiServiceTest, SessionTagInvalidAfterConnectionAttemptFailure) {
@@ -2382,7 +2386,7 @@ TEST_F(WiFiServiceTest, SessionTagInvalidAfterConnectionAttemptFailure) {
   service->EmitConnectionAttemptResultEvent(Service::kFailureBadPassphrase);
   // A failure to connect means that the session has ended, expect the session
   // tag to be reset to default.
-  EXPECT_EQ(service->session_tag(), WiFiService::kSessionTagInvalid);
+  EXPECT_EQ(GetSessionTag(service), WiFiService::kSessionTagInvalid);
 }
 
 TEST_F(WiFiServiceTest, SessionTagInvalidAfterDisconnection) {
@@ -2390,16 +2394,16 @@ TEST_F(WiFiServiceTest, SessionTagInvalidAfterDisconnection) {
 
   service->EmitConnectionAttemptEvent();
   // After a connection attempt, the tag is valid.
-  EXPECT_NE(service->session_tag(), WiFiService::kSessionTagInvalid);
+  EXPECT_NE(GetSessionTag(service), WiFiService::kSessionTagInvalid);
   service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
   // After a successful connection, the session tag is still valid.
-  EXPECT_NE(service->session_tag(), WiFiService::kSessionTagInvalid);
+  EXPECT_NE(GetSessionTag(service), WiFiService::kSessionTagInvalid);
   service->EmitDisconnectionEvent(
       Metrics::kWiFiDisconnectionTypeExpectedUserAction,
       IEEE_80211::kReasonCodeTooManySTAs);
   // After disconnection the session has ended, expect the session tag to be
   // reset to default.
-  EXPECT_EQ(service->session_tag(), WiFiService::kSessionTagInvalid);
+  EXPECT_EQ(GetSessionTag(service), WiFiService::kSessionTagInvalid);
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptEmitsStructuredMetric) {
@@ -2418,7 +2422,7 @@ TEST_F(WiFiServiceTest,
   Service::ConnectFailure error = Service::kFailureNone;
 
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   // The "connection attempt result" must have the same session tag as the
   // "connection attempt" event when the connection succeeded.
   EXPECT_CALL(*metrics(), NotifyWiFiConnectionAttemptResult(
@@ -2434,7 +2438,7 @@ TEST_F(WiFiServiceTest,
   Service::ConnectFailure error = Service::kFailureBadPassphrase;
 
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   // The "connection attempt result" must have the same session tag as the
   // "connection attempt" event when the connection failed.
   EXPECT_CALL(*metrics(), NotifyWiFiConnectionAttemptResult(
@@ -2451,7 +2455,7 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnSuccess) {
   IEEE_80211::WiFiReasonCode error_code = IEEE_80211::kReasonCodeReserved0;
 
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
   // The disconnection event must have the same session tag as the
   // "connection attempt" event when the disconnection is expected.
@@ -2468,7 +2472,7 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnFailure) {
   IEEE_80211::WiFiReasonCode error_code = IEEE_80211::kReasonCodeTooManySTAs;
 
   service->EmitConnectionAttemptEvent();
-  session_tag = service->session_tag();
+  session_tag = GetSessionTag(service);
   service->EmitConnectionAttemptResultEvent(Service::kFailureNone);
   // The disconnection event must have the same session tag as the
   // "connection attempt" event when the disconnection is unexpected.
