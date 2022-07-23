@@ -31,6 +31,10 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon)
       rgb_keyboard_controller_(internal_keyboard_.get()),
       daemon_(daemon) {}
 
+void DBusAdaptor::OnDeviceReconnected() {
+  rgb_keyboard_controller_.ReinitializeOnDeviceReconnected();
+}
+
 void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
@@ -51,6 +55,14 @@ void DBusAdaptor::GetRgbKeyboardCapabilities(
     base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
         base::BindOnce(&RgbkbdDaemon::Quit, base::Unretained(daemon_)));
+  }
+
+  // kIndividualKey keyboard needs to reinitialized in certain cases (ex
+  // suspend). This registers a monitor for these cases so we know when to
+  // reinitialize device state.
+  if (daemon_ && capabilities == static_cast<uint32_t>(
+                                     RgbKeyboardCapabilities::kIndividualKey)) {
+    daemon_->RegisterUsbDeviceMonitor();
   }
 }
 
@@ -100,4 +112,18 @@ void RgbkbdDaemon::RegisterDBusObjectsAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }
 
+void RgbkbdDaemon::RegisterUsbDeviceMonitor() {
+  if (ec_usb_device_monitor_) {
+    return;
+  }
+
+  ec_usb_device_monitor_ = std::make_unique<ec::EcUsbDeviceMonitor>(bus_);
+  ec_usb_device_monitor_->AddObserver(adaptor_.get());
+}
+
+RgbkbdDaemon::~RgbkbdDaemon() {
+  if (ec_usb_device_monitor_) {
+    ec_usb_device_monitor_->RemoveObserver(adaptor_.get());
+  }
+}
 }  // namespace rgbkbd

@@ -19,8 +19,10 @@ group("all") {
 }
 
 default_pkg_deps = [
+  "absl",
   "libbrillo",
   "libchrome",
+  "libpower_manager-client",
   "libusb-1.0",
 ]
 pkg_config("target_defaults_pkg_deps") {
@@ -31,6 +33,7 @@ libec_sources = [
   "device_event_command.cc",
   "display_soc_command.cc",
   "ec_command_factory.cc",
+  "ec_usb_device_monitor.cc",
   "ec_usb_endpoint.cc",
   "fingerprint/fp_context_command.cc",
   "fingerprint/fp_context_command_factory.cc",
@@ -71,6 +74,7 @@ install_config("install_libec_headers") {
     "ec_command.h",
     "ec_command_async.h",
     "ec_command_factory.h",
+    "ec_usb_device_monitor.h",
     "get_mkbp_wake_mask_command.h",
     "get_protocol_info_command.h",
     "get_version_command.h",
@@ -108,6 +112,10 @@ install_config("install_fingerprint_headers") {
 }
 
 if (use.test) {
+  config("libec_lib_test_all_dependent_configs") {
+    libs = [ "system_api-power_manager-protos" ]
+  }
+
   executable("libec_tests") {
     sources = [
       "charge_control_set_command_test.cc",
@@ -115,6 +123,7 @@ if (use.test) {
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
       "ec_command_test.cc",
+      "ec_usb_device_monitor_test.cc",
       "ec_usb_endpoint_test.cc",
       "fingerprint/fp_context_command_factory_test.cc",
       "fingerprint/fp_context_command_test.cc",
@@ -144,12 +153,16 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults_pkg_deps",
     ]
+    all_dependent_configs = [ ":libec_lib_test_all_dependent_configs" ]
     run_test = true
     deps = [
       ":libec_static",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "protobuf-lite",
+    ]
   }
 }
 

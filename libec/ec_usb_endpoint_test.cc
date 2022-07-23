@@ -101,7 +101,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInInit) {
   EXPECT_CALL(*mock, init).WillOnce(Return(LIBUSB_ERROR_IO));
   EXPECT_CALL(*mock, exit).Times(0);
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -110,7 +110,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInGetDeviceList) {
   EXPECT_CALL(*mock, get_device_list).WillOnce(Return(LIBUSB_ERROR_IO));
   EXPECT_CALL(*mock, exit);
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -122,7 +122,7 @@ TEST_F(EcUsbEndpointTest, Init_CantFindDevice) {
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -135,7 +135,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInOpen) {
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -152,7 +152,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInVid) {
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -169,7 +169,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInPid) {
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -188,7 +188,7 @@ TEST_F(EcUsbEndpointTest, Init_FailInGetConfigDescriptor) {
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -210,7 +210,7 @@ TEST_F(EcUsbEndpointTest, Init_BadMaxPacketSize) {
   EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
@@ -232,17 +232,17 @@ TEST_F(EcUsbEndpointTest, Init_Success) {
   EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_TRUE(uep.Init(0x18d1, 0x5022));
 }
 
 TEST_F(EcUsbEndpointTest, ClaimInterface_NotInitialized) {
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.ClaimInterface());
 }
 
 TEST_F(EcUsbEndpointTest, ReleaseInterface_NotInitialized) {
-  EcUsbEndpoint uep(std::move(mock));
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
   EXPECT_FALSE(uep.ReleaseInterface());
 }
 

@@ -17,6 +17,9 @@ namespace ec {
 constexpr uint16_t kUsbVidGoogle = 0x18d1;
 constexpr uint16_t kUsbPidCrosEc = 0x5022;
 
+constexpr uint32_t kDefaultMaxRetries = 20;
+constexpr uint32_t kDefaultTimeoutMs = 100;
+
 struct usb_endpoint {
   struct libusb_device_handle* dev_handle = nullptr;
   int interface_number = 0;
@@ -45,8 +48,12 @@ class EcUsbEndpointInterface {
 class BRILLO_EXPORT EcUsbEndpoint : public EcUsbEndpointInterface {
  public:
   EcUsbEndpoint() : EcUsbEndpoint(std::make_unique<LibusbWrapper>()) {}
-  explicit EcUsbEndpoint(std::unique_ptr<LibusbWrapper> libusb)
-      : libusb_(std::move(libusb)) {}
+  explicit EcUsbEndpoint(std::unique_ptr<LibusbWrapper> libusb,
+                         uint32_t max_retries = kDefaultMaxRetries,
+                         uint32_t timeout_ms = kDefaultTimeoutMs)
+      : libusb_(std::move(libusb)),
+        max_retries_(max_retries),
+        timeout_ms_(timeout_ms) {}
   ~EcUsbEndpoint();
 
   bool Init(uint16_t vid, uint16_t pid);
@@ -55,13 +62,21 @@ class BRILLO_EXPORT EcUsbEndpoint : public EcUsbEndpointInterface {
   bool ReleaseInterface();
 
  private:
-  std::unique_ptr<LibusbWrapper> libusb_;
-  struct usb_endpoint endpoint_;
-  bool libusb_is_init_ = false;
   libusb_device_handle* CheckDevice(libusb_device* dev,
                                     uint16_t vid,
                                     uint16_t pid);
   int FindInterfaceWithEndpoint(struct usb_endpoint* uep);
+  bool AttemptInit(uint16_t vid, uint16_t pid);
+  bool ResetEndpoint();
+  void CleanUp();
+
+  std::unique_ptr<LibusbWrapper> libusb_;
+  struct usb_endpoint endpoint_;
+  bool libusb_is_init_ = false;
+  const uint32_t max_retries_;
+  const uint32_t timeout_ms_;
+  uint16_t vid_ = 0;
+  uint16_t pid_ = 0;
 };
 
 class BRILLO_EXPORT EcUsbEndpointStub : public EcUsbEndpointInterface {

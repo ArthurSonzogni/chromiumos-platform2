@@ -11,6 +11,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/rgbkbd/dbus-constants.h>
+#include <libec/ec_usb_device_monitor.h>
 
 #include "rgbkbd/dbus_adaptors/org.chromium.Rgbkbd.h"
 #include "rgbkbd/internal_rgb_keyboard.h"
@@ -22,7 +23,8 @@ namespace rgbkbd {
 class RgbkbdDaemon;
 
 class DBusAdaptor : public org::chromium::RgbkbdInterface,
-                    public org::chromium::RgbkbdAdaptor {
+                    public org::chromium::RgbkbdAdaptor,
+                    public ec::EcUsbDeviceMonitor::Observer {
  public:
   explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon);
   DBusAdaptor(const DBusAdaptor&) = delete;
@@ -42,6 +44,9 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void SetTestingMode(bool enable_testing, uint32_t capability) override;
   void SetAnimationMode(uint32_t mode) override;
 
+  // From ec::EcUsbDeviceMonitor::Observer
+  void OnDeviceReconnected() override;
+
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<InternalRgbKeyboard> internal_keyboard_;
@@ -55,14 +60,16 @@ class RgbkbdDaemon : public brillo::DBusServiceDaemon {
   RgbkbdDaemon();
   RgbkbdDaemon(const RgbkbdDaemon&) = delete;
   RgbkbdDaemon& operator=(const RgbkbdDaemon&) = delete;
+  ~RgbkbdDaemon() override;
 
-  ~RgbkbdDaemon() override = default;
+  void RegisterUsbDeviceMonitor();
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
+  std::unique_ptr<ec::EcUsbDeviceMonitor> ec_usb_device_monitor_;
   std::unique_ptr<DBusAdaptor> adaptor_;
 };
 

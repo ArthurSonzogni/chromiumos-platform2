@@ -23,6 +23,7 @@ class RgbKeyboardController {
   virtual void SetRainbowMode() = 0;
   virtual void SetAnimationMode(RgbAnimationMode mode) = 0;
   virtual void SetKeyboardClient(RgbKeyboard* keyboard) = 0;
+  virtual void ReinitializeOnDeviceReconnected() = 0;
 };
 
 }  // namespace rgbkbd

@@ -175,4 +175,19 @@ bool RgbKeyboardControllerImpl::IsZonedKeyboard() const {
   DCHECK(capabilities_.has_value());
   return capabilities_.value() != RgbKeyboardCapabilities::kIndividualKey;
 }
+
+void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
+  SetKeyColor({kLeftShiftKey, GetCurrentCapsLockColor(kLeftShiftKey)});
+  SetKeyColor({kRightShiftKey, GetCurrentCapsLockColor(kRightShiftKey)});
+  switch (background_type_) {
+    case BackgroundType::kStaticSingleColor:
+      SetStaticBackgroundColor(background_color_.r, background_color_.g,
+                               background_color_.b);
+      break;
+    case BackgroundType::kStaticRainbow:
+      SetRainbowMode();
+      break;
+  }
+}
+
 }  // namespace rgbkbd

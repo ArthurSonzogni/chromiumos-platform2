@@ -4,6 +4,7 @@
 
 #include "libec/ec_usb_endpoint.h"
 
+#include <absl/time/clock.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <libusb-1.0/libusb.h>
@@ -12,6 +13,11 @@
 #include "libec/ec_command.h"
 
 namespace ec {
+
+// Sleep to allow time for USB device to be ready for input after resetting.
+// If sleep time is set <4 seconds, behavior is inconsistent and occasionally
+// fails to initialize correctly.
+constexpr int kResetEndpointTimeoutMs = 4000;
 
 int EcUsbEndpoint::FindInterfaceWithEndpoint(struct usb_endpoint* uep) {
   struct libusb_config_descriptor* conf;
@@ -56,17 +62,17 @@ libusb_device_handle* EcUsbEndpoint::CheckDevice(libusb_device* dev,
   libusb_device_handle* handle = nullptr;
   r = libusb_->open(dev, &handle);
   if (r != LIBUSB_SUCCESS) {
-    LOG(ERROR) << "libusb_open failed: " << libusb_error_name(r);
+    VLOG(1) << "libusb_open failed: " << libusb_error_name(r);
     return nullptr;
   }
 
   if (vid != 0 && vid != desc.idVendor) {
-    LOG(INFO) << "idVendor doesn't match: " << std::hex << desc.idVendor;
+    VLOG(1) << "idVendor doesn't match: " << std::hex << desc.idVendor;
     libusb_->close(handle);
     return nullptr;
   }
   if (pid != 0 && pid != desc.idProduct) {
-    LOG(INFO) << "idProduct doesn't match: " << std::hex << desc.idProduct;
+    VLOG(1) << "idProduct doesn't match: " << std::hex << desc.idProduct;
     libusb_->close(handle);
     return nullptr;
   }
@@ -78,7 +84,7 @@ const struct usb_endpoint& EcUsbEndpoint::GetEndpointPtr() {
   return endpoint_;
 }
 
-bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
+bool EcUsbEndpoint::AttemptInit(uint16_t vid, uint16_t pid) {
   int r = libusb_->init(nullptr);
   if (r != LIBUSB_SUCCESS) {
     LOG(ERROR) << "libusb_init failed: " << libusb_error_name(r);
@@ -89,7 +95,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
   libusb_device** devs;
   r = libusb_->get_device_list(nullptr, &devs);
   if (r < LIBUSB_SUCCESS) {
-    LOG(WARNING) << "No device is found: " << libusb_error_name(r);
+    VLOG(1) << "No device is found: " << libusb_error_name(r);
     return false;
   }
 
@@ -97,7 +103,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
   for (int i = 0; devs[i]; i++) {
     devh = CheckDevice(devs[i], vid, pid);
     if (devh) {
-      LOG(INFO) << "Found device " << std::hex << vid << ":" << std::hex << pid;
+      VLOG(1) << "Found device " << std::hex << vid << ":" << std::hex << pid;
       break;
     }
   }
@@ -105,8 +111,8 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
   libusb_->free_device_list(devs, 1);
 
   if (!devh) {
-    LOG(WARNING) << "Can't find device " << std::hex << vid << ":" << std::hex
-                 << pid;
+    VLOG(1) << "Can't find device " << std::hex << vid << ":" << std::hex
+            << pid;
     return false;
   }
 
@@ -115,7 +121,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
 
   int iface_num = FindInterfaceWithEndpoint(&endpoint_);
   if (iface_num < 0) {
-    LOG(WARNING) << "USB HOSTCMD not supported by that device";
+    LOG(WARNING) << "USB HOSTCMD not supported by the device";
     return false;
   }
 
@@ -126,9 +132,47 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
 
   endpoint_.interface_number = iface_num;
 
-  LOG(INFO) << "Found interface=" << endpoint_.interface_number
-            << base::StringPrintf(" endpoint=0x%02x", endpoint_.address)
-            << " chunk_len=" << endpoint_.chunk_len;
+  VLOG(1) << "Found interface=" << endpoint_.interface_number
+          << base::StringPrintf(" endpoint=0x%02x", endpoint_.address)
+          << " chunk_len=" << endpoint_.chunk_len;
+
+  return true;
+}
+
+bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
+  // Save vid and pid in case we need to use them to reinitialize the endpoint
+  vid_ = vid;
+  pid_ = pid;
+
+  int retries = max_retries_;
+  bool success = AttemptInit(vid, pid);
+  while (!success && retries--) {
+    CleanUp();
+    absl::SleepFor(absl::Milliseconds(timeout_ms_));
+    success = AttemptInit(vid, pid);
+  }
+
+  if (success) {
+    LOG(INFO) << "Successfully initialized USB Endpoint after retry #"
+              << (max_retries_ - retries);
+  } else {
+    LOG(WARNING) << "Failed to initialize USB Endpoint after retry #"
+                 << (max_retries_ - retries);
+  }
+
+  return success;
+}
+
+bool EcUsbEndpoint::ResetEndpoint() {
+  CleanUp();
+
+  if (!Init(vid_, pid_)) {
+    LOG(ERROR) << "Failed to reset usb endpoint.";
+    return false;
+  }
+
+  // Sleep to allow time for USB device to be ready for input.
+  absl::SleepFor(absl::Milliseconds(kResetEndpointTimeoutMs));
 
   return true;
 }
@@ -141,11 +185,30 @@ bool EcUsbEndpoint::ClaimInterface() {
 
   int r =
       libusb_claim_interface(endpoint_.dev_handle, endpoint_.interface_number);
+
+  int retries = max_retries_;
+  while ((r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_BUSY) && retries--) {
+    if (r == LIBUSB_ERROR_NO_DEVICE) {
+      LOG(WARNING) << "Lost USB Device. Attempting to reset the endpoint.";
+      if (!ResetEndpoint()) {
+        break;
+      }
+    }
+
+    absl::SleepFor(absl::Milliseconds(timeout_ms_));
+    r = libusb_claim_interface(endpoint_.dev_handle,
+                               endpoint_.interface_number);
+  }
+
   if (r != LIBUSB_SUCCESS) {
-    LOG(ERROR) << "libusb_claim_interface failed: " << libusb_error_name(r);
+    LOG(ERROR) << "Failed to claim interface with error "
+               << libusb_error_name(r) << " after retry #"
+               << (max_retries_ - retries);
     return false;
   }
 
+  VLOG(1) << "Successfully claimed interface after retry #"
+          << (max_retries_ - retries);
   return true;
 }
 
@@ -165,18 +228,24 @@ bool EcUsbEndpoint::ReleaseInterface() {
   return true;
 }
 
-EcUsbEndpoint::~EcUsbEndpoint() {
-  LOG(INFO) << "Exiting libusb";
-
+void EcUsbEndpoint::CleanUp() {
   if (!libusb_is_init_)
     return;
 
   ReleaseInterface();
 
-  if (endpoint_.dev_handle)
+  if (endpoint_.dev_handle) {
     libusb_->close(endpoint_.dev_handle);
+    endpoint_.dev_handle = nullptr;
+  }
 
   libusb_->exit(nullptr);
+
+  libusb_is_init_ = false;
+}
+
+EcUsbEndpoint::~EcUsbEndpoint() {
+  CleanUp();
 }
 
 }  // namespace ec
