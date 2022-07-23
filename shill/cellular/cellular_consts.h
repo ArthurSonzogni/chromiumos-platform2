@@ -13,6 +13,7 @@ namespace cellular {
 // Property added in shill to the last good APN to be able to reset/obsolete
 // it by changing the version.
 const char kApnVersionProperty[] = "version";
+const int kCurrentApnCacheVersion = 2;
 const char kApnSource[] = "apn_source";
 
 // APN Source.

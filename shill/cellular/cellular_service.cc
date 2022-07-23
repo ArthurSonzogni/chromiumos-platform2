@@ -61,7 +61,6 @@ const char kGenericServiceNamePrefix[] = "MobileNetwork";
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
-const int kCurrentApnCacheVersion = 2;
 
 bool GetNonEmptyField(const Stringmap& stringmap,
                       const std::string& fieldname,
@@ -112,7 +111,7 @@ void LoadApn(const StoreInterface* storage,
                       cellular::kApnVersionProperty, apn_info) ||
         !base::StringToInt((*apn_info)[cellular::kApnVersionProperty],
                            &version) ||
-        version < kCurrentApnCacheVersion) {
+        version < cellular::kCurrentApnCacheVersion) {
       return;
     }
   }
@@ -127,6 +126,8 @@ void LoadApn(const StoreInterface* storage,
                apn_info);
   LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, cellular::kApnVersionProperty,
+               apn_info);
 }
 
 void SaveApnField(StoreInterface* storage,
@@ -760,7 +761,7 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
       new_apn_info[kApnAttachProperty] = str;
 
     new_apn_info[cellular::kApnVersionProperty] =
-        base::NumberToString(kCurrentApnCacheVersion);
+        base::NumberToString(cellular::kCurrentApnCacheVersion);
   }
   if (apn_info_ == new_apn_info) {
     return true;

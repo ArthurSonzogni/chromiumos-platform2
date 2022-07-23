@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include <base/containers/contains.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace shill {
@@ -45,6 +46,8 @@ void ApnList::AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
   if (!mobile_apn.ip_type.empty())
     props[kApnIpTypeProperty] = mobile_apn.ip_type;
 
+  props[cellular::kApnVersionProperty] =
+      base::NumberToString(cellular::kCurrentApnCacheVersion);
   // Find the first localized and non-localized name, if any.
   if (!mobile_apn.operator_name_list.empty())
     props[kApnNameProperty] = mobile_apn.operator_name_list[0].name;
