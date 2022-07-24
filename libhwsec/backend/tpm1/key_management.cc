@@ -11,10 +11,15 @@
 
 #include <base/callback_helpers.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
@@ -23,6 +28,7 @@
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::kWellKnownExponent;
 using hwsec_foundation::Sha1;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
@@ -37,6 +43,52 @@ constexpr uint8_t kDefaultSrkAuth[] = {};
 constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
 constexpr uint32_t kDefaultDiscardableWrapPasswordLength = 32;
 constexpr uint32_t kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
+
+struct RsaParameters {
+  uint32_t key_exponent;
+  brillo::Blob key_modulus;
+};
+
+StatusOr<RsaParameters> ParseSpkiDer(const brillo::Blob& public_key_spki_der) {
+  // Parse the SPKI.
+  const unsigned char* asn1_ptr = public_key_spki_der.data();
+  const crypto::ScopedEVP_PKEY pkey(
+      d2i_PUBKEY(nullptr, &asn1_ptr, public_key_spki_der.size()));
+  if (!pkey) {
+    return MakeStatus<TPMError>("Failed to parse Subject Public Key Info DER",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  const crypto::ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  if (!rsa) {
+    return MakeStatus<TPMError>("non-RSA key was supplied",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  brillo::Blob key_modulus(RSA_size(rsa.get()));
+  const BIGNUM* n;
+  const BIGNUM* e;
+  RSA_get0_key(rsa.get(), &n, &e, nullptr);
+  if (BN_bn2bin(n, key_modulus.data()) != key_modulus.size()) {
+    return MakeStatus<TPMError>("Failed to extract public key modulus",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  constexpr BN_ULONG kInvalidBnWord = ~static_cast<BN_ULONG>(0);
+  const BN_ULONG exponent_word = BN_get_word(e);
+  if (exponent_word == kInvalidBnWord ||
+      !base::IsValueInRangeForNumericType<uint32_t>(exponent_word)) {
+    return MakeStatus<TPMError>("Failed to extract public key exponent",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  const uint32_t key_exponent = static_cast<uint32_t>(exponent_word);
+
+  return RsaParameters{
+      .key_exponent = key_exponent,
+      .key_modulus = std::move(key_modulus),
+  };
+}
 
 }  // namespace
 
@@ -557,6 +609,95 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
 
   srk_cache_ = std::move(local_srk_handle);
   return srk_cache_->value();
+}
+
+StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
+    brillo::Blob key_modulus,
+    uint32_t key_flags,
+    uint32_t signature_scheme,
+    uint32_t encryption_scheme) {
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+
+  ScopedTssKey local_key_handle(overalls, context);
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+          context, TSS_OBJECT_TYPE_RSAKEY, key_flags, local_key_handle.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+                      local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+                      TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, key_modulus.size(),
+                      key_modulus.data())))
+      .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
+
+  if (signature_scheme != TSS_SS_NONE) {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+                        local_key_handle, TSS_TSPATTRIB_KEY_INFO,
+                        TSS_TSPATTRIB_KEYINFO_SIGSCHEME, signature_scheme)))
+        .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
+  }
+
+  if (encryption_scheme != TSS_ES_NONE) {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+                        local_key_handle, TSS_TSPATTRIB_KEY_INFO,
+                        TSS_TSPATTRIB_KEYINFO_ENCSCHEME, encryption_scheme)))
+        .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
+  }
+
+  uint32_t key_handle = local_key_handle.value();
+
+  KeyToken token = current_token_++;
+  key_map_.emplace(
+      token,
+      KeyTpm1{
+          .type = KeyTpm1::Type::kTransientKey,
+          .key_handle = key_handle,
+          .cache =
+              KeyTpm1::Cache{
+                  // RSA public key object would not have valid pubkey blob.
+                  .pubkey_blob = brillo::Blob(),
+              },
+          .scoped_key = std::move(local_key_handle),
+          .reload_data = std::nullopt,
+      });
+
+  return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
+}
+
+StatusOr<ScopedKey> KeyManagementTpm1::LoadPublicKeyFromSpki(
+    const brillo::Blob& public_key_spki_der,
+    uint32_t signature_scheme,
+    uint32_t encryption_scheme) {
+  ASSIGN_OR_RETURN(RsaParameters public_key, ParseSpkiDer(public_key_spki_der));
+
+  if (public_key.key_exponent != kWellKnownExponent) {
+    // Trousers only supports the well-known exponent, failing internally on
+    // incorrect data serialization when other exponents are used.
+    return MakeStatus<TPMError>("Unsupported key exponent",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  uint32_t key_size_flag = 0;
+  const size_t key_size_bits =
+      public_key.key_modulus.size() * /*bits per byte*/ 8;
+  switch (key_size_bits) {
+    case 1024:
+      key_size_flag = TSS_KEY_SIZE_1024;
+      break;
+    case 2048:
+      key_size_flag = TSS_KEY_SIZE_2048;
+      break;
+    default:
+      return MakeStatus<TPMError>("Unsupported key size",
+                                  TPMRetryAction::kNoRetry);
+  }
+
+  return CreateRsaPublicKeyObject(
+      public_key.key_modulus,
+      TSS_KEY_VOLATILE | TSS_KEY_TYPE_SIGNING | key_size_flag, signature_scheme,
+      encryption_scheme);
 }
 
 }  // namespace hwsec

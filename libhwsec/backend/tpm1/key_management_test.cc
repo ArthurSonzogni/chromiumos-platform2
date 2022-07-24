@@ -5,8 +5,11 @@
 #include <memory>
 #include <utility>
 
+#include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
@@ -19,7 +22,38 @@ using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
+
 namespace hwsec {
+
+namespace {
+
+bool GenerateRsaKey(int key_size_bits,
+                    crypto::ScopedEVP_PKEY* pkey,
+                    brillo::Blob* key_spki_der) {
+  crypto::ScopedEVP_PKEY_CTX pkey_context(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  if (!pkey_context)
+    return false;
+  if (EVP_PKEY_keygen_init(pkey_context.get()) <= 0)
+    return false;
+  if (EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_context.get(), key_size_bits) <=
+      0) {
+    return false;
+  }
+  EVP_PKEY* pkey_raw = nullptr;
+  if (EVP_PKEY_keygen(pkey_context.get(), &pkey_raw) <= 0)
+    return false;
+  pkey->reset(pkey_raw);
+  // Obtain the DER-encoded Subject Public Key Info.
+  const int key_spki_der_length = i2d_PUBKEY(pkey->get(), nullptr);
+  if (key_spki_der_length < 0)
+    return false;
+  key_spki_der->resize(key_spki_der_length);
+  unsigned char* key_spki_der_buffer = key_spki_der->data();
+  return i2d_PUBKEY(pkey->get(), &key_spki_der_buffer) == key_spki_der->size();
+}
+
+}  // namespace
 
 class BackendKeyManagementTpm1Test : public BackendTpm1TestBase {};
 
@@ -359,6 +393,39 @@ TEST_F(BackendKeyManagementTpm1Test, SideLoadKey) {
 
   ASSERT_TRUE(result2.ok());
   EXPECT_EQ(*result2, kFakeKeyHandle);
+}
+
+TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpki) {
+  crypto::ScopedEVP_PKEY pkey;
+  brillo::Blob public_key_spki_der;
+  EXPECT_TRUE(GenerateRsaKey(2048, &pkey, &public_key_spki_der));
+
+  // A workaround the get the internal derived class.
+  BackendTpm1::KeyManagementTpm1* key_management =
+      dynamic_cast<BackendTpm1::KeyManagementTpm1*>(
+          backend_->Get<Backend::KeyManagement>());
+  ASSERT_NE(key_management, nullptr);
+
+  auto result = key_management->LoadPublicKeyFromSpki(
+      public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
+
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
+  // Wrong format key.
+  brillo::Blob public_key_spki_der(64, '?');
+
+  // A workaround the get the internal derived class.
+  BackendTpm1::KeyManagementTpm1* key_management =
+      dynamic_cast<BackendTpm1::KeyManagementTpm1*>(
+          backend_->Get<Backend::KeyManagement>());
+  ASSERT_NE(key_management, nullptr);
+
+  auto result = key_management->LoadPublicKeyFromSpki(
+      public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
+
+  EXPECT_FALSE(result.ok());
 }
 
 }  // namespace hwsec

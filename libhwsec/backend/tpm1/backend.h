@@ -123,7 +123,26 @@ class BackendTpm1 : public Backend {
     StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
     StatusOr<uint32_t> GetKeyHandle(Key key) override;
 
+    // Below are TPM1.2 specific code.
+
+    // Gets the reference of the internal key data.
     StatusOr<std::reference_wrapper<KeyTpm1>> GetKeyData(Key key);
+
+    // Creates a key object for the RSA public key, given its public modulus in
+    // |key_modulus|, creation flags in |key_flags|, signature scheme or
+    // |TSS_SS_NONE| in |signature_scheme|, encryption scheme or |TSS_ES_NONE|
+    // in |encryption_scheme|. The key's public exponent is assumed to be 65537.
+    StatusOr<ScopedKey> CreateRsaPublicKeyObject(brillo::Blob key_modulus,
+                                                 uint32_t key_flags,
+                                                 uint32_t signature_scheme,
+                                                 uint32_t encryption_scheme);
+
+    // Loads the key from its DER-encoded Subject Public Key Info.
+    // Currently, only the RSA signing keys are supported.
+    StatusOr<ScopedKey> LoadPublicKeyFromSpki(
+        const brillo::Blob& public_key_spki_der,
+        uint32_t signature_scheme,
+        uint32_t encryption_scheme);
 
    private:
     StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,

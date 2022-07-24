@@ -123,7 +123,18 @@ class BackendTpm2 : public Backend {
     StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
     StatusOr<uint32_t> GetKeyHandle(Key key) override;
 
+    // Below are TPM2.0 specific code.
+
+    // Gets the reference of the internal key data.
     StatusOr<std::reference_wrapper<KeyTpm2>> GetKeyData(Key key);
+
+    // Loads the key from its DER-encoded Subject Public Key Info. Algorithm
+    // scheme and hashing algorithm are passed via |scheme| and |hash_alg|.
+    // Currently, only the RSA signing keys are supported.
+    StatusOr<ScopedKey> LoadPublicKeyFromSpki(
+        const brillo::Blob& public_key_spki_der,
+        trunks::TPM_ALG_ID scheme,
+        trunks::TPM_ALG_ID hash_alg);
 
    private:
     StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,

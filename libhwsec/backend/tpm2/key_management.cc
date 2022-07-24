@@ -10,11 +10,17 @@
 #include <vector>
 
 #include <base/callback_helpers.h>
+#include <base/numerics/safe_conversions.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
@@ -46,6 +52,52 @@ StatusOr<trunks::TpmUtility::AsymmetricKeyUsage> GetKeyUsage(
   } else {
     return MakeStatus<TPMError>("Useless key", TPMRetryAction::kNoRetry);
   }
+}
+
+struct RsaParameters {
+  uint32_t key_exponent;
+  brillo::Blob key_modulus;
+};
+
+StatusOr<RsaParameters> ParseSpkiDer(const brillo::Blob& public_key_spki_der) {
+  // Parse the SPKI.
+  const unsigned char* asn1_ptr = public_key_spki_der.data();
+  const crypto::ScopedEVP_PKEY pkey(
+      d2i_PUBKEY(nullptr, &asn1_ptr, public_key_spki_der.size()));
+  if (!pkey) {
+    return MakeStatus<TPMError>("Failed to parse Subject Public Key Info DER",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  const crypto::ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  if (!rsa) {
+    return MakeStatus<TPMError>("non-RSA key was supplied",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  brillo::Blob key_modulus(RSA_size(rsa.get()));
+  const BIGNUM* n;
+  const BIGNUM* e;
+  RSA_get0_key(rsa.get(), &n, &e, nullptr);
+  if (BN_bn2bin(n, key_modulus.data()) != key_modulus.size()) {
+    return MakeStatus<TPMError>("Failed to extract public key modulus",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  constexpr BN_ULONG kInvalidBnWord = ~static_cast<BN_ULONG>(0);
+  const BN_ULONG exponent_word = BN_get_word(e);
+  if (exponent_word == kInvalidBnWord ||
+      !base::IsValueInRangeForNumericType<uint32_t>(exponent_word)) {
+    return MakeStatus<TPMError>("Failed to extract public key exponent",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  const uint32_t key_exponent = static_cast<uint32_t>(exponent_word);
+
+  return RsaParameters{
+      .key_exponent = key_exponent,
+      .key_modulus = std::move(key_modulus),
+  };
 }
 
 }  // namespace
@@ -490,6 +542,26 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
 
   key_data.key_handle = key_handle;
   return OkStatus();
+}
+
+StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
+    const brillo::Blob& public_key_spki_der,
+    trunks::TPM_ALG_ID scheme,
+    trunks::TPM_ALG_ID hash_alg) {
+  ASSIGN_OR_RETURN(const RsaParameters& public_key,
+                   ParseSpkiDer(public_key_spki_der));
+
+  TrunksClientContext& context = backend_.trunks_context_;
+  // Load the key into the TPM.
+  trunks::TPM_HANDLE key_handle = 0;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadRSAPublicKey(
+                      trunks::TpmUtility::AsymmetricKeyUsage::kSignKey, scheme,
+                      hash_alg, brillo::BlobToString(public_key.key_modulus),
+                      public_key.key_exponent, nullptr, &key_handle)))
+      .WithStatus<TPMError>("Failed to load RSA public key");
+
+  return LoadKeyInternal(KeyTpm2::Type::kTransientKey, key_handle,
+                         /*reload_data=*/std::nullopt);
 }
 
 }  // namespace hwsec
