@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_CRYPTOHOME_MOCK_FRONTEND_H_
 
 #include <string>
+#include <vector>
 
 #include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
@@ -83,6 +84,23 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
   MOCK_METHOD(Status, DestroySpace, (Space), (override));
   MOCK_METHOD(StatusOr<bool>, IsSpaceWriteLocked, (Space), (override));
   MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
+  MOCK_METHOD(StatusOr<SignatureSealedData>,
+              SealWithSignatureAndCurrentUser,
+              (const std::string& current_user,
+               const brillo::SecureBlob&,
+               const brillo::Blob&,
+               const std::vector<SignatureSealingAlgorithm>&),
+              (override));
+  MOCK_METHOD(StatusOr<ChallengeResult>,
+              ChallengeWithSignatureAndCurrentUser,
+              (const SignatureSealedData& sealed_data,
+               const brillo::Blob& public_key_spki_der,
+               const std::vector<SignatureSealingAlgorithm>& key_algorithms),
+              (override));
+  MOCK_METHOD(StatusOr<brillo::SecureBlob>,
+              UnsealWithChallenge,
+              (ChallengeID challenge, const brillo::Blob& challenge_response),
+              (override));
 };
 
 }  // namespace hwsec

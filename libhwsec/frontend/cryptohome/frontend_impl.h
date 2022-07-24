@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_CRYPTOHOME_FRONTEND_IMPL_H_
 
 #include <string>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 
@@ -64,6 +65,17 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   Status DestroySpace(Space space) override;
   StatusOr<bool> IsSpaceWriteLocked(Space space) override;
   Status DeclareTpmFirmwareStable() override;
+  StatusOr<SignatureSealedData> SealWithSignatureAndCurrentUser(
+      const std::string& current_user,
+      const brillo::SecureBlob& unsealed_data,
+      const brillo::Blob& public_key_spki_der,
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms) override;
+  StatusOr<ChallengeResult> ChallengeWithSignatureAndCurrentUser(
+      const SignatureSealedData& sealed_data,
+      const brillo::Blob& public_key_spki_der,
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms) override;
+  StatusOr<brillo::SecureBlob> UnsealWithChallenge(
+      ChallengeID challenge, const brillo::Blob& challenge_response) override;
 };
 
 }  // namespace hwsec

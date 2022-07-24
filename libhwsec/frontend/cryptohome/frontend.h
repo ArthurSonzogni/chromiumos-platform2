@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_CRYPTOHOME_FRONTEND_H_
 
 #include <string>
+#include <vector>
 
 #include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
@@ -23,6 +24,9 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
  public:
   using CreateKeyResult = Backend::KeyManagement::CreateKeyResult;
   using StorageState = Backend::Storage::ReadyState;
+  using ChallengeID = Backend::SignatureSealing::ChallengeID;
+  using ChallengeResult = Backend::SignatureSealing::ChallengeResult;
+  using SignatureSealingAlgorithm = Backend::SignatureSealing::Algorithm;
 
   ~CryptohomeFrontend() override = default;
 
@@ -133,6 +137,31 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
 
   // Declares the TPM firmware is stable.
   virtual Status DeclareTpmFirmwareStable() = 0;
+
+  // Seals the |unsealed_data| with |public_key_spki_der| and binds to
+  // |current_user| or the prior login state.
+  //
+  // |key_algorithms| is the list of signature algorithms supported by the
+  // key. Listed in the order of preference (starting from the most
+  // preferred); however, the implementation is permitted to ignore this
+  // order.
+  virtual StatusOr<SignatureSealedData> SealWithSignatureAndCurrentUser(
+      const std::string& current_user,
+      const brillo::SecureBlob& unsealed_data,
+      const brillo::Blob& public_key_spki_der,
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms) = 0;
+
+  // Creates a challenge from the |sealed_data| and the current user state,
+  // |public_key_spki_der|, |key_algorithms|.
+  virtual StatusOr<ChallengeResult> ChallengeWithSignatureAndCurrentUser(
+      const SignatureSealedData& sealed_data,
+      const brillo::Blob& public_key_spki_der,
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms) = 0;
+
+  // Unseals the sealed_data from previous |challenge| with the
+  // |challenge_response|.
+  virtual StatusOr<brillo::SecureBlob> UnsealWithChallenge(
+      ChallengeID challenge, const brillo::Blob& challenge_response) = 0;
 };
 
 }  // namespace hwsec

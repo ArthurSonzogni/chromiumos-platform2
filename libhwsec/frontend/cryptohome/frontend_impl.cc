@@ -5,6 +5,7 @@
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
 
 #include <string>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 
@@ -206,6 +207,46 @@ StatusOr<bool> CryptohomeFrontendImpl::IsSpaceWriteLocked(Space space) {
 
 Status CryptohomeFrontendImpl::DeclareTpmFirmwareStable() {
   return middleware_.CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>();
+}
+
+StatusOr<SignatureSealedData>
+CryptohomeFrontendImpl::SealWithSignatureAndCurrentUser(
+    const std::string& current_user,
+    const brillo::SecureBlob& unsealed_data,
+    const brillo::Blob& public_key_spki_der,
+    const std::vector<SignatureSealingAlgorithm>& key_algorithms) {
+  OperationPolicySetting prior_login_setting{
+      .device_config_settings = DeviceConfigSettings{
+          .current_user = DeviceConfigSettings::CurrentUserSetting{
+              .username = std::nullopt}}};
+
+  OperationPolicySetting current_user_setting{
+      .device_config_settings = DeviceConfigSettings{
+          .current_user = DeviceConfigSettings::CurrentUserSetting{
+              .username = current_user}}};
+
+  return middleware_.CallSync<&Backend::SignatureSealing::Seal>(
+      std::vector<OperationPolicySetting>{prior_login_setting,
+                                          current_user_setting},
+      unsealed_data, public_key_spki_der, key_algorithms);
+}
+
+StatusOr<CryptohomeFrontend::ChallengeResult>
+CryptohomeFrontendImpl::ChallengeWithSignatureAndCurrentUser(
+    const SignatureSealedData& sealed_data,
+    const brillo::Blob& public_key_spki_der,
+    const std::vector<SignatureSealingAlgorithm>& key_algorithms) {
+  OperationPolicy current_user_policy{
+      .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser}};
+
+  return middleware_.CallSync<&Backend::SignatureSealing::Challenge>(
+      current_user_policy, sealed_data, public_key_spki_der, key_algorithms);
+}
+
+StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithChallenge(
+    ChallengeID challenge, const brillo::Blob& challenge_response) {
+  return middleware_.CallSync<&Backend::SignatureSealing::Unseal>(
+      challenge, challenge_response);
 }
 
 }  // namespace hwsec
