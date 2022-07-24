@@ -184,12 +184,30 @@ class BackendTpm2 : public Backend {
       std::string digest;
     };
 
+    // Converts a device config usage into a PCR map.
     StatusOr<PcrMap> ToPcrMap(const DeviceConfigs& device_config);
+
+    // Converts a device config setting into a PCR map.
     StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
+
+    // Creates a trunks policy session from |policy|, and PolicyOR the
+    // |extra_policy_digests| if it's not empty.
+    StatusOr<std::unique_ptr<trunks::PolicySession>> GetTrunksPolicySession(
+        const OperationPolicy& policy,
+        const std::vector<std::string>& extra_policy_digests,
+        bool salted,
+        bool enable_encryption);
+
+    // Creates a unified session from |policy|.
     StatusOr<TrunksSession> GetTrunksSession(const OperationPolicy& policy,
-                                             bool salted = true,
-                                             bool enable_encryption = true);
+                                             bool salted,
+                                             bool enable_encryption);
+
+    // Creates the PCR value for PinWeaver digest.
     StatusOr<PcrValue> ToPcrValue(const DeviceConfigSettings& settings);
+
+    // Creates the policy digest from device config setting.
+    StatusOr<std::string> ToPolicyDigest(const DeviceConfigSettings& settings);
 
    private:
     StatusOr<std::string> ReadPcr(uint32_t pcr_index);

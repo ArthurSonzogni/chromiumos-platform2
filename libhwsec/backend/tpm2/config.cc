@@ -165,38 +165,61 @@ StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToSettingsPcrMap(
   return result;
 }
 
+StatusOr<std::unique_ptr<trunks::PolicySession>>
+ConfigTpm2::GetTrunksPolicySession(
+    const OperationPolicy& policy,
+    const std::vector<std::string>& extra_policy_digests,
+    bool salted,
+    bool enable_encryption) {
+  TrunksClientContext& context = backend_.trunks_context_;
+
+  std::unique_ptr<trunks::PolicySession> policy_session =
+      context.factory.GetPolicySession();
+
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->StartUnboundSession(
+                      salted, enable_encryption)))
+      .WithStatus<TPMError>("Failed to start policy session");
+
+  if (policy.permission.auth_value.has_value()) {
+    RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyAuthValue()))
+        .WithStatus<TPMError>("Failed to create auth value policy");
+  }
+
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToPcrMap(policy.device_configs),
+                   _.WithStatus<TPMError>("Failed to get PCR map"));
+
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyPCR(pcr_map)))
+      .WithStatus<TPMError>("Failed to create PCR policy");
+
+  if (!extra_policy_digests.empty()) {
+    RETURN_IF_ERROR(
+        MakeStatus<TPM2Error>(policy_session->PolicyOR(extra_policy_digests)))
+        .WithStatus<TPMError>("Failed to call PolicyOR");
+  }
+
+  if (policy.permission.auth_value.has_value()) {
+    std::string auth_value = policy.permission.auth_value.value().to_string();
+    policy_session->SetEntityAuthorizationValue(auth_value);
+    brillo::SecureClearContainer(auth_value);
+  }
+
+  return policy_session;
+}
+
 StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
     const OperationPolicy& policy, bool salted, bool enable_encryption) {
   TrunksClientContext& context = backend_.trunks_context_;
 
   if (policy.device_configs.any()) {
-    std::unique_ptr<trunks::PolicySession> policy_session =
-        context.factory.GetPolicySession();
+    std::vector<std::string> no_extra_policy_digest = {};
+    ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
+                     GetTrunksPolicySession(policy, no_extra_policy_digest,
+                                            salted, enable_encryption),
+                     _.WithStatus<TPMError>("Failed to get policy session"));
 
-    RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->StartUnboundSession(
-                        salted, enable_encryption)))
-        .WithStatus<TPMError>("Failed to start policy session");
-
-    if (policy.permission.auth_value.has_value()) {
-      RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyAuthValue()))
-          .WithStatus<TPMError>("Failed to create auth value policy");
-    }
-
-    ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToPcrMap(policy.device_configs),
-                     _.WithStatus<TPMError>("Failed to get PCR map"));
-
-    RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyPCR(pcr_map)))
-        .WithStatus<TPMError>("Failed to create PCR policy");
-
-    if (policy.permission.auth_value.has_value()) {
-      std::string auth_value = policy.permission.auth_value.value().to_string();
-      policy_session->SetEntityAuthorizationValue(auth_value);
-      brillo::SecureClearContainer(auth_value);
-    }
-
-    trunks::AuthorizationDelegate* delegate = policy_session->GetDelegate();
+    trunks::AuthorizationDelegate* delegate = session->GetDelegate();
     return TrunksSession{
-        .session = std::move(policy_session),
+        .session = std::move(session),
         .delegate = delegate,
     };
   } else {
@@ -248,6 +271,31 @@ StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
   pcr_value.digest = crypto::SHA256HashString(digest);
 
   return pcr_value;
+}
+
+StatusOr<std::string> ConfigTpm2::ToPolicyDigest(
+    const DeviceConfigSettings& settings) {
+  TrunksClientContext& context = backend_.trunks_context_;
+
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToSettingsPcrMap(settings));
+
+  // Start a trial policy session.
+  std::unique_ptr<trunks::PolicySession> policy_session =
+      context.factory.GetTrialSession();
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(policy_session->StartUnboundSession(false, false)))
+      .WithStatus<TPMError>("Failed to start trial session");
+
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyPCR(pcr_map)))
+      .WithStatus<TPMError>("Failed to create PCR policy");
+
+  std::string pcr_policy_digest;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(policy_session->GetDigest(&pcr_policy_digest)))
+      .WithStatus<TPMError>("Failed to get policy digest");
+
+  return pcr_policy_digest;
 }
 
 }  // namespace hwsec
