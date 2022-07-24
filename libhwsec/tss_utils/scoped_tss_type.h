@@ -10,7 +10,7 @@
 //  TSS_RESULT result;
 //  if (!OpenAndConnectTpm(context_handle.ptr(), &result))
 //    ...
-//  ScopedTssKey srk(context_handle);
+//  ScopedTssKey srk(*GetOveralls(), context_handle);
 //  if (!LoadSrk(context_handle, srk_handle.ptr(), &result))
 //    ...
 //
@@ -30,74 +30,66 @@
 
 namespace hwsec {
 
-class ScopedTssContextRelease {
- public:
-  inline void operator()(overalls::Overalls& overalls,
-                         TSS_HCONTEXT unused,
-                         TSS_HCONTEXT context) const {
-    // Usually, only |context| is used, but if the ScopedTssContext is
-    // used slightly differently, it may end up with a context in |unused|.
-    // For now, treat that as a bug.
-    if (unused) {
-      NOTREACHED() << "Unexpected data in the unused argument - a misuse of "
-                      "ScopedTssContext. Please report to crbug.com/821825";
-      return;
-    }
-    if (context)
-      overalls.Ospi_Context_Close(context);
+inline void ScopedTssContextRelease(overalls::Overalls& overalls,
+                                    TSS_HCONTEXT unused,
+                                    TSS_HCONTEXT context) {
+  // Usually, only |context| is used, but if the ScopedTssContext is
+  // used slightly differently, it may end up with a context in |unused|.
+  // For now, treat that as a bug.
+  if (unused) {
+    NOTREACHED() << "Unexpected data in the unused argument - a misuse of "
+                    "ScopedTssContext. Please report to b/240880669";
+    return;
   }
-};
+  if (context) {
+    overalls.Ospi_Context_Close(context);
+  }
+}
 
-class ScopedTssMemoryRelease {
- public:
-  inline void operator()(overalls::Overalls& overalls,
-                         TSS_HCONTEXT context,
-                         BYTE* memory) const {
-    if (!memory)
-      return;
-    if (!context) {
-      NOTREACHED() << "Leaking Trousers memory due to null context. Please "
-                      "report to crbug.com/821825";
-      return;
-    }
-    overalls.Ospi_Context_FreeMemory(context, memory);
+inline void ScopedTssMemoryRelease(overalls::Overalls& overalls,
+                                   TSS_HCONTEXT context,
+                                   BYTE* memory) {
+  if (!memory) {
+    return;
   }
-};
+  if (!context) {
+    NOTREACHED() << "Leaking Trousers memory due to null context. Please "
+                    "report to b/240880669";
+    return;
+  }
+  overalls.Ospi_Context_FreeMemory(context, memory);
+}
 
-class ScopedTssSecureMemoryRelease {
- public:
-  inline void operator()(overalls::Overalls& overalls,
-                         TSS_HCONTEXT context,
-                         BYTE* memory) const {
-    if (!memory)
-      return;
-    if (!context) {
-      NOTREACHED() << "Leaking Trousers memory due to null context. Please "
-                      "report to crbug.com/821825";
-      return;
-    }
-    overalls.Ospi_Context_SecureFreeMemory(context, memory);
+inline void ScopedTssSecureMemoryRelease(overalls::Overalls& overalls,
+                                         TSS_HCONTEXT context,
+                                         BYTE* memory) {
+  if (!memory) {
+    return;
   }
-};
+  if (!context) {
+    NOTREACHED() << "Leaking Trousers memory due to null context. Please "
+                    "report to b/240880669";
+    return;
+  }
+  overalls.Ospi_Context_SecureFreeMemory(context, memory);
+}
 
-class ScopedTssObjectRelease {
- public:
-  inline void operator()(overalls::Overalls& overalls,
-                         TSS_HCONTEXT context,
-                         TSS_HOBJECT handle) const {
-    if (!handle)
-      return;
-    if (!context) {
-      NOTREACHED() << "Leaking Trousers handle due to null context. Please "
-                      "report to crbug.com/821825";
-      return;
-    }
-    overalls.Ospi_Context_CloseObject(context, handle);
+inline void ScopedTssObjectRelease(overalls::Overalls& overalls,
+                                   TSS_HCONTEXT context,
+                                   TSS_HOBJECT handle) {
+  if (!handle) {
+    return;
   }
-};
+  if (!context) {
+    NOTREACHED() << "Leaking Trousers handle due to null context. Please "
+                    "report to b/240880669";
+    return;
+  }
+  overalls.Ospi_Context_CloseObject(context, handle);
+}
 
 // Provide a basic scoped container for TSS managed objects.
-template <typename TssType, class ReleaseProc = ScopedTssObjectRelease>
+template <typename TssType, auto ReleaseFunc>
 class ScopedTssType {
  public:
   explicit ScopedTssType(overalls::Overalls& overalls,
@@ -117,7 +109,7 @@ class ScopedTssType {
   }
 
   ScopedTssType& operator=(ScopedTssType&& other) {
-    release_(overalls_, context_, type_);
+    ReleaseFunc(overalls_, context_, type_);
     context_ = other.context_;
     type_ = other.type_;
     other.context_ = 0;
@@ -125,47 +117,46 @@ class ScopedTssType {
     return *this;
   }
 
-  virtual ~ScopedTssType() { release_(overalls_, context_, type_); }
+  virtual ~ScopedTssType() { ReleaseFunc(overalls_, context_, type_); }
 
   // Provide a means to access the value without conversion.
-  virtual TssType value() { return type_; }
+  TssType value() const { return type_; }
 
   // Allow direct referencing of the wrapped value.
-  virtual TssType* ptr() { return &type_; }
+  TssType* ptr() { return &type_; }
 
   // Returns the assigned context.
-  virtual TSS_HCONTEXT context() { return context_; }
+  TSS_HCONTEXT context() const { return context_; }
 
-  [[nodiscard]] virtual TssType release() {
+  [[nodiscard]] TssType release() {
     TssType tmp = type_;
     type_ = 0;
     context_ = 0;
     return tmp;
   }
 
-  virtual void reset(TSS_HCONTEXT c = 0, TssType t = 0) {
-    release_(overalls_, context_, type_);
+  void reset(TSS_HCONTEXT c = 0, TssType t = 0) {
+    ReleaseFunc(overalls_, context_, type_);
     context_ = c;
     type_ = t;
   }
 
  private:
   overalls::Overalls& overalls_;
-  ReleaseProc release_;
   TSS_HCONTEXT context_;
   TssType type_;
 };
 
 // Wrap ScopedTssObject to allow implicit conversion only when safe.
-template <typename TssType, class ReleaseProc = ScopedTssObjectRelease>
-class ScopedTssObject : public ScopedTssType<TssType, ReleaseProc> {
+template <typename TssType, auto ReleaseFunc = ScopedTssObjectRelease>
+class ScopedTssObject : public ScopedTssType<TssType, ReleaseFunc> {
  public:
   // Enforce a context for scoped objects.
   ScopedTssObject(overalls::Overalls& overalls, TSS_HCONTEXT c, TssType t = 0)
-      : ScopedTssType<TssType, ReleaseProc>(overalls, c, t) {}
+      : ScopedTssType<TssType, ReleaseFunc>(overalls, c, t) {}
 
   // Allow implicit conversion to TssType.
-  virtual operator TssType() { return this->value(); }
+  operator TssType() { return this->value(); }
 };
 
 class ScopedTssContext
