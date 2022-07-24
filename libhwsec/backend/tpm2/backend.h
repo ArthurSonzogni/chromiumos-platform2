@@ -72,6 +72,37 @@ class BackendTpm2 : public Backend {
                                         UnsealOptions options) override;
   };
 
+  class SignatureSealingTpm2 : public SignatureSealing,
+                               public SubClassHelper<BackendTpm2> {
+   public:
+    using SubClassHelper::SubClassHelper;
+    StatusOr<SignatureSealedData> Seal(
+        const std::vector<OperationPolicySetting>& policies,
+        const brillo::SecureBlob& unsealed_data,
+        const brillo::Blob& public_key_spki_der,
+        const std::vector<Algorithm>& key_algorithms) override;
+    StatusOr<ChallengeResult> Challenge(
+        const OperationPolicy& policy,
+        const SignatureSealedData& sealed_data,
+        const brillo::Blob& public_key_spki_der,
+        const std::vector<Algorithm>& key_algorithms) override;
+    StatusOr<brillo::SecureBlob> Unseal(
+        ChallengeID challenge, const brillo::Blob& challenge_response) override;
+
+   private:
+    struct InternalChallengeData {
+      NoDefault<ChallengeID> challenge_id;
+      brillo::Blob srk_wrapped_secret;
+      brillo::Blob public_key_spki_der;
+      trunks::TPM_ALG_ID scheme;
+      trunks::TPM_ALG_ID hash_alg;
+      std::unique_ptr<trunks::PolicySession> session;
+      std::string session_nonce;
+    };
+
+    std::optional<InternalChallengeData> current_challenge_data_;
+  };
+
   class DerivingTpm2 : public Deriving, public SubClassHelper<BackendTpm2> {
    public:
     using SubClassHelper::SubClassHelper;
@@ -313,7 +344,9 @@ class BackendTpm2 : public Backend {
   Storage* GetStorage() override { return &storage_; }
   RoData* GetRoData() override { return nullptr; }
   Sealing* GetSealing() override { return &sealing_; }
-  SignatureSealing* GetSignatureSealing() override { return nullptr; }
+  SignatureSealing* GetSignatureSealing() override {
+    return &signature_sealing_;
+  }
   Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return nullptr; }
@@ -332,6 +365,7 @@ class BackendTpm2 : public Backend {
   DAMitigationTpm2 da_mitigation_{*this};
   StorageTpm2 storage_{*this};
   SealingTpm2 sealing_{*this};
+  SignatureSealingTpm2 signature_sealing_{*this};
   DerivingTpm2 deriving_{*this};
   EncryptionTpm2 encryption_{*this};
   KeyManagementTpm2 key_management_{*this};
