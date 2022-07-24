@@ -20,6 +20,19 @@
 
 namespace hwsec {
 
+// TSS UUID matcher.
+MATCHER_P(MatchTssUUID, uuid, "") {
+  return arg.ulTimeLow == uuid.ulTimeLow && arg.usTimeMid == uuid.usTimeMid &&
+         arg.usTimeHigh == uuid.usTimeHigh &&
+         arg.bClockSeqHigh == uuid.bClockSeqHigh &&
+         arg.bClockSeqLow == uuid.bClockSeqLow &&
+         arg.rgbNode[0] == uuid.rgbNode[0] &&
+         arg.rgbNode[1] == uuid.rgbNode[1] &&
+         arg.rgbNode[2] == uuid.rgbNode[2] &&
+         arg.rgbNode[3] == uuid.rgbNode[3] &&
+         arg.rgbNode[4] == uuid.rgbNode[4] && arg.rgbNode[5] == uuid.rgbNode[5];
+}
+
 class BackendTpm1TestBase : public ::testing::Test {
  public:
   BackendTpm1TestBase() {}
@@ -82,6 +95,7 @@ class BackendTpm1TestBase : public ::testing::Test {
 
     const uint32_t kFakeSrkAuthUsage = 0x9876123;
     const uint32_t kFakeSrkUsagePolicy = 0x1283789;
+    TSS_UUID SRK_UUID = TSS_UUID_SRK;
 
     tpm_manager::GetTpmNonsensitiveStatusReply reply;
     reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
@@ -90,33 +104,33 @@ class BackendTpm1TestBase : public ::testing::Test {
                 GetTpmNonsensitiveStatus(_, _, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-    EXPECT_CALL(
-        proxy_->GetMock().overalls,
-        Ospi_Context_LoadKeyByUUID(kDefaultContext, TSS_PS_TYPE_SYSTEM, _, _))
-        .WillOnce(
+    EXPECT_CALL(proxy_->GetMock().overalls,
+                Ospi_Context_LoadKeyByUUID(kDefaultContext, TSS_PS_TYPE_SYSTEM,
+                                           MatchTssUUID(SRK_UUID), _))
+        .WillRepeatedly(
             DoAll(SetArgPointee<3>(kDefaultSrkHandle), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(proxy_->GetMock().overalls,
                 Ospi_GetAttribUint32(kDefaultSrkHandle, TSS_TSPATTRIB_KEY_INFO,
                                      TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, _))
-        .WillOnce(
+        .WillRepeatedly(
             DoAll(SetArgPointee<3>(kFakeSrkAuthUsage), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(proxy_->GetMock().overalls,
                 Ospi_GetPolicyObject(kDefaultSrkHandle, TSS_POLICY_USAGE, _))
-        .WillOnce(
+        .WillRepeatedly(
             DoAll(SetArgPointee<2>(kFakeSrkUsagePolicy), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
         proxy_->GetMock().overalls,
         Ospi_Policy_SetSecret(kFakeSrkUsagePolicy, TSS_SECRET_MODE_PLAIN, _, _))
-        .WillOnce(Return(TPM_SUCCESS));
+        .WillRepeatedly(Return(TPM_SUCCESS));
 
     EXPECT_CALL(proxy_->GetMock().overalls,
                 Ospi_Key_GetPubKey(kDefaultSrkHandle, _, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kDefaultSrkPubkey.size()),
-                        SetArgPointee<2>(kDefaultSrkPubkey.data()),
-                        Return(TPM_SUCCESS)));
+        .WillRepeatedly(DoAll(SetArgPointee<1>(kDefaultSrkPubkey.size()),
+                              SetArgPointee<2>(kDefaultSrkPubkey.data()),
+                              Return(TPM_SUCCESS)));
   }
 
   void SetupDelegate() {
