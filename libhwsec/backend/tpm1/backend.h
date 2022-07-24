@@ -276,6 +276,10 @@ class BackendTpm1 : public Backend {
   StatusOr<TSS_HCONTEXT> GetTssContext();
   StatusOr<TSS_HTPM> GetUserTpmHandle();
 
+  // The delegate TPM handle would not be cached to prevent leaking the delegate
+  // permission.
+  StatusOr<ScopedTssObject<TSS_HTPM>> GetDelegateTpmHandle();
+
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
   Storage* GetStorage() override { return &storage_; }
@@ -316,6 +320,9 @@ class BackendTpm1 : public Backend {
   FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetScopedTssContext);
   FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetTssContext);
   FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetUserTpmHandle);
+  FRIEND_TEST_ALL_PREFIXES(BackendTpm1Test, GetDelegateTpmHandle);
+
+  friend class BackendTpm1TestBase;
 };
 
 }  // namespace hwsec
