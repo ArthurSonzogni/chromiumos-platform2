@@ -66,6 +66,12 @@ class Overalls {
                                             TPM_KEY12* key) {
     return Trspi_UnloadBlob_KEY12(offset, blob, key);
   }
+  virtual TSS_RESULT Orspi_UnloadBlob_KEY12_s(UINT64* offset,
+                                              BYTE* blob,
+                                              UINT64 capacity,
+                                              TPM_KEY12* key) {
+    return Trspi_UnloadBlob_KEY12_s(offset, blob, capacity, key);
+  }
   virtual TSS_RESULT Orspi_UnloadBlob_SYMMETRIC_KEY(UINT64* offset,
                                                     BYTE* blob,
                                                     TCPA_SYMMETRIC_KEY* key) {

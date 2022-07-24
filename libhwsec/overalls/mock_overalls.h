@@ -32,6 +32,8 @@ class MockOveralls : public Overalls {
   MOCK_METHOD4(Orspi_UnloadBlob_PUBKEY_s,
                TSS_RESULT(UINT64*, BYTE*, UINT64, TCPA_PUBKEY*));
   MOCK_METHOD3(Orspi_UnloadBlob_KEY12, TSS_RESULT(UINT64*, BYTE*, TPM_KEY12*));
+  MOCK_METHOD4(Orspi_UnloadBlob_KEY12_s,
+               TSS_RESULT(UINT64*, BYTE*, UINT64, TPM_KEY12*));
   MOCK_METHOD3(Orspi_UnloadBlob_SYMMETRIC_KEY,
                TSS_RESULT(UINT64*, BYTE*, TCPA_SYMMETRIC_KEY*));
   MOCK_METHOD3(Orspi_UnloadBlob_IDENTITY_REQ,
