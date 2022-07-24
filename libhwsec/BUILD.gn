@@ -212,6 +212,11 @@ source_set("hardware_abstraction_external_library") {
 
   libs = []
 
+  if (use.tpm || use.fuzzer) {
+    sources += [ "backend/tpm1/static_utils.cc" ]
+    libs += [ "tspi" ]
+  }
+
   configs += [
     ":target_defaults",
     "//common-mk:pic",
