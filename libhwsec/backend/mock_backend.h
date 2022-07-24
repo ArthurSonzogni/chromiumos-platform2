@@ -82,9 +82,9 @@ class MockBackend : public Backend {
 
   class MockSignatureSealing : public SignatureSealing {
    public:
-    MOCK_METHOD(StatusOr<SealedData>,
+    MOCK_METHOD(StatusOr<SignatureSealedData>,
                 Seal,
-                (const OperationPolicySetting& policy,
+                (const std::vector<OperationPolicySetting>& policies,
                  const brillo::SecureBlob& unsealed_data,
                  const brillo::Blob& public_key_spki_der,
                  const std::vector<Algorithm>& key_algorithms),
@@ -92,13 +92,13 @@ class MockBackend : public Backend {
     MOCK_METHOD(StatusOr<ChallengeResult>,
                 Challenge,
                 (const OperationPolicy& policy,
-                 const SealedData& sealed_data,
+                 const SignatureSealedData& sealed_data,
                  const brillo::Blob& public_key_spki_der,
                  const std::vector<Algorithm>& key_algorithms),
                 (override));
     MOCK_METHOD(StatusOr<brillo::SecureBlob>,
                 Unseal,
-                (ChallengeID challenge, const brillo::Blob challenge_response),
+                (ChallengeID challenge, const brillo::Blob& challenge_response),
                 (override));
   };
 

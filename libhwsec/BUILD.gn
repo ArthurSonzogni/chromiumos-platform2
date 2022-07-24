@@ -270,6 +270,8 @@ source_set("hardware_abstraction_internal_library") {
     ]
     libs += [ "trunks" ]
   }
+
+  public_deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
 }
 
 shared_library("libhwsec") {

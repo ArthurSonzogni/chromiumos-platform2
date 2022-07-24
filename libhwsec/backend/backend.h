@@ -24,6 +24,7 @@
 #include "libhwsec/structures/operation_policy.h"
 #include "libhwsec/structures/permission.h"
 #include "libhwsec/structures/session.h"
+#include "libhwsec/structures/signature_sealed_data.h"
 #include "libhwsec/structures/space.h"
 
 namespace hwsec {
@@ -166,24 +167,6 @@ class Backend {
   // and signature challenge.
   class SignatureSealing {
    public:
-    struct SealedData {
-      struct Tpm1Data {
-        brillo::Blob public_key_spki_der;
-        brillo::Blob srk_wrapped_secret;
-        int32_t scheme;
-        int32_t hash_alg;
-        std::vector<brillo::Blob> policy_digests;
-      };
-      struct Tpm2Data {
-        brillo::Blob public_key_spki_der;
-        brillo::Blob srk_wrapped_cmk;
-        brillo::Blob cmk_pubkey;
-        brillo::Blob cmk_wrapped_auth_data;
-        std::vector<brillo::Blob> pcr_bound_secrets;
-      };
-      std::variant<Tpm1Data, Tpm2Data> sealed_data;
-    };
-
     enum class Algorithm {
       kRsassaPkcs1V15Sha1,
       kRsassaPkcs1V15Sha256,
@@ -191,21 +174,22 @@ class Backend {
       kRsassaPkcs1V15Sha512,
     };
 
-    enum class ChallengeID : uint32_t;
+    enum class ChallengeID : uint64_t;
 
     struct ChallengeResult {
       NoDefault<ChallengeID> challenge_id;
+      NoDefault<Algorithm> algorithm;
       brillo::Blob challenge;
     };
 
-    // Seals the |unsealed_data| with |policy| and |public_key_spki_der|.
+    // Seals the |unsealed_data| with |policies| and |public_key_spki_der|.
     //
     // |key_algorithms| is the list of signature algorithms supported by the
     // key. Listed in the order of preference (starting from the most
     // preferred); however, the implementation is permitted to ignore this
     // order.
-    virtual StatusOr<SealedData> Seal(
-        const OperationPolicySetting& policy,
+    virtual StatusOr<SignatureSealedData> Seal(
+        const std::vector<OperationPolicySetting>& policies,
         const brillo::SecureBlob& unsealed_data,
         const brillo::Blob& public_key_spki_der,
         const std::vector<Algorithm>& key_algorithms) = 0;
@@ -214,14 +198,14 @@ class Backend {
     // |public_key_spki_der|, |key_algorithms|.
     virtual StatusOr<ChallengeResult> Challenge(
         const OperationPolicy& policy,
-        const SealedData& sealed_data,
+        const SignatureSealedData& sealed_data,
         const brillo::Blob& public_key_spki_der,
         const std::vector<Algorithm>& key_algorithms) = 0;
 
     // Unseals the sealed_data from previous |challenge| with the
     // |challenge_response|.
     virtual StatusOr<brillo::SecureBlob> Unseal(
-        ChallengeID challenge, const brillo::Blob challenge_response) = 0;
+        ChallengeID challenge, const brillo::Blob& challenge_response) = 0;
 
    protected:
     SignatureSealing() = default;
