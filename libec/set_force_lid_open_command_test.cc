@@ -10,17 +10,19 @@ namespace ec {
 namespace {
 
 TEST(SetForceLidOpenCommand, EnableForceLidOpen) {
-  SetForceLidOpenCommand cmd(true);
+  uint8_t enable = 1;
+  SetForceLidOpenCommand cmd(enable);
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_FORCE_LID_OPEN);
-  EXPECT_EQ(cmd.Req()->enabled, true);
+  EXPECT_EQ(cmd.Req()->enabled, enable);
 }
 
 TEST(SetForceLidOpenCommand, DisableForceLidOpen) {
-  SetForceLidOpenCommand cmd(false);
+  uint8_t disable = 0;
+  SetForceLidOpenCommand cmd(disable);
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_FORCE_LID_OPEN);
-  EXPECT_EQ(cmd.Req()->enabled, false);
+  EXPECT_EQ(cmd.Req()->enabled, disable);
 }
 
 }  // namespace

@@ -19,6 +19,9 @@ class BRILLO_EXPORT SetForceLidOpenCommand
 
 static_assert(!std::is_copy_constructible<SetForceLidOpenCommand>::value,
               "EcCommands are not copyable by default");
+static_assert(!std::is_copy_assignable<SetForceLidOpenCommand>::value,
+              "EcCommands are not copy-assignable by default");
+
 }  // namespace ec
 
 #endif  // LIBEC_SET_FORCE_LID_OPEN_COMMAND_H_
