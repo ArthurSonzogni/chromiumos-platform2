@@ -39,7 +39,8 @@ int main(int argc, char** argv) {
 
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   logging::LoggingSettings settings;
-  settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  settings.logging_dest =
+      logging::LOG_TO_SYSTEM_DEBUG_LOG | logging::LOG_TO_STDERR;
   LOG_ASSERT(logging::InitLogging(settings));
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
