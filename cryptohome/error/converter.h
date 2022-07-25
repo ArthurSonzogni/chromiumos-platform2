@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_ERROR_CONVERTER_H_
 #define CRYPTOHOME_ERROR_CONVERTER_H_
 
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -13,6 +14,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/reporting.h"
 
 namespace cryptohome {
 
@@ -36,20 +38,42 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
 // assumption that it is for responding to dbus calls. As in, it'll report the
 // relevant UMAs as well. This is usually used for responding to a sync dbus
 // call.
+//
+// The ReplyType can be any reply message which has a CryptohomeErrorCode error
+// field and a CryptohomeErrorInfo error_info field.
 template <typename ReplyType>
 void PopulateReplyWithError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
-    ReplyType* reply);
+    ReplyType* reply) {
+  bool success = err.ok();
+  if (!success) {
+    user_data_auth::CryptohomeErrorCode legacy_ec;
+    auto info = CryptohomeErrorToUserDataAuthError(err, &legacy_ec);
+    ReportCryptohomeError(err, info);
+
+    *reply->mutable_error_info() = std::move(info);
+    reply->set_error(legacy_ec);
+  } else {
+    reply->clear_error_info();
+    reply->set_error(
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
+  }
+}
 
 // ReplyWithError() is a helper utility that takes the information in
 // CryptohomeError and populates the relevant fields in the reply then call the
-// on_done helper function.
-// This is usually used for responding to an async dbus call.
+// on_done helper function. This is usually used for responding to an async dbus
+// call.
+//
+// This works with the same ReplyType types as PopulateReplyWithError.
 template <typename ReplyType>
 void ReplyWithError(
     base::OnceCallback<void(const ReplyType&)> on_done,
-    const ReplyType& reply,
-    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+    ReplyType reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err) {
+  PopulateReplyWithError(err, &reply);
+  std::move(on_done).Run(reply);
+}
 
 }  // namespace error
 
