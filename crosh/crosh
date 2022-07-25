@@ -3,6 +3,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+################################################################################
+# DO NOT ADD ANY NEW COMMANDS IN HERE.
+#
+# This is the legacy shell code for commands that haven't been ported to Rust
+# yet.  Any attempts to add new commands to here will be rejected.
+################################################################################
+
 # Disable path expansion at the command line.  None of our builtins need or want
 # it, and it's safer to disallow it in the first place.
 set -f
