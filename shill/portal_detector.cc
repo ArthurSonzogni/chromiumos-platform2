@@ -103,17 +103,15 @@ bool PortalDetector::Start(const ManagerProperties& props,
   }
 
   attempt_count_++;
-  if (http_request_ || https_request_) {
-    CleanupTrial();
-  } else {
-    http_request_ = std::make_unique<HttpRequest>(dispatcher_, ifname,
-                                                  src_address, dns_list);
-    // For non-default URLs, allow for secure communication with both Google and
-    // non-Google servers.
-    bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
-    https_request_ = std::make_unique<HttpRequest>(
-        dispatcher_, ifname, src_address, dns_list, allow_non_google_https);
-  }
+  // TODO(hugobenichi) Network properties like src address and DNS should be
+  // obtained exactly at the time that the trial starts if |delay| > 0.
+  http_request_ =
+      std::make_unique<HttpRequest>(dispatcher_, ifname, src_address, dns_list);
+  // For non-default URLs, allow for secure communication with both Google and
+  // non-Google servers.
+  bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
+  https_request_ = std::make_unique<HttpRequest>(
+      dispatcher_, ifname, src_address, dns_list, allow_non_google_https);
   trial_.Reset(base::Bind(&PortalDetector::StartTrialTask,
                           weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
@@ -186,24 +184,15 @@ void PortalDetector::CompleteTrial(Result result) {
 
 void PortalDetector::CleanupTrial() {
   result_.reset();
-  if (http_request_)
-    http_request_->Stop();
-  if (https_request_)
-    https_request_->Stop();
-
+  http_request_.reset();
+  https_request_.reset();
   is_active_ = false;
 }
 
 void PortalDetector::Stop() {
   SLOG(this, 3) << "In " << __func__;
-
   attempt_count_ = 0;
-  if (!http_request_ && !https_request_)
-    return;
-
   CleanupTrial();
-  http_request_.reset();
-  https_request_.reset();
 }
 
 void PortalDetector::HttpRequestSuccessCallback(

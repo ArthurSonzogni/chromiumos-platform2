@@ -199,14 +199,17 @@ class PortalDetector {
 
  private:
   friend class PortalDetectorTest;
-  FRIEND_TEST(PortalDetectorTest, StartAttemptFailed);
-  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
   FRIEND_TEST(PortalDetectorTest, AdjustStartDelayAfterDelay);
+  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, RequestSuccess);
-  FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
   FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
+  FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
+  FRIEND_TEST(PortalDetectorTest, RequestFail);
+  FRIEND_TEST(PortalDetectorTest, RequestRedirect);
+  FRIEND_TEST(PortalDetectorTest, RequestSuccess);
+  FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
+  FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 
