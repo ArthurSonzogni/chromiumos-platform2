@@ -170,7 +170,7 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
     // If the ioctl fails for some reason let's make sure that the driver
     // didn't touch the result.
     data_.cmd.result = kEcCommandUninitializedResult;
-    PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+    PLOG(ERROR) << "cros_ec ioctl command 0x" << std::hex << data_.cmd.command
                 << std::dec << " failed";
     return false;
   }
@@ -304,20 +304,20 @@ bool EcCommand<Params, Response>::RunWithMultipleAttempts(int fd,
 
     if (ret) {
       LOG_IF(INFO, retry > 0)
-          << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+          << "cros_ec ioctl command 0x" << std::hex << data_.cmd.command
           << std::dec << " succeeded on attempt " << retry + 1 << "/"
           << num_attempts << ".";
       return true;
     }
 
     if (!ErrorTypeCanBeRetried(Result()) || (errno != ETIMEDOUT)) {
-      LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+      LOG(ERROR) << "cros_ec ioctl command 0x" << std::hex << data_.cmd.command
                  << std::dec << " failed on attempt " << retry + 1 << "/"
                  << num_attempts << ", retry is not allowed for error";
       return false;
     }
 
-    LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+    LOG(ERROR) << "cros_ec ioctl command 0x" << std::hex << data_.cmd.command
                << std::dec << " failed on attempt " << retry + 1 << "/"
                << num_attempts;
   }
