@@ -101,8 +101,6 @@ class HttpRequest {
   base::OnceCallback<void(Result)> request_error_callback_;
   base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;
-  brillo::http::SuccessCallback success_callback_;
-  brillo::http::ErrorCallback error_callback_;
   std::unique_ptr<DnsClient> dns_client_;
   std::shared_ptr<brillo::http::Transport> transport_;
   brillo::http::RequestID request_id_;

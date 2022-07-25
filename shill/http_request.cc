@@ -50,10 +50,6 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
       weak_ptr_factory_(this),
       dns_client_callback_(base::Bind(&HttpRequest::GetDNSResult,
                                       weak_ptr_factory_.GetWeakPtr())),
-      success_callback_(base::BindOnce(&HttpRequest::SuccessCallback,
-                                       weak_ptr_factory_.GetWeakPtr())),
-      error_callback_(base::BindOnce(&HttpRequest::ErrorCallback,
-                                     weak_ptr_factory_.GetWeakPtr())),
       dns_client_(new DnsClient(ip_family_,
                                 interface_name_,
                                 DnsClient::kDnsTimeoutMilliseconds,
@@ -126,9 +122,12 @@ HttpRequest::Result HttpRequest::Start(
 
 void HttpRequest::StartRequest() {
   LOG(INFO) << logging_tag_ << ": Starting request to " << url_string_;
-  request_id_ = brillo::http::Get(url_string_, headers_, transport_,
-                                  std::move(success_callback_),
-                                  std::move(error_callback_));
+  request_id_ =
+      brillo::http::Get(url_string_, headers_, transport_,
+                        base::BindOnce(&HttpRequest::SuccessCallback,
+                                       weak_ptr_factory_.GetWeakPtr()),
+                        base::BindOnce(&HttpRequest::ErrorCallback,
+                                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 void HttpRequest::SuccessCallback(
