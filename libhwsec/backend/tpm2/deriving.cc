@@ -4,8 +4,6 @@
 
 #include "libhwsec/backend/tpm2/backend.h"
 
-#include <functional>
-
 #include <base/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>

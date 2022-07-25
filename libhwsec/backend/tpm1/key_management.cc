@@ -5,7 +5,6 @@
 #include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/key_management.h"
 
-#include <functional>
 #include <string>
 #include <vector>
 

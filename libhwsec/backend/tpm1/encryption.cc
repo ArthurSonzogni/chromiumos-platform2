@@ -4,7 +4,6 @@
 
 #include "libhwsec/backend/tpm1/backend.h"
 
-#include <functional>
 #include <string>
 
 #include <base/callback_helpers.h>
