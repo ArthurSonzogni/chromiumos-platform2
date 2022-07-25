@@ -8,7 +8,9 @@
 
 use std::env;
 use std::fs::File;
+use std::io::copy;
 use std::io::stdin;
+use std::io::stdout;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
@@ -17,6 +19,7 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::io::FromRawFd;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::exit;
 use std::process::ChildStderr;
 use std::process::Command;
 use std::process::Stdio;
@@ -33,6 +36,7 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
+use crosvm_base::handle_eintr;
 use crosvm_base::unix::vsock::SocketAddr as VsockAddr;
 use crosvm_base::unix::vsock::VsockCid;
 use crosvm_base::unix::wait_for_interrupt;
@@ -202,8 +206,9 @@ fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
     ))
 }
 
-fn handle_app_fds(input: File, output: File) -> Result<()> {
+fn handle_app_fds_interactive(input: File, output: File) -> Result<()> {
     let mut ctx = EventMultiplexer::new().unwrap();
+    let raw = sys::ScopedRaw::new().map_err(|_| anyhow!("failed to put stdin in raw mode"))?;
 
     let copy_in = CopyFdEventSource::new(Box::new(input), Box::new(dup::<File>(1)?))?;
     ctx.add_event(Box::new(copy_in.0))?;
@@ -217,13 +222,29 @@ fn handle_app_fds(input: File, output: File) -> Result<()> {
     while ctx.len() == start {
         ctx.run_once()?;
     }
+    drop(raw);
     Ok(())
+}
+
+fn handle_app_fds(mut input: File, mut output: File) -> Result<()> {
+    let output_thread_handle = spawn(move || -> Result<()> {
+        handle_eintr!(copy(&mut input, &mut stdout())).context("failed to copy to stdout")?;
+        // Once stdout is closed, stdin is invalid and it is time to exit.
+        exit(0);
+    });
+
+    handle_eintr!(copy(&mut stdin(), &mut output)).context("failed to copy from stdin")?;
+
+    output_thread_handle
+        .join()
+        .map_err(|boxed_err| *boxed_err.downcast::<Error>().unwrap())?
 }
 
 fn start_manatee_app(
     api: &dyn OrgChromiumManaTEEInterface,
     app_id: &str,
     args: Vec<&str>,
+    handler: &dyn Fn(File, File) -> Result<()>,
 ) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
     let (fd_in, fd_out) = match api
@@ -240,7 +261,7 @@ fn start_manatee_app(
     // Safe because ownership of the file descriptor is transferred.
     let file_out = unsafe { File::from_raw_fd(fd_out.into_fd()) };
 
-    handle_app_fds(file_in, file_out)
+    handler(file_in, file_out)
 }
 
 fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()> {
@@ -276,11 +297,15 @@ fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()
     }
 }
 
-fn dbus_start_manatee_app(app_id: &str, args: Vec<&str>) -> Result<()> {
+fn dbus_start_manatee_app(
+    app_id: &str,
+    args: Vec<&str>,
+    handler: &dyn Fn(File, File) -> Result<()>,
+) -> Result<()> {
     info!("Connecting to D-Bus.");
     let connection = Connection::new_system().context("failed to get D-Bus connection")?;
     let conn_path = connect_to_dugong(&connection)?;
-    start_manatee_app(&conn_path, app_id, args)
+    start_manatee_app(&conn_path, app_id, args, handler)
 }
 
 fn direct_start_manatee_app(
@@ -288,6 +313,7 @@ fn direct_start_manatee_app(
     app_id: &str,
     args: Vec<&str>,
     elf: Option<Vec<u8>>,
+    handler: &dyn Fn(File, File) -> Result<()>,
 ) -> Result<()> {
     let passthrough = Passthrough::new(Some(trichechus_uri), None)?;
 
@@ -300,7 +326,7 @@ fn direct_start_manatee_app(
             .load_app(app_id.to_string(), elf)
             .context("load_app rpc failed")?;
     }
-    start_manatee_app(&passthrough, app_id, args)
+    start_manatee_app(&passthrough, app_id, args, handler)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -612,19 +638,19 @@ fn main() -> Result<()> {
         None
     };
 
-    let raw = if is_a_tty(stdin().as_raw_fd())
+    let handler: &dyn Fn(File, File) -> Result<()> = if is_a_tty(stdin().as_raw_fd())
         && interactive.unwrap_or_else(|| app_id.as_str() == DEVELOPER_SHELL_APP_ID)
     {
-        Some(sys::ScopedRaw::new().map_err(|_| anyhow!("failed to put stdin in raw mode"))?)
+        &handle_app_fds_interactive
     } else {
-        None
+        &handle_app_fds
     };
 
     let args_ref = args.iter().map(AsRef::<str>::as_ref).collect();
     match trichechus_uri {
-        None => dbus_start_manatee_app(&app_id, args_ref),
-        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, args_ref, elf),
-    }?;
-    drop(raw);
-    Ok(())
+        None => dbus_start_manatee_app(&app_id, args_ref, handler),
+        Some(trichechus_uri) => {
+            direct_start_manatee_app(trichechus_uri, &app_id, args_ref, elf, handler)
+        }
+    }
 }
