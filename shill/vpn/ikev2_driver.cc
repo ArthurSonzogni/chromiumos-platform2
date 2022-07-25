@@ -57,7 +57,7 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
         kIKEv2ClientCertSlotProperty);
     if (!config->client_cert_id.has_value() ||
         !config->client_cert_slot.has_value()) {
-      LOG(ERROR) << "Auth type is emtpy but empty cert id or slot found.";
+      LOG(ERROR) << "Auth type is cert but empty cert id or slot found.";
       return nullptr;
     }
   } else if (auth_type == kIKEv2AuthenticationTypeEAP) {
