@@ -313,11 +313,19 @@ impl CopyFdEventSource {
         output: Box<dyn TransportWrite>,
     ) -> Result<(Self, HangupListener)> {
         set_nonblocking(input.as_raw_fd()).map_err(Error::SetNonBlocking)?;
-        let hang_up = HangupListener::new(
-            output.as_raw_fd(),
-            Box::new(RemoveFdMutator(input.as_raw_fd())),
-        );
-        Ok((CopyFdEventSource { input, output }, hang_up))
+        let copy = CopyFdEventSource { input, output };
+        let hang_up = HangupListener::new(copy.output.as_raw_fd(), copy.create_removal_mutator());
+        Ok((copy, hang_up))
+    }
+
+    fn create_removal_mutator(&self) -> Box<dyn Mutator> {
+        // Since the CopyFdEventSource owns the fd for the HangupListener, we need
+        // to remove the HangupListener first to avoid an EBADF when unregistering
+        // the HangupListener.
+        Box::new(ComboMutator::from(IntoIterator::into_iter([
+            Box::new(RemoveFdMutator(self.output.as_raw_fd())) as Box<dyn Mutator>,
+            Box::new(RemoveFdMutator(self.input.as_raw_fd())) as Box<dyn Mutator>,
+        ])))
     }
 }
 
@@ -344,11 +352,7 @@ impl EventSource for CopyFdEventSource {
                 Ok(None) => return Ok(None),
             }
         }
-        let rm_in: Box<dyn Mutator> = Box::new(RemoveFdMutator(self.as_raw_fd()));
-        let rm_out: Box<dyn Mutator> = Box::new(RemoveFdMutator(self.output.as_raw_fd()));
-        Ok(Some(Box::new(ComboMutator::from(IntoIterator::into_iter(
-            [rm_in, rm_out],
-        )))))
+        Ok(Some(self.create_removal_mutator()))
     }
 
     fn on_hangup(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
