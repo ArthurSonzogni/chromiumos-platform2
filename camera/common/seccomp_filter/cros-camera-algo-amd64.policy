@@ -67,3 +67,4 @@ unlink: 1
 wait4: 1
 write: 1
 fstatfs: 1
+writev: 1
