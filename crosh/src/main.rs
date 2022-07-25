@@ -47,7 +47,7 @@ Options:
 
 fn intro() {
     println!(
-        r#"Welcome to crosh, the Chrome OS developer shell.
+        r#"Welcome to crosh, the ChromeOS developer shell.
 
 If you got here by mistake, don't panic!  Just close this tab and carry on.
 

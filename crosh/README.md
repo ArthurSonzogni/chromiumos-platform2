@@ -1,8 +1,8 @@
 [TOC]
 
-# Crosh -- The Chromium OS shell
+# Crosh -- The ChromiumOS shell
 
-This is the homepage/documentation for the crosh, the Chromium OS shell.
+This is the homepage/documentation for the crosh, the ChromiumOS shell.
 If you're on a CrOS devices right now, you should be able to launch crosh
 by hitting Ctrl+Alt+T.  If you aren't on CrOS, then most likely that won't
 do anything useful :).
@@ -15,9 +15,9 @@ You can also use tab completion to quickly find existing commands.
 
 It's an adventure!
 
-# For Chromium OS Developers
+# For ChromiumOS Developers
 
-This section is meant for people hacking on Chromium OS, especially when they
+This section is meant for people hacking on ChromiumOS, especially when they
 need to modify/extend crosh.
 
 ## Security Warning

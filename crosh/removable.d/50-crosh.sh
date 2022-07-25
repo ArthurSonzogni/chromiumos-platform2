@@ -65,7 +65,7 @@ cmd_update_firmware() (
 USAGE_install='[<dev>]'
 # shellcheck disable=SC2034
 HELP_install='
-  Install Chrome OS to the target device, clearing out all existing data.
+  Install ChromeOS to the target device, clearing out all existing data.
 '
 cmd_install() (
   do_install "$1"
@@ -75,7 +75,7 @@ cmd_install() (
 USAGE_upgrade='[<dev>]'
 # shellcheck disable=SC2034
 HELP_upgrade='
-  Upgrade an existing Chrome OS installation, saving existing user data.
+  Upgrade an existing ChromeOS installation, saving existing user data.
 '
 cmd_upgrade() (
   do_install "$1" --preserve_stateful

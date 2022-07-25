@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// The dev module handles registration of crosh commands only enabled when Chrome OS is in developer
+// The dev module handles registration of crosh commands only enabled when ChromeOS is in developer
 // mode.
 
 mod shell;

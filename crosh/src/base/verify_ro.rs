@@ -32,7 +32,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
         Command::new(
             "verify_ro".to_string(),
             "".to_string(),
-            "Verify AP and EC RO firmware on a Chrome OS device connected over SuzyQ
+            "Verify AP and EC RO firmware on a ChromeOS device connected over SuzyQ
   cable, if supported by the device."
                 .to_string(),
         )

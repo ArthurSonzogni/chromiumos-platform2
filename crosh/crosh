@@ -1022,7 +1022,7 @@ USAGE_autest='[--scheduled]'
 HELP_autest='
   Trigger an auto-update against a **test** update server.
 
-  WARNING: This may update to an untested version of Chrome OS which was never
+  WARNING: This may update to an untested version of ChromeOS which was never
   intended for end users!
 
   The --scheduled option fakes a scheduled update.
