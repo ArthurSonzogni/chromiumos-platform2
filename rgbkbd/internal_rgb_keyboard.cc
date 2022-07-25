@@ -39,7 +39,7 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
       LOG(INFO) << "Device supports four zone - fourty led keyboard";
       break;
     case RgbKeyboardCapabilities::kIndividualKey:
-      LOG(INFO) << "Device supports per-key keyboard over USB";
+      LOG(INFO) << "Device supports per-key keyboard";
       break;
     case RgbKeyboardCapabilities::kFourZoneTwelveLed:
       LOG(INFO) << "Device supports four zone - twelve led keyboard";
@@ -67,6 +67,25 @@ base::ScopedFD CreateFileDescriptorForEc() {
   return base::ScopedFD(raw_fd);
 }
 
+RgbKeyboardCapabilities ConvertEcCapabilitiesToRgbKeyboardCapabilities(
+    uint8_t ec_capabilities) {
+  switch (ec_capabilities) {
+    case EC_RGBKBD_TYPE_UNKNOWN:
+      return RgbKeyboardCapabilities::kNone;
+    case EC_RGBKBD_TYPE_PER_KEY:
+      return RgbKeyboardCapabilities::kIndividualKey;
+    case EC_RGBKBD_TYPE_FOUR_ZONES_40_LEDS:
+      return RgbKeyboardCapabilities::kFourZoneFortyLed;
+    case EC_RGBKBD_TYPE_FOUR_ZONES_12_LEDS:
+      return RgbKeyboardCapabilities::kFourZoneTwelveLed;
+    case EC_RGBKBD_TYPE_FOUR_ZONES_15_LEDS:
+      return RgbKeyboardCapabilities::kFourZoneFifteenLed;
+    default:
+      LOG(WARNING) << "Invalid EC Capability value: " << ec_capabilities
+                   << ". Using default of None.";
+      return RgbKeyboardCapabilities::kNone;
+  }
+}
 }  // namespace
 
 bool InternalRgbKeyboard::SetKeyColor(uint32_t key,
@@ -105,19 +124,14 @@ bool InternalRgbKeyboard::SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) {
 RgbKeyboardCapabilities InternalRgbKeyboard::GetRgbKeyboardCapabilities() {
   RgbKeyboardCapabilities capabilities = RgbKeyboardCapabilities::kNone;
 
-  LOG(INFO) << "Checking RgbKeyboardCapabilities by trying to set all keys to "
-            << CreateRgbLogString(/*r=*/0, /*g=*/0, /*b=*/0);
-  auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, {0, 0, 0});
+  LOG(INFO) << "Checking RgbKeyboardCapabilities.";
+  auto command = ec::RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_GET_CONFIG);
 
-  // TODO(dpad): Replace CLEAR command with GET_CONFIG command once available
-  // on all devices. Deducing communication type will still be needed as
-  // GET_CONFIG API still needs either USB or FileDescriptor param
   if (SetCommunicationType(*command)) {
-    if (communication_type_ == CommunicationType::kUsb) {
-      capabilities = RgbKeyboardCapabilities::kIndividualKey;
-    } else if (communication_type_ == CommunicationType::kFileDescriptor) {
-      capabilities = RgbKeyboardCapabilities::kFourZoneFortyLed;
-    }
+    const uint8_t ec_capabilities = command->GetConfig();
+    LOG(INFO) << "EC GetConfig returned: " << ec_capabilities;
+    capabilities =
+        ConvertEcCapabilitiesToRgbKeyboardCapabilities(ec_capabilities);
   }
 
   LogSupportType(capabilities);
