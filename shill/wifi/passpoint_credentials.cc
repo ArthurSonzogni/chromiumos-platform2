@@ -82,14 +82,8 @@ bool PasspointCredentials::ToSupplicantProperties(
   CHECK(!domains_.empty() && !domains_[0].empty());
   CHECK(!realm_.empty());
 
-  if (domains_.size() > 1) {
-    // TODO(b/162105998) add support for multiple domains in wpa_supplicant
-    // D-Bus interface.
-    LOG(WARNING) << "Passpoint credentials does not support multiple domains "
-                 << "yet, only the first one will be used.";
-  }
-  properties->Set<std::string>(WPASupplicant::kCredentialsPropertyDomain,
-                               domains_[0]);
+  properties->Set<std::vector<std::string>>(
+      WPASupplicant::kCredentialsPropertyDomain, domains_);
   properties->Set<std::string>(WPASupplicant::kCredentialsPropertyRealm,
                                realm_);
 

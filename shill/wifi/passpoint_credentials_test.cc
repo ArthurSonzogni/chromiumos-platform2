@@ -409,8 +409,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   KeyValueStore properties;
   EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
 
-  EXPECT_EQ(domains[0], properties.Get<std::string>(
-                            WPASupplicant::kCredentialsPropertyDomain));
+  EXPECT_EQ(domains, properties.Get<std::vector<std::string>>(
+                         WPASupplicant::kCredentialsPropertyDomain));
   EXPECT_EQ(realm, properties.Get<std::string>(
                        WPASupplicant::kCredentialsPropertyRealm));
   // We expect the EAP method to be set, this is mandatory for supplicant to
@@ -444,8 +444,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   properties.Clear();
   EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
 
-  EXPECT_EQ(domains[0], properties.Get<std::string>(
-                            WPASupplicant::kCredentialsPropertyDomain));
+  EXPECT_EQ(domains, properties.Get<std::vector<std::string>>(
+                         WPASupplicant::kCredentialsPropertyDomain));
   EXPECT_EQ(realm, properties.Get<std::string>(
                        WPASupplicant::kCredentialsPropertyRealm));
   // There's no required Home OIs, we expect to find the first one from the
