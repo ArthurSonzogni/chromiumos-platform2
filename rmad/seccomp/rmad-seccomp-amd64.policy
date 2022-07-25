@@ -115,3 +115,4 @@ clock_nanosleep: 1
 eventfd2: 1
 memfd_create: 1
 fdatasync: 1
+sysinfo: 1
