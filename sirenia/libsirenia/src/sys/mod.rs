@@ -8,7 +8,6 @@
 
 use std::fmt::Debug;
 use std::fs::File;
-use std::fs::OpenOptions;
 use std::io;
 use std::io::stdin;
 use std::io::BufRead;
@@ -160,10 +159,6 @@ pub fn get_a_pty() -> Result<(File, File), anyhow::Error> {
     }
     let client = unsafe { File::from_raw_fd(client) };
     Ok((main, client))
-}
-
-pub fn dev_null() -> Result<File, io::Error> {
-    OpenOptions::new().write(true).read(true).open("/dev/null")
 }
 
 /// Halts the system.

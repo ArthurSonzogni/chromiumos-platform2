@@ -688,7 +688,6 @@ impl SecretManager {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::app_info::ChannelConfig;
     use crate::app_info::ExecutableInfo;
     use crate::app_info::SandboxType;
     use crate::app_info::StdErrBehavior;
@@ -721,7 +720,6 @@ pub mod tests {
         let mut manifest = AppManifest::new();
         let prev = manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "demo_app".to_string(),
-            channel_config: ChannelConfig::default(),
             devmode_only: false,
             exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
             exec_args: None,
