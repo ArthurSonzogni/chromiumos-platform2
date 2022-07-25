@@ -374,7 +374,8 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
   LOG(INFO) << "Send command to start sibling VM: " << sibling_args;
 
   int32_t error_code;
-  std::vector<base::ScopedFD> fds;
+  base::ScopedFD fd_in;
+  base::ScopedFD fd_out;
   brillo::ErrorPtr error;
   bool vm_started =
       AsyncNoReject(
@@ -382,23 +383,25 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
           base::BindOnce(
               [](org::chromium::ManaTEEInterfaceProxy* manatee_client,
                  const std::vector<std::string>& args, int32_t* error_code,
-                 std::vector<base::ScopedFD>* fds, brillo::ErrorPtr* error) {
+                 base::ScopedFD* fd_in, base::ScopedFD* fd_out,
+                 brillo::ErrorPtr* error) {
                 return manatee_client->StartTEEApplication(
-                    "termina", args, error_code, fds, error);
+                    "termina", args, error_code, fd_in, fd_out, error);
               },
-              manatee_client_.get(), args, &error_code, &fds, &error))
+              manatee_client_.get(), args, &error_code, &fd_in, &fd_out,
+              &error))
           .Get()
           .val;
 
-  // fds[0] is for writing from us. Watching it as readable will trigger an
-  // event if the sibling is shutdown from under us and fds[0]'s socket connect
+  // The |fd_in| is for writing from us. Watching it as readable will trigger an
+  // event if the sibling is shutdown from under us and |fd_in|'s socket connect
   // is closed.
   auto fd_in_watcher = base::FileDescriptorWatcher::WatchReadable(
-      fds[0].get(), base::BindRepeating(&TerminaVm::OnFdToSiblingReadable,
-                                        base::Unretained(this)));
+      fd_in.get(), base::BindRepeating(&TerminaVm::OnFdToSiblingReadable,
+                                       base::Unretained(this)));
   sibling_state_ = std::make_optional(
-      SiblingState{.fd_in = std::move(fds[0]),
-                   .fd_out = std::move(fds[1]),
+      SiblingState{.fd_in = std::move(fd_in),
+                   .fd_out = std::move(fd_out),
                    .fd_in_watcher = std::move(fd_in_watcher)});
   LOG(INFO) << "Sibling Vm Started: " << vm_started;
   return vm_started;
