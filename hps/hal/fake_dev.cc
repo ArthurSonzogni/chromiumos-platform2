@@ -42,12 +42,15 @@ bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   memset(data, 0, len);
   if ((cmd & 0x80) != 0) {
     // Register read.
-    uint16_t value = this->ReadRegister(static_cast<HpsReg>(cmd & 0x7F));
+    std::optional<uint16_t> result =
+        this->ReadRegister(static_cast<HpsReg>(cmd & 0x7F));
+    if (!result)
+      return false;
     // Store the value of the register into the buffer.
     if (len > 0) {
-      data[0] = (value >> 8) & 0xFF;
+      data[0] = (result.value() >> 8) & 0xFF;
       if (len > 1) {
-        data[1] = value & 0xFF;
+        data[1] = result.value() & 0xFF;
       }
     }
   } else {
@@ -100,7 +103,7 @@ void FakeDev::SetStage(Stage s) {
   }
 }
 
-uint16_t FakeDev::ReadRegister(HpsReg reg) {
+std::optional<uint16_t> FakeDev::ReadRegister(HpsReg reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -112,6 +115,10 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       }
       break;
     case HpsReg::kSysStatus:
+      if (Flag(Flags::kFailStatusRegRead)) {
+        Clear(Flags::kFailStatusRegRead);
+        return std::nullopt;
+      }
       v = hps::R2::kOK;
       if (this->fault_ != RError::kNone) {
         v |= hps::R2::kFault;
@@ -193,10 +200,6 @@ bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
   switch (reg) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
-        if (Flag(Flags::kFailResetCmd)) {
-          Clear(Flags::kFailResetCmd);
-          return false;
-        }
         this->SetStage(Stage::kStage0);
       } else if (value & hps::R3::kLaunch1) {
         // Only valid in stage0

@@ -421,8 +421,8 @@ TEST_F(HPSTest, TransientBootErrorWithSystemSuspend) {
   fake_->SetVersion(version);
   hps_->Init(version, mcu, spi1, spi2);
 
-  // Make the reset command fail once.
-  fake_->Set(hps::FakeDev::Flags::kFailResetCmd);
+  // Make the status register fail once.
+  fake_->Set(hps::FakeDev::Flags::kFailStatusRegRead);
 
   // Simulate a 10 second system suspend.
   hps_->suspend_times_ = {base::TimeDelta(), base::Seconds(10)};
@@ -443,8 +443,8 @@ TEST_F(HPSTest, TransientBootErrorWithoutSystemSuspend) {
   fake_->SetVersion(version);
   hps_->Init(version, mcu, spi1, spi2);
 
-  // Make the reset command fail once.
-  fake_->Set(hps::FakeDev::Flags::kFailResetCmd);
+  // Make the status register fail once.
+  fake_->Set(hps::FakeDev::Flags::kFailStatusRegRead);
 
   // Since a system suspend isn't detected, the transient error becomes fatal.
   EXPECT_DEATH({ hps_->Boot(); }, "Terminating for boot fault");
