@@ -236,7 +236,8 @@ int32_t CameraHalAdapter::OpenDevice(
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
       StreamManipulator::GetEnabledStreamManipulators(
-          std::move(options), &stream_manipulator_runtime_options_));
+          std::move(options), &stream_manipulator_runtime_options_,
+          mojo_manager_token_));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback = base::BindRepeating(

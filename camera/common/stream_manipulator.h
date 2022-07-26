@@ -15,6 +15,7 @@
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
+#include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -41,7 +42,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     mojom::CameraAutoFramingState auto_framing_state;
 
     // The state of camera software privacy switch state. When a user session
-    // starts, it will be UNKNOWN until it is set by the Mojo API
+    // starts, it will be OFF until it is set by the Mojo API
     // SetCameraSWPrivacySwitchState.
     mojom::CameraPrivacySwitchState sw_privacy_switch_state =
         mojom::CameraPrivacySwitchState::OFF;
@@ -67,8 +68,10 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // regardless of the return value of each hook call. The return value of the
   // hook is mainly used to log the status for each StreamManipulator.
   static std::vector<std::unique_ptr<StreamManipulator>>
-  GetEnabledStreamManipulators(Options options,
-                               RuntimeOptions* runtime_options);
+  GetEnabledStreamManipulators(
+      Options options,
+      RuntimeOptions* runtime_options,
+      CameraMojoChannelManagerToken* mojo_manager_token);
 
   virtual ~StreamManipulator() = default;
 
@@ -80,16 +83,14 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   virtual bool Initialize(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback) = 0;
 
-  // A hook to the upper part of camera3_device_ops::configure_streams().
-  // Will be called by CameraDeviceAdapter with the stream configuration
-  // |stream_list| requested by the camera client. |streams| carries the set of
-  // output streams in |stream_list| and can be used to modify the set of output
-  // streams in |stream_list|.
+  // A hook to the upper part of camera3_device_ops::configure_streams(). Will
+  // be called by CameraDeviceAdapter with the stream configuration
+  // |stream_config| requested by the camera client.
   virtual bool ConfigureStreams(Camera3StreamConfiguration* stream_config) = 0;
 
   // A hook to the lower part of camera3_device_ops::configure_streams().
   // Will be called by CameraDeviceAdapter with the updated stream configuration
-  // |stream_list| returned by the camera HAL implementation.
+  // |stream_config| returned by the camera HAL implementation.
   virtual bool OnConfiguredStreams(
       Camera3StreamConfiguration* stream_config) = 0;
 

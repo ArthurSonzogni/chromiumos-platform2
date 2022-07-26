@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 
+#include "common/sw_privacy_switch_stream_manipulator.h"
 #include "cros-camera/constants.h"
 #include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
@@ -113,7 +114,9 @@ void MaybeEnableAutoFramingStreamManipulator(
 // static
 std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(
-    Options options, RuntimeOptions* runtime_options) {
+    Options options,
+    RuntimeOptions* runtime_options,
+    CameraMojoChannelManagerToken* mojo_manager_token) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
 
@@ -137,6 +140,10 @@ StreamManipulator::GetEnabledStreamManipulators(
     stream_manipulators.emplace_back(std::make_unique<ZslStreamManipulator>());
     LOGF(INFO) << "ZslStreamManipulator enabled";
   }
+
+  stream_manipulators.emplace_back(
+      std::make_unique<SWPrivacySwitchStreamManipulator>(runtime_options,
+                                                         mojo_manager_token));
 
   return stream_manipulators;
 }

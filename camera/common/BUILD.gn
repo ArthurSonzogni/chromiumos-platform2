@@ -227,6 +227,7 @@ source_set("stream_manipulator") {
   sources = [
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",
+    "//camera/common/sw_privacy_switch_stream_manipulator.cc",
   ]
   public_configs = [ ":target_defaults" ]
 

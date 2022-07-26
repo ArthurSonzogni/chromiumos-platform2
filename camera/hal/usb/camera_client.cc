@@ -270,7 +270,7 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
   }
 
   if (request == nullptr) {
-    LOGFID(ERROR, id_) << "NULL request recieved";
+    LOGFID(ERROR, id_) << "NULL request received";
     return -EINVAL;
   }
 
