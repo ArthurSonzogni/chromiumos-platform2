@@ -29,6 +29,9 @@
 
 namespace hwsec {
 
+// TODO(b/174816474): Move into config.h
+extern const int kCurrentUserPcrTpm1;
+
 class BackendTpm1 : public Backend {
  public:
   class StateTpm1 : public State, public SubClassHelper<BackendTpm1> {
@@ -217,7 +220,15 @@ class BackendTpm1 : public Backend {
     StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
 
     using PcrMap = std::map<uint32_t, brillo::Blob>;
+
+    // Converts a device config usage into a PCR map.
     StatusOr<PcrMap> ToPcrMap(const DeviceConfigs& device_config);
+
+    // Converts a device config usage into a PCR map, and fill the value with
+    // real PCR value.
+    StatusOr<PcrMap> ToCurrentPcrValueMap(const DeviceConfigs& device_config);
+
+    // Converts a device config setting into a PCR map.
     StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
 
    private:

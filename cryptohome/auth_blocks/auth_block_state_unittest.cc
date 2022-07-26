@@ -187,34 +187,58 @@ TEST(AuthBlockStateBindingTest, DoubleWrappedCompatAuthBlockState) {
 }
 
 TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm12) {
-  AuthBlockState state = {
-      .state = ChallengeCredentialAuthBlockState{
-          .scrypt_state =
-              LibScryptCompatAuthBlockState{
-                  .wrapped_keyset = SecureBlob("wrapped_keyset"),
-                  .wrapped_chaps_key = SecureBlob("wrapped_chaps_key"),
-                  .wrapped_reset_seed = SecureBlob("wrapped_reset_seed"),
-                  .salt = SecureBlob("salt"),
-              },
-          .keyset_challenge_info = structure::SignatureChallengeInfo{
-              .public_key_spki_der = BlobFromString("public_key_spki_der"),
-              .sealed_secret =
-                  hwsec::Tpm12CertifiedMigratableKeyData{
-                      .public_key_spki_der =
-                          BlobFromString("public_key_spki_der"),
-                      .srk_wrapped_cmk = BlobFromString("srk_wrapped_cmk"),
-                      .cmk_pubkey = BlobFromString("cmk_pubkey"),
-                      .cmk_wrapped_auth_data =
-                          BlobFromString("cmk_wrapped_auth_data"),
-                      .default_pcr_bound_secret =
-                          BlobFromString("default_pcr_bound_secret"),
-                      .extended_pcr_bound_secret =
-                          BlobFromString("extended_pcr_bound_secret"),
-                  },
-              .salt = BlobFromString("salt"),
-              .salt_signature_algorithm =
-                  structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-          }}};
+  AuthBlockState state =
+      {.state =
+           ChallengeCredentialAuthBlockState{
+               .scrypt_state =
+                   LibScryptCompatAuthBlockState{
+                       .wrapped_keyset = SecureBlob("wrapped_keyset"),
+                       .wrapped_chaps_key = SecureBlob("wrapped_chaps_key"),
+                       .wrapped_reset_seed = SecureBlob("wrapped_reset_seed"),
+                       .salt = SecureBlob("salt"),
+                   },
+               .keyset_challenge_info = structure::SignatureChallengeInfo{
+                   .public_key_spki_der = BlobFromString("public_key_spki_der"),
+                   .sealed_secret =
+                       hwsec::Tpm12CertifiedMigratableKeyData{
+                           .public_key_spki_der =
+                               BlobFromString("public_key_spki_der"),
+                           .srk_wrapped_cmk = BlobFromString("srk_wrapped_cmk"),
+                           .cmk_pubkey = BlobFromString("cmk_pubkey"),
+                           .cmk_wrapped_auth_data =
+                               BlobFromString("cmk_wrapped_auth_data"),
+                           .pcr_bound_items =
+                               {
+                                   hwsec::Tpm12PcrBoundItem{
+                                       .pcr_values =
+                                           {
+                                               hwsec::Tpm12PcrValue{
+                                                   .pcr_index = 4,
+                                                   .pcr_value = BlobFromString(
+                                                       "pcr_value1"),
+                                               },
+                                           },
+                                       .bound_secret =
+                                           BlobFromString("bound_secret0"),
+                                   },
+                                   hwsec::Tpm12PcrBoundItem{
+                                       .pcr_values =
+                                           {
+                                               hwsec::Tpm12PcrValue{
+                                                   .pcr_index = 4,
+                                                   .pcr_value = BlobFromString(
+                                                       "pcr_value1"),
+                                               },
+                                           },
+                                       .bound_secret =
+                                           BlobFromString("bound_secret1"),
+                                   },
+                               },
+                       },
+                   .salt = BlobFromString("salt"),
+                   .salt_signature_algorithm = structure::
+                       ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+               }}};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =

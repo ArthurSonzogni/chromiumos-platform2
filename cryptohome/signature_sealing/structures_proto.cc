@@ -74,29 +74,20 @@ SignatureSealedData_Tpm12CertifiedMigratableKeyData ToProto(
   result.set_cmk_pubkey(BlobToString(obj.cmk_pubkey));
   result.set_cmk_wrapped_auth_data(BlobToString(obj.cmk_wrapped_auth_data));
 
-  // Special conversion for backwards-compatibility.
-  // Note: The order of items added here is important, as it must match the
-  // reading order in FromProto() and must never change due to backwards
-  // compatibility.
-  SignatureSealedData_PcrValue pcr_value;
-  // Ignoring the exact PCR value, because we don't need it.
-  pcr_value.set_pcr_index(kTpmSingleUserPCR);
-
-  SignatureSealedData_Tpm12PcrBoundItem bound_item;
-  bound_item.set_bound_secret(BlobToString(obj.default_pcr_bound_secret));
-
-  *bound_item.add_pcr_values() = std::move(pcr_value);
-  *result.add_pcr_bound_items() = std::move(bound_item);
-
-  pcr_value = SignatureSealedData_PcrValue();
-  // Ignoring the exact PCR value, because we don't need it.
-  pcr_value.set_pcr_index(kTpmSingleUserPCR);
-
-  bound_item = SignatureSealedData_Tpm12PcrBoundItem();
-  bound_item.set_bound_secret(BlobToString(obj.extended_pcr_bound_secret));
-
-  *bound_item.add_pcr_values() = std::move(pcr_value);
-  *result.add_pcr_bound_items() = std::move(bound_item);
+  for (const hwsec::Tpm12PcrBoundItem& item : obj.pcr_bound_items) {
+    SignatureSealedData_Tpm12PcrBoundItem bound_item;
+    for (const hwsec::Tpm12PcrValue& value : item.pcr_values) {
+      SignatureSealedData_PcrValue pcr_value;
+      if (!value.pcr_index.has_value()) {
+        LOG(WARNING) << "No PCR index in PCR bound items.";
+      }
+      pcr_value.set_pcr_index(value.pcr_index.value_or(0));
+      pcr_value.set_pcr_value(BlobToString(value.pcr_value));
+      *bound_item.add_pcr_values() = std::move(pcr_value);
+    }
+    bound_item.set_bound_secret(BlobToString(item.bound_secret));
+    *result.add_pcr_bound_items() = std::move(bound_item);
+  }
 
   return result;
 }
@@ -109,18 +100,24 @@ hwsec::Tpm12CertifiedMigratableKeyData FromProto(
   result.cmk_pubkey = BlobFromString(obj.cmk_pubkey());
   result.cmk_wrapped_auth_data = BlobFromString(obj.cmk_wrapped_auth_data());
 
-  // Special conversion for backwards-compatibility.
-  if (obj.pcr_bound_items_size() == 2) {
-    result.default_pcr_bound_secret =
-        BlobFromString(obj.pcr_bound_items(0).bound_secret());
-    result.extended_pcr_bound_secret =
-        BlobFromString(obj.pcr_bound_items(1).bound_secret());
-  } else {
-    LOG(WARNING) << "Unknown PCR bound items size from protobuf.";
+  for (const SignatureSealedData_Tpm12PcrBoundItem& item :
+       obj.pcr_bound_items()) {
+    hwsec::Tpm12PcrBoundItem bound_item{
+        .bound_secret = BlobFromString(item.bound_secret())};
+
+    for (const SignatureSealedData_PcrValue& value : item.pcr_values()) {
+      bound_item.pcr_values.push_back(hwsec::Tpm12PcrValue{
+          .pcr_index = value.pcr_index(),
+          .pcr_value = BlobFromString(value.pcr_value()),
+      });
+    }
+
+    result.pcr_bound_items.push_back(std::move(bound_item));
   }
 
   return result;
 }
+
 }  // namespace
 
 ChallengeSignatureAlgorithm ToProto(

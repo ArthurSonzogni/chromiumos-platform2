@@ -175,7 +175,10 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         fake_one_of_prime_(kFakeOneOfPrime,
                            kFakeOneOfPrime + sizeof(kFakeOneOfPrime)),
         oaep_label_(kTpmRsaOaepLabel,
-                    kTpmRsaOaepLabel + sizeof(kTpmRsaOaepLabel)) {
+                    kTpmRsaOaepLabel + sizeof(kTpmRsaOaepLabel)),
+        zero_pcr_value_(SHA_DIGEST_LENGTH, 0),
+        extended_pcr_value_(Sha1(brillo::CombineBlobs(
+            {zero_pcr_value_, Sha1(brillo::BlobFromString(current_user_))}))) {
     EXPECT_TRUE(GenerateRsaKey(2048, &pkey_, &public_key_spki_der_));
   }
 
@@ -962,6 +965,8 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
   brillo::Blob fake_modulus_;
   brillo::Blob fake_one_of_prime_;
   brillo::Blob oaep_label_;
+  brillo::Blob zero_pcr_value_;
+  brillo::Blob extended_pcr_value_;
 };
 
 TEST_F(BackendSignatureSealingTpm1Test, SealChallengeUnseal) {
@@ -978,8 +983,29 @@ TEST_F(BackendSignatureSealingTpm1Test, SealChallengeUnseal) {
       .cmk_wrapped_auth_data =
           std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
               .cmk_wrapped_auth_data,
-      .default_pcr_bound_secret = fake_sealed_data1_,
-      .extended_pcr_bound_secret = fake_sealed_data2_,
+      .pcr_bound_items =
+          {
+              Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          Tpm12PcrValue{
+                              .pcr_index = kCurrentUserPcrTpm1,
+                              .pcr_value = zero_pcr_value_,
+                          },
+                      },
+                  .bound_secret = fake_sealed_data1_,
+              },
+              Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          Tpm12PcrValue{
+                              .pcr_index = kCurrentUserPcrTpm1,
+                              .pcr_value = extended_pcr_value_,
+                          },
+                      },
+                  .bound_secret = fake_sealed_data2_,
+              },
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 
@@ -1018,12 +1044,33 @@ TEST_F(BackendSignatureSealingTpm1Test, SealChallengeUserPcr) {
       .cmk_wrapped_auth_data =
           std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
               .cmk_wrapped_auth_data,
-      .default_pcr_bound_secret = fake_sealed_data1_,
-      .extended_pcr_bound_secret = fake_sealed_data2_,
+      .pcr_bound_items =
+          {
+              Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          Tpm12PcrValue{
+                              .pcr_index = kCurrentUserPcrTpm1,
+                              .pcr_value = zero_pcr_value_,
+                          },
+                      },
+                  .bound_secret = fake_sealed_data1_,
+              },
+              Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          Tpm12PcrValue{
+                              .pcr_index = kCurrentUserPcrTpm1,
+                              .pcr_value = extended_pcr_value_,
+                          },
+                      },
+                  .bound_secret = fake_sealed_data2_,
+              },
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 
-  pcr_value_ = brillo::Blob(SHA_DIGEST_LENGTH, 'P');
+  pcr_value_ = extended_pcr_value_;
 
   StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
       SetupChallenge(seal_result.value());
@@ -1046,6 +1093,66 @@ TEST_F(BackendSignatureSealingTpm1Test, SealChallengeUserPcr) {
   EXPECT_EQ(unseal_result.value(), unsealed_data_);
 }
 
+TEST_F(BackendSignatureSealingTpm1Test, SealChallengeLegacyFormat) {
+  StatusOr<SignatureSealedData> seal_result = SetupSealing();
+  ASSERT_THAT(seal_result, IsOk());
+  ASSERT_TRUE(std::holds_alternative<Tpm12CertifiedMigratableKeyData>(
+      seal_result.value()));
+
+  ASSERT_EQ(2, std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
+                   .pcr_bound_items.size());
+  ASSERT_EQ(1, std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
+                   .pcr_bound_items[0]
+                   .pcr_values.size());
+  ASSERT_EQ(1, std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
+                   .pcr_bound_items[1]
+                   .pcr_values.size());
+
+  // Clear the pcr_value to simulate the legacy format.
+  std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
+      .pcr_bound_items[0]
+      .pcr_values[0]
+      .pcr_value = brillo::Blob();
+  std::get<Tpm12CertifiedMigratableKeyData>(seal_result.value())
+      .pcr_bound_items[1]
+      .pcr_values[0]
+      .pcr_value = brillo::Blob();
+
+  StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
+      SetupChallenge(seal_result.value());
+  ASSERT_THAT(challenge_result, IsOk());
+
+  EXPECT_EQ(challenge_result->algorithm, Algorithm::kRsassaPkcs1V15Sha1);
+
+  brillo::Blob protection_key_pubkey_digest = Sha1(fake_pubkey_);
+  brillo::Blob migration_destination_key_pubkey_digest = Sha1(mig_dest_pubkey_);
+  brillo::Blob cmk_pubkey_digest = Sha1(cmk_pubkey_);
+  brillo::Blob challenge_value = brillo::CombineBlobs(
+      {protection_key_pubkey_digest, migration_destination_key_pubkey_digest,
+       cmk_pubkey_digest});
+
+  EXPECT_EQ(challenge_result->challenge, challenge_value);
+
+  StatusOr<brillo::SecureBlob> unseal_result =
+      SetupUnseal(challenge_result->challenge_id);
+  ASSERT_THAT(unseal_result, IsOk());
+  EXPECT_EQ(unseal_result.value(), unsealed_data_);
+
+  // Check again with extended PCR.
+  pcr_value_ = extended_pcr_value_;
+
+  challenge_result = SetupChallenge(seal_result.value());
+  ASSERT_THAT(challenge_result, IsOk());
+
+  EXPECT_EQ(challenge_result->algorithm, Algorithm::kRsassaPkcs1V15Sha1);
+
+  EXPECT_EQ(challenge_result->challenge, challenge_value);
+
+  unseal_result = SetupUnseal(challenge_result->challenge_id);
+  ASSERT_THAT(unseal_result, IsOk());
+  EXPECT_EQ(unseal_result.value(), unsealed_data_);
+}
+
 TEST_F(BackendSignatureSealingTpm1Test, SealWithoutSha1) {
   key_algorithms_ = std::vector<Algorithm>{
       Algorithm::kRsassaPkcs1V15Sha256,
@@ -1057,15 +1164,8 @@ TEST_F(BackendSignatureSealingTpm1Test, SealWithoutSha1) {
   EXPECT_FALSE(seal_result.ok());
 }
 
-TEST_F(BackendSignatureSealingTpm1Test, SealWithOneSetting) {
-  operation_policy_setting_ = std::vector<OperationPolicySetting>{
-      OperationPolicySetting{
-          .device_config_settings =
-              DeviceConfigSettings{.current_user =
-                                       DeviceConfigSettings::CurrentUserSetting{
-                                           .username = std::nullopt}},
-      },
-  };
+TEST_F(BackendSignatureSealingTpm1Test, SealWithNoSetting) {
+  operation_policy_setting_ = std::vector<OperationPolicySetting>{};
   StatusOr<SignatureSealedData> seal_result =
       SetupSealing(/*all_expected=*/false);
   EXPECT_FALSE(seal_result.ok());
@@ -1179,12 +1279,14 @@ TEST_F(BackendSignatureSealingTpm1Test, ChallengeWrongData) {
           });
   EXPECT_FALSE(challenge_result.ok());
 
-  // Empty pcr_bound_secret.
+  // Empty PCR bound secret.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data)
-      .default_pcr_bound_secret = brillo::Blob();
+      .pcr_bound_items[0]
+      .bound_secret = brillo::Blob();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data)
-      .extended_pcr_bound_secret = brillo::Blob();
+      .pcr_bound_items[1]
+      .bound_secret = brillo::Blob();
   challenge_result =
       middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
           operation_policy_, sealed_data, public_key_spki_der_,

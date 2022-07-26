@@ -36,6 +36,23 @@ table Tpm2PolicySignedData {
   pcr_policy_digests:[Tpm2PolicyDigest] (id: 4);
 }
 
+// Index and value of a TPM Platform Configuration Register (PCR).
+table Tpm12PcrValue {
+  pcr_index:uint = null (id: 0);
+  pcr_value:[ubyte] (id: 1);
+}
+
+// TPM 1.2 data that is bound to the specific set of PCRs.
+table Tpm12PcrBoundItem {
+  // Set of PCRs to which the secret blob is bound.
+  pcr_values:[Tpm12PcrValue] (id: 0);
+
+  // The secret blob, which is bound to the PCR values specified by
+  // |pcr_values| and with the AuthData value that is stored encrypted in
+  // |cmk_wrapped_auth_data|.
+  bound_secret:[ubyte] (id: 1);
+}
+
 // Data for the TPM 1.2 method based on the "Certified Migratable Key"
 // functionality.
 table Tpm12CertifiedMigratableKeyData {
@@ -54,11 +71,10 @@ table Tpm12CertifiedMigratableKeyData {
   // algorithm.
   cmk_wrapped_auth_data:[ubyte] (id: 3);
 
-  // The secret blob, which is bound to the default PCR map.
-  default_pcr_bound_secret:[ubyte] (id: 4);
-
-  // The secret blob, which is bound to the extended PCR map.
-  extended_pcr_bound_secret:[ubyte] (id: 5);
+  // Multiple alternative representations of the secret data, where each
+  // representation is bound to its specific set of PCRs and to the AuthData
+  // value that is stored encrypted in |cmk_wrapped_auth_data|.
+  pcr_bound_items:[Tpm12PcrBoundItem] (id: 4);
 }
 
 union SignatureSealedData {

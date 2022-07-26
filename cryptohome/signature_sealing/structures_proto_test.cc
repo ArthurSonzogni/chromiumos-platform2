@@ -7,6 +7,7 @@
 #include <variant>
 
 #include <gtest/gtest.h>
+#include <libhwsec/structures/signature_sealed_data_test_utils.h>
 
 #include "cryptohome/signature_sealing/structures_proto.h"
 
@@ -77,8 +78,29 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
       .srk_wrapped_cmk = BlobFromString("srk_wrapped_cmk"),
       .cmk_pubkey = BlobFromString("cmk_pubkey"),
       .cmk_wrapped_auth_data = BlobFromString("cmk_wrapped_auth_data"),
-      .default_pcr_bound_secret = BlobFromString("default_pcr_bound_secret"),
-      .extended_pcr_bound_secret = BlobFromString("extended_pcr_bound_secret"),
+      .pcr_bound_items =
+          {
+              hwsec::Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          hwsec::Tpm12PcrValue{
+                              .pcr_index = 4,
+                              .pcr_value = BlobFromString("pcr_value1"),
+                          },
+                      },
+                  .bound_secret = BlobFromString("bound_secret0"),
+              },
+              hwsec::Tpm12PcrBoundItem{
+                  .pcr_values =
+                      {
+                          hwsec::Tpm12PcrValue{
+                              .pcr_index = 4,
+                              .pcr_value = BlobFromString("pcr_value1"),
+                          },
+                      },
+                  .bound_secret = BlobFromString("bound_secret1"),
+              },
+          },
   };
 
   hwsec::SignatureSealedData struct_data = data;
@@ -93,13 +115,7 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
   const hwsec::Tpm12CertifiedMigratableKeyData& tpm1_data =
       std::get<hwsec::Tpm12CertifiedMigratableKeyData>(final_data);
 
-  EXPECT_EQ(tpm1_data.public_key_spki_der, data.public_key_spki_der);
-  EXPECT_EQ(tpm1_data.srk_wrapped_cmk, data.srk_wrapped_cmk);
-  EXPECT_EQ(tpm1_data.cmk_pubkey, data.cmk_pubkey);
-  EXPECT_EQ(tpm1_data.cmk_wrapped_auth_data, data.cmk_wrapped_auth_data);
-  EXPECT_EQ(tpm1_data.default_pcr_bound_secret, data.default_pcr_bound_secret);
-  EXPECT_EQ(tpm1_data.extended_pcr_bound_secret,
-            data.extended_pcr_bound_secret);
+  EXPECT_EQ(tpm1_data, data);
 }
 
 TEST(SignatureChallengeInfoTest, ToProtoFromProto) {

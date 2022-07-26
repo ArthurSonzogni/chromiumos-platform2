@@ -6,7 +6,9 @@
 
 #include <string>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/hash/sha1.h>
+#include <base/strings/stringprintf.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -23,13 +25,14 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
+const int kCurrentUserPcrTpm1 = USE_TPM_DYNAMIC ? 11 : 4;
+
 using ConfigTpm1 = BackendTpm1::ConfigTpm1;
 
 namespace {
 
 constexpr int kBootModePcr = 0;
 constexpr int kDeviceModelPcr = 1;
-constexpr int kCurrentUserPcr = USE_TPM_DYNAMIC ? 11 : 4;
 
 constexpr DeviceConfig kSupportConfigs[] = {
     DeviceConfig::kBootMode,
@@ -44,7 +47,7 @@ StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
     case DeviceConfig::kDeviceModel:
       return kDeviceModelPcr;
     case DeviceConfig::kCurrentUser:
-      return kCurrentUserPcr;
+      return kCurrentUserPcrTpm1;
   }
   return MakeStatus<TPMError>("Unknown device config",
                               TPMRetryAction::kNoRetry);
@@ -88,7 +91,7 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
 
   RETURN_IF_ERROR(
       MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrExtend(
-          tpm_handle, kCurrentUserPcr, extention.size(), extention.data(),
+          tpm_handle, kCurrentUserPcrTpm1, extention.size(), extention.data(),
           nullptr, &new_pcr_value_length, new_pcr_value.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_PcrExtend");
 
@@ -96,7 +99,7 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
 }
 
 StatusOr<bool> ConfigTpm1::IsCurrentUserSet() {
-  ASSIGN_OR_RETURN(brillo::Blob && value, ReadPcr(kCurrentUserPcr),
+  ASSIGN_OR_RETURN(brillo::Blob && value, ReadPcr(kCurrentUserPcrTpm1),
                    _.WithStatus<TPMError>("Failed to read boot mode PCR"));
 
   return value != brillo::Blob(SHA_DIGEST_LENGTH, 0);
@@ -115,6 +118,22 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToPcrMap(
       ASSIGN_OR_RETURN(int pcr, DeviceConfigToPcr(config),
                        _.WithStatus<TPMError>("Failed to convert to PCR"));
       result[pcr] = brillo::Blob();
+    }
+  }
+  return result;
+}
+
+StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToCurrentPcrValueMap(
+    const DeviceConfigs& device_config) {
+  PcrMap result;
+  for (DeviceConfig config : kSupportConfigs) {
+    if (device_config[config]) {
+      ASSIGN_OR_RETURN(int pcr, DeviceConfigToPcr(config),
+                       _.WithStatus<TPMError>("Failed to convert to PCR"));
+
+      ASSIGN_OR_RETURN(result[pcr], ReadPcr(pcr),
+                       _.WithStatus<TPMError>(base::StringPrintf(
+                           "Failed to read PCR %d value", pcr)));
     }
   }
   return result;
@@ -173,7 +192,7 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToSettingsPcrMap(
       digest_value = Sha1(brillo::CombineBlobs(
           {digest_value, Sha1(BlobFromString(username.value()))}));
     }
-    result[kCurrentUserPcr] = digest_value;
+    result[kCurrentUserPcrTpm1] = digest_value;
   }
 
   return result;

@@ -6,8 +6,11 @@
 
 #include <algorithm>
 #include <string>
+#include <tuple>
 #include <utility>
 
+#include <absl/container/flat_hash_set.h>
+#include <base/check_op.h>
 #include <base/rand_util.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -57,6 +60,135 @@ StatusOr<Blob> GetRsaModulus(const RSA& rsa) {
                                 TPMRetryAction::kNoRetry);
   }
   return modulus;
+}
+
+bool IsPcrValueMatch(const BackendTpm1::ConfigTpm1::PcrMap& current,
+                     const std::vector<Tpm12PcrValue>& target) {
+  if (current.size() != target.size()) {
+    return false;
+  }
+
+  absl::flat_hash_set<uint32_t> checked;
+
+  for (const Tpm12PcrValue& value : target) {
+    if (!value.pcr_index.has_value()) {
+      return false;
+    }
+
+    auto iter = current.find(value.pcr_index.value());
+    if (iter == current.end()) {
+      return false;
+    }
+
+    if (iter->second != value.pcr_value) {
+      return false;
+    }
+
+    auto [chk_iter, new_element] = checked.insert(iter->first);
+    if (!new_element) {
+      // We have repeat elements.
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// The legacy PCR bound items format is:
+//
+// std::vector<Tpm12PcrBoundItem>{
+//     Tpm12PcrBoundItem{
+//         .pcr_values =
+//             {
+//                 Tpm12PcrValue{
+//                     .pcr_index = kCurrentUserPcrTpm1,
+//                     .pcr_value = "", // empty
+//                 },
+//             },
+//         .bound_secret = ".......",
+//     },
+//     Tpm12PcrBoundItem{
+//         .pcr_values =
+//             {
+//                 Tpm12PcrValue{
+//                     .pcr_index = kCurrentUserPcrTpm1,
+//                     .pcr_value = "", // empty
+//                 },
+//             },
+//         .bound_secret = "......",
+//     },
+// }
+bool IsLegacyFormatPcrBoundItems(
+    const std::vector<Tpm12PcrBoundItem>& bound_items) {
+  if (bound_items.size() != 2) {
+    return false;
+  }
+
+  if (bound_items[0].pcr_values.size() != 1) {
+    return false;
+  }
+
+  if (!bound_items[0].pcr_values[0].pcr_value.empty()) {
+    return false;
+  }
+
+  if (bound_items[1].pcr_values.size() != 1) {
+    return false;
+  }
+
+  if (!bound_items[1].pcr_values[0].pcr_value.empty()) {
+    return false;
+  }
+
+  return true;
+}
+
+StatusOr<Blob> FindBoundSecretForLegacyFormat(
+    const BackendTpm1::ConfigTpm1::PcrMap& current,
+    const std::vector<Tpm12PcrBoundItem>& bound_items) {
+  if (current.size() != 1) {
+    return MakeStatus<TPMError>("PCR map size mismatch for legacy format",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // Already checked in IsLegacyFormatPcrBoundItems.
+  DCHECK_EQ(bound_items.size(), 2);
+  DCHECK_EQ(bound_items[0].pcr_values.size(), 1);
+  DCHECK_EQ(bound_items[1].pcr_values.size(), 1);
+
+  const auto& [index, value] = *current.begin();
+
+  if (index != kCurrentUserPcrTpm1) {
+    return MakeStatus<TPMError>("PCR index mismatch for legacy format",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // The first one is bound to prior login state, the PCR value is all zero.
+  if (value == Blob(SHA_DIGEST_LENGTH, 0)) {
+    return bound_items[0].bound_secret;
+  }
+
+  return bound_items[1].bound_secret;
+}
+
+StatusOr<Blob> FindBoundSecret(
+    const BackendTpm1::ConfigTpm1::PcrMap& current,
+    const std::vector<Tpm12PcrBoundItem>& bound_items) {
+  // Special conversion for backwards-compatibility.
+  // Note: The empty pcr_values format was introduced in
+  // https://crrev.com/c/3277702
+  if (IsLegacyFormatPcrBoundItems(bound_items)) {
+    return FindBoundSecretForLegacyFormat(current, bound_items);
+  }
+
+  for (const Tpm12PcrBoundItem& item : bound_items) {
+    if (IsPcrValueMatch(current, item.pcr_values)) {
+      return item.bound_secret;
+    }
+  }
+
+  return MakeStatus<TPMError>("No matching bound item",
+                              TPMRetryAction::kNoRetry);
 }
 
 // Returns the digest of the blob of the TPM_MSA_COMPOSITE structure containing
@@ -493,10 +625,9 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   // Drop the existing challenge if we have any.
   current_challenge_data_ = std::nullopt;
 
-  if (policies.size() != 2) {
-    return MakeStatus<TPMError>(
-        "Signautre sealing only support exactly 2 policies",
-        TPMRetryAction::kNoRetry);
+  if (policies.empty()) {
+    return MakeStatus<TPMError>("No policy for signature sealing",
+                                TPMRetryAction::kNoRetry);
   }
 
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
@@ -588,25 +719,38 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
                                 TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(
-      const Blob& default_pcr_bound_secret,
-      MakePcrBoundSecret(backend_.sealing_, policies[0], unsealed_data,
-                         auth_data),
-      _.WithStatus<TPMError>("Failed to create default PCR bound secret"));
+  std::vector<Tpm12PcrBoundItem> pcr_bound_items;
+  for (const OperationPolicySetting& policy : policies) {
+    ASSIGN_OR_RETURN(
+        const ConfigTpm1::PcrMap& setting,
+        backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+        _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
+    std::vector<Tpm12PcrValue> pcr_values;
+    for (const auto& [index, value] : setting) {
+      pcr_values.push_back(Tpm12PcrValue{
+          .pcr_index = index,
+          .pcr_value = value,
+      });
+    }
 
-  ASSIGN_OR_RETURN(
-      const Blob& extended_pcr_bound_secret,
-      MakePcrBoundSecret(backend_.sealing_, policies[1], unsealed_data,
-                         auth_data),
-      _.WithStatus<TPMError>("Failed to create extended PCR bound secret"));
+    ASSIGN_OR_RETURN(
+        Blob && pcr_bound_secret,
+        MakePcrBoundSecret(backend_.sealing_, policies[0], unsealed_data,
+                           auth_data),
+        _.WithStatus<TPMError>("Failed to create default PCR bound secret"));
+
+    pcr_bound_items.push_back(Tpm12PcrBoundItem{
+        .pcr_values = std::move(pcr_values),
+        .bound_secret = std::move(pcr_bound_secret),
+    });
+  }
 
   return Tpm12CertifiedMigratableKeyData{
       .public_key_spki_der = public_key_spki_der,
       .srk_wrapped_cmk = cmk.srk_wrapped_cmk,
       .cmk_pubkey = cmk.cmk_pubkey,
       .cmk_wrapped_auth_data = cmk_wrapped_auth_data,
-      .default_pcr_bound_secret = default_pcr_bound_secret,
-      .extended_pcr_bound_secret = extended_pcr_bound_secret,
+      .pcr_bound_items = std::move(pcr_bound_items),
   };
 }
 
@@ -651,14 +795,12 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
         TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(bool is_current_user_set,
-                   backend_.config_.IsCurrentUserSet(),
+  ASSIGN_OR_RETURN(const ConfigTpm1::PcrMap& current_pcr_value,
+                   backend_.config_.ToCurrentPcrValueMap(policy.device_configs),
                    _.WithStatus<TPMError>("Failed to get current user status"));
 
-  // Determine the satisfied set of PCR restrictions.
-  const Blob& pcr_bound_secret = is_current_user_set
-                                     ? data.extended_pcr_bound_secret
-                                     : data.default_pcr_bound_secret;
+  ASSIGN_OR_RETURN(const Blob& pcr_bound_secret,
+                   FindBoundSecret(current_pcr_value, data.pcr_bound_items));
 
   if (pcr_bound_secret.empty()) {
     return MakeStatus<TPMError>("Empty PCR bound secret",
