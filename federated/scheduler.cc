@@ -90,7 +90,7 @@ void Scheduler::Schedule() {
 
 void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   DCHECK(!dlc_root_path.empty()) << "dlc_root_path is empty.";
-  DCHECK(sessions_.empty()) << "Sessions are already scheduled.";
+  DCHECK(clients_.empty()) << "Clients are already scheduled.";
 
   const std::string lib_path = base::StringPrintf(
       "%s/%s", dlc_root_path.c_str(), kFederatedComputationLibraryName);
@@ -105,22 +105,22 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
 
   auto client_configs = GetClientConfig();
 
-  // Pointers to elements of `sessions_` are passed to
-  // KeepSchedulingJobForSession, which can be invalid if the capacity of
-  // `sessions_` needs to be increased. Reserves the necessary capacity upfront.
-  sessions_.reserve(client_configs.size());
+  // Pointers to elements of `clients_` are passed to
+  // KeepSchedulingJobForClient, which can be invalid if the capacity of
+  // `clients_` needs to be increased. Reserves the necessary capacity upfront.
+  clients_.reserve(client_configs.size());
 
   for (const auto& kv : client_configs) {
-    sessions_.push_back(federated_library->CreateSession(
+    clients_.push_back(federated_library->CreateClient(
         kServiceUri, kApiKey, kv.second, device_status_monitor_.get()));
-    KeepSchedulingJobForSession(&sessions_.back());
+    KeepSchedulingJobForClient(&clients_.back());
   }
 }
 
 void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
   DVLOG(1) << "OnDlcStateChanged, dlc_state.id = " << dlc_state.id()
            << ", state = " << dlc_state.state();
-  if (!sessions_.empty() || dlc_state.id() != kDlcId ||
+  if (!clients_.empty() || dlc_state.id() != kDlcId ||
       dlc_state.state() != dlcservice::DlcState::INSTALLED)
     return;
 
@@ -129,39 +129,39 @@ void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
   ScheduleInternal(dlc_state.root_path());
 }
 
-void Scheduler::KeepSchedulingJobForSession(
-    FederatedSession* const federated_session) {
+void Scheduler::KeepSchedulingJobForClient(
+    FederatedClient* const federated_client) {
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Scheduler::TryToStartJobForSession,
-                     base::Unretained(this), federated_session),
-      federated_session->next_retry_delay());
+      base::BindOnce(&Scheduler::TryToStartJobForClient, base::Unretained(this),
+                     federated_client),
+      federated_client->next_retry_delay());
 }
 
-void Scheduler::TryToStartJobForSession(
-    FederatedSession* const federated_session) {
-  DVLOG(1) << "In TryToStartJobForSession, session name is "
-           << federated_session->GetSessionName();
-  federated_session->ResetRetryDelay();
+void Scheduler::TryToStartJobForClient(
+    FederatedClient* const federated_client) {
+  DVLOG(1) << "In TryToStartJobForClient, client name is "
+           << federated_client->GetClientName();
+  federated_client->ResetRetryDelay();
   if (!device_status_monitor_->TrainingConditionsSatisfied()) {
     DVLOG(1) << "Device is not in a good condition for training now.";
-    KeepSchedulingJobForSession(federated_session);
+    KeepSchedulingJobForClient(federated_client);
     return;
   }
 
   std::optional<ExampleDatabase::Iterator> example_iterator =
-      storage_manager_->GetExampleIterator(federated_session->GetSessionName());
+      storage_manager_->GetExampleIterator(federated_client->GetClientName());
   if (!example_iterator.has_value()) {
-    DVLOG(1) << "Client " << federated_session->GetSessionName()
+    DVLOG(1) << "Client " << federated_client->GetClientName()
              << " failed to prepare examples.";
-    KeepSchedulingJobForSession(federated_session);
+    KeepSchedulingJobForClient(federated_client);
     return;
   }
 
-  federated_session->RunPlan(std::move(example_iterator.value()));
+  federated_client->RunPlan(std::move(example_iterator.value()));
 
   // Posts next task.
-  KeepSchedulingJobForSession(federated_session);
+  KeepSchedulingJobForClient(federated_client);
 }
 
 }  // namespace federated

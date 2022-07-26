@@ -13,7 +13,7 @@
 #include <base/scoped_native_library.h>
 #include <fcp/fcp.h>
 
-#include "federated/federated_session.h"
+#include "federated/federated_client.h"
 
 namespace federated {
 
@@ -34,7 +34,7 @@ class FederatedLibrary {
 
   absl::Status GetStatus() const;
 
-  FederatedSession CreateSession(
+  FederatedClient CreateClient(
       const std::string& service_uri,
       const std::string& api_key,
       const ClientConfigMetadata client_config,

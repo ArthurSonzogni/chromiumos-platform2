@@ -11,7 +11,9 @@
 
 namespace federated {
 
-// The client config.
+// The client config. One client corresponds to a task group deployed on the
+// server. Its `name` must be identical to the population_name of this task, and
+// on ChromeOS platform one population can only has one task group.
 // TODO(alanlxl): this now only contains the minimal info, and might need to be
 // converted to a proto to be used in the real federated tasks.
 struct ClientConfigMetadata {

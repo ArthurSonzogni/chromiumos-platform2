@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEDERATED_FEDERATED_SESSION_H_
-#define FEDERATED_FEDERATED_SESSION_H_
+#ifndef FEDERATED_FEDERATED_CLIENT_H_
+#define FEDERATED_FEDERATED_CLIENT_H_
 
 #include <string>
 
@@ -15,20 +15,20 @@
 
 namespace federated {
 
-// FederatedSession encapsulates essential elements for a client to run
+// FederatedClient encapsulates essential elements for a client to run
 // federated tasks, e.g. the function ptr from the library(`run_plan_`,
 // `free_run_plan_result_`), the server config, the client_config.
-class FederatedSession {
+class FederatedClient {
  public:
-  // FederatedLibrary::CreateSession should be used instead of this constructor.
-  FederatedSession(FlRunPlanFn run_plan,
-                   FlFreeRunPlanResultFn free_run_plan_result,
-                   const std::string& service_uri,
-                   const std::string& api_key,
-                   ClientConfigMetadata client_config,
-                   const DeviceStatusMonitor* const device_status_monitor);
-  FederatedSession& operator=(const FederatedSession&) = delete;
-  ~FederatedSession();
+  // FederatedLibrary::CreateClient should be used instead of this constructor.
+  FederatedClient(FlRunPlanFn run_plan,
+                  FlFreeRunPlanResultFn free_run_plan_result,
+                  const std::string& service_uri,
+                  const std::string& api_key,
+                  ClientConfigMetadata client_config,
+                  const DeviceStatusMonitor* const device_status_monitor);
+  FederatedClient& operator=(const FederatedClient&) = delete;
+  ~FederatedClient();
 
   // Tries to checkin and start a federated task with the server, then updates
   // the client config, such as retry_token and next_retry_delay. It is
@@ -37,7 +37,7 @@ class FederatedSession {
   // Resets `next_retry_delay_` to default. Called when current
   // `next_retry_delay_` elapses and a federated task is about to run.
   void ResetRetryDelay();
-  std::string GetSessionName() const;
+  std::string GetClientName() const;
 
   base::TimeDelta next_retry_delay() const { return next_retry_delay_; }
 
@@ -94,4 +94,4 @@ class FederatedSession {
 
 }  // namespace federated
 
-#endif  // FEDERATED_FEDERATED_SESSION_H_
+#endif  // FEDERATED_FEDERATED_CLIENT_H_

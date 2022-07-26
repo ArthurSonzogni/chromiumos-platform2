@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "federated/federated_session.h"
+#include "federated/federated_client.h"
 
 #include <string>
 #include <utility>
@@ -92,24 +92,23 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
 
 }  // namespace
 
-FederatedSession::Context::Context(
+FederatedClient::Context::Context(
     const DeviceStatusMonitor* const device_status_monitor,
     ExampleDatabase::Iterator&& example_iterator)
     : device_status_monitor_(device_status_monitor),
       example_iterator_(std::move(example_iterator)) {}
 
-FederatedSession::Context::~Context() = default;
+FederatedClient::Context::~Context() = default;
 
-bool FederatedSession::Context::GetNextExample(const char** const data,
-                                               int* const size,
-                                               bool* const end,
-                                               void* const context) {
+bool FederatedClient::Context::GetNextExample(const char** const data,
+                                              int* const size,
+                                              bool* const end,
+                                              void* const context) {
   if (context == nullptr)
     return false;
 
   const absl::StatusOr<ExampleRecord> record =
-      static_cast<FederatedSession::Context*>(context)
-          ->example_iterator_.Next();
+      static_cast<FederatedClient::Context*>(context)->example_iterator_.Next();
 
   if (absl::IsInvalidArgument(record.status())) {
     return false;
@@ -129,23 +128,23 @@ bool FederatedSession::Context::GetNextExample(const char** const data,
   return true;
 }
 
-void FederatedSession::Context::FreeExample(const char* const data,
-                                            void* const context) {
+void FederatedClient::Context::FreeExample(const char* const data,
+                                           void* const context) {
   delete[] data;
 }
 
-bool FederatedSession::Context::TrainingConditionsSatisfied(
+bool FederatedClient::Context::TrainingConditionsSatisfied(
     void* const context) {
   if (context == nullptr)
     return false;
 
-  return static_cast<FederatedSession::Context*>(context)
+  return static_cast<FederatedClient::Context*>(context)
       ->device_status_monitor_->TrainingConditionsSatisfied();
 }
 
-void FederatedSession::Context::PublishEvent(const char* const event,
-                                             const int size,
-                                             void* const context) {
+void FederatedClient::Context::PublishEvent(const char* const event,
+                                            const int size,
+                                            void* const context) {
   if (context == nullptr) {
     LOG(ERROR) << "PublishEvent gets nullptr context.";
     return;
@@ -166,7 +165,7 @@ void FederatedSession::Context::PublishEvent(const char* const event,
   }
 }
 
-FederatedSession::FederatedSession(
+FederatedClient::FederatedClient(
     const FlRunPlanFn run_plan,
     const FlFreeRunPlanResultFn free_run_plan_result,
     const std::string& service_uri,
@@ -181,23 +180,24 @@ FederatedSession::FederatedSession(
       next_retry_delay_(kDefaultRetryWindow),
       device_status_monitor_(device_status_monitor) {}
 
-FederatedSession::~FederatedSession() = default;
+FederatedClient::~FederatedClient() = default;
 
-void FederatedSession::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
-  FederatedSession::Context context(device_status_monitor_,
-                                    std::move(example_iterator));
+void FederatedClient::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
+  FederatedClient::Context context(device_status_monitor_,
+                                   std::move(example_iterator));
 
   const FlTaskEnvironment env = {
-      &FederatedSession::Context::GetNextExample,
-      &FederatedSession::Context::FreeExample,
-      &FederatedSession::Context::TrainingConditionsSatisfied,
-      &FederatedSession::Context::PublishEvent,
+      &FederatedClient::Context::GetNextExample,
+      &FederatedClient::Context::FreeExample,
+      &FederatedClient::Context::TrainingConditionsSatisfied,
+      &FederatedClient::Context::PublishEvent,
       client_config_.base_dir.c_str(),
       &context};
 
-  FlRunPlanResult result = (*run_plan_)(
-      env, service_uri_.c_str(), api_key_.c_str(), client_config_.name.c_str(),
-      client_config_.retry_token.c_str());
+  FlRunPlanResult result =
+      (*run_plan_)(env, service_uri_.c_str(), api_key_.c_str(),
+                   /*population_name=*/client_config_.name.c_str(),
+                   client_config_.retry_token.c_str());
 
   // TODO(alanlxl): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {
@@ -222,11 +222,11 @@ void FederatedSession::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
   (*free_run_plan_result_)(result);
 }
 
-void FederatedSession::ResetRetryDelay() {
+void FederatedClient::ResetRetryDelay() {
   next_retry_delay_ = kDefaultRetryWindow;
 }
 
-std::string FederatedSession::GetSessionName() const {
+std::string FederatedClient::GetClientName() const {
   return client_config_.name;
 }
 

@@ -16,7 +16,7 @@
 // NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
 #include <dlcservice/dbus-proxies.h>
 
-#include "federated/federated_session.h"
+#include "federated/federated_client.h"
 
 namespace federated {
 class StorageManager;
@@ -40,22 +40,23 @@ class Scheduler {
 
  private:
   // Loads federated library from the given `dlc_root_path`, then for each
-  // client, creates a federated session and schedules recurring jobs.
+  // client, creates a FederatedClient instance and schedules recurring jobs.
   void ScheduleInternal(const std::string& dlc_root_path);
 
   // Handles DlcStateChanged signals.
   void OnDlcStateChanged(const dlcservice::DlcState& dlc_state);
 
-  // Posts the TryToStartJobForSession task for the given session.
-  void KeepSchedulingJobForSession(FederatedSession* const federated_session);
+  // Posts the TryToStartJobForClient task for the given client.
+  void KeepSchedulingJobForClient(FederatedClient* const federated_client);
 
   // Tries to check-in the server and starts a federated task if training
-  // conditions are satisfied, updates the session object if receiving response
-  // from server and posts next try to task_runner_ with the updated session.
-  void TryToStartJobForSession(FederatedSession* const federated_session);
+  // conditions are satisfied, updates the FederatedClient object if receiving
+  // response from server and posts next try to task_runner_ with the updated
+  // client.
+  void TryToStartJobForClient(FederatedClient* const federated_client);
 
-  // Registered client sessions.
-  std::vector<FederatedSession> sessions_;
+  // Registered clients.
+  std::vector<FederatedClient> clients_;
 
   // Not owned
   StorageManager* const storage_manager_;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "federated/federated_library.h"
+
 #include <cstddef>
 
 #include <absl/status/status.h>
@@ -10,8 +12,7 @@
 #include <base/native_library.h>
 #include <base/no_destructor.h>
 
-#include "federated/federated_library.h"
-#include "federated/federated_session.h"
+#include "federated/federated_client.h"
 
 namespace federated {
 
@@ -57,14 +58,14 @@ absl::Status FederatedLibrary::GetStatus() const {
   return status_;
 }
 
-FederatedSession FederatedLibrary::CreateSession(
+FederatedClient FederatedLibrary::CreateClient(
     const std::string& service_uri,
     const std::string& api_key,
     const ClientConfigMetadata client_config,
     DeviceStatusMonitor* const device_status_monitor) {
   DCHECK(status_.ok());
-  return FederatedSession(run_plan_, free_run_plan_result_, service_uri,
-                          api_key, client_config, device_status_monitor);
+  return FederatedClient(run_plan_, free_run_plan_result_, service_uri, api_key,
+                         client_config, device_status_monitor);
 }
 
 }  // namespace federated
