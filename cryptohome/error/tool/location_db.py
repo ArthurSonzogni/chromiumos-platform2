@@ -24,6 +24,553 @@ from typing import Dict, List, Optional, Set, Tuple
 from xml.dom import pulldom
 
 
+class TPMConsts:
+    """A class for holding TPM constants."""
+
+    # TPM related constants
+
+    TPM2_RC_VER1 = 0x100
+    TPM2_RC_FMT1 = 0x080
+    TPM2_RC_WARN = 0x900
+    TPM2_RC_S = 0x800
+    TPM2_RC_P = 0x040
+    TPM2_TRUNKS_ERROR_BASE = 7 << 12
+    TPM2_TCTI_ERROR_BASE = 8 << 12
+    TPM2_SAPI_ERROR_BASE = 9 << 12
+    TPM2_RESOURCE_MANAGER_TPM_BASE = 11 << 12
+
+    # For TPM Unified Errors, see platform2/libhwsec/error/tpm_error.h
+    TPM_UNIFIED_TPM_MANAGER_BASE = TPM2_TRUNKS_ERROR_BASE + 0x800
+    TPM_UNIFIED_TPM_MANAGER_MAX = TPM2_TRUNKS_ERROR_BASE + 0x87F
+
+    TPM_UNIFIED_NVRAM_BASE = TPM2_TRUNKS_ERROR_BASE + 0x880
+    TPM_UNIFIED_NVRAM_MAX = TPM2_TRUNKS_ERROR_BASE + 0x8FF
+
+    TPM_UNIFIED_EC_BASE = TPM2_TRUNKS_ERROR_BASE + 0x900
+    TPM_UNIFIED_EC_MAX = TPM2_TRUNKS_ERROR_BASE + 0x97F
+
+    TPM_UNIFIED_HASHED_BASE = TPM2_TRUNKS_ERROR_BASE + 0xC00
+    TPM_UNIFIED_HASHED_MAX = TPM2_TRUNKS_ERROR_BASE + 0xFFF
+
+    TPM2_LAYER_MASK = 0xFFFFF000
+    # Masks out the P and N bits (see TPM 2.0 Part 2 Table 14).
+    TPM2_FORMAT_ONE_ERROR_MASK = 0x0BF
+    # Selects just the N bits that identify the subject index.
+    TPM2_SUBJECT_MASK = 0x700
+
+    # For the bits below on format zero, see Table 13 — Format-Zero Response
+    # Codes of TPM 2.0 Spec Part 2: Structures.
+    # Indicates the error is vendor-specific if set.
+    TPM_T_BIT = 0x400
+    # Indicates the error is TPM 2.0.
+    TPM_V_BIT = 0x100
+
+    TPM1_TPM_E_BASE = 0x0
+    TPM1_TSS_E_BASE = 0x0
+
+    TPM1_TPM_E_NON_FATAL = 0x800
+
+    TPM1_TSS_LAYER_TPM = 0x0
+    TPM1_TSS_LAYER_TDDL = 0x1000
+    TPM1_TSS_LAYER_TCS = 0x2000
+    TPM1_TSS_LAYER_TSP = 0x3000
+
+    TPM1_TPM_LAYER_START = TPM1_TSS_LAYER_TPM + TPM1_TPM_E_BASE
+    TPM1_TDDL_LAYER_START = TPM1_TSS_LAYER_TDDL + TPM1_TSS_E_BASE
+    TPM1_TCS_LAYER_START = TPM1_TSS_LAYER_TCS + TPM1_TSS_E_BASE
+    TPM1_TSP_LAYER_START = TPM1_TSS_LAYER_TSP + TPM1_TSS_E_BASE
+
+
+class TPMErrorDecoder:
+    """A utility for decoding TPM 1.2 and 2.0 errors."""
+
+    # A dictionary that maps between TPM 1.2 error and their representation.
+    TPM1_ERRORS = {
+        0: "TSS_SUCCESS",
+        # Layer 0 (TPM)
+        TPMConsts.TPM1_TPM_LAYER_START + 0x000: "TPM_E_SUCCESS",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x001: "TPM_E_AUTHFAIL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x003: "TPM_E_BAD_PARAMETER",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x002: "TPM_E_BADINDEX",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x004: "TPM_E_AUDITFAILURE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x005: "TPM_E_CLEAR_DISABLED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x006: "TPM_E_DEACTIVATED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x007: "TPM_E_DISABLED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x008: "TPM_E_DISABLED_CMD",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x009: "TPM_E_FAIL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01C: "TPM_E_FAILEDSELFTEST",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00A: "TPM_E_BAD_ORDINAL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00B: "TPM_E_INSTALL_DISABLED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00C: "TPM_E_INVALID_KEYHANDLE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00D: "TPM_E_KEYNOTFOUND",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00E: "TPM_E_INAPPROPRIATE_ENC",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x00F: "TPM_E_MIGRATEFAIL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x010: "TPM_E_INVALID_PCR_INFO",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x011: "TPM_E_NOSPACE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x012: "TPM_E_NOSRK",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x013: "TPM_E_NOTSEALED_BLOB",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x014: "TPM_E_OWNER_SET",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x015: "TPM_E_RESOURCES",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x016: "TPM_E_SHORTRANDOM",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x017: "TPM_E_SIZE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x018: "TPM_E_WRONGPCRVAL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x019: "TPM_E_BAD_PARAM_SIZE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01A: "TPM_E_SHA_THREAD",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01B: "TPM_E_SHA_ERROR",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01C: "TPM_E_FAILEDSELFTEST",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01D: "TPM_E_AUTH2FAIL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01E: "TPM_E_BADTAG",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x01F: "TPM_E_IOERROR",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x020: "TPM_E_ENCRYPT_ERROR",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x021: "TPM_E_DECRYPT_ERROR",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x022: "TPM_E_INVALID_AUTHHANDLE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x023: "TPM_E_NO_ENDORSEMENT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x024: "TPM_E_INVALID_KEYUSAGE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x025: "TPM_E_WRONG_ENTITYTYPE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x026: "TPM_E_INVALID_POSTINIT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x027: "TPM_E_INAPPROPRIATE_SIG",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x028: "TPM_E_BAD_KEY_PROPERTY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x029: "TPM_E_BAD_MIGRATION",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02A: "TPM_E_BAD_SCHEME",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02B: "TPM_E_BAD_DATASIZE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02C: "TPM_E_BAD_MODE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02D: "TPM_E_BAD_PRESENCE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02E: "TPM_E_BAD_VERSION",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x02F: "TPM_E_NO_WRAP_TRANSPORT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x030: "TPM_E_AUDITFAIL_UNSUCCESSFUL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x031: "TPM_E_AUDITFAIL_SUCCESSFUL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x032: "TPM_E_NOTRESETABLE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x033: "TPM_E_NOTLOCAL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x034: "TPM_E_BAD_TYPE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x035: "TPM_E_INVALID_RESOURCE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x036: "TPM_E_NOTFIPS",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x037: "TPM_E_INVALID_FAMILY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x038: "TPM_E_NO_NV_PERMISSION",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x039: "TPM_E_REQUIRES_SIGN",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03A: "TPM_E_KEY_NOTSUPPORTED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03B: "TPM_E_AUTH_CONFLICT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03C: "TPM_E_AREA_LOCKED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03D: "TPM_E_BAD_LOCALITY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03E: "TPM_E_READ_ONLY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x03F: "TPM_E_PER_NOWRITE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x040: "TPM_E_FAMILYCOUNT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x041: "TPM_E_WRITE_LOCKED",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x042: "TPM_E_BAD_ATTRIBUTES",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x043: "TPM_E_INVALID_STRUCTURE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x044: "TPM_E_KEY_OWNER_CONTROL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x045: "TPM_E_BAD_COUNTER",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x046: "TPM_E_NOT_FULLWRITE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x047: "TPM_E_CONTEXT_GAP",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x048: "TPM_E_MAXNVWRITES",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x049: "TPM_E_NOOPERATOR",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04A: "TPM_E_RESOURCEMISSING",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04B: "TPM_E_DELEGATE_LOCK",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04C: "TPM_E_DELEGATE_FAMILY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04D: "TPM_E_DELEGATE_ADMIN",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04E: "TPM_E_TRANSPORT_NOTEXCLUSIVE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x04F: "TPM_E_OWNER_CONTROL",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x050: "TPM_E_DAA_RESOURCES",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x051: "TPM_E_DAA_INPUT_DATA0",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x052: "TPM_E_DAA_INPUT_DATA1",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x053: "TPM_E_DAA_ISSUER_SETTINGS",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x054: "TPM_E_DAA_TPM_SETTINGS",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x055: "TPM_E_DAA_STAGE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x056: "TPM_E_DAA_ISSUER_VALIDITY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x057: "TPM_E_DAA_WRONG_W",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x058: "TPM_E_BAD_HANDLE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x059: "TPM_E_BAD_DELEGATE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05A: "TPM_E_BADCONTEXT",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05B: "TPM_E_TOOMANYCONTEXTS",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05C: "TPM_E_MA_TICKET_SIGNATURE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05D: "TPM_E_MA_DESTINATION",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05E: "TPM_E_MA_SOURCE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x05F: "TPM_E_MA_AUTHORITY",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x061: "TPM_E_PERMANENTEK",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x062: "TPM_E_BAD_SIGNATURE",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x063: "TPM_E_NOCONTEXTSPACE",
+        TPMConsts.TPM1_TPM_LAYER_START
+        + TPMConsts.TPM1_TPM_E_NON_FATAL: "TPM_E_RETRY",
+        TPMConsts.TPM1_TPM_LAYER_START
+        + TPMConsts.TPM1_TPM_E_NON_FATAL
+        + 1: "TPM_E_NEEDS_SELFTEST",
+        TPMConsts.TPM1_TPM_LAYER_START
+        + TPMConsts.TPM1_TPM_E_NON_FATAL
+        + 2: "TPM_E_DOING_SELFTEST",
+        TPMConsts.TPM1_TPM_LAYER_START
+        + TPMConsts.TPM1_TPM_E_NON_FATAL
+        + 3: "TPM_E_DEFEND_LOCK_RUNNING",
+        TPMConsts.TPM1_TPM_LAYER_START + 0x008: "TPM_E_DISABLED_CMD",
+        # Layer 1 (TDDL)
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x002: "TDDL: TSS_E_FAIL",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x003: "TDDL: TSS_E_BAD_PARAMETER",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x004: "TDDL: TSS_E_INTERNAL_ERROR",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x006: "TDDL: TSS_E_NOTIMPL",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x020: "TDDL: TSS_E_PS_KEY_NOTFOUND",
+        TPMConsts.TPM1_TDDL_LAYER_START
+        + 0x008: "TDDL: TSS_E_KEY_ALREADY_REGISTERED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x016: "TDDL: TSS_E_CANCELED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x012: "TDDL: TSS_E_TIMEOUT",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x005: "TDDL: TSS_E_OUTOFMEMORY",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x010: "TDDL: TSS_E_TPM_UNEXPECTED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x011: "TDDL: TSS_E_COMM_FAILURE",
+        TPMConsts.TPM1_TDDL_LAYER_START
+        + 0x014: "TDDL: TSS_E_TPM_UNSUPPORTED_FEATURE",
+        TPMConsts.TPM1_TDDL_LAYER_START
+        + 0x089: "TDDL: TDDL_E_COMPONENT_NOT_FOUND",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x081: "TDDL: TDDL_E_ALREADY_OPENED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x088: "TDDL: TDDL_E_BADTAG",
+        TPMConsts.TPM1_TDDL_LAYER_START
+        + 0x083: "TDDL: TDDL_E_INSUFFICIENT_BUFFER",
+        TPMConsts.TPM1_TDDL_LAYER_START
+        + 0x084: "TDDL: TDDL_E_COMMAND_COMPLETED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x085: "TDDL: TDDL_E_COMMAND_ABORTED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x082: "TDDL: TDDL_E_ALREADY_CLOSED",
+        TPMConsts.TPM1_TDDL_LAYER_START + 0x087: "TDDL: TDDL_E_IOERROR",
+        # Layer 2 (TCS)
+        TPMConsts.TPM1_TCS_LAYER_START + 0x002: "TCS: TSS_E_FAIL",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x003: "TCS: TSS_E_BAD_PARAMETER",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x004: "TCS: TSS_E_INTERNAL_ERROR",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x006: "TCS: TSS_E_NOTIMPL",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x020: "TCS: TSS_E_PS_KEY_NOTFOUND",
+        TPMConsts.TPM1_TCS_LAYER_START
+        + 0x008: "TCS: TSS_E_KEY_ALREADY_REGISTERED",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x016: "TCS: TSS_E_CANCELED",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x012: "TCS: TSS_E_TIMEOUT",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x005: "TCS: TSS_E_OUTOFMEMORY",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x010: "TCS: TSS_E_TPM_UNEXPECTED",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x011: "TCS: TSS_E_COMM_FAILURE",
+        TPMConsts.TPM1_TCS_LAYER_START
+        + 0x014: "TCS: TSS_E_TPM_UNSUPPORTED_FEATURE",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0C8: "TCS: TCS_E_KEY_MISMATCH",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0CA: "TCS: TCS_E_KM_LOADFAILED",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0CC: "TCS: TCS_E_KEY_CONTEXT_RELOAD",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0CD: "TCS: TCS_E_BAD_INDEX",
+        TPMConsts.TPM1_TCS_LAYER_START
+        + 0x0C1: "TCS: TCS_E_INVALID_CONTEXTHANDLE",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0C2: "TCS: TCS_E_INVALID_KEYHANDLE",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0C3: "TCS: TCS_E_INVALID_AUTHHANDLE",
+        TPMConsts.TPM1_TCS_LAYER_START
+        + 0x0C4: "TCS: TCS_E_INVALID_AUTHSESSION",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0C2: "TCS: TCS_E_INVALID_KEYHANDLE",
+        TPMConsts.TPM1_TCS_LAYER_START + 0x0C5: "TCS: TCS_E_INVALID_KEY",
+        # Layer 3 (TSP)
+        TPMConsts.TPM1_TSP_LAYER_START + 0x002: "TSP: TSS_E_FAIL",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x003: "TSP: TSS_E_BAD_PARAMETER",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x004: "TSP: TSS_E_INTERNAL_ERROR",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x006: "TSP: TSS_E_NOTIMPL",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x020: "TSP: TSS_E_PS_KEY_NOTFOUND",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x008: "TSP: TSS_E_KEY_ALREADY_REGISTERED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x016: "TSP: TSS_E_CANCELED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x012: "TSP: TSS_E_TIMEOUT",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x005: "TSP: TSS_E_OUTOFMEMORY",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x010: "TSP: TSS_E_TPM_UNEXPECTED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x011: "TSP: TSS_E_COMM_FAILURE",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x014: "TSP: TSS_E_TPM_UNSUPPORTED_FEATURE",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x101: "TSP: TSS_E_INVALID_OBJECT_TYPE",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x10C: "TSP: TSS_E_INVALID_OBJECT_INITFLAG",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x126: "TSP: TSS_E_INVALID_HANDLE",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x102: "TSP: TSS_E_NO_CONNECTION",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x103: "TSP: TSS_E_CONNECTION_FAILED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x104: "TSP: TSS_E_CONNECTION_BROKEN",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x105: "TSP: TSS_E_HASH_INVALID_ALG",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x106: "TSP: TSS_E_HASH_INVALID_LENGTH",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x107: "TSP: TSS_E_HASH_NO_DATA",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x127: "TSP: TSS_E_SILENT_CONTEXT",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x109: "TSP: TSS_E_INVALID_ATTRIB_FLAG",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x10A: "TSP: TSS_E_INVALID_ATTRIB_SUBFLAG",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x10B: "TSP: TSS_E_INVALID_ATTRIB_DATA",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x10D: "TSP: TSS_E_NO_PCRS_SET",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x10E: "TSP: TSS_E_KEY_NOT_LOADED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x10F: "TSP: TSS_E_KEY_NOT_SET",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x110: "TSP: TSS_E_VALIDATION_FAILED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x111: "TSP: TSS_E_TSP_AUTHREQUIRED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x112: "TSP: TSS_E_TSP_AUTH2REQUIRED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x113: "TSP: TSS_E_TSP_AUTHFAIL",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x114: "TSP: TSS_E_TSP_AUTH2FAIL",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x115: "TSP: TSS_E_KEY_NO_MIGRATION_POLICY",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x116: "TSP: TSS_E_POLICY_NO_SECRET",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x117: "TSP: TSS_E_INVALID_OBJ_ACCESS",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x118: "TSP: TSS_E_INVALID_ENCSCHEME",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x119: "TSP: TSS_E_INVALID_SIGSCHEME",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x120: "TSP: TSS_E_ENC_INVALID_LENGTH",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x121: "TSP: TSS_E_ENC_NO_DATA",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x122: "TSP: TSS_E_ENC_INVALID_TYPE",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x123: "TSP: TSS_E_INVALID_KEYUSAGE",
+        TPMConsts.TPM1_TSP_LAYER_START
+        + 0x124: "TSP: TSS_E_VERIFICATION_FAILED",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x125: "TSP: TSS_E_HASH_NO_IDENTIFIER",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x13B: "TSP: TSS_E_NV_AREA_EXIST",
+        TPMConsts.TPM1_TSP_LAYER_START + 0x13C: "TSP: TSS_E_NV_AREA_NOT_EXIST",
+    }
+
+    # A dictionary that maps between TPM 2.0 error and their representation.
+    TPM2_ERRORS = {
+        0: "TPM_RC_SUCCESS",
+        # Format 0 error code.
+        TPMConsts.TPM2_RC_VER1 + 0x000: "TPM_RC_INITIALIZE",
+        TPMConsts.TPM2_RC_VER1 + 0x001: "TPM_RC_FAILURE",
+        TPMConsts.TPM2_RC_VER1 + 0x003: "TPM_RC_SEQUENCE",
+        TPMConsts.TPM2_RC_VER1 + 0x00B: "TPM_RC_PRIVATE",
+        TPMConsts.TPM2_RC_VER1 + 0x019: "TPM_RC_HMAC",
+        TPMConsts.TPM2_RC_VER1 + 0x020: "TPM_RC_DISABLED",
+        TPMConsts.TPM2_RC_VER1 + 0x021: "TPM_RC_EXCLUSIVE",
+        TPMConsts.TPM2_RC_VER1 + 0x024: "TPM_RC_AUTH_TYPE",
+        TPMConsts.TPM2_RC_VER1 + 0x025: "TPM_RC_AUTH_MISSING",
+        TPMConsts.TPM2_RC_VER1 + 0x026: "TPM_RC_POLICY",
+        TPMConsts.TPM2_RC_VER1 + 0x027: "TPM_RC_PCR",
+        TPMConsts.TPM2_RC_VER1 + 0x028: "TPM_RC_PCR_CHANGED",
+        TPMConsts.TPM2_RC_VER1 + 0x02D: "TPM_RC_UPGRADE",
+        TPMConsts.TPM2_RC_VER1 + 0x02E: "TPM_RC_TOO_MANY_CONTEXTS",
+        TPMConsts.TPM2_RC_VER1 + 0x02F: "TPM_RC_AUTH_UNAVAILABLE",
+        TPMConsts.TPM2_RC_VER1 + 0x030: "TPM_RC_REBOOT",
+        TPMConsts.TPM2_RC_VER1 + 0x031: "TPM_RC_UNBALANCED",
+        TPMConsts.TPM2_RC_VER1 + 0x042: "TPM_RC_COMMAND_SIZE",
+        TPMConsts.TPM2_RC_VER1 + 0x043: "TPM_RC_COMMAND_CODE",
+        TPMConsts.TPM2_RC_VER1 + 0x044: "TPM_RC_AUTHSIZE",
+        TPMConsts.TPM2_RC_VER1 + 0x045: "TPM_RC_AUTH_CONTEXT",
+        TPMConsts.TPM2_RC_VER1 + 0x046: "TPM_RC_NV_RANGE",
+        TPMConsts.TPM2_RC_VER1 + 0x047: "TPM_RC_NV_SIZE",
+        TPMConsts.TPM2_RC_VER1 + 0x048: "TPM_RC_NV_LOCKED",
+        TPMConsts.TPM2_RC_VER1 + 0x049: "TPM_RC_NV_AUTHORIZATION",
+        TPMConsts.TPM2_RC_VER1 + 0x04A: "TPM_RC_NV_UNINITIALIZED",
+        TPMConsts.TPM2_RC_VER1 + 0x04B: "TPM_RC_NV_SPACE",
+        TPMConsts.TPM2_RC_VER1 + 0x04C: "TPM_RC_NV_DEFINED",
+        TPMConsts.TPM2_RC_VER1 + 0x050: "TPM_RC_BAD_CONTEXT",
+        TPMConsts.TPM2_RC_VER1 + 0x051: "TPM_RC_CPHASH",
+        TPMConsts.TPM2_RC_VER1 + 0x052: "TPM_RC_PARENT",
+        TPMConsts.TPM2_RC_VER1 + 0x053: "TPM_RC_NEEDS_TEST",
+        TPMConsts.TPM2_RC_VER1 + 0x054: "TPM_RC_NO_RESULT",
+        TPMConsts.TPM2_RC_VER1 + 0x055: "TPM_RC_SENSITIVE",
+        # Format 1 error code.
+        TPMConsts.TPM2_RC_FMT1 + 0x001: "TPM_RC_ASYMMETRIC",
+        TPMConsts.TPM2_RC_FMT1 + 0x002: "TPM_RC_ATTRIBUTES",
+        TPMConsts.TPM2_RC_FMT1 + 0x003: "TPM_RC_HASH",
+        TPMConsts.TPM2_RC_FMT1 + 0x004: "TPM_RC_VALUE",
+        TPMConsts.TPM2_RC_FMT1 + 0x005: "TPM_RC_HIERARCHY",
+        TPMConsts.TPM2_RC_FMT1 + 0x007: "TPM_RC_KEY_SIZE",
+        TPMConsts.TPM2_RC_FMT1 + 0x008: "TPM_RC_MGF",
+        TPMConsts.TPM2_RC_FMT1 + 0x009: "TPM_RC_MODE",
+        TPMConsts.TPM2_RC_FMT1 + 0x00A: "TPM_RC_TYPE",
+        TPMConsts.TPM2_RC_FMT1 + 0x00B: "TPM_RC_HANDLE",
+        TPMConsts.TPM2_RC_FMT1 + 0x00C: "TPM_RC_KDF",
+        TPMConsts.TPM2_RC_FMT1 + 0x00D: "TPM_RC_RANGE",
+        TPMConsts.TPM2_RC_FMT1 + 0x00E: "TPM_RC_AUTH_FAIL",
+        TPMConsts.TPM2_RC_FMT1 + 0x00F: "TPM_RC_NONCE",
+        TPMConsts.TPM2_RC_FMT1 + 0x010: "TPM_RC_PP",
+        TPMConsts.TPM2_RC_FMT1 + 0x012: "TPM_RC_SCHEME",
+        TPMConsts.TPM2_RC_FMT1 + 0x015: "TPM_RC_SIZE",
+        TPMConsts.TPM2_RC_FMT1 + 0x016: "TPM_RC_SYMMETRIC",
+        TPMConsts.TPM2_RC_FMT1 + 0x017: "TPM_RC_TAG",
+        TPMConsts.TPM2_RC_FMT1 + 0x018: "TPM_RC_SELECTOR",
+        TPMConsts.TPM2_RC_FMT1 + 0x01A: "TPM_RC_INSUFFICIENT",
+        TPMConsts.TPM2_RC_FMT1 + 0x01B: "TPM_RC_SIGNATURE",
+        TPMConsts.TPM2_RC_FMT1 + 0x01C: "TPM_RC_KEY",
+        TPMConsts.TPM2_RC_FMT1 + 0x01D: "TPM_RC_POLICY_FAIL",
+        TPMConsts.TPM2_RC_FMT1 + 0x01F: "TPM_RC_INTEGRITY",
+        TPMConsts.TPM2_RC_FMT1 + 0x020: "TPM_RC_TICKET",
+        TPMConsts.TPM2_RC_FMT1 + 0x021: "TPM_RC_RESERVED_BITS",
+        TPMConsts.TPM2_RC_FMT1 + 0x022: "TPM_RC_BAD_AUTH",
+        TPMConsts.TPM2_RC_FMT1 + 0x023: "TPM_RC_EXPIRED",
+        TPMConsts.TPM2_RC_FMT1 + 0x024: "TPM_RC_POLICY_CC",
+        TPMConsts.TPM2_RC_FMT1 + 0x025: "TPM_RC_BINDING",
+        TPMConsts.TPM2_RC_FMT1 + 0x026: "TPM_RC_CURVE",
+        TPMConsts.TPM2_RC_FMT1 + 0x027: "TPM_RC_ECC_POINT",
+        # Format 0 error code.
+        TPMConsts.TPM2_RC_WARN + 0x001: "TPM_RC_CONTEXT_GAP",
+        TPMConsts.TPM2_RC_WARN + 0x002: "TPM_RC_OBJECT_MEMORY",
+        TPMConsts.TPM2_RC_WARN + 0x003: "TPM_RC_SESSION_MEMORY",
+        TPMConsts.TPM2_RC_WARN + 0x004: "TPM_RC_MEMORY",
+        TPMConsts.TPM2_RC_WARN + 0x005: "TPM_RC_SESSION_HANDLES",
+        TPMConsts.TPM2_RC_WARN + 0x006: "TPM_RC_OBJECT_HANDLES",
+        TPMConsts.TPM2_RC_WARN + 0x007: "TPM_RC_LOCALITY",
+        TPMConsts.TPM2_RC_WARN + 0x008: "TPM_RC_YIELDED",
+        TPMConsts.TPM2_RC_WARN + 0x009: "TPM_RC_CANCELED",
+        TPMConsts.TPM2_RC_WARN + 0x00A: "TPM_RC_TESTING",
+        TPMConsts.TPM2_RC_WARN + 0x010: "TPM_RC_REFERENCE_H0",
+        TPMConsts.TPM2_RC_WARN + 0x011: "TPM_RC_REFERENCE_H1",
+        TPMConsts.TPM2_RC_WARN + 0x012: "TPM_RC_REFERENCE_H2",
+        TPMConsts.TPM2_RC_WARN + 0x013: "TPM_RC_REFERENCE_H3",
+        TPMConsts.TPM2_RC_WARN + 0x014: "TPM_RC_REFERENCE_H4",
+        TPMConsts.TPM2_RC_WARN + 0x015: "TPM_RC_REFERENCE_H5",
+        TPMConsts.TPM2_RC_WARN + 0x016: "TPM_RC_REFERENCE_H6",
+        TPMConsts.TPM2_RC_WARN + 0x018: "TPM_RC_REFERENCE_S0",
+        TPMConsts.TPM2_RC_WARN + 0x019: "TPM_RC_REFERENCE_S1",
+        TPMConsts.TPM2_RC_WARN + 0x01A: "TPM_RC_REFERENCE_S2",
+        TPMConsts.TPM2_RC_WARN + 0x01B: "TPM_RC_REFERENCE_S3",
+        TPMConsts.TPM2_RC_WARN + 0x01C: "TPM_RC_REFERENCE_S4",
+        TPMConsts.TPM2_RC_WARN + 0x01D: "TPM_RC_REFERENCE_S5",
+        TPMConsts.TPM2_RC_WARN + 0x01E: "TPM_RC_REFERENCE_S6",
+        TPMConsts.TPM2_RC_WARN + 0x020: "TPM_RC_NV_RATE",
+        TPMConsts.TPM2_RC_WARN + 0x021: "TPM_RC_LOCKOUT",
+        TPMConsts.TPM2_RC_WARN + 0x022: "TPM_RC_RETRY",
+        TPMConsts.TPM2_RC_WARN + 0x023: "TPM_RC_NV_UNAVAILABLE",
+        TPMConsts.TPM2_RC_WARN + 0x7F: "TPM_RC_NOT_USED",
+        # Trunks and related errors.
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 1: "TRUNKS_RC_AUTHORIZATION_FAILED",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 2: "TRUNKS_RC_ENCRYPTION_FAILED",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 3: "TRUNKS_RC_READ_ERROR",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 4: "TRUNKS_RC_WRITE_ERROR",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 5: "TRUNKS_RC_IPC_ERROR",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE + 6: "TRUNKS_RC_SESSION_SETUP_ERROR",
+        TPMConsts.TPM2_TRUNKS_ERROR_BASE
+        + 7: "TRUNKS_RC_INVALID_TPM_CONFIGURATION",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 1: "TCTI_RC_TRY_AGAIN",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 2: "TCTI_RC_GENERAL_FAILURE",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 3: "TCTI_RC_BAD_CONTEXT",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 4: "TCTI_RC_WRONG_ABI_VERSION",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 5: "TCTI_RC_NOT_IMPLEMENTED",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 6: "TCTI_RC_BAD_PARAMETER",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 7: "TCTI_RC_INSUFFICIENT_BUFFER",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 8: "TCTI_RC_NO_CONNECTION",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 9: "TCTI_RC_DRIVER_NOT_FOUND",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 10: "TCTI_RC_DRIVERINFO_NOT_FOUND",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 11: "TCTI_RC_NO_RESPONSE",
+        TPMConsts.TPM2_TCTI_ERROR_BASE + 12: "TCTI_RC_BAD_VALUE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 1: "SAPI_RC_INVALID_SESSIONS",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 2: "SAPI_RC_ABI_MISMATCH",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 3: "SAPI_RC_INSUFFICIENT_BUFFER",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 4: "SAPI_RC_BAD_PARAMETER",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 5: "SAPI_RC_BAD_SEQUENCE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 6: "SAPI_RC_NO_DECRYPT_PARAM",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 7: "SAPI_RC_NO_ENCRYPT_PARAM",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 8: "SAPI_RC_NO_RESPONSE_RECEIVED",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 9: "SAPI_RC_BAD_SIZE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 10: "SAPI_RC_CORRUPTED_DATA",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 11: "SAPI_RC_INSUFFICIENT_CONTEXT",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 12: "SAPI_RC_INSUFFICIENT_RESPONSE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 13: "SAPI_RC_INCOMPATIBLE_TCTI",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 14: "SAPI_RC_MALFORMED_RESPONSE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 15: "SAPI_RC_BAD_TCTI_STRUCTURE",
+        TPMConsts.TPM2_SAPI_ERROR_BASE + 16: "SAPI_RC_NO_CONNECTION",
+    }
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _map_tpm2_error(err: int) -> str:
+        """Find the textual representation of a TPM2 error."""
+
+        if err in TPMErrorDecoder.TPM2_ERRORS:
+            return TPMErrorDecoder.TPM2_ERRORS[err]
+        return ""
+
+    @staticmethod
+    def _map_tpm12_error(err: int) -> str:
+        """Find the textual representation of a TPM1.2 error."""
+
+        if err in TPMErrorDecoder.TPM1_ERRORS:
+            return TPMErrorDecoder.TPM1_ERRORS[err]
+        return ""
+
+    @staticmethod
+    def _is_format_one(err: int) -> bool:
+        """Check if an error is a TPM Format One Error."""
+
+        # For more information, see TPM2.0 specification.
+        return (err & TPMConsts.TPM2_LAYER_MASK) == 0 and (
+            err & TPMConsts.TPM2_RC_FMT1
+        ) != 0
+
+    @staticmethod
+    def _handle_unified(err: int) -> Tuple[bool, str]:
+        """Deal with TPM Unified Errors.
+
+        Returns:
+            True and the textual representation if it's a TPM Unified Error.
+            False otherwise.
+        """
+
+        # For the errors below, refer to platform2/libhwsec/error/tpm_error.h
+        # for more info.
+        if (
+            err >= TPMConsts.TPM_UNIFIED_TPM_MANAGER_BASE
+            and err <= TPMConsts.TPM_UNIFIED_TPM_MANAGER_MAX
+        ):
+            return True, "TPM Manager Error 0x%02x" % (
+                err - TPMConsts.TPM_UNIFIED_TPM_MANAGER_BASE
+            )
+
+        if (
+            err >= TPMConsts.TPM_UNIFIED_NVRAM_BASE
+            and err <= TPMConsts.TPM_UNIFIED_NVRAM_MAX
+        ):
+            return True, "TPM Manager NVRAM Error 0x%02x" % (
+                err - TPMConsts.TPM_UNIFIED_NVRAM_BASE
+            )
+
+        if (
+            err >= TPMConsts.TPM_UNIFIED_EC_BASE
+            and err <= TPMConsts.TPM_UNIFIED_EC_MAX
+        ):
+            return True, "Elliptic Curve Error 0x%02x" % (
+                err - TPMConsts.TPM_UNIFIED_EC_BASE
+            )
+
+        if (
+            err >= TPMConsts.TPM_UNIFIED_HASHED_BASE
+            and err <= TPMConsts.TPM_UNIFIED_HASHED_MAX
+        ):
+            return True, "Hashed Error 0x%04x" % (
+                err - TPMConsts.TPM_UNIFIED_HASHED_BASE
+            )
+
+        return False, ""
+
+    @staticmethod
+    def decode(err: int) -> str:
+        """Convert a given TPM error to textual representation."""
+
+        is_unified, unified_repr = TPMErrorDecoder._handle_unified(err)
+        if is_unified:
+            return unified_repr
+
+        err_str = TPMErrorDecoder._map_tpm2_error(err)
+        if err_str != "":
+            return err_str
+
+        prefix = ""
+        # Check for resource manager related error code.
+        if (
+            err & TPMConsts.TPM2_LAYER_MASK
+        ) == TPMConsts.TPM2_RESOURCE_MANAGER_TPM_BASE:
+            err = err & (~TPMConsts.TPM2_LAYER_MASK)
+            err_str = TPMErrorDecoder._map_tpm2_error(err)
+            prefix = "Resource Manager: "
+
+        if TPMErrorDecoder._is_format_one(err):
+            if err & TPMConsts.TPM2_RC_P != 0:
+                prefix += "Parameter "
+            elif err & TPMConsts.TPM2_RC_S != 0:
+                prefix += "Session "
+            else:
+                prefix += "Handle "
+
+            prefix += "%d: " % ((err & TPMConsts.TPM2_SUBJECT_MASK) >> 8,)
+            err = err & TPMConsts.TPM2_FORMAT_ONE_ERROR_MASK
+            err_str = TPMErrorDecoder._map_tpm2_error(err)
+        else:
+            # Format 0
+            if (
+                err & TPMConsts.TPM_T_BIT == 0
+                and err & TPMConsts.TPM_V_BIT == 0
+            ):
+                # Legacy error.
+                err_str = TPMErrorDecoder._map_tpm12_error(err)
+        if err_str == "":
+            err_str = "Unknown Error 0x%03x" % (err,)
+        return prefix + err_str
+
+
 class Symbol:
     """Represents a symbol for error location."""
 
