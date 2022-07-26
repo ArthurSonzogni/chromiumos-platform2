@@ -20,7 +20,7 @@
 
 namespace {
 
-constexpr int kSamples = 100;
+constexpr int kSamples = 10;
 
 constexpr double kDegree2Radian = M_PI / 180.0;
 // The calibbias data unit is 1/1024 dps, and the sensor reading is rad/s.

@@ -19,7 +19,7 @@
 
 namespace {
 
-constexpr int kSamples = 100;
+constexpr int kSamples = 10;
 
 constexpr double kGravity = 9.80665;
 // The calibbias data unit is G/1024, and the sensor reading unit is m/s^2.
