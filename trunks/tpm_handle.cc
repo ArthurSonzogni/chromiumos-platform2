@@ -16,7 +16,6 @@
 #include <base/time/time.h>
 
 #include "trunks/tpm_generated.h"
-#include "trunks/trunks_metrics.h"
 
 namespace trunks {
 
@@ -119,18 +118,14 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
     if (errno == ETIME) {
       static bool has_reported = false;
       if (!has_reported) {
-        TrunksMetrics metrics;
         TPM_CC command_code = GetCommandCode(command);
-        if (metrics.ReportTpmHandleTimeoutCommandAndTime(result, command_code))
+        if (metrics_.ReportTpmHandleTimeoutCommandAndTime(result, command_code))
           has_reported = true;
       }
     }
   }
   TPM_RC response_code = GetResponseCode(response);
-  if (response_code != TPM_RC_SUCCESS) {
-    TrunksMetrics metrics;
-    metrics.ReportTpmErrorCode(response_code);
-  }
+  metrics_.ReportTpmErrorCode(response_code);
   return response;
 }
 

@@ -10,6 +10,7 @@
 #include <string>
 
 #include "trunks/error_codes.h"
+#include "trunks/trunks_metrics.h"
 
 namespace trunks {
 
@@ -45,6 +46,8 @@ class TpmHandle : public CommandTransceiver {
   TPM_RC SendCommandInternal(const std::string& command, std::string* response);
 
   int fd_;  // A file descriptor for /dev/tpm0.
+  // A TrunksMetrics instance for report UMA
+  TrunksMetrics metrics_;
 };
 
 }  // namespace trunks
