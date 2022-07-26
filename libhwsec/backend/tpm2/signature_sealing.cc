@@ -105,10 +105,9 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   ASSIGN_OR_RETURN(const AlgorithmDetail& algorithm,
                    ChooseAlgorithm(key_algorithms));
 
-  if (policies.size() != 2) {
-    return MakeStatus<TPMError>(
-        "Signature sealing only support exactly 2 policies",
-        TPMRetryAction::kNoRetry);
+  if (policies.empty()) {
+    return MakeStatus<TPMError>("No policy for signature sealing",
+                                TPMRetryAction::kNoRetry);
   }
 
   std::vector<std::string> policy_digests;
@@ -125,14 +124,6 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
 
     policy_digests.push_back(digest);
   }
-
-  if (policy_digests.size() != 2) {
-    return MakeStatus<TPMError>("PCR values size mismatch",
-                                TPMRetryAction::kNoRetry);
-  }
-
-  const std::string& default_digest = policy_digests[0];
-  const std::string& extended_digest = policy_digests[1];
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
@@ -209,13 +200,17 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
           &sealed_value)))
       .WithStatus<TPMError>("Failed to seal secret data");
 
+  std::vector<Tpm2PolicyDigest> pcr_digests;
+  for (const std::string& digest : policy_digests) {
+    pcr_digests.push_back(Tpm2PolicyDigest{.digest = BlobFromString(digest)});
+  }
+
   return Tpm2PolicySignedData{
       .public_key_spki_der = public_key_spki_der,
       .srk_wrapped_secret = BlobFromString(sealed_value),
       .scheme = algorithm.scheme,
       .hash_alg = algorithm.hash_alg,
-      .default_pcr_policy_digest = BlobFromString(default_digest),
-      .extended_pcr_policy_digest = BlobFromString(extended_digest),
+      .pcr_policy_digests = std::move(pcr_digests),
   };
 }
 
@@ -246,16 +241,21 @@ StatusOr<SignatureSealingTpm2::ChallengeResult> SignatureSealingTpm2::Challenge(
     return MakeStatus<TPMError>("Empty hash algorithm",
                                 TPMRetryAction::kNoRetry);
   }
-  if (data.default_pcr_policy_digest.empty() ||
-      data.extended_pcr_policy_digest.empty()) {
+
+  if (data.pcr_policy_digests.empty()) {
     return MakeStatus<TPMError>("Empty PCR policy digests",
                                 TPMRetryAction::kNoRetry);
   }
 
-  if (data.default_pcr_policy_digest.size() != SHA256_DIGEST_LENGTH ||
-      data.extended_pcr_policy_digest.size() != SHA256_DIGEST_LENGTH) {
-    return MakeStatus<TPMError>("Invalid policy digest size",
-                                TPMRetryAction::kNoRetry);
+  for (const Tpm2PolicyDigest& digest : data.pcr_policy_digests) {
+    if (digest.digest.empty()) {
+      return MakeStatus<TPMError>("Empty PCR policy digest",
+                                  TPMRetryAction::kNoRetry);
+    }
+    if (digest.digest.size() != SHA256_DIGEST_LENGTH) {
+      return MakeStatus<TPMError>("Invalid policy digest size",
+                                  TPMRetryAction::kNoRetry);
+    }
   }
 
   if (data.public_key_spki_der != public_key_spki_der) {
@@ -293,10 +293,10 @@ StatusOr<SignatureSealingTpm2::ChallengeResult> SignatureSealingTpm2::Challenge(
   // Note: The order of items in this vector is important, it must match the
   // order used in the Seal() function, and should never change due to backwards
   // compatibility.
-  std::vector<std::string> pcr_policy_digests{
-      BlobToString(data.default_pcr_policy_digest),
-      BlobToString(data.extended_pcr_policy_digest),
-  };
+  std::vector<std::string> pcr_policy_digests;
+  for (const Tpm2PolicyDigest& digest : data.pcr_policy_digests) {
+    pcr_policy_digests.push_back(BlobToString(digest.digest));
+  }
 
   // Start a policy session that will be used for obtaining the TPM nonce and
   // unsealing the secret value.

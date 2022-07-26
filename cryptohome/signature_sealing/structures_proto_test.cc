@@ -42,9 +42,11 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
       .srk_wrapped_secret = BlobFromString("srk_wrapped_secret"),
       .scheme = 0x54321,
       .hash_alg = 0x12345,
-      .default_pcr_policy_digest = BlobFromString("default_pcr_policy_digest"),
-      .extended_pcr_policy_digest =
-          BlobFromString("extended_pcr_policy_digest"),
+      .pcr_policy_digests =
+          {
+              hwsec::Tpm2PolicyDigest{.digest = BlobFromString("digest0")},
+              hwsec::Tpm2PolicyDigest{.digest = BlobFromString("digest1")},
+          },
   };
 
   hwsec::SignatureSealedData struct_data = data;
@@ -61,10 +63,12 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, data.srk_wrapped_secret);
   EXPECT_EQ(tpm2_data.scheme, data.scheme);
   EXPECT_EQ(tpm2_data.hash_alg, data.hash_alg);
-  EXPECT_EQ(tpm2_data.default_pcr_policy_digest,
-            data.default_pcr_policy_digest);
-  EXPECT_EQ(tpm2_data.extended_pcr_policy_digest,
-            data.extended_pcr_policy_digest);
+  ASSERT_EQ(tpm2_data.pcr_policy_digests.size(), 2);
+  ASSERT_EQ(data.pcr_policy_digests.size(), 2);
+  EXPECT_EQ(tpm2_data.pcr_policy_digests[0].digest,
+            data.pcr_policy_digests[0].digest);
+  EXPECT_EQ(tpm2_data.pcr_policy_digests[1].digest,
+            data.pcr_policy_digests[1].digest);
 }
 
 TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
@@ -104,9 +108,11 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
       .srk_wrapped_secret = BlobFromString("srk_wrapped_secret"),
       .scheme = 0x54321,
       .hash_alg = 0x12345,
-      .default_pcr_policy_digest = BlobFromString("default_pcr_policy_digest"),
-      .extended_pcr_policy_digest =
-          BlobFromString("extended_pcr_policy_digest"),
+      .pcr_policy_digests =
+          {
+              hwsec::Tpm2PolicyDigest{.digest = BlobFromString("digest0")},
+              hwsec::Tpm2PolicyDigest{.digest = BlobFromString("digest1")},
+          },
   };
   structure::SignatureChallengeInfo data{
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
@@ -131,10 +137,12 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, policy_data.srk_wrapped_secret);
   EXPECT_EQ(tpm2_data.scheme, policy_data.scheme);
   EXPECT_EQ(tpm2_data.hash_alg, policy_data.hash_alg);
-  EXPECT_EQ(tpm2_data.default_pcr_policy_digest,
-            policy_data.default_pcr_policy_digest);
-  EXPECT_EQ(tpm2_data.extended_pcr_policy_digest,
-            policy_data.extended_pcr_policy_digest);
+  ASSERT_EQ(tpm2_data.pcr_policy_digests.size(), 2);
+  ASSERT_EQ(policy_data.pcr_policy_digests.size(), 2);
+  EXPECT_EQ(tpm2_data.pcr_policy_digests[0].digest,
+            policy_data.pcr_policy_digests[0].digest);
+  EXPECT_EQ(tpm2_data.pcr_policy_digests[1].digest,
+            policy_data.pcr_policy_digests[1].digest);
 }
 
 TEST(ChallengePublicKeyInfoTest, ToProtoFromProto) {

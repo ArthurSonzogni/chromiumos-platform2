@@ -6,9 +6,9 @@
 #include <variant>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec/structures/signature_sealed_data.h>
 
 #include "cryptohome/signature_sealing/structures_proto.h"
-#include "cryptohome/tpm.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -30,29 +30,14 @@ SignatureSealedData_Tpm2PolicySignedData ToProto(
     result.set_hash_alg(obj.hash_alg.value());
   }
 
-  // Special conversion for backwards-compatibility.
   // Note: The order of items added here is important, as it must match the
   // reading order in FromProto() and must never change due to backwards
   // compatibility.
-  SignatureSealedData_PcrValue pcr_value;
-  // Ignoring the exact PCR value, because we don't need it.
-  pcr_value.set_pcr_index(kTpmSingleUserPCR);
-
-  SignatureSealedData_Tpm2PcrRestriction restriction;
-  restriction.set_policy_digest(BlobToString(obj.default_pcr_policy_digest));
-
-  *restriction.add_pcr_values() = std::move(pcr_value);
-  *result.add_pcr_restrictions() = std::move(restriction);
-
-  pcr_value = SignatureSealedData_PcrValue();
-  // Ignoring the exact PCR value, because we don't need it.
-  pcr_value.set_pcr_index(kTpmSingleUserPCR);
-
-  restriction = SignatureSealedData_Tpm2PcrRestriction();
-  restriction.set_policy_digest(BlobToString(obj.extended_pcr_policy_digest));
-
-  *restriction.add_pcr_values() = std::move(pcr_value);
-  *result.add_pcr_restrictions() = std::move(restriction);
+  for (const hwsec::Tpm2PolicyDigest& digest : obj.pcr_policy_digests) {
+    SignatureSealedData_Tpm2PcrRestriction restriction;
+    restriction.set_policy_digest(BlobToString(digest.digest));
+    *result.add_pcr_restrictions() = std::move(restriction);
+  }
 
   return result;
 }
@@ -69,14 +54,13 @@ hwsec::Tpm2PolicySignedData FromProto(
     result.hash_alg = obj.hash_alg();
   }
 
-  // Special conversion for backwards-compatibility.
-  if (obj.pcr_restrictions_size() == 2) {
-    result.default_pcr_policy_digest =
-        BlobFromString(obj.pcr_restrictions(0).policy_digest());
-    result.extended_pcr_policy_digest =
-        BlobFromString(obj.pcr_restrictions(1).policy_digest());
-  } else {
-    LOG(WARNING) << "Unknown PCR restrictions size from protobuf.";
+  // Note: The order of items added here is important, as it must match the
+  // reading order in FromProto() and must never change due to backwards
+  // compatibility.
+  for (const SignatureSealedData_Tpm2PcrRestriction& restriction :
+       obj.pcr_restrictions()) {
+    result.pcr_policy_digests.push_back(hwsec::Tpm2PolicyDigest{
+        .digest = BlobFromString(restriction.policy_digest())});
   }
 
   return result;

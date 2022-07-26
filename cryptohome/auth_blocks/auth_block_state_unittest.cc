@@ -243,10 +243,13 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm2) {
                           BlobFromString("srk_wrapped_secret"),
                       .scheme = 5566,
                       .hash_alg = 7788,
-                      .default_pcr_policy_digest =
-                          BlobFromString("default_pcr_policy_digest"),
-                      .extended_pcr_policy_digest =
-                          BlobFromString("extended_pcr_policy_digest"),
+                      .pcr_policy_digests =
+                          {
+                              hwsec::Tpm2PolicyDigest{
+                                  .digest = BlobFromString("digest0")},
+                              hwsec::Tpm2PolicyDigest{
+                                  .digest = BlobFromString("digest1")},
+                          },
                   },
               .salt = BlobFromString("salt"),
               .salt_signature_algorithm =
@@ -276,8 +279,13 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateEmpty) {
                   hwsec::Tpm2PolicySignedData{
                       .public_key_spki_der = BlobFromString(""),
                       .srk_wrapped_secret = BlobFromString(""),
-                      .default_pcr_policy_digest = BlobFromString(""),
-                      .extended_pcr_policy_digest = BlobFromString(""),
+                      .pcr_policy_digests =
+                          {
+                              hwsec::Tpm2PolicyDigest{.digest =
+                                                          BlobFromString("")},
+                              hwsec::Tpm2PolicyDigest{.digest =
+                                                          BlobFromString("")},
+                          },
                   },
               .salt = BlobFromString(""),
           }}};
@@ -327,8 +335,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
               hwsec::Tpm2PolicySignedData{
                   .public_key_spki_der = BlobFromString(""),
                   .srk_wrapped_secret = BlobFromString(""),
-                  .default_pcr_policy_digest = BlobFromString(""),
-                  .extended_pcr_policy_digest = BlobFromString(""),
+                  .pcr_policy_digests = {},
               },
           .salt = BlobFromString(""),
       }};

@@ -194,8 +194,13 @@ TEST_F(BackendSignatureSealingTpm2Test, SealChallengeUnseal) {
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
       .scheme = trunks::TPM_ALG_RSASSA,
       .hash_alg = trunks::TPM_ALG_SHA256,
-      .default_pcr_policy_digest = brillo::BlobFromString(fake_digests1_),
-      .extended_pcr_policy_digest = brillo::BlobFromString(fake_digests2_),
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 
@@ -250,8 +255,13 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWithSha1) {
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
       .scheme = trunks::TPM_ALG_RSASSA,
       .hash_alg = trunks::TPM_ALG_SHA1,
-      .default_pcr_policy_digest = brillo::BlobFromString(fake_digests1_),
-      .extended_pcr_policy_digest = brillo::BlobFromString(fake_digests2_),
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 }
@@ -270,8 +280,13 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriority) {
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
       .scheme = trunks::TPM_ALG_RSASSA,
       .hash_alg = trunks::TPM_ALG_SHA512,
-      .default_pcr_policy_digest = brillo::BlobFromString(fake_digests1_),
-      .extended_pcr_policy_digest = brillo::BlobFromString(fake_digests2_),
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 }
@@ -290,8 +305,13 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriorityReverse) {
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
       .scheme = trunks::TPM_ALG_RSASSA,
       .hash_alg = trunks::TPM_ALG_SHA384,
-      .default_pcr_policy_digest = brillo::BlobFromString(fake_digests1_),
-      .extended_pcr_policy_digest = brillo::BlobFromString(fake_digests2_),
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
   };
   EXPECT_EQ(seal_result.value(), expected_seal_result);
 }
@@ -320,52 +340,6 @@ TEST_F(BackendSignatureSealingTpm2Test, SealNoSetting) {
   auto seal_result = middleware_->CallSync<&Backend::SignatureSealing::Seal>(
       std::vector<OperationPolicySetting>{}, unsealed_data_,
       public_key_spki_der_, key_algorithms_);
-
-  EXPECT_FALSE(seal_result.ok());
-}
-
-TEST_F(BackendSignatureSealingTpm2Test, SealOneSetting) {
-  auto seal_result = middleware_->CallSync<&Backend::SignatureSealing::Seal>(
-      std::vector<OperationPolicySetting>{
-          OperationPolicySetting{
-              .device_config_settings =
-                  DeviceConfigSettings{
-                      .current_user =
-                          DeviceConfigSettings::CurrentUserSetting{
-                              .username = std::nullopt}},
-          },
-      },
-      unsealed_data_, public_key_spki_der_, key_algorithms_);
-
-  EXPECT_FALSE(seal_result.ok());
-}
-
-TEST_F(BackendSignatureSealingTpm2Test, SealTooMuchSetting) {
-  auto seal_result = middleware_->CallSync<&Backend::SignatureSealing::Seal>(
-      std::vector<OperationPolicySetting>{
-          OperationPolicySetting{
-              .device_config_settings =
-                  DeviceConfigSettings{
-                      .current_user =
-                          DeviceConfigSettings::CurrentUserSetting{
-                              .username = std::nullopt}},
-          },
-          OperationPolicySetting{
-              .device_config_settings =
-                  DeviceConfigSettings{
-                      .current_user =
-                          DeviceConfigSettings::CurrentUserSetting{
-                              .username = "username1"}},
-          },
-          OperationPolicySetting{
-              .device_config_settings =
-                  DeviceConfigSettings{
-                      .current_user =
-                          DeviceConfigSettings::CurrentUserSetting{
-                              .username = "username2"}},
-          },
-      },
-      unsealed_data_, public_key_spki_der_, key_algorithms_);
 
   EXPECT_FALSE(seal_result.ok());
 }
@@ -481,9 +455,9 @@ TEST_F(BackendSignatureSealingTpm2Test, ChallengeWrongData) {
           key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
-  // Empty default_pcr_policy_digest.
+  // Empty policy digest.
   sealed_data = seal_result.value();
-  std::get<Tpm2PolicySignedData>(sealed_data).default_pcr_policy_digest =
+  std::get<Tpm2PolicySignedData>(sealed_data).pcr_policy_digests[0].digest =
       brillo::Blob();
   challenge_result =
       middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
@@ -491,36 +465,14 @@ TEST_F(BackendSignatureSealingTpm2Test, ChallengeWrongData) {
           key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
-  // Empty extended_pcr_policy_digest.
+  // Wrong policy digest size.
   sealed_data = seal_result.value();
-  std::get<Tpm2PolicySignedData>(sealed_data).extended_pcr_policy_digest =
-      brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
-  EXPECT_FALSE(challenge_result.ok());
-
-  // Wrong default_pcr_policy_digest size.
-  sealed_data = seal_result.value();
-  std::get<Tpm2PolicySignedData>(sealed_data).default_pcr_policy_digest =
+  std::get<Tpm2PolicySignedData>(sealed_data).pcr_policy_digests[0].digest =
       brillo::Blob(16, 'A');
   challenge_result =
       middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
           operation_policy_, sealed_data, public_key_spki_der_,
           key_algorithms_);
-  EXPECT_FALSE(challenge_result.ok());
-
-  // Wrong default_pcr_policy_digest size.
-  sealed_data = seal_result.value();
-  std::get<Tpm2PolicySignedData>(sealed_data).extended_pcr_policy_digest =
-      brillo::Blob(16, 'A');
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          OperationPolicy{
-              .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
-          },
-          sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Mismatch public_key_spki_der.
