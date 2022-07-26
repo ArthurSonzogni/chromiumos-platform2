@@ -55,6 +55,7 @@ pread64: 1
 read: 1
 readlink: 1
 recvmsg: 1
+restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
