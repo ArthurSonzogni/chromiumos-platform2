@@ -1332,6 +1332,11 @@ class DBTool:
     SCAN_DENYLIST = frozenset({"./error/location_utils.h"})
     LOCATIONS_H_PATH = "./error/locations.h"
 
+    # TPM error range [ERROR_LOC_TPM_START, ERROR_LOC_TPM_END).
+    # Lower bound is included; upper bound is excluded.
+    ERROR_LOC_TPM_START = 0x10000
+    ERROR_LOC_TPM_END = 0x20000
+
     def __init__(self, allowlist_path: str):
         """Constructor for DBTool.
 
@@ -1518,11 +1523,17 @@ class DBTool:
             if x not in self.db.value_to_symbol
         ]
 
-        # Log warnings for invalid inputs.
         for loc in invalid_locs:
-            # Note that currently TPM errors are not handled.
-            # TODO(b/236378423): Support TPM Error Locations.
-            logging.warning("Invalid error location value: %d", loc)
+            # Check and handle TPM errors.
+            if DBTool.ERROR_LOC_TPM_START <= loc < DBTool.ERROR_LOC_TPM_END:
+                # TPM error exists between 0x10000 to 0x1FFFF
+                tpm_err = loc - DBTool.ERROR_LOC_TPM_START
+
+                tpm_err_str = TPMErrorDecoder.decode(tpm_err)
+                result_error_locs.append((loc, tpm_err_str))
+            else:
+                # Log warnings for invalid inputs.
+                logging.warning("Invalid error location value: %d", loc)
 
         # Write all valid output to enums.xml
         if not enums_db.update_enums_xml_with_error_loc(result_error_locs):
