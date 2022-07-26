@@ -19,7 +19,7 @@ MulticastProxy::MulticastProxy(base::ScopedFD control_fd)
   msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
       &MulticastProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
-  msg_dispatcher_.RegisterDeviceMessageHandler(base::BindRepeating(
+  msg_dispatcher_.RegisterMessageHandler(base::BindRepeating(
       &MulticastProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
 }
 
@@ -46,7 +46,15 @@ void MulticastProxy::OnParentProcessExit() {
   Quit();
 }
 
-void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
+void MulticastProxy::OnDeviceMessage(const SubprocessMessage& root_msg) {
+  if (!root_msg.has_control_message()) {
+    LOG(ERROR) << "Unexpected message type";
+    return;
+  }
+  if (!root_msg.control_message().has_device_message()) {
+    return;
+  }
+  const DeviceMessage& msg = root_msg.control_message().device_message();
   const std::string& dev_ifname = msg.dev_ifname();
   if (dev_ifname.empty()) {
     LOG(DFATAL) << "Received DeviceMessage w/ empty dev_ifname";

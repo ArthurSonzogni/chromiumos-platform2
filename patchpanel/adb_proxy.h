@@ -41,7 +41,7 @@ class AdbProxy : public brillo::DBusDaemon {
   int OnInit() override;
 
   void OnParentProcessExit();
-  void OnGuestMessage(const GuestMessage& msg);
+  void OnGuestMessage(const SubprocessMessage& msg);
 
  private:
   void InitialSetup();

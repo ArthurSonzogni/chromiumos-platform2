@@ -7,6 +7,26 @@ option optimize_for = LITE_RUNTIME;
 
 package patchpanel;
 
+message SubprocessMessage {
+  oneof message_type {
+    ControlMessage control_message = 1;    // Message from Manager to subprocess
+    FeedbackMessage feedback_message = 2;  // Message from subprocess to Manager
+  }
+}
+
+message ControlMessage {
+  oneof message_type {
+    GuestMessage guest_message = 1;
+    DeviceMessage device_message = 2;
+  }
+}
+
+message FeedbackMessage {
+  oneof message_type {
+    NDProxyMessage ndproxy_message = 1;
+  }
+}
+
 // Best practice is to use optional fields, but since the client and server
 // are always in sync, these messages use required fields to save on
 // validation.
@@ -59,12 +79,4 @@ message NDProxyMessage {
   required NDProxyEventType type = 1;
   required string ifname = 2;
   optional string ip6addr = 3;
-}
-
-message IpHelperMessage {
-  oneof message_type {
-    GuestMessage guest_message = 1;
-    DeviceMessage device_message = 2;
-    NDProxyMessage ndproxy_message = 3;
-  }
 }

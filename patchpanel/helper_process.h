@@ -11,9 +11,11 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/scoped_file.h>
-#include <google/protobuf/message_lite.h>
+#include <base/memory/weak_ptr.h>
 
+#include "patchpanel/ipc.pb.h"
 #include "patchpanel/message_dispatcher.h"
 
 namespace patchpanel {
@@ -39,27 +41,32 @@ class HelperProcess {
   bool Restart();
 
   // Serializes a protobuf and sends it to the helper process.
-  void SendMessage(const google::protobuf::MessageLite& proto) const;
+  void SendControlMessage(const ControlMessage& proto) const;
 
   // Start listening on messages from subprocess and dispatching them to
   // handlers. This function can only be called after that the message loop of
   // main process is initialized.
   void Listen();
 
-  void RegisterNDProxyMessageHandler(
-      base::RepeatingCallback<void(const NDProxyMessage&)> handler);
+  void RegisterFeedbackMessageHandler(
+      base::RepeatingCallback<void(const FeedbackMessage&)> handler);
 
   pid_t pid() const { return pid_; }
   uint8_t restarts() const { return restarts_; }
 
  private:
   void Launch();
+  void OnMessage(const SubprocessMessage&);
+
+  base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;
 
   pid_t pid_{0};
   uint8_t restarts_{0};
   std::vector<std::string> argv_;
   std::string fd_arg_;
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+
+  base::WeakPtrFactory<HelperProcess> weak_factory_{this};
 };
 
 }  // namespace patchpanel

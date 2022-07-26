@@ -31,7 +31,7 @@ class MulticastProxy : public brillo::Daemon {
   int OnInit() override;
 
   void OnParentProcessExit();
-  void OnDeviceMessage(const DeviceMessage& msg);
+  void OnDeviceMessage(const SubprocessMessage& msg);
 
  private:
   void Reset();

@@ -1471,10 +1471,10 @@ bool Manager::RedirectDns(
 }
 
 void Manager::SendGuestMessage(const GuestMessage& msg) {
-  IpHelperMessage ipm;
-  *ipm.mutable_guest_message() = msg;
-  adb_proxy_->SendMessage(ipm);
-  mcast_proxy_->SendMessage(ipm);
+  ControlMessage cm;
+  *cm.mutable_guest_message() = msg;
+  adb_proxy_->SendControlMessage(cm);
+  mcast_proxy_->SendControlMessage(cm);
 }
 
 void Manager::SendNetworkConfigurationChangedSignal() {
@@ -1493,14 +1493,14 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   }
 
   if (fs.multicast && IsMulticastInterface(ifname_physical)) {
-    IpHelperMessage ipm;
-    DeviceMessage* msg = ipm.mutable_device_message();
+    ControlMessage cm;
+    DeviceMessage* msg = cm.mutable_device_message();
     msg->set_dev_ifname(ifname_physical);
     msg->set_br_ifname(ifname_virtual);
 
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
-    mcast_proxy_->SendMessage(ipm);
+    mcast_proxy_->SendControlMessage(cm);
   }
 }
 
@@ -1519,8 +1519,8 @@ void Manager::StopForwarding(const std::string& ifname_physical,
   }
 
   if (fs.multicast) {
-    IpHelperMessage ipm;
-    DeviceMessage* msg = ipm.mutable_device_message();
+    ControlMessage cm;
+    DeviceMessage* msg = cm.mutable_device_message();
     msg->set_dev_ifname(ifname_physical);
     msg->set_teardown(true);
     if (!ifname_virtual.empty()) {
@@ -1532,7 +1532,7 @@ void Manager::StopForwarding(const std::string& ifname_physical,
       LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
                 << " to " << ifname_virtual;
     }
-    mcast_proxy_->SendMessage(ipm);
+    mcast_proxy_->SendControlMessage(cm);
   }
 }
 

@@ -51,6 +51,8 @@ void HelperProcess::Launch() {
   base::ScopedFD control_fd(control[0]);
   msg_dispatcher_ =
       std::make_unique<MessageDispatcher>(std::move(control_fd), false);
+  msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
+      &HelperProcess::OnMessage, weak_factory_.GetWeakPtr()));
   const int subprocess_fd = control[1];
 
   std::vector<std::string> child_argv = argv_;
@@ -67,12 +69,13 @@ void HelperProcess::Launch() {
   pid_ = p.Pid();
 }
 
-void HelperProcess::SendMessage(
-    const google::protobuf::MessageLite& proto) const {
+void HelperProcess::SendControlMessage(const ControlMessage& proto) const {
   if (!msg_dispatcher_) {
     return;
   }
-  msg_dispatcher_->SendMessage(proto);
+  SubprocessMessage msg;
+  *msg.mutable_control_message() = proto;
+  msg_dispatcher_->SendMessage(msg);
 }
 
 void HelperProcess::Listen() {
@@ -82,12 +85,15 @@ void HelperProcess::Listen() {
   msg_dispatcher_->Start();
 }
 
-void HelperProcess::RegisterNDProxyMessageHandler(
-    base::RepeatingCallback<void(const NDProxyMessage&)> handler) {
-  if (!msg_dispatcher_) {
-    return;
+void HelperProcess::RegisterFeedbackMessageHandler(
+    base::RepeatingCallback<void(const FeedbackMessage&)> handler) {
+  feedback_handler_ = std::move(handler);
+}
+
+void HelperProcess::OnMessage(const SubprocessMessage& msg) {
+  if (msg.has_feedback_message() && !feedback_handler_.is_null()) {
+    feedback_handler_.Run(msg.feedback_message());
   }
-  msg_dispatcher_->RegisterNDProxyMessageHandler(std::move(handler));
 }
 
 }  // namespace patchpanel

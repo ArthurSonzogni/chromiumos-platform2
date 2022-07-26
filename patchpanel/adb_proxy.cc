@@ -59,7 +59,7 @@ AdbProxy::AdbProxy(base::ScopedFD control_fd)
   msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
       &AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
-  msg_dispatcher_.RegisterGuestMessageHandler(base::BindRepeating(
+  msg_dispatcher_.RegisterMessageHandler(base::BindRepeating(
       &AdbProxy::OnGuestMessage, weak_factory_.GetWeakPtr()));
 }
 
@@ -188,7 +188,15 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   return nullptr;
 }
 
-void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
+void AdbProxy::OnGuestMessage(const SubprocessMessage& root_msg) {
+  if (!root_msg.has_control_message()) {
+    LOG(ERROR) << "Unexpected message type";
+    return;
+  }
+  if (!root_msg.control_message().has_guest_message()) {
+    return;
+  }
+  const GuestMessage& msg = root_msg.control_message().guest_message();
   if (msg.type() == GuestMessage::UNKNOWN_GUEST) {
     LOG(DFATAL) << "Unexpected message from unknown guest";
     return;

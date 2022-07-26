@@ -27,16 +27,10 @@ class MessageDispatcher {
 
   void RegisterFailureHandler(base::RepeatingCallback<void()> handler);
 
-  void RegisterNDProxyMessageHandler(
-      base::RepeatingCallback<void(const NDProxyMessage&)> handler);
+  void RegisterMessageHandler(
+      base::RepeatingCallback<void(const SubprocessMessage&)> handler);
 
-  void RegisterGuestMessageHandler(
-      base::RepeatingCallback<void(const GuestMessage&)> handler);
-
-  void RegisterDeviceMessageHandler(
-      base::RepeatingCallback<void(const DeviceMessage&)> handler);
-
-  void SendMessage(const google::protobuf::MessageLite& proto) const;
+  void SendMessage(const SubprocessMessage& proto) const;
 
  private:
   // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.
@@ -45,11 +39,9 @@ class MessageDispatcher {
   base::ScopedFD fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   base::RepeatingCallback<void()> failure_handler_;
-  base::RepeatingCallback<void(const NDProxyMessage&)> ndproxy_handler_;
-  base::RepeatingCallback<void(const GuestMessage&)> guest_handler_;
-  base::RepeatingCallback<void(const DeviceMessage&)> device_handler_;
+  base::RepeatingCallback<void(const SubprocessMessage&)> message_handler_;
 
-  IpHelperMessage msg_;
+  SubprocessMessage msg_;
 
   base::WeakPtrFactory<MessageDispatcher> weak_factory_{this};
 };

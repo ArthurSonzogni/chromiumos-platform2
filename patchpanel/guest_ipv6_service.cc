@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include "patchpanel/ipc.pb.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -34,7 +35,7 @@ GuestIPv6Service::GuestIPv6Service(HelperProcess* nd_proxy,
     : nd_proxy_(nd_proxy), datapath_(datapath), shill_client_(shill_client) {}
 
 void GuestIPv6Service::Start() {
-  nd_proxy_->RegisterNDProxyMessageHandler(base::BindRepeating(
+  nd_proxy_->RegisterFeedbackMessageHandler(base::BindRepeating(
       &GuestIPv6Service::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
   nd_proxy_->Listen();
 }
@@ -42,8 +43,8 @@ void GuestIPv6Service::Start() {
 void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                                        const std::string& ifname_downlink,
                                        bool downlink_is_tethering) {
-  IpHelperMessage ipm;
-  DeviceMessage* msg = ipm.mutable_device_message();
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
   msg->set_dev_ifname(ifname_uplink);
   msg->set_br_ifname(ifname_downlink);
 
@@ -70,29 +71,29 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
       LOG(WARNING) << "Failed to setup all multicast mode for interface "
                    << ifname_downlink;
     }
-    nd_proxy_->SendMessage(ipm);
+    nd_proxy_->SendControlMessage(cm);
   }
 }
 
 void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
                                       const std::string& ifname_downlink) {
-  IpHelperMessage ipm;
-  DeviceMessage* msg = ipm.mutable_device_message();
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
   msg->set_dev_ifname(ifname_uplink);
   msg->set_teardown(true);
   msg->set_br_ifname(ifname_downlink);
   LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_uplink << " to "
             << ifname_downlink;
-  nd_proxy_->SendMessage(ipm);
+  nd_proxy_->SendControlMessage(cm);
 }
 
 void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
-  IpHelperMessage ipm;
-  DeviceMessage* msg = ipm.mutable_device_message();
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
   msg->set_dev_ifname(ifname_uplink);
   msg->set_teardown(true);
   LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_uplink;
-  nd_proxy_->SendMessage(ipm);
+  nd_proxy_->SendControlMessage(cm);
 }
 
 void GuestIPv6Service::StartLocalHotspot(
@@ -113,7 +114,12 @@ void GuestIPv6Service::SetForwardMethod(const std::string& ifname_uplink,
   NOTIMPLEMENTED();
 }
 
-void GuestIPv6Service::OnNDProxyMessage(const NDProxyMessage& msg) {
+void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
+  if (!fm.has_ndproxy_message()) {
+    LOG(ERROR) << "Unexpected feedback message type";
+    return;
+  }
+  const NDProxyMessage& msg = fm.ndproxy_message();
   LOG_IF(DFATAL, msg.ifname().empty())
       << "Received DeviceMessage w/ empty dev_ifname";
   switch (msg.type()) {

@@ -32,19 +32,9 @@ void MessageDispatcher::RegisterFailureHandler(
   failure_handler_ = std::move(handler);
 }
 
-void MessageDispatcher::RegisterNDProxyMessageHandler(
-    base::RepeatingCallback<void(const NDProxyMessage&)> handler) {
-  ndproxy_handler_ = std::move(handler);
-}
-
-void MessageDispatcher::RegisterGuestMessageHandler(
-    base::RepeatingCallback<void(const GuestMessage&)> handler) {
-  guest_handler_ = std::move(handler);
-}
-
-void MessageDispatcher::RegisterDeviceMessageHandler(
-    base::RepeatingCallback<void(const DeviceMessage&)> handler) {
-  device_handler_ = std::move(handler);
+void MessageDispatcher::RegisterMessageHandler(
+    base::RepeatingCallback<void(const SubprocessMessage&)> handler) {
+  message_handler_ = std::move(handler);
 }
 
 void MessageDispatcher::OnFileCanReadWithoutBlocking() {
@@ -67,20 +57,12 @@ void MessageDispatcher::OnFileCanReadWithoutBlocking() {
     return;
   }
 
-  if (msg_.has_ndproxy_message() && !ndproxy_handler_.is_null()) {
-    ndproxy_handler_.Run(msg_.ndproxy_message());
-  }
-
-  if (msg_.has_guest_message() && !guest_handler_.is_null()) {
-    guest_handler_.Run(msg_.guest_message());
-  }
-
-  if (msg_.has_device_message() && !device_handler_.is_null()) {
-    device_handler_.Run(msg_.device_message());
+  if (!message_handler_.is_null()) {
+    message_handler_.Run(msg_);
   }
 }
-void MessageDispatcher::SendMessage(
-    const google::protobuf::MessageLite& proto) const {
+
+void MessageDispatcher::SendMessage(const SubprocessMessage& proto) const {
   std::string str;
   if (!proto.SerializeToString(&str)) {
     LOG(ERROR) << "error serializing protobuf";

@@ -221,7 +221,7 @@ class NDProxyDaemon : public brillo::Daemon {
   void OnDataSocketReadReady();
   // Callbacks to be registered to msg_dispatcher to handle control messages.
   void OnParentProcessExit();
-  void OnDeviceMessage(const DeviceMessage& msg);
+  void OnControlMessage(const SubprocessMessage& msg);
 
   // Callback from NDProxy core when receive NA from guest
   void OnGuestIpDiscovery(const std::string& ifname,

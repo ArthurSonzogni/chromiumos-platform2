@@ -58,7 +58,7 @@ class GuestIPv6Service {
  private:
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
   // address to guest-facing interface.
-  void OnNDProxyMessage(const NDProxyMessage& msg);
+  void OnNDProxyMessage(const FeedbackMessage& msg);
 
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
   HelperProcess* nd_proxy_;

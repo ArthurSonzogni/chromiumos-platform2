@@ -32,6 +32,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
+#include "patchpanel/ipc.pb.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
@@ -808,8 +809,8 @@ int NDProxyDaemon::OnInit() {
   if (msg_dispatcher_) {
     msg_dispatcher_->RegisterFailureHandler(base::BindRepeating(
         &NDProxyDaemon::OnParentProcessExit, weak_factory_.GetWeakPtr()));
-    msg_dispatcher_->RegisterDeviceMessageHandler(base::BindRepeating(
-        &NDProxyDaemon::OnDeviceMessage, weak_factory_.GetWeakPtr()));
+    msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
+        &NDProxyDaemon::OnControlMessage, weak_factory_.GetWeakPtr()));
   }
 
   // Initialize NDProxy and register guest IP discovery callback
@@ -846,7 +847,15 @@ void NDProxyDaemon::OnParentProcessExit() {
   Quit();
 }
 
-void NDProxyDaemon::OnDeviceMessage(const DeviceMessage& msg) {
+void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
+  if (!root_msg.has_control_message()) {
+    LOG(ERROR) << "Unexpected message type";
+    return;
+  }
+  if (!root_msg.control_message().has_device_message()) {
+    return;
+  }
+  const DeviceMessage& msg = root_msg.control_message().device_message();
   const std::string& dev_ifname = msg.dev_ifname();
   LOG_IF(DFATAL, dev_ifname.empty())
       << "Received DeviceMessage w/ empty dev_ifname";
@@ -904,9 +913,11 @@ void NDProxyDaemon::SendMessage(NDProxyMessage::NDProxyEventType type,
   msg.set_type(type);
   msg.set_ifname(ifname);
   msg.set_ip6addr(ip6addr);
-  IpHelperMessage ipm;
-  *ipm.mutable_ndproxy_message() = msg;
-  msg_dispatcher_->SendMessage(ipm);
+  FeedbackMessage fm;
+  *fm.mutable_ndproxy_message() = msg;
+  SubprocessMessage root_m;
+  *root_m.mutable_feedback_message() = fm;
+  msg_dispatcher_->SendMessage(root_m);
 }
 
 }  // namespace patchpanel
