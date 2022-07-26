@@ -4,7 +4,10 @@
 
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
 
+#include <algorithm>
+#include <functional>
 #include <numeric>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -17,6 +20,8 @@
 namespace {
 
 constexpr int kMaxNumEntries = 1024;
+constexpr int kTimeoutOverheadInMS = 1000;
+constexpr double kSecond2Millisecond = 1000.0;
 constexpr char kIioDevicePathPrefix[] = "/sys/bus/iio/devices/iio:device";
 constexpr char kIioDeviceEntryName[] = "name";
 constexpr char kIioDeviceEntryLocation[] = "location";
@@ -29,6 +34,7 @@ constexpr char kIioParameterChannelsPrefix[] = "--channels=";
 constexpr char kIioParameterFrequencyPrefix[] = "--frequency=";
 constexpr char kIioParameterDeviceIdPrefix[] = "--device_id=";
 constexpr char kIioParameterSamplesPrefix[] = "--samples=";
+constexpr char kIioParameterTimeoutPrefix[] = "--timeout=";
 
 }  // namespace
 
@@ -57,10 +63,16 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
   }
 
   std::vector<std::string> argv{
-      kIioServiceClientCmdPath, parameter_channels,
+      kIioServiceClientCmdPath,
+      parameter_channels,
       kIioParameterFrequencyPrefix + base::NumberToString(frequency_),
       kIioParameterDeviceIdPrefix + base::NumberToString(id_),
-      kIioParameterSamplesPrefix + base::NumberToString(samples)};
+      kIioParameterSamplesPrefix + base::NumberToString(samples),
+      kIioParameterTimeoutPrefix +
+          base::NumberToString(ceil(kSecond2Millisecond / frequency_) +
+                               kTimeoutOverheadInMS),
+  };
+
   std::string value;
   if (!base::GetAppOutputAndError(argv, &value)) {
     std::string whole_cmd;
@@ -196,12 +208,18 @@ bool IioEcSensorUtilsImpl::InitializeFromSysfsPath(
   re2::StringPiece str_piece(frequency_available);
   re2::RE2 reg(R"((\d+.\d+))");
   std::string match;
+  // Two slots are pre-allocated for the two highest frequencies.
+  std::vector<double> frequencies = {0, 0};
   while (RE2::FindAndConsume(&str_piece, reg, &match)) {
     double freq;
-    if (base::StringToDouble(match, &freq) && freq > frequency_) {
-      frequency_ = freq;
+    if (base::StringToDouble(match, &freq)) {
+      frequencies.push_back(freq);
     }
   }
+  std::sort(frequencies.begin(), frequencies.end(), std::greater<>());
+  // Use the second-highest frequency instead, as we might get some wrong
+  // readings w/ the highest frequency.
+  frequency_ = frequencies[1] > 0 ? frequencies[1] : frequencies[0];
   if (frequency_ == 0) {
     return false;
   }
