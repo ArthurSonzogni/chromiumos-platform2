@@ -7,6 +7,7 @@ rseq: 1
 _llseek: 1
 accept: 1
 access: 1
+ARM_set_tls: 1
 bind: 1
 brk: 1
 clock_gettime: 1
@@ -23,6 +24,9 @@ epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
 eventfd2: 1
+# Need execve because we run minijail with -Tstatic.
+# Ref: https://crrev.com/c/1958258/comments/fbcc6367_4d74475c
+execve: 1
 exit: 1
 exit_group: 1
 faccessat: 1
@@ -106,6 +110,7 @@ socketpair: 1
 stat64: 1
 statx: 1
 tgkill: 1
+ugetrlimit: 1
 umask: 1
 uname: 1
 unlink: 1

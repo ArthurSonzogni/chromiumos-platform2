@@ -17,7 +17,6 @@
 #include <base/synchronization/lock.h>
 
 #include "cros-camera/camera_buffer_manager.h"
-#include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
 #include "cros-camera/export.h"
 #include "cros-camera/face_detector_client_cros_wrapper.h"
@@ -64,6 +63,21 @@ class CROS_CAMERA_EXPORT FaceDetector {
       std::vector<human_sensing::CrosFace>* faces,
       std::optional<Size> active_sensor_array_size = std::nullopt);
 
+  // Same as above, detects human faces, but takes the input image as a
+  // raw buffer pointer with stride and size. This method can be used when
+  // the CameraBufferManager is not available, e.g. when the camera HAL is
+  // inside a sandbox that does not allow access to the hardware nodes required
+  // by the CameraBufferManager.
+  // The |buffer_addr| is the pointer to the input image, a grayscale 8-bit
+  // buffer. |input_stride| is the buffer row stride in bytes.
+  // |input_size| describes the width and height of the image.
+  FaceDetectResult Detect(
+      const uint8_t* buffer_addr,
+      int input_stride,
+      Size input_size,
+      std::vector<human_sensing::CrosFace>* faces,
+      std::optional<Size> active_sensor_array_size = std::nullopt);
+
   // For a given size |src| that's downscaled and/or cropped from |dst|, get the
   // transformation parameters that converts a coordinate (x, y) in
   // [0, src.width] x [0, src.height] to [0, dst.width] x [0, dst.height]:
@@ -80,8 +94,6 @@ class CROS_CAMERA_EXPORT FaceDetector {
       std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper);
 
   void PrepareBuffer(Size img_size);
-
-  int ScaleImage(buffer_handle_t buffer, Size input_size, Size output_size);
 
   // Used to import gralloc buffer.
   CameraBufferManager* buffer_manager_;

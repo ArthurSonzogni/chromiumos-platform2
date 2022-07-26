@@ -60,8 +60,29 @@ FaceDetectResult FaceDetector::Detect(
 
   DCHECK(faces);
   base::AutoLock l(lock_);
+  ScopedMapping mapping(buffer);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map buffer";
+    return FaceDetectResult::kBufferError;
+  }
+  int input_stride = mapping.plane(0).stride;
   Size input_size = Size(buffer_manager_->GetWidth(buffer),
                          buffer_manager_->GetHeight(buffer));
+  const uint8_t* buffer_addr = static_cast<uint8_t*>(mapping.plane(0).addr);
+
+  return Detect(buffer_addr, input_stride, input_size, faces,
+                active_sensor_array_size);
+}
+
+FaceDetectResult FaceDetector::Detect(
+    const uint8_t* buffer_addr,
+    int input_stride,
+    Size input_size,
+    std::vector<human_sensing::CrosFace>* faces,
+    std::optional<Size> active_sensor_array_size) {
+  CHECK(faces);
+  CHECK(buffer_addr);
+  base::AutoLock l(lock_);
 
   Size scaled_size =
       (input_size.width > input_size.height)
@@ -72,9 +93,10 @@ FaceDetectResult FaceDetector::Detect(
 
   PrepareBuffer(scaled_size);
 
-  if (ScaleImage(buffer, input_size, scaled_size) != 0) {
-    return FaceDetectResult::kBufferError;
-  }
+  libyuv::ScalePlane(buffer_addr, input_stride, input_size.width,
+                     input_size.height, scaled_buffer_.data(),
+                     scaled_size.width, scaled_size.width, scaled_size.height,
+                     libyuv::FilterMode::kFilterNone);
 
   {
     TRACE_EVENT_BEGIN(kCameraTraceCategoryCommon, "FaceDetector::Detect::Run");
@@ -149,21 +171,6 @@ void FaceDetector::PrepareBuffer(Size img_size) {
   if (new_size > scaled_buffer_.size()) {
     scaled_buffer_.resize(new_size);
   }
-}
-
-int FaceDetector::ScaleImage(buffer_handle_t buffer,
-                             Size in_size,
-                             Size out_size) {
-  ScopedMapping mapping(buffer);
-  if (!mapping.is_valid()) {
-    LOGF(ERROR) << "Failed to map buffer";
-    return -EINVAL;
-  }
-  libyuv::ScalePlane(static_cast<uint8_t*>(mapping.plane(0).addr),
-                     mapping.plane(0).stride, in_size.width, in_size.height,
-                     scaled_buffer_.data(), out_size.width, out_size.width,
-                     out_size.height, libyuv::FilterMode::kFilterNone);
-  return 0;
 }
 
 std::string LandmarkTypeToString(human_sensing::Landmark::Type type) {
