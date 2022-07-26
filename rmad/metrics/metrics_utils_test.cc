@@ -56,6 +56,31 @@ constexpr char kDefaultMetricsJson[] =
       }
     })";
 constexpr char kEmptyMetricsJson[] = "{}";
+constexpr char kDefaultMetricsSummaryJson[] = R"({
+   "additional_activities": [ 2 ],
+   "occurred_errors": [ 1 ],
+   "ro_firmware_verified": true,
+   "running_time": 333.333,
+   "state_metrics": {
+      "1": {
+         "state_case": 1,
+         "state_get_log_count": 3,
+         "state_is_aborted": false,
+         "state_overall_time": 123.456,
+         "state_save_log_count": 4,
+         "state_transition_count": 2
+      },
+      "2": {
+         "state_case": 2,
+         "state_get_log_count": 0,
+         "state_is_aborted": true,
+         "state_overall_time": 332.544,
+         "state_save_log_count": 0,
+         "state_transition_count": 1
+      }
+   }
+}
+)";
 
 constexpr double kDefaultFirstSetupTimestamp = 123.456;
 constexpr double kDefaultSetupTimestamp = 456.789;
@@ -356,6 +381,14 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnSaveLog) {
   state_it = state_metrics.find(static_cast<int>(state_case));
   EXPECT_NE(state_it, state_metrics.end());
   EXPECT_EQ(state_it->second.save_log_count, 2);
+}
+
+TEST_F(MetricsUtilsTest, GetMetricsSummaryAsString) {
+  EXPECT_TRUE(
+      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+
+  EXPECT_EQ(MetricsUtils::GetMetricsSummaryAsString(json_store_),
+            kDefaultMetricsSummaryJson);
 }
 
 class MetricsUtilsImplTest : public testing::Test {

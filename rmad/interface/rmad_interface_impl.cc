@@ -44,6 +44,8 @@ const std::vector<std::string> kWaitServices = {"system-services"};
 const int kWaitServicesPollInterval = 1;  // 1 second.
 const int kWaitServicesRetries = 10;
 
+constexpr char kMetricsSummaryDivider[] = "\n====================\n\n";
+
 }  // namespace
 
 RmadInterfaceImpl::RmadInterfaceImpl()
@@ -504,10 +506,12 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
 
 void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   GetLogReply reply;
+  std::string metrics_string =
+      MetricsUtils::GetMetricsSummaryAsString(json_store_);
   std::string log_string;
   if (cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
     reply.set_error(RMAD_ERROR_OK);
-    reply.set_log(log_string);
+    reply.set_log(metrics_string + kMetricsSummaryDivider + log_string);
     if (!MetricsUtils::UpdateStateMetricsOnGetLog(json_store_,
                                                   current_state_case_)) {
       // TODO(genechang): Add error replies when failed to update state metrics

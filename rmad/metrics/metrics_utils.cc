@@ -6,6 +6,7 @@
 
 #include <map>
 
+#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 
@@ -157,6 +158,30 @@ bool MetricsUtils::UpdateStateMetricsOnSaveLog(
 
   state_metrics[key].save_log_count++;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
+}
+
+std::string MetricsUtils::GetMetricsSummaryAsString(
+    scoped_refptr<JsonStore> json_store) {
+  base::Value metrics = base::Value(base::Value::Type::DICTIONARY);
+  if (json_store->GetValue(kMetrics, &metrics)) {
+    CHECK(metrics.is_dict());
+  }
+  metrics.RemoveKey(kFirstSetupTimestamp);
+  metrics.RemoveKey(kSetupTimestamp);
+
+  base::Value* state_metrics = metrics.FindKey(kStateMetrics);
+  if (state_metrics && state_metrics->is_dict()) {
+    for (auto [state_case, metrics_data] : state_metrics->DictItems()) {
+      metrics_data.RemoveKey(kStateSetupTimestamp);
+    }
+  }
+
+  std::string output;
+  JSONStringValueSerializer serializer(&output);
+  serializer.set_pretty_print(true);
+  serializer.Serialize(metrics);
+
+  return output;
 }
 
 bool MetricsUtils::SetStateSetupTimestamp(

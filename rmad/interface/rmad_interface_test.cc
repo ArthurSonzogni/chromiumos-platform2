@@ -56,6 +56,68 @@ constexpr char kInitializePreviousStateFailJson[] =
     R"({"state_history": [ 1, 2 ]})";
 constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
 
+constexpr char kStateHistoryWithMetricsJson[] =
+    R"({
+      "state_history": [ 1, 2 ],
+      "metrics": {
+        "additional_activities": [2],
+        "first_setup_timestamp": 123.456,
+        "occurred_errors": [1],
+        "ro_firmware_verified": true,
+        "running_time": 333.333,
+        "setup_timestamp": 456.789,
+        "state_metrics": {
+          "1": {
+            "state_case": 1,
+            "state_is_aborted": false,
+            "state_setup_timestamp": 0.0,
+            "state_overall_time": 123.456,
+            "state_transition_count": 2,
+            "state_get_log_count": 3,
+            "state_save_log_count": 4
+          },
+          "2": {
+            "state_case": 2,
+            "state_is_aborted": true,
+            "state_setup_timestamp": 123.456,
+            "state_overall_time": 332.544,
+            "state_transition_count": 1,
+            "state_get_log_count": 0,
+            "state_save_log_count": 0
+          }
+        }
+      }
+    })";
+
+constexpr char kExpectedLog[] = R"({
+   "additional_activities": [ 2 ],
+   "occurred_errors": [ 1 ],
+   "ro_firmware_verified": true,
+   "running_time": 333.333,
+   "state_metrics": {
+      "1": {
+         "state_case": 1,
+         "state_get_log_count": 3,
+         "state_is_aborted": false,
+         "state_overall_time": 123.456,
+         "state_save_log_count": 4,
+         "state_transition_count": 2
+      },
+      "2": {
+         "state_case": 2,
+         "state_get_log_count": 0,
+         "state_is_aborted": true,
+         "state_overall_time": 332.544,
+         "state_save_log_count": 0,
+         "state_transition_count": 1
+      }
+   }
+}
+
+====================
+
+fake_log)";
+
 constexpr base::TimeDelta kTestTransitionInterval = base::Seconds(1);
 
 class RmadInterfaceImplTest : public testing::Test {
@@ -792,7 +854,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
 
 TEST_F(RmadInterfaceImplTest, GetLog) {
   base::FilePath json_store_file_path =
-      CreateInputFile(kJsonStoreFileName, "", 0);
+      CreateInputFile(kJsonStoreFileName, kStateHistoryWithMetricsJson,
+                      std::size(kStateHistoryWithMetricsJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -802,7 +865,7 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
 
   auto callback = [](const GetLogReply& reply, bool quit_daemon) {
-    EXPECT_EQ("fake_log", reply.log());
+    EXPECT_EQ(kExpectedLog, reply.log());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetLog(base::BindOnce(callback));
@@ -810,7 +873,8 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  auto state_it = state_metrics.find(static_cast<int>(RmadState::kWelcome));
+  auto state_it =
+      state_metrics.find(static_cast<int>(RmadState::kComponentsRepair));
   EXPECT_NE(state_it, state_metrics.end());
   EXPECT_EQ(state_it->second.get_log_count, 1);
 }

@@ -96,6 +96,9 @@ class MetricsUtils {
   static bool UpdateStateMetricsOnSaveLog(scoped_refptr<JsonStore> json_store,
                                           RmadState::StateCase state_case);
 
+  static std::string GetMetricsSummaryAsString(
+      scoped_refptr<JsonStore> json_store);
+
  private:
   static bool SetStateSetupTimestamp(
       std::map<int, StateMetricsData>* state_metrics,
