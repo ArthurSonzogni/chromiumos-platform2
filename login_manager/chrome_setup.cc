@@ -446,6 +446,10 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   builder->AddEnvVar("CHROME_LOG_FILE",
                      system_log_dir.Append("chrome").value());
 
+  // Log directory for Lacros to write logging messages before the user logs in.
+  base::FilePath lacros_system_log_dir("/var/log/lacros");
+  CHECK(EnsureDirectoryExists(lacros_system_log_dir, uid, gid, 0755));
+
   // Log directory for the user session. Note that the user dir won't be mounted
   // until later (when the cryptohome is mounted), so we don't create
   // CHROMEOS_SESSION_LOG_DIR here.
