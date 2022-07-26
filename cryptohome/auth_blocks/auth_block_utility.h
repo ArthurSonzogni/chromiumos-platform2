@@ -95,12 +95,6 @@ class AuthBlockUtility {
   virtual AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
 
-  // This function returns the AuthBlock type for AuthBlock::Derive()
-  // based on the vault keyset flags value.
-  virtual AuthBlockType GetAuthBlockTypeForDerivation(
-      const std::string& label,
-      const std::string& obfuscated_username) const = 0;
-
   // This populates an AuthBlockState allocated by the caller.
   virtual bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,

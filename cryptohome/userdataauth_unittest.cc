@@ -2125,10 +2125,10 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
@@ -2237,10 +2237,10 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
@@ -2891,10 +2891,10 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
     key_labels.push_back("label");
     EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-        .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
         .WillRepeatedly(Return(true));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+        .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
         .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -2937,10 +2937,10 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
     key_labels.push_back("label");
     EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-        .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
         .WillRepeatedly(Return(true));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+        .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
         .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -3001,10 +3001,10 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   key_labels.push_back("label");
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(key_labels), Return(true)));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillRepeatedly(ReturnError<CryptohomeCryptoError>());
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))

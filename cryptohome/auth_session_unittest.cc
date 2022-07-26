@@ -427,10 +427,10 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
@@ -505,10 +505,10 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
       ->mutable_policy()
       ->set_low_entropy_credential(true);
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
@@ -578,10 +578,10 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
       ->mutable_policy()
       ->set_low_entropy_credential(true);
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
   auto vk = std::make_unique<VaultKeyset>();
   vk->Initialize(&platform_, &crypto_);
   vk->SetAuthLocked(false);
@@ -646,10 +646,10 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
       ->mutable_policy()
       ->set_low_entropy_credential(true);
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
 
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
@@ -709,10 +709,10 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
 
   // Failure is achieved by having the callback return an empty key_blobs
   // and a CryptohomeCryptoError.
@@ -967,10 +967,10 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
@@ -1053,10 +1053,10 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kLibScryptCompat));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kLibScryptCompat));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
@@ -1147,10 +1147,10 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kLibScryptCompat));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kLibScryptCompat));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
@@ -1244,10 +1244,10 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakePinLabel))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
-      .WillOnce(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 

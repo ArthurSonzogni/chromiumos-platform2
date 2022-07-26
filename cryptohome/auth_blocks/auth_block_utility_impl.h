@@ -86,10 +86,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
-  AuthBlockType GetAuthBlockTypeForDerivation(
-      const std::string& label,
-      const std::string& obfuscated_username) const override;
-
   bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
       const std::string& obfuscated_username,

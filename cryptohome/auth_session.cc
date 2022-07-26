@@ -698,25 +698,6 @@ bool AuthSession::AuthenticateViaVaultKeyset(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     base::OnceCallback<void(const AuthenticateReply&)> on_done) {
   AuthenticateReply reply;
-  AuthBlockType auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForDerivation(key_data_.label(),
-                                                         obfuscated_username_);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
-    reply.set_authenticated(GetStatus() ==
-                            AuthStatus::kAuthStatusAuthenticated);
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<error::CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
-            ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
-    return false;
-  }
-
-  // Parameterize the AuthSession performance timer by AuthBlockType
-  auth_session_performance_timer->auth_block_type = auth_block_type;
 
   AuthBlockState auth_state;
   if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
@@ -733,6 +714,26 @@ bool AuthSession::AuthenticateViaVaultKeyset(
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
     return false;
   }
+
+  // Determine the auth block type to use.
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeFromState(auth_state);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Failed to determine auth block type from auth block state";
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+    return false;
+  }
+
+  // Parameterize the AuthSession performance timer by AuthBlockType
+  auth_session_performance_timer->auth_block_type = auth_block_type;
 
   // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
   // as a callback that loads |vault_keyset_| and resaves if needed.

@@ -65,10 +65,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               GetAuthBlockTypeFromState,
               (const AuthBlockState& auth_state),
               (const, override));
-  MOCK_METHOD(AuthBlockType,
-              GetAuthBlockTypeForDerivation,
-              (const std::string&, const std::string&),
-              (const, override));
   MOCK_METHOD(bool,
               GetAuthBlockStateFromVaultKeyset,
               (const std::string& label,

@@ -300,27 +300,6 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
   return AuthBlockType::kMaxValue;
 }
 
-AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
-    const std::string& label, const std::string& obfuscated_username) const {
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetVaultKeyset(obfuscated_username, label);
-  // If there is no keyset on the disk for the given user and label (or for the
-  // empty label as a wildcard), key derivation type cannot be obtained.
-  if (vk == nullptr) {
-    LOG(ERROR)
-        << "No vault keyset is found on disk for the given label. Cannot "
-           "decide on the AuthBlock type without vault keyset metadata.";
-    return AuthBlockType::kMaxValue;
-  }
-
-  int32_t vk_flags = vk->GetFlags();
-  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
-  if (!FlagsToAuthBlockType(vk_flags, auth_block_type)) {
-    LOG(WARNING) << "Failed to get the AuthBlock type for key derivation";
-  }
-  return auth_block_type;
-}
-
 CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>
 AuthBlockUtilityImpl::GetAuthBlockWithType(
     const AuthBlockType& auth_block_type) const {

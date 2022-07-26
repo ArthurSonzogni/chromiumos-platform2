@@ -219,18 +219,6 @@ CryptoStatus CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
 CryptoStatus DeriveKeyBlobs(AuthBlockUtility& auth_block_utility,
                             const Credentials& credentials,
                             KeyBlobs& out_key_blobs) {
-  AuthBlockType auth_block_type =
-      auth_block_utility.GetAuthBlockTypeForDerivation(
-          credentials.key_data().label(), credentials.GetObfuscatedUsername());
-
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kUserDataAuthInvalidAuthBlockTypeInDeriveKeyBlobs),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
   AuthBlockState auth_state;
   if (!auth_block_utility.GetAuthBlockStateFromVaultKeyset(
           credentials.key_data().label(), credentials.GetObfuscatedUsername(),
@@ -240,6 +228,18 @@ CryptoStatus DeriveKeyBlobs(AuthBlockUtility& auth_block_utility,
         CRYPTOHOME_ERR_LOC(kUserDataAuthNoAuthBlockStateInDeriveKeyBlobs),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  // Determine the auth block type to use.
+  AuthBlockType auth_block_type =
+      auth_block_utility.GetAuthBlockTypeFromState(auth_state);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Error in determining AuthBlock type from AuthBlock state "
+                  "for key derivation.";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kUserDataAuthInvalidAuthBlockTypeInDeriveKeyBlobs),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
