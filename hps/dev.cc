@@ -51,18 +51,15 @@ bool DevInterface::Write(uint8_t cmd, const uint8_t* data, size_t len) {
 std::optional<uint16_t> DevInterface::ReadReg(HpsReg r) {
   uint8_t res[2];
 
-  // TODO(evanbenn) MCP hal requires a retry on kBankReady
-  // b/191716856
-  for (int i = 0; i < 2; i++) {
-    if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
-      uint16_t ret = static_cast<uint16_t>(res[0] << 8) | res[1];
-      VLOG(2) << base::StringPrintf("ReadReg: %s : 0x%.4x OK",
-                                    HpsRegToString(r), ret);
-      return ret;
-    }
+  if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
+    uint16_t ret = static_cast<uint16_t>(res[0] << 8) | res[1];
+    VLOG(2) << base::StringPrintf("ReadReg: %s : 0x%.4x OK", HpsRegToString(r),
+                                  ret);
+    return ret;
+  } else {
+    VLOG(2) << "ReadReg: " << HpsRegToString(r) << " FAILED";
+    return std::nullopt;
   }
-  VLOG(2) << "ReadReg: " << HpsRegToString(r) << " FAILED";
-  return std::nullopt;
 }
 
 /*
