@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/config.h"
 
+#include <cstdint>
 #include <string>
 
-#include <absl/container/flat_hash_set.h>
 #include <base/hash/sha1.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/sha2.h>
@@ -14,6 +14,7 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/sha.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -26,8 +27,6 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 const int kCurrentUserPcrTpm1 = USE_TPM_DYNAMIC ? 11 : 4;
-
-using ConfigTpm1 = BackendTpm1::ConfigTpm1;
 
 namespace {
 
@@ -82,7 +81,7 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
 
   ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   brillo::Blob extention = Sha1(brillo::BlobFromString(current_user));
 
@@ -144,7 +143,7 @@ StatusOr<brillo::Blob> ConfigTpm1::ReadPcr(uint32_t pcr_index) {
 
   ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   uint32_t length = 0;
   ScopedTssMemory buffer(overalls, context);

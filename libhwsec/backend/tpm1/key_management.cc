@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/key_management.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,9 +21,11 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -33,8 +36,6 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
-
-using KeyManagementTpm1 = BackendTpm1::KeyManagementTpm1;
 
 namespace {
 
@@ -142,7 +143,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     bool auto_reload) {
   ASSIGN_OR_RETURN(
       const ConfigTpm1::PcrMap& setting,
-      backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+      backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (policy.permission.auth_value.has_value()) {
@@ -161,7 +162,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   // Create a PCRS object to hold pcr_index and pcr_value.
   ScopedTssPcrs pcrs(overalls, context);
@@ -235,7 +236,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   ASSIGN_OR_RETURN(
       const OperationPolicy& op_policy,
-      backend_.config_.ToOperationPolicy(policy),
+      backend_.GetConfigTpm1().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   uint32_t key_handle = pcr_bound_key.value();
@@ -293,7 +294,7 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
     init_flags |= TSS_KEY_TYPE_LEGACY;
   }
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ScopedTssKey local_key_handle(overalls, context);
   RETURN_IF_ERROR(
@@ -365,7 +366,7 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
 
   ASSIGN_OR_RETURN(
       const OperationPolicy& op_policy,
-      backend_.config_.ToOperationPolicy(policy),
+      backend_.GetConfigTpm1().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
@@ -413,7 +414,7 @@ StatusOr<ScopedTssKey> KeyManagementTpm1::LoadKeyBlob(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ScopedTssKey local_key_handle(overalls, context);
   brillo::Blob mutable_key_blob = key_blob;
@@ -429,7 +430,8 @@ StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
-    return ScopedKey(Key{.token = it->second}, backend_.middleware_derivative_);
+    return ScopedKey(Key{.token = it->second},
+                     backend_.GetMiddlewareDerivative());
   }
 
   uint32_t key_handle = 0;
@@ -476,7 +478,7 @@ StatusOr<uint32_t> KeyManagementTpm1::GetKeyHandle(Key key) {
 StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyBlob(uint32_t key_handle) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   uint32_t size;
   ScopedTssMemory public_blob(overalls, context);
@@ -507,7 +509,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
                               .reload_data = std::move(reload_data),
                           });
 
-  return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
+  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
 }
 
 Status KeyManagementTpm1::Flush(Key key) {
@@ -565,7 +567,7 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
     return srk_cache_->value();
   }
 
-  ASSIGN_OR_RETURN(bool is_ready, backend_.state_.IsReady(),
+  ASSIGN_OR_RETURN(bool is_ready, backend_.GetStateTpm1().IsReady(),
                    _.WithStatus<TPMError>("Failed to get the ready state"));
 
   if (!is_ready) {
@@ -574,7 +576,7 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   // Load the Storage Root Key
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
@@ -617,7 +619,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
     uint32_t encryption_scheme) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ScopedTssKey local_key_handle(overalls, context);
   RETURN_IF_ERROR(
@@ -662,7 +664,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
           .reload_data = std::nullopt,
       });
 
-  return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
+  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::LoadPublicKeyFromSpki(

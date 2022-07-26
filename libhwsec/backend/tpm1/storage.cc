@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/storage.h"
 
 #include <bitset>
+#include <cstdint>
 #include <optional>
+#include <utility>
 
 #include <absl/container/flat_hash_set.h>
 #include <base/strings/stringprintf.h>
@@ -14,6 +16,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/error/tpm_nvram_error.h"
 #include "libhwsec/structures/no_default_init.h"
@@ -220,12 +223,10 @@ StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
 
 }  // namespace
 
-using StorageTpm1 = BackendTpm1::StorageTpm1;
-
 StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
   // TODO(b/229524745): Add cache for this function.
   ASSIGN_OR_RETURN(const absl::flat_hash_set<uint32_t>& space_list,
-                   List(backend_.proxy_.GetTpmNvram()),
+                   List(backend_.GetProxy().GetTpmNvram()),
                    _.WithStatus<TPMError>("Failed to list space"));
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
@@ -235,7 +236,7 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
   if (space_list.find(space_info.index) != space_list.end()) {
     ASSIGN_OR_RETURN(
         detail_info,
-        GetDetailSpaceInfo(backend_.proxy_.GetTpmNvram(), space_info),
+        GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
         _.WithStatus<TPMError>("Failed to get detail space info"));
 
     ready = CheckAttributes(space_info.require_attributes,
@@ -249,7 +250,8 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
     }
 
     ASSIGN_OR_RETURN(
-        bool has_owner_pass, HasOwnerPassword(backend_.proxy_.GetTpmManager()),
+        bool has_owner_pass,
+        HasOwnerPassword(backend_.GetProxy().GetTpmManager()),
         _.WithStatus<TPMError>("Failed to get owner password status"));
 
     if (!has_owner_pass) {
@@ -266,7 +268,7 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
   }
 
   RETURN_IF_ERROR(
-      CheckAndRemoveDependency(backend_.proxy_.GetTpmManager(), space_info))
+      CheckAndRemoveDependency(backend_.GetProxy().GetTpmManager(), space_info))
       .WithStatus<TPMError>("Failed to check and remove dependency");
   return ReadyState::kReady;
 }
@@ -302,7 +304,7 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
 
   tpm_manager::DefineSpaceReply define_reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmNvram().DefineSpace(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().DefineSpace(
           define_request, &define_reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -311,7 +313,7 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
   RETURN_IF_ERROR(MakeStatus<TPMNvramError>(define_reply.result()));
 
   RETURN_IF_ERROR(
-      CheckAndRemoveDependency(backend_.proxy_.GetTpmManager(), space_info))
+      CheckAndRemoveDependency(backend_.GetProxy().GetTpmManager(), space_info))
       .WithStatus<TPMError>("Failed to check and remove dependency");
 
   return OkStatus();
@@ -325,7 +327,7 @@ StatusOr<brillo::Blob> StorageTpm1::Load(Space space) {
   request.set_use_owner_authorization(space_info.read_with_owner_auth);
   tpm_manager::ReadSpaceReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmNvram().ReadSpace(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().ReadSpace(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -345,7 +347,7 @@ Status StorageTpm1::Store(Space space, const brillo::Blob& blob) {
   request.set_use_owner_authorization(space_info.write_with_owner_auth);
   tpm_manager::WriteSpaceReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmNvram().WriteSpace(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().WriteSpace(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -374,7 +376,7 @@ Status StorageTpm1::Lock(Space space, LockOptions options) {
   request.set_lock_read(options.read_lock);
   tpm_manager::LockSpaceReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmNvram().LockSpace(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().LockSpace(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -384,7 +386,7 @@ Status StorageTpm1::Lock(Space space, LockOptions options) {
 
   ASSIGN_OR_RETURN(
       const DetailSpaceInfo& detail_info,
-      GetDetailSpaceInfo(backend_.proxy_.GetTpmNvram(), space_info),
+      GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
       _.WithStatus<TPMError>("Failed to get detail space info"));
 
   if (options.read_lock && !detail_info.is_read_locked) {
@@ -404,7 +406,7 @@ Status StorageTpm1::Destroy(Space space) {
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
   ASSIGN_OR_RETURN(const absl::flat_hash_set<uint32_t>& space_list,
-                   List(backend_.proxy_.GetTpmNvram()),
+                   List(backend_.GetProxy().GetTpmNvram()),
                    _.WithStatus<TPMError>("Failed to list space"));
 
   if (space_list.find(space_info.index) == space_list.end()) {
@@ -415,7 +417,7 @@ Status StorageTpm1::Destroy(Space space) {
   request.set_index(space_info.index);
   tpm_manager::DestroySpaceReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmNvram().DestroySpace(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().DestroySpace(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -431,7 +433,7 @@ StatusOr<bool> StorageTpm1::IsWriteLocked(Space space) {
 
   ASSIGN_OR_RETURN(
       const DetailSpaceInfo& detail_info,
-      GetDetailSpaceInfo(backend_.proxy_.GetTpmNvram(), space_info),
+      GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
       _.WithStatus<TPMError>("Failed to get detail space info"));
 
   return detail_info.is_write_locked;

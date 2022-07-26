@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/vendor.h"
 
 #include <cinttypes>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -18,6 +19,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
@@ -30,8 +32,6 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using VendorTpm1 = BackendTpm1::VendorTpm1;
-
 Status VendorTpm1::EnsureVersionInfo() {
   if (version_info_.has_value()) {
     return OkStatus();
@@ -40,7 +40,7 @@ Status VendorTpm1::EnsureVersionInfo() {
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmManager().GetVersionInfo(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmManager().GetVersionInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -115,13 +115,13 @@ StatusOr<int32_t> VendorTpm1::GetFingerprint() {
 StatusOr<bool> VendorTpm1::IsSrkRocaVulnerable() {
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_management_.GetPersistentKey(
+      backend_.GetKeyManagementTpm1().GetPersistentKey(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_management_.GetKeyData(srk.GetKey()));
+                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ASSIGN_OR_RETURN(
       const crypto::ScopedRSA& public_srk,

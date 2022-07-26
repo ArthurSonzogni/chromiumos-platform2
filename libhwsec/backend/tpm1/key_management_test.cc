@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -400,13 +401,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpki) {
   brillo::Blob public_key_spki_der;
   EXPECT_TRUE(GenerateRsaKey(2048, &pkey, &public_key_spki_der));
 
-  // A workaround the get the internal derived class.
-  BackendTpm1::KeyManagementTpm1* key_management =
-      dynamic_cast<BackendTpm1::KeyManagementTpm1*>(
-          backend_->Get<Backend::KeyManagement>());
-  ASSERT_NE(key_management, nullptr);
-
-  auto result = key_management->LoadPublicKeyFromSpki(
+  auto result = backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
       public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
 
   ASSERT_TRUE(result.ok());
@@ -416,13 +411,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
   // Wrong format key.
   brillo::Blob public_key_spki_der(64, '?');
 
-  // A workaround the get the internal derived class.
-  BackendTpm1::KeyManagementTpm1* key_management =
-      dynamic_cast<BackendTpm1::KeyManagementTpm1*>(
-          backend_->Get<Backend::KeyManagement>());
-  ASSERT_NE(key_management, nullptr);
-
-  auto result = key_management->LoadPublicKeyFromSpki(
+  auto result = backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
       public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
 
   EXPECT_FALSE(result.ok());

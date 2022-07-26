@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/strings/string_number_conversions.h>
+#include <cstdint>
 #include <gtest/gtest.h>
 
 #include <libhwsec-foundation/crypto/sha.h>

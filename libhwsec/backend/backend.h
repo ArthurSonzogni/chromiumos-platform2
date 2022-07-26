@@ -21,6 +21,7 @@
 #include "libhwsec/status.h"
 #include "libhwsec/structures/device_config.h"
 #include "libhwsec/structures/key.h"
+#include "libhwsec/structures/no_default_init.h"
 #include "libhwsec/structures/operation_policy.h"
 #include "libhwsec/structures/permission.h"
 #include "libhwsec/structures/session.h"
@@ -34,6 +35,17 @@ namespace hwsec {
 // This class is NOT thread safe.
 class Backend {
  public:
+  // A helper to give subclasses the ability to access the backend.
+  template <typename BackendType>
+  class SubClassHelper {
+   public:
+    explicit SubClassHelper(BackendType& backend) : backend_(backend) {}
+
+   protected:
+    ~SubClassHelper() = default;
+    BackendType& backend_;
+  };
+
   // State provide the basic state of the security module.
   class State {
    public:
@@ -700,18 +712,6 @@ class Backend {
       return GetVendor();
     NOTREACHED() << "Should not reach here.";
   }
-
- protected:
-  // A helper to give subclasses the ability to access the backend.
-  template <typename BackendType>
-  class SubClassHelper {
-   public:
-    explicit SubClassHelper(BackendType& backend) : backend_(backend) {}
-
-   protected:
-    ~SubClassHelper() = default;
-    BackendType& backend_;
-  };
 
  private:
   virtual State* GetState() = 0;

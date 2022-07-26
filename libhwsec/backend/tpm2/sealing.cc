@@ -2,15 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/sealing.h"
 
+#include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include <base/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -20,8 +24,6 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using SealingTpm2 = BackendTpm2::SealingTpm2;
-
 StatusOr<bool> SealingTpm2::IsSupported() {
   return true;
 }
@@ -29,14 +31,14 @@ StatusOr<bool> SealingTpm2::IsSupported() {
 StatusOr<brillo::Blob> SealingTpm2::Seal(
     const OperationPolicySetting& policy,
     const brillo::SecureBlob& unsealed_data) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string policy_digest;
   bool use_only_policy_authorization = false;
 
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& settings,
-      backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (!policy.permission.auth_value.has_value() && settings.empty()) {
@@ -88,7 +90,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
 StatusOr<std::optional<ScopedKey>> SealingTpm2::PreloadSealedData(
     const OperationPolicy& policy, const brillo::Blob& sealed_data) {
   ASSIGN_OR_RETURN(ScopedKey key,
-                   backend_.key_management_.LoadKey(policy, sealed_data),
+                   backend_.GetKeyManagementTpm2().LoadKey(policy, sealed_data),
                    _.WithStatus<TPMError>("Failed to load sealed data"));
   return std::move(key);
 }
@@ -98,11 +100,12 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
     const brillo::Blob& sealed_data,
     UnsealOptions options) {
   // Use unsalted session here, to unseal faster.
-  ASSIGN_OR_RETURN(ConfigTpm2::TrunksSession session,
-                   backend_.config_.GetTrunksSession(policy, false, false),
-                   _.WithStatus<TPMError>("Failed to get session for policy"));
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      backend_.GetConfigTpm2().GetTrunksSession(policy, false, false),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string unsealed_data;
   // Cleanup the unsealed_data.
@@ -110,10 +113,10 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
       brillo::SecureClearContainer<std::string>, std::ref(unsealed_data)));
 
   if (options.preload_data.has_value()) {
-    ASSIGN_OR_RETURN(
-        const KeyTpm2& key_data,
-        backend_.key_management_.GetKeyData(options.preload_data.value()),
-        _.WithStatus<TPMError>("Failed to get preload data"));
+    ASSIGN_OR_RETURN(const KeyTpm2& key_data,
+                     backend_.GetKeyManagementTpm2().GetKeyData(
+                         options.preload_data.value()),
+                     _.WithStatus<TPMError>("Failed to get preload data"));
 
     RETURN_IF_ERROR(
         MakeStatus<TPM2Error>(context.tpm_utility->UnsealDataWithHandle(

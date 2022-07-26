@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/random.h"
 
 #include <base/callback_helpers.h>
 #include <base/strings/stringprintf.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -17,8 +18,6 @@ using brillo::BlobFromString;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
-
-using RandomTpm1 = BackendTpm1::RandomTpm1;
 
 StatusOr<brillo::Blob> RandomTpm1::RandomBlob(size_t size) {
   ASSIGN_OR_RETURN(const brillo::SecureBlob& blob, RandomSecureBlob(size),
@@ -32,7 +31,7 @@ StatusOr<brillo::SecureBlob> RandomTpm1::RandomSecureBlob(size_t size) {
 
   ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   brillo::SecureBlob random(size);
   ScopedTssSecureMemory tpm_data(overalls, context);

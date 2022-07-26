@@ -5,6 +5,7 @@
 #include "libhwsec/backend/tpm1/static_utils.h"
 
 #include <cinttypes>
+#include <cstdint>
 #include <iterator>
 #include <memory>
 #include <utility>

@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/backend/tpm2/key_management.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
 #include <brillo/secure_blob.h>
@@ -21,6 +23,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -30,8 +33,6 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
-
-using KeyManagementTpm2 = BackendTpm2::KeyManagementTpm2;
 
 namespace {
 
@@ -157,14 +158,14 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     bool auto_reload) {
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& setting,
-      backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (options.allow_software_gen && setting.empty()) {
     return CreateSoftwareGenRsaKey(policy, options, auto_reload);
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
@@ -214,7 +215,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
 
   ASSIGN_OR_RETURN(
       const OperationPolicy& op_policy,
-      backend_.config_.ToOperationPolicy(policy),
+      backend_.GetConfigTpm2().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(ScopedKey key,
@@ -243,7 +244,7 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                 TPMRetryAction::kNoRetry);
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string public_modulus = n.to_string();
   std::string prime_factor = p.to_string();
@@ -273,7 +274,7 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
 
   ASSIGN_OR_RETURN(
       const OperationPolicy& op_policy,
-      backend_.config_.ToOperationPolicy(policy),
+      backend_.GetConfigTpm2().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
@@ -292,7 +293,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     bool auto_reload) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
@@ -304,7 +305,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& setting,
-      backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (!setting.empty()) {
@@ -346,7 +347,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 
   ASSIGN_OR_RETURN(
       const OperationPolicy& op_policy,
-      backend_.config_.ToOperationPolicy(policy),
+      backend_.GetConfigTpm2().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(ScopedKey key,
@@ -362,7 +363,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 
 StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
                                                const brillo::Blob& key_blob) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t key_handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
@@ -378,7 +379,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
 
 StatusOr<ScopedKey> KeyManagementTpm2::LoadAutoReloadKey(
     const OperationPolicy& policy, const brillo::Blob& key_blob) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t key_handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
@@ -399,7 +400,8 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
-    return ScopedKey(Key{.token = it->second}, backend_.middleware_derivative_);
+    return ScopedKey(Key{.token = it->second},
+                     backend_.GetMiddlewareDerivative());
   }
 
   uint32_t key_handle = 0;
@@ -457,7 +459,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
     KeyTpm2::Type key_type,
     uint32_t key_handle,
     std::optional<KeyReloadDataTpm2> reload_data) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   trunks::TPMT_PUBLIC public_area;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyPublicArea(
@@ -475,13 +477,13 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
                               .reload_data = std::move(reload_data),
                           });
 
-  return ScopedKey(Key{.token = token}, backend_.middleware_derivative_);
+  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
 }
 
 Status KeyManagementTpm2::Flush(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   switch (key_data.type) {
     case KeyTpm2::Type::kPersistentKey:
       // We don't need to unload these kinds of key.
@@ -522,7 +524,7 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
     return MakeStatus<TPMError>("Empty reload data", TPMRetryAction::kNoRetry);
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   if (auto status =
           MakeStatus<TPM2Error>(context.factory.GetTpm()->FlushContextSync(
@@ -550,7 +552,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
   ASSIGN_OR_RETURN(const RsaParameters& public_key,
                    ParseSpkiDer(public_key_spki_der));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   // Load the key into the TPM.
   trunks::TPM_HANDLE key_handle = 0;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadRSAPublicKey(

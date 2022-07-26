@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <cstdint>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -597,13 +598,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadPublicKeyFromSpki) {
   brillo::Blob public_key_spki_der;
   EXPECT_TRUE(GenerateRsaKey(2048, &pkey, &public_key_spki_der));
 
-  // A workaround the get the internal derived class.
-  BackendTpm2::KeyManagementTpm2* key_management =
-      dynamic_cast<BackendTpm2::KeyManagementTpm2*>(
-          backend_->Get<Backend::KeyManagement>());
-  ASSERT_NE(key_management, nullptr);
-
-  auto result = key_management->LoadPublicKeyFromSpki(
+  auto result = backend_->GetKeyManagementTpm2().LoadPublicKeyFromSpki(
       public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
 
   ASSERT_TRUE(result.ok());
@@ -613,13 +608,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadPublicKeyFromSpkiFailed) {
   // Wrong format key.
   brillo::Blob public_key_spki_der(64, '?');
 
-  // A workaround the get the internal derived class.
-  BackendTpm2::KeyManagementTpm2* key_management =
-      dynamic_cast<BackendTpm2::KeyManagementTpm2*>(
-          backend_->Get<Backend::KeyManagement>());
-  ASSERT_NE(key_management, nullptr);
-
-  auto result = key_management->LoadPublicKeyFromSpki(
+  auto result = backend_->GetKeyManagementTpm2().LoadPublicKeyFromSpki(
       public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
 
   EXPECT_FALSE(result.ok());

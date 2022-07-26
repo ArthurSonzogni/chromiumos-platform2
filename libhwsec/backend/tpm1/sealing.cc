@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/sealing.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 
 #include <base/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -20,12 +23,10 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using SealingTpm1 = BackendTpm1::SealingTpm1;
-
 StatusOr<bool> SealingTpm1::IsSupported() {
   // We only support sealing/unsealing when we have the ability to do the DA
   // mitigation.
-  return backend_.da_mitigation_.IsReady();
+  return backend_.GetDAMitigationTpm1().IsReady();
 }
 
 StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
@@ -34,7 +35,7 @@ StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
 
   ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ScopedTssKey enc_handle(overalls, context);
 
@@ -68,19 +69,19 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
     const brillo::SecureBlob& unsealed_data) {
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_management_.GetPersistentKey(
+      backend_.GetKeyManagementTpm1().GetPersistentKey(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_management_.GetKeyData(srk.GetKey()));
+                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   ASSIGN_OR_RETURN(
       const ConfigTpm1::PcrMap& settings,
-      backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+      backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   // Create a PCRS object to hold pcr_index and pcr_value.
@@ -146,15 +147,15 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
 
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_management_.GetPersistentKey(
+      backend_.GetKeyManagementTpm1().GetPersistentKey(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_management_.GetKeyData(srk.GetKey()));
+                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   if (!policy.permission.auth_value.has_value()) {
     return MakeStatus<TPMError>("Unsupported empty auth value",

@@ -5,6 +5,8 @@
 #ifndef LIBHWSEC_BACKEND_TPM1_STATIC_UTILS_H_
 #define LIBHWSEC_BACKEND_TPM1_STATIC_UTILS_H_
 
+#include <cstdint>
+
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/tss.h>

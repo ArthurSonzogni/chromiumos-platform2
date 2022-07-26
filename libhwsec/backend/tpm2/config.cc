@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/config.h"
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include <base/hash/sha1.h>
 #include <crypto/sha2.h>
@@ -14,6 +16,7 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -23,8 +26,6 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
-
-using ConfigTpm2 = BackendTpm2::ConfigTpm2;
 
 namespace {
 
@@ -76,7 +77,7 @@ StatusOr<OperationPolicy> ConfigTpm2::ToOperationPolicy(
 }
 
 Status ConfigTpm2::SetCurrentUser(const std::string& current_user) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context.factory.GetPasswordAuthorization("");
@@ -171,7 +172,7 @@ ConfigTpm2::GetTrunksPolicySession(
     const std::vector<std::string>& extra_policy_digests,
     bool salted,
     bool enable_encryption) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::unique_ptr<trunks::PolicySession> policy_session =
       context.factory.GetPolicySession();
@@ -208,7 +209,7 @@ ConfigTpm2::GetTrunksPolicySession(
 
 StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
     const OperationPolicy& policy, bool salted, bool enable_encryption) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   if (policy.device_configs.any()) {
     std::vector<std::string> no_extra_policy_digest = {};
@@ -245,7 +246,7 @@ StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
 }
 
 StatusOr<std::string> ConfigTpm2::ReadPcr(uint32_t pcr_index) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string pcr_digest;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
@@ -275,7 +276,7 @@ StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
 
 StatusOr<std::string> ConfigTpm2::ToPolicyDigest(
     const DeviceConfigSettings& settings) {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToSettingsPcrMap(settings));
 

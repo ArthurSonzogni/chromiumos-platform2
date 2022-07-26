@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_BACKEND_TPM1_BACKEND_TEST_BASE_H_
 #define LIBHWSEC_BACKEND_TPM1_BACKEND_TEST_BASE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>

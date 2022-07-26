@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/signature_sealing.h"
 
+#include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
@@ -15,8 +17,10 @@
 #include <openssl/sha.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/no_default_init.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -28,7 +32,6 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace hwsec {
 
-using SignatureSealingTpm2 = BackendTpm2::SignatureSealingTpm2;
 using Algorithm = Backend::SignatureSealing::Algorithm;
 
 namespace {
@@ -119,7 +122,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
 
     ASSIGN_OR_RETURN(
         const std::string& digest,
-        backend_.config_.ToPolicyDigest(policy.device_config_settings),
+        backend_.GetConfigTpm2().ToPolicyDigest(policy.device_config_settings),
         _.WithStatus<TPMError>("Failed to convert setting to PCR value"));
 
     policy_digests.push_back(digest);
@@ -128,14 +131,14 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.key_management_.LoadPublicKeyFromSpki(
+      backend_.GetKeyManagementTpm2().LoadPublicKeyFromSpki(
           public_key_spki_der, algorithm.scheme, algorithm.hash_alg),
       _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.key_management_.GetKeyData(key.GetKey()));
+                   backend_.GetKeyManagementTpm2().GetKeyData(key.GetKey()));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string key_name;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyName(
@@ -301,7 +304,7 @@ StatusOr<SignatureSealingTpm2::ChallengeResult> SignatureSealingTpm2::Challenge(
   // Start a policy session that will be used for obtaining the TPM nonce and
   // unsealing the secret value.
   ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
-                   backend_.config_.GetTrunksPolicySession(
+                   backend_.GetConfigTpm2().GetTrunksPolicySession(
                        policy, pcr_policy_digests, /*salted=*/true,
                        /*enable_encryption=*/false),
                    _.WithStatus<TPMError>("Failed to get session for policy"));
@@ -351,7 +354,7 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
                                 TPMRetryAction::kNoRetry);
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   // Start a TPM authorization session.
   std::unique_ptr<trunks::HmacSession> session =
@@ -363,13 +366,13 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(ScopedKey key,
-                   backend_.key_management_.LoadPublicKeyFromSpki(
+                   backend_.GetKeyManagementTpm2().LoadPublicKeyFromSpki(
                        challenge_data.public_key_spki_der,
                        challenge_data.scheme, challenge_data.hash_alg),
                    _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.key_management_.GetKeyData(key.GetKey()));
+                   backend_.GetKeyManagementTpm2().GetKeyData(key.GetKey()));
 
   std::string key_name;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyName(

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -23,9 +24,9 @@ using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
-namespace hwsec {
+using ErrorCode = hwsec::Backend::PinWeaver::CredentialTreeResult::ErrorCode;
 
-using ErrorCode = BackendTpm2::PinWeaverTpm2::CredentialTreeResult::ErrorCode;
+namespace hwsec {
 
 class BackendPinweaverTpm2Test : public BackendTpm2TestBase {};
 

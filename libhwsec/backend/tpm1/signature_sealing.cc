@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm1/backend.h"
+#include "libhwsec/backend/tpm1/signature_sealing.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -18,10 +19,12 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
+#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -37,8 +40,6 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 namespace {
-
-using SignatureSealingTpm1 = BackendTpm1::SignatureSealingTpm1;
 
 // Size of the AuthData blob to be randomly generated.
 //
@@ -62,7 +63,7 @@ StatusOr<Blob> GetRsaModulus(const RSA& rsa) {
   return modulus;
 }
 
-bool IsPcrValueMatch(const BackendTpm1::ConfigTpm1::PcrMap& current,
+bool IsPcrValueMatch(const ConfigTpm1::PcrMap& current,
                      const std::vector<Tpm12PcrValue>& target) {
   if (current.size() != target.size()) {
     return false;
@@ -144,7 +145,7 @@ bool IsLegacyFormatPcrBoundItems(
 }
 
 StatusOr<Blob> FindBoundSecretForLegacyFormat(
-    const BackendTpm1::ConfigTpm1::PcrMap& current,
+    const ConfigTpm1::PcrMap& current,
     const std::vector<Tpm12PcrBoundItem>& bound_items) {
   if (current.size() != 1) {
     return MakeStatus<TPMError>("PCR map size mismatch for legacy format",
@@ -172,7 +173,7 @@ StatusOr<Blob> FindBoundSecretForLegacyFormat(
 }
 
 StatusOr<Blob> FindBoundSecret(
-    const BackendTpm1::ConfigTpm1::PcrMap& current,
+    const ConfigTpm1::PcrMap& current,
     const std::vector<Tpm12PcrBoundItem>& bound_items) {
   // Special conversion for backwards-compatibility.
   // Note: The empty pcr_values format was introduced in
@@ -492,7 +493,7 @@ StatusOr<MigrateCmkResult> MigrateCmk(overalls::Overalls& overalls,
   };
 }
 
-StatusOr<Blob> MakePcrBoundSecret(BackendTpm1::SealingTpm1& sealing_backend,
+StatusOr<Blob> MakePcrBoundSecret(SealingTpm1& sealing_backend,
                                   OperationPolicySetting policy,
                                   const SecureBlob& secret_value,
                                   const SecureBlob& auth_value) {
@@ -513,8 +514,7 @@ StatusOr<Blob> MakePcrBoundSecret(BackendTpm1::SealingTpm1& sealing_backend,
 // Loads the migration destination public key into Trousers. The loaded key
 // handle is returned via |key_handle|.
 StatusOr<ScopedKey> LoadMigrationDestinationPublicKey(
-    BackendTpm1::KeyManagementTpm1& key_management,
-    const RSA& migration_destination_rsa) {
+    KeyManagementTpm1& key_management, const RSA& migration_destination_rsa) {
   ASSIGN_OR_RETURN(Blob key_modulus, GetRsaModulus(migration_destination_rsa));
 
   return key_management.CreateRsaPublicKeyObject(
@@ -646,15 +646,15 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
       ScopedKey protection_key,
-      backend_.key_management_.LoadPublicKeyFromSpki(
+      backend_.GetKeyManagementTpm1().LoadPublicKeyFromSpki(
           public_key_spki_der, TSS_SS_RSASSAPKCS1V15_SHA1, TSS_ES_NONE),
       _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(
       const KeyTpm1& protection_key_data,
-      backend_.key_management_.GetKeyData(protection_key.GetKey()));
+      backend_.GetKeyManagementTpm1().GetKeyData(protection_key.GetKey()));
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   uint32_t size = 0;
   ScopedTssMemory protection_key_pubkey_buf(overalls, context);
@@ -682,11 +682,11 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   // Load the SRK.
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_management_.GetPersistentKey(
+      backend_.GetKeyManagementTpm1().GetPersistentKey(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_management_.GetKeyData(srk.GetKey()));
+                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
 
   // Generate the Certified Migratable Key, associated with the protection
   // public key (via the TPM_MSA_COMPOSITE digest). Obtain the resulting wrapped
@@ -699,7 +699,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
 
   ASSIGN_OR_RETURN(
       const SecureBlob& auth_data,
-      backend_.random_.RandomSecureBlob(kAuthDataSizeBytes),
+      backend_.GetRandomTpm1().RandomSecureBlob(kAuthDataSizeBytes),
       _.WithStatus<TPMError>("Failed to generate random auth data"));
 
   if (auth_data.size() != kAuthDataSizeBytes) {
@@ -723,7 +723,8 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   for (const OperationPolicySetting& policy : policies) {
     ASSIGN_OR_RETURN(
         const ConfigTpm1::PcrMap& setting,
-        backend_.config_.ToSettingsPcrMap(policy.device_config_settings),
+        backend_.GetConfigTpm1().ToSettingsPcrMap(
+            policy.device_config_settings),
         _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
     std::vector<Tpm12PcrValue> pcr_values;
     for (const auto& [index, value] : setting) {
@@ -735,8 +736,8 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
 
     ASSIGN_OR_RETURN(
         Blob && pcr_bound_secret,
-        MakePcrBoundSecret(backend_.sealing_, policies[0], unsealed_data,
-                           auth_data),
+        MakePcrBoundSecret(backend_.GetSealingTpm1(), policies[0],
+                           unsealed_data, auth_data),
         _.WithStatus<TPMError>("Failed to create default PCR bound secret"));
 
     pcr_bound_items.push_back(Tpm12PcrBoundItem{
@@ -795,9 +796,10 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
         TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(const ConfigTpm1::PcrMap& current_pcr_value,
-                   backend_.config_.ToCurrentPcrValueMap(policy.device_configs),
-                   _.WithStatus<TPMError>("Failed to get current user status"));
+  ASSIGN_OR_RETURN(
+      const ConfigTpm1::PcrMap& current_pcr_value,
+      backend_.GetConfigTpm1().ToCurrentPcrValueMap(policy.device_configs),
+      _.WithStatus<TPMError>("Failed to get current user status"));
 
   ASSIGN_OR_RETURN(const Blob& pcr_bound_secret,
                    FindBoundSecret(current_pcr_value, data.pcr_bound_items));
@@ -815,15 +817,15 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
       ScopedKey protection_key,
-      backend_.key_management_.LoadPublicKeyFromSpki(
+      backend_.GetKeyManagementTpm1().LoadPublicKeyFromSpki(
           public_key_spki_der, TSS_SS_RSASSAPKCS1V15_SHA1, TSS_ES_NONE),
       _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(
       const KeyTpm1& protection_key_data,
-      backend_.key_management_.GetKeyData(protection_key.GetKey()));
+      backend_.GetKeyManagementTpm1().GetKeyData(protection_key.GetKey()));
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   uint32_t protection_key_pubkey_size = 0;
   ScopedTssMemory protection_key_pubkey_buf(overalls, context);
@@ -859,13 +861,14 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
   }
 
   // Obtain the TPM_PUBKEY blob for the migration destination key.
-  ASSIGN_OR_RETURN(const ScopedKey& migration_destination_key,
-                   LoadMigrationDestinationPublicKey(
-                       backend_.key_management_, *migration_destination_rsa));
-
   ASSIGN_OR_RETURN(
-      const KeyTpm1& migration_destination_key_data,
-      backend_.key_management_.GetKeyData(migration_destination_key.GetKey()));
+      const ScopedKey& migration_destination_key,
+      LoadMigrationDestinationPublicKey(backend_.GetKeyManagementTpm1(),
+                                        *migration_destination_rsa));
+
+  ASSIGN_OR_RETURN(const KeyTpm1& migration_destination_key_data,
+                   backend_.GetKeyManagementTpm1().GetKeyData(
+                       migration_destination_key.GetKey()));
 
   uint32_t migration_destination_key_pubkey_size = 0;
   ScopedTssMemory migration_destination_key_pubkey_buf(overalls, context);
@@ -934,26 +937,26 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(ScopedKey protection_key,
-                   backend_.key_management_.LoadPublicKeyFromSpki(
+                   backend_.GetKeyManagementTpm1().LoadPublicKeyFromSpki(
                        challenge_data.public_key_spki_der,
                        TSS_SS_RSASSAPKCS1V15_SHA1, TSS_ES_NONE),
                    _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(
       const KeyTpm1& protection_key_data,
-      backend_.key_management_.GetKeyData(protection_key.GetKey()));
+      backend_.GetKeyManagementTpm1().GetKeyData(protection_key.GetKey()));
 
   // Obtain the TPM_PUBKEY blob for the migration destination key.
-  ASSIGN_OR_RETURN(
-      const ScopedKey& migration_destination_key,
-      LoadMigrationDestinationPublicKey(
-          backend_.key_management_, *challenge_data.migration_destination_rsa));
+  ASSIGN_OR_RETURN(const ScopedKey& migration_destination_key,
+                   LoadMigrationDestinationPublicKey(
+                       backend_.GetKeyManagementTpm1(),
+                       *challenge_data.migration_destination_rsa));
 
-  ASSIGN_OR_RETURN(
-      const KeyTpm1& migration_destination_key_data,
-      backend_.key_management_.GetKeyData(migration_destination_key.GetKey()));
+  ASSIGN_OR_RETURN(const KeyTpm1& migration_destination_key_data,
+                   backend_.GetKeyManagementTpm1().GetKeyData(
+                       migration_destination_key.GetKey()));
 
-  overalls::Overalls& overalls = backend_.overall_context_.overalls;
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
 
   // Obtain the migration authorization blob for the migration destination key.
   ASSIGN_OR_RETURN(
@@ -976,11 +979,11 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
   // Load the SRK.
   ASSIGN_OR_RETURN(
       ScopedKey srk,
-      backend_.key_management_.GetPersistentKey(
+      backend_.GetKeyManagementTpm1().GetPersistentKey(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.key_management_.GetKeyData(srk.GetKey()));
+                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
 
   // Perform the migration of the CMK onto the migration destination key.
   ASSIGN_OR_RETURN(
@@ -1029,8 +1032,8 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
 
   ASSIGN_OR_RETURN(
       SecureBlob unsealed_data,
-      backend_.sealing_.Unseal(policy, challenge_data.pcr_bound_secret,
-                               Sealing::UnsealOptions{}),
+      backend_.GetSealingTpm1().Unseal(policy, challenge_data.pcr_bound_secret,
+                                       Backend::Sealing::UnsealOptions{}),
       _.WithStatus<TPMError>("Failed to seal the data"));
 
   // Unseal succeeded, remove the internal data.

@@ -2,11 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/pinweaver.h"
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/sys_byteorder.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -16,13 +19,13 @@
 #define __aligned(x) __attribute((aligned(x)))
 #include <trunks/cr50_headers/pinweaver_types.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using PinWeaverTpm2 = BackendTpm2::PinWeaverTpm2;
 using ErrorCode = PinWeaverTpm2::CredentialTreeResult::ErrorCode;
 using LogEntry = Backend::PinWeaver::GetLogResult::LogEntry;
 using LogEntryType = Backend::PinWeaver::GetLogResult::LogEntryType;
@@ -119,7 +122,7 @@ StatusOr<uint8_t> PinWeaverTpm2::GetVersion() {
     return protocol_version_.value();
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint8_t version = 255;
 
@@ -149,7 +152,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::Reset(
     uint32_t bits_per_level, uint32_t length_labels) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -188,7 +191,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
 
     ASSIGN_OR_RETURN(
         const ConfigTpm2::PcrValue& pcr_value,
-        backend_.config_.ToPcrValue(policy.device_config_settings),
+        backend_.GetConfigTpm2().ToPcrValue(policy.device_config_settings),
         _.WithStatus<TPMError>("Failed to convert setting to PCR value"));
 
     pcr_values.push_back(pcr_value);
@@ -206,7 +209,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
     new_value->set_digest(pcr_value.digest);
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -238,7 +241,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::CheckCredential(
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -272,7 +275,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::RemoveCredential(
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -299,7 +302,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -326,7 +329,7 @@ StatusOr<PinWeaverTpm2::GetLogResult> PinWeaverTpm2::GetLog(
     const brillo::Blob& cur_disk_root_hash) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;
@@ -352,7 +355,7 @@ PinWeaverTpm2::ReplayLogOperation(const brillo::Blob& log_entry_root,
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t pinweaver_status = 0;
   std::string root;

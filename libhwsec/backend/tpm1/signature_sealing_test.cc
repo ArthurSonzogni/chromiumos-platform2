@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -759,10 +760,10 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                                secret.size(), oaep_label_.data(),
                                oaep_label_.size());
     brillo::Blob key12_encdata(256);
-    RSA* rsa =
-        backend_->signature_sealing_.get_current_challenge_data_for_test()
-            .value()
-            .migration_destination_rsa.get();
+    RSA* rsa = backend_->GetSignatureSealingTpm1()
+                   .get_current_challenge_data_for_test()
+                   .value()
+                   .migration_destination_rsa.get();
     RSA_public_encrypt(padded.size(), padded.data(), key12_encdata.data(), rsa,
                        RSA_NO_PADDING);
 

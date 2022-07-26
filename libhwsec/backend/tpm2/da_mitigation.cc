@@ -2,27 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/da_mitigation.h"
+
+#include <utility>
 
 #include <base/time/time.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using DAMitigationTpm2 = BackendTpm2::DAMitigationTpm2;
-
 StatusOr<bool> DAMitigationTpm2::IsReady() {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
 
   if (brillo::ErrorPtr err;
-      !backend_.proxy_.GetTpmManager().GetTpmNonsensitiveStatus(
+      !backend_.GetProxy().GetTpmManager().GetTpmNonsensitiveStatus(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -38,7 +39,7 @@ StatusOr<DAMitigationTpm2::DAMitigationStatus> DAMitigationTpm2::GetStatus() {
   tpm_manager::GetDictionaryAttackInfoReply reply;
 
   if (brillo::ErrorPtr err;
-      !backend_.proxy_.GetTpmManager().GetDictionaryAttackInfo(
+      !backend_.GetProxy().GetTpmManager().GetDictionaryAttackInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -58,7 +59,7 @@ Status DAMitigationTpm2::Mitigate() {
   tpm_manager::ResetDictionaryAttackLockReply reply;
 
   if (brillo::ErrorPtr err;
-      !backend_.proxy_.GetTpmManager().ResetDictionaryAttackLock(
+      !backend_.GetProxy().GetTpmManager().ResetDictionaryAttackLock(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));

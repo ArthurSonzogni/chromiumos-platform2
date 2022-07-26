@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/backend/tpm2/vendor.h"
 
 #include <cinttypes>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <base/strings/stringprintf.h>
@@ -16,6 +17,7 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
 
@@ -25,8 +27,6 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
-
-using VendorTpm2 = BackendTpm2::VendorTpm2;
 
 namespace {
 
@@ -66,7 +66,7 @@ Status VendorTpm2::EnsureVersionInfo() {
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.proxy_.GetTpmManager().GetVersionInfo(
+  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmManager().GetVersionInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -143,7 +143,7 @@ StatusOr<bool> VendorTpm2::IsSrkRocaVulnerable() {
 }
 
 StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   std::string device_id;
 
   RETURN_IF_ERROR(
@@ -162,7 +162,7 @@ Status VendorTpm2::DeclareTpmFirmwareStable() {
     return OkStatus();
   }
 
-  TrunksClientContext& context = backend_.trunks_context_;
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->DeclareTpmFirmwareStable()))
@@ -175,7 +175,7 @@ Status VendorTpm2::DeclareTpmFirmwareStable() {
 
 StatusOr<brillo::Blob> VendorTpm2::SendRawCommand(const brillo::Blob& command) {
   std::string response =
-      backend_.trunks_context_.command_transceiver.SendCommandAndWait(
+      backend_.GetTrunksContext().command_transceiver.SendCommandAndWait(
           BlobToString(command));
 
   RETURN_IF_ERROR(GetResponseStatus(response));
