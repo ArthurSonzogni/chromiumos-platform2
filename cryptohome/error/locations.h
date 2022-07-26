@@ -1071,6 +1071,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInLoadUSS = 622,
   /* ./auth_session.cc */
   kLocAuthSessionDeriveFailedInLoadUSS = 623,
+  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
+  kLocAsyncChalCredAuthBlockNoInputAuthInDerive = 624,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

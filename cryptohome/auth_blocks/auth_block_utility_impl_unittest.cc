@@ -1098,8 +1098,14 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
                   blobs->scrypt_wrapped_reset_seed_key->derived_key());
       });
 
-  AuthInput auth_input = {credentials.passkey(),
-                          /*locked_to_single_user=*/std::nullopt};
+  AuthInput auth_input = {
+      credentials.passkey(),
+      /*locked_to_single_user=*/std::nullopt,
+      .challenge_credential_auth_input = ChallengeCredentialAuthInput{
+          .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
+          .challenge_signature_algorithms =
+              {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+      }};
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType::kChallengeCredential, auth_input, auth_state,
       std::move(derive_callback));

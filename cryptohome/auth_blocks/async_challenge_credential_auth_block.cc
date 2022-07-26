@@ -178,6 +178,18 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
 void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
                                                const AuthBlockState& state,
                                                DeriveCallback callback) {
+  if (!auth_input.challenge_credential_auth_input.has_value()) {
+    LOG(ERROR) << __func__ << ": No valid challenge credential auth input.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAuthInDerive),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
+    return;
+  }
+
   if (!key_challenge_service_) {
     LOG(ERROR) << __func__ << ": No valid key challenge service.";
     std::move(callback).Run(
@@ -236,8 +248,8 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
 
   structure::ChallengePublicKeyInfo public_key_info{
       .public_key_spki_der = keyset_challenge_info.public_key_spki_der,
-      .signature_algorithm =
-          {keyset_challenge_info.salt_signature_algorithm.value()},
+      .signature_algorithm = auth_input.challenge_credential_auth_input.value()
+                                 .challenge_signature_algorithms,
   };
 
   AuthBlockState scrypt_state = {.state = cc_state->scrypt_state};
