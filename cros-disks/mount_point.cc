@@ -142,8 +142,6 @@ void MountPoint::OnProgress(const base::StringPiece message) {
   if (!ParseProgressMessage(message, &percent))
     return;
 
-  LOG(INFO) << "MountPoint::OnProgress: " << percent << "% for "
-            << quote(data_.mount_path);
   progress_percent_ = percent;
   if (progress_callback_)
     progress_callback_.Run(this);

@@ -27,7 +27,6 @@
 #include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
-#include "cros-disks/mounter.h"
 #include "cros-disks/platform.h"
 
 using testing::_;

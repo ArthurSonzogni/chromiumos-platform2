@@ -21,6 +21,7 @@
 #include "cros-disks/device_event_queue.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/format_manager_observer_interface.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/rename_manager_observer_interface.h"
 #include "cros-disks/session_manager_observer_interface.h"
 
@@ -115,6 +116,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   // the event when a formatting operation has completed.
   void OnFormatCompleted(const std::string& device_path,
                          FormatErrorType error_type) override;
+
+  void OnMountProgress(const MountPoint* mount_point);
 
   void OnMountCompleted(const std::string& source,
                         MountSourceType source_type,

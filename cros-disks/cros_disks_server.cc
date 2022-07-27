@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "base/bind.h"
 #include "cros-disks/device_event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk_monitor.h"
@@ -125,6 +126,15 @@ MountManager* CrosDisksServer::FindMounter(
   return nullptr;
 }
 
+void CrosDisksServer::OnMountProgress(const MountPoint* const mount_point) {
+  DCHECK(mount_point);
+  LOG(INFO) << "Progress for " << quote(mount_point->path()) << ": "
+            << mount_point->progress_percent() << "%";
+  SendMountProgressSignal(mount_point->progress_percent(),
+                          mount_point->source(), mount_point->source_type(),
+                          mount_point->path().value());
+}
+
 void CrosDisksServer::OnMountCompleted(const std::string& source,
                                        MountSourceType source_type,
                                        const std::string& filesystem_type,
@@ -157,11 +167,15 @@ void CrosDisksServer::Mount(const std::string& source,
   VLOG(1) << "Mounting " << redact(source) << " of type "
           << quote(filesystem_type) << " using mounter " << source_type;
 
-  MountManager::MountCallback callback =
+  MountManager::MountCallback mount_callback =
       base::BindOnce(&CrosDisksServer::OnMountCompleted, base::Unretained(this),
                      source, source_type, filesystem_type);
 
-  mounter->Mount(source, filesystem_type, options, std::move(callback));
+  MountManager::ProgressCallback progress_callback = base::BindRepeating(
+      &CrosDisksServer::OnMountProgress, base::Unretained(this));
+
+  mounter->Mount(source, filesystem_type, options, std::move(mount_callback),
+                 std::move(progress_callback));
 }
 
 uint32_t CrosDisksServer::Unmount(const std::string& path,
