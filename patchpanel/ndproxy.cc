@@ -101,9 +101,37 @@ std::string Icmp6TypeName(uint32_t type) {
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return "<not ND ICMP6 packet>";
 
-  return Icmp6TypeName(icmp6->icmp6_type) + " " +
-         IPv6AddressToString(ip6->ip6_src) + " -> " +
-         IPv6AddressToString(ip6->ip6_dst);
+  std::stringstream ss;
+  ss << Icmp6TypeName(icmp6->icmp6_type) << " "
+     << IPv6AddressToString(ip6->ip6_src) << " -> "
+     << IPv6AddressToString(ip6->ip6_dst);
+  switch (icmp6->icmp6_type) {
+    case ND_NEIGHBOR_SOLICIT:
+    case ND_NEIGHBOR_ADVERT: {
+      // NS and NA has same packet format for Target Address
+      ss << ", target "
+         << IPv6AddressToString(
+                reinterpret_cast<const nd_neighbor_solicit*>(icmp6)
+                    ->nd_ns_target);
+      break;
+    }
+    case ND_ROUTER_SOLICIT:
+      // Nothing extra to print here
+      break;
+    case ND_ROUTER_ADVERT: {
+      const nd_opt_prefix_info* prefix_info = NDProxy::GetPrefixInfoOption(
+          reinterpret_cast<const uint8_t*>(icmp6), len - sizeof(ip6_hdr));
+      if (prefix_info != nullptr) {
+        ss << ", prefix " << IPv6AddressToString(prefix_info->nd_opt_pi_prefix)
+           << "/" << static_cast<int>(prefix_info->nd_opt_pi_prefix_len);
+      }
+      break;
+    }
+    default: {
+      NOTREACHED();
+    }
+  }
+  return ss.str();
 }
 
 }  // namespace
@@ -293,6 +321,15 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return;
 
+  VLOG_IF(2, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
+              icmp6->icmp6_type == ND_ROUTER_ADVERT))
+      << "Received on interface " << dst_addr.sll_ifindex << ": "
+      << Icmp6ToString(in_packet, len);
+  VLOG_IF(6, (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT ||
+              icmp6->icmp6_type == ND_NEIGHBOR_ADVERT))
+      << "Received on interface " << dst_addr.sll_ifindex << ": "
+      << Icmp6ToString(in_packet, len);
+
   // Notify DeviceManager on receiving NA or NS from guest, so a /128 route to
   // the guest can be added on the host.
   if (IsGuestInterface(dst_addr.sll_ifindex) &&
@@ -455,6 +492,15 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         memcpy(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN);
       }
     }
+
+    VLOG_IF(3, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
+                icmp6->icmp6_type == ND_ROUTER_ADVERT))
+        << "Sending to interface " << target_if << ": "
+        << Icmp6ToString(out_packet, len);
+    VLOG_IF(7, (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT ||
+                icmp6->icmp6_type == ND_NEIGHBOR_ADVERT))
+        << "Sending to interface " << target_if << ": "
+        << Icmp6ToString(out_packet, len);
 
     struct iovec iov_out = {
         .iov_base = out_packet,
