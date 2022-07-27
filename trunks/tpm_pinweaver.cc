@@ -328,7 +328,8 @@ TPM_RC Parse_pw_pong_t(const std::string& buffer, uint8_t* protocol_version) {
   TPM_RC rc = Parse_pw_short_message(buffer, &result_code, nullptr);
   if (rc != TPM_RC_SUCCESS)
     return rc;
-  if (result_code != PW_ERR_TYPE_INVALID)
+  if (result_code != PW_ERR_TYPE_INVALID &&
+      result_code != PW_ERR_VERSION_MISMATCH)
     return SAPI_RC_ABI_MISMATCH;
   *protocol_version = (uint8_t)buffer[0];
   return TPM_RC_SUCCESS;
