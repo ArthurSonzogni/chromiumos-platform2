@@ -29,6 +29,7 @@ config("target_defaults") {
     "USE_TPM1=${use.tpm}&&!${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
     "USE_TI50=${use.ti50_onboard}&&!${use.test}",
+    "BIOMETRICS_DEV=${use.biometrics_dev}",
   ]
   include_dirs = [ "${sysroot}/usr/include/pinweaver" ]
 }

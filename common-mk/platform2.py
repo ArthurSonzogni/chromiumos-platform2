@@ -38,6 +38,7 @@ _IUSE = [
     "arm",
     "asan",
     "attestation",
+    "biometrics_dev",
     "bluetooth_suspend_management",
     "camera_feature_auto_framing",
     "camera_feature_face_detection",
