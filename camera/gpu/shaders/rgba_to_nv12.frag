@@ -9,7 +9,7 @@ layout(location = 0) in highp vec2 vTexCoord;
 layout(location = 0) out highp vec4 outColor;
 
 void main() {
-  vec3 rgb = texture2D(uInputRgbaTexture, vTexCoord).rgb;
+  vec3 rgb = texture(uInputRgbaTexture, vTexCoord).rgb;
   if (uIsYPlane) {
     float y = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
     outColor = vec4(y, 0.0, 0.0, 0.0);

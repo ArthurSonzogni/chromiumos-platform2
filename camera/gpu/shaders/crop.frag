@@ -56,6 +56,6 @@ void main() {
   if (uBicubic) {
     outColor = textureBicubic(uInputTexture, sample_coord);
   } else {
-    outColor = texture2D(uInputTexture, sample_coord);
+    outColor = texture(uInputTexture, sample_coord);
   }
 }

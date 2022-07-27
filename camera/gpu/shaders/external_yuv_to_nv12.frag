@@ -1,5 +1,5 @@
 #version 310 es
-#extension GL_OES_EGL_image_external: require
+#extension GL_OES_EGL_image_external_essl3: require
 
 precision highp float;
 
@@ -10,7 +10,7 @@ layout(location = 0) in highp vec2 vTexCoord;
 layout(location = 0) out highp vec4 outColor;
 
 void main() {
-  vec3 rgb = texture2D(uInputExternalYuvTexture, vTexCoord).rgb;
+  vec3 rgb = texture(uInputExternalYuvTexture, vTexCoord).rgb;
   if (uIsYPlane) {
     float y = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
     outColor = vec4(y, 0.0, 0.0, 0.0);

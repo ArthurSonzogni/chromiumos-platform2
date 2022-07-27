@@ -15,6 +15,6 @@ vec3 apply_gamma(vec3 inputRgb, vec3 gamma) {
 void main() {
   vec3 gamma = vec3(uGammaValue, uGammaValue, uGammaValue);
   outColor = vec4(
-      apply_gamma(texture2D(uInputRgbaTexture, vTexCoord).rgb, gamma), 1.0);
+      apply_gamma(texture(uInputRgbaTexture, vTexCoord).rgb, gamma), 1.0);
 }
 

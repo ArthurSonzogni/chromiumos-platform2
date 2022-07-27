@@ -9,9 +9,9 @@ layout(location = 0) in highp vec2 vTexCoord;
 layout(location = 0) out highp vec4 outColor;
 
 void main() {
-  float y = texture2D(uInputYTexture, vTexCoord).r;
-  float u = texture2D(uInputUvTexture, vTexCoord).r;
-  float v = texture2D(uInputUvTexture, vTexCoord).g;
+  float y = texture(uInputYTexture, vTexCoord).r;
+  float u = texture(uInputUvTexture, vTexCoord).r;
+  float v = texture(uInputUvTexture, vTexCoord).g;
 
   vec3 rgb = clamp(vec3(
     y + 1.4017 * (v - 0.5),
