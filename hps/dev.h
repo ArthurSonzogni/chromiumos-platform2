@@ -22,6 +22,7 @@ class WakeLock {
   virtual ~WakeLock() = default;
   WakeLock(const WakeLock&) = delete;
   WakeLock& operator=(const WakeLock&) = delete;
+  virtual bool supports_power_management() = 0;
 
  protected:
   WakeLock() = default;

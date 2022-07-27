@@ -21,7 +21,13 @@ namespace hps {
 
 class FakeWakeLock : public WakeLock {
  public:
-  explicit FakeWakeLock(FakeDev& dev) : dev_(dev) { dev_.wake_lock_count_++; }
+  explicit FakeWakeLock(FakeDev& dev) : dev_(dev) {
+    if (dev_.wake_lock_count_ == 0) {
+      // Reset back to stage0 as if the device had been power-cycled.
+      dev_.SetStage(FakeDev::Stage::kStage0);
+    }
+    dev_.wake_lock_count_++;
+  }
 
   ~FakeWakeLock() override {
     dev_.wake_lock_count_--;
@@ -29,6 +35,8 @@ class FakeWakeLock : public WakeLock {
     if (!dev_.wake_lock_count_ && dev_.power_on_failure_count_)
       dev_.power_on_failure_count_--;
   }
+
+  bool supports_power_management() override { return true; }
 
  private:
   FakeDev& dev_;

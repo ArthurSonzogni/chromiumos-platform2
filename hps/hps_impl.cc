@@ -560,10 +560,13 @@ bool HPS_impl::Reboot() {
     }
   }
 
-  // Also send a reset cmd in case the kernel driver isn't present.
-  if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
-    OnTransientBootFault(FROM_HERE, "Reboot failed");
-    return false;
+  // If the wake lock isn't really controlling power, send a reset command
+  // instead.
+  if (!wake_lock_->supports_power_management()) {
+    if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
+      OnTransientBootFault(FROM_HERE, "Reboot failed");
+      return false;
+    }
   }
   return true;
 }

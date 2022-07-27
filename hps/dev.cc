@@ -22,6 +22,7 @@ class WakeLockNoOpImpl : public WakeLock {
  public:
   WakeLockNoOpImpl() = default;
   ~WakeLockNoOpImpl() override = default;
+  bool supports_power_management() override { return false; }
 };
 
 }  // namespace

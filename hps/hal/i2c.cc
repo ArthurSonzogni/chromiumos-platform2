@@ -45,6 +45,7 @@ class WakeLockImpl : public WakeLock {
       PLOG(FATAL) << "Unable to create wake lock: \"" << power_control << "\"";
   }
   ~WakeLockImpl() override = default;
+  bool supports_power_management() override { return true; }
 
  private:
   base::File power_file_;
