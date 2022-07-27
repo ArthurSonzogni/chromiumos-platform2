@@ -66,6 +66,16 @@ shared_library("libmetrics") {
   }
 }
 
+source_set("metrics_test_support") {
+  sources = [ "fake_metrics_library.cc" ]
+  configs += [ ":target_defaults" ]
+  if (use.metrics_uploader) {
+    defines = [ "USE_METRICS_UPLOADER=1" ]
+  }
+  include_dirs = [ "." ]
+  public_deps = [ ":libmetrics" ]
+}
+
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "dbus-1",
@@ -182,6 +192,7 @@ if (use.test) {
   }
   executable("metrics_library_test") {
     sources = [
+      "fake_metrics_library_test.cc",
       "metrics_library_test.cc",
       "serialization/serialization_utils_test.cc",
     ]
@@ -192,6 +203,7 @@ if (use.test) {
     libs = [ "policy" ]
     deps = [
       ":libmetrics",
+      ":metrics_test_support",
       "../common-mk/testrunner:testrunner",
     ]
   }
