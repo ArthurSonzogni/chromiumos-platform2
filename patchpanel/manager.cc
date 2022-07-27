@@ -266,12 +266,6 @@ void Manager::InitialSetup() {
 
   datapath_->Start();
 
-  shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
-      base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
-                          weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
-      base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
-                          weak_factory_.GetWeakPtr()));
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
   shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
@@ -298,6 +292,15 @@ void Manager::InitialSetup() {
 
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
+
+  // Shill client's default devices methods trigger the Manager's callbacks on
+  // registration. Call them after everything is set up.
+  shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
 }
 
 void Manager::OnShutdown(int* exit_code) {

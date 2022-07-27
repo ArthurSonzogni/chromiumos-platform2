@@ -69,6 +69,9 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
                           weak_factory_.GetWeakPtr()),
       base::BindOnce(&ShillClient::OnManagerPropertyChangeRegistration,
                      weak_factory_.GetWeakPtr()));
+  // Shill client needs to know about the current default devices in case the
+  // default devices are available prior to the client.
+  SetDefaultDevices(GetDefaultDevices());
 }
 
 const std::string& ShillClient::default_logical_interface() const {
