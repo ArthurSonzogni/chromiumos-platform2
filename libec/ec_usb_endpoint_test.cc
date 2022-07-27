@@ -99,7 +99,7 @@ class EcUsbEndpointTest : public ::testing::Test {
 
 TEST_F(EcUsbEndpointTest, Init_FailInInit) {
   EXPECT_CALL(*mock, init).WillOnce(Return(LIBUSB_ERROR_IO));
-  EXPECT_CALL(*mock, exit);
+  EXPECT_CALL(*mock, exit).Times(0);
 
   EcUsbEndpoint uep(std::move(mock));
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));

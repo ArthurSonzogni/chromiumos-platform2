@@ -52,9 +52,12 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
 
 std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() {
   auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
-  return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
-             ? std::move(endpoint)
-             : std::unique_ptr<ec::EcUsbEndpoint>();
+  if (!endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)) {
+    LOG(INFO) << "Failed to initialize EC USB Endpoint.";
+    return nullptr;
+  }
+
+  return std::move(endpoint);
 }
 
 base::ScopedFD CreateFileDescriptorForEc() {

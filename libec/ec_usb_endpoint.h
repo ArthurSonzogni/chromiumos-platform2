@@ -57,6 +57,7 @@ class BRILLO_EXPORT EcUsbEndpoint : public EcUsbEndpointInterface {
  private:
   std::unique_ptr<LibusbWrapper> libusb_;
   struct usb_endpoint endpoint_;
+  bool libusb_is_init_ = false;
   libusb_device_handle* CheckDevice(libusb_device* dev,
                                     uint16_t vid,
                                     uint16_t pid);

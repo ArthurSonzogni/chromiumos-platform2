@@ -84,6 +84,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
     LOG(ERROR) << "libusb_init failed: " << libusb_error_name(r);
     return false;
   }
+  libusb_is_init_ = true;
 
   libusb_device** devs;
   r = libusb_->get_device_list(nullptr, &devs);
@@ -166,6 +167,9 @@ bool EcUsbEndpoint::ReleaseInterface() {
 
 EcUsbEndpoint::~EcUsbEndpoint() {
   LOG(INFO) << "Exiting libusb";
+
+  if (!libusb_is_init_)
+    return;
 
   ReleaseInterface();
 
