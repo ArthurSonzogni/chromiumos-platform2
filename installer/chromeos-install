@@ -586,7 +586,7 @@ wipe_stateful() {
     local lv_size="$(get_logical_volume_size "${DEV}")"
     lvcreate --thin -V "${lv_size}M" -n "unencrypted" "${vg_name}/thinpool"
 
-    NUM_STATEFUL_SECTORS=$(( lv_size * 2 * 1024 ))
+    NUM_STATEFUL_SECTORS=$(( lv_size * 1024 * 1024 / DST_BLKSIZE ))
     DEV="/dev/${vg_name}/unencrypted"
   fi
 
