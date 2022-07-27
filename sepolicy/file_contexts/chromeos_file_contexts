@@ -263,6 +263,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/cache/dlc(/.*)?            u:object_r:cros_var_cache_dlcservice:s0
 /var/cache/dlc-images(/.*)?     u:object_r:cros_var_cache_dlcservice_images:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
+/var/cache/reporting(/.*)?      u:object_r:cros_var_cache_reporting:s0
 /var/cache/modemfwd(/.*)?       u:object_r:cros_var_cache_modemfwd:s0
 /var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
