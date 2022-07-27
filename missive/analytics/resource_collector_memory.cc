@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <metrics/metrics_library.h>
 
 #include "missive/resources/resource_interface.h"
@@ -30,6 +31,7 @@ int ResourceCollectorMemory::ConvertBytesTo0_1Mibs(int bytes) {
 }
 
 void ResourceCollectorMemory::Collect() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!SendMemorySizeToUma(memory_resource_->GetUsed())) {
     LOG(ERROR) << "Failed to send memory size to UMA.";
   }

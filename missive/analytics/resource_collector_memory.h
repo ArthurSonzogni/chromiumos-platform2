@@ -8,6 +8,7 @@
 #include <ctime>
 
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 
@@ -46,7 +47,8 @@ class ResourceCollectorMemory : public ResourceCollector {
   bool SendMemorySizeToUma(int memory_size);
 
   // Memory resource interface.
-  scoped_refptr<ResourceInterface> memory_resource_;
+  scoped_refptr<ResourceInterface> memory_resource_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting::analytics

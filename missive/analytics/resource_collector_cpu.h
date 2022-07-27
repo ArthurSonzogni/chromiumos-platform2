@@ -54,6 +54,10 @@ class ResourceCollectorCpu : public ResourceCollector {
     // The wall-clock time (in seconds) since Tally() was called last time.
     time_t last_wall_time_ GUARDED_BY_CONTEXT(sequence_checker_){0};
 
+    // This should check the same sequence as
+    // |ResourceCollector::sequence_checker_|, because this sequence checker is
+    // always instantiated in the sequence associated with
+    // |ResourceCollector::sequence_checker_|.
     SEQUENCE_CHECKER(sequence_checker_);
   };
 

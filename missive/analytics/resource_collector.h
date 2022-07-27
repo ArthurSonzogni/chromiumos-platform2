@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
@@ -23,8 +24,10 @@ class ResourceCollector {
 
  protected:
   // The ChromeOS metrics instance.
-  std::unique_ptr<MetricsLibraryInterface> metrics_{
-      std::make_unique<MetricsLibrary>()};
+  std::unique_ptr<MetricsLibraryInterface> metrics_
+      GUARDED_BY_CONTEXT(sequence_checker_){std::make_unique<MetricsLibrary>()};
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
  private:
   friend class ResourceCollectorTest;
@@ -38,8 +41,11 @@ class ResourceCollector {
   // |interval| param in the constructor.
   virtual void Collect() = 0;
 
+  // Calls |Collect|. Checks for sequence.
+  void CollectWrapper();
+
   // Timer for executing the resource usage collection task.
-  base::RepeatingTimer timer_;
+  base::RepeatingTimer timer_ GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting::analytics

@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/sequence_checker.h>
 
 namespace reporting::analytics {
 
@@ -25,6 +26,7 @@ int ResourceCollectorStorage::ConvertBytesToMibs(int bytes) {
 }
 
 void ResourceCollectorStorage::Collect() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!SendDirectorySizeToUma(base::ComputeDirectorySize(storage_directory_))) {
     LOG(ERROR) << "Failed to send directory size to UMA.";
   }
