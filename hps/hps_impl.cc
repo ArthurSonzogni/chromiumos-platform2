@@ -38,7 +38,9 @@ static constexpr base::TimeDelta kBankReadySleep = base::Microseconds(500);
 static constexpr base::TimeDelta kBankReadyTimeout = base::Seconds(240);
 
 // After reset, we poll the magic number register for this long.
-// Observed time is 1000ms.
+// Stage0 comes out of reset and responds on I2C in under 1ms,
+// but launching stage1 takes around 1000ms due to signature validation.
+// The magic number check is used in both situations.
 static constexpr base::TimeDelta kMagicSleep = base::Milliseconds(100);
 static constexpr base::TimeDelta kMagicTimeout = base::Milliseconds(3000);
 
@@ -46,9 +48,6 @@ static constexpr base::TimeDelta kMagicTimeout = base::Milliseconds(3000);
 // Observed time is 100 seconds.
 static constexpr base::TimeDelta kApplTimeout = base::Milliseconds(200000);
 static constexpr base::TimeDelta kApplSleep = base::Milliseconds(1000);
-
-// Time from powering on the sensor to it becoming ready for communication.
-static constexpr base::TimeDelta kPowerOnDelay = base::Milliseconds(1000);
 
 // Time for letting the sensor settle after powering it off.
 static constexpr base::TimeDelta kPowerOffDelay = base::Milliseconds(100);
@@ -538,7 +537,6 @@ bool HPS_impl::Reboot() {
     ShutDown();
   LOG(INFO) << "Starting HPS device";
   wake_lock_ = device_->CreateWakeLock();
-  Sleep(kPowerOnDelay);
 
   // On some units, HPS fails to start reliably after powering on. Detect and
   // work around this by toggling the power gpio off and on again one extra
@@ -547,7 +545,6 @@ bool HPS_impl::Reboot() {
     LOG(ERROR) << "Unable to read magic number after powering on, retrying...";
     ShutDown();
     wake_lock_ = device_->CreateWakeLock();
-    Sleep(kPowerOnDelay);
     if (!CheckMagic()) {
       hps_metrics_->SendHpsTurnOnResult(
           HpsTurnOnResult::kPowerOnRecoveryFailed,
