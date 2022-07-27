@@ -102,9 +102,9 @@ void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
 
 }  // namespace
 
-Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
-                 std::unique_ptr<HelperProcess> mcast_proxy,
-                 std::unique_ptr<HelperProcess> nd_proxy)
+Manager::Manager(std::unique_ptr<SubprocessController> adb_proxy,
+                 std::unique_ptr<SubprocessController> mcast_proxy,
+                 std::unique_ptr<SubprocessController> nd_proxy)
     : adb_proxy_(std::move(adb_proxy)),
       mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)) {
@@ -330,7 +330,7 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
   LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly -"
              << " attempting to restart";
 
-  HelperProcess* proc;
+  SubprocessController* proc;
   if (pid == adb_proxy_->pid()) {
     proc = adb_proxy_.get();
   } else if (pid == mcast_proxy_->pid()) {
@@ -351,7 +351,7 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
       base::Milliseconds((2 << proc->restarts()) * kSubprocessRestartDelayMs));
 }
 
-void Manager::RestartSubprocess(HelperProcess* subproc) {
+void Manager::RestartSubprocess(SubprocessController* subproc) {
   if (subproc->Restart()) {
     DCHECK(process_reaper_.WatchForChild(
         FROM_HERE, subproc->pid(),

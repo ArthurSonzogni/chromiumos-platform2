@@ -14,11 +14,10 @@
 #include <brillo/syslog_logging.h>
 
 #include "patchpanel/adb_proxy.h"
-#include "patchpanel/helper_process.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/multicast_proxy.h"
 #include "patchpanel/ndproxy.h"
-#include "patchpanel/socket.h"
+#include "patchpanel/subprocess_controller.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
@@ -60,13 +59,13 @@ int main(int argc, char* argv[]) {
     return mcast_proxy.Run();
   }
 
-  auto adb_proxy = std::make_unique<patchpanel::HelperProcess>();
+  auto adb_proxy = std::make_unique<patchpanel::SubprocessController>();
   adb_proxy->Start(argc, argv, "--adb_proxy_fd");
 
-  auto mcast_proxy = std::make_unique<patchpanel::HelperProcess>();
+  auto mcast_proxy = std::make_unique<patchpanel::SubprocessController>();
   mcast_proxy->Start(argc, argv, "--mcast_proxy_fd");
 
-  auto nd_proxy = std::make_unique<patchpanel::HelperProcess>();
+  auto nd_proxy = std::make_unique<patchpanel::SubprocessController>();
   nd_proxy->Start(argc, argv, "--nd_proxy_fd");
 
   LOG(INFO) << "Starting patchpanel manager";

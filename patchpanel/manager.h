@@ -27,12 +27,10 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/guest_ipv6_service.h"
-#include "patchpanel/helper_process.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
-#include "patchpanel/socket.h"
-#include "patchpanel/subnet.h"
+#include "patchpanel/subprocess_controller.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -46,9 +44,9 @@ struct ForwardingSet {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  Manager(std::unique_ptr<HelperProcess> adb_proxy,
-          std::unique_ptr<HelperProcess> mcast_proxy,
-          std::unique_ptr<HelperProcess> nd_proxy);
+  Manager(std::unique_ptr<SubprocessController> adb_proxy,
+          std::unique_ptr<SubprocessController> mcast_proxy,
+          std::unique_ptr<SubprocessController> nd_proxy);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
 
@@ -109,7 +107,7 @@ class Manager final : public brillo::DBusDaemon {
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.
   void OnSubprocessExited(pid_t pid, const siginfo_t& info);
-  void RestartSubprocess(HelperProcess* subproc);
+  void RestartSubprocess(SubprocessController* subproc);
 
   // Callback from Daemon to notify that the message loop exits and before
   // Daemon::Run() returns.
@@ -226,11 +224,11 @@ class Manager final : public brillo::DBusDaemon {
   // Other services.
   brillo::ProcessReaper process_reaper_;
   // adb connection forwarder service.
-  std::unique_ptr<HelperProcess> adb_proxy_;
+  std::unique_ptr<SubprocessController> adb_proxy_;
   // IPv4 and IPv6 Multicast forwarder service.
-  std::unique_ptr<HelperProcess> mcast_proxy_;
+  std::unique_ptr<SubprocessController> mcast_proxy_;
   // IPv6 neighbor discovery forwarder process handler.
-  std::unique_ptr<HelperProcess> nd_proxy_;
+  std::unique_ptr<SubprocessController> nd_proxy_;
   // IPv6 address provisioning / ndp forwarding service.
   std::unique_ptr<GuestIPv6Service> ipv6_svc_;
   // Traffic counter service.

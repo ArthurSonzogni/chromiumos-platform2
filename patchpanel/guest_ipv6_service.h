@@ -11,9 +11,9 @@
 #include <base/memory/weak_ptr.h>
 
 #include "patchpanel/datapath.h"
-#include "patchpanel/helper_process.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/shill_client.h"
+#include "patchpanel/subprocess_controller.h"
 
 namespace patchpanel {
 
@@ -21,7 +21,7 @@ class GuestIPv6Service {
  public:
   enum class ForwardMethod { kMethodUnknown, kMethodNDProxy, kMethodRAServer };
 
-  GuestIPv6Service(HelperProcess* nd_proxy,
+  GuestIPv6Service(SubprocessController* nd_proxy,
                    Datapath* datapath,
                    ShillClient* shill_client);
   GuestIPv6Service(const GuestIPv6Service&) = delete;
@@ -61,7 +61,7 @@ class GuestIPv6Service {
   void OnNDProxyMessage(const FeedbackMessage& msg);
 
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
-  HelperProcess* nd_proxy_;
+  SubprocessController* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.
   Datapath* datapath_;
   // Shill Dbus client. Owned by Manager.

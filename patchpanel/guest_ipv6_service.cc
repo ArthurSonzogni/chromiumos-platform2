@@ -29,7 +29,7 @@ bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
 
 }  // namespace
 
-GuestIPv6Service::GuestIPv6Service(HelperProcess* nd_proxy,
+GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
                                    Datapath* datapath,
                                    ShillClient* shill_client)
     : nd_proxy_(nd_proxy), datapath_(datapath), shill_client_(shill_client) {}

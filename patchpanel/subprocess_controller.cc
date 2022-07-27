@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/helper_process.h"
+#include "patchpanel/subprocess_controller.h"
 
 #include <signal.h>
 #include <string.h>
@@ -22,7 +22,9 @@ namespace {
 constexpr int kMaxRestarts = 5;
 }  // namespace
 
-void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
+void SubprocessController::Start(int argc,
+                                 char* argv[],
+                                 const std::string& fd_arg) {
   CHECK_GE(argc, 1);
   for (int i = 0; i < argc; i++) {
     argv_.push_back(argv[i]);
@@ -31,7 +33,7 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
   Launch();
 }
 
-bool HelperProcess::Restart() {
+bool SubprocessController::Restart() {
   if (++restarts_ > kMaxRestarts) {
     LOG(ERROR) << "Maximum number of restarts exceeded";
     return false;
@@ -41,7 +43,7 @@ bool HelperProcess::Restart() {
   return true;
 }
 
-void HelperProcess::Launch() {
+void SubprocessController::Launch() {
   int control[2];
 
   if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
@@ -52,7 +54,7 @@ void HelperProcess::Launch() {
   msg_dispatcher_ =
       std::make_unique<MessageDispatcher>(std::move(control_fd), false);
   msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
-      &HelperProcess::OnMessage, weak_factory_.GetWeakPtr()));
+      &SubprocessController::OnMessage, weak_factory_.GetWeakPtr()));
   const int subprocess_fd = control[1];
 
   std::vector<std::string> child_argv = argv_;
@@ -69,7 +71,8 @@ void HelperProcess::Launch() {
   pid_ = p.Pid();
 }
 
-void HelperProcess::SendControlMessage(const ControlMessage& proto) const {
+void SubprocessController::SendControlMessage(
+    const ControlMessage& proto) const {
   if (!msg_dispatcher_) {
     return;
   }
@@ -78,19 +81,19 @@ void HelperProcess::SendControlMessage(const ControlMessage& proto) const {
   msg_dispatcher_->SendMessage(msg);
 }
 
-void HelperProcess::Listen() {
+void SubprocessController::Listen() {
   if (!msg_dispatcher_) {
     return;
   }
   msg_dispatcher_->Start();
 }
 
-void HelperProcess::RegisterFeedbackMessageHandler(
+void SubprocessController::RegisterFeedbackMessageHandler(
     base::RepeatingCallback<void(const FeedbackMessage&)> handler) {
   feedback_handler_ = std::move(handler);
 }
 
-void HelperProcess::OnMessage(const SubprocessMessage& msg) {
+void SubprocessController::OnMessage(const SubprocessMessage& msg) {
   if (msg.has_feedback_message() && !feedback_handler_.is_null()) {
     feedback_handler_.Run(msg.feedback_message());
   }

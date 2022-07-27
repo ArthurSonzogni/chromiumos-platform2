@@ -83,7 +83,6 @@ libpatchpanel_sources = [
   "device.cc",
   "firewall.cc",
   "guest_ipv6_service.cc",
-  "helper_process.cc",
   "manager.cc",
   "message_dispatcher.cc",
   "minijailed_process_runner.cc",
@@ -94,6 +93,7 @@ libpatchpanel_sources = [
   "routing_service.cc",
   "scoped_ns.cc",
   "shill_client.cc",
+  "subprocess_controller.cc",
   "system.cc",
 ]
 

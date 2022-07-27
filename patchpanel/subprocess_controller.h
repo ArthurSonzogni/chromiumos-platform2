@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PATCHPANEL_HELPER_PROCESS_H_
-#define PATCHPANEL_HELPER_PROCESS_H_
+#ifndef PATCHPANEL_SUBPROCESS_CONTROLLER_H_
+#define PATCHPANEL_SUBPROCESS_CONTROLLER_H_
 
 #include <sys/types.h>
 
@@ -23,13 +23,13 @@ namespace patchpanel {
 // Tracks a helper subprocess.  Handles forking, cleaning up on termination,
 // and IPC.
 // This object is used by the main Manager process.
-class HelperProcess {
+class SubprocessController {
  public:
-  HelperProcess() = default;
-  HelperProcess(const HelperProcess&) = delete;
-  HelperProcess& operator=(const HelperProcess&) = delete;
+  SubprocessController() = default;
+  SubprocessController(const SubprocessController&) = delete;
+  SubprocessController& operator=(const SubprocessController&) = delete;
 
-  virtual ~HelperProcess() = default;
+  virtual ~SubprocessController() = default;
 
   // Re-execs patchpanel with a new argument: "|fd_arg|=N", where N is the
   // side of |control_fd|.  This tells the subprocess to start up a different
@@ -66,9 +66,9 @@ class HelperProcess {
   std::string fd_arg_;
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;
 
-  base::WeakPtrFactory<HelperProcess> weak_factory_{this};
+  base::WeakPtrFactory<SubprocessController> weak_factory_{this};
 };
 
 }  // namespace patchpanel
 
-#endif  // PATCHPANEL_HELPER_PROCESS_H_
+#endif  // PATCHPANEL_SUBPROCESS_CONTROLLER_H_
