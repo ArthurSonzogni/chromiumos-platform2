@@ -14,6 +14,12 @@ exit_group: 1
 fstatfs: 1
 getdents64: 1
 gettid: 1
+# ioctl: arg1 == /* DRM_IOCTL_MODE_GETRESOURCES */ ||
+#        arg1 == /* DRM_IOCTL_AMDGPU_INFO or DRM_IOCTL_SIS_FB_FREE */ ||
+#        arg1 == /* DRM_IOCTL_VERSION */
+ioctl: arg1 == 0xc04064a0 || \
+       arg1 == 0x40206445 || \
+       arg1 == 0xc0406400
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

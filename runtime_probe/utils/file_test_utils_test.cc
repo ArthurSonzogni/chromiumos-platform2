@@ -68,6 +68,9 @@ TEST_F(FileTest, BaseTest) {
   const auto expected_path = root_dir().Append("a/b/c");
   EXPECT_EQ(GetPathUnderRoot("a/b/c"), expected_path);
   EXPECT_EQ(GetPathUnderRoot("/a/b/c"), expected_path);
+
+  SetDirectory("my/dir");
+  EXPECT_TRUE(base::DirectoryExists(GetPathUnderRoot("my/dir")));
 }
 
 }  // namespace

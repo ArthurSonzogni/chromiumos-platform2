@@ -6,6 +6,7 @@
 #include <string>
 
 #include <gtest/gtest.h>
+#include <minigbm/minigbm_helpers.h>
 
 #include "runtime_probe/functions/gpu.h"
 #include "runtime_probe/utils/function_test_utils.h"
@@ -13,7 +14,20 @@
 namespace runtime_probe {
 namespace {
 
-// using ::testing::UnorderedElementsAreArray;
+class MockGpuFunction : public GpuFunction {
+  using GpuFunction::GpuFunction;
+
+ public:
+  int GbmDetectDeviceInfoPath(unsigned int detect_flags,
+                              const char* dev_node,
+                              ::GbmDeviceInfo* info) const override {
+    info->dev_type_flags = fake_gbm_dev_type_flags_;
+    return 0;
+  }
+
+  // The fake value of gbm device type flags.
+  int fake_gbm_dev_type_flags_ = 0;
+};
 
 class GpuFunctionTest : public BaseFunctionTest {
  protected:
@@ -27,11 +41,18 @@ class GpuFunctionTest : public BaseFunctionTest {
           file.second);
     }
   }
+
+  void SetPciDeviceDrm(const std::string& pci_device_id,
+                       const std::string& drm_device_name) {
+    // Set a fake file to create the drm device directory.
+    SetDirectory({"sys/devices/pci0000:00/0000:00:08.1", pci_device_id, "drm",
+                  drm_device_name});
+  }
 };
 
 TEST_F(GpuFunctionTest, ProbeGpu) {
   base::Value probe_statement(base::Value::Type::DICTIONARY);
-  auto probe_function = CreateProbeFunction<GpuFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x030000"},
                                    {"vendor", "0x1234"},
@@ -42,6 +63,14 @@ TEST_F(GpuFunctionTest, ProbeGpu) {
   // Class code 0x300001(ProgIf is 0x01) should be probed.
   SetPciDevice("0000:08:00.0", {
                                    {"class", "0x030001"},
+                                   {"vendor", "0x1234"},
+                                   {"device", "0x5678"},
+                                   {"subsystem_vendor", "0x90ab"},
+                                   {"subsystem_device", "0xcdef"},
+                               });
+  // Class code 0x030200 is for 3D controller.
+  SetPciDevice("0000:09:00.0", {
+                                   {"class", "0x030200"},
                                    {"vendor", "0x1234"},
                                    {"device", "0x5678"},
                                    {"subsystem_vendor", "0x90ab"},
@@ -62,6 +91,12 @@ TEST_F(GpuFunctionTest, ProbeGpu) {
         "device": "0x5678",
         "subsystem_vendor": "0x90ab",
         "subsystem_device": "0xcdef"
+      },
+      {
+        "vendor": "0x1234",
+        "device": "0x5678",
+        "subsystem_vendor": "0x90ab",
+        "subsystem_device": "0xcdef"
       }
     ]
   )JSON");
@@ -70,7 +105,7 @@ TEST_F(GpuFunctionTest, ProbeGpu) {
 
 TEST_F(GpuFunctionTest, NonGpu) {
   base::Value probe_statement(base::Value::Type::DICTIONARY);
-  auto probe_function = CreateProbeFunction<GpuFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   // Non-display controller (class it not 0x30).
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x020000"},
@@ -97,7 +132,7 @@ TEST_F(GpuFunctionTest, NonGpu) {
 
 TEST_F(GpuFunctionTest, MissField) {
   base::Value probe_statement(base::Value::Type::DICTIONARY);
-  auto probe_function = CreateProbeFunction<GpuFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   // Each of these miss one field so won't be probed.
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x030000"},
@@ -123,6 +158,53 @@ TEST_F(GpuFunctionTest, MissField) {
                                    {"device", "0x5678"},
                                    {"subsystem_vendor", "0x90ab"},
                                });
+
+  auto result = probe_function->Eval();
+  auto ans = CreateProbeResultFromJson(R"JSON(
+    []
+  )JSON");
+  EXPECT_EQ(result, ans);
+}
+
+TEST_F(GpuFunctionTest, MinigbmIsDGPU) {
+  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
+  SetPciDevice("0000:04:00.0", {
+                                   {"class", "0x030000"},
+                                   {"vendor", "0x1234"},
+                                   {"device", "0x5678"},
+                                   {"subsystem_vendor", "0x90ab"},
+                                   {"subsystem_device", "0xcdef"},
+                               });
+  SetPciDeviceDrm("0000:04:00.0", "renderD128");
+  probe_function->fake_gbm_dev_type_flags_ = GBM_DEV_TYPE_FLAG_DISCRETE;
+
+  auto result = probe_function->Eval();
+  auto ans = CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "vendor": "0x1234",
+        "device": "0x5678",
+        "subsystem_vendor": "0x90ab",
+        "subsystem_device": "0xcdef"
+      }
+    ]
+  )JSON");
+  EXPECT_EQ(result, ans);
+}
+
+TEST_F(GpuFunctionTest, MinigbmIsIGPU) {
+  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
+  SetPciDevice("0000:04:00.0", {
+                                   {"class", "0x030000"},
+                                   {"vendor", "0x1234"},
+                                   {"device", "0x5678"},
+                                   {"subsystem_vendor", "0x90ab"},
+                                   {"subsystem_device", "0xcdef"},
+                               });
+  SetPciDeviceDrm("0000:04:00.0", "renderD128");
+  probe_function->fake_gbm_dev_type_flags_ = 0;
 
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(

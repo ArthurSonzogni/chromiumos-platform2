@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "gbm",
     "libbrillo",
     "libchrome",
     "libdebugd-client",
