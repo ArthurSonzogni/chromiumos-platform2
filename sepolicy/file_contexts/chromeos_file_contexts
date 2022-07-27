@@ -166,6 +166,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/bootstat              u:object_r:cros_bootstat_exec:s0
 /usr/sbin/brcm_patchram_plus    u:object_r:cros_brcm_patchram_plus_exec:s0
 /usr/sbin/cdm-oemcrypto         u:object_r:cros_cdm_oemcrypto_exec:s0
+/usr/sbin/cdm-oemcrypto-wv14    u:object_r:cros_cdm_oemcrypto_exec:s0
 /usr/sbin/cecservice            u:object_r:cros_cecservice_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
