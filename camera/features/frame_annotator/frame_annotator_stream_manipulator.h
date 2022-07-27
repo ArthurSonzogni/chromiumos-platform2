@@ -18,6 +18,7 @@
 #include <skia/core/SkCanvas.h>
 
 #include "cros-camera/camera_thread.h"
+#include "cros-camera/face_detector_client_cros_wrapper.h"
 #include "gpu/egl/egl_context.h"
 
 namespace cros {
@@ -43,8 +44,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
 
   bool SetUpContextsOnGpuThread();
   bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
-  std::vector<SkCanvasDrawFn> GetPlotters(
-      const FeatureMetadata& feature_metadata);
+  std::vector<SkCanvasDrawFn> GetPlotters();
   bool PlotOnGpuThread(camera3_stream_buffer_t* buffer,
                        const std::vector<SkCanvasDrawFn>& plotters);
   void FlushSkSurfaceToBuffer(SkSurface* surface, buffer_handle_t yuv_buf);
@@ -56,6 +56,8 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   std::unique_ptr<EglContext> egl_context_;
   sk_sp<GrDirectContext> gr_context_;
   CameraThread gpu_thread_;
+
+  std::vector<human_sensing::CrosFace> cached_faces_;
 };
 
 }  // namespace cros

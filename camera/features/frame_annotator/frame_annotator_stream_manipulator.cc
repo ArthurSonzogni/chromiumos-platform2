@@ -7,6 +7,7 @@
 #include "features/frame_annotator/frame_annotator_stream_manipulator.h"
 
 #include <cinttypes>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -155,6 +156,33 @@ bool FrameAnnotatorStreamManipulator::Flush() {
   return true;
 }
 
+bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
+    Camera3CaptureDescriptor* result) {
+  DCHECK(gpu_thread_.IsCurrentThread());
+  if (auto faces = result->feature_metadata().faces) {
+    cached_faces_ = std::move(*faces);
+  }
+
+  std::vector<camera3_stream_buffer_t> output_buffers;
+  for (const auto& b : result->GetOutputBuffers()) {
+    output_buffers.emplace_back(b);
+    if (b.stream != yuv_stream_) {
+      continue;
+    }
+    auto& buffer = output_buffers.back();
+    if (buffer.status == CAMERA3_BUFFER_STATUS_ERROR) {
+      continue;
+    }
+    bool res = PlotOnGpuThread(&buffer, GetPlotters());
+    if (!res) {
+      return false;
+    }
+  }
+
+  result->SetOutputBuffers(output_buffers);
+  return true;
+}
+
 bool FrameAnnotatorStreamManipulator::SetUpContextsOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
 
@@ -179,40 +207,13 @@ bool FrameAnnotatorStreamManipulator::SetUpContextsOnGpuThread() {
   return true;
 }
 
-bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
-    Camera3CaptureDescriptor* result) {
-  DCHECK(gpu_thread_.IsCurrentThread());
-
-  std::vector<camera3_stream_buffer_t> output_buffers;
-  for (const auto& b : result->GetOutputBuffers()) {
-    output_buffers.emplace_back(b);
-    if (b.stream != yuv_stream_) {
-      continue;
-    }
-    auto& buffer = output_buffers.back();
-    if (buffer.status == CAMERA3_BUFFER_STATUS_ERROR) {
-      continue;
-    }
-    bool res =
-        PlotOnGpuThread(&buffer, GetPlotters(result->feature_metadata()));
-    if (!res) {
-      return false;
-    }
-  }
-
-  result->SetOutputBuffers(output_buffers);
-  return true;
-}
-
 std::vector<FrameAnnotatorStreamManipulator::SkCanvasDrawFn>
-FrameAnnotatorStreamManipulator::GetPlotters(
-    const FeatureMetadata& feature_metadata) {
+FrameAnnotatorStreamManipulator::GetPlotters() {
   std::vector<SkCanvasDrawFn> plotters;
 #if USE_CAMERA_FEATURE_FACE_DETECTION
-  if (feature_metadata.faces && !feature_metadata.faces->empty()) {
+  if (!cached_faces_.empty()) {
     plotters.emplace_back(base::BindRepeating(
-        [](FrameAnnotatorStreamManipulator* self,
-           const FeatureMetadata& feature_metadata, SkCanvas* canvas) {
+        [](FrameAnnotatorStreamManipulator* self, SkCanvas* canvas) {
           const auto canvas_info = canvas->imageInfo();
 
           // Annotate each faces with a white box.
@@ -222,11 +223,11 @@ FrameAnnotatorStreamManipulator::GetPlotters(
           box_paint.setStrokeWidth(1);
           box_paint.setColor(0xffffffff);
 
-          for (const auto& face : *feature_metadata.faces) {
+          for (const auto& face : self->cached_faces_) {
             const auto& box = face.bounding_box;
 
-            // Assume the frame is center cropped and transform the bounding box
-            // to the canvas space.
+            // Assume the frame is center cropped and transform the bounding
+            // box to the canvas space.
             // TODO(ototot): Check if the frame is not center cropped.
             const auto adjusted_rect = NormalizeRect(
                 Rect<float>(
@@ -244,7 +245,7 @@ FrameAnnotatorStreamManipulator::GetPlotters(
             canvas->drawRect(rect, box_paint);
           }
         },
-        this, feature_metadata));
+        this));
   }
 #endif
   return plotters;
@@ -324,9 +325,9 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
       },
       &context);
 
-  // Force the result to be written back to the buffer before returning from the
-  // function. Therefore, it's safe to pass local variables here as the lifetime
-  // is being guaranteed.
+  // Force the result to be written back to the buffer before returning from
+  // the function. Therefore, it's safe to pass local variables here as the
+  // lifetime is being guaranteed.
   surface->flushAndSubmit(/*syncCpu=*/true);
 }
 
