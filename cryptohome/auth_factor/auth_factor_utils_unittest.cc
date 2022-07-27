@@ -85,13 +85,13 @@ TEST(AuthFactorUtilsTest, AuthFactorTypeConversionIsInvertable) {
   EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
                 user_data_auth::AUTH_FACTOR_TYPE_KIOSK)),
             user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
+  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
+                user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD)),
+            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
 
   // These proto types are known to not be supported
   EXPECT_EQ(
       AuthFactorTypeFromProto(user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED),
-      AuthFactorType::kUnspecified);
-  EXPECT_EQ(
-      AuthFactorTypeFromProto(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD),
       AuthFactorType::kUnspecified);
 }
 
@@ -321,8 +321,9 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kPassword));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kKiosk));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kCryptohomeRecovery));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kSmartCard));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
-  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 4,
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 5,
                 "All types of AuthFactorType are not all included here");
 }
 

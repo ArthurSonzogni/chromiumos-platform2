@@ -1702,17 +1702,6 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
 
 CryptohomeStatus UserDataAuth::InitAuthBlockUtilityForChallengeResponse(
     const AuthorizationRequest& authorization, const std::string& username) {
-  // challenge_credential_helper_ must initialized to process
-  // AuthBlockType::kChallengeCredential.
-  // Update AuthBlockUtility with challenge_credentials_helper_.
-  CryptohomeStatus status = InitForChallengeResponseAuth();
-  if (!status.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUserDataAuthInitFailedInInitAuthBlockUtilChalResp))
-        .Wrap(std::move(status));
-  }
-
   if (!authorization.has_key_delegate() ||
       !authorization.key_delegate().has_dbus_service_name()) {
     LOG(ERROR) << "Cannot do challenge-response authentication without key "
@@ -1741,11 +1730,27 @@ CryptohomeStatus UserDataAuth::InitAuthBlockUtilityForChallengeResponse(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
+  return InitKeyChallengeServiceForAuthBlockUtility(
+      authorization.key_delegate().dbus_service_name(), username);
+}
+
+CryptohomeStatus UserDataAuth::InitKeyChallengeServiceForAuthBlockUtility(
+    const std::string& dbus_service_name, const std::string& username) {
+  // challenge_credential_helper_ must initialized to process
+  // AuthBlockType::kChallengeCredential.
+  // Update AuthBlockUtility with challenge_credentials_helper_.
+  CryptohomeStatus status = InitForChallengeResponseAuth();
+  if (!status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthInitFailedInInitAuthBlockUtilChalResp))
+        .Wrap(std::move(status));
+  }
+
   // KeyChallengeService is tasked with contacting the challenge response
   // D-Bus service that'll provide the response once we send the challenge.
   std::unique_ptr<KeyChallengeService> key_challenge_service =
-      key_challenge_service_factory_->New(
-          mount_thread_bus_, authorization.key_delegate().dbus_service_name());
+      key_challenge_service_factory_->New(mount_thread_bus_, dbus_service_name);
   if (!key_challenge_service) {
     LOG(ERROR) << "Failed to create key challenge service";
     return MakeStatus<CryptohomeError>(
@@ -4710,6 +4715,27 @@ void UserDataAuth::AddAuthFactor(
     return;
   }
 
+  // UserDataAuth handles and initializes ChallengeCredentialsHelper and
+  // KeyChallengeService. AuthInput supplies UserDataAuth with the
+  // dbus_service_name for these objects.
+  if (request.auth_input().input_case() ==
+      user_data_auth::AuthInput::kSmartCardInput) {
+    auto status = InitKeyChallengeServiceForAuthBlockUtility(
+        request.auth_input()
+            .smart_card_input()
+            .key_delegate_dbus_service_name(),
+        auth_session_status.value()->username());
+    if (!status.ok()) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocUserDataAuthNoKeyChallengeServiceInAddAuthFactor))
+              .Wrap(std::move(status)));
+      return;
+    }
+  }
+
   StatusCallback on_add_auth_factor_finished = base::BindOnce(
       &UserDataAuth::OnAddCredentialFinished, base::Unretained(this),
       auth_session_status.value(),
@@ -4739,6 +4765,27 @@ void UserDataAuth::AuthenticateAuthFactor(
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return;
+  }
+
+  // UserDataAuth handles and initializes ChallengeCredentialsHelper and
+  // KeyChallengeService. AuthInput supplies UserDataAuth with the
+  // dbus_service_name for these objects.
+  if (request.auth_input().input_case() ==
+      user_data_auth::AuthInput::kSmartCardInput) {
+    auto status = InitKeyChallengeServiceForAuthBlockUtility(
+        request.auth_input()
+            .smart_card_input()
+            .key_delegate_dbus_service_name(),
+        auth_session->username());
+    if (!status.ok()) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocUserDataAuthNoKeyChallengeServiceInAuthAuthFactor))
+              .Wrap(std::move(status)));
+      return;
+    }
   }
 
   auth_session->AuthenticateAuthFactor(

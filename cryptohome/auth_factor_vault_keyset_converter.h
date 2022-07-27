@@ -54,11 +54,12 @@ class AuthFactorVaultKeysetConverter {
       const std::string& auth_factor_label,
       KeyData& out_vk_key_data);
 
-  // Generates a KeyData structure using the |auth_factor_label| and
-  // |auth_factor_type|
+  // Generates a KeyData structure using the given auth factor
+  // and auth input data.
   user_data_auth::CryptohomeErrorCode AuthFactorToKeyData(
       const std::string& auth_factor_label,
       const AuthFactorType& auth_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata,
       KeyData& out_vk_key_data);
 
  private:

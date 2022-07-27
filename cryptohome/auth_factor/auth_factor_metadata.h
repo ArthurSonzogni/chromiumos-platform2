@@ -7,6 +7,9 @@
 
 #include <variant>
 
+#include <brillo/cryptohome.h>
+#include <libhwsec/structures/no_default_init.h>
+
 namespace cryptohome {
 
 struct PasswordAuthFactorMetadata {
@@ -25,6 +28,10 @@ struct KioskAuthFactorMetadata {
   KioskAuthFactorMetadata() = default;
 };
 
+struct SmartCardAuthFactorMetadata {
+  hwsec::NoDefault<brillo::Blob> public_key_spki_der;
+};
+
 struct AuthFactorMetadata {
   // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
@@ -32,7 +39,8 @@ struct AuthFactorMetadata {
                PasswordAuthFactorMetadata,
                PinAuthFactorMetadata,
                CryptohomeRecoveryAuthFactorMetadata,
-               KioskAuthFactorMetadata>
+               KioskAuthFactorMetadata,
+               SmartCardAuthFactorMetadata>
       metadata;
 };
 

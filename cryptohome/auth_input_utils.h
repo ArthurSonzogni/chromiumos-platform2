@@ -10,6 +10,7 @@
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 
@@ -23,7 +24,8 @@ std::optional<AuthInput> CreateAuthInput(
     const std::string& obfuscated_username,
     bool locked_to_single_user,
     const std::optional<brillo::SecureBlob>&
-        cryptohome_recovery_ephemeral_pub_key);
+        cryptohome_recovery_ephemeral_pub_key,
+    const AuthFactorMetadata& auth_factor_metadata);
 
 }  // namespace cryptohome
 

@@ -33,7 +33,8 @@ namespace {
 
 // Construct the AuthFactor metadata based on AuthFactor type.
 bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
-                                   AuthFactorMetadata& metadata) {
+                                   AuthFactorMetadata& metadata,
+                                   const KeyData& key_data) {
   switch (type) {
     case AuthFactorType::kPassword:
       metadata.metadata = PasswordAuthFactorMetadata();
@@ -44,6 +45,22 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
     case AuthFactorType::kKiosk:
       metadata.metadata = KioskAuthFactorMetadata();
       break;
+    case AuthFactorType::kSmartCard: {
+      // Check for 0 or more than 1 challenge response key,
+      // this is assumed to be only 1.
+      if (key_data.challenge_response_key_size() != 1) {
+        return false;
+      }
+      if (!key_data.challenge_response_key(0).has_public_key_spki_der()) {
+        return false;
+      }
+      // For AuthFactorType::kSmartCard chose the first/only key by default.
+      brillo::Blob public_key_blob = brillo::BlobFromString(
+          key_data.challenge_response_key(0).public_key_spki_der());
+      metadata.metadata =
+          SmartCardAuthFactorMetadata{.public_key_spki_der = public_key_blob};
+      break;
+    }
     default:
       return false;
   }
@@ -74,7 +91,8 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
       return AuthFactorType::kPassword;
     case AuthBlockType::kPinWeaver:
       return AuthFactorType::kPin;
-    case AuthBlockType::kChallengeCredential:  // Not yet implemented.
+    case AuthBlockType::kChallengeCredential:
+      return AuthFactorType::kSmartCard;
     case AuthBlockType::kCryptohomeRecovery:   // Never reported by a VK.
     case AuthBlockType::kMaxValue:
       return AuthFactorType::kUnspecified;
@@ -95,14 +113,15 @@ std::unique_ptr<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
     return nullptr;
   }
 
+  KeyData key_data = vk.GetKeyDataOrDefault();
   AuthFactorType auth_factor_type =
-      VaultKeysetTypeToAuthFactorType(vk.GetFlags(), vk.GetKeyDataOrDefault());
+      VaultKeysetTypeToAuthFactorType(vk.GetFlags(), key_data);
   if (auth_factor_type == AuthFactorType::kUnspecified) {
     return nullptr;
   }
 
   AuthFactorMetadata metadata;
-  if (!GetAuthFactorMetadataWithType(auth_factor_type, metadata)) {
+  if (!GetAuthFactorMetadataWithType(auth_factor_type, metadata, key_data)) {
     return nullptr;
   }
 
@@ -192,6 +211,7 @@ user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
     const std::string& auth_factor_label,
     const AuthFactorType& auth_factor_type,
+    const AuthFactorMetadata& auth_factor_metadata,
     KeyData& out_key_data) {
   out_key_data.set_label(auth_factor_label);
 
@@ -207,6 +227,23 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
       out_key_data.set_type(KeyData::KEY_TYPE_KIOSK);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     case AuthFactorType::kCryptohomeRecovery:
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+    case AuthFactorType::kSmartCard: {
+      out_key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+      const auto* smart_card_metadata =
+          std::get_if<SmartCardAuthFactorMetadata>(
+              &auth_factor_metadata.metadata);
+      if (!smart_card_metadata) {
+        LOG(ERROR) << "Could not extract SmartCardMetadata from "
+                      "|auth_factor_metadata|";
+        return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+      }
+      std::string public_key_string =
+          brillo::BlobToString(smart_card_metadata->public_key_spki_der);
+      auto* challenge_key = out_key_data.add_challenge_response_key();
+      challenge_key->set_public_key_spki_der(public_key_string);
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
     case AuthFactorType::kUnspecified:
       LOG(ERROR) << "Unimplemented AuthFactorType.";
       return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;

@@ -277,12 +277,12 @@ class AuthSession final {
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request);
 
-  // Initializes the auth_input.challenge_credential_auth_input
+  // Initializes a ChallengeCredentialAuthInput, i.e.
   // {.public_key_spki_der, .challenge_signature_algorithms} from
   // the challenge_response_key values in in authorization
-  bool ConstructAuthInputForChallengeCredentials(
-      const cryptohome::AuthorizationRequest& authorization,
-      AuthInput& auth_input);
+  std::optional<ChallengeCredentialAuthInput>
+  CreateChallengeCredentialAuthInput(
+      const cryptohome::AuthorizationRequest& authorization);
 
   // This function sets the credential_verifier_ based on the passkey parameter.
   void SetCredentialVerifier(const brillo::SecureBlob& passkey);
@@ -303,7 +303,6 @@ class AuthSession final {
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
   void CreateKeyBlobsToAddKeyset(
-      const cryptohome::AuthorizationRequest& authorization,
       AuthInput auth_input,
       const KeyData& key_data,
       bool initial_keyset,
@@ -380,12 +379,14 @@ class AuthSession final {
 
   // Adds a new VaultKeyset for the |obfuscated_username_| and persists it to
   // disk.
-  void AddAuthFactorViaVaultKeyset(AuthFactorType auth_factor_type,
-                                   const std::string& auth_factor_label,
-                                   AuthInput auth_input,
-                                   std::unique_ptr<AuthSessionPerformanceTimer>
-                                       auth_session_performance_timer,
-                                   StatusCallback on_done);
+  void AddAuthFactorViaVaultKeyset(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      AuthInput auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      StatusCallback on_done);
 
   // Loads and decrypts the USS payload with |auth_factor_label| using the
   // given KeyBlobs. Designed to be used in conjunction with an async

@@ -105,6 +105,10 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
              AuthFactorStorageType::kUserSecretStash;
     case AuthFactorType::kKiosk:
       return configured_factors.empty() || user_has_kiosk;
+    case AuthFactorType::kSmartCard: {
+      hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
+      return is_ready.ok() && is_ready.value();
+    }
     case AuthFactorType::kUnspecified:
       return false;
   }

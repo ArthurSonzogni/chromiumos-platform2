@@ -812,6 +812,21 @@ bool BuildAuthFactor(Printer& printer,
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
     auth_factor->mutable_kiosk_metadata();
     return true;
+  } else if (cl->HasSwitch(switches::kChallengeSPKI)) {
+    // Parameters for smart card metadata:
+    // --challenge_spki=<DER Encoded SPKI Public Key in hex>
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
+
+    std::string challenge_spki;
+    if (!base::HexStringToString(
+            cl->GetSwitchValueASCII(switches::kChallengeSPKI),
+            &challenge_spki)) {
+      printf("Challenge SPKI Public Key DER is not hex encoded.\n");
+      return false;
+    }
+    auth_factor->mutable_smart_card_metadata()->set_public_key_spki_der(
+        challenge_spki);
+    return true;
   }
   printer.PrintHumanOutput("No auth factor specified\n");
   return false;
@@ -882,6 +897,41 @@ bool BuildAuthInput(Printer& printer,
     return true;
   } else if (cl->HasSwitch(switches::kPublicMount)) {
     auth_input->mutable_kiosk_input();
+    return true;
+  } else if (cl->HasSwitch(switches::kChallengeAlgorithm) ||
+             cl->HasSwitch(switches::kKeyDelegateName)) {
+    // We're doing challenge response auth.
+    // Parameters for SmartCardAuthInput:
+    // --challenge_alg=<Algorithm>(,<Algorithm>)*: See
+    //   SmartCardSignatureAlgorithm in auth_factor.proto for valid values.
+    //   Example: "CHALLENGE_RSASSA_PKCS1_V1_5_SHA1".
+    // --key_delegate_name=<Key Delegate DBus Service Name>
+
+    // Check that all parameters are supplied.
+    if (!(cl->HasSwitch(switches::kChallengeAlgorithm) &&
+          cl->HasSwitch(switches::kKeyDelegateName))) {
+      printer.PrintFormattedHumanOutput(
+          "One or more of the switches for challenge response auth is "
+          "missing.\n");
+      return false;
+    }
+
+    const std::vector<std::string> algo_strings =
+        SplitString(cl->GetSwitchValueASCII(switches::kChallengeAlgorithm), ",",
+                    base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    for (const auto& algo_string : algo_strings) {
+      user_data_auth::SmartCardSignatureAlgorithm challenge_alg;
+      if (!SmartCardSignatureAlgorithm_Parse(algo_string, &challenge_alg)) {
+        printer.PrintFormattedHumanOutput(
+            "Invalid challenge response algorithm \"%s\".\n",
+            algo_string.c_str());
+        return false;
+      }
+      auth_input->mutable_smart_card_input()->add_signature_algorithms(
+          challenge_alg);
+    }
+    auth_input->mutable_smart_card_input()->set_key_delegate_dbus_service_name(
+        cl->GetSwitchValueASCII(switches::kKeyDelegateName));
     return true;
   }
   printer.PrintHumanOutput("No auth input specified\n");

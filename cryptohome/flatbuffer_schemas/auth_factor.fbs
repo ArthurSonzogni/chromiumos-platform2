@@ -18,12 +18,19 @@ table SerializedCryptohomeRecoveryMetadata {}
 // Metadata for a `KIOSK` auth factor.
 table SerializedKioskMetadata {}
 
+// Metadata for a "Smart Card" auth factor.
+table SerializedSmartCardMetadata {
+  // DER-encoded blob of the X.509 Subject Public Key Info.
+  public_key_spki_der:[ubyte] (id: 0);
+}
+
 // Union that holds auth factor's metadata.
 union SerializedAuthFactorMetadata {
   SerializedPasswordMetadata,
   SerializedPinMetadata,
   SerializedCryptohomeRecoveryMetadata,
-  SerializedKioskMetadata
+  SerializedKioskMetadata,
+  SerializedSmartCardMetadata
 }
 
 // Container that stores information about auth factor to be persisted on disk.

@@ -52,6 +52,7 @@ constexpr int kFlatbufferAllocatorInitialSize = 4096;
 constexpr std::pair<AuthFactorType, const char*> kAuthFactorTypeStrings[] = {
     {AuthFactorType::kPassword, "password"},
     {AuthFactorType::kPin, "pin"},
+    {AuthFactorType::kSmartCard, "smart_card"},
     {AuthFactorType::kCryptohomeRecovery, "cryptohome_recovery"}};
 
 // Converts the auth factor type enum into a string.
@@ -142,6 +143,16 @@ SerializeMetadataToOffset(
   return metadata_builder.Finish();
 }
 
+flatbuffers::Offset<SerializedSmartCardMetadata> SerializeMetadataToOffset(
+    const SmartCardAuthFactorMetadata& smart_card_metadata,
+    flatbuffers::FlatBufferBuilder* builder) {
+  auto public_key_offset = hwsec_foundation::ToFlatBuffer<brillo::Blob>()(
+      builder, smart_card_metadata.public_key_spki_der);
+  SerializedSmartCardMetadataBuilder metadata_builder(*builder);
+  metadata_builder.add_public_key_spki_der(public_key_offset);
+  return metadata_builder.Finish();
+}
+
 // Serializes the password metadata into the given flatbuffer builder. Returns
 // the flatbuffer offset, to be used for building the outer table.
 flatbuffers::Offset<void> SerializeMetadataToOffset(
@@ -156,6 +167,10 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
                  std::get_if<PinAuthFactorMetadata>(&metadata.metadata)) {
     *metadata_type = SerializedAuthFactorMetadata::SerializedPinMetadata;
     return SerializeMetadataToOffset(*pin_metadata, builder).Union();
+  } else if (const auto* smart_card_metadata =
+                 std::get_if<SmartCardAuthFactorMetadata>(&metadata.metadata)) {
+    *metadata_type = SerializedAuthFactorMetadata::SerializedSmartCardMetadata;
+    return SerializeMetadataToOffset(*smart_card_metadata, builder).Union();
   } else if (const auto* recovery_metadata =
                  std::get_if<CryptohomeRecoveryAuthFactorMetadata>(
                      &metadata.metadata)) {
@@ -226,6 +241,15 @@ bool ConvertCryptohomeRecoveryMetadataFromFlatbuffer(
   return true;
 }
 
+bool ConvertSmartCardMetadataFromFlatbuffer(
+    const SerializedSmartCardMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  auto data = hwsec_foundation::FromFlatBuffer<brillo::Blob>()(
+      flatbuffer_table.public_key_spki_der());
+  metadata->metadata = SmartCardAuthFactorMetadata{.public_key_spki_der = data};
+  return true;
+}
+
 bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                                AuthBlockState* auth_block_state,
                                AuthFactorMetadata* metadata) {
@@ -267,6 +291,14 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
     if (!ConvertCryptohomeRecoveryMetadataFromFlatbuffer(*recovery_metadata,
                                                          metadata)) {
       LOG(ERROR) << "Failed to convert SerializedAuthFactor recovery metadata";
+      return false;
+    }
+  } else if (const SerializedSmartCardMetadata* smart_card_metadata =
+                 auth_factor_table->metadata_as_SerializedSmartCardMetadata()) {
+    if (!ConvertSmartCardMetadataFromFlatbuffer(*smart_card_metadata,
+                                                metadata)) {
+      LOG(ERROR)
+          << "Failed to convert SerializedAuthFactor smart card metadata";
       return false;
     }
   } else {

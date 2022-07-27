@@ -878,6 +878,11 @@ class UserDataAuth {
   CryptohomeStatus InitAuthBlockUtilityForChallengeResponse(
       const AuthorizationRequest& authorization, const std::string& username);
 
+  // Helper function for InitAuthBlockUtilityForChallengeResponse initializes
+  // KeyChallengeService.
+  CryptohomeStatus InitKeyChallengeServiceForAuthBlockUtility(
+      const std::string& dbus_service_name, const std::string& username);
+
   // This is a utility function used by DoMount(). It is called if the request
   // mounting operation requires challenge response authentication. i.e. The key
   // for the storage is sealed.

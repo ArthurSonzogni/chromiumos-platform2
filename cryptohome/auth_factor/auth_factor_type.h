@@ -12,6 +12,7 @@ enum class AuthFactorType {
   kPin,
   kCryptohomeRecovery,
   kKiosk,
+  kSmartCard,
   kUnspecified,
 };
 

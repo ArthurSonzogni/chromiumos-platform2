@@ -266,9 +266,11 @@ TEST_F(AuthFactorVaultKeysetConverterTest, GenerateKeyDataPassword) {
   std::string auth_factor_label = kLabel0;
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
 
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
-                                            test_key_data));
+  AuthFactorMetadata auth_factor_metadata;
+  EXPECT_EQ(
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+      converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
+                                      auth_factor_metadata, test_key_data));
   EXPECT_EQ(key_data.label(), test_key_data.label());
   EXPECT_EQ(key_data.type(), test_key_data.type());
   EXPECT_FALSE(test_key_data.policy().low_entropy_credential());
@@ -283,9 +285,11 @@ TEST_F(AuthFactorVaultKeysetConverterTest, GenerateKeyDataPin) {
   std::string auth_factor_label = kPinLabel;
   AuthFactorType auth_factor_type = AuthFactorType::kPin;
 
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
-                                            test_key_data));
+  AuthFactorMetadata auth_factor_metadata;
+  EXPECT_EQ(
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+      converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
+                                      auth_factor_metadata, test_key_data));
   EXPECT_EQ(key_data.label(), test_key_data.label());
   EXPECT_EQ(key_data.type(), test_key_data.type());
   EXPECT_TRUE(test_key_data.policy().low_entropy_credential());

@@ -46,6 +46,14 @@ void GetKioskMetadata(const user_data_auth::AuthFactor& auth_factor,
   out_auth_factor_metadata.metadata = KioskAuthFactorMetadata();
 }
 
+// Set smart card metadata here, which includes public_key_spki_der.
+void GetSmartCardMetadata(const user_data_auth::AuthFactor& auth_factor,
+                          AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = SmartCardAuthFactorMetadata{
+      .public_key_spki_der = brillo::BlobFromString(
+          auth_factor.smart_card_metadata().public_key_spki_der())};
+}
+
 // Creates a D-Bus proto for a password auth factor.
 std::optional<user_data_auth::AuthFactor> ToPasswordProto(
     const PasswordAuthFactorMetadata& metadata) {
@@ -84,6 +92,16 @@ std::optional<user_data_auth::AuthFactor> ToKioskProto(
   proto.mutable_kiosk_metadata();
   return proto;
 }
+
+// Creates a D-Bus proto for a smart card auth factor.
+std::optional<user_data_auth::AuthFactor> ToSmartCardProto(
+    const SmartCardAuthFactorMetadata& metadata) {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
+  proto.mutable_smart_card_metadata()->set_public_key_spki_der(
+      brillo::BlobToString(metadata.public_key_spki_der));
+  return proto;
+}
 }  // namespace
 
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
@@ -96,6 +114,8 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
       return user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY;
     case AuthFactorType::kKiosk:
       return user_data_auth::AUTH_FACTOR_TYPE_KIOSK;
+    case AuthFactorType::kSmartCard:
+      return user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD;
     case AuthFactorType::kUnspecified:
       return user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED;
   }
@@ -115,7 +135,7 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
     case user_data_auth::AUTH_FACTOR_TYPE_KIOSK:
       return AuthFactorType::kKiosk;
     case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
-      return AuthFactorType::kUnspecified;
+      return AuthFactorType::kSmartCard;
     default:
       return std::nullopt;
   }
@@ -147,6 +167,11 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       DCHECK(auth_factor.has_kiosk_metadata());
       GetKioskMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kKiosk;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
+      DCHECK(auth_factor.has_smart_card_metadata());
+      GetSmartCardMetadata(auth_factor, out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kSmartCard;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
@@ -194,6 +219,13 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
       auto* kiosk_metadata =
           std::get_if<KioskAuthFactorMetadata>(&auth_factor_metadata.metadata);
       proto = kiosk_metadata ? ToKioskProto(*kiosk_metadata) : std::nullopt;
+      break;
+    }
+    case AuthFactorType::kSmartCard: {
+      auto* smart_card_metadata = std::get_if<SmartCardAuthFactorMetadata>(
+          &auth_factor_metadata.metadata);
+      proto = smart_card_metadata ? ToSmartCardProto(*smart_card_metadata)
+                                  : std::nullopt;
       break;
     }
     case AuthFactorType::kUnspecified: {
