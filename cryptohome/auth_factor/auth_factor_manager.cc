@@ -473,18 +473,17 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
 
 CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
     const std::string& obfuscated_username,
-    const std::string& old_auth_factor_label,
+    const std::string& auth_factor_label,
     AuthFactor& auth_factor,
     AuthBlockUtility* auth_block_utility) {
   // 1. Load the old auth factor state from disk.
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> existing_auth_factor =
       LoadAuthFactor(obfuscated_username, auth_factor.type(),
-                     old_auth_factor_label);
+                     auth_factor_label);
   if (!existing_auth_factor.ok()) {
-    LOG(ERROR) << "Failed to load persisted auth factor "
-               << old_auth_factor_label << " of type "
-               << GetAuthFactorTypeString(auth_factor.type()) << " for "
-               << obfuscated_username << " in Update.";
+    LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
+               << " of type " << GetAuthFactorTypeString(auth_factor.type())
+               << " for " << obfuscated_username << " in Update.";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
                user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)

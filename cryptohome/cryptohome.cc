@@ -3264,7 +3264,7 @@ int main(int argc, char** argv) {
     }
     // By default, old and new labels are equal; if requested, the new label can
     // be overridden.
-    req.set_old_auth_factor_label(req.auth_factor().label());
+    req.set_auth_factor_label(req.auth_factor().label());
     if (!cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch).empty()) {
       req.mutable_auth_factor()->set_label(
           cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));

@@ -61,14 +61,14 @@ class AuthFactorManager final {
 
   // Updates the auth factor:
   // 1. Removes the auth factor with the given `auth_factor.type()` and
-  // `old_auth_factor_label`.
+  // `auth_factor_label`.
   // 2. Saves the new auth factor on disk.
   // 3. Calls PrepareForRemoval() on the AuthBlock.
   // Unlike calling `RemoveAuthFactor()`+`SaveAuthFactor()`, this operation is
   // atomic, to the extent possible - it makes sure that we don't end up with no
   // auth factor available.
   CryptohomeStatus UpdateAuthFactor(const std::string& obfuscated_username,
-                                    const std::string& old_auth_factor_label,
+                                    const std::string& auth_factor_label,
                                     AuthFactor& auth_factor,
                                     AuthBlockUtility* auth_block_utility);
 

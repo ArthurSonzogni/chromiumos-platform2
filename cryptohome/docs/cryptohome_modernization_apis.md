@@ -135,7 +135,7 @@ to update an AuthFactor. (E.g. Changing pin or password).
     - *Input*:
       -auth_session_id - AuthSession used to identify users. The AuthSession
       needs to be authenticated for this call to be a success.
-      - old_auth_factor_label - The label that will be used to identify an
+      - auth_factor_label - The label that will be used to identify an
       AuthFactor to update.
       - auth_factor - AuthFactor information about the new factor that will
       replace the existing.
