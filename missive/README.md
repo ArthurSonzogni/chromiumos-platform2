@@ -24,6 +24,25 @@ Note: This is a complementary daemon to the
 ~# start missived
 ```
 
+To build the package that works with a non-debug image, such as one from
+GoldenEye, the debug feature must be disabled:
+
+```
+# HOST (inside chroot)
+~$ USE=-cros-debug emerge-${BOARD} missive
+```
+
+If there are errors on conflicting USE flags, rebuild the dependencies with
+
+```
+# HOST (inside chroot)
+~$ build_packages --board=${BOARD} --with-nodebug
+```
+
+For convenience, if you always work with a non-debug image, consider disabling
+debug builds by default by adding `USE="${USE} -cros-debug"` to
+`/etc/make.conf.user` (inside chroot).
+
 ## Original design docs
 
 Note that aspects of the design may have evolved since the original design docs
