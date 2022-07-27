@@ -416,6 +416,7 @@ int LvmdClient::CreateLogicalVolume(const std::string& vg_name,
 
   if (size < 0) {
     LOG(ERROR) << "`--size` must be positive.";
+    return EX_USAGE;
   }
 
   lvmd::VolumeGroup vg;
