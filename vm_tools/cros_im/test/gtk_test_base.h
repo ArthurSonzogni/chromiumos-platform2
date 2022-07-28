@@ -45,10 +45,43 @@ class GtkTestBase : public ::testing::Test {
 
   // Gtk::TextView or Gtk::Entry
   template <typename T>
+  void ExpectBufferIs(T* text_widget_, const std::string& expect) {
+    EXPECT_EQ(text_widget_->get_buffer()->get_text(), expect);
+  }
+
+  // This does not include pre-edit text if present.
+  template <typename T>
   void RunAndExpectBufferChangeTo(T* text_widget_, const std::string& expect) {
     RunUntilSignal(
         text_widget_->get_buffer()->property_text().signal_changed());
-    EXPECT_EQ(text_widget_->get_buffer()->get_text(), expect);
+    ExpectBufferIs(text_widget_, expect);
+  }
+
+  template <typename T>
+  static void RunAndExpectWidgetPreeditChangeTo(T* text_widget_,
+                                                const std::string& expect) {
+    // preedit-changed isn't hooked up to gtkmm, so manually set up the signal.
+    std::string result;
+    gulong handler_id =
+        g_signal_connect(text_widget_->gobj(), "preedit-changed",
+                         G_CALLBACK(OnPreeditChanged), &result);
+    Gtk::Main::run();
+    g_signal_handler_disconnect(text_widget_->gobj(), handler_id);
+
+    EXPECT_EQ(result, expect);
+  }
+
+  static void OnPreeditChanged(GtkTextView* self,
+                               char* preedit,
+                               gpointer user_data) {
+    *static_cast<std::string*>(user_data) = preedit;
+    Gtk::Main::quit();
+  }
+
+  template <typename T>
+  void MoveBufferCursor(T* text_widget_, int index) {
+    auto buffer = text_widget_->get_buffer();
+    buffer->place_cursor(buffer->get_iter_at_offset(index));
   }
 
   Gtk::Main main_;
@@ -71,6 +104,16 @@ class GtkSimpleTextViewTest : public GtkTestBase {
   void RunAndExpectTextChangeTo(const std::string& expect) {
     RunAndExpectBufferChangeTo(&text_view_, expect);
   }
+
+  void ExpectTextIs(const std::string& expect) {
+    ExpectBufferIs(&text_view_, expect);
+  }
+
+  void RunAndExpectPreeditChangeTo(const std::string& expect) {
+    RunAndExpectWidgetPreeditChangeTo(&text_view_, expect);
+  }
+
+  void MoveCursor(int index) { MoveBufferCursor(&text_view_, index); }
 
   Gtk::Window window_;
   Gtk::TextView text_view_;

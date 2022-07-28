@@ -54,5 +54,21 @@ void KeySymEvent::Print(std::ostream& stream) const {
   stream << "key_sym(" << keysym_ << ")";
 }
 
+SetPreeditRegionEvent::~SetPreeditRegionEvent() = default;
+
+void SetPreeditRegionEvent::Run() const {
+  auto* extended_text_input = GetExtendedTextInput(text_input_id_);
+  if (!extended_text_input) {
+    FAILED() << "Failed to find text_input object";
+    return;
+  }
+  extended_text_input->listener->set_preedit_region(
+      extended_text_input->listener_data, extended_text_input, index_, length_);
+}
+
+void SetPreeditRegionEvent::Print(std::ostream& stream) const {
+  stream << "set_preedit_region(" << index_ << ", " << length_ << ")";
+}
+
 }  // namespace test
 }  // namespace cros_im

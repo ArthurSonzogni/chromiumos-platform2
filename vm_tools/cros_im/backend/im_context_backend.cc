@@ -26,6 +26,13 @@ auto Fwd(void* data, zwp_text_input_v1* text_input, Args... args) {
 template <typename... Args>
 auto DoNothing(void* data, zwp_text_input_v1* text_input, Args... args) {}
 
+template <auto F, typename... Args>
+auto FwdExtended(void* data,
+                 zcr_extended_text_input_v1* extendedtext_input,
+                 Args... args) {
+  return (reinterpret_cast<IMContextBackend*>(data)->*F)(args...);
+}
+
 template <typename... Args>
 auto DoNothingExtended(void* data,
                        zcr_extended_text_input_v1* text_input,
@@ -51,7 +58,7 @@ const zwp_text_input_v1_listener IMContextBackend::text_input_listener_ = {
 
 const zcr_extended_text_input_v1_listener
     IMContextBackend::extended_text_input_listener_ = {
-        .set_preedit_region = DoNothingExtended,
+        .set_preedit_region = FwdExtended<&IMContextBackend::SetPreeditRegion>,
         .clear_grammar_fragments = DoNothingExtended,
         .add_grammar_fragment = DoNothingExtended,
         .set_autocorrect_range = DoNothingExtended,
@@ -171,6 +178,19 @@ void IMContextBackend::KeySym(uint32_t serial,
   observer_->KeySym(sym, state == WL_KEYBOARD_KEY_STATE_PRESSED
                              ? KeyState::kPressed
                              : KeyState::kReleased);
+}
+
+void IMContextBackend::SetPreeditRegion(int32_t index,
+                                        uint32_t length_unsigned) {
+  int length = length_unsigned;
+  if (index > 0 || index + length < 0 || length <= 0) {
+    printf("SetPreeditRegion(%d, %u) is for unsupported range.\n", index,
+           length);
+  } else {
+    observer_->SetPreeditRegion(index, length, styles_);
+  }
+  cursor_pos_ = 0;
+  styles_.clear();
 }
 
 }  // namespace cros_im

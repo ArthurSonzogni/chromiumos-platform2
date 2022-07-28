@@ -56,6 +56,9 @@ class CrosGtkIMContext : public GtkIMContext {
     void SetPreedit(const std::string& preedit,
                     int cursor,
                     const std::vector<PreeditStyle>& styles) override;
+    void SetPreeditRegion(int byte_index,
+                          int byte_length,
+                          const std::vector<PreeditStyle>& styles) override;
     void Commit(const std::string& commit) override;
 
     void KeySym(uint32_t keysym, KeyState state) override;
@@ -66,6 +69,8 @@ class CrosGtkIMContext : public GtkIMContext {
 
   void Activate();
 
+  bool RetrieveSurrounding();
+
   // Ref counted
   GdkWindow* gdk_window_ = nullptr;
   GdkWindow* top_level_gdk_window_ = nullptr;
@@ -73,6 +78,10 @@ class CrosGtkIMContext : public GtkIMContext {
 
   // Set if FocusIn() is called prior to SetClientWindow().
   bool pending_activation_ = false;
+
+  // Updated by calling RetrieveSurrounding()
+  std::string surrounding_;
+  int surrounding_cursor_pos_ = 0;
 
   std::string preedit_;
   int32_t preedit_cursor_pos_ = 0;

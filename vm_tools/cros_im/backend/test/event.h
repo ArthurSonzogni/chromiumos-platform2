@@ -49,6 +49,19 @@ class KeySymEvent : public Event {
   int keysym_;
 };
 
+class SetPreeditRegionEvent : public Event {
+ public:
+  SetPreeditRegionEvent(int text_input_id, int index, int length)
+      : Event(text_input_id), index_(index), length_(length) {}
+  ~SetPreeditRegionEvent() override;
+  void Run() const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  int index_;
+  int length_;
+};
+
 }  // namespace test
 }  // namespace cros_im
 

@@ -41,6 +41,13 @@ class IMContextBackend {
     virtual void SetPreedit(const std::string& preedit,
                             int cursor,
                             const std::vector<PreeditStyle>& styles) = 0;
+    // |index| is the start relative to the cursor as a UTF-8 byte offset.
+    // |length| is a strictly positive UTF-8 byte count.
+    // The current cursor position will inside or on the boundary of the
+    // specified range.
+    virtual void SetPreeditRegion(int index,
+                                  int length,
+                                  const std::vector<PreeditStyle>& styles) = 0;
     virtual void Commit(const std::string& text) = 0;
 
     virtual void KeySym(uint32_t keysym, KeyState state) = 0;
@@ -79,6 +86,8 @@ class IMContextBackend {
               uint32_t sym,
               uint32_t state,
               uint32_t modifiers);
+  // extended_text_input_v1 event handlers.
+  void SetPreeditRegion(int32_t index, uint32_t length);
 
   static const zwp_text_input_v1_listener text_input_listener_;
   zwp_text_input_v1* text_input_ = nullptr;

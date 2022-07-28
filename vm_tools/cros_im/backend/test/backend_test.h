@@ -123,6 +123,12 @@ class BackendTest {
     actions_.emplace(std::make_unique<KeySymEvent>(text_input_id, keysym));
   }
 
+  template <int text_input_id = 0>
+  void SendSetPreeditRegion(int index, int length) {
+    actions_.emplace(
+        std::make_unique<SetPreeditRegionEvent>(text_input_id, index, length));
+  }
+
   // If the next action is an event, run it asynchronously.
   void PostEventIfNeeded();
 
