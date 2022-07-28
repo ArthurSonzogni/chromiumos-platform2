@@ -428,10 +428,8 @@ class AuthSession final {
       const std::optional<brillo::SecureBlob> user_input);
 
   // Removes the auth factor with the provided `auth_factor_label` from the USS.
-  void RemoveAuthFactorViaUserSecretStash(
-      const std::string& auth_factor_label,
-      base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-          on_done);
+  CryptohomeStatus RemoveAuthFactorViaUserSecretStash(
+      const std::string& auth_factor_label);
 
   // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
   // corresponding AuthFactors for testing purpose.

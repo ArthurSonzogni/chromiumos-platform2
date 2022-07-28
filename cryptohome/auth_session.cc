@@ -1041,13 +1041,15 @@ void AuthSession::RemoveAuthFactor(
     const user_data_auth::RemoveAuthFactorRequest& request,
     base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
         on_done) {
+  user_data_auth::RemoveAuthFactorReply reply;
   if (user_secret_stash_) {
-    RemoveAuthFactorViaUserSecretStash(request.auth_factor_label(),
-                                       std::move(on_done));
+    // TODO(b/236869367): Wrap the error when it is not a OKStatus.
+    ReplyWithError(
+        std::move(on_done), reply,
+        RemoveAuthFactorViaUserSecretStash(request.auth_factor_label()));
     return;
   }
   // TODO(b/236869367): Implement for VaultKeyset users.
-  user_data_auth::RemoveAuthFactorReply reply;
   ReplyWithError(
       std::move(on_done), reply,
       MakeStatus<CryptohomeCryptoError>(
@@ -1059,10 +1061,8 @@ void AuthSession::RemoveAuthFactor(
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
 }
 
-void AuthSession::RemoveAuthFactorViaUserSecretStash(
-    const std::string& auth_factor_label,
-    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-        on_done) {
+CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(
+    const std::string& auth_factor_label) {
   // Preconditions.
   DCHECK(user_secret_stash_);
   DCHECK(user_secret_stash_main_key_.has_value());
@@ -1073,26 +1073,19 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
       label_to_auth_factor_.find(auth_factor_label);
   if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
 
   if (label_to_auth_factor_.size() == 1) {
     LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   }
 
   AuthFactor auth_factor = *label_to_auth_factor_iter->second;
@@ -1100,13 +1093,11 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
       obfuscated_username_, auth_factor, auth_block_utility_);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to remove auth factor.";
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocAuthSessionRemoveFactorFailedInRemoveAuthFactor),
-                       user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-                       .Wrap(std::move(status)));
-    return;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionRemoveFactorFailedInRemoveAuthFactor),
+               user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
+        .Wrap(std::move(status));
   }
 
   // Remove the auth factor from the map.
@@ -1117,14 +1108,11 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
           /*wrapping_id=*/auth_factor_label)) {
     LOG(ERROR)
         << "AuthSession: Failed to remove auth factor from user secret stash.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionRemoveMainKeyFailedInRemoveAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionRemoveMainKeyFailedInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   }
   // Note: we may or may not have a reset secret for this auth factor -
   // therefore we don't check the return value.
@@ -1135,29 +1123,25 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "AuthSession: Failed to encrypt user secret stash after auth "
                   "factor removal.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInRemoveAuthFactor),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-            .Wrap(std::move(encrypted_uss_container).status()));
-    return;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionEncryptFailedInRemoveAuthFactor),
+               user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
+        .Wrap(std::move(encrypted_uss_container).status());
   }
   status = user_secret_stash_storage_->Persist(encrypted_uss_container.value(),
                                                obfuscated_username_);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to persist user secret stash after auth "
                   "factor removal.";
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocAuthSessionPersistUSSFailedInRemoveAuthFactor),
-                       user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-                       .Wrap(std::move(status)));
-    return;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionPersistUSSFailedInRemoveAuthFactor),
+               user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
+        .Wrap(std::move(status));
   }
 
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  return OkStatus<CryptohomeError>();
 }
 
 bool AuthSession::GetRecoveryRequest(
