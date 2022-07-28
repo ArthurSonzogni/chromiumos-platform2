@@ -500,7 +500,7 @@ class Platform2(object):
             stdout=True,
             encoding="utf-8",
         )
-        return json.loads(result.output)
+        return json.loads(result.stdout)
 
     def compile(self, args):
         """Runs the compile step of the Platform2 build.
