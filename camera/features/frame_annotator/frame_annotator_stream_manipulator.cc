@@ -7,10 +7,10 @@
 #include "features/frame_annotator/frame_annotator_stream_manipulator.h"
 
 #include <cinttypes>
-#include <cstring>
 #include <vector>
 
 #include <base/callback.h>
+#include <libyuv.h>
 #include <skia/core/SkCanvas.h>
 #include <skia/core/SkColorSpace.h>
 #include <skia/core/SkSurface.h>
@@ -310,22 +310,17 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
 
         CHECK_EQ(mapping.num_planes(), 2);
 
-        const size_t canvas_size = ctx->width * ctx->height;
-        const size_t uv_size = canvas_size / 4;
-        auto* u_plane = reinterpret_cast<const uint8_t*>(result->data(1));
-        auto* v_plane = reinterpret_cast<const uint8_t*>(result->data(2));
-        uint8_t* out_uv = mapping.plane(1).addr;
+        const auto y_plane = mapping.plane(0);
+        const auto uv_plane = mapping.plane(1);
 
         DCHECK_EQ(ctx->width % 2, 0);
-        DCHECK_EQ(ctx->height % 2, 0);
-        DCHECK_EQ(mapping.plane(0).size, canvas_size);
-        DCHECK_EQ(mapping.plane(1).size, uv_size * 2);
 
-        std::memcpy(mapping.plane(0).addr, result->data(0), canvas_size);
-        for (size_t i = 0; i < uv_size; ++i) {
-          out_uv[i * 2] = u_plane[i];
-          out_uv[i * 2 + 1] = v_plane[i];
-        }
+        libyuv::I420ToNV12(
+            reinterpret_cast<const uint8_t*>(result->data(0)), ctx->width,
+            reinterpret_cast<const uint8_t*>(result->data(1)), ctx->width / 2,
+            reinterpret_cast<const uint8_t*>(result->data(2)), ctx->width / 2,
+            y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+            ctx->width, ctx->height);
       },
       &context);
 
