@@ -12,13 +12,18 @@ table SerializedPasswordMetadata {}
 // Metadata for a `PIN` auth factor.
 table SerializedPinMetadata {}
 
+// Metadata for a `Recovery` auth factor.
 table SerializedCryptohomeRecoveryMetadata {}
+
+// Metadata for a `KIOSK` auth factor.
+table SerializedKioskMetadata {}
 
 // Union that holds auth factor's metadata.
 union SerializedAuthFactorMetadata {
   SerializedPasswordMetadata,
   SerializedPinMetadata,
-  SerializedCryptohomeRecoveryMetadata
+  SerializedCryptohomeRecoveryMetadata,
+  SerializedKioskMetadata
 }
 
 // Container that stores information about auth factor to be persisted on disk.

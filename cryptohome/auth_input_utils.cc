@@ -70,6 +70,7 @@ std::optional<AuthInput> CreateAuthInput(
           auth_input_proto.cryptohome_recovery_input(),
           cryptohome_recovery_ephemeral_pub_key);
       break;
+    case user_data_auth::AuthInput::kKioskInput:
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;
   }

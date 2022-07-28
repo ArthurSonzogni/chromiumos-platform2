@@ -20,6 +20,7 @@ enum AuthFactorType {
   AUTH_FACTOR_TYPE_PASSWORD = 1;
   AUTH_FACTOR_TYPE_PIN = 2;
   AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY = 3;
+  AUTH_FACTOR_TYPE_KIOSK = 4;
 }
 
 // Password AuthFactor requires a secret to be passed for derivation and
@@ -50,6 +51,10 @@ message CryptohomeRecoveryAuthInput {
   bytes recovery_response = 3;
 }
 
+// Kiosk AuthFactor requires no secret to be passed for derivation and
+// creation of key.
+message KioskAuthInput {}
+
 // AuthInput is a wrapper around any secret or input data that is required to
 // authenticate or create an AuthFactor on disk.
 message AuthInput {
@@ -60,6 +65,7 @@ message AuthInput {
     PasswordAuthInput password_input = 1;
     PinAuthInput pin_input = 2;
     CryptohomeRecoveryAuthInput cryptohome_recovery_input = 3;
+    KioskAuthInput kiosk_input = 4;
   }
 }
 
@@ -78,6 +84,8 @@ message PinMetadata {
 }
 
 message CryptohomeRecoveryMetadata {}
+
+message KioskMetadata {}
 
 // AuthFactor is a backing store for any secret stored on Chrome OS in the USS
 // World. This proto definition is used to communicate with the client side.
@@ -106,5 +114,6 @@ message AuthFactor {
     PasswordMetadata password_metadata = 4;
     PinMetadata pin_metadata = 5;
     CryptohomeRecoveryMetadata cryptohome_recovery_metadata = 6;
+    KioskMetadata kiosk_metadata = 7;
   }
 }
