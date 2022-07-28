@@ -541,7 +541,7 @@ TEST_F(AdaptiveChargingControllerTest, TestEmptyChargeHistory) {
   }
   EXPECT_EQ(1, NumChargeHistoryFiles(time_full_on_ac_dir_));
 
-  base::FileEnumerator on_ac_dir(time_full_on_ac_dir_, false,
+  base::FileEnumerator on_ac_dir(time_on_ac_dir_, false,
                                  base::FileEnumerator::FILES);
   for (base::FilePath path = on_ac_dir.Next(); !path.empty();
        path = on_ac_dir.Next()) {
