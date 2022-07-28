@@ -60,6 +60,7 @@ config("compiler_defaults") {
     "-Wstring-plus-int",
     "-Wxor-used-as-pow",
     "-Wimplicit-int-float-conversion",
+    "-Wdeprecated-declarations",
 
     # We use C99 array designators in C++ code.  Our compilers support this
     # extension since C++ has no equivalent yet (as of C++20).
@@ -86,7 +87,10 @@ config("compiler_defaults") {
     libs += [ "stdc++fs" ]
   }
   if (enable_werror) {
-    cflags += [ "-Werror" ]
+    cflags += [
+      "-Werror",
+      "-Wno-error=deprecated-declarations",
+    ]
   }
   if (use.cros_host) {
     defines += [ "NDEBUG" ]
