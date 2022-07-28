@@ -168,6 +168,10 @@ class ChargeHistory {
   // retention window.
   base::TimeDelta GetTimeFullOnAC();
 
+  // Returns the hold charge duration on AC within ChargeHistory's retention
+  // window.
+  base::TimeDelta GetHoldTimeOnAC();
+
   // Returns the number of days that have charge history recorded.
   int DaysOfHistory();
 
@@ -179,6 +183,13 @@ class ChargeHistory {
   void OnExitLowPowerState();
 
  private:
+  // Helper function for `CheckAndFixSystemTimeChange` to correct different
+  // `timestamp` values based on the current system time and ticks.
+  // Returns true if `timestamp` was corrected, and false if it was not.
+  bool CheckAndFixTimestamp(base::Time* timestamp,
+                            const base::TimeTicks& ticks,
+                            const base::TimeDelta& ticks_offset);
+
   // Check if system time had a large change, and adjust `full_charge_time_`,
   // `ac_connect_time_` and the charge event file associated with
   // `ac_connect_time_` if there was a large time change.
@@ -275,6 +286,11 @@ class ChargeHistory {
   // Base directory for Charge History.
   base::FilePath charge_history_dir_;
 
+  // Directory for files that track the amount of time at the hold percent while
+  // an AC charger is connected per day. If there's a hold range, start to track
+  // time when the lower bound of the range is reached for the first time.
+  base::FilePath hold_time_on_ac_dir_;
+
   // Directory for files that track the amount of time with full charge while an
   // AC charger is connected per day.
   base::FilePath time_full_on_ac_dir_;
@@ -333,6 +349,16 @@ class ChargeHistory {
   // became fully charged.
   base::TimeDelta full_charge_ticks_offset_;
 
+  // Timestamp for when we started holding/delaying charge. Equal to
+  // base::Time() (0) if the charger is disconnected or the battery is actively
+  // charging.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
+  base::Time hold_charge_time_;
+
+  // Used for making sure a time change doesn't alter the hold time on AC
+  // durations.
+  base::TimeTicks hold_charge_ticks_;
+
   // Ordered map of charge events, which maps AC charge plug in times to
   // duration of charge. This provides O(logn) addition and removal of charge
   // events (including removal of min and max) where n <= 50.
@@ -345,6 +371,10 @@ class ChargeHistory {
   // 30 days.
   std::map<base::Time, base::TimeDelta> time_full_on_ac_days_;
 
+  // Ordered map of days to duration holding charge while on AC for up to the
+  // last 30 days.
+  std::map<base::Time, base::TimeDelta> hold_time_on_ac_days_;
+
   // The duration spent on AC for the charge history currently retained.
   // Value is always floored to `kChargeHistoryTimeInterval`.
   base::TimeDelta duration_on_ac_;
@@ -353,6 +383,11 @@ class ChargeHistory {
   // currently retained.
   // Value is always floored to `kChargeHistoryTimeInterval`.
   base::TimeDelta duration_full_on_ac_;
+
+  // The duration spent holding charge while on AC for the charge history
+  // currently retained in `hold_time_on_ac_dir_`.
+  // Value is always floored to `kChargeHistoryTimeInterval`.
+  base::TimeDelta hold_duration_on_ac_;
 
   // Cached external power type. Used to determine if a charge event needs to be
   // created or completed.
