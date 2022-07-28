@@ -24,8 +24,9 @@
 
 namespace {
 
-constexpr char kTracingOn[] = "sys/kernel/debug/tracing/tracing_on";
+constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
 
+constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
@@ -100,6 +101,12 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
       platform_(std::move(platform)) {}
 
 void ChromeosStartup::EarlySetup() {
+  const base::FilePath tracefs = root_.Append(kSysKernelTracing);
+  if (!platform_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags, "")) {
+    // TODO(b/232901639): Improve failure reporting.
+    PLOG(WARNING) << "Unable to mount " << tracefs.value();
+  }
+
   gid_t debugfs_grp;
   if (!brillo::userdb::GetGroupInfo(kDebugfsAccessGrp, &debugfs_grp)) {
     PLOG(WARNING) << "Can't get gid for " << kDebugfsAccessGrp;
@@ -109,18 +116,18 @@ void ChromeosStartup::EarlySetup() {
     const base::FilePath debug = root_.Append(kSysKernelDebug);
     if (!platform_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
                           data)) {
-      // TODO(b/232901639): Improve failure reporting
+      // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << debug.value();
     }
   }
 
-  // /sys/kernel/debug/tracing/tracing_on is 1 right after tracefs is
-  // initialized in the kernel. Set it to a reasonable initial state of 0 after
-  // debugfs is mounted. This needs to be done early during boot to avoid
-  // interference with ureadahead that uses ftrace to build the list of files to
-  // preload in the block cache. Android's init running in the ARC++ container
-  // sets this file to 0, and we set it to 0 here so the the initial state of
-  // tracing_on is always 0 regardless of ARC++.
+  // /sys/kernel/tracing/tracing_on is 1 right after tracefs is initialized in
+  // the kernel. Set it to a reasonable initial state of 0 after debugfs is
+  // mounted. This needs to be done early during boot to avoid interference
+  // with ureadahead that uses ftrace to build the list of files to preload in
+  // the block cache. Android's init running in the ARC++ container sets this
+  // file to 0, and we set it to 0 here so the the initial state of tracing_on
+  // is always 0 regardless of ARC++.
   struct stat st;
   const base::FilePath tracing = root_.Append(kTracingOn);
   if (platform_->Stat(tracing, &st) && S_ISREG(st.st_mode)) {

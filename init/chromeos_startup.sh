@@ -685,7 +685,7 @@ if [ -f /sys/fs/selinux/enforce ]; then
   restorecon -R -D /var
   # Restoring file contexts for sysfs. tracefs is excluded from this invocation
   # and delayed in a separate job to improve boot time.
-  restorecon -R /sys -e /sys/kernel/debug/tracing
+  restorecon -R /sys -e /sys/kernel/debug/tracing -e /sys/kernel/tracing
   # We cannot do recursive for .shadow since userdata is encrypted (including
   # file names) before user logs-in. Restoring context for it may mislabel files
   # if encrypted filename happens to match something.
