@@ -501,7 +501,12 @@ TPM_RC Parse_pw_get_log_t(const std::string& buffer,
         proto_entry->mutable_reset_tree();
         break;
       default:
-        ret = SAPI_RC_BAD_SEQUENCE;
+        // The entries that don't match any known types will be treated
+        // as type invalid. We don't want to return an error here because
+        // it's sometimes expected behavior to receive unknown entries when
+        // the server rollbacks the version. The log entry can still be used
+        // for parsing root hash, though it can't be replayed.
+        break;
     }
     ++x;
   }
