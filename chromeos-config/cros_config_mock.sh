@@ -14,7 +14,7 @@ SQUASHFS_BASE="/run/chromeos-config/private"
 SMBIOS_NAME=""
 DT_COMPATIBLE_LIST=()
 SKU_ID=""
-WHITELABEL_TAG=""
+CUSTOM_LABEL_TAG=""
 
 print_usage () {
   cat <<EOF >&2
