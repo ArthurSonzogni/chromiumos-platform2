@@ -768,7 +768,7 @@ bool CellularCapability3gpp::IsDualStackSupported() {
     return true;
 
   SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString()
-                << " MCCMNC: " << mobile_operator_info_->mccmnc();
+                << " MCCMNC: " << cellular()->home_provider_info()->mccmnc();
   // Disable dual-stack on L850 + Verizon
   const struct {
     DeviceId device_id;
@@ -783,7 +783,7 @@ bool CellularCapability3gpp::IsDualStackSupported() {
       if (affected_device.operator_code.size() == 0 ||
           std::find(affected_device.operator_code.begin(),
                     affected_device.operator_code.end(),
-                    mobile_operator_info_->mccmnc()) !=
+                    cellular()->home_provider_info()->mccmnc()) !=
               affected_device.operator_code.end())
         return false;
     }
