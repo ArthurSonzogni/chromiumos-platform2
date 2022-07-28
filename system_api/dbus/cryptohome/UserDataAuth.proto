@@ -731,8 +731,9 @@ message StartAuthSessionReply {
   // Map to return label and public key data for the authentication credential
   // to be sent in. This will be empty if user_exists is set to false.
   map<string, cryptohome.KeyData> key_label_data = 4;
-  // List of AuthFactors to return all the AuthFactors available for user
-  // authentication. This will be empty if user_exists is set to false.
+
+  // List of AuthFactors configured and available for authentication in the
+  // context of this session.
   repeated AuthFactor auth_factors = 5;
 
   // Indicate an error if this field exists.
@@ -741,9 +742,8 @@ message StartAuthSessionReply {
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 6;
 
-  // Gives AuthFactors that can be configured as authentication means for
-  // this user (regardless of whether they are already added for this user or
-  // not).
+  // Deprecated. Use ListAuthFactors to determine this. Was never actually
+  // implemented on StartAuthSession.
   repeated AuthFactorType supported_auth_factors = 7;
 }
 
@@ -1527,6 +1527,27 @@ message RemoveAuthFactorReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
+}
+
+// List all of the auth factors that are configured, as well as the set of auth
+// factor types which are supported.
+message ListAuthFactorsRequest {
+  // The account of a user.
+  cryptohome.AccountIdentifier account_id = 1;
+}
+
+message ListAuthFactorsReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+  // All of the auth factors configured for the user.
+  repeated AuthFactor configured_auth_factors = 3;
+  // All of the auth factor types supported for this user.
+  repeated AuthFactorType supported_auth_factors = 4;
 }
 
 // GetRecoveryRequestRequest is built when a user is trying to get the
