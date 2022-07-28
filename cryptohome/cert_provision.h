@@ -52,6 +52,7 @@ enum CertificateProfile {
   XTS_CERTIFICATE = 8,
   ENTERPRISE_VTPM_EK_CERTIFICATE = 9,
   SOFT_BIND_CERTIFICATE = 10,
+  DEVICE_SETUP_CERTIFICATE = 11,
 };
 
 // Supported signing mechanisms.

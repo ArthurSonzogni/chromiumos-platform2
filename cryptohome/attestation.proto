@@ -228,6 +228,11 @@ enum CertificateProfile {
   //   CN=Local Authority
   //   O=Chrome Device Soft Bind
   SOFT_BIND_CERTIFICATE = 10;
+
+  // A remote attestation certificate for proving device integrity.
+  //   CN=<An opaque device identifier string>
+  //   O=Chrome Device Setup
+  DEVICE_SETUP_CERTIFICATE = 11;
 }
 
 // The certificate request to be sent to the attestation server.
