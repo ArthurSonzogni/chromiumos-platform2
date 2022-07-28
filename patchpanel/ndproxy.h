@@ -150,11 +150,6 @@ class NDProxy {
   bool IsGuestInterface(int ifindex);
   bool IsRouterInterface(int ifindex);
 
-  // b/187918638: return true if the interface is a guest interface mapping to
-  // a router interface that does not send NS/NA therefore requires special
-  // workaround.
-  bool IsGuestToIrregularRouter(int ifindex);
-
   // Socket used to communicate with kernel through ioctl. No real packet data
   // goes through this socket.
   base::ScopedFD dummy_fd_;

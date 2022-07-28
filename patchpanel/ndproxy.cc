@@ -381,30 +381,6 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     }
   }
 
-  // b/187918638: some cellular modems never send proper NS and NA,
-  // there is no chance that we get the guest IP as normally from NA. Instead,
-  // we have to monitor DAD NS frames and use it as judgement. Notice that since
-  // upstream never reply NA, this DAD never fails.
-  if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT &&
-      IsGuestToIrregularRouter(dst_addr.sll_ifindex) &&
-      !guest_discovery_handler_.is_null()) {
-    uint8_t zerobuf[sizeof(in6_addr)] = {0};
-    nd_neighbor_solicit* ns = reinterpret_cast<nd_neighbor_solicit*>(icmp6);
-    if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) ==
-            0  // Empty source IP indicates DAD
-        &&
-        (((ns->nd_ns_target.s6_addr[0] & 0xe0) == 0x20)  // Global Unicast
-         || ((ns->nd_ns_target.s6_addr[0] & 0xfe) == 0xfc))) {  // Unique Local
-      char ifname[IFNAMSIZ];
-      if_indextoname(dst_addr.sll_ifindex, ifname);
-      char ipv6_addr_str[INET6_ADDRSTRLEN];
-      inet_ntop(AF_INET6, &(ns->nd_ns_target.s6_addr), ipv6_addr_str,
-                INET6_ADDRSTRLEN);
-      guest_discovery_handler_.Run(std::string(ifname),
-                                   std::string(ipv6_addr_str));
-    }
-  }
-
   // Translate the NDP frame and send it through proxy interface
   auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
   if (map_entry == MapForType(icmp6->icmp6_type)->end())
@@ -801,16 +777,6 @@ bool NDProxy::IsGuestInterface(int ifindex) {
 
 bool NDProxy::IsRouterInterface(int ifindex) {
   return if_map_ra_.find(ifindex) != if_map_ra_.end();
-}
-
-bool NDProxy::IsGuestToIrregularRouter(int ifindex) {
-  if (!IsGuestInterface(ifindex))
-    return false;
-  for (int target_if : if_map_rs_[ifindex]) {
-    if (irregular_router_ifs_.count(target_if) > 0)
-      return true;
-  }
-  return false;
 }
 
 void NDProxy::AddIrregularRouterInterface(const std::string& ifname_physical) {
