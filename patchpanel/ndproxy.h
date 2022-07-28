@@ -87,18 +87,6 @@ class NDProxy {
                                      uint8_t opt_type,
                                      const MacAddress& target_mac);
 
-  // Given an extended |buffer|, find a proper frame buffer pointer so that
-  // pt > buffer, and start of IP header (pt + ETH_H_LEN) is 4-bytes aligned.
-  // In the worst case the size of usable buffer will be original size minus 3.
-  // 4x => 4x+2; 4x+1 => 4x+2; 4x+2 => 4x+2; 4x+3 => 4x+6
-  static const uint8_t* AlignFrameBuffer(const uint8_t* buffer) {
-    return buffer + 3 - (reinterpret_cast<uintptr_t>(buffer + 1) & 0x3);
-  }
-
-  static uint8_t* AlignFrameBuffer(uint8_t* buffer) {
-    return buffer + 3 - (reinterpret_cast<uintptr_t>(buffer + 1) & 0x3);
-  }
-
   // Helper function to create a AF_PACKET socket suitable for frame read/write.
   static base::ScopedFD PreparePacketSocket();
 

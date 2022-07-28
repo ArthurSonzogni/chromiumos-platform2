@@ -179,8 +179,7 @@ std::string ToHexString(const uint8_t* buffer, size_t len) {
 }
 
 TEST(NDProxyTest, GetPrefixInfoOption) {
-  uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
-  uint8_t* in_buffer = NDProxy::AlignFrameBuffer(in_buffer_extended);
+  uint8_t in_buffer[IP_MAXPACKET];
 
   struct {
     std::string name;
@@ -251,9 +250,11 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
   for (const auto& test_case : test_cases) {
     LOG(INFO) << test_case.name;
 
-    memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
-    size_t offset = ETHER_HDR_LEN + sizeof(ip6_hdr);
-    size_t icmp6_len = test_case.input_frame_len - offset;
+    size_t packet_len = test_case.input_frame_len - ETHER_HDR_LEN;
+    memcpy(in_buffer, test_case.input_frame + ETHER_HDR_LEN, packet_len);
+
+    size_t offset = sizeof(ip6_hdr);
+    size_t icmp6_len = packet_len - offset;
     const nd_opt_prefix_info* prefix_info =
         NDProxy::GetPrefixInfoOption(in_buffer + offset, icmp6_len);
 
