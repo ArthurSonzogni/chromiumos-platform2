@@ -275,10 +275,6 @@ impl SuspendConductor {
 
                 error!("Returned from power off");
             }
-
-            // Unset the hibernate cookie.
-            info!("Unsetting hibernate cookie at {}", block_path);
-            set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)?;
         } else {
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.
@@ -288,7 +284,10 @@ impl SuspendConductor {
             info!("Resumed from hibernate");
         }
 
-        Ok(())
+        // Unset the hibernate cookie.
+        info!("Clearing hibernate cookie at {}", block_path);
+        set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)
+            .context("Failed to clear hibernate cookie")
     }
 
     /// Save the snapshot image to disk.

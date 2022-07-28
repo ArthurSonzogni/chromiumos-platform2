@@ -12,7 +12,9 @@ use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 use zeroize::Zeroize;
 
-use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
+use crate::cookie::{
+    cookie_description, get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue,
+};
 use crate::crypto::{CryptoMode, CryptoReader};
 use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
@@ -53,6 +55,7 @@ pub struct ResumeConductor {
     key_manager: HibernateKeyManager,
     options: ResumeOptions,
     metrics_logger: MetricsLogger,
+    stateful_block_path: String,
 }
 
 impl ResumeConductor {
@@ -63,6 +66,7 @@ impl ResumeConductor {
             key_manager: HibernateKeyManager::new(),
             options: Default::default(),
             metrics_logger: MetricsLogger::new()?,
+            stateful_block_path: path_to_stateful_block()?,
         })
     }
 
@@ -77,7 +81,7 @@ impl ResumeConductor {
         // Create a variable that will merge the stateful snapshots when this
         // function returns one way or another.
         let mut volume_manager = VolumeManager::new()?;
-        let _pending_merge = PendingStatefulMerge::new(&mut volume_manager);
+        let pending_merge = PendingStatefulMerge::new(&mut volume_manager);
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
@@ -89,6 +93,10 @@ impl ResumeConductor {
         replay_logs(true, !self.options.dry_run);
         // Then move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
+        // Since resume_inner() returned, we are no longer in a viable resume
+        // path. Drop the pending merge object, causing the stateful
+        // dm-snapshots to merge with their origins.
+        drop(pending_merge);
         // Read the metrics files to send out samples.
         read_and_send_metrics();
         // Unless the test keys are being used, wait for the key material from
@@ -108,12 +116,7 @@ impl ResumeConductor {
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
     fn resume_inner(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
-        // Clear the cookie near the start to avoid situations where we repeatedly
-        // try to resume but fail.
-        let block_path = path_to_stateful_block()?;
-        info!("Clearing hibernate cookie at '{}'", block_path);
-        set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)?;
-        info!("Cleared cookie");
+        self.decide_to_resume()?;
         let mut meta_file = open_metafile()?;
         debug!("Loading metadata");
         let mut metadata = HibernateMetadata::load_from_reader(&mut meta_file)?;
@@ -153,6 +156,33 @@ impl ResumeConductor {
             kernel_key_file,
             dbus_connection,
         )
+    }
+
+    /// Helper function to evaluate the hibernate cookie and decide whether or
+    /// not to continue with resume.
+    fn decide_to_resume(&self) -> Result<()> {
+        // If the cookie left by hibernate and updated by resume-init doesn't
+        // indicate readiness, skip the resume unless testing manually.
+        let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
+            .context("Failed to get hibernate cookie")?;
+        if cookie != HibernateCookieValue::ResumeInProgress {
+            let description = cookie_description(cookie);
+            if self.options.dry_run {
+                info!(
+                    "Hibernate cookie was {}, continuing anyway due to --dry-run",
+                    description
+                );
+            } else {
+                warn!("Hibernate cookie was {}, abandoning resume", description);
+                return Err(HibernateError::CookieError(format!(
+                    "Cookie was {}, abandoning resume",
+                    description
+                )))
+                .context("Aborting resume due to cookie");
+            }
+        }
+
+        Ok(())
     }
 
     fn load_kernel_key_blob(
@@ -215,6 +245,17 @@ impl ResumeConductor {
         // Let other daemons know it's the end of the world.
         let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)
             .context("Failed to call powerd for imminent resume")?;
+
+        // Write a tombstone indicating we got basically all the way through to
+        // attempting the resume. Both the current value (ResumeInProgress) and
+        // this ResumeAborting value cause a reboot-after-crash to do the right
+        // thing.
+        set_hibernate_cookie(
+            Some(&self.stateful_block_path),
+            HibernateCookieValue::ResumeAborting,
+        )
+        .context("Failed to set hibernate cookie to ResumeAborting")?;
+
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
         if let Err(e) = self.metrics_logger.flush() {
