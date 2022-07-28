@@ -100,6 +100,7 @@ timerfd_settime: 1
 umask: 1
 umount2: 1
 uname: 1
+unlink: 1
 unshare: 1
 wait4: 1
 write: 1
