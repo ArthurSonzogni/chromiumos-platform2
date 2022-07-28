@@ -22,11 +22,6 @@ enum AuthFactorType {
   AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY = 3;
 }
 
-// AuthFactorIdentifier provides some identificaiton information for a given
-// AuthFactor. This information would be used by the client to authenticate a
-// particular AuthFactor.
-message AuthFactorIdentifier {}
-
 // Password AuthFactor requires a secret to be passed for derivation and
 // creation of key.
 message PasswordAuthInput {
