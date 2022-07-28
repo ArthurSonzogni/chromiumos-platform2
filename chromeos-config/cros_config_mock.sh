@@ -84,7 +84,8 @@ PATH_NAME="$1"
 PROPERTY_NAME="$2"
 
 array_contains () {
-  for item in "${$2[@]}"; do
+  local -n array="$2"
+  for item in "${array[@]}"; do
     if [[ "$1" == "${item}" ]]; then
       return 0
     fi
@@ -97,7 +98,8 @@ if [[ -f /sys/class/dmi/id/product_name && -z "${SMBIOS_NAME}" ]]; then
   read -r SMBIOS_NAME </sys/class/dmi/id/product_name
 fi
 
-if [[ -f /proc/device-tree/compatible && "${#DT_COMPATIBLE_LIST}" -eq 0 ]]; then
+if [[ -f /proc/device-tree/compatible && \
+  "${#DT_COMPATIBLE_LIST[@]}" -eq 0 ]]; then
   # readarray -d '' splits on null chars
   readarray -d '' DT_COMPATIBLE_LIST </proc/device-tree/compatible
 fi
