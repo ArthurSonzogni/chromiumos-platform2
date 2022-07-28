@@ -6,26 +6,29 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "blkid",
     "libbrillo",
-    "libchrome",
-    "libmojo",
   ]
 }
 
-source_set("libexecutor") {
+source_set("libudev") {
   sources = [
-    "executor.cc",
-    "executor_daemon.cc",
+    "udev_device.cc",
+    "udev_utils.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    "mojom:executor_mojo_bindings",
-    "udev:libudev",
-  ]
 }
 
 if (use.test) {
-  source_set("libexecutor_test") {
-    deps = [ "udev:libudev_test" ]
+  source_set("libudev_test") {
+    sources = [
+      "udev_device_test.cc",
+      "udev_utils_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [ ":libudev" ]
   }
 }

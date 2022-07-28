@@ -67,6 +67,7 @@ if (use.test) {
     run_test = true
     deps = [
       "daemon:libdaemon_test",
+      "executor:libexecutor_test",
       "interface:libinterface_test",
       "metrics:libmetrics_test",
       "state_handler:libstate_handler_test",
