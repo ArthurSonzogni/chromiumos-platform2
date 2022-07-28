@@ -3164,7 +3164,12 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
 
-  wifi_provider_->AddCredentials(creds);
+  if (IsActiveProfile(profile)) {
+    // The API allow to add Passpoint credentials to any user profile but we
+    // must forward the credentials to the provider only and only if the
+    // specified profile is the current active profile (see b/239682395).
+    wifi_provider_->AddCredentials(creds);
+  }
 
   return true;
 #else
