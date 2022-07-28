@@ -702,12 +702,14 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_->CreateAuthSession(Username(kUsername), flags,
-                                               AuthIntent::kDecrypt);
-  EXPECT_TRUE(auth_session_status.ok());
-  AuthSession* auth_session = auth_session_status.value().Get();
+  AuthSession* auth_session = nullptr;
+  {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_->CreateAuthSession(Username(kUsername), flags,
+                                                 AuthIntent::kDecrypt);
+    EXPECT_TRUE(auth_session_status.ok());
+    auth_session = auth_session_status.value().Get();
+  }
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -810,6 +812,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
        .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -860,6 +863,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
        .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1064,6 +1068,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
        .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},

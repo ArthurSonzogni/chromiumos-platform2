@@ -3333,7 +3333,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   InUseAuthSession auth_session =
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
-  auto requested_delay = auth_session->timeout_timer_.GetCurrentDelay();
+  auto requested_delay = auth_session->GetRemainingTime();
   auto time_difference =
       (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
   EXPECT_LT(time_difference, base::Seconds(1));
@@ -3405,15 +3405,13 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
   ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
 
   // Timer is not set before authentication.
-  EXPECT_FALSE(auth_session->timeout_timer_.IsRunning());
-  EXPECT_EQ(auth_session->timeout_timer_start_time_, base::TimeTicks());
+  EXPECT_FALSE(auth_session->timeout_timer_->IsRunning());
 
   // Extension only happens for authenticated auth session.
   auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Test timer is correctly set after authentication.
-  EXPECT_TRUE(auth_session->timeout_timer_.IsRunning());
-  EXPECT_NE(auth_session->timeout_timer_start_time_, base::TimeTicks());
+  EXPECT_TRUE(auth_session->timeout_timer_->IsRunning());
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {

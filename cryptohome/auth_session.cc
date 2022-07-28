@@ -295,6 +295,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(
       .obfuscated_username = std::move(obfuscated_username),
       .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
       .intent = intent,
+      .timeout_timer = std::make_unique<base::WallClockTimer>(),
       .user_exists = user_exists,
       .auth_factor_map = std::move(auth_factor_map),
       .migrate_to_user_secret_stash = migrate_to_user_secret_stash};
@@ -306,6 +307,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       obfuscated_username_(SanitizeUserName(username_)),
       is_ephemeral_user_(*params.is_ephemeral_user),
       auth_intent_(*params.intent),
+      timeout_timer_(std::move(params.timeout_timer)),
       auth_session_creation_time_(base::TimeTicks::Now()),
       on_timeout_(base::DoNothing()),
       crypto_(backing_apis.crypto),
@@ -326,6 +328,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
+  DCHECK(timeout_timer_);
   DCHECK(crypto_);
   DCHECK(platform_);
   DCHECK(user_session_map_);
@@ -383,12 +386,9 @@ void AuthSession::SetAuthSessionAsAuthenticated(
 
 void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
   DCHECK_GT(delay, base::Minutes(0));
-
-  // |.start_time| and |.timer| need to be set at the same time.
-  timeout_timer_start_time_ = base::TimeTicks::Now();
-  timeout_timer_.Start(FROM_HERE, delay,
-                       base::BindOnce(&AuthSession::AuthSessionTimedOut,
-                                      base::Unretained(this)));
+  timeout_timer_->Start(FROM_HERE, base::Time::Now() + delay,
+                        base::BindOnce(&AuthSession::AuthSessionTimedOut,
+                                       base::Unretained(this)));
 }
 
 CryptohomeStatus AuthSession::ExtendTimeoutTimer(
@@ -2756,9 +2756,8 @@ void AuthSession::ResetLECredentials() {
 }
 
 base::TimeDelta AuthSession::GetRemainingTime() const {
-  DCHECK(timeout_timer_.IsRunning());
-  auto time_passed = base::TimeTicks::Now() - timeout_timer_start_time_;
-  auto time_left = timeout_timer_.GetCurrentDelay() - time_passed;
+  DCHECK(timeout_timer_->IsRunning());
+  auto time_left = timeout_timer_->desired_run_time() - base::Time::Now();
   return time_left.is_negative() ? base::TimeDelta() : time_left;
 }
 

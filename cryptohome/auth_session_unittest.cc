@@ -17,6 +17,8 @@
 #include <base/run_loop.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
+#include <base/test/power_monitor_test.h>
+#include <base/test/simple_test_clock.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
@@ -286,8 +288,10 @@ class AuthSessionTest : public ::testing::Test {
     return user_session_map_.Find(username);
   }
 
+  base::test::ScopedPowerMonitorTestSource fake_power_monitor_source_;
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::SimpleTestClock clock_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunnerHandle::Get();
 
@@ -498,6 +502,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = FactorMapWithPassword<void>(kFakeLabel),
        .migrate_to_user_secret_stash = false},
@@ -598,6 +603,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel),
@@ -632,6 +638,7 @@ TEST_F(AuthSessionTest,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<ScryptAuthBlockState>(kFakeLabel),
@@ -723,6 +730,7 @@ TEST_F(AuthSessionTest,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<ScryptAuthBlockState>(kFakeLabel),
@@ -816,6 +824,7 @@ TEST_F(AuthSessionTest,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = FactorMapWithPin(kFakePinLabel),
        .migrate_to_user_secret_stash = false},
@@ -890,6 +899,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = FactorMapWithPin(kFakePinLabel),
        .migrate_to_user_secret_stash = false},
@@ -1207,6 +1217,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel),
@@ -1279,6 +1290,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel),
@@ -1321,6 +1333,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            FactorMapWithPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel),
@@ -1364,6 +1377,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1396,6 +1410,7 @@ TEST_F(AuthSessionTest, TimeoutTestCallbackAfterTimeout) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1419,6 +1434,52 @@ TEST_F(AuthSessionTest, TimeoutTestCallbackAfterTimeout) {
   EXPECT_EQ(timeout_future.Get(), auth_session.token());
 }
 
+TEST_F(AuthSessionTest, TimeoutTestAfterPowerSuspend) {
+  // Test.
+  // Set up a WallClockTimer that will fire in one minute.
+  std::unique_ptr<base::WallClockTimer> wall_clock_timer =
+      std::make_unique<base::WallClockTimer>(
+          &clock_, task_environment_.GetMockTickClock());
+
+  clock_.SetNow(base::Time::Now());
+  // AuthSession must be constructed without using AuthSessionManager,
+  // because during cleanup the AuthSession must stay valid after
+  // timing out for verification.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .obfuscated_username = SanitizeUserName(kFakeUsername),
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::move(wall_clock_timer),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  EXPECT_EQ(auth_session.status(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
+
+  // Have the device power off for 30 seconds
+  constexpr auto time_passed = base::Seconds(30);
+  fake_power_monitor_source_.Suspend();
+  clock_.Advance(time_passed);
+  task_environment_.FastForwardBy(time_passed);
+  fake_power_monitor_source_.Resume();
+  task_environment_.RunUntilIdle();
+
+  EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout - time_passed);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+
+  // Go forward the remaining lifetime (|kAuthSessionTimeout| - |time_passed|):
+  clock_.Advance(kAuthSessionTimeout - time_passed);
+  task_environment_.FastForwardBy(kAuthSessionTimeout - time_passed);
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
+}
+
 TEST_F(AuthSessionTest, ExtensionTest) {
   // AuthSession must be constructed without using AuthSessionManager,
   // because during cleanup the AuthSession must stay valid after
@@ -1428,23 +1489,28 @@ TEST_F(AuthSessionTest, ExtensionTest) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_EQ(auth_session.status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
-  auth_session.SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.GetRemainingTime(), kAuthSessionTimeout);
 
-  ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
-
+  // Test.
   EXPECT_TRUE(auth_session.ExtendTimeoutTimer(kAuthSessionExtension).ok());
 
   // Verify that timer has changed, within a resaonsable degree of error.
   auto requested_delay = kAuthSessionTimeout + kAuthSessionExtension;
-  EXPECT_EQ(auth_session.timeout_timer_.GetCurrentDelay(), requested_delay);
+  EXPECT_EQ(auth_session.GetRemainingTime(), requested_delay);
 
-  auth_session.timeout_timer_.FireNow();
+  // Fast forward to end the lifetime of the AuthSession and check if properly
+  // invalidates.
+  task_environment_.FastForwardBy(requested_delay);
   EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
@@ -1464,6 +1530,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kWebAuthn,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = FactorMapWithPassword<void>(kFakeLabel),
        .migrate_to_user_secret_stash = false},
@@ -1532,6 +1599,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2989,6 +3057,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = FactorMapWithPassword<void>(kFakeLabel),
        .migrate_to_user_secret_stash = false},
@@ -3064,6 +3133,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
           .obfuscated_username = SanitizeUserName(kFakeUsername),
           .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
+          .timeout_timer = std::make_unique<base::WallClockTimer>(),
           .user_exists = true,
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
@@ -4020,6 +4090,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
        .obfuscated_username = SanitizeUserName(kFakeUsername),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = true},

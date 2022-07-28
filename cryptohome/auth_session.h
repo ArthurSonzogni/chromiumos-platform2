@@ -15,7 +15,7 @@
 #include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 #include <base/memory/weak_ptr.h>
-#include <base/timer/timer.h>
+#include <base/timer/wall_clock_timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
@@ -96,6 +96,7 @@ class AuthSession final {
     hwsec::ExplicitInit<ObfuscatedUsername> obfuscated_username;
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
+    std::unique_ptr<base::WallClockTimer> timeout_timer;
     hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
     hwsec::ExplicitInit<bool> migrate_to_user_secret_stash;
@@ -594,8 +595,10 @@ class AuthSession final {
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::flat_set<AuthIntent> authorized_intents_;
-  base::OneShotTimer timeout_timer_;
-  base::TimeTicks timeout_timer_start_time_;
+
+  // The wall clock timer object for recording AuthSession lifetime.
+  std::unique_ptr<base::WallClockTimer> timeout_timer_;
+
   base::TimeTicks auth_session_creation_time_;
   base::TimeTicks authenticated_time_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
@@ -665,7 +668,6 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
-  FRIEND_TEST(AuthSessionTest, ExtensionTest);
   FRIEND_TEST(AuthSessionTest, UssMigrationFlagCheckFailure);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
