@@ -15,17 +15,17 @@
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
-// Real implementation of ChallengeCredentialsHelper that is based on TPM and
+// Real implementation of ChallengeCredentialsHelper that is based on HWSec and
 // other cryptographic operations.
 class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
  public:
@@ -33,9 +33,9 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // when it fails with a transient error.
   static constexpr int kRetryAttemptCount = 3;
 
-  // |tpm| is a non-owned pointer that must stay valid for the whole lifetime of
-  // the created object.
-  explicit ChallengeCredentialsHelperImpl(Tpm* tpm);
+  // |hwsec| is a non-owned pointer that must stay valid for the whole lifetime
+  // of the created object.
+  explicit ChallengeCredentialsHelperImpl(hwsec::CryptohomeFrontend* hwsec);
   ChallengeCredentialsHelperImpl(const ChallengeCredentialsHelperImpl&) =
       delete;
   ChallengeCredentialsHelperImpl& operator=(
@@ -94,7 +94,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
                             TPMStatus verify_status);
 
   // Non-owned.
-  Tpm* const tpm_;
+  hwsec::CryptohomeFrontend* const hwsec_;
   // The key challenge service used for the currently running operation, if any.
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
   // The state of the currently running operation, if any.

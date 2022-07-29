@@ -16,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -96,7 +97,7 @@ structure::SignatureChallengeInfo MakeFakeKeysetChallengeInfo(
 class ChallengeCredentialsHelperImplTestBase : public testing::Test {
  protected:
   ChallengeCredentialsHelperImplTestBase()
-      : challenge_credentials_helper_(&tpm_) {}
+      : challenge_credentials_helper_(&hwsec_) {}
 
   // Starts the asynchronous GenerateNew() operation.  The result, once the
   // operation completes, will be stored in |generate_new_result|.
@@ -187,15 +188,14 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   std::unique_ptr<SignatureSealedCreationMocker> MakeSealedCreationMocker(
       const std::vector<structure::ChallengeSignatureAlgorithm>&
           key_algorithms) {
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetRandomSecureBlob(_))
+    EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
         .WillOnce(ReturnValue(kTpmProtectedSecret));
 
     std::vector<HwsecAlgorithm> hwsec_key_algorithms;
     for (auto algo : key_algorithms) {
       hwsec_key_algorithms.push_back(ConvertAlgorithm(algo));
     }
-    auto mocker =
-        std::make_unique<SignatureSealedCreationMocker>(tpm_.get_mock_hwsec());
+    auto mocker = std::make_unique<SignatureSealedCreationMocker>(&hwsec_);
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(hwsec_key_algorithms);
     mocker->set_obfuscated_username(kObfuscatedUsername);
@@ -212,8 +212,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
     for (auto algo : key_algorithms) {
       hwsec_key_algorithms.push_back(ConvertAlgorithm(algo));
     }
-    auto mocker =
-        std::make_unique<SignatureSealedUnsealingMocker>(tpm_.get_mock_hwsec());
+    auto mocker = std::make_unique<SignatureSealedUnsealingMocker>(&hwsec_);
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(hwsec_key_algorithms);
     mocker->set_chosen_algorithm(ConvertAlgorithm(unsealing_algorithm));
@@ -278,16 +277,13 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
 
   // Sets up a mock for the successful salt generation.
   void SetSuccessfulSaltGenerationMock() {
-    EXPECT_CALL(tpm_,
-                GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kSaltRandomPart),
-                        ReturnError<TPMErrorBase>()));
+    EXPECT_CALL(hwsec_, GetRandomBlob(kChallengeCredentialsSaltRandomByteCount))
+        .WillOnce(ReturnValue(kSaltRandomPart));
   }
 
   // Sets up a mock for the failure during salt generation.
   void SetFailingSaltGenerationMock() {
-    EXPECT_CALL(tpm_,
-                GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
+    EXPECT_CALL(hwsec_, GetRandomBlob(kChallengeCredentialsSaltRandomByteCount))
         .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   }
 
@@ -366,7 +362,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
  private:
   // Mock objects:
 
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   std::unique_ptr<StrictMock<MockKeyChallengeService>> challenge_service_ =
       std::make_unique<StrictMock<MockKeyChallengeService>>();
   KeyChallengeServiceMockController salt_challenge_mock_controller_{

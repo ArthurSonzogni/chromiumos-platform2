@@ -11,11 +11,11 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/tpm.h"
 
 using brillo::Blob;
 using brillo::CombineBlobs;
@@ -80,18 +80,17 @@ HwsecAlgorithm ConvertAlgorithm(
 ChallengeCredentialsGenerateNewOperation::
     ChallengeCredentialsGenerateNewOperation(
         KeyChallengeService* key_challenge_service,
-        Tpm* tpm,
+        hwsec::CryptohomeFrontend* hwsec,
         const std::string& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
         const std::string& obfuscated_username,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
-      tpm_(tpm),
       account_id_(account_id),
       public_key_info_(public_key_info),
       obfuscated_username_(obfuscated_username),
       completion_callback_(std::move(completion_callback)),
-      hwsec_(tpm_->GetHwsec()) {}
+      hwsec_(hwsec) {}
 
 ChallengeCredentialsGenerateNewOperation::
     ~ChallengeCredentialsGenerateNewOperation() = default;
@@ -160,23 +159,25 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
 }
 
 TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
-  Blob salt_random_bytes;
-  if (hwsec::Status err = tpm_->GetRandomDataBlob(
-          kChallengeCredentialsSaltRandomByteCount, &salt_random_bytes);
-      !err.ok()) {
-    LOG(ERROR) << "Failed to generate random bytes for the salt: " << err;
+  hwsec::StatusOr<Blob> salt_random_bytes =
+      hwsec_->GetRandomBlob(kChallengeCredentialsSaltRandomByteCount);
+  if (!salt_random_bytes.ok()) {
+    LOG(ERROR) << "Failed to generate random bytes for the salt: "
+               << salt_random_bytes.status();
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kReboot}),
                TPMRetryAction::kReboot)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(err)));
+        .Wrap(MakeStatus<CryptohomeTPMError>(
+            std::move(salt_random_bytes).status()));
   }
-  DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount, salt_random_bytes.size());
+  DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount,
+            salt_random_bytes->size());
   // IMPORTANT: Make sure the salt is prefixed with a constant. See the comment
   // on GetChallengeCredentialsSaltConstantPrefix() for details.
   salt_ = CombineBlobs(
-      {GetChallengeCredentialsSaltConstantPrefix(), salt_random_bytes});
+      {GetChallengeCredentialsSaltConstantPrefix(), salt_random_bytes.value()});
   return OkStatus<CryptohomeTPMError>();
 }
 

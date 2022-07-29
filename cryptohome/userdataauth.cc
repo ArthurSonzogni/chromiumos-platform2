@@ -1654,7 +1654,7 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
   // credentials for challenge-protected vaults.
 
   default_challenge_credentials_helper_ =
-      std::make_unique<ChallengeCredentialsHelperImpl>(tpm_);
+      std::make_unique<ChallengeCredentialsHelperImpl>(tpm_->GetHwsec());
   challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
   auth_block_utility_->InitializeForChallengeCredentials(
       challenge_credentials_helper_);

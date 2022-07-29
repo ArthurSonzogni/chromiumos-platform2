@@ -25,7 +25,6 @@ namespace cryptohome {
 
 class Credentials;
 class KeyChallengeService;
-class Tpm;
 
 // This operation generates new credentials for the given user and the
 // referenced cryptographic key. This operation involves making challenge
@@ -53,7 +52,7 @@ class ChallengeCredentialsGenerateNewOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsGenerateNewOperation(
       KeyChallengeService* key_challenge_service,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const std::string& obfuscated_username,
@@ -90,7 +89,6 @@ class ChallengeCredentialsGenerateNewOperation final
   structure::SignatureChallengeInfo ConstructKeysetSignatureChallengeInfo()
       const;
 
-  Tpm* const tpm_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const std::string obfuscated_username_;

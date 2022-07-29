@@ -12,12 +12,12 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/tpm.h"
 
 using brillo::Blob;
 using cryptohome::error::CryptohomeError;
@@ -122,12 +122,12 @@ bool IsValidSignature(const Blob& public_key_spki_der,
 
 ChallengeCredentialsVerifyKeyOperation::ChallengeCredentialsVerifyKeyOperation(
     KeyChallengeService* key_challenge_service,
-    Tpm* tpm,
+    hwsec::CryptohomeFrontend* hwsec,
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
-      tpm_(tpm),
+      hwsec_(hwsec),
       account_id_(account_id),
       public_key_info_(public_key_info),
       completion_callback_(std::move(completion_callback)) {}
@@ -160,25 +160,25 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
                  TPMRetryAction::kNoRetry));
     return;
   }
-  Blob challenge;
-  if (hwsec::Status err =
-          tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge);
-      !err.ok()) {
+  hwsec::StatusOr<Blob> challenge = hwsec_->GetRandomBlob(kChallengeByteCount);
+  if (!challenge.ok()) {
     LOG(ERROR)
         << "Failed to generate random bytes for the verification challenge: "
-        << err;
+        << challenge.status();
     Complete(&completion_callback_,
              MakeStatus<CryptohomeTPMError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyGetRandomFailed))
-                 .Wrap(MakeStatus<CryptohomeTPMError>(std::move(err))));
+                 .Wrap(MakeStatus<CryptohomeTPMError>(
+                     std::move(challenge).status())));
     return;
   }
   MakeKeySignatureChallenge(
-      account_id_, public_key_spki_der, challenge, *chosen_challenge_algorithm,
+      account_id_, public_key_spki_der, challenge.value(),
+      *chosen_challenge_algorithm,
       base::BindOnce(
           &ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse,
           weak_ptr_factory_.GetWeakPtr(), public_key_spki_der,
-          *chosen_challenge_algorithm, challenge));
+          *chosen_challenge_algorithm, challenge.value()));
 }
 
 void ChallengeCredentialsVerifyKeyOperation::Abort(TPMStatus status) {

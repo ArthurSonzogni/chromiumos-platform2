@@ -22,7 +22,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -50,7 +49,7 @@ class ChallengeCredentialsDecryptOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
@@ -91,7 +90,6 @@ class ChallengeCredentialsDecryptOperation final
   void Resolve(
       TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
-  Tpm* const tpm_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;

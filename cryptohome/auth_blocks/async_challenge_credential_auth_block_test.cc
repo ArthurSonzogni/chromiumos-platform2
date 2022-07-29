@@ -21,6 +21,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -33,7 +34,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_key_challenge_service.h"
-#include "cryptohome/mock_tpm.h"
 #include "cryptohome/proto_bindings/key.pb.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
 
@@ -656,14 +656,12 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
       brillo::BlobFromString("public_key_spki_der");
 
   AsyncChallengeCredentialAuthBlockFullTest() {
-    EXPECT_CALL(tpm_, GetRandomDataBlob(_, _))
-        .WillRepeatedly([](size_t length, brillo::Blob* data) {
-          data->assign(length, 0);
-          return nullptr;
-        });
+    EXPECT_CALL(hwsec_, GetRandomBlob(_)).WillRepeatedly([](size_t length) {
+      return brillo::Blob(length, 0);
+    });
 
     challenge_credentials_helper_ =
-        std::make_unique<ChallengeCredentialsHelperImpl>(&tpm_);
+        std::make_unique<ChallengeCredentialsHelperImpl>(&hwsec_);
   }
 
   ~AsyncChallengeCredentialAuthBlockFullTest() = default;
@@ -678,10 +676,10 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   }
 
   void BackendWillSeal(const std::vector<HwsecAlgorithm>& key_algorithms) {
-    EXPECT_CALL(*tpm_.get_mock_hwsec(), GetRandomSecureBlob(_))
+    EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
         .WillOnce(ReturnValue(kTpmProtectedSecret));
 
-    SignatureSealedCreationMocker mocker(tpm_.get_mock_hwsec());
+    SignatureSealedCreationMocker mocker(&hwsec_);
     mocker.set_public_key_spki_der(kPublicKeySpkiDer);
     mocker.set_key_algorithms(key_algorithms);
     mocker.set_obfuscated_username(kObfuscatedUsername);
@@ -691,7 +689,7 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
 
   void BackendWillUnseal(const std::vector<HwsecAlgorithm>& key_algorithms,
                          HwsecAlgorithm unsealing_algorithm) {
-    SignatureSealedUnsealingMocker mocker(tpm_.get_mock_hwsec());
+    SignatureSealedUnsealingMocker mocker(&hwsec_);
     mocker.set_public_key_spki_der(kPublicKeySpkiDer);
     mocker.set_key_algorithms(key_algorithms);
     mocker.set_chosen_algorithm(unsealing_algorithm);
@@ -779,7 +777,7 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
 
   base::test::TaskEnvironment task_environment_;
-  NiceMock<MockTpm> tpm_;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   std::unique_ptr<ChallengeCredentialsHelperImpl> challenge_credentials_helper_;
   std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
   // Unowned - pointing to the object owned by `*auth_block_`.

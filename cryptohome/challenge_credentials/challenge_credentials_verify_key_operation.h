@@ -11,13 +11,13 @@
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 
 namespace cryptohome {
 
 class KeyChallengeService;
-class Tpm;
 
 // This operation verifies that the specified cryptographic key is available and
 // can be used for authentication. This operation involves making challenge
@@ -41,7 +41,7 @@ class ChallengeCredentialsVerifyKeyOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsVerifyKeyOperation(
       KeyChallengeService* key_challenge_service,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
@@ -59,7 +59,7 @@ class ChallengeCredentialsVerifyKeyOperation final
       const brillo::Blob& challenge,
       TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
-  Tpm* const tpm_;
+  hwsec::CryptohomeFrontend* const hwsec_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;
