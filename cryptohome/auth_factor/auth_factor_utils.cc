@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -143,6 +144,32 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
   }
   proto.value().set_label(auth_factor_label);
   return proto;
+}
+
+void LoadUserAuthFactorProtos(
+    AuthFactorManager* manager,
+    const std::string& obfuscated_username,
+    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor>*
+        out_auth_factors) {
+  for (const auto& [label, auth_factor_type] :
+       manager->ListAuthFactors(obfuscated_username)) {
+    // Try to load the auth factor. If this fails we just skip it and move on
+    // rather than failing the entire operation.
+    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> owned_auth_factor =
+        manager->LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+    if (!owned_auth_factor.ok() || *owned_auth_factor == nullptr) {
+      LOG(WARNING) << "Unable to load an AuthFactor with label " << label
+                   << ".";
+      continue;
+    }
+    // Use the auth factor to populate the response.
+    AuthFactor& auth_factor = **owned_auth_factor;
+    auto auth_factor_proto = GetAuthFactorProto(
+        auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+    if (auth_factor_proto) {
+      *out_auth_factors->Add() = std::move(*auth_factor_proto);
+    }
+  }
 }
 
 bool NeedsResetSecret(AuthFactorType auth_factor_type) {

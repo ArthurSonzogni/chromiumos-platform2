@@ -1081,6 +1081,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredGenRandFailed = 627,
   /* ./userdataauth.cc */
   kLocUserDataAuthHwsecNotReadyInInitChalRespAuth = 628,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUserNonexistentInListAuthFactors = 629,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

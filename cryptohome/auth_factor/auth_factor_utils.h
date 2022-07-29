@@ -10,7 +10,9 @@
 #include <string>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <google/protobuf/repeated_field.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 
@@ -28,6 +30,14 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthFactorType& auth_factor_type,
     const std::string& auth_factor_label);
+
+// Populates the D-Bus API proto with all of the auth factor data for a given
+// user using the provided factor manager.
+void LoadUserAuthFactorProtos(
+    AuthFactorManager* manager,
+    const std::string& obfuscated_username,
+    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor>*
+        out_auth_factors);
 
 // This returns if a given |auth_factor_type| is PinWeaver backed, and thus
 // needs a reset secret.

@@ -30,6 +30,7 @@
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
+#include "UserDataAuth.pb.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
@@ -81,6 +82,7 @@ using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Sha1;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -98,6 +100,7 @@ using ::testing::Eq;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
+using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -4434,6 +4437,139 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
               kFakeLabel);
   EXPECT_THAT(auth_session_reply.key_label_data().at(kFakeLabel).type(),
               KeyData::KEY_TYPE_FINGERPRINT);
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsButHasNoFactors) {
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
+  static constexpr char kUser[] = "foo@example.com";
+  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  AuthFactorManager manager(&platform_);
+  userdataauth_->set_auth_factor_manager_for_testing(&manager);
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+
+  // Set up standard list auth factor parameters, we'll be calling this a few
+  // times during the test.
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id(kUser);
+  user_data_auth::ListAuthFactorsReply list_reply;
+  auto save_reply = [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+                       const user_data_auth::ListAuthFactorsReply& reply) {
+    *list_reply_ptr = reply;
+  };
+
+  // List all the auth factors, there should be none at the start.
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(save_reply, base::Unretained(&list_reply)));
+  }
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+
+  // Add auth factors, we should be able to list them.
+  auto password_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPassword, "password-label",
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+      AuthBlockState{
+          .state = TpmBoundToPcrAuthBlockState{
+              .scrypt_derived = false,
+              .salt = SecureBlob("fake salt"),
+              .tpm_key = SecureBlob("fake tpm key"),
+              .extended_tpm_key = SecureBlob("fake extended tpm key"),
+              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+          }});
+  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+              IsOk());
+  auto pin_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, "pin-label",
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState{
+                         .le_label = 0xbaadf00d,
+                         .salt = SecureBlob("fake salt"),
+                         .chaps_iv = SecureBlob("fake chaps IV"),
+                         .fek_iv = SecureBlob("fake file encryption IV"),
+                         .reset_salt = SecureBlob("more fake salt"),
+                     }});
+  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  list_reply.Clear();
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(save_reply, base::Unretained(&list_reply)));
+  }
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::sort(list_reply.mutable_configured_auth_factors()->pointer_begin(),
+            list_reply.mutable_configured_auth_factors()->pointer_end(),
+            [](const user_data_auth::AuthFactor* lhs,
+               const user_data_auth::AuthFactor* rhs) {
+              return lhs->label() < rhs->label();
+            });
+  EXPECT_EQ(list_reply.configured_auth_factors().size(), 2);
+  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
+  EXPECT_EQ(list_reply.configured_auth_factors(1).label(), "pin-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(1).has_pin_metadata());
+
+  // Remove an auth factor, we should still be able to list the remaining one.
+  ASSERT_THAT(manager.RemoveAuthFactor(kObfuscatedUser, *pin_factor,
+                                       &auth_block_utility_),
+              IsOk());
+  list_reply.Clear();
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(save_reply, base::Unretained(&list_reply)));
+  }
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_EQ(list_reply.configured_auth_factors().size(), 1);
+  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {

@@ -4712,9 +4712,43 @@ void UserDataAuth::ListAuthFactors(
   AssertOnMountThread();
   user_data_auth::ListAuthFactorsReply reply;
 
-  // TODO(b/208357938): Implement ListAuthFactors.
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-  std::move(on_done).Run(reply);
+  // Compute the raw and sanitized user name from the request.
+  const std::string& username = request.account_id().account_id();
+  std::string obfuscated_username = SanitizeUserName(username);
+
+  // If the user does not exist, we cannot return auth factors for it.
+  if (!keyset_management_->UserExists(obfuscated_username)) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthUserNonexistentInListAuthFactors),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Populate the response with all of the auth factors we can find. For
+  // compatibility we assume that if the user somehow has both USS and vault
+  // keysets, that the VKs should take priority.
+  AuthFactorVaultKeysetConverter converter(keyset_management_);
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  converter.VaultKeysetsToAuthFactors(username, auth_factor_map);
+  for (const auto& [unused, auth_factor] : auth_factor_map) {
+    auto auth_factor_proto = GetAuthFactorProto(
+        auth_factor->metadata(), auth_factor->type(), auth_factor->label());
+    if (auth_factor_proto) {
+      *reply.add_configured_auth_factors() = std::move(*auth_factor_proto);
+    }
+  }
+  // If the auth factor map is empty then there were no VK keys, try USS.
+  if (auth_factor_map.empty()) {
+    LoadUserAuthFactorProtos(auth_factor_manager_, obfuscated_username,
+                             reply.mutable_configured_auth_factors());
+  }
+
+  // Successfully completed, send the response with OK.
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 void UserDataAuth::GetAuthSessionStatus(
