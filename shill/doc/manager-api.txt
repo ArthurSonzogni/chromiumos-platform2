@@ -471,6 +471,16 @@ Methods		dict GetProperties()
 			Manager.TetheringConfig. Only supports cellular and ethernet as the
 			upstream technologies. Only supports WiFi as the downstream technology.
 
+		string CheckTetheringReadiness()
+
+			Checks whether the upstream technology is ready to tether. It checks,
+			1. If any upstream is connected.
+			2. For cellular upstream, performs an entitlement check with the
+			carrier, and check to see if there is a known tethering APN
+			that can be used.
+			Returns a status string indicating the readiness. Possible status:
+			"ready", "not_allowed"
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

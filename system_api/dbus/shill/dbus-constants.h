@@ -40,6 +40,8 @@ const char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
 const char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
 const char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";
 const char kRemovePasspointCredentialsFunction[] = "RemovePasspointCredentials";
+const char kSetTetheringEnabledFunction[] = "SetTetheringEnabled";
+const char kCheckTetheringReadinessFunction[] = "CheckTetheringReadiness";
 
 // Service function names.
 const char kClearPropertiesFunction[] = "ClearProperties";
@@ -931,6 +933,10 @@ const char kTetheringErrorNotAllowed[] = "not_allowed";
 const char kTetheringErrorNoUpstream[] = "no_upstream";
 const char kTetheringErrorUpstreamFailure[] = "upstream_failure";
 const char kTetheringErrorUpstreamNotReady[] = "upstream_not_ready";
+
+// kCheckTetheringReadinessFunction return status
+const char kTetheringReadinessReady[] = "ready";
+const char kTetheringReadinessNotAllowed[] = "not_allowed";
 
 }  // namespace shill
 
