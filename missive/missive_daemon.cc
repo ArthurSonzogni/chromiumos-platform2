@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The ChromiumOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,8 @@
 
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/time/time_delta_from_string.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/analytics/resource_collector_cpu.h"
@@ -26,6 +28,7 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
+#include "missive/missive_args.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/scheduler/enqueue_job.h"
@@ -49,17 +52,19 @@ constexpr size_t kCompressionThreshold = 512U;
 
 }  // namespace
 
-MissiveDaemon::MissiveDaemon()
+MissiveDaemon::MissiveDaemon(std::unique_ptr<MissiveArgs> args)
     : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
       org::chromium::MissivedAdaptor(this),
+      args_(std::move(args)),
       upload_client_(UploadClient::Create()),
-      enqueuing_record_tallier_{base::Minutes(3)} {
-  analytics_registry_.Add(
-      "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
-                     base::Minutes(10), base::FilePath(kReportingDirectory)));
-  analytics_registry_.Add(
-      "CPU",
-      std::make_unique<analytics::ResourceCollectorCpu>(base::Minutes(10)));
+      enqueuing_record_tallier_{args_->enqueuing_record_tallier()} {
+  analytics_registry_.Add("Storage",
+                          std::make_unique<analytics::ResourceCollectorStorage>(
+                              args_->storage_collector_interval(),
+                              base::FilePath(kReportingDirectory)));
+  analytics_registry_.Add("CPU",
+                          std::make_unique<analytics::ResourceCollectorCpu>(
+                              args_->cpu_collector_interval()));
 }
 
 MissiveDaemon::~MissiveDaemon() = default;
@@ -90,9 +95,10 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
       base::BindOnce(&MissiveDaemon::OnStorageModuleConfigured,
                      base::Unretained(this)));
 
-  analytics_registry_.Add("Memory",
-                          std::make_unique<analytics::ResourceCollectorMemory>(
-                              base::Minutes(10), std::move(memory_resource)));
+  analytics_registry_.Add(
+      "Memory",
+      std::make_unique<analytics::ResourceCollectorMemory>(
+          args_->memory_collector_interval(), std::move(memory_resource)));
 }
 
 void MissiveDaemon::OnStorageModuleConfigured(

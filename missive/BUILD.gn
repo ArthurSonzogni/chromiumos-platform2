@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors.All rights reserved.
+# Copyright 2021 The ChromiumOS Authors.All rights reserved.
 # Use of this source code is governed by a BSD - style license that can be
 # found in the LICENSE file.
 
@@ -128,7 +128,12 @@ static_library("missiveclientlib") {
 }
 
 static_library("libmessaging_layer") {
-  sources = [ "missive_daemon.cc" ]
+  sources = [
+    "missive_args.cc",
+    "missive_args.h",
+    "missive_daemon.cc",
+    "missive_daemon.h",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":missive_dbus_adaptors",
@@ -177,6 +182,7 @@ if (use.test) {
       "client/report_queue_test.cc",
       "compression/compression_module_test.cc",
       "dbus/upload_client_test.cc",
+      "missive_args_test.cc",
       "missive_daemon_test.cc",
       "resources/enqueuing_record_tallier_test.cc",
       "resources/resource_interface_test.cc",

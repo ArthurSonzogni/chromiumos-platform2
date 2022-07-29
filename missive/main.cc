@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/missive_daemon.h"
-
 #include <base/logging.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+
+#include "missive/missive_args.h"
+#include "missive/missive_daemon.h"
 
 namespace {
 
@@ -24,6 +25,13 @@ void SetLogItems() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  DEFINE_string(enqueuing_record_tallier, "3m", "Record tallier duration");
+  DEFINE_string(cpu_collector_interval, "10m",
+                "CPU resource collector interval");
+  DEFINE_string(storage_collector_interval, "10m",
+                "Storage resource collector interval");
+  DEFINE_string(memory_collector_interval, "10m",
+                "Memory resource collector interval");
   brillo::FlagHelper::Init(argc, argv,
                            "missive_daemon - Administrative device "
                            "event logging daemon.");
@@ -38,7 +46,13 @@ int main(int argc, char* argv[]) {
       "missive_daemon_thread_pool");
 
   LOG(INFO) << "Starting Missive Service.";
-  int exit_code = reporting::MissiveDaemon().Run();
+  int exit_code =
+      reporting::MissiveDaemon(std::make_unique<reporting::MissiveArgs>(
+                                   FLAGS_enqueuing_record_tallier,
+                                   FLAGS_cpu_collector_interval,
+                                   FLAGS_storage_collector_interval,
+                                   FLAGS_memory_collector_interval))
+          .Run();
   LOG(INFO) << "Missive Service ended with exit_code=" << exit_code;
 
   return exit_code;

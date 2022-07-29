@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The ChromiumOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 
 #include "missive/analytics/registry.h"
 #include "missive/dbus/upload_client.h"
+#include "missive/missive_args.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/resources/enqueuing_record_tallier.h"
 #include "missive/resources/resource_interface.h"
@@ -30,7 +31,7 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
                       public org::chromium::MissivedAdaptor,
                       public org::chromium::MissivedInterface {
  public:
-  MissiveDaemon();
+  explicit MissiveDaemon(std::unique_ptr<MissiveArgs> args);
   MissiveDaemon(const MissiveDaemon&) = delete;
   MissiveDaemon& operator=(const MissiveDaemon&) = delete;
   virtual ~MissiveDaemon();
@@ -71,6 +72,8 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           reporting::UpdateEncryptionKeyResponse>> response,
       const reporting::UpdateEncryptionKeyRequest& in_request) override;
+
+  const std::unique_ptr<MissiveArgs> args_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
