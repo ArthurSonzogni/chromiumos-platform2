@@ -6,12 +6,25 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":hwsec-profiling",
+    ":install_headers",
     ":libhwsec-foundation",
+    ":libhwsec-profiling",
     ":tpm_version_client",
   ]
   if (use.test) {
-    deps += [ ":hwsec-foundation_testrunner" ]
+    deps += [
+      ":hwsec-foundation_testrunner",
+      ":install_test_syscaller_headers",
+    ]
+  }
+  if (use.fuzzer) {
+    deps += [ ":install_fuzzer_headers" ]
+  }
+  if (use.tpm_dynamic) {
+    deps += [
+      ":install_no_tpm_checker",
+      ":install_tpm_version",
+    ]
   }
 }
 
@@ -64,21 +77,111 @@ shared_library("libhwsec-foundation") {
     sources += [ "fuzzed_trousers_utils.cc" ]
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
   }
+  install_path = "lib"
 }
 
-static_library("hwsec-profiling") {
+static_library("libhwsec-profiling") {
   sources = [ "profiling/profiling.cc" ]
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
   ]
+  install_path = "lib"
 }
 
 executable("tpm_version_client") {
   sources = [ "tool/tpm_version_client.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libhwsec-foundation" ]
+  install_path = "/usr/sbin"
+}
+
+install_config("install_tpm_version") {
+  sources = [ "tool/tpm_version" ]
+  type = "executable"
+  install_path = "/usr/sbin"
+}
+
+install_config("install_no_tpm_checker") {
+  sources = [ "init/no-tpm-checker.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_headers") {
+  sources = [
+    "hwsec-foundation_export.h",
+    "signature_traits.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation"
+  deps = [
+    ":install_status_headers",
+    ":install_syscaller_headers",
+    ":install_tpm_error_headers",
+    ":install_utility_headers",
+  ]
+}
+
+install_config("install_status_headers") {
+  sources = [
+    "status/status_chain.h",
+    "status/status_chain_macros.h",
+    "status/status_chain_or.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/status"
+  deps = [ ":install_status_impl_headers" ]
+}
+
+install_config("install_status_impl_headers") {
+  sources = [
+    "status/impl/error.h",
+    "status/impl/stackable_error.h",
+    "status/impl/stackable_error_forward_declarations.h",
+    "status/impl/stackable_error_iterator.h",
+    "status/impl/stackable_error_range.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/status/impl"
+}
+
+install_config("install_syscaller_headers") {
+  sources = [
+    "syscaller/syscaller.h",
+    "syscaller/syscaller_impl.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/syscaller"
+}
+
+install_config("install_tpm_error_headers") {
+  sources = [
+    "tpm_error/auth_failure_analysis.h",
+    "tpm_error/handle_auth_failure.h",
+    "tpm_error/tpm_error_constants.h",
+    "tpm_error/tpm_error_data.h",
+    "tpm_error/tpm_error_metrics_constants.h",
+    "tpm_error/tpm_error_uma_reporter.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/tpm_error"
+}
+
+install_config("install_utility_headers") {
+  sources = [
+    "utility/conversions.h",
+    "utility/crypto.h",
+    "utility/no_default_init.h",
+    "utility/synchronized.h",
+    "utility/task_dispatching_framework.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/utility"
+}
+
+install_config("install_test_syscaller_headers") {
+  sources = [ "syscaller/mock_syscaller.h" ]
+  install_path = "/usr/include/libhwsec-foundation/syscaller"
+}
+
+install_config("install_fuzzer_headers") {
+  sources = [ "fuzzed_trousers_utils.h" ]
+  install_path = "/usr/include/libhwsec-foundation"
 }
 
 if (use.test) {
@@ -124,5 +227,6 @@ if (use.test) {
       ":libhwsec-foundation",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 }
