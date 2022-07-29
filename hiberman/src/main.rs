@@ -78,10 +78,12 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     let value = matches.opt_str("V");
     let path = matches.free.get(0).cloned();
 
-    // In verbose mode, or for anything other than "get", fire up logging.
-    if verbose || set_cookie || clear_cookie {
-        init_logging()?;
-    }
+    let verbosity = if matches.opt_present("v") { 9 } else { 1 };
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(verbosity)
+        .init()
+        .unwrap();
 
     if set_cookie || clear_cookie || value.is_some() {
         let value = if let Some(value) = value {
