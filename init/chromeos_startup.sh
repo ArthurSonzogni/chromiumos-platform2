@@ -156,7 +156,7 @@ ROOT_DEV_DISK="$(rootdev -d -s)"
 # Example root dev types we need to handle: /dev/sda2 -> /dev/sda,
 # /dev/mmcblk0p0 -> /dev/mmcblk0p, /dev/ubi2_1 -> /dev/ubi
 ROOTDEV_TYPE="$(echo "${ROOT_DEV}" | sed 's/[0-9_]*$//')"
-ROOTDEV_NAME="${ROOTDEV_DISK##/dev/}"
+ROOTDEV_NAME="${ROOT_DEV_DISK##/dev/}"
 ROOTDEV_REMOVABLE="$(cat "/sys/block/${ROOTDEV_NAME}/removable")"
 
 # Load the GPT helper functions and the image settings.
