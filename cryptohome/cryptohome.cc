@@ -568,8 +568,8 @@ bool BuildAuthorization(base::CommandLine* cl,
         cl->HasSwitch(switches::kKeyDelegatePath)) {
       // We're doing challenge response auth.
       // Parameters for challenge response auth:
-      // --challenge_alg=<Algorithm>: See ChallengeSignatureAlgorithm in
-      //   key.proto for valid values.
+      // --challenge_alg=<Algorithm>(,<Algorithm>)*: See
+      //   ChallengeSignatureAlgorithm in key.proto for valid values.
       //   Example: "CHALLENGE_RSASSA_PKCS1_V1_5_SHA1".
       // --challenge_spki=<DER Encoded SPKI Public Key in hex>
       // --key_delegate_name=<Key Delegate DBus Service Name>
@@ -589,18 +589,22 @@ bool BuildAuthorization(base::CommandLine* cl,
       auth->mutable_key()->mutable_data()->set_type(
           cryptohome::KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 
-      cryptohome::ChallengeSignatureAlgorithm challenge_alg;
-      if (!ChallengeSignatureAlgorithm_Parse(
-              cl->GetSwitchValueASCII(switches::kChallengeAlgorithm),
-              &challenge_alg)) {
-        printf("Invalid challenge response algorithm.\n");
-        return false;
-      }
       auto* challenge_response_key = auth->mutable_key()
                                          ->mutable_data()
                                          ->mutable_challenge_response_key()
                                          ->Add();
-      challenge_response_key->add_signature_algorithm(challenge_alg);
+      const std::vector<std::string> algo_strings =
+          SplitString(cl->GetSwitchValueASCII(switches::kChallengeAlgorithm),
+                      ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      for (const auto& algo_string : algo_strings) {
+        cryptohome::ChallengeSignatureAlgorithm challenge_alg;
+        if (!ChallengeSignatureAlgorithm_Parse(algo_string, &challenge_alg)) {
+          printf("Invalid challenge response algorithm \"%s\".\n",
+                 algo_string.c_str());
+          return false;
+        }
+        challenge_response_key->add_signature_algorithm(challenge_alg);
+      }
 
       std::string challenge_spki;
       if (!base::HexStringToString(
