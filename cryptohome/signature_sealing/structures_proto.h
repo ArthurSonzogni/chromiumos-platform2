@@ -5,6 +5,9 @@
 #ifndef CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_PROTO_H_
 #define CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_PROTO_H_
 
+#include <optional>
+
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 
 #include "cryptohome/flatbuffer_schemas/structures.h"
@@ -17,6 +20,9 @@ namespace proto {
 ChallengeSignatureAlgorithm ToProto(structure::ChallengeSignatureAlgorithm obj);
 structure::ChallengeSignatureAlgorithm FromProto(
     ChallengeSignatureAlgorithm obj);
+
+std::optional<structure::ChallengeSignatureAlgorithm> FromProto(
+    user_data_auth::SmartCardSignatureAlgorithm obj);
 
 SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj);
 hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj);

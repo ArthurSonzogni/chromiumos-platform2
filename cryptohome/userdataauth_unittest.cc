@@ -818,6 +818,39 @@ static_assert(cryptohome::CryptohomeErrorCode_MAX == 54,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
+namespace SignatureAlgorithmEquivalenceTest {
+// This test is completely static, so it is not wrapped in the TEST_F() block.
+static_assert(static_cast<int>(user_data_auth::SmartCardSignatureAlgorithm::
+                                   CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) ==
+                  static_cast<int>(cryptohome::ChallengeSignatureAlgorithm::
+                                       CHALLENGE_RSASSA_PKCS1_V1_5_SHA1),
+              "Enum member CHALLENGE_RSASSA_PKCS1_V1_5_SHA1 differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(static_cast<int>(user_data_auth::SmartCardSignatureAlgorithm::
+                                   CHALLENGE_RSASSA_PKCS1_V1_5_SHA256) ==
+                  static_cast<int>(cryptohome::ChallengeSignatureAlgorithm::
+                                       CHALLENGE_RSASSA_PKCS1_V1_5_SHA256),
+              "Enum member CHALLENGE_RSASSA_PKCS1_V1_5_SHA256 differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(static_cast<int>(user_data_auth::SmartCardSignatureAlgorithm::
+                                   CHALLENGE_RSASSA_PKCS1_V1_5_SHA384) ==
+                  static_cast<int>(cryptohome::ChallengeSignatureAlgorithm::
+                                       CHALLENGE_RSASSA_PKCS1_V1_5_SHA384),
+              "Enum member CHALLENGE_RSASSA_PKCS1_V1_5_SHA384 differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(static_cast<int>(user_data_auth::SmartCardSignatureAlgorithm::
+                                   CHALLENGE_RSASSA_PKCS1_V1_5_SHA512) ==
+                  static_cast<int>(cryptohome::ChallengeSignatureAlgorithm::
+                                       CHALLENGE_RSASSA_PKCS1_V1_5_SHA512),
+              "Enum member CHALLENGE_RSASSA_PKCS1_V1_5_SHA512 differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(
+    user_data_auth::SmartCardSignatureAlgorithm_MAX == 4,
+    "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
+static_assert(cryptohome::ChallengeSignatureAlgorithm_MAX == 4,
+              "cryptohome::CrytpohomeErrorCode's element count is incorrect");
+}  // namespace SignatureAlgorithmEquivalenceTest
+
 TEST_F(UserDataAuthTest, IsMounted) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // By default there are no mount right after initialization

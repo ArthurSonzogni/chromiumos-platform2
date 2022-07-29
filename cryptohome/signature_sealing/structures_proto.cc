@@ -148,6 +148,26 @@ structure::ChallengeSignatureAlgorithm FromProto(
   }
 }
 
+std::optional<structure::ChallengeSignatureAlgorithm> FromProto(
+    user_data_auth::SmartCardSignatureAlgorithm obj) {
+  switch (obj) {
+    case user_data_auth::SmartCardSignatureAlgorithm::
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+    case user_data_auth::SmartCardSignatureAlgorithm::
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+    case user_data_auth::SmartCardSignatureAlgorithm::
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
+    case user_data_auth::SmartCardSignatureAlgorithm::
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
+      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+    default:  // ::SmartCardSignatureAlgorithm::CHALLENGE_NOT_SPECIFIED
+      return std::nullopt;
+  }
+}
+
 SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj) {
   SignatureSealedData result;
   if (auto* data = std::get_if<hwsec::Tpm2PolicySignedData>(&obj)) {

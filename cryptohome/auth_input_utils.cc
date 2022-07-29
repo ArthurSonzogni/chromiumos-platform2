@@ -12,6 +12,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/key_objects.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::SecureBlob;
 
@@ -49,6 +50,28 @@ AuthInput FromCryptohomeRecoveryAuthInput(
   return AuthInput{.cryptohome_recovery_auth_input = recovery_auth_input};
 }
 
+AuthInput FromSmartCardAuthInput(
+    const user_data_auth::SmartCardAuthInput& proto) {
+  ChallengeCredentialAuthInput chall_cred_auth_input;
+  for (const auto& content : proto.signature_algorithms()) {
+    std::optional<structure::ChallengeSignatureAlgorithm> signature_algorithm =
+        proto::FromProto(ChallengeSignatureAlgorithm(content));
+    if (signature_algorithm.has_value()) {
+      chall_cred_auth_input.challenge_signature_algorithms.push_back(
+          signature_algorithm.value());
+    } else {
+      // One of the signature algorithm's parsed is CHALLENGE_NOT_SPECIFIED.
+      return AuthInput{
+          .challenge_credential_auth_input = std::nullopt,
+      };
+    }
+  }
+
+  return AuthInput{
+      .challenge_credential_auth_input = chall_cred_auth_input,
+  };
+}
+
 }  // namespace
 
 std::optional<AuthInput> CreateAuthInput(
@@ -71,6 +94,10 @@ std::optional<AuthInput> CreateAuthInput(
           cryptohome_recovery_ephemeral_pub_key);
       break;
     case user_data_auth::AuthInput::kKioskInput:
+      break;
+    case user_data_auth::AuthInput::kSmartCardInput:
+      auth_input = FromSmartCardAuthInput(auth_input_proto.smart_card_input());
+      break;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;
   }
