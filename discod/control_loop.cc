@@ -37,6 +37,7 @@ ControlLoop::ControlLoop(
 void ControlLoop::StartControlLogic() {
   VLOG(3) << __func__;
   WaitUntilThreadStarted();
+  LogControlLoopStatus(ufs_write_boost_control_logic_->Reset());
   ScheduleControlLogicTick();
 }
 

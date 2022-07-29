@@ -23,6 +23,7 @@ base::FilePath GetRootDevice() {
   if (ret == 0) {
     return base::FilePath(buf);
   } else {
+    LOG(ERROR) << "Could not query rootdev, error=" << ret;
     return base::FilePath();
   }
 }
@@ -53,6 +54,8 @@ std::unique_ptr<ControlLoop> MakeControlLoop(const base::FilePath& root_device,
   VLOG(1) << "root=" << root;
   VLOG(1) << "device_node=" << device_node;
   VLOG(1) << "ufs_wb_node=" << ufs_wb_node;
+
+  LOG(INFO) << "UFS device found:" << root_device;
 
   return std::make_unique<ControlLoop>(
       std::make_unique<RealUfsWriteBoosterControlLogic>(
