@@ -4705,6 +4705,18 @@ void UserDataAuth::RemoveAuthFactor(
   auth_session->RemoveAuthFactor(request, std::move(on_done));
 }
 
+void UserDataAuth::ListAuthFactors(
+    user_data_auth::ListAuthFactorsRequest request,
+    base::OnceCallback<void(const user_data_auth::ListAuthFactorsReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::ListAuthFactorsReply reply;
+
+  // TODO(b/208357938): Implement ListAuthFactors.
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(on_done).Run(reply);
+}
+
 void UserDataAuth::GetAuthSessionStatus(
     user_data_auth::GetAuthSessionStatusRequest request,
     base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
