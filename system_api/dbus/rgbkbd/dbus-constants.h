@@ -27,6 +27,7 @@ enum class RgbKeyboardCapabilities {
   kFourZoneFortyLed = 2,
   kFourZoneTwelveLed = 3,
   kFourZoneFifteenLed = 4,
+  kMaxValue = kFourZoneFifteenLed,
 };
 
 enum class RgbAnimationMode {
