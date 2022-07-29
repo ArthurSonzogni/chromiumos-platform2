@@ -168,13 +168,10 @@ const KeyColor kRainbowModeFourZoneTwelveLed[] = {
 };
 
 // TODO(michaelcheco): Update mapping once colors are finalized.
-const KeyColor kRainbowModeFourZoneFifteenLed[] = {
-    {1, kRainbowRed},        {2, kRainbowRed},        {3, kRainbowRed},
-    {4, kRainbowYellow},     {5, kRainbowYellow},     {6, kRainbowYellow},
-    {7, kRainbowGreen},      {8, kRainbowGreen},      {9, kRainbowGreen},
-    {10, kRainbowLightBlue}, {11, kRainbowLightBlue}, {12, kRainbowLightBlue},
-    {13, kRainbowIndigo},    {14, kRainbowIndigo},    {15, kRainbowIndigo},
-};
+const KeyColor kRainbowModeFourZoneFourLed[] = {{1, kRainbowRed},
+                                                {2, kRainbowYellow},
+                                                {3, kRainbowGreen},
+                                                {4, kRainbowLightBlue}};
 
 }  // namespace rgbkbd
 

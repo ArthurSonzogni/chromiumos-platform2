@@ -157,11 +157,11 @@ TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneTwelveLed) {
   ValidateLog(kRainbowModeFourZoneTwelveLed);
 }
 
-TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFifteenLed) {
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFourLed) {
   controller_->SetCapabilitiesForTesting(
-      RgbKeyboardCapabilities::kFourZoneFifteenLed);
+      RgbKeyboardCapabilities::kFourZoneFourLed);
   controller_->SetRainbowMode();
-  ValidateLog(kRainbowModeFourZoneFifteenLed);
+  ValidateLog(kRainbowModeFourZoneFourLed);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {

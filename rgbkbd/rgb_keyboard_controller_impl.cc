@@ -97,10 +97,9 @@ RgbKeyboardControllerImpl::GetRainbowModeForKeyboard() const {
       return base::span<const KeyColor>(
           kRainbowModeFourZoneTwelveLed,
           std::size(kRainbowModeFourZoneTwelveLed));
-    case RgbKeyboardCapabilities::kFourZoneFifteenLed:
-      return base::span<const KeyColor>(
-          kRainbowModeFourZoneFifteenLed,
-          std::size(kRainbowModeFourZoneFifteenLed));
+    case RgbKeyboardCapabilities::kFourZoneFourLed:
+      return base::span<const KeyColor>(kRainbowModeFourZoneFourLed,
+                                        std::size(kRainbowModeFourZoneFourLed));
   }
 }
 

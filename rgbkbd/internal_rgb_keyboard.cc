@@ -44,8 +44,8 @@ void LogSupportType(RgbKeyboardCapabilities capabilities) {
     case RgbKeyboardCapabilities::kFourZoneTwelveLed:
       LOG(INFO) << "Device supports four zone - twelve led keyboard";
       break;
-    case RgbKeyboardCapabilities::kFourZoneFifteenLed:
-      LOG(INFO) << "Device supports four zone - fifteen led keyboard";
+    case RgbKeyboardCapabilities::kFourZoneFourLed:
+      LOG(INFO) << "Device supports four zone - four led keyboard";
       break;
   }
 }
@@ -82,7 +82,7 @@ RgbKeyboardCapabilities ConvertEcCapabilitiesToRgbKeyboardCapabilities(
     case EC_RGBKBD_TYPE_FOUR_ZONES_12_LEDS:
       return RgbKeyboardCapabilities::kFourZoneTwelveLed;
     case EC_RGBKBD_TYPE_FOUR_ZONES_4_LEDS:
-      return RgbKeyboardCapabilities::kFourZoneFifteenLed;
+      return RgbKeyboardCapabilities::kFourZoneFourLed;
     default:
       LOG(WARNING) << "Invalid EC Capability value: " << ec_capabilities
                    << ". Using default of None.";
