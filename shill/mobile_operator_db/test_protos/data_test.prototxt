@@ -52,10 +52,6 @@ mno {
       username: "testuser"
       password: "is_public_boohoohoo"
     }
-    sid: "200123"
-    sid: "200234"
-    sid: "200345"  # Used in FilteredOLP
-    activation_code: "open sesame"
   }
   mvno {
     mvno_filter {
@@ -86,8 +82,6 @@ mno {
         username: "testuser2"
         password: "is_public_boohoohoo_too"
       }
-      sid: "200345"
-      activation_code: "khul ja sim sim"
     }
   }
   mvno {

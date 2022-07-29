@@ -116,11 +116,12 @@ message Data {
   repeated MobileAPN mobile_apn = 22;
 
   // ///////////////////////////////////////////////////////////////////////////
-  // CDMA specific properties [41-60]
+  // CDMA specific properties [41-60]. No longer used but kept here so people
+  // don't reuse the field IDs.
 
-  repeated string sid = 41;
-  repeated string nid = 42;
-  optional string activation_code = 43;
+  // repeated string sid = 41;
+  // repeated string nid = 42;
+  // optional string activation_code = 43;
 }
 
 message MobileVirtualNetworkOperator {

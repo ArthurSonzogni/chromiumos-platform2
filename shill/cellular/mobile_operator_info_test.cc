@@ -271,7 +271,6 @@ TEST_P(MobileOperatorInfoMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->operator_name_list().empty());
   EXPECT_TRUE(operator_info_->apn_list().empty());
   EXPECT_TRUE(operator_info_->olp_list().empty());
-  EXPECT_TRUE(operator_info_->activation_code().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
   EXPECT_EQ(0, operator_info_->mtu());
 }
@@ -1052,7 +1051,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(country_, operator_info_->country());
     EXPECT_EQ(requires_roaming_, operator_info_->requires_roaming());
     EXPECT_EQ(mtu_, operator_info_->mtu());
-    EXPECT_EQ(activation_code_, operator_info_->activation_code());
 
     EXPECT_EQ(mccmnc_list_.size(), operator_info_->mccmnc_list().size());
     std::set<std::string> mccmnc_set(operator_info_->mccmnc_list().begin(),
@@ -1124,7 +1122,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     country_ = "us";
     requires_roaming_ = true;
     mtu_ = 1400;
-    activation_code_ = "open sesame";
     mccmnc_list_ = {"200001", "200002", "200003"};
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
 
@@ -1145,7 +1142,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     country_ = "ca";
     requires_roaming_ = false;
     mtu_ = 1200;
-    activation_code_ = "khul ja sim sim";
     mccmnc_list_ = {"200001", "200102"};
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
 
@@ -1163,7 +1159,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   std::string country_;
   bool requires_roaming_;
   int32_t mtu_;
-  std::string activation_code_;
   std::vector<std::string> mccmnc_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;

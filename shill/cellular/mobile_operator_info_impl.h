@@ -53,7 +53,6 @@ class MobileOperatorInfoImpl {
       const;
   const std::vector<MobileOperatorInfo::MobileAPN>& apn_list() const;
   const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
-  const std::string& activation_code() const;
   bool requires_roaming() const;
   int32_t mtu() const;
   void Reset();
@@ -195,7 +194,6 @@ class MobileOperatorInfoImpl {
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
-  std::string activation_code_;
   bool requires_roaming_;
   std::vector<mobile_operator_db::Filter> roaming_filter_list_;
   int32_t mtu_;

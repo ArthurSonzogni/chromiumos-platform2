@@ -18,8 +18,6 @@ MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,
   ON_CALL(*this, mccmnc()).WillByDefault(ReturnRef(empty_mccmnc_));
   ON_CALL(*this, apn_list()).WillByDefault(ReturnRef(empty_apn_list_));
   ON_CALL(*this, olp_list()).WillByDefault(ReturnRef(empty_olp_list_));
-  ON_CALL(*this, activation_code())
-      .WillByDefault(ReturnRef(empty_activation_code_));
   ON_CALL(*this, operator_name())
       .WillByDefault(ReturnRef(empty_operator_name_));
   ON_CALL(*this, country()).WillByDefault(ReturnRef(empty_country_));

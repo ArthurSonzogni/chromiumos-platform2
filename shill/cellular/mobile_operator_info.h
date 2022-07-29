@@ -183,8 +183,6 @@ class MobileOperatorInfo {
   // application to use the appropriate one.
   virtual const std::vector<OnlinePortal>& olp_list() const;
 
-  // The number to dial for automatic activation.
-  virtual const std::string& activation_code() const;
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
   bool requires_roaming() const;

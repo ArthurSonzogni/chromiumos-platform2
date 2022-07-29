@@ -179,8 +179,6 @@ mno {
 mno {
   data {
     mccmnc: "111002"
-    sid: "111102"
-    nid: "111202"
     uuid: "uuid111002"
   }
 }
@@ -371,8 +369,6 @@ mno {
 # Test[120] MVNOSIDMatch
 mno {
   data {
-    sid: "120001"
-    sid: "120002"
     localized_name {
       name: "name120001"
     }
@@ -458,7 +454,6 @@ mno {
 # Test[122]: MNOBySID
 mno {
   data {
-    sid: "1221"
     localized_name {
       name: "name1221"
     }
@@ -478,7 +473,6 @@ mno {
 }
 mno {
   data {
-    sid: "1232"
     localized_name {
       name: "name1232"
     }

@@ -165,12 +165,6 @@ MobileOperatorInfo::olp_list() const {
   return result;
 }
 
-const std::string& MobileOperatorInfo::activation_code() const {
-  const auto& result = impl_->activation_code();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
-}
-
 bool MobileOperatorInfo::requires_roaming() const {
   auto result = impl_->requires_roaming();
   SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";

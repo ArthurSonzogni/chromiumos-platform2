@@ -32,7 +32,6 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
               olp_list,
               (),
               (const, override));
-  MOCK_METHOD(const std::string&, activation_code, (), (const, override));
   MOCK_METHOD(const std::string&, operator_name, (), (const, override));
   MOCK_METHOD(const std::string&, country, (), (const, override));
   MOCK_METHOD(const std::string&, uuid, (), (const, override));
@@ -45,7 +44,6 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   std::string empty_mccmnc_;
   std::vector<MobileOperatorInfo::MobileAPN> empty_apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> empty_olp_list_;
-  std::string empty_activation_code_;
   std::string empty_operator_name_;
   std::string empty_country_;
   std::string empty_uuid_;

@@ -218,10 +218,6 @@ MobileOperatorInfoImpl::olp_list() const {
   return olp_list_;
 }
 
-const std::string& MobileOperatorInfoImpl::activation_code() const {
-  return activation_code_;
-}
-
 bool MobileOperatorInfoImpl::requires_roaming() const {
   return requires_roaming_;
 }
@@ -706,7 +702,6 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   olp_list_.clear();
   raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
-  activation_code_.clear();
   requires_roaming_ = false;
   roaming_filter_list_.clear();
   mtu_ = IPConfig::kUndefinedMTU;
@@ -780,10 +775,6 @@ void MobileOperatorInfoImpl::ReloadData(
       }
     }
     HandleAPNListUpdate();
-  }
-
-  if (data.has_activation_code()) {
-    activation_code_ = data.activation_code();
   }
 }
 
