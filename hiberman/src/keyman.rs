@@ -125,6 +125,12 @@ impl HibernateKeyManager {
         Ok(())
     }
 
+    /// Returns true if the key manager has the public key loaded (or has the
+    /// private key loaded and can therefore derive the public key)
+    pub fn has_public_key(&self) -> bool {
+        self.private_key.is_some() || self.public_key.is_some()
+    }
+
     /// Generate a new metadata key by generating a random ephemeral asymmetric
     /// key and doing Diffie-Hellman to get a symmetric key. The caller must
     /// have previously called load_public_key() or use_test_key(). On success,

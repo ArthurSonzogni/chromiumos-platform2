@@ -590,7 +590,12 @@ impl ResumeConductor {
     /// Save the public key for future hibernate attempts.
     fn save_public_key(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
         info!("Fetching public key for future hibernate");
-        self.populate_seed(dbus_connection, false)?;
+        // Wait until the key material is available if the key is not already
+        // populated from a failed resume attempt.
+        if !self.key_manager.has_public_key() {
+            self.populate_seed(dbus_connection, false)?;
+        }
+
         self.key_manager.save_public_key()
     }
 }
