@@ -81,7 +81,7 @@ RgbKeyboardCapabilities ConvertEcCapabilitiesToRgbKeyboardCapabilities(
       return RgbKeyboardCapabilities::kFourZoneFortyLed;
     case EC_RGBKBD_TYPE_FOUR_ZONES_12_LEDS:
       return RgbKeyboardCapabilities::kFourZoneTwelveLed;
-    case EC_RGBKBD_TYPE_FOUR_ZONES_15_LEDS:
+    case EC_RGBKBD_TYPE_FOUR_ZONES_4_LEDS:
       return RgbKeyboardCapabilities::kFourZoneFifteenLed;
     default:
       LOG(WARNING) << "Invalid EC Capability value: " << ec_capabilities
