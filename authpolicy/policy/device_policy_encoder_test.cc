@@ -449,9 +449,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kDeviceCrostiniArcAdbSideloadingAllowedOutOfRangeInt);
   EXPECT_FALSE(policy.has_device_crostini_arc_adb_sideloading_allowed());
 
-  // TODO(crbug.com/1092593) The following policy is going to be supported for
-  // chrome_os, but its not now. However, it needs to be encoded temporarily to
-  // pass the tests.
+  // TODO(crbug.com/1092593): The following policy was recently removed from
+  // Chromium. So, it will no longer need to be marked as handled after the next
+  // policy protofiles uprev.
   MarkHandled(key::kDeviceSamlLoginAuthenticationType);
 
   EncodeString(&policy, key::kSystemProxySettings,
@@ -651,7 +651,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
             policy.device_advanced_battery_charge_mode().day_configs());
 
   // The encoder of this policy converts ints to
-  // DeviceBatteryChargeMode::BatteryChardeMode enums.
+  // DeviceBatteryChargeMode::BatteryChargeMode enums.
   EncodeInteger(&policy, key::kDeviceBatteryChargeMode,
                 em::DeviceBatteryChargeModeProto::CUSTOM);
   EXPECT_EQ(em::DeviceBatteryChargeModeProto::CUSTOM,
