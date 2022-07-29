@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_MEMORY_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_MEMORY_CONSTANTS_H_
 
+#include <base/time/time.h>
+
 namespace diagnostics {
 
 // Different bit flags which can be encoded in the return value for memtester.
@@ -21,7 +23,7 @@ enum MemtesterErrorCodes {
 
 // Ensure the operating system is left with at least the following size to avoid
 // out of memory error.
-constexpr int kMemoryRoutineReservedSizeKiB = 500 * 1024;  // 500 MiB
+constexpr int kMemoryRoutineReservedSizeMiB = 500;
 
 // Status messages the memory routine can report.
 inline constexpr char kMemoryRoutineSucceededMessage[] =
@@ -29,16 +31,6 @@ inline constexpr char kMemoryRoutineSucceededMessage[] =
 inline constexpr char kMemoryRoutineRunningMessage[] = "Memory routine running";
 inline constexpr char kMemoryRoutineCancelledMessage[] =
     "Memory routine cancelled.";
-
-// Error messages for memtester precondition.
-inline constexpr char kMemoryRoutineMemtesterAlreadyRunningMessage[] =
-    "Error Memtester process already running.";
-inline constexpr char kMemoryRoutineFetchingAvailableMemoryFailureMessage[] =
-    "Error fetching available memory.\n";
-inline constexpr char kMemoryRoutineNotHavingEnoughAvailableMemoryMessage[] =
-    "Error not having enough available memory.\n";
-
-// Error messages for memtester failure.
 inline constexpr char kMemoryRoutineAllocatingLockingInvokingFailureMessage[] =
     "Error allocating or locking memory, or invoking the memtester binary.\n";
 inline constexpr char kMemoryRoutineStuckAddressTestFailureMessage[] =

@@ -46,8 +46,7 @@ class Executor final : public mojom::Executor {
                GetInfoCallback callback) override;
   void GetScanDump(const std::string& interface_name,
                    GetScanDumpCallback callback) override;
-  void RunMemtester(uint32_t test_mem_kib,
-                    RunMemtesterCallback callback) override;
+  void RunMemtester(RunMemtesterCallback callback) override;
   void KillMemtester() override;
   void GetProcessIOContents(const uint32_t pid,
                             GetProcessIOContentsCallback callback) override;
