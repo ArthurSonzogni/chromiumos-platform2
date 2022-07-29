@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/handle.h>
 
+#include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -72,13 +73,14 @@ std::string ConstructOutput() {
   return json;
 }
 
-class MemoryRoutineTest : public testing::Test {
+class MemoryRoutineTest : public BaseFileTest {
  protected:
   MemoryRoutineTest() = default;
   MemoryRoutineTest(const MemoryRoutineTest&) = delete;
   MemoryRoutineTest& operator=(const MemoryRoutineTest&) = delete;
 
   void SetUp() override {
+    SetTestRoot(mock_context_.root_dir());
     routine_ = std::make_unique<MemoryRoutine>(
         &mock_context_, task_environment_.GetMockTickClock());
   }
@@ -110,11 +112,19 @@ class MemoryRoutineTest : public testing::Test {
         std::move(update.routine_update_union));
   }
 
+  void SetMockMemoryInfo(const std::string& info) {
+    SetFile({"proc", "meminfo"}, info);
+  }
+
   void SetExecutorResponse(int32_t exit_code,
                            const std::optional<std::string>& outfile_name,
                            const std::optional<base::TimeDelta>& delay) {
-    EXPECT_CALL(*mock_executor(), RunMemtester(_))
-        .WillOnce(WithArg<0>(
+    SetMockMemoryInfo(
+        "MemTotal:        3906320 kB\n"
+        "MemFree:         2873180 kB\n"
+        "MemAvailable:    2878980 kB\n");
+    EXPECT_CALL(*mock_executor(), RunMemtester(_, _))
+        .WillOnce(WithArg<1>(
             Invoke([=](mojom::Executor::RunMemtesterCallback callback) {
               mojom::ExecutedProcessResult result;
               result.return_code = exit_code;
@@ -173,6 +183,35 @@ TEST_F(MemoryRoutineTest, RoutineSuccess) {
   EXPECT_EQ(std::string(shm_mapping.GetMemoryAs<const char>(),
                         shm_mapping.mapped_size()),
             ConstructOutput());
+}
+
+// Test that the memory routine handles the parsing error.
+TEST_F(MemoryRoutineTest, RoutineParseError) {
+  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+
+  RunRoutineAndWaitForExit();
+
+  VerifyNonInteractiveUpdate(
+      update()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+      kMemoryRoutineFetchingAvailableMemoryFailureMessage);
+}
+
+// Test that the memory routine handles the not having enough available memory
+// error.
+TEST_F(MemoryRoutineTest, RoutineNotEnoughAvailableMemory) {
+  // MemAvailable less than 500 MiB.
+  SetMockMemoryInfo(
+      "MemTotal:        3906320 kB\n"
+      "MemFree:         2873180 kB\n"
+      "MemAvailable:    278980 kB\n");
+
+  RunRoutineAndWaitForExit();
+
+  VerifyNonInteractiveUpdate(
+      update()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+      kMemoryRoutineNotHavingEnoughAvailableMemoryMessage);
 }
 
 // Test that the memory routine handles the memtester binary failing to run.

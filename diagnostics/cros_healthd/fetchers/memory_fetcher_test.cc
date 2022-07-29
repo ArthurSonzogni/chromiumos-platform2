@@ -43,21 +43,6 @@ constexpr char kFakeMeminfoContents[] =
     "87980 kB\n";
 constexpr char kFakeMeminfoContentsIncorrectlyFormattedFile[] =
     "Incorrectly formatted meminfo contents.\n";
-constexpr char kFakeMeminfoContentsMissingMemtotal[] =
-    "MemFree:      873180 kB\nMemAvailable:      87980 kB\n";
-constexpr char kFakeMeminfoContentsMissingMemfree[] =
-    "MemTotal:      3906320 kB\nMemAvailable:      87980 kB\n";
-constexpr char kFakeMeminfoContentsMissingMemavailable[] =
-    "MemTotal:      3906320 kB\nMemFree:      873180 kB\n";
-constexpr char kFakeMeminfoContentsIncorrectlyFormattedMemtotal[] =
-    "MemTotal:      3906320kB\nMemFree:      873180 kB\nMemAvailable:      "
-    "87980 kB\n";
-constexpr char kFakeMeminfoContentsIncorrectlyFormattedMemfree[] =
-    "MemTotal:      3906320 kB\nMemFree:      873180 WrongUnits\nMemAvailable: "
-    "     87980 kB\n";
-constexpr char kFakeMeminfoContentsIncorrectlyFormattedMemavailable[] =
-    "MemTotal:      3906320 kB\nMemFree:      873180 kB\nMemAvailable:      "
-    "NotAnInteger kB\n";
 
 constexpr char kFakeVmStatContents[] = "foo 98\npgfault 654654\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedFile[] =
@@ -182,17 +167,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   EXPECT_EQ(info->page_faults_since_last_boot, 654654);
 }
 
-// Test that fetching memory info returns an error when /proc/meminfo doesn't
-// exist.
-TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcMeminfo) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
-}
-
 // Test that fetching memory info returns an error when /proc/meminfo is
 // formatted incorrectly.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
@@ -203,93 +177,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo doesn't
-// contain the MemTotal key.
-TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemTotal) {
-  ASSERT_TRUE(
-      WriteFileAndCreateParentDirs(root_dir().Append(kRelativeMeminfoPath),
-                                   kFakeMeminfoContentsMissingMemtotal));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo doesn't
-// contain the MemFree key.
-TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemFree) {
-  ASSERT_TRUE(
-      WriteFileAndCreateParentDirs(root_dir().Append(kRelativeMeminfoPath),
-                                   kFakeMeminfoContentsMissingMemfree));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo doesn't
-// contain the MemAvailable key.
-TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemAvailable) {
-  ASSERT_TRUE(
-      WriteFileAndCreateParentDirs(root_dir().Append(kRelativeMeminfoPath),
-                                   kFakeMeminfoContentsMissingMemavailable));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo contains
-// an incorrectly formatted MemTotal key.
-TEST_F(MemoryFetcherTest,
-       TestFetchMemoryInfoProcMeminfoIncorrectlyFormattedMemTotal) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath),
-      kFakeMeminfoContentsIncorrectlyFormattedMemtotal));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo contains
-// an incorrectly formatted MemFree key.
-TEST_F(MemoryFetcherTest,
-       TestFetchMemoryInfoProcMeminfoIncorrectlyFormattedMemFree) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath),
-      kFakeMeminfoContentsIncorrectlyFormattedMemfree));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
-}
-
-// Test that fetching memory info returns an error when /proc/meminfo contains
-// an incorrectly formatted MemAvailable key.
-TEST_F(MemoryFetcherTest,
-       TestFetchMemoryInfoProcMeminfoIncorrectlyFormattedMemAvailable) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath),
-      kFakeMeminfoContentsIncorrectlyFormattedMemavailable));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-
-  auto result = FetchMemoryInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->msg, "Error parsing /proc/meminfo");
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat doesn't

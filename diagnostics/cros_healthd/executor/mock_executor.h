@@ -38,7 +38,10 @@ class MockExecutor final : public mojom::Executor {
               GetScanDump,
               (const std::string& interface_name, GetScanDumpCallback),
               (override));
-  MOCK_METHOD(void, RunMemtester, (RunMemtesterCallback), (override));
+  MOCK_METHOD(void,
+              RunMemtester,
+              (uint32_t test_mem_kib, RunMemtesterCallback),
+              (override));
   MOCK_METHOD(void, KillMemtester, (), (override));
   MOCK_METHOD(void,
               GetProcessIOContents,
