@@ -203,6 +203,7 @@ static const char* kActions[] = {"mount_ex",
                                  "authenticate_auth_factor",
                                  "update_auth_factor",
                                  "remove_auth_factor",
+                                 "list_auth_factors",
                                  "get_auth_session_status",
                                  "get_recovery_request",
                                  NULL};
@@ -300,6 +301,7 @@ enum ActionEnum {
   ACTION_AUTHENTICATE_AUTH_FACTOR,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
+  ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
   ACTION_GET_RECOVERY_REQUEST
 };
@@ -3324,6 +3326,29 @@ int main(int argc, char** argv) {
     }
 
     printf("AuthFactor removed.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_LIST_AUTH_FACTORS],
+                     action.c_str())) {
+    user_data_auth::ListAuthFactorsRequest req;
+    user_data_auth::ListAuthFactorsReply reply;
+
+    if (!BuildAccountId(cl, req.mutable_account_id())) {
+      return 1;
+    }
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to list AuthFactors";
+    if (!userdataauth_proxy.ListAuthFactors(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("ListAuthFactors call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    puts(GetProtoDebugString(reply).c_str());
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to list auth factors.\n");
+      return static_cast<int>(reply.error());
+    }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_GET_AUTH_SESSION_STATUS],
                  action.c_str())) {
