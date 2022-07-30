@@ -112,47 +112,22 @@ void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
 
 // TODO(b/233700483): Replace this with the mock auth block.
 class FallbackVaultKeyset : public VaultKeyset {
- public:
-  explicit FallbackVaultKeyset(Crypto* crypto) : crypto_(crypto) {}
-
  protected:
   std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const override {
-    if (IsLECredential()) {
-      return std::make_unique<PinWeaverAuthBlock>(
-          crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+    auto auth_block_for_creation = VaultKeyset::GetAuthBlockForCreation();
+    if (!auth_block_for_creation) {
+      return std::make_unique<ScryptAuthBlock>();
     }
 
-    if (IsSignatureChallengeProtected()) {
-      return std::make_unique<ChallengeCredentialAuthBlock>();
-    }
-
-    hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
-    bool use_tpm = is_ready.ok() && is_ready.value();
-    bool with_user_auth = crypto_->CanUnsealWithUserAuth();
-    bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
-                       crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
-                           CryptohomeKeyType::kECC);
-
-    if (use_tpm && with_user_auth && has_ecc_key) {
-      return std::make_unique<TpmEccAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-    }
-
-    if (use_tpm && with_user_auth && !has_ecc_key) {
-      return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-    }
-
-    if (use_tpm && !with_user_auth) {
-      return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-    }
-
-    return std::make_unique<ScryptAuthBlock>();
+    return auth_block_for_creation;
   }
-
- private:
-  Crypto* crypto_;
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation() override {
+    auto auth_block_for_derivation = VaultKeyset::GetAuthBlockForDerivation();
+    if (!auth_block_for_derivation) {
+      return std::make_unique<ScryptAuthBlock>();
+    }
+    return auth_block_for_derivation;
+  }
 };
 
 }  // namespace
@@ -182,7 +157,7 @@ class KeysetManagementTest : public ::testing::Test {
     mock_vault_keyset_factory_ = new NiceMock<MockVaultKeysetFactory>();
     ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
         .WillByDefault([this](auto&&, auto&&) {
-          auto* vk = new FallbackVaultKeyset(&crypto_);
+          auto* vk = new FallbackVaultKeyset();
           vk->Initialize(&platform_, &crypto_);
           return vk;
         });
@@ -272,7 +247,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithKeyData(const KeyData& key_data) {
     for (auto& user : users_) {
-      FallbackVaultKeyset vk(&crypto_);
+      FallbackVaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
@@ -285,7 +260,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithoutKeyData() {
     for (auto& user : users_) {
-      FallbackVaultKeyset vk(&crypto_);
+      FallbackVaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
@@ -296,7 +271,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithKeyDataAndKeyBlobs(const KeyData& key_data) {
     for (auto& user : users_) {
-      FallbackVaultKeyset vk(&crypto_);
+      FallbackVaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
@@ -316,7 +291,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   void KeysetSetUpWithoutKeyDataAndKeyBlobs() {
     for (auto& user : users_) {
-      FallbackVaultKeyset vk(&crypto_);
+      FallbackVaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       key_blobs_.vkk_key = kInitialBlob32;
@@ -1848,7 +1823,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
 // vault keyset when missing.
 TEST_F(KeysetManagementTest, AddWrappedResetSeed) {
   // Setup a vault keyset.
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
@@ -1934,7 +1909,7 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
 TEST_F(KeysetManagementTest, AddKeysetNoFile) {
   // Test for file not found.
   // Setup
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1950,7 +1925,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFile) {
 TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
   // Suitable file path is found, test for first time entering a new label.
   // Setup
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1964,7 +1939,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
   // Setup
   // Saves DefaultKeyData() as primary label.
   KeysetSetUpWithKeyData(DefaultKeyData());
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -1985,7 +1960,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
   // but AddKeyset fails to overwrite the existing file.
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2024,7 +1999,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
   // Test of AddKeyset overloaded to work with AuthSessions.
   // Suitable file path is found, but save fails.
   // Setup
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2052,7 +2027,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
   // A suitable file path is found, encyrpt fails,
   // and the created VaultKeyset file is deleted.
   // Setup
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2080,7 +2055,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndData) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2115,7 +2090,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2156,7 +2131,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2199,7 +2174,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
   // Setup
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
@@ -2238,7 +2213,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
 TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   // LoadVaultKeysetForUser within function fails to load the VaultKeyset.
   // Setup
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
@@ -2601,7 +2576,7 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
   // Setup a vault keyset.
   //
   // Non-scrypt encryption would fail on missing reset seed, so use scrypt.
-  FallbackVaultKeyset vk(&crypto_);
+  FallbackVaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());

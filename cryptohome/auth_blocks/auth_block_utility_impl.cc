@@ -537,7 +537,8 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     auth_block_type = AuthBlockType::kPinWeaver;
   } else if (const auto* state =
                  std::get_if<ScryptAuthBlockState>(&auth_block_state.state)) {
-    auth_block_type = AuthBlockType::kScrypt;
+    auth_block_type = USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kScrypt
+                                                : AuthBlockType::kMaxValue;
   } else if (const auto* state =
                  std::get_if<TpmEccAuthBlockState>(&auth_block_state.state)) {
     auth_block_type = AuthBlockType::kTpmEcc;
