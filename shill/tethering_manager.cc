@@ -102,4 +102,16 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
   return true;
 }
 
+std::string TetheringManager::TetheringManager::CheckReadiness(Error* error) {
+  if (!allowed_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
+                          "Tethering is not allowed");
+    return kTetheringReadinessNotAllowed;
+  }
+
+  // TODO(b/235762746): Stub method handler always return "ready". Add more
+  // status code later.
+  return kTetheringReadinessReady;
+}
+
 }  // namespace shill

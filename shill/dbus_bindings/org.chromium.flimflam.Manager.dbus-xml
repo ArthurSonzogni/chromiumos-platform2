@@ -134,6 +134,9 @@
 		<method name="SetTetheringEnabled">
 			<arg type="b" direction="in"/>
 		</method>
+		<method name="CheckTetheringReadiness">
+			<arg type="s" direction="out"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

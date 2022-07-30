@@ -503,4 +503,12 @@ bool ManagerDBusAdaptor::SetTetheringEnabled(brillo::ErrorPtr* error,
   manager_->SetTetheringEnabled(enabled, &e);
   return !e.ToChromeosError(error);
 }
+
+bool ManagerDBusAdaptor::CheckTetheringReadiness(brillo::ErrorPtr* error,
+                                                 std::string* status) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  *status = manager_->CheckTetheringReadiness(&e);
+  return !e.ToChromeosError(error);
+}
 }  // namespace shill

@@ -564,6 +564,9 @@ class Manager {
   // Enable or disable a tethering session.
   bool SetTetheringEnabled(bool enabled, Error* error);
 
+  // Check whether upstream network is ready for tethering.
+  std::string CheckTetheringReadiness(Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

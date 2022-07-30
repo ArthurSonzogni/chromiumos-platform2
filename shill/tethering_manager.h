@@ -31,6 +31,8 @@ class TetheringManager {
   void Stop();
   // Enable or disable a tethering session with existing tethering config_.
   bool SetEnabled(bool enabled, Error* error);
+  // Check if upstream network is ready for tethering.
+  std::string CheckReadiness(Error* error);
 
  private:
   enum class TetheringState {

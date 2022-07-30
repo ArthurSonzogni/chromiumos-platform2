@@ -3330,4 +3330,8 @@ void Manager::ConnectivityTestCallback(const std::string& interface_name,
 bool Manager::SetTetheringEnabled(bool enabled, Error* error) {
   return tethering_manager_->SetEnabled(enabled, error);
 }
+
+std::string Manager::CheckTetheringReadiness(Error* error) {
+  return tethering_manager_->CheckReadiness(error);
+}
 }  // namespace shill
