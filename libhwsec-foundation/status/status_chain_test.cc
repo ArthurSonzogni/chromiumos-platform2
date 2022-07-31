@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include "libhwsec-foundation/status/status_chain.h"

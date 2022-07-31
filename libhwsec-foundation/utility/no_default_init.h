@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_UTILITY_NO_DEFAULT_INIT_H_
 #define LIBHWSEC_FOUNDATION_UTILITY_NO_DEFAULT_INIT_H_
 
+#include <type_traits>
 #include <utility>
 
 // A helper to remove the default constructor for objects.

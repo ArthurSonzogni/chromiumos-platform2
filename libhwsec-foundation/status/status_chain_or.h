@@ -5,7 +5,9 @@
 #ifndef LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_OR_H_
 #define LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_OR_H_
 
+#include <initializer_list>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <variant>
 

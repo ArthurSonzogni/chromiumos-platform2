@@ -6,7 +6,9 @@
 #define LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_MACROS_H_
 
 #include <optional>
+#include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include <base/logging.h>
