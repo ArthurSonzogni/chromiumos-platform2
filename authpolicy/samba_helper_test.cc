@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/strings/utf_string_conversion_utils.h>
+#include <base/third_party/icu/icu_utf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -339,11 +340,10 @@ TEST_F(SambaHelperTest, GenerateRandomMachinePassword) {
   EXPECT_GE(kMachinePasswordCodePoints * 3, password.size());
 
   // Verify that code points are in a valid range.
-  int32_t password_size = static_cast<int32_t>(password.size());
-  uint32_t code_point = UINT32_MAX;
+  base_icu::UChar32 code_point = UINT32_MAX;
   size_t num_code_points = 0;
-  for (int32_t char_index = 0; char_index < password_size; ++char_index) {
-    EXPECT_TRUE(base::ReadUnicodeCharacter(password.data(), password_size,
+  for (size_t char_index = 0; char_index < password.size(); ++char_index) {
+    EXPECT_TRUE(base::ReadUnicodeCharacter(password.data(), password.size(),
                                            &char_index, &code_point));
     // In the basic multilingual plane (BMP).
     EXPECT_LE(code_point, 0xFFFF);
