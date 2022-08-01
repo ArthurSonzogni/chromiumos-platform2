@@ -1199,11 +1199,11 @@ string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
   if (source_encoding == LogTool::Encoding::kUtf8) {
     string output;
     const char* src = value.data();
-    int32_t src_len = static_cast<int32_t>(value.length());
+    size_t src_len = value.length();
 
     output.reserve(value.size());
-    for (int32_t char_index = 0; char_index < src_len; char_index++) {
-      uint32_t code_point;
+    for (size_t char_index = 0; char_index < src_len; char_index++) {
+      base_icu::UChar32 code_point;
       if (!base::ReadUnicodeCharacter(src, src_len, &char_index, &code_point) ||
           !base::IsValidCharacter(code_point)) {
         // Replace invalid characters with U+FFFD REPLACEMENT CHARACTER.
