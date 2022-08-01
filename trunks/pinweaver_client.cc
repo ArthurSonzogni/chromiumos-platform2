@@ -9,6 +9,8 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/syslog_logging.h>
 #include <openssl/sha.h>
@@ -180,8 +182,8 @@ void GetInsertLeafDefaults(uint64_t* label,
   reset_secret->assign(DEFAULT_RESET_SECRET,
                        DEFAULT_RESET_SECRET + sizeof(DEFAULT_RESET_SECRET));
   delay_schedule->clear();
-  delay_schedule->emplace(5, 20);
-  delay_schedule->emplace(6, 60);
+  delay_schedule->emplace(5, 1);
+  delay_schedule->emplace(6, 3);
   delay_schedule->emplace(7, 300);
   delay_schedule->emplace(8, 600);
   delay_schedule->emplace(9, 1800);
@@ -299,8 +301,8 @@ int HandleInsert(base::CommandLine::StringVector::const_iterator begin,
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverInsertLeaf(
       protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
-      &mac);
+      delay_schedule, valid_pcr_criteria, std::nullopt, &result_code, &root,
+      &cred_metadata, &mac);
 
   if (result) {
     LOG(ERROR) << "PinWeaverInsertLeaf: " << trunks::GetErrorString(result);
@@ -434,8 +436,8 @@ int HandleResetLeaf(base::CommandLine::StringVector::const_iterator begin,
   std::string mac_out;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverResetAuth(
-      protocol_version, reset_secret, h_aux, cred_metadata, &result_code, &root,
-      &cred_metadata_out, &mac_out);
+      protocol_version, reset_secret, false, h_aux, cred_metadata, &result_code,
+      &root, &cred_metadata_out, &mac_out);
 
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
@@ -592,8 +594,8 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   std::string mac;
   result = tpm_utility->PinWeaverInsertLeaf(
       protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
-      &mac);
+      delay_schedule, valid_pcr_criteria, 0, &result_code, &root,
+      &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "insert_leaf failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -701,12 +703,101 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
 
   LOG(INFO) << "reset_auth";
   result_code = 0;
-  result = tpm_utility->PinWeaverResetAuth(protocol_version, reset_secret,
-                                           h_aux, cred_metadata, &result_code,
-                                           &root, &cred_metadata, &mac);
+  result = tpm_utility->PinWeaverResetAuth(
+      protocol_version, reset_secret, false, h_aux, cred_metadata, &result_code,
+      &root, &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "reset_auth failed! " << result_code << " "
                << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "try_auth auth fail for 5 times";
+  for (int i = 0; i < 5; ++i) {
+    result_code = 0;
+    result = tpm_utility->PinWeaverTryAuth(
+        protocol_version, wrong_le_secret, h_aux, cred_metadata, &result_code,
+        &root, &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata,
+        &mac);
+    if (result) {
+      LOG(ERROR) << "try_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    if (result_code != PW_ERR_LOWENT_AUTH_FAILED) {
+      LOG(ERROR) << "try_auth verification failed!";
+      return EXIT_FAILURE;
+    }
+  }
+  LOG(INFO) << "Now credential should be locked for 1 second.";
+
+  LOG(INFO) << "try_auth should fail (rate-limited)";
+  result_code = 0;
+  std::string no_cred_metadata, no_mac;
+  result = tpm_utility->PinWeaverTryAuth(
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &test_reset_secret, &no_cred_metadata,
+      &no_mac);
+  if (result) {
+    LOG(ERROR) << "try_auth failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  if (result_code != PW_ERR_RATE_LIMIT_REACHED) {
+    LOG(ERROR) << "try_auth verification failed!";
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "try_auth fail after waiting 2 seconds";
+  base::PlatformThread::Sleep(base::Seconds(2));
+  result_code = 0;
+  result = tpm_utility->PinWeaverTryAuth(
+      protocol_version, wrong_le_secret, h_aux, cred_metadata, &result_code,
+      &root, &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata,
+      &mac);
+  if (result) {
+    LOG(ERROR) << "try_auth failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  if (result_code != PW_ERR_LOWENT_AUTH_FAILED) {
+    LOG(ERROR) << "try_auth verification failed!";
+    return EXIT_FAILURE;
+  }
+  LOG(INFO) << "Now credential should be locked for 3 second.";
+
+  LOG(INFO) << "try_auth should fail (rate-limited) after waiting 2 seconds";
+  base::PlatformThread::Sleep(base::Seconds(2));
+  result_code = 0;
+  result = tpm_utility->PinWeaverTryAuth(
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &test_reset_secret, &no_cred_metadata,
+      &no_mac);
+  if (result) {
+    LOG(ERROR) << "try_auth failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  if (result_code != PW_ERR_RATE_LIMIT_REACHED) {
+    LOG(ERROR) << "try_auth verification failed!";
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "try_auth success after waiting 4 seconds";
+  base::PlatformThread::Sleep(base::Seconds(4));
+  result_code = 0;
+  result = tpm_utility->PinWeaverTryAuth(
+      protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+      &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata, &mac);
+  if (result || result_code) {
+    LOG(ERROR) << "try_auth failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  if (he_secret.size() != PW_SECRET_SIZE ||
+      std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
+              .first != he_secret.end()) {
+    LOG(ERROR) << "try_auth credential retrieval failed!";
     return EXIT_FAILURE;
   }
 
@@ -734,8 +825,8 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   }
   result = tpm_utility->PinWeaverInsertLeaf(
       protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-      delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
-      &mac);
+      delay_schedule, valid_pcr_criteria, std::nullopt, &result_code, &root,
+      &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "insert_leaf failed! " << result_code << " "
                << PwErrorStr(result_code);
@@ -781,8 +872,8 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
     value->set_digest("bad_digest");
     result = tpm_utility->PinWeaverInsertLeaf(
         protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-        delay_schedule, valid_pcr_criteria, &result_code, &root, &cred_metadata,
-        &mac);
+        delay_schedule, valid_pcr_criteria, std::nullopt, &result_code, &root,
+        &cred_metadata, &mac);
     if (result || result_code) {
       LOG(ERROR) << "insert_leaf failed! " << result_code << " "
                  << PwErrorStr(result_code);
@@ -811,6 +902,106 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
     result_code = 0;
     result = tpm_utility->PinWeaverRemoveLeaf(protocol_version, label, h_aux,
                                               replay_mac, &result_code, &root);
+    if (result || result_code) {
+      LOG(ERROR) << "remove_leaf failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+  }
+
+  if (protocol_version > 1) {
+    GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
+                          &delay_schedule, &valid_pcr_criteria);
+    // Choose a reasonable value to test for credential expiration.
+    uint32_t expiration_delay = 2;
+    result = tpm_utility->PinWeaverInsertLeaf(
+        protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
+        delay_schedule, valid_pcr_criteria, expiration_delay, &result_code,
+        &root, &cred_metadata, &mac);
+    if (result || result_code) {
+      LOG(ERROR) << "insert_leaf failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "the leaf has a 2-second expiration window.";
+    LOG(INFO) << "try_auth should fail (expired) after waiting 3 seconds";
+    base::PlatformThread::Sleep(base::Seconds(2));
+    result_code = 0;
+    result = tpm_utility->PinWeaverTryAuth(
+        protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+        &seconds_to_wait, &he_secret, &test_reset_secret, &no_cred_metadata,
+        &no_mac);
+    if (result) {
+      LOG(ERROR) << "try_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    if (result_code != PW_ERR_EXPIRED) {
+      LOG(ERROR) << "try_auth verification failed!";
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "reset_auth";
+    result_code = 0;
+    result = tpm_utility->PinWeaverResetAuth(
+        protocol_version, reset_secret, false, h_aux, cred_metadata,
+        &result_code, &root, &cred_metadata, &mac);
+    if (result || result_code) {
+      LOG(ERROR) << "reset_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "try_auth should still fail (expired) because normal reset "
+                 "doesn't reset expiration";
+    result_code = 0;
+    result = tpm_utility->PinWeaverTryAuth(
+        protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+        &seconds_to_wait, &he_secret, &test_reset_secret, &no_cred_metadata,
+        &no_mac);
+    if (result) {
+      LOG(ERROR) << "try_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    if (result_code != PW_ERR_EXPIRED) {
+      LOG(ERROR) << "try_auth verification failed!";
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "reset_auth (strong)";
+    result_code = 0;
+    result = tpm_utility->PinWeaverResetAuth(
+        protocol_version, reset_secret, true, h_aux, cred_metadata,
+        &result_code, &root, &cred_metadata, &mac);
+    if (result || result_code) {
+      LOG(ERROR) << "reset_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "try_auth success";
+    result_code = 0;
+    result = tpm_utility->PinWeaverTryAuth(
+        protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
+        &seconds_to_wait, &he_secret, &test_reset_secret, &cred_metadata, &mac);
+    if (result || result_code) {
+      LOG(ERROR) << "try_auth failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    if (he_secret.size() != PW_SECRET_SIZE ||
+        std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
+                .first != he_secret.end()) {
+      LOG(ERROR) << "try_auth credential retrieval failed!";
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "remove_leaf";
+    result_code = 0;
+    result = tpm_utility->PinWeaverRemoveLeaf(protocol_version, label, h_aux,
+                                              mac, &result_code, &root);
     if (result || result_code) {
       LOG(ERROR) << "remove_leaf failed! " << result_code << " "
                  << PwErrorStr(result_code);

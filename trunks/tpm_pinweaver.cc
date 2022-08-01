@@ -90,6 +90,9 @@ TPM_RC Serialize_pw_insert_leaf_t(
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
     const ValidPcrCriteria& valid_pcr_criteria,
+    std::optional<uint32_t> expiration_delay,
+    uint8_t leaf_type,
+    std::optional<uint8_t> auth_channel,
     std::string* buffer) {
   if (h_aux.length() > PW_MAX_PATH_SIZE || le_secret.size() != PW_SECRET_SIZE ||
       he_secret.size() != PW_SECRET_SIZE ||
@@ -143,8 +146,14 @@ TPM_RC Serialize_pw_insert_leaf_t(
   }
 
   if (protocol_version > 1) {
-    data.expiration_delay_s.v = 0;
-    data.leaf_type.v = PW_LEAF_TYPE_NORMAL;
+    data.expiration_delay_s.v =
+        expiration_delay.has_value() ? *expiration_delay : 0;
+    data.leaf_type.v = leaf_type;
+    if (leaf_type == PW_LEAF_TYPE_BIOMETRICS) {
+      data.auth_channel = *auth_channel;
+    }
+  } else if (expiration_delay.has_value() || leaf_type != PW_LEAF_TYPE_NORMAL) {
+    return SAPI_RC_BAD_PARAMETER;
   }
 
   std::copy(le_secret.begin(), le_secret.end(), data.low_entropy_secret);
@@ -209,6 +218,7 @@ TPM_RC Serialize_pw_try_auth_t(uint8_t protocol_version,
 
 TPM_RC Serialize_pw_reset_auth_t(uint8_t protocol_version,
                                  const brillo::SecureBlob& reset_secret,
+                                 bool strong_reset,
                                  const std::string& h_aux,
                                  const std::string& cred_metadata,
                                  std::string* buffer) {
@@ -232,7 +242,9 @@ TPM_RC Serialize_pw_reset_auth_t(uint8_t protocol_version,
 
   std::copy(reset_secret.begin(), reset_secret.end(), data.reset_secret);
   if (protocol_version > 1) {
-    data.strong_reset = 0;
+    data.strong_reset = static_cast<uint8_t>(strong_reset);
+  } else if (strong_reset) {
+    return SAPI_RC_BAD_PARAMETER;
   }
 
   Serialize_pw_request_header_t(protocol_version, PW_RESET_AUTH,
@@ -399,15 +411,21 @@ TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
   if (rc != TPM_RC_SUCCESS)
     return rc;
 
-  // For EC_SUCCESS, PW_ERR_RATE_LIMIT_REACHED, and PW_ERR_LOWENT_AUTH_FAILED
-  // a full size response is sent. However, only particular fields are valid.
+  // For EC_SUCCESS, PW_ERR_RATE_LIMIT_REACHED, PW_ERR_LOWENT_AUTH_FAILED, and
+  // PW_ERR_EXPIRED a full size response is sent. However, only particular
+  // fields are valid.
   if (*result_code != 0 && *result_code != PW_ERR_RATE_LIMIT_REACHED &&
-      *result_code != PW_ERR_LOWENT_AUTH_FAILED) {
+      *result_code != PW_ERR_LOWENT_AUTH_FAILED &&
+      *result_code != PW_ERR_EXPIRED) {
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
   if (response_length < sizeof(pw_response_try_auth01_t))
     return SAPI_RC_BAD_SIZE;
+
+  // For PW_ERR_EXPIRED, no fields from the response are valid.
+  if (*result_code == PW_ERR_EXPIRED)
+    return TPM_RC_SUCCESS;
 
   auto itr = buffer.begin() + sizeof(pw_response_header_t);
   // This field may not be aligned so it is retrieved in a way that will work

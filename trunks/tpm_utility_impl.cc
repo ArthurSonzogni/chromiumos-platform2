@@ -75,6 +75,8 @@ const uint16_t kCr50SubcmdGetRoStatus = 57;
 // reasons.
 const char kRsuSalt[] = "Wu8oGt0uu0H8uSGxfo75uSDrGcRk2BXh";
 
+constexpr uint8_t kPwLeafTypeNormal = 0;
+
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
 // handles use this name formula see Table 3 in the TPM 2.0 Library Spec Part 1
@@ -2878,6 +2880,7 @@ TPM_RC TpmUtilityImpl::PinWeaverInsertLeaf(
     const brillo::SecureBlob& reset_secret,
     const std::map<uint32_t, uint32_t>& delay_schedule,
     const ValidPcrCriteria& valid_pcr_criteria,
+    std::optional<uint32_t> expiration_delay,
     uint32_t* result_code,
     std::string* root_hash,
     std::string* cred_metadata,
@@ -2885,10 +2888,12 @@ TPM_RC TpmUtilityImpl::PinWeaverInsertLeaf(
   return PinWeaverCommand(
       __func__,
       [protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-       delay_schedule, valid_pcr_criteria](std::string* in) -> TPM_RC {
+       delay_schedule, valid_pcr_criteria,
+       expiration_delay](std::string* in) -> TPM_RC {
         return Serialize_pw_insert_leaf_t(
             protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-            delay_schedule, valid_pcr_criteria, in);
+            delay_schedule, valid_pcr_criteria, expiration_delay,
+            kPwLeafTypeNormal, std::nullopt, in);
       },
       [result_code, root_hash, cred_metadata,
        mac](const std::string& out) -> TPM_RC {
@@ -2943,6 +2948,7 @@ TPM_RC TpmUtilityImpl::PinWeaverTryAuth(uint8_t protocol_version,
 TPM_RC TpmUtilityImpl::PinWeaverResetAuth(
     uint8_t protocol_version,
     const brillo::SecureBlob& reset_secret,
+    bool strong_reset,
     const std::string& h_aux,
     const std::string& cred_metadata,
     uint32_t* result_code,
@@ -2951,10 +2957,11 @@ TPM_RC TpmUtilityImpl::PinWeaverResetAuth(
     std::string* mac_out) {
   return PinWeaverCommand(
       __func__,
-      [protocol_version, reset_secret, h_aux,
+      [protocol_version, reset_secret, strong_reset, h_aux,
        cred_metadata](std::string* in) -> TPM_RC {
-        return Serialize_pw_reset_auth_t(protocol_version, reset_secret, h_aux,
-                                         cred_metadata, in);
+        return Serialize_pw_reset_auth_t(protocol_version, reset_secret,
+                                         strong_reset, h_aux, cred_metadata,
+                                         in);
       },
       [result_code, root_hash, cred_metadata_out,
        mac_out](const std::string& out) -> TPM_RC {

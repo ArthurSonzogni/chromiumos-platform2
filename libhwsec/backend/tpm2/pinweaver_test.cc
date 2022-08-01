@@ -19,6 +19,7 @@ using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::DoAll;
+using testing::Eq;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -158,9 +159,10 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
   EXPECT_CALL(
       proxy_->GetMock().tpm_utility,
       PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret, kFakeHeSecret,
-                          kFakeResetSecret, kDelaySched, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<8>(0), SetArgPointee<9>(kFakeRoot),
-                      SetArgPointee<10>(kFakeCred), SetArgPointee<11>(kFakeMac),
+                          kFakeResetSecret, kDelaySched, _,
+                          /*expiration_delay=*/Eq(std::nullopt), _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<9>(0), SetArgPointee<10>(kFakeRoot),
+                      SetArgPointee<11>(kFakeCred), SetArgPointee<12>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
@@ -306,8 +308,9 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
   EXPECT_CALL(
       proxy_->GetMock().tpm_utility,
       PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret, kFakeHeSecret,
-                          kFakeResetSecret, kDelaySched, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<8>(PW_ERR_DELAY_SCHEDULE_INVALID),
+                          kFakeResetSecret, kDelaySched, _,
+                          /*expiration_delay=*/Eq(std::nullopt), _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<9>(PW_ERR_DELAY_SCHEDULE_INVALID),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
@@ -510,9 +513,10 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
 
   EXPECT_CALL(
       proxy_->GetMock().tpm_utility,
-      PinWeaverResetAuth(kVersion, kFakeResetSecret, _, kFakeCred, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(0), SetArgPointee<5>(kFakeRoot),
-                      SetArgPointee<6>(kNewCred), SetArgPointee<7>(kFakeMac),
+      PinWeaverResetAuth(kVersion, kFakeResetSecret, /*strong_reset=*/false, _,
+                         kFakeCred, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
+                      SetArgPointee<7>(kNewCred), SetArgPointee<8>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::ResetCredential>(

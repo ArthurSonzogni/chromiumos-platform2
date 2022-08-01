@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -546,14 +547,15 @@ class TpmUtilityForwarder : public TpmUtility {
                              const brillo::SecureBlob& reset_secret,
                              const std::map<uint32_t, uint32_t>& delay_schedule,
                              const ValidPcrCriteria& valid_pcr_criteria,
+                             std::optional<uint32_t> expiration_delay,
                              uint32_t* result_code,
                              std::string* root_hash,
                              std::string* cred_metadata,
                              std::string* mac) override {
     return target_->PinWeaverInsertLeaf(
         protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-        delay_schedule, valid_pcr_criteria, result_code, root_hash,
-        cred_metadata, mac);
+        delay_schedule, valid_pcr_criteria, expiration_delay, result_code,
+        root_hash, cred_metadata, mac);
   }
 
   TPM_RC PinWeaverRemoveLeaf(uint8_t protocol_version,
@@ -585,15 +587,16 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC PinWeaverResetAuth(uint8_t protocol_version,
                             const brillo::SecureBlob& reset_secret,
+                            bool strong_reset,
                             const std::string& h_aux,
                             const std::string& cred_metadata,
                             uint32_t* result_code,
                             std::string* root_hash,
                             std::string* cred_metadata_out,
                             std::string* mac_out) override {
-    return target_->PinWeaverResetAuth(protocol_version, reset_secret, h_aux,
-                                       cred_metadata, result_code, root_hash,
-                                       cred_metadata_out, mac_out);
+    return target_->PinWeaverResetAuth(
+        protocol_version, reset_secret, strong_reset, h_aux, cred_metadata,
+        result_code, root_hash, cred_metadata_out, mac_out);
   }
 
   TPM_RC PinWeaverGetLog(uint8_t protocol_version,

@@ -253,6 +253,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                              const brillo::SecureBlob& reset_secret,
                              const std::map<uint32_t, uint32_t>& delay_schedule,
                              const ValidPcrCriteria& valid_pcr_criteria,
+                             std::optional<uint32_t> expiration_delay,
                              uint32_t* result_code,
                              std::string* root_hash,
                              std::string* cred_metadata,
@@ -276,6 +277,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           std::string* mac_out) override;
   TPM_RC PinWeaverResetAuth(uint8_t protocol_version,
                             const brillo::SecureBlob& reset_secret,
+                            bool strong_reset,
                             const std::string& h_aux,
                             const std::string& cred_metadata,
                             uint32_t* result_code,

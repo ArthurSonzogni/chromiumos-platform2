@@ -12,6 +12,7 @@ extern "C" {
 }
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,9 @@ Serialize_pw_insert_leaf_t(uint8_t protocol_version,
                            const brillo::SecureBlob& reset_secret,
                            const std::map<uint32_t, uint32_t>& delay_schedule,
                            const ValidPcrCriteria& valid_pcr_criteria,
+                           std::optional<uint32_t> expiration_delay,
+                           uint8_t leaf_type,
+                           std::optional<uint8_t> auth_channel,
                            std::string* buffer);
 
 BRILLO_EXPORT TPM_RC Serialize_pw_remove_leaf_t(uint8_t protocol_version,
@@ -59,6 +63,7 @@ Serialize_pw_try_auth_t(uint8_t protocol_version,
 BRILLO_EXPORT TPM_RC
 Serialize_pw_reset_auth_t(uint8_t protocol_version,
                           const brillo::SecureBlob& reset_secret,
+                          bool strong_reset,
                           const std::string& h_aux,
                           const std::string& cred_metadata,
                           std::string* buffer);

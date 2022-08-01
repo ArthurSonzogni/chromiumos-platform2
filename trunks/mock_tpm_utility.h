@@ -6,6 +6,7 @@
 #define TRUNKS_MOCK_TPM_UTILITY_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -247,6 +248,7 @@ class MockTpmUtility : public TpmUtility {
                const brillo::SecureBlob&,
                (const std::map<uint32_t, uint32_t>&),
                const ValidPcrCriteria&,
+               std::optional<uint32_t>,
                uint32_t*,
                std::string*,
                std::string*,
@@ -273,9 +275,10 @@ class MockTpmUtility : public TpmUtility {
                std::string*,
                std::string*),
               (override));
-  MOCK_METHOD8(PinWeaverResetAuth,
+  MOCK_METHOD9(PinWeaverResetAuth,
                TPM_RC(uint8_t,
                       const brillo::SecureBlob&,
+                      bool,
                       const std::string&,
                       const std::string&,
                       uint32_t*,

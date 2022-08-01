@@ -130,7 +130,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             brillo::SecureBlob(
                 data_provider.ConsumeRandomLengthString(kMaxPwSecretSize)),
             delay_schedule, GenerateFuzzedValidPcrCriteria(&data_provider),
-            &buf1);
+            data_provider.ConsumeIntegral<uint32_t>(),
+            data_provider.ConsumeIntegral<uint8_t>(),
+            data_provider.ConsumeIntegral<uint8_t>(), &buf1);
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;
@@ -159,6 +161,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             data_provider.ConsumeIntegral<uint8_t>(),
             brillo::SecureBlob(
                 data_provider.ConsumeRandomLengthString(kMaxPwSecretSize)),
+            data_provider.ConsumeBool(),
             data_provider.ConsumeRandomLengthString(kMaxStringLength),
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &buf1);
         if (retval == trunks::TPM_RC_SUCCESS)

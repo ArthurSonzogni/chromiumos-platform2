@@ -172,6 +172,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::Reset(
   };
 }
 
+// TODO(b/240207599): Support the |expiration_delay| parameter.
 StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
     const std::vector<OperationPolicySetting>& policies,
     const uint64_t label,
@@ -221,8 +222,8 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverInsertLeaf(
           version, label, encoded_aux, le_secret, he_secret, reset_secret,
-          delay_schedule, pcr_criteria, &pinweaver_status, &root,
-          &cred_metadata_string, &mac_string)))
+          delay_schedule, pcr_criteria, /*expiration_delay=*/std::nullopt,
+          &pinweaver_status, &root, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to insert leaf in pinweaver");
 
   RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
@@ -296,6 +297,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::RemoveCredential(
   };
 }
 
+// TODO(b/240207599): Support the |strong_reset| parameter.
 StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,
@@ -313,7 +315,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverResetAuth(
-          version, reset_secret, encoded_aux,
+          version, reset_secret, /*strong_reset=*/false, encoded_aux,
           brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
           &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to reset auth in pinweaver");

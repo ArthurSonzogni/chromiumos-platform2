@@ -6,6 +6,7 @@
 #define TRUNKS_TPM_UTILITY_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -612,6 +613,8 @@ class TRUNKS_EXPORT TpmUtility {
   //   |valid_pcr_criteria| is list of at most PW_MAX_PCR_CRITERIA_COUNT entries
   //       where each entry represents a bitmask of PCR indexes and the expected
   //       digest corresponding to those PCR.
+  //   |expiration_delay| is the expiration window of the leaf, in seconds.
+  //   Nullopt means the leaf doesn't expire.
   // On success:
   //   returns VENDOR_RC_SUCCESS
   //   |result_code| is set to EC_SUCCESS (0).
@@ -632,6 +635,7 @@ class TRUNKS_EXPORT TpmUtility {
       const brillo::SecureBlob& reset_secret,
       const std::map<uint32_t, uint32_t>& delay_schedule,
       const ValidPcrCriteria& valid_pcr_criteria,
+      std::optional<uint32_t> expiration_delay,
       uint32_t* result_code,
       std::string* root_hash,
       std::string* cred_metadata,
@@ -724,6 +728,9 @@ class TRUNKS_EXPORT TpmUtility {
   //       pinweaver.
   //   |reset_secret| is the high entropy secret used to reset the attempt
   //       counters and authenticate without following the delay schedule.
+  //   |strong_reset| is whether the expiration timestamp should be extended
+  //       to |expiration_delay| seconds from now too, in addition to resetting
+  //       the attempt counter.
   //   |h_aux| is the auxiliary hashes started from the bottom of the tree
   //       working toward the root in index order.
   //   |cred_metadata| is set to the wrapped leaf data.
@@ -741,6 +748,7 @@ class TRUNKS_EXPORT TpmUtility {
   //   |he_secret|, |cred_metadata_out|, and |mac| are all empty.
   virtual TPM_RC PinWeaverResetAuth(uint8_t protocol_version,
                                     const brillo::SecureBlob& reset_secret,
+                                    bool strong_reset,
                                     const std::string& h_aux,
                                     const std::string& cred_metadata,
                                     uint32_t* result_code,
