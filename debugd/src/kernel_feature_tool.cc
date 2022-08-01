@@ -111,20 +111,19 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
 
   VLOG(1) << "JSON feature parsed result: " << input;
 
-  base::JSONReader::ValueWithError root =
-      base::JSONReader::ReadAndReturnValueWithError(input);
-  if (!root.value) {
+  auto root = base::JSONReader::ReadAndReturnValueWithError(input);
+  if (!root.has_value()) {
     *err_str = "debugd: Failed to parse features conf file!";
     return false;
   }
 
-  if (!root.value->is_list() || root.value->GetList().size() != 1) {
+  if (!root->is_list() || root->GetList().size() != 1) {
     *err_str = "debugd should not be used for new trials; use featured!";
     return false;
   }
 
-  for (unsigned i = 0; i < root.value->GetList().size(); i++) {
-    base::Value item = std::move(root.value->GetList()[i]);
+  for (unsigned i = 0; i < root->GetList().size(); i++) {
+    base::Value item = std::move(root->GetList()[i]);
     base::Value* feature_json_obj = &item;
 
     if (!feature_json_obj->is_dict()) {
