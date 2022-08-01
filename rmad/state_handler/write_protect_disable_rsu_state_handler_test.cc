@@ -14,7 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -141,7 +140,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
                                             &wp_disable_method_name));
   EXPECT_TRUE(
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
-  EXPECT_EQ(wp_disable_method, WpDisableMethod::RSU);
+  EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_RSU);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {

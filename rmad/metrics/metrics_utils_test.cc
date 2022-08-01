@@ -16,7 +16,6 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
@@ -492,9 +491,10 @@ TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
 
   std::array<WpDisableMethod, 5> methods = {
-      WpDisableMethod::UNKNOWN, WpDisableMethod::SKIPPED, WpDisableMethod::RSU,
-      WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE,
-      WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN};
+      RMAD_WP_DISABLE_METHOD_UNKNOWN, RMAD_WP_DISABLE_METHOD_SKIPPED,
+      RMAD_WP_DISABLE_METHOD_RSU,
+      RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE,
+      RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN};
   for (auto wp_disable_method : methods) {
     EXPECT_TRUE(
         MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod,

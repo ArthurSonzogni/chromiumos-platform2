@@ -597,3 +597,13 @@ message RecordBrowserActionMetricRequest {
 message RecordBrowserActionMetricReply {
   RmadErrorCode error = 1;
 }
+
+// Defined write protection methods for showing in metrics.
+// Keep this in sync with metrics/structured/structured.xml.
+enum WpDisableMethod {
+  RMAD_WP_DISABLE_METHOD_UNKNOWN = 0;
+  RMAD_WP_DISABLE_METHOD_SKIPPED = 1;
+  RMAD_WP_DISABLE_METHOD_RSU = 2;
+  RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE = 3;
+  RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN = 4;
+}

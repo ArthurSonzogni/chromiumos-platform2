@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/cr50_utils_impl.h"
@@ -123,7 +122,7 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
       // Skip WP disabling steps if factory mode is already turned on.
       MetricsUtils::SetMetricsValue(
           json_store_, kWpDisableMethod,
-          WpDisableMethod_Name(WpDisableMethod::SKIPPED));
+          WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_SKIPPED));
       next_state = RmadState::StateCase::kWpDisableComplete;
     } else if (ccd_blocked_) {
       if (wipe_device) {

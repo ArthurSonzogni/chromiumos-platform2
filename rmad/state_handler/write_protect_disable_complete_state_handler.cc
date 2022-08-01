@@ -11,7 +11,6 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -58,25 +57,25 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   }
 
   switch (wp_disable_method) {
-    case WpDisableMethod::UNKNOWN:
+    case RMAD_WP_DISABLE_METHOD_UNKNOWN:
       // This should not happen.
       LOG(ERROR) << "WP disable method should not be UNKNOWN";
       return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
-    case WpDisableMethod::SKIPPED:
+    case RMAD_WP_DISABLE_METHOD_SKIPPED:
       state_.mutable_wp_disable_complete()->set_action(
           WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
       break;
 
-    case WpDisableMethod::RSU:
+    case RMAD_WP_DISABLE_METHOD_RSU:
       state_.mutable_wp_disable_complete()->set_action(
           WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
       break;
-    case WpDisableMethod::PHYSICAL_ASSEMBLE_DEVICE:
+    case RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE:
       state_.mutable_wp_disable_complete()->set_action(
           WriteProtectDisableCompleteState::
               RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
       break;
-    case WpDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN:
+    case RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN:
       state_.mutable_wp_disable_complete()->set_action(
           WriteProtectDisableCompleteState::
               RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);

@@ -11,7 +11,6 @@
 
 #include <base/strings/string_util.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/fake_power_manager_client.h"
@@ -128,8 +127,9 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // If factory mode is already enabled, we can transition to the next state
   // immediately.
   if (IsFactoryModeEnabled()) {
-    MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod,
-                                  WpDisableMethod_Name(WpDisableMethod::RSU));
+    MetricsUtils::SetMetricsValue(
+        json_store_, kWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
 

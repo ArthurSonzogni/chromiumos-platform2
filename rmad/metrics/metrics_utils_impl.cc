@@ -13,7 +13,6 @@
 #include <base/time/time.h>
 #include <metrics/structured/structured_events.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
@@ -113,7 +112,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   report.SetMainboardReplacement(static_cast<int64_t>(mlb_replacement));
 
   std::string wp_disable_method_name;
-  WpDisableMethod wp_disable_method = WpDisableMethod::UNKNOWN;
+  WpDisableMethod wp_disable_method = RMAD_WP_DISABLE_METHOD_UNKNOWN;
   // Ignore the else part, because we may not have decided on it.
   if (GetMetricsValue(json_store, kWpDisableMethod, &wp_disable_method_name)) {
     if (!WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
@@ -121,7 +120,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
       return false;
     }
   }
-  report.SetWriteProtectDisableMethod(static_cast<int64_t>(wp_disable_method));
+  report.SetWriteProtectDisableMethod(wp_disable_method);
 
   if (record_to_system_ && !report.Record()) {
     LOG(ERROR) << "Failed to record shimless rma report to metrics.";

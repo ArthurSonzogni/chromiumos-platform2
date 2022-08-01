@@ -21,7 +21,6 @@ source_set("libmetrics") {
   configs += [ ":target_defaults" ]
   deps = [
     "//metrics/structured:libstructuredmetrics",
-    "//rmad/common:libcommon",
     "//rmad/utils:libutils",
   ]
 }

@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
@@ -228,7 +227,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
                                             &wp_disable_method_name));
   EXPECT_TRUE(
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
-  EXPECT_EQ(wp_disable_method, WpDisableMethod::SKIPPED);
+  EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_SKIPPED);
 }
 
 TEST_F(ComponentsRepairStateHandlerTest,

@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
-#include "rmad/common/types.h"
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -137,7 +136,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       if (cr50_utils_->IsFactoryModeEnabled()) {
         MetricsUtils::SetMetricsValue(
             json_store_, kWpDisableMethod,
-            WpDisableMethod_Name(WpDisableMethod::SKIPPED));
+            WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_SKIPPED));
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
       }
       // If HWWP is already disabled, assume the user will select the physical
