@@ -177,9 +177,9 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::ReadMetricsFile() {
 }
 
 bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
-  base::Value data(base::Value::Type::DICTIONARY);
-  data.SetIntKey(kOsVersionHashKey, os_version_hash_);
-  data.SetIntKey(kStartDayKey, start_day_);
+  base::Value::Dict data;
+  data.Set(kOsVersionHashKey, os_version_hash_);
+  data.Set(kStartDayKey, start_day_);
   int64_t elapsed_milliseconds = accumulated_time_.InMilliseconds();
   if (elapsed_milliseconds < 0 ||
       elapsed_milliseconds > std::numeric_limits<int>::max()) {
@@ -189,8 +189,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
     accumulated_time_ = base::TimeDelta();
     elapsed_milliseconds = 0;
   }
-  data.SetIntKey(kElapsedMillisecondsKey,
-                 static_cast<int>(elapsed_milliseconds));
+  data.Set(kElapsedMillisecondsKey, static_cast<int>(elapsed_milliseconds));
 
   std::string data_json;
   if (!base::JSONWriter::Write(data, &data_json)) {

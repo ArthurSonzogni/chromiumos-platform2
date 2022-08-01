@@ -766,9 +766,9 @@ void SetUpPowerButtonPositionFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  base::Value position_info(base::Value::Type::DICTIONARY);
-  position_info.SetStringKey(kPowerButtonEdgeField, std::move(edge_as_string));
-  position_info.SetDoubleKey(kPowerButtonPositionField, position_as_double);
+  base::Value::Dict position_info;
+  position_info.Set(kPowerButtonEdgeField, std::move(edge_as_string));
+  position_info.Set(kPowerButtonPositionField, position_as_double);
 
   std::string json_position_info;
   base::JSONWriter::Write(position_info, &json_position_info);
@@ -787,10 +787,9 @@ void SetUpSideVolumeButtonPositionFlag(
     return;
   }
 
-  base::Value position_info(base::Value::Type::DICTIONARY);
-  position_info.SetStringKey(kSideVolumeButtonRegion,
-                             std::move(region_as_string));
-  position_info.SetStringKey(kSideVolumeButtonSide, std::move(side_as_string));
+  base::Value::Dict position_info;
+  position_info.Set(kSideVolumeButtonRegion, std::move(region_as_string));
+  position_info.Set(kSideVolumeButtonSide, std::move(side_as_string));
 
   std::string json_position_info;
   if (!base::JSONWriter::Write(position_info, &json_position_info)) {
@@ -803,13 +802,13 @@ void SetUpSideVolumeButtonPositionFlag(
 
 void SetUpOzoneNNPalmPropertiesFlag(ChromiumCommandBuilder* builder,
                                     brillo::CrosConfigInterface* cros_config) {
-  base::Value info(base::Value::Type::DICTIONARY);
+  base::Value::Dict info;
   if (cros_config) {
     std::string value;
     for (const char* property : kOzoneNNPalmOptionalProperties) {
       if (cros_config->GetString(kOzoneNNPalmPropertiesPath, property,
                                  &value)) {
-        info.SetStringKey(property, std::move(value));
+        info.Set(property, std::move(value));
         continue;
       }
     }

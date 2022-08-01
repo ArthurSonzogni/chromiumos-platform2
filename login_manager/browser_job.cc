@@ -444,25 +444,24 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                      extra_arguments_.end());
 
     // Encode feature flags.
-    std::vector<base::Value> feature_flag_list;
+    base::Value::List feature_flag_list;
     for (const auto& feature_flag : feature_flags_) {
-      feature_flag_list.emplace_back(base::Value(feature_flag));
+      feature_flag_list.Append(feature_flag);
     }
     if (!feature_flag_list.empty()) {
       std::sort(feature_flag_list.begin(), feature_flag_list.end());
       std::string encoded;
-      base::JSONWriter::Write(base::Value(std::move(feature_flag_list)),
-                              &encoded);
+      base::JSONWriter::Write(feature_flag_list, &encoded);
       to_return.push_back(base::StringPrintf(
           "--%s=%s", chromeos::switches::kFeatureFlags, encoded.c_str()));
     }
 
     // Encode origin list values.
-    base::Value origin_list_dict(base::Value::Type::DICTIONARY);
+    base::Value::Dict origin_list_dict;
     for (const auto& entry : origin_list_flags_) {
-      origin_list_dict.SetStringKey(entry.first, entry.second);
+      origin_list_dict.Set(entry.first, entry.second);
     }
-    if (!origin_list_dict.DictEmpty()) {
+    if (!origin_list_dict.empty()) {
       std::string encoded;
       base::JSONWriter::Write(origin_list_dict, &encoded);
       to_return.push_back(base::StringPrintf(
