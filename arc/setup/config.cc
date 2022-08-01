@@ -110,17 +110,17 @@ bool Config::ParseJsonFile(const base::FilePath& config_json) {
 
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       json_str, base::JSON_PARSE_RFC);
-  if (!result.value) {
-    LOG(ERROR) << "Failed to parse json: " << result.error_message;
+  if (!result.has_value()) {
+    LOG(ERROR) << "Failed to parse json: " << result.error().message;
     return false;
   }
 
-  if (!result.value->is_dict()) {
+  if (!result->is_dict()) {
     LOG(ERROR) << "Failed to read json as dictionary";
     return false;
   }
 
-  for (const auto& item : result.value->DictItems()) {
+  for (const auto& item : result->DictItems()) {
     if (!json_
              .emplace(item.first,
                       base::Value::ToUniquePtrValue(std::move(item.second)))

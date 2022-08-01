@@ -147,16 +147,16 @@ bool GetConfiguration(AdbdConfiguration* config) {
 
   auto config_root = base::JSONReader::ReadAndReturnValueWithError(
       config_json_data, base::JSON_PARSE_RFC);
-  if (!config_root.value) {
-    LOG(ERROR) << "Failed to parse adb.json: " << config_root.error_message;
+  if (!config_root.has_value()) {
+    LOG(ERROR) << "Failed to parse adb.json: " << config_root.error().message;
     return false;
   }
-  if (!config_root.value->is_dict()) {
+  if (!config_root->is_dict()) {
     LOG(ERROR) << "Failed to parse root dictionary from adb.json";
     return false;
   }
   const std::string* usb_product_id =
-      config_root.value->FindStringKey("usbProductId");
+      config_root->FindStringKey("usbProductId");
   if (!usb_product_id) {
     LOG(ERROR) << "Failed to parse usbProductId";
     return false;
@@ -164,7 +164,7 @@ bool GetConfiguration(AdbdConfiguration* config) {
   config->usb_product_id = *usb_product_id;
   // kernelModules are optional.
   const base::Value* kernel_module_list =
-      config_root.value->FindListKey("kernelModules");
+      config_root->FindListKey("kernelModules");
   if (kernel_module_list) {
     for (const auto& kernel_module_value : kernel_module_list->GetList()) {
       AdbdConfigurationKernelModule module;

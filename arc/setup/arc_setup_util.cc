@@ -787,25 +787,24 @@ bool GetOciContainerState(const base::FilePath& path,
   }
   auto container_state = base::JSONReader::ReadAndReturnValueWithError(
       json_str, base::JSON_PARSE_RFC);
-  if (!container_state.value) {
-    LOG(ERROR) << "Failed to parse json: " << container_state.error_message;
+  if (!container_state.has_value()) {
+    LOG(ERROR) << "Failed to parse json: " << container_state.error().message;
     return false;
   }
-  if (!container_state.value->is_dict()) {
+  if (!container_state->is_dict()) {
     LOG(ERROR) << "Failed to read container state as dictionary";
     return false;
   }
 
   // Get the container PID and the rootfs path.
-  std::optional<int> pid = container_state.value->FindIntKey("pid");
+  std::optional<int> pid = container_state->FindIntKey("pid");
   if (!pid) {
     LOG(ERROR) << "Failed to get PID from container state";
     return false;
   }
   *out_container_pid = pid.value();
 
-  const base::Value* annotations =
-      container_state.value->FindDictKey("annotations");
+  const base::Value* annotations = container_state->FindDictKey("annotations");
   if (!annotations) {
     LOG(ERROR) << "Failed to get annotations from container state";
     return false;
@@ -1062,14 +1061,14 @@ std::optional<std::string> FilterMediaProfile(
     return content;
   }
   auto config = base::JSONReader::ReadAndReturnValueWithError(json_str);
-  if (!config.value) {
+  if (!config.has_value()) {
     LOG(ERROR) << "Failed to parse camera test config content: " << json_str;
     return content;
   }
   bool enable_front_camera =
-      config.value->FindBoolPath(kEnableFrontCamera).value_or(true);
+      config->FindBoolPath(kEnableFrontCamera).value_or(true);
   bool enable_back_camera =
-      config.value->FindBoolPath(kEnableBackCamera).value_or(true);
+      config->FindBoolPath(kEnableBackCamera).value_or(true);
   if (enable_front_camera && enable_back_camera) {
     return content;
   }

@@ -58,19 +58,18 @@ bool IsMatch(const std::string& file_name, const std::string& pattern) {
 bool IsAccessTimeValid(const base::StringPiece& json_message) {
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       json_message, base::JSON_PARSE_RFC);
-  if (!root.value) {
+  if (!root.has_value()) {
     LOG(ERROR) << "Reading attributes JSON failed (error message: "
-               << root.error_message << ").";
+               << root.error().message << ").";
     return false;
   }
 
-  if (!root.value->is_dict()) {
+  if (!root->is_dict()) {
     LOG(ERROR) << "Could not interpret the JSON as a dictionary.";
     return false;
   }
 
-  const std::string* atime_str =
-      root.value->FindStringPath(kKeyAttributesAtime);
+  const std::string* atime_str = root->FindStringPath(kKeyAttributesAtime);
   if (!atime_str) {
     LOG(ERROR) << "Could not read the value of the access time with the "
                << kKeyAttributesAtime << " key.";
