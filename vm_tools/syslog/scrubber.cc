@@ -10,6 +10,7 @@
 
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversion_utils.h>
+#include <base/third_party/icu/icu_utf.h>
 
 using std::string;
 
@@ -84,8 +85,8 @@ string ParseProtoTimestamp(const vm_tools::Timestamp& timestamp) {
 string ScrubProtoContent(const string& content) {
   string result;
 
-  for (int32_t idx = 0; idx < content.size(); ++idx) {
-    uint32_t code_point;
+  for (size_t idx = 0; idx < content.size(); ++idx) {
+    base_icu::UChar32 code_point;
     if (!base::ReadUnicodeCharacter(content.c_str(), content.size(), &idx,
                                     &code_point)) {
       // Not a valid code point.  Replace it.
