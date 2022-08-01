@@ -29,8 +29,8 @@ use crate::hibermeta::{
 };
 use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::{
-    get_page_size, lock_process_memory, log_duration, log_io_duration, path_to_stateful_block,
-    HibernateError, BUFFER_PAGES,
+    emit_upstart_event, get_page_size, lock_process_memory, log_duration, log_io_duration,
+    path_to_stateful_block, HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -56,6 +56,7 @@ pub struct ResumeConductor {
     options: ResumeOptions,
     metrics_logger: MetricsLogger,
     stateful_block_path: String,
+    tpm_done_event_emitted: bool,
 }
 
 impl ResumeConductor {
@@ -67,6 +68,7 @@ impl ResumeConductor {
             options: Default::default(),
             metrics_logger: MetricsLogger::new()?,
             stateful_block_path: path_to_stateful_block()?,
+            tpm_done_event_emitted: false,
         })
     }
 
@@ -93,6 +95,8 @@ impl ResumeConductor {
         replay_logs(true, !self.options.dry_run);
         // Then move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
+        // Allow trunksd to start if not already done.
+        self.emit_tpm_done_event()?;
         // Since resume_inner() returned, we are no longer in a viable resume
         // path. Drop the pending merge object, causing the stateful
         // dm-snapshots to merge with their origins.
@@ -224,6 +228,9 @@ impl ResumeConductor {
                 .context("Failed to load kernel key blob")?;
         }
 
+        // With the kernel key loaded, all the TPM work is complete.
+        self.emit_tpm_done_event()?;
+
         // The pending resume call represents the object blocking the
         // ResumeFromHibernate dbus call from completing and letting the rest of
         // boot continue. This gets dropped at the end of the function, when
@@ -271,6 +278,25 @@ impl ResumeConductor {
         } else {
             self.launch_resume_image(meta_file, frozen_userspace, pending_resume_call)
         }
+    }
+
+    /// Emits the signal upstart is waiting for to allow trunksd to start and
+    /// consume all the TPM handles.
+    fn emit_tpm_done_event(&mut self) -> Result<()> {
+        if self.tpm_done_event_emitted {
+            return Ok(());
+        }
+
+        // Trunksd is blocked from starting so that the kernel can use TPM
+        // handles during early resume. Allow trunksd to start now that resume
+        // TPM usage is complete. Note that trunksd will also start if hiberman
+        // exits, so it's only critical that this is run if hiberman is going to
+        // continue running for an indeterminate amount of time.
+        emit_upstart_event("hibernate-tpm-done")
+            .context("Failed to emit hibernate-tpm-done event")?;
+
+        self.tpm_done_event_emitted = true;
+        Ok(())
     }
 
     /// Load the resume image from disk into memory.
