@@ -146,19 +146,18 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
 
   VLOG(1) << "JSON file contents: " << file_contents;
 
-  base::JSONReader::ValueWithError root =
-      base::JSONReader::ReadAndReturnValueWithError(file_contents);
-  if (!root.value) {
+  auto root = base::JSONReader::ReadAndReturnValueWithError(file_contents);
+  if (!root.has_value()) {
     LOG(ERROR) << "Failed to parse conf file: " << kPlatformFeaturesPath;
     return false;
   }
 
-  if (!root.value->is_list() || root.value->GetList().size() == 0) {
+  if (!root->is_list() || root->GetList().size() == 0) {
     LOG(ERROR) << "features list should be non-zero size!";
     return false;
   }
 
-  for (const auto& item : root.value->GetList()) {
+  for (const auto& item : root->GetList()) {
     if (!item.is_dict()) {
       LOG(ERROR) << "features conf not list of dicts!";
       return false;
