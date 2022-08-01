@@ -39,18 +39,18 @@ std::unique_ptr<CameraConfig> CameraConfig::Create(
   }
 
   auto result = base::JSONReader::ReadAndReturnValueWithError(content, 0);
-  if (!result.value) {
+  if (!result.has_value()) {
     LOGF(ERROR) << "Invalid JSON format of camera configuration file:"
-                << result.error_message;
+                << result.error().message;
     return nullptr;
   }
 
-  if (!result.value->is_dict()) {
+  if (!result->is_dict()) {
     LOGF(ERROR) << "value of JSON result is not a dictionary";
     return nullptr;
   }
 
-  return base::WrapUnique(new CameraConfigImpl(std::move(*result.value)));
+  return base::WrapUnique(new CameraConfigImpl(std::move(*result)));
 }
 
 CameraConfigImpl::CameraConfigImpl(base::Value config) {
