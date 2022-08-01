@@ -1219,8 +1219,8 @@ class DevicePortalDetectionTest : public DeviceTest {
  protected:
   static const int kPortalAttempts;
 
-  bool StartPortalDetection(bool restart = false) {
-    return device_->StartPortalDetection(restart);
+  bool UpdatePortalDetector(bool restart = false) {
+    return device_->UpdatePortalDetector(restart);
   }
   void StopPortalDetection() { device_->StopPortalDetection(); }
 
@@ -1242,8 +1242,8 @@ TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
 
-  EXPECT_FALSE(StartPortalDetection(true));
-  EXPECT_FALSE(StartPortalDetection(false));
+  EXPECT_FALSE(UpdatePortalDetector(true));
+  EXPECT_FALSE(UpdatePortalDetector(false));
   ASSERT_EQ(nullptr, GetPortalDetector());
 }
 
@@ -1253,8 +1253,8 @@ TEST_F(DevicePortalDetectionTest, NoConnection) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
 
-  EXPECT_FALSE(StartPortalDetection(true));
-  EXPECT_FALSE(StartPortalDetection(false));
+  EXPECT_FALSE(UpdatePortalDetector(true));
+  EXPECT_FALSE(UpdatePortalDetector(false));
   ASSERT_EQ(nullptr, GetPortalDetector());
 }
 
@@ -1264,8 +1264,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(2);
 
-  EXPECT_FALSE(StartPortalDetection(true));
-  EXPECT_FALSE(StartPortalDetection(false));
+  EXPECT_FALSE(UpdatePortalDetector(true));
+  EXPECT_FALSE(UpdatePortalDetector(false));
   ASSERT_EQ(nullptr, GetPortalDetector());
 }
 
@@ -1278,7 +1278,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_DoNotForceRestart) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
 
-  EXPECT_TRUE(StartPortalDetection(false));
+  EXPECT_TRUE(UpdatePortalDetector(false));
   ASSERT_EQ(mock_portal_detector, GetPortalDetector());
 }
 
@@ -1299,7 +1299,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
 
-  EXPECT_TRUE(StartPortalDetection(true));
+  EXPECT_TRUE(UpdatePortalDetector(true));
   ASSERT_NE(mock_portal_detector, GetPortalDetector());
 }
 
@@ -1318,7 +1318,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
 
-  EXPECT_FALSE(StartPortalDetection());
+  EXPECT_FALSE(UpdatePortalDetector());
   ASSERT_EQ(nullptr, GetPortalDetector());
 }
 
@@ -1336,7 +1336,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
-  EXPECT_TRUE(StartPortalDetection());
+  EXPECT_TRUE(UpdatePortalDetector());
   ASSERT_NE(nullptr, GetPortalDetector());
 
   // Drop all references to device_info before it falls out of scope.
@@ -1358,7 +1358,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
-  EXPECT_TRUE(StartPortalDetection());
+  EXPECT_TRUE(UpdatePortalDetector());
   ASSERT_NE(nullptr, GetPortalDetector());
 
   // Drop all references to device_info before it falls out of scope.
@@ -1430,20 +1430,28 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 
 TEST_F(DevicePortalDetectionTest, RequestPortalDetectionIsNoop) {
   // Non connected state returns false.
-  EXPECT_CALL(*service_, IsConnected(_)).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(false));
   EXPECT_FALSE(RequestPortalDetection());
+  Mock::VerifyAndClearExpectations(service_.get());
+
+  // Portal detection is disabled for the Service
+  EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_FALSE(RequestPortalDetection());
+  Mock::VerifyAndClearExpectations(service_.get());
 
   // Portal detection already running.
   EXPECT_CALL(*service_, IsConnected(_)).WillRepeatedly(Return(true));
-  MockPortalDetector* portal_detector = SetMockPortalDetector();
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*SetMockPortalDetector(), IsInProgress())
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(RequestPortalDetection());
-
-  // Portal detection is disabled for the Service
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_FALSE(RequestPortalDetection());
+  Mock::VerifyAndClearExpectations(service_.get());
 }
 
 TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
@@ -1805,7 +1813,7 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   EXPECT_CALL(*connection, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
-  EXPECT_TRUE(StartPortalDetection());
+  EXPECT_TRUE(UpdatePortalDetector());
 
   // Ensure that the DestroyConnection method removes all connection references
   // except the one left in this scope.

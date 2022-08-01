@@ -656,7 +656,7 @@ void Device::OnConnectionUpdated(IPConfig* ipconfig) {
     // on dual stack networks when IPv4 provisioning completes after IPv6
     // provisioning. Note that currently SetupConnection() is never called a
     // second time if IPv6 provisioning completes after IPv4 provisioning.
-    StartPortalDetection(/*restart=*/true);
+    UpdatePortalDetector(/*restart=*/true);
   }
 }
 
@@ -775,15 +775,15 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
 
 bool Device::RestartPortalDetection() {
   StopPortalDetection();
-  return StartPortalDetection(/*restart=*/false);
+  return UpdatePortalDetector(/*restart=*/false);
 }
 
 bool Device::RequestPortalDetection() {
   SLOG(this, 1) << LoggingTag() << ": " << __func__;
-  return StartPortalDetection(/*restart=*/false);
+  return UpdatePortalDetector(/*restart=*/false);
 }
 
-bool Device::StartPortalDetection(bool restart) {
+bool Device::UpdatePortalDetector(bool restart) {
   SLOG(this, 1) << LoggingTag() << ": " << __func__ << " restart=" << restart;
 
   if (!selected_service_) {
@@ -804,18 +804,20 @@ bool Device::StartPortalDetection(bool restart) {
     return false;
   }
 
-  if (!restart && portal_detector_.get() && portal_detector_->IsInProgress()) {
-    LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
-    return true;
-  }
-
   // If portal detection is disabled for this technology, immediately set
-  // the service state to "Online".
+  // the service state to "Online" and stop portal detection if it was
+  // running.
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this service";
+    StopPortalDetection();
     SetServiceState(Service::kStateOnline);
     return false;
+  }
+
+  if (!restart && portal_detector_.get() && portal_detector_->IsInProgress()) {
+    LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
+    return true;
   }
 
   portal_detector_ = CreatePortalDetector();

@@ -41,7 +41,7 @@ using ::testing::ReturnRef;
 
 // The primary advantage to this pattern, other than increased readability,
 // is that it is much easier to test the Device state machine from
-// StartPortalDetection() through completion, including multiple attempts.
+// UpdatePortalDetector() through completion, including multiple attempts.
 // This will be especially helpful for ensuring that UMA metrics are properly
 // measured.
 
@@ -212,9 +212,9 @@ class DevicePortalDetectorTest : public testing::Test {
     device_->PortalDetectorCallback(result);
   }
 
-  TestPortalDetector* StartPortalDetection(bool restart = true) {
-    device_->StartPortalDetection(restart);
-    // This will be nullptr if StartPortalDetection() failed.
+  TestPortalDetector* UpdatePortalDetector(bool restart = true) {
+    device_->UpdatePortalDetector(restart);
+    // This will be nullptr if UpdatePortalDetector() failed.
     return device_->test_portal_detector();
   }
 
@@ -284,12 +284,12 @@ class DevicePortalDetectorTest : public testing::Test {
 TEST_F(DevicePortalDetectorTest, Disabled) {
   SetServiceCheckPortal(false);
 
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   EXPECT_FALSE(portal_detector);
 }
 
 TEST_F(DevicePortalDetectorTest, DNSFailure) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -309,7 +309,7 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
 }
 
 TEST_F(DevicePortalDetectorTest, DNSTimeout) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -329,7 +329,7 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
 }
 
 TEST_F(DevicePortalDetectorTest, RedirectFound) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -351,7 +351,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
 }
 
 TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -372,7 +372,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspected) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -394,7 +394,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 
@@ -423,7 +423,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
 }
 
 TEST_F(DevicePortalDetectorTest, Online) {
-  TestPortalDetector* portal_detector = StartPortalDetection();
+  TestPortalDetector* portal_detector = UpdatePortalDetector();
   ASSERT_TRUE(portal_detector);
   EXPECT_TRUE(portal_detector->IsInProgress());
 

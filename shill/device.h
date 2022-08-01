@@ -547,7 +547,8 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Initiate portal detection if all the following conditions are met:
+  // Initiate or restart portal detection if all the following conditions are
+  // met:
   //   - There is currently a |selected_service_| for this Device.
   //   - The Device has an active Network connection and |selected_service_| is
   //   in a connected state.
@@ -558,7 +559,9 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   //   - Portal detection was not already running. If |restart| is true this
   //   check is ignored. This allows the caller to force the creation of a new
   //   PortalDetector instance with the latest network layer properties.
-  bool StartPortalDetection(bool restart);
+  // If the Service is connected and portal detection should not be running, it
+  // is stopped and the connection state of the Service is set to "online".
+  bool UpdatePortalDetector(bool restart);
 
   // Stop portal detection if it is running.
   void StopPortalDetection();
