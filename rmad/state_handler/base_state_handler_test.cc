@@ -163,6 +163,8 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
   std::vector<std::string> occurred_errors;
   MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
   EXPECT_EQ(occurred_errors, target_occurred_errors);
+
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, StoreErrorCode_Failed) {
@@ -178,12 +180,15 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Failed) {
       EXPECT_TRUE(handler->StoreErrorCode(error_code));
     }
   }
+
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_NothingSuccess) {
   auto handler = CreateStateHandler();
   EXPECT_TRUE(
       handler->StoreAdditionalActivity(RMAD_ADDITIONAL_ACTIVITY_NOTHING));
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
@@ -221,6 +226,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
   MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                 &additional_activities);
   EXPECT_EQ(additional_activities, target_additional_activities);
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_JsonFailed) {
@@ -246,6 +252,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_RunningTimeFailed) {
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
     }
   }
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
@@ -314,6 +321,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
@@ -400,6 +408,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
+  // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 }  // namespace rmad

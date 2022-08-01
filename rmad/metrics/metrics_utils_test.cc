@@ -30,7 +30,8 @@ constexpr char kDefaultMetricsJson[] =
         "setup_timestamp": 456.789,
         "running_time": 333.333,
         "ro_firmware_verified": true,
-        "occurred_errors": [1],
+        "replaced_component_names": [],
+        "occurred_errors": ["RMAD_ERROR_MISSING_COMPONENT"],
         "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
         "state_metrics": {
           "1": {
@@ -57,7 +58,8 @@ constexpr char kDefaultMetricsJson[] =
 constexpr char kEmptyMetricsJson[] = "{}";
 constexpr char kDefaultMetricsSummaryJson[] = R"({
    "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
-   "occurred_errors": [ 1 ],
+   "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
+   "replaced_component_names": [  ],
    "ro_firmware_verified": true,
    "running_time": 333.333,
    "state_metrics": {
@@ -85,7 +87,8 @@ constexpr double kDefaultFirstSetupTimestamp = 123.456;
 constexpr double kDefaultSetupTimestamp = 456.789;
 constexpr double kDefaultRunningTime = 333.333;
 constexpr bool kDefaultRoFirmwareVerified = true;
-const std::vector<int> kDefaultOccurredErrors = {1};
+const std::vector<std::string> kDefaultOccurredErrors = {
+    "RMAD_ERROR_MISSING_COMPONENT"};
 const std::vector<std::string> kDefaultAdditionalActivities = {
     "RMAD_ADDITIONAL_ACTIVITY_REBOOT"};
 const std::map<int, rmad::StateMetricsData> kDefaultStateMetrics = {
@@ -110,7 +113,9 @@ constexpr double kTestFirstSetupTimestamp = 111.111;
 constexpr double kTestSetupTimestamp = 666.666;
 constexpr double kTestRunningTime = 555.555;
 constexpr bool kTestRoFirmwareVerified = false;
-const std::vector<int> kTestOccurredErrors = {1, 2, 3};
+const std::vector<std::string> kTestOccurredErrors = {
+    "RMAD_ERROR_RMA_NOT_REQUIRED", "RMAD_ERROR_STATE_HANDLER_MISSING",
+    "RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED"};
 const std::vector<std::string> kTestAdditionalActivities = {
     "RMAD_ADDITIONAL_ACTIVITY_REBOOT",
     "RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF",
@@ -171,7 +176,7 @@ TEST_F(MetricsUtilsTest, GetValue) {
                                             &ro_fw_verified));
   EXPECT_EQ(ro_fw_verified, kDefaultRoFirmwareVerified);
 
-  std::vector<int> occurred_errors;
+  std::vector<std::string> occurred_errors;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, kDefaultOccurredErrors);
@@ -246,7 +251,7 @@ TEST_F(MetricsUtilsTest, SetValue_OccurredErrors) {
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kOccurredErrors,
                                             kTestOccurredErrors));
 
-  std::vector<int> occurred_errors;
+  std::vector<std::string> occurred_errors;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, kTestOccurredErrors);

@@ -21,6 +21,7 @@ class MetricsUtilsImpl : public MetricsUtils {
   bool Record(scoped_refptr<JsonStore> json_store, bool is_complete) override;
 
  private:
+  // TODO(genechang): Refactor and make functions able to test separately.
   bool RecordShimlessRmaReport(scoped_refptr<JsonStore> json_store,
                                bool is_complete);
   bool RecordReplacedComponents(scoped_refptr<JsonStore> json_store);

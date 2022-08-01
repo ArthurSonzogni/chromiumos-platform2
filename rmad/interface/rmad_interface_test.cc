@@ -60,9 +60,10 @@ constexpr char kStateHistoryWithMetricsJson[] =
     R"({
       "state_history": [ 1, 2 ],
       "metrics": {
+        "replaced_component_names": [],
         "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
         "first_setup_timestamp": 123.456,
-        "occurred_errors": [1],
+        "occurred_errors": ["RMAD_ERROR_MISSING_COMPONENT"],
         "ro_firmware_verified": true,
         "running_time": 333.333,
         "setup_timestamp": 456.789,
@@ -91,7 +92,8 @@ constexpr char kStateHistoryWithMetricsJson[] =
 
 constexpr char kExpectedLog[] = R"({
    "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
-   "occurred_errors": [ 1 ],
+   "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
+   "replaced_component_names": [  ],
    "ro_firmware_verified": true,
    "running_time": 333.333,
    "state_metrics": {
