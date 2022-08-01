@@ -152,21 +152,21 @@ bool WebAuthnStorage::LoadRecords() {
     auto record_value = base::JSONReader::ReadAndReturnValueWithError(
         json_string, base::JSON_ALLOW_TRAILING_COMMAS);
 
-    if (!record_value.value) {
+    if (!record_value.has_value()) {
       LOG(ERROR) << "Error in deserializing JSON from path "
                  << record_path.value();
-      LOG_IF(ERROR, !record_value.error_message.empty())
-          << "JSON error message: " << record_value.error_message << ".";
+      LOG_IF(ERROR, !record_value.error().message.empty())
+          << "JSON error message: " << record_value.error().message << ".";
       read_all_records_successfully = false;
       continue;
     }
 
-    if (!record_value.value->is_dict()) {
+    if (!record_value->is_dict()) {
       LOG(ERROR) << "Value " << record_path.value() << " is not a dictionary.";
       read_all_records_successfully = false;
       continue;
     }
-    base::Value record_dictionary = std::move(*record_value.value);
+    base::Value record_dictionary = std::move(*record_value);
 
     const std::string* credential_id_hex =
         record_dictionary.FindStringKey(kCredentialIdKey);
