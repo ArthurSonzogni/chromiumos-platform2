@@ -951,15 +951,15 @@ bool ParseContainerConfig(const std::string& config_json_data,
                           OciConfigPtr const& config_out) {
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       config_json_data, base::JSON_PARSE_RFC);
-  if (!result.value) {
-    LOG(ERROR) << "Fail to parse config.json: " << result.error_message;
+  if (!result.has_value()) {
+    LOG(ERROR) << "Fail to parse config.json: " << result.error().message;
     return false;
   }
-  if (!result.value->is_dict()) {
+  if (!result->is_dict()) {
     LOG(ERROR) << "Fail to parse root dictionary from config.json";
     return false;
   }
-  if (!ParseConfigDict(*result.value, config_out)) {
+  if (!ParseConfigDict(*result, config_out)) {
     return false;
   }
 
