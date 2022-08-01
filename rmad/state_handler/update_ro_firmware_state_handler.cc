@@ -233,10 +233,12 @@ void UpdateRoFirmwareStateHandler::OnMountCompleted(
   }
   if (entry.success) {
     if (IsRootfsPartition(entry.source)) {
+      LOG(INFO) << "Found rootfs partition";
       const base::FilePath firmware_updater_path =
           base::FilePath(entry.mount_path)
               .AppendASCII(kFirmwareUpdaterFilePath);
       if (base::PathExists(firmware_updater_path)) {
+        LOG(INFO) << "Found firmware updater";
         status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
         updater_task_runner_->PostTask(
             FROM_HERE,
@@ -285,8 +287,7 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
 
   // All checks pass. Run the firmware updater.
   bool update_success = false;
-  std::string output;
-  if (cmd_utils_->GetOutputAndError(
+  if (std::string output; cmd_utils_->GetOutputAndError(
           {"futility", "update", "-a", firmware_updater_path, "--mode=recovery",
            "--force"},
           &output)) {
@@ -294,10 +295,8 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
     update_success = true;
   } else {
     LOG(ERROR) << "Firmware updater failed";
+    LOG(ERROR) << output;
   }
-
-  VLOG(1) << "Firmware updater output:";
-  VLOG(1) << output;
   return update_success;
 }
 
