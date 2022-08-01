@@ -894,6 +894,10 @@ std::vector<std::string> ArcVm::GetKernelParams(
               request.panel_orientation()),
       "androidboot.enable_consumer_auto_update_toggle=" +
           std::to_string(request.enable_consumer_auto_update_toggle()),
+      // Disable panicking on softlockup since it can be false-positive on VMs.
+      // See http://b/235866242#comment23 for the context.
+      // TODO(b/241051098): Re-enable it once this workaround is not needed.
+      "softlockup_panic=0",
   };
 
   auto guest_swappiness = request.guest_swappiness();
