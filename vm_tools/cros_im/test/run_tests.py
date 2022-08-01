@@ -20,6 +20,7 @@ import os
 import subprocess
 from typing import List, Optional
 
+
 TEST_BINARY = "./cros_im_tests"
 
 
@@ -68,6 +69,7 @@ def get_test_names(test_filter: Optional[str]) -> List[str]:
 
 def run_gtk3_wayland_tests(test_filter: Optional[str]) -> None:
     env_override = {
+        "CROS_IM_VIRTUAL_KEYBOARD": "1",
         "GTK_IM_MODULE_FILE": "test_immodules.cache",
         "GTK_IM_MODULE": "test-cros",
         "GDK_BACKEND": "wayland",

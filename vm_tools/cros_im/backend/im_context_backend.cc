@@ -16,6 +16,9 @@ namespace cros_im {
 
 namespace {
 
+constexpr char kVirtualKeyboardEnv[] = "CROS_IM_VIRTUAL_KEYBOARD";
+constexpr char kVirtualKeyboardEnabled[] = "1";
+
 template <auto F, typename... Args>
 auto Fwd(void* data, zwp_text_input_v1* text_input, Args... args) {
   // The backend object should still be alive as libwayland-client drops events
@@ -66,6 +69,11 @@ const zcr_extended_text_input_v1_listener
 
 IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
   assert(WaylandManager::HasInstance());
+
+  const char* env = std::getenv(kVirtualKeyboardEnv);
+  virtual_keyboard_enabled_ =
+      env && std::string(env) == kVirtualKeyboardEnabled;
+
   MaybeInitialize();
 }
 
@@ -93,13 +101,15 @@ void IMContextBackend::Deactivate() {
     printf("Attempted to deactivate text input which was not activated.\n");
     return;
   }
-  zwp_text_input_v1_hide_input_panel(text_input_);
+
+  if (virtual_keyboard_enabled_)
+    zwp_text_input_v1_hide_input_panel(text_input_);
   zwp_text_input_v1_deactivate(text_input_, seat_);
   seat_ = nullptr;
 }
 
 void IMContextBackend::ShowInputPanel() {
-  if (!text_input_)
+  if (!text_input_ || !virtual_keyboard_enabled_)
     return;
   zwp_text_input_v1_show_input_panel(text_input_);
 }

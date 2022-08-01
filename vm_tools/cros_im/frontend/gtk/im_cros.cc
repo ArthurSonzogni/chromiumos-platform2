@@ -15,14 +15,17 @@ namespace gtk {
 
 namespace {
 
+// We want to be able to control rollout with a Chrome flag so we set
+// default_locales to "" and have garcon enable us via GTK_IM_MODULE when the
+// flag is set.
 #ifdef TEST_BACKEND
 const GtkIMContextInfo kContextInfo = {
     "test-cros", "Test ChromeOS IME bridge", "test-cros", "/usr/share/locale",
-    "*",
+    "",
 };
 #else
 const GtkIMContextInfo kContextInfo = {
-    "cros", "ChromeOS IME bridge", "cros", "/usr/share/locale", "*",
+    "cros", "ChromeOS IME bridge", "cros", "/usr/share/locale", "",
 };
 #endif
 

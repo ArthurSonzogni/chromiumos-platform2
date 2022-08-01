@@ -102,6 +102,8 @@ class IMContextBackend {
   // Pre-edit updates are split across several events.
   int cursor_pos_ = 0;
   std::vector<PreeditStyle> styles_;
+
+  bool virtual_keyboard_enabled_;
 };
 
 }  // namespace cros_im
