@@ -88,16 +88,16 @@ std::optional<base::Value> JsonToDictionary(const std::string& json,
   DCHECK(error);
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       json, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!root.value) {
-    *error = root.error_message;
+  if (!root.has_value()) {
+    *error = root.error().message;
     return std::nullopt;
   }
 
-  if (!root.value->is_dict()) {
+  if (!root->is_dict()) {
     *error = "JSON is not a dictionary: '" + json + "'";
     return std::nullopt;
   }
-  return std::move(root.value);
+  return std::move(*root);
 }
 
 #define CONVERT_DAY_OF_WEEK(day_of_week) \

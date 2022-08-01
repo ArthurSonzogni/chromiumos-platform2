@@ -187,13 +187,13 @@ bool AuthPolicyFlags::LoadFromJsonFile(const base::FilePath& path) {
 void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       flags_json, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!root.value || !root.value->is_dict()) {
+  if (!root.has_value() || !root->is_dict()) {
     LOG(ERROR) << "Fail to parse flags: "
-               << (root.error_message.empty() ? "Invalid JSON"
-                                              : root.error_message);
+               << (root.error().message.empty() ? "Invalid JSON"
+                                                : root.error().message);
     return;
   }
-  base::Value dict = std::move(root.value.value());
+  base::Value dict = std::move(*root);
 
   // Check bool flags.
   for (const BoolFlag& bool_flag : kBoolFlags)
