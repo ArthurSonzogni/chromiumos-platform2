@@ -433,6 +433,8 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // run multiple times for the same network. Derived class should implement
   // this function to listen to this event. Base class does nothing.
   virtual void OnNetworkValidationStart();
+  // Called every time PortalDetector is stopped before completing a trial.
+  virtual void OnNetworkValidationStop();
   // Called every time PortalDetector finishes and Internet connectivity is
   // validated.
   virtual void OnNetworkValidationSuccess();

@@ -555,6 +555,7 @@ void Device::OnGetDHCPLease() {}
 void Device::OnGetDHCPFailure() {}
 void Device::OnGetSLAACAddress() {}
 void Device::OnNetworkValidationStart() {}
+void Device::OnNetworkValidationStop() {}
 void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
 
@@ -693,6 +694,8 @@ bool Device::UpdatePortalDetector(bool restart) {
                                network_->dns_servers(), LoggingTag())) {
     LOG(ERROR) << LoggingTag() << ": Portal detection failed to start";
     SetServiceState(Service::kStateOnline);
+    // Avoid triggering OnNetworkValidationStop because OnNetworkValidationStart
+    // is not called.
     portal_detector_.reset();
     return false;
   }
@@ -705,6 +708,9 @@ bool Device::UpdatePortalDetector(bool restart) {
 
 void Device::StopPortalDetection() {
   SLOG(this, 2) << LoggingTag() << ": Portal detection stopping.";
+  if (portal_detector_.get() && portal_detector_->IsInProgress()) {
+    OnNetworkValidationStop();
+  }
   portal_detector_.reset();
 }
 
@@ -790,9 +796,9 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   Service::ConnectState state = result.GetConnectionState();
   if (state == Service::kStateOnline) {
     LOG(INFO) << LoggingTag() << ": Portal detection finished";
+    OnNetworkValidationSuccess();
     StopPortalDetection();
     SetServiceState(state);
-    OnNetworkValidationSuccess();
     // TODO(b/236388757): Deprecate post M108.
     metrics()->SendToUMA(Metrics::kMetricPortalAttemptsToOnline, technology(),
                          result.num_attempts);
@@ -820,8 +826,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
                                network_->dns_servers(), LoggingTag(),
                                next_delay)) {
     LOG(ERROR) << LoggingTag() << ": Portal detection failed to restart";
-    SetServiceState(Service::kStateOnline);
     StopPortalDetection();
+    SetServiceState(Service::kStateOnline);
     return;
   }
 

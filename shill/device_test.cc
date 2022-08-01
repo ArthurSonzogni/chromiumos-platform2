@@ -183,6 +183,8 @@ class DeviceTest : public testing::Test {
     auto mock_portal_detector =
         std::make_unique<StrictMock<MockPortalDetector>>();
     MockPortalDetector* mock_portal_detectorp = mock_portal_detector.get();
+    EXPECT_CALL(*mock_portal_detectorp, IsInProgress())
+        .WillRepeatedly(Return(false));
     device_->portal_detector_ = std::move(mock_portal_detector);
     return mock_portal_detectorp;
   }
