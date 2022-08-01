@@ -29,8 +29,8 @@ int32_t StringToIntBits(const std::string& str) {
 // Converts float to int32
 int32_t FloatToIntBits(float f) {
   if (std::numeric_limits<float>::is_iec559) {
-    // Directly bit_cast if float follows ieee754 standard.
-    return bit_cast<int32_t>(f);
+    // Directly base::bit_cast if float follows ieee754 standard.
+    return base::bit_cast<int32_t>(f);
   } else {
     // Otherwise, manually calculate sign, exp and mantissa.
     // For sign.

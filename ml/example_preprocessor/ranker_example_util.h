@@ -35,8 +35,9 @@ namespace assist_ranker {
 // (a) use low32 bits represent the value of the feature.
 //     a.1) bool_value, int32_value is directly converted to an int32.
 //     a.2) string_value is hashed to an int32.
-//     a.3) float_value is directly bit_cast into int32 if it follows ieee754
-//          standard; otherwise manually calculate sign, exponent and mantissa.
+//     a.3) float_value is directly base::bit_cast into int32 if it follows
+//          ieee754 standard; otherwise manually calculate sign, exponent and
+//          mantissa.
 // (b) use high32 bits represent the type of the feature.
 //     b.1) use high8 bits represent the feature_type_case.
 //     b.2) use low24 bits represent the index if the feature is a list.
