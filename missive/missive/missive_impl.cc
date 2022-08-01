@@ -1,25 +1,15 @@
-// Copyright 2021 The ChromiumOS Authors. All rights reserved.
+// Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/missive_daemon.h"
+#include "missive/missive/missive_impl.h"
 
 #include <cstdlib>
-#include <deque>
-#include <fcntl.h>
-#include <optional>
 #include <string>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <type_traits>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <base/time/time_delta_from_string.h>
-#include <brillo/flag_helper.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
@@ -28,7 +18,7 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
-#include "missive/missive_args.h"
+#include "missive/missive/missive_args.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/scheduler/enqueue_job.h"
@@ -52,12 +42,15 @@ constexpr size_t kCompressionThreshold = 512U;
 
 }  // namespace
 
-MissiveDaemon::MissiveDaemon(std::unique_ptr<MissiveArgs> args)
-    : brillo::DBusServiceDaemon(::missive::kMissiveServiceName),
-      org::chromium::MissivedAdaptor(this),
-      args_(std::move(args)),
-      upload_client_(UploadClient::Create()),
-      enqueuing_record_tallier_{args_->enqueuing_record_tallier()} {
+MissiveImpl::MissiveImpl(std::unique_ptr<MissiveArgs> args)
+    : args_(std::move(args)) {}
+
+MissiveImpl::~MissiveImpl() = default;
+
+void MissiveImpl::StartUp(base::OnceCallback<void(Status)> cb) {
+  upload_client_ = UploadClient::Create();
+  enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
+      args_->enqueuing_record_tallier());
   analytics_registry_.Add("Storage",
                           std::make_unique<analytics::ResourceCollectorStorage>(
                               args_->storage_collector_interval(),
@@ -65,20 +58,6 @@ MissiveDaemon::MissiveDaemon(std::unique_ptr<MissiveArgs> args)
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
                               args_->cpu_collector_interval()));
-}
-
-MissiveDaemon::~MissiveDaemon() = default;
-
-void MissiveDaemon::RegisterDBusObjectsAsync(
-    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-      /*object_manager=*/nullptr, bus_,
-      org::chromium::MissivedAdaptor::GetObjectPath());
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler(/*descriptive_message=*/"RegisterAsync failed.",
-                            /*failure_is_fatal=*/true));
-
   base::FilePath reporting_path(kReportingDirectory);
   StorageOptions storage_options;
   storage_options.set_directory(reporting_path)
@@ -88,12 +67,12 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
   disk_space_resource_ = storage_options.disk_space_resource();
   StorageModule::Create(
       std::move(storage_options),
-      base::BindRepeating(&MissiveDaemon::AsyncStartUpload,
+      base::BindRepeating(&MissiveImpl::AsyncStartUpload,
                           base::Unretained(this)),
       EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
-      base::BindOnce(&MissiveDaemon::OnStorageModuleConfigured,
-                     base::Unretained(this)));
+      base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
+                     base::Unretained(this), std::move(cb)));
 
   analytics_registry_.Add(
       "Memory",
@@ -101,18 +80,22 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
           args_->memory_collector_interval(), std::move(memory_resource)));
 }
 
-void MissiveDaemon::OnStorageModuleConfigured(
+Status MissiveImpl::ShutDown() {
+  return Status::StatusOK();
+}
+
+void MissiveImpl::OnStorageModuleConfigured(
+    base::OnceCallback<void(Status)> cb,
     StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result) {
   if (!storage_module_result.ok()) {
-    LOG(ERROR) << "Unable to start Missive daemon status: "
-               << storage_module_result.status();
+    std::move(cb).Run(storage_module_result.status());
     return;
   }
   storage_module_ = std::move(storage_module_result.ValueOrDie());
-  daemon_is_ready_ = true;
+  std::move(cb).Run(Status::StatusOK());
 }
 
-void MissiveDaemon::AsyncStartUpload(
+void MissiveImpl::AsyncStartUpload(
     UploaderInterface::UploadReason reason,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK(uploader_result_cb);
@@ -124,7 +107,7 @@ void MissiveDaemon::AsyncStartUpload(
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
-      /*new_events_rate=*/enqueuing_record_tallier_.GetAverage(),
+      /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
       std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call
@@ -136,123 +119,96 @@ void MissiveDaemon::AsyncStartUpload(
   scheduler_.EnqueueJob(std::move(upload_job_result.ValueOrDie()));
 }
 
-void MissiveDaemon::EnqueueRecord(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::EnqueueRecordResponse>> response,
-    const reporting::EnqueueRecordRequest& in_request) {
+void MissiveImpl::EnqueueRecord(
+    const EnqueueRecordRequest& in_request,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>>
+        out_response) {
   scoped_refptr<base::SequencedTaskRunner> task_runner =
       base::SequencedTaskRunnerHandle::Get();
-  if (!daemon_is_ready_) {
-    reporting::EnqueueRecordResponse response_body;
-    auto* status = response_body.mutable_status();
-    status->set_code(error::UNAVAILABLE);
-    status->set_error_message("The daemon is still starting.");
-    response->Return(response_body);
-    return;
-  }
   if (!in_request.has_record()) {
-    reporting::EnqueueRecordResponse response_body;
+    EnqueueRecordResponse response_body;
     auto* status = response_body.mutable_status();
     status->set_code(error::INVALID_ARGUMENT);
     status->set_error_message("Request had no Record");
-    response->Return(response_body);
+    out_response->Return(response_body);
     return;
   }
   if (!in_request.has_priority()) {
-    reporting::EnqueueRecordResponse response_body;
+    EnqueueRecordResponse response_body;
     auto* status = response_body.mutable_status();
     status->set_code(error::INVALID_ARGUMENT);
     status->set_error_message("Request had no Priority");
-    response->Return(response_body);
+    out_response->Return(response_body);
     return;
   }
 
   // Tally the enqueuing record
   if (in_request.has_record()) {
-    enqueuing_record_tallier_.Tally(in_request.record());
+    enqueuing_record_tallier_->Tally(in_request.record());
   }
 
   scheduler_.EnqueueJob(
       EnqueueJob::Create(storage_module_, in_request,
                          std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
-                             std::move(response))));
+                             std::move(out_response))));
 }
 
-void MissiveDaemon::FlushPriority(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::FlushPriorityResponse>> response,
-    const reporting::FlushPriorityRequest& in_request) {
-  if (!daemon_is_ready_) {
-    reporting::FlushPriorityResponse response_body;
-    auto* status = response_body.mutable_status();
-    status->set_code(error::UNAVAILABLE);
-    status->set_error_message("The daemon is still starting.");
-    response->Return(response_body);
-    return;
-  }
+void MissiveImpl::FlushPriority(
+    const FlushPriorityRequest& in_request,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<FlushPriorityResponse>>
+        out_response) {
   storage_module_->Flush(
       in_request.priority(),
-      base::BindOnce(&MissiveDaemon::HandleFlushResponse,
-                     base::Unretained(this), std::move(response)));
+      base::BindOnce(&MissiveImpl::HandleFlushResponse, base::Unretained(this),
+                     std::move(out_response)));
 }
 
-void MissiveDaemon::HandleFlushResponse(
+void MissiveImpl::HandleFlushResponse(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::FlushPriorityResponse>> response,
+        FlushPriorityResponse>> out_response,
     Status status) const {
-  reporting::FlushPriorityResponse response_body;
+  FlushPriorityResponse response_body;
   status.SaveTo(response_body.mutable_status());
-  response->Return(response_body);
+  out_response->Return(response_body);
 }
 
-void MissiveDaemon::ConfirmRecordUpload(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::ConfirmRecordUploadResponse>> response,
-    const reporting::ConfirmRecordUploadRequest& in_request) {
+void MissiveImpl::ConfirmRecordUpload(
+    const ConfirmRecordUploadRequest& in_request,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<ConfirmRecordUploadResponse>>
+        out_response) {
   ConfirmRecordUploadResponse response_body;
-  if (!daemon_is_ready_) {
-    auto* status = response_body.mutable_status();
-    status->set_code(error::UNAVAILABLE);
-    status->set_error_message("The daemon is still starting.");
-    response->Return(response_body);
-    return;
-  }
   if (!in_request.has_sequence_information()) {
     auto* status = response_body.mutable_status();
     status->set_code(error::INVALID_ARGUMENT);
     status->set_error_message("Request had no SequenceInformation");
-    response->Return(response_body);
+    out_response->Return(response_body);
     return;
   }
 
   storage_module_->ReportSuccess(in_request.sequence_information(),
                                  in_request.force_confirm());
-
-  response->Return(response_body);
+  out_response->Return(response_body);
 }
 
-void MissiveDaemon::UpdateEncryptionKey(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        reporting::UpdateEncryptionKeyResponse>> response,
-    const reporting::UpdateEncryptionKeyRequest& in_request) {
-  reporting::UpdateEncryptionKeyResponse response_body;
-  if (!daemon_is_ready_) {
-    auto* status = response_body.mutable_status();
-    status->set_code(error::UNAVAILABLE);
-    status->set_error_message("The daemon is still starting.");
-    response->Return(response_body);
-    return;
-  }
+void MissiveImpl::UpdateEncryptionKey(
+    const UpdateEncryptionKeyRequest& in_request,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<UpdateEncryptionKeyResponse>>
+        out_response) {
+  UpdateEncryptionKeyResponse response_body;
   if (!in_request.has_signed_encryption_info()) {
     auto status = response_body.mutable_status();
     status->set_code(error::INVALID_ARGUMENT);
     status->set_error_message("Request had no SignedEncryptionInfo");
-    response->Return(response_body);
+    out_response->Return(response_body);
     return;
   }
 
   storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
-  response->Return(response_body);
+  out_response->Return(response_body);
 }
 
 }  // namespace reporting

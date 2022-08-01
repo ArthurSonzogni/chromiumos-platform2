@@ -20,7 +20,7 @@ namespace reporting {
 
 // D-Bus client for Missive service.
 // Missive service provides a method for enterprise customers to locally encrypt
-// and store |reporting::Record|s.
+// and store |Record|s.
 class COMPONENT_EXPORT(MISSIVE) MissiveClient {
  public:
   // Interface with testing functionality. Accessed through GetTestInterface(),
@@ -46,17 +46,15 @@ class COMPONENT_EXPORT(MISSIVE) MissiveClient {
   virtual TestInterface* GetTestInterface() = 0;
 
   virtual void EnqueueRecord(
-      const reporting::Priority priority,
-      reporting::Record record,
-      base::OnceCallback<void(reporting::Status)> completion_callback) = 0;
-  virtual void Flush(
-      const reporting::Priority priority,
-      base::OnceCallback<void(reporting::Status)> completion_callback) = 0;
+      const Priority priority,
+      Record record,
+      base::OnceCallback<void(Status)> completion_callback) = 0;
+  virtual void Flush(const Priority priority,
+                     base::OnceCallback<void(Status)> completion_callback) = 0;
   virtual void UpdateEncryptionKey(
-      const reporting::SignedEncryptionInfo& encryption_info) = 0;
-  virtual void ReportSuccess(
-      const reporting::SequenceInformation& sequence_information,
-      bool force_confirm) = 0;
+      const SignedEncryptionInfo& encryption_info) = 0;
+  virtual void ReportSuccess(const SequenceInformation& sequence_information,
+                             bool force_confirm) = 0;
   virtual base::WeakPtr<MissiveClient> GetWeakPtr() = 0;
 
   // Returns sequenced task runner.

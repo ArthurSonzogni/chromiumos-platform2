@@ -1,13 +1,12 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The Chromium OS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/missive_daemon.h"
+#include "missive/daemon/missive_daemon.h"
 
 #include <memory>
 
 #include <base/test/task_environment.h>
-#include <brillo/brillo_export.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,9 +21,6 @@ class MissiveDaemonTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-TEST_F(MissiveDaemonTest, InitServiceContext) {
-  // TODO(zatrudo): Create tests similar to chromium
-  ASSERT_TRUE(true);
-}
+TEST_F(MissiveDaemonTest, DummyTest) {}
 
 }  // namespace reporting

@@ -8,8 +8,9 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "missive/missive_args.h"
-#include "missive/missive_daemon.h"
+#include "missive/daemon/missive_daemon.h"
+#include "missive/missive/missive_args.h"
+#include "missive/missive/missive_impl.h"
 
 namespace {
 
@@ -47,11 +48,12 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Starting Missive Service.";
   int exit_code =
-      reporting::MissiveDaemon(std::make_unique<reporting::MissiveArgs>(
-                                   FLAGS_enqueuing_record_tallier,
-                                   FLAGS_cpu_collector_interval,
-                                   FLAGS_storage_collector_interval,
-                                   FLAGS_memory_collector_interval))
+      ::reporting::MissiveDaemon(
+          std::make_unique<::reporting::MissiveImpl>(
+              std::make_unique<::reporting::MissiveArgs>(
+                  FLAGS_enqueuing_record_tallier, FLAGS_cpu_collector_interval,
+                  FLAGS_storage_collector_interval,
+                  FLAGS_memory_collector_interval)))
           .Run();
   LOG(INFO) << "Missive Service ended with exit_code=" << exit_code;
 

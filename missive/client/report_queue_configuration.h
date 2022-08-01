@@ -67,7 +67,7 @@ class ReportQueueConfiguration {
       Destination destination,
       PolicyCheckCallback policy_check_callback);
 
-  reporting::Destination destination() const { return destination_; }
+  Destination destination() const { return destination_; }
 
   std::string dm_token() { return dm_token_; }
 
@@ -81,12 +81,12 @@ class ReportQueueConfiguration {
   ReportQueueConfiguration();
 
   Status SetEventType(EventType event_type);
-  Status SetDestination(reporting::Destination destination);
+  Status SetDestination(Destination destination);
   Status SetPolicyCheckCallback(PolicyCheckCallback policy_check_callback);
 
   std::string dm_token_;
   EventType event_type_;
-  reporting::Destination destination_;
+  Destination destination_;
 
   PolicyCheckCallback policy_check_callback_;
 };

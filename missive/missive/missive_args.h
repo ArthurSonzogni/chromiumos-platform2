@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MISSIVE_MISSIVE_ARGS_H_
-#define MISSIVE_MISSIVE_ARGS_H_
+#ifndef MISSIVE_MISSIVE_MISSIVE_ARGS_H_
+#define MISSIVE_MISSIVE_MISSIVE_ARGS_H_
 
 #include <memory>
 #include <string>
@@ -53,4 +53,4 @@ class MissiveArgs {
 };
 }  // namespace reporting
 
-#endif  // MISSIVE_MISSIVE_ARGS_H_
+#endif  // MISSIVE_MISSIVE_MISSIVE_ARGS_H_

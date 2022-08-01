@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD - style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/generate-dbus-adaptors.gni")
-import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -36,21 +34,6 @@ pkg_config("target_defaults") {
   }
 }
 
-generate_dbus_adaptors("missive_dbus_adaptors") {
-  dbus_adaptors_out_dir = "include/dbus_adaptors"
-  dbus_service_config = "dbus/dbus-service-config.json"
-  sources = [ "dbus/org.chromium.Missived.xml" ]
-}
-
-# Used by other tools to interact with missived
-generate_dbus_proxies("missive_dbus_proxies") {
-  dbus_service_config = "dbus/dbus-service-config.json"
-  proxy_output_file = "include/dbus_proxies/missive/dbus-proxies.h"
-  mock_output_file = "include/dbus_proxies/missive/dbus-proxies-mocks.h"
-  proxy_path_in_mocks = "missive/dbus-proxies.h"
-  sources = [ "dbus/org.chromium.Missived.xml" ]
-}
-
 generate_pkg_config("libmissiveclient_pc") {
   name = "libmissiveclient"
   output_name = "libmissiveclient"
@@ -72,10 +55,7 @@ generate_pkg_config("libmissiveclient_pc") {
     "-lmissiveprotorecord",
     "-lmissiveprotointerface",
   ]
-  cflags = [
-    "-I/usr/include/libmissiveclient",
-    "-v",
-  ]
+  cflags = [ "-I/usr/include/libmissiveclient" ]
 }
 
 # Client library for use by other daemons to call missived
@@ -127,38 +107,16 @@ static_library("missiveclientlib") {
   ]
 }
 
-static_library("libmessaging_layer") {
-  sources = [
-    "missive_args.cc",
-    "missive_args.h",
-    "missive_daemon.cc",
-    "missive_daemon.h",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":missive_dbus_adaptors",
-    ":missive_dbus_proxies",
-    "//missive/analytics:libanalytics",
-    "//missive/dbus:upload_client",
-    "//missive/encryption:encryption_module",
-    "//missive/encryption:verification",
-    "//missive/proto:libmissiveprotointerface",
-    "//missive/scheduler",
-    "//missive/scheduler:enqueue_job",
-    "//missive/scheduler:upload_job",
-    "//missive/storage:storage_configuration",
-    "//missive/storage:storage_module",
-    "//missive/storage:storage_module_interface",
-    "//missive/storage:storage_uploader_interface",
-    "//missive/util:disconnectable_client",
-    "//missive/util:status",
-  ]
-}
-
 executable("missived") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libmessaging_layer" ]
+  deps = [
+    "//missive/daemon:missive_daemon",
+    "//missive/dbus:dbus_adaptor",
+    "//missive/missive:missive_args",
+    "//missive/missive:missive_impl",
+    "//missive/missive:missive_service",
+  ]
 }
 
 if (use.test) {
@@ -182,8 +140,6 @@ if (use.test) {
       "client/report_queue_test.cc",
       "compression/compression_module_test.cc",
       "dbus/upload_client_test.cc",
-      "missive_args_test.cc",
-      "missive_daemon_test.cc",
       "resources/enqueuing_record_tallier_test.cc",
       "resources/resource_interface_test.cc",
       "scheduler/enqueue_job_test.cc",
@@ -208,15 +164,17 @@ if (use.test) {
     ]
 
     deps = [
-      ":libmessaging_layer",
       "//common-mk/testrunner",
       "//missive/analytics:unit_tests",
       "//missive/client:client_test_support",
       "//missive/compression:compression_module",
       "//missive/compression:compression_test_support",
+      "//missive/daemon:unit_tests",
       "//missive/dbus:upload_client",
       "//missive/encryption:encryption_test_support",
       "//missive/encryption:unit_tests",
+      "//missive/missive:missive_args",
+      "//missive/missive:unit_tests",
       "//missive/resources:resource_interface",
       "//missive/scheduler",
       "//missive/scheduler:enqueue_job",
