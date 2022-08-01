@@ -101,15 +101,15 @@ bool LoadConfigFromString(const std::string& config_json,
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       config_json, base::JSON_ALLOW_TRAILING_COMMAS);
 
-  if (!result.value) {
+  if (!result.has_value()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, brillo::errors::json::kDomain,
                                brillo::errors::json::kParseError,
                                "Error parsing server configuration: %s",
-                               result.error_message.c_str());
+                               result.error().message.c_str());
     return false;
   }
 
-  if (!result.value->is_dict()) {
+  if (!result->is_dict()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::json::kDomain,
                          brillo::errors::json::kObjectExpected,
                          "JSON object is expected.");
@@ -117,12 +117,12 @@ bool LoadConfigFromString(const std::string& config_json,
   }
 
   // "log_directory" is optional
-  if (result.value->FindStringKey(kLogDirectoryKey)) {
-    config->log_directory = *result.value->FindStringKey(kLogDirectoryKey);
+  if (result->FindStringKey(kLogDirectoryKey)) {
+    config->log_directory = *result->FindStringKey(kLogDirectoryKey);
   }
 
   const base::Value* protocol_handlers =
-      result.value->FindListKey(kProtocolHandlersKey);
+      result->FindListKey(kProtocolHandlersKey);
   if (protocol_handlers) {
     for (const base::Value& handler_value : protocol_handlers->GetList()) {
       if (!handler_value.is_dict()) {
