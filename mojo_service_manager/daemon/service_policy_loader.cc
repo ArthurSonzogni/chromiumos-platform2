@@ -139,13 +139,13 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
     const std::string& str) {
   auto value_with_error =
       base::JSONReader::ReadAndReturnValueWithError(str, kJSONOption);
-  if (!value_with_error.value.has_value()) {
-    LOG(ERROR) << "Cannot parse json: " << value_with_error.error_message
-               << " (line: " << value_with_error.error_line
-               << ", column: " << value_with_error.error_column << ")";
+  if (!value_with_error.has_value()) {
+    LOG(ERROR) << "Cannot parse json: " << value_with_error.error().message
+               << " (line: " << value_with_error.error().line
+               << ", column: " << value_with_error.error().column << ")";
     return std::nullopt;
   }
-  return ParseServicePolicyFromValue(value_with_error.value.value());
+  return ParseServicePolicyFromValue(*value_with_error);
 }
 
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
