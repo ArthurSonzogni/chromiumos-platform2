@@ -96,13 +96,13 @@ BaseStateHandler::GetNextStateCaseReply BaseStateHandler::NextStateCaseWrapper(
 BaseStateHandler::GetNextStateCaseReply BaseStateHandler::NextStateCaseWrapper(
     RmadState::StateCase state_case) {
   return NextStateCaseWrapper(state_case, RMAD_ERROR_OK,
-                              AdditionalActivity::NOTHING);
+                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 BaseStateHandler::GetNextStateCaseReply BaseStateHandler::NextStateCaseWrapper(
     RmadErrorCode error) {
   return NextStateCaseWrapper(GetStateCase(), error,
-                              AdditionalActivity::NOTHING);
+                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 bool BaseStateHandler::StoreErrorCode(RmadErrorCode error) {
@@ -122,15 +122,15 @@ bool BaseStateHandler::StoreErrorCode(RmadErrorCode error) {
 }
 
 bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
-  if (AdditionalActivity::NOTHING == activity) {
+  if (RMAD_ADDITIONAL_ACTIVITY_NOTHING == activity) {
     return true;
   }
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   // Ignore the return value, since it may not have been set yet.
   MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                 &additional_activities);
-  additional_activities.push_back(static_cast<int>(activity));
+  additional_activities.push_back(AdditionalActivity_Name(activity));
 
   // For those expected power cycle events, we calculate running time and append
   // it to the |json_store_| for metrics.

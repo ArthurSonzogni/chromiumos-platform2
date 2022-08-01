@@ -544,7 +544,7 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
 void RmadInterfaceImpl::RecordBrowserActionMetric(
     const RecordBrowserActionMetricRequest& browser_action,
     RecordBrowserActionMetricCallback callback) {
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   // Ignore the return value, since it may not have been set yet.
   MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                 &additional_activities);
@@ -552,12 +552,12 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
   // TODO(genechang): Add a table to map all actions to metrics to simplify it.
   if (browser_action.diagnostics()) {
     additional_activities.push_back(
-        static_cast<int>(AdditionalActivity::DIAGNOSTICS));
+        AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS));
   }
 
   if (browser_action.os_update()) {
     additional_activities.push_back(
-        static_cast<int>(AdditionalActivity::OS_UPDATE));
+        AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_OS_UPDATE));
   }
 
   RecordBrowserActionMetricReply reply;

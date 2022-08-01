@@ -126,7 +126,8 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
   }
   NOTREACHED();
   return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
+                              RMAD_ERROR_NOT_SET,
+                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 }  // namespace rmad

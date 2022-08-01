@@ -598,6 +598,17 @@ message RecordBrowserActionMetricReply {
   RmadErrorCode error = 1;
 }
 
+// Defined additional activities for showing in metrics.
+// Keep this in sync with metrics/structured/structured.xml.
+enum AdditionalActivity {
+  RMAD_ADDITIONAL_ACTIVITY_NOTHING = 0;
+  RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN = 1;
+  RMAD_ADDITIONAL_ACTIVITY_REBOOT = 2;
+  RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF = 3;
+  RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS = 4;
+  RMAD_ADDITIONAL_ACTIVITY_OS_UPDATE = 5;
+}
+
 // Defined write protection methods for showing in metrics.
 // Keep this in sync with metrics/structured/structured.xml.
 enum WpDisableMethod {

@@ -182,11 +182,12 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Failed) {
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_NothingSuccess) {
   auto handler = CreateStateHandler();
-  EXPECT_TRUE(handler->StoreAdditionalActivity(AdditionalActivity::NOTHING));
+  EXPECT_TRUE(
+      handler->StoreAdditionalActivity(RMAD_ADDITIONAL_ACTIVITY_NOTHING));
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
-  std::vector<int> target_additional_activities;
+  std::vector<std::string> target_additional_activities;
 
   for (AdditionalActivity activity : kValidAdditionalActivities) {
     auto handler = CreateStateHandler();
@@ -211,12 +212,12 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
     }
 
-    if (activity != AdditionalActivity::NOTHING) {
-      target_additional_activities.push_back(static_cast<int>(activity));
+    if (activity != RMAD_ADDITIONAL_ACTIVITY_NOTHING) {
+      target_additional_activities.push_back(AdditionalActivity_Name(activity));
     }
   }
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                 &additional_activities);
   EXPECT_EQ(additional_activities, target_additional_activities);
@@ -249,7 +250,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_RunningTimeFailed) {
 
 TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
   std::vector<std::string> target_occurred_errors;
-  std::vector<int> target_additional_activities;
+  std::vector<std::string> target_additional_activities;
 
   RmadState::StateCase state_case = RmadState::kWelcome;
 
@@ -259,7 +260,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
 
     BaseStateHandler::GetNextStateCaseReply reply =
         handler->NextStateCaseWrapper(state_case, error_code,
-                                      AdditionalActivity::NOTHING);
+                                      RMAD_ADDITIONAL_ACTIVITY_NOTHING);
     EXPECT_EQ(reply.state_case, state_case);
     EXPECT_EQ(reply.error, error_code);
 
@@ -299,12 +300,12 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
       EXPECT_EQ(reply.error, RMAD_ERROR_OK);
     }
 
-    if (activity != AdditionalActivity::NOTHING) {
-      target_additional_activities.push_back(static_cast<int>(activity));
+    if (activity != RMAD_ADDITIONAL_ACTIVITY_NOTHING) {
+      target_additional_activities.push_back(AdditionalActivity_Name(activity));
     }
   }
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                             &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);
@@ -328,7 +329,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
 
     BaseStateHandler::GetNextStateCaseReply reply =
         handler->NextStateCaseWrapper(state_case, error_code,
-                                      AdditionalActivity::NOTHING);
+                                      RMAD_ADDITIONAL_ACTIVITY_NOTHING);
     EXPECT_EQ(reply.state_case, state_case);
     EXPECT_EQ(reply.error, error_code);
   }
@@ -342,10 +343,10 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
     EXPECT_EQ(reply.error, RMAD_ERROR_OK);
   }
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                 &additional_activities);
-  EXPECT_EQ(additional_activities, std::vector<int>());
+  EXPECT_EQ(additional_activities, std::vector<std::string>());
 
   std::vector<std::string> occurred_errors;
   MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
@@ -354,7 +355,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
 
 TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
   std::vector<std::string> target_occurred_errors;
-  std::vector<int> target_additional_activities;
+  std::vector<std::string> target_additional_activities;
 
   RmadState::StateCase state_case = RmadState::kWelcome;
 
@@ -364,7 +365,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
 
     BaseStateHandler::GetNextStateCaseReply reply =
         handler->NextStateCaseWrapper(state_case, error_code,
-                                      AdditionalActivity::NOTHING);
+                                      RMAD_ADDITIONAL_ACTIVITY_NOTHING);
     EXPECT_EQ(reply.state_case, state_case);
     EXPECT_EQ(reply.error, error_code);
 
@@ -382,15 +383,15 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
     EXPECT_EQ(reply.state_case, state_case);
     EXPECT_EQ(reply.error, RMAD_ERROR_OK);
 
-    if (activity != AdditionalActivity::NOTHING &&
+    if (activity != RMAD_ADDITIONAL_ACTIVITY_NOTHING &&
         std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
                   activity) == kExpectedPowerCycleActivities.end()) {
-      target_additional_activities.push_back(static_cast<int>(activity));
+      target_additional_activities.push_back(AdditionalActivity_Name(activity));
     }
   }
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                             &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);

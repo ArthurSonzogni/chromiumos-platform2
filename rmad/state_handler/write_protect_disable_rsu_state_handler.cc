@@ -153,7 +153,7 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
                &WriteProtectDisableRsuStateHandler::Reboot);
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
-                              AdditionalActivity::REBOOT);
+                              RMAD_ADDITIONAL_ACTIVITY_REBOOT);
 }
 
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {

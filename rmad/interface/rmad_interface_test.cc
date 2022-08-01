@@ -60,7 +60,7 @@ constexpr char kStateHistoryWithMetricsJson[] =
     R"({
       "state_history": [ 1, 2 ],
       "metrics": {
-        "additional_activities": [2],
+        "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
         "first_setup_timestamp": 123.456,
         "occurred_errors": [1],
         "ro_firmware_verified": true,
@@ -90,7 +90,7 @@ constexpr char kStateHistoryWithMetricsJson[] =
     })";
 
 constexpr char kExpectedLog[] = R"({
-   "additional_activities": [ 2 ],
+   "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
    "occurred_errors": [ 1 ],
    "ro_firmware_verified": true,
    "running_time": 333.333,
@@ -927,13 +927,13 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
 
   rmad_interface.RecordBrowserActionMetric(request, base::BindOnce(callback));
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store, kAdditionalActivities,
                                             &additional_activities));
-  EXPECT_EQ(
-      additional_activities,
-      std::vector<int>({static_cast<int>(AdditionalActivity::DIAGNOSTICS),
-                        static_cast<int>(AdditionalActivity::OS_UPDATE)}));
+  EXPECT_EQ(additional_activities,
+            std::vector<std::string>(
+                {AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS),
+                 AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_OS_UPDATE)}));
 }
 
 }  // namespace rmad

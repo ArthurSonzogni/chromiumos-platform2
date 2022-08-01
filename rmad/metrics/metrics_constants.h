@@ -55,23 +55,14 @@ enum class MainboardReplacement : int {
   ORIGINAL = 2,
 };
 
-// Defined additional activities.
-enum class AdditionalActivity : int {
-  NOTHING = 0,
-  SHUTDOWN = 1,
-  REBOOT = 2,
-  BATTERY_CUTOFF = 3,
-  DIAGNOSTICS = 4,
-  OS_UPDATE = 5,
-};
-
 constexpr std::array<AdditionalActivity, 4> kValidAdditionalActivities = {
-    AdditionalActivity::SHUTDOWN, AdditionalActivity::REBOOT,
-    AdditionalActivity::BATTERY_CUTOFF, AdditionalActivity::DIAGNOSTICS};
+    RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN, RMAD_ADDITIONAL_ACTIVITY_REBOOT,
+    RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF,
+    RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS};
 
 constexpr std::array<AdditionalActivity, 3> kExpectedPowerCycleActivities = {
-    AdditionalActivity::SHUTDOWN, AdditionalActivity::REBOOT,
-    AdditionalActivity::BATTERY_CUTOFF};
+    RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN, RMAD_ADDITIONAL_ACTIVITY_REBOOT,
+    RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF};
 
 constexpr std::array<RmadErrorCode, 6> kExpectedErrorCodes = {
     RMAD_ERROR_NOT_SET,

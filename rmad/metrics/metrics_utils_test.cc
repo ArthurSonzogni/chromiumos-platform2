@@ -31,7 +31,7 @@ constexpr char kDefaultMetricsJson[] =
         "running_time": 333.333,
         "ro_firmware_verified": true,
         "occurred_errors": [1],
-        "additional_activities": [2],
+        "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
         "state_metrics": {
           "1": {
             "state_case": 1,
@@ -56,7 +56,7 @@ constexpr char kDefaultMetricsJson[] =
     })";
 constexpr char kEmptyMetricsJson[] = "{}";
 constexpr char kDefaultMetricsSummaryJson[] = R"({
-   "additional_activities": [ 2 ],
+   "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
    "occurred_errors": [ 1 ],
    "ro_firmware_verified": true,
    "running_time": 333.333,
@@ -86,7 +86,8 @@ constexpr double kDefaultSetupTimestamp = 456.789;
 constexpr double kDefaultRunningTime = 333.333;
 constexpr bool kDefaultRoFirmwareVerified = true;
 const std::vector<int> kDefaultOccurredErrors = {1};
-const std::vector<int> kDefaultAdditionalActivities = {2};
+const std::vector<std::string> kDefaultAdditionalActivities = {
+    "RMAD_ADDITIONAL_ACTIVITY_REBOOT"};
 const std::map<int, rmad::StateMetricsData> kDefaultStateMetrics = {
     {1,
      {.state_case = rmad::RmadState::StateCase::kWelcome,
@@ -110,7 +111,10 @@ constexpr double kTestSetupTimestamp = 666.666;
 constexpr double kTestRunningTime = 555.555;
 constexpr bool kTestRoFirmwareVerified = false;
 const std::vector<int> kTestOccurredErrors = {1, 2, 3};
-const std::vector<int> kTestAdditionalActivities = {4, 5, 6};
+const std::vector<std::string> kTestAdditionalActivities = {
+    "RMAD_ADDITIONAL_ACTIVITY_REBOOT",
+    "RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF",
+    "RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS"};
 
 constexpr double kTestStateSetupTimestamp = 111.111;
 constexpr double kTestStateLeaveTimestamp = 666.666;
@@ -172,7 +176,7 @@ TEST_F(MetricsUtilsTest, GetValue) {
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, kDefaultOccurredErrors);
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                             &additional_activities));
   EXPECT_EQ(additional_activities, kDefaultAdditionalActivities);
@@ -255,7 +259,7 @@ TEST_F(MetricsUtilsTest, SetValue_AddtionalActivities) {
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
                                             kTestAdditionalActivities));
 
-  std::vector<int> additional_activities;
+  std::vector<std::string> additional_activities;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
                                             &additional_activities));
   EXPECT_EQ(additional_activities, kTestAdditionalActivities);
@@ -533,8 +537,9 @@ TEST_F(MetricsUtilsImplTest, Record_AdditionalActivitiesSuccess) {
       MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kAdditionalActivities,
-      std::vector<int>({static_cast<int>(AdditionalActivity::REBOOT),
-                        static_cast<int>(AdditionalActivity::SHUTDOWN)})));
+      std::vector<std::string>(
+          {AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_REBOOT),
+           AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN)})));
 
   EXPECT_TRUE(metrics_utils->Record(json_store_, true));
 }
@@ -592,8 +597,8 @@ TEST_F(MetricsUtilsImplTest, Record_UnknownAdditionalActivityFailed) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
   EXPECT_TRUE(
       MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified, true));
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
-                                            std::vector<int>(123)));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kAdditionalActivities, std::vector<std::string>({"test"})));
 
   EXPECT_FALSE(metrics_utils->Record(json_store_, true));
 }

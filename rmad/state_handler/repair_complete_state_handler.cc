@@ -135,7 +135,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     action_timer_.Start(FROM_HERE, kShutdownDelay, this,
                         &RepairCompleteStateHandler::Reboot);
     return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
-                                AdditionalActivity::REBOOT);
+                                RMAD_ADDITIONAL_ACTIVITY_REBOOT);
   } else {
     // Clear the state file and shutdown/reboot/cutoff if the device doesn't
     // need to do a powerwash, or a powerwash is already done.

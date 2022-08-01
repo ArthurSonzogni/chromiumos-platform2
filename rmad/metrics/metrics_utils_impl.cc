@@ -181,13 +181,14 @@ bool MetricsUtilsImpl::RecordOccurredErrors(
 bool MetricsUtilsImpl::RecordAdditionalActivities(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may have no additional activities.
-  if (std::vector<int> additional_activities; GetMetricsValue(
+  if (std::vector<std::string> additional_activities; GetMetricsValue(
           json_store, kAdditionalActivities, &additional_activities)) {
-    for (int additional_activity : additional_activities) {
-      if (std::find(kValidAdditionalActivities.begin(),
+    for (std::string activity_name : additional_activities) {
+      AdditionalActivity additional_activity;
+      if (AdditionalActivity_Parse(activity_name, &additional_activity) &&
+          std::find(kValidAdditionalActivities.begin(),
                     kValidAdditionalActivities.end(),
-                    static_cast<AdditionalActivity>(additional_activity)) !=
-          kValidAdditionalActivities.end()) {
+                    additional_activity) != kValidAdditionalActivities.end()) {
         auto structured_additional_activity = StructuredAdditionalActivity();
         structured_additional_activity.SetActivityType(additional_activity);
         if (record_to_system_ && !structured_additional_activity.Record()) {
@@ -195,7 +196,7 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
           return false;
         }
       } else {
-        LOG(ERROR) << "Failed to parse [" << additional_activity
+        LOG(ERROR) << "Failed to parse [" << activity_name
                    << "] as additional activity to append to metrics.";
         return false;
       }

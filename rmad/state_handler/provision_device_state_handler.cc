@@ -211,7 +211,7 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
           reboot_timer_.Start(FROM_HERE, kRebootDelay, this,
                               &ProvisionDeviceStateHandler::Reboot);
           return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
-                                      AdditionalActivity::REBOOT);
+                                      RMAD_ADDITIONAL_ACTIVITY_REBOOT);
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING:
           return NextStateCaseWrapper(RMAD_ERROR_PROVISIONING_FAILED);
         default:

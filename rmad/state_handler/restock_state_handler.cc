@@ -75,7 +75,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
                    &RestockStateHandler::Shutdown);
       shutdown_scheduled_ = true;
       return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_SHUTDOWN,
-                                  AdditionalActivity::SHUTDOWN);
+                                  RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN);
     case RestockState::RMAD_RESTOCK_CONTINUE_RMA:
       return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
@@ -83,7 +83,8 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   }
   NOTREACHED();
   return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
-                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
+                              RMAD_ERROR_NOT_SET,
+                              RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
 void RestockStateHandler::Shutdown() {
