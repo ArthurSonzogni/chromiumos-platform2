@@ -138,7 +138,7 @@ bool JsonStore::RemoveKey(const std::string& key) {
 }
 
 bool JsonStore::Clear() {
-  data_ = base::Value(base::Value::Type::DICTIONARY);
+  data_ = base::Value(base::Value::Type::DICT);
   return WriteToFile(true);
 }
 
@@ -152,7 +152,7 @@ bool JsonStore::Sync() const {
 
 bool JsonStore::InitFromFile() {
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
-  data_ = base::Value(base::Value::Type::DICTIONARY);
+  data_ = base::Value(base::Value::Type::DICT);
   read_only_ = false;
   read_error_ = read_result->read_error;
   switch (read_error_) {

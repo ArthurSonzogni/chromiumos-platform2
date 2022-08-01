@@ -25,7 +25,7 @@ bool StateMetricsData::operator==(const StateMetricsData& other) const {
 }
 
 base::Value StateMetricsData::ToValue() const {
-  base::Value dict(base::Value::Type::DICTIONARY);
+  base::Value dict(base::Value::Type::DICT);
   dict.SetKey(kStateCase, ConvertToValue(static_cast<int>(state_case)));
   dict.SetKey(kStateIsAborted, ConvertToValue(is_aborted));
   dict.SetKey(kStateSetupTimestamp, ConvertToValue(setup_timestamp));
@@ -162,7 +162,7 @@ bool MetricsUtils::UpdateStateMetricsOnSaveLog(
 
 std::string MetricsUtils::GetMetricsSummaryAsString(
     scoped_refptr<JsonStore> json_store) {
-  base::Value metrics = base::Value(base::Value::Type::DICTIONARY);
+  base::Value metrics = base::Value(base::Value::Type::DICT);
   if (json_store->GetValue(kMetrics, &metrics)) {
     CHECK(metrics.is_dict());
   }

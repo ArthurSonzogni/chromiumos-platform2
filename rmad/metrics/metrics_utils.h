@@ -52,7 +52,7 @@ class MetricsUtils {
   static bool GetMetricsValue(scoped_refptr<JsonStore> json_store,
                               const std::string& key,
                               T* result) {
-    base::Value metrics = base::Value(base::Value::Type::DICTIONARY);
+    base::Value metrics = base::Value(base::Value::Type::DICT);
     if (json_store->GetValue(kMetrics, &metrics)) {
       CHECK(metrics.is_dict());
     }
@@ -63,7 +63,7 @@ class MetricsUtils {
   static bool SetMetricsValue(scoped_refptr<JsonStore> json_store,
                               const std::string& key,
                               const T& v) {
-    base::Value metrics = base::Value(base::Value::Type::DICTIONARY);
+    base::Value metrics = base::Value(base::Value::Type::DICT);
     if (json_store->GetValue(kMetrics, &metrics)) {
       CHECK(metrics.is_dict());
     }

@@ -47,7 +47,7 @@ base::Value ConvertToValue(const std::vector<T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<std::string, T>& values) {
-  base::Value dict(base::Value::Type::DICTIONARY);
+  base::Value dict(base::Value::Type::DICT);
   for (const auto& [key, value] : values) {
     dict.SetKey(key, ConvertToValue(value));
   }
@@ -59,7 +59,7 @@ base::Value ConvertToValue(const std::map<std::string, T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<int, T>& values) {
-  base::Value dict(base::Value::Type::DICTIONARY);
+  base::Value dict(base::Value::Type::DICT);
   for (const auto& [key, value] : values) {
     dict.SetKey(base::NumberToString(key), ConvertToValue(value));
   }
