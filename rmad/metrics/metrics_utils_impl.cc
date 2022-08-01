@@ -77,39 +77,38 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   if (bool is_ro_verified;
       GetMetricsValue(json_store, kRoFirmwareVerified, &is_ro_verified)) {
     if (is_ro_verified) {
-      report.SetRoVerification(static_cast<int64_t>(RoVerification::PASS));
+      report.SetRoVerification(RMAD_RO_VERIFICATION_PASS);
     } else {
-      report.SetRoVerification(
-          static_cast<int64_t>(RoVerification::UNSUPPORTED));
+      report.SetRoVerification(RMAD_RO_VERIFICATION_UNSUPPORTED);
     }
   } else {
-    report.SetRoVerification(static_cast<int64_t>(RoVerification::UNKNOWN));
+    report.SetRoVerification(RMAD_RO_VERIFICATION_UNKNOWN);
   }
 
-  ReturningOwner returning_owner = ReturningOwner::UNKNOWN;
+  ReturningOwner returning_owner = RMAD_RETURNING_OWNER_UNKNOWN;
   // Ignore the else part and leave it as the default value, because we may
   // abort earlier than we know it.
   if (bool is_same_owner; json_store->GetValue(kSameOwner, &is_same_owner)) {
     if (is_same_owner) {
-      returning_owner = ReturningOwner::SAME_OWNER;
+      returning_owner = RMAD_RETURNING_OWNER_SAME_OWNER;
     } else {
-      returning_owner = ReturningOwner::DIFFERENT_OWNER;
+      returning_owner = RMAD_RETURNING_OWNER_DIFFERENT_OWNER;
     }
   }
-  report.SetReturningOwner(static_cast<int64_t>(returning_owner));
+  report.SetReturningOwner(returning_owner);
 
-  MainboardReplacement mlb_replacement = MainboardReplacement::UNKNOWN;
+  MainboardReplacement mlb_replacement = RMAD_MLB_REPLACEMENT_UNKNOWN;
   // Ignore the else part and leave it as the default value, because we may
   // abort earlier than we know it.
   if (bool is_mlb_replaced;
       json_store->GetValue(kMlbRepair, &is_mlb_replaced)) {
     if (is_mlb_replaced) {
-      mlb_replacement = MainboardReplacement::REPLACED;
+      mlb_replacement = RMAD_MLB_REPLACEMENT_REPLACED;
     } else {
-      mlb_replacement = MainboardReplacement::ORIGINAL;
+      mlb_replacement = RMAD_MLB_REPLACEMENT_ORIGINAL;
     }
   }
-  report.SetMainboardReplacement(static_cast<int64_t>(mlb_replacement));
+  report.SetMainboardReplacement(mlb_replacement);
 
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method = RMAD_WP_DISABLE_METHOD_UNKNOWN;

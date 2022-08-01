@@ -598,6 +598,30 @@ message RecordBrowserActionMetricReply {
   RmadErrorCode error = 1;
 }
 
+// Defined RO verification status for showing in metrics.
+// Keep this in sync with metrics/structured/structured.xml.
+enum RoVerification {
+  RMAD_RO_VERIFICATION_UNKNOWN = 0;
+  RMAD_RO_VERIFICATION_PASS = 1;
+  RMAD_RO_VERIFICATION_UNSUPPORTED = 2;
+}
+
+// Defined returning owner for showing in metrics.
+// Keep this in sync with metrics/structured/structured.xml.
+enum ReturningOwner {
+  RMAD_RETURNING_OWNER_UNKNOWN = 0;
+  RMAD_RETURNING_OWNER_SAME_OWNER = 1;
+  RMAD_RETURNING_OWNER_DIFFERENT_OWNER = 2;
+}
+
+// Defined mainboard replacement status for showing in metrics.
+// Keep this in sync with metrics/structured/structured.xml.
+enum MainboardReplacement {
+  RMAD_MLB_REPLACEMENT_UNKNOWN = 0;
+  RMAD_MLB_REPLACEMENT_REPLACED = 1;
+  RMAD_MLB_REPLACEMENT_ORIGINAL = 2;
+}
+
 // Defined additional activities for showing in metrics.
 // Keep this in sync with metrics/structured/structured.xml.
 enum AdditionalActivity {

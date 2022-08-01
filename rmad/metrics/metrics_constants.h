@@ -34,27 +34,6 @@ inline constexpr char kStateTransitionsCount[] = "state_transition_count";
 inline constexpr char kStateGetLogCount[] = "state_get_log_count";
 inline constexpr char kStateSaveLogCount[] = "state_save_log_count";
 
-// Defined RO verification status.
-enum class RoVerification : int {
-  UNKNOWN = 0,
-  PASS = 1,
-  UNSUPPORTED = 2,
-};
-
-// Defined returning owner.
-enum class ReturningOwner : int {
-  UNKNOWN = 0,
-  SAME_OWNER = 1,
-  DIFFERENT_OWNER = 2,
-};
-
-// Defined mainboard replacement status.
-enum class MainboardReplacement : int {
-  UNKNOWN = 0,
-  REPLACED = 1,
-  ORIGINAL = 2,
-};
-
 constexpr std::array<AdditionalActivity, 4> kValidAdditionalActivities = {
     RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN, RMAD_ADDITIONAL_ACTIVITY_REBOOT,
     RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF,
