@@ -105,6 +105,7 @@ proto_library("system_api-power_manager-protos") {
   proto_out_dir = "include/power_manager/proto_bindings"
   sources = [
     "${proto_in_dir}/backlight.proto",
+    "${proto_in_dir}/charge_history_state.proto",
     "${proto_in_dir}/idle.proto",
     "${proto_in_dir}/input_event.proto",
     "${proto_in_dir}/peripheral_battery_status.proto",
@@ -123,6 +124,7 @@ goproto_library("system_api-power_manager-goprotos") {
   proto_out_dir = "go/src/"
   sources = [
     "${proto_in_dir}/backlight.proto",
+    "${proto_in_dir}/charge_history_state.proto",
     "${proto_in_dir}/idle.proto",
     "${proto_in_dir}/input_event.proto",
     "${proto_in_dir}/peripheral_battery_status.proto",
