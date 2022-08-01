@@ -368,12 +368,15 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
     return;
 
   // Store the length of the message data without its headers.
-  ssize_t len = ntohs(udp_hdr->len) - sizeof(struct udphdr);
+  if (ntohs(udp_hdr->len) < sizeof(struct udphdr)) {
+    return;
+  }
+  size_t len = ntohs(udp_hdr->len) - sizeof(struct udphdr);
 
   // Validate message data length.
-  if ((len + sizeof(struct udphdr) + sizeof(struct iphdr) > msg_len) ||
-      (len < 0))
+  if (len + sizeof(struct udphdr) + sizeof(struct iphdr) > msg_len) {
     return;
+  }
 
   struct sockaddr_in fromaddr = {0};
   fromaddr.sin_family = AF_INET;
@@ -417,7 +420,7 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
 
 bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
                                        const void* data,
-                                       ssize_t len,
+                                       size_t len,
                                        const struct sockaddr_in& dst) {
   base::ScopedFD temp_fd(Bind(dev_ifname_, src_port));
   if (!temp_fd.is_valid()) {
@@ -443,7 +446,7 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
 }
 
 bool BroadcastForwarder::SendToGuests(const void* ip_pkt,
-                                      ssize_t len,
+                                      size_t len,
                                       const struct sockaddr_in& dst) {
   bool success = true;
 

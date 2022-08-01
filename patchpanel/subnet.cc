@@ -34,7 +34,7 @@ uint32_t AddOffset(uint32_t addr_no, uint32_t offset_ho) {
 namespace patchpanel {
 
 SubnetAddress::SubnetAddress(uint32_t addr,
-                             uint32_t prefix_length,
+                             int prefix_length,
                              base::OnceClosure release_cb)
     : addr_(addr),
       prefix_length_(prefix_length),
@@ -61,7 +61,7 @@ uint32_t SubnetAddress::Netmask() const {
 }
 
 Subnet::Subnet(uint32_t base_addr,
-               uint32_t prefix_length,
+               int prefix_length,
                base::OnceClosure release_cb)
     : base_addr_(base_addr),
       prefix_length_(prefix_length),
@@ -69,7 +69,7 @@ Subnet::Subnet(uint32_t base_addr,
       weak_factory_(this) {
   CHECK_LT(prefix_length, 32);
 
-  addrs_.resize(1ull << (32 - prefix_length), false);
+  addrs_.resize(1ul << (32 - prefix_length), false);
 
   // Mark the base address and broadcast address as allocated.
   addrs_.front() = true;
@@ -112,7 +112,7 @@ uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
 uint32_t Subnet::AvailableCount() const {
   // The available IP count is all IPs in a subnet, minus the network ID
   // and the broadcast address.
-  return addrs_.size() - 2;
+  return static_cast<uint32_t>(addrs_.size()) - 2;
 }
 
 uint32_t Subnet::BaseAddress() const {
@@ -127,7 +127,7 @@ uint32_t Subnet::Prefix() const {
   return base_addr_ & Netmask();
 }
 
-uint32_t Subnet::PrefixLength() const {
+int Subnet::PrefixLength() const {
   return prefix_length_;
 }
 

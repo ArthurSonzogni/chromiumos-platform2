@@ -30,7 +30,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD3(AddBridge,
                bool(const std::string& ifname,
                     uint32_t ipv4_addr,
-                    uint32_t prefix_len));
+                    int prefix_len));
   MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
   MOCK_METHOD2(AddToBridge,
                bool(const std::string& br_ifname, const std::string& ifname));
@@ -47,7 +47,7 @@ class MockDatapath : public Datapath {
                     const std::string& peer_ifname,
                     const MacAddress& remote_mac_addr,
                     uint32_t remote_ipv4_addr,
-                    uint32_t remote_ipv4_prefix_len,
+                    int remote_ipv4_prefix_len,
                     bool remote_multicast_flag));
   MOCK_METHOD1(RemoveInterface, void(const std::string& ifname));
   MOCK_METHOD6(StartRoutingDevice,

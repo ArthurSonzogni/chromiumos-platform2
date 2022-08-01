@@ -53,11 +53,11 @@ const flags_info_t kRtentryRTF = {
 
 }  // namespace
 
-uint32_t Ipv4Netmask(uint32_t prefix_len) {
+uint32_t Ipv4Netmask(int prefix_len) {
   return htonl((0xffffffffull << (32 - prefix_len)) & 0xffffffff);
 }
 
-uint32_t Ipv4BroadcastAddr(uint32_t base, uint32_t prefix_len) {
+uint32_t Ipv4BroadcastAddr(uint32_t base, int prefix_len) {
   return (base | ~Ipv4Netmask(prefix_len));
 }
 
@@ -89,7 +89,7 @@ struct in6_addr StringToIPv6Address(const std::string& buf) {
   return addr;
 }
 
-std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
+std::string IPv4AddressToCidrString(uint32_t addr, int prefix_length) {
   return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
 
@@ -100,7 +100,7 @@ std::string MacAddressToString(const MacAddress& addr) {
 
 bool IsIPv6PrefixEqual(const struct in6_addr& a,
                        const struct in6_addr& b,
-                       int prefix_length) {
+                       int32_t prefix_length) {
   if (prefix_length > 128 || prefix_length < 0) {
     LOG(ERROR) << "Invalid prefix length " << prefix_length;
     return false;
@@ -114,7 +114,7 @@ bool IsIPv6PrefixEqual(const struct in6_addr& a,
     prefix_length -= 8;
     i++;
   }
-  uint8_t mask = ~((1 << (8 - prefix_length)) - 1);
+  uint8_t mask = static_cast<uint8_t>(~((1 << (8 - prefix_length)) - 1));
   return (a.s6_addr[i] & mask) == (b.s6_addr[i] & mask);
 }
 
@@ -157,8 +157,9 @@ bool GenerateRandomIPv6Prefix(struct in6_addr* prefix, int len) {
     return false;
   }
 
-  for (int i = 8; i < 16; i++)
-    prefix->s6_addr[i] = randbyte(rng);
+  for (int i = 8; i < 16; i++) {
+    prefix->s6_addr[i] = static_cast<uint8_t>(randbyte(rng));
+  }
 
   // Set the universal/local flag, similar to a RFC 4941 address.
   prefix->s6_addr[8] |= 0x40;
@@ -257,7 +258,9 @@ std::ostream& operator<<(std::ostream& stream, const struct sockaddr_vm& addr) {
 
 std::ostream& operator<<(std::ostream& stream, const struct sockaddr_ll& addr) {
   char ifname[IFNAMSIZ] = {};
-  if_indextoname(addr.sll_ifindex, ifname);
+  if (addr.sll_ifindex > 0) {
+    if_indextoname(static_cast<uint32_t>(addr.sll_ifindex), ifname);
+  }
   stream << "{family: AF_PACKET, ifindex=" << addr.sll_ifindex << " " << ifname;
   switch (addr.sll_pkttype) {
     case PACKET_HOST:
@@ -308,12 +311,13 @@ std::ostream& operator<<(std::ostream& stream, const struct rtentry& route) {
 }
 
 uint16_t FoldChecksum(uint32_t sum) {
-  while (sum >> 16)
+  while (sum >> 16) {
     sum = (sum & 0xffff) + (sum >> 16);
-  return ~sum;
+  }
+  return static_cast<uint16_t>(~sum);
 }
 
-uint32_t NetChecksum(const void* data, ssize_t len) {
+uint32_t NetChecksum(const void* data, size_t len) {
   uint32_t sum = 0;
   const uint16_t* word = reinterpret_cast<const uint16_t*>(data);
   for (; len > 1; len -= 2)
@@ -329,7 +333,7 @@ uint16_t Ipv4Checksum(const iphdr* ip) {
   return FoldChecksum(sum);
 }
 
-uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len) {
+uint16_t Udpv4Checksum(const uint8_t* udp_packet, size_t len) {
   if (len < sizeof(iphdr) + sizeof(udphdr)) {
     LOG(ERROR) << "UDP packet length is too small";
     return 0;
@@ -352,13 +356,15 @@ uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len) {
 
   // UDP
   const uint8_t* udp_segment = udp_packet + sizeof(iphdr);
-  ssize_t udp_len = len - sizeof(iphdr);
+  // Safe subtraction because |len| is known to be larger than sizeof(iphdr)
+  size_t udp_len = len - sizeof(iphdr);
+
   sum += NetChecksum(udp_segment, udp_len);
 
   return FoldChecksum(sum);
 }
 
-uint16_t Icmpv6Checksum(const uint8_t* ip6_packet, ssize_t len) {
+uint16_t Icmpv6Checksum(const uint8_t* ip6_packet, size_t len) {
   if (len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     LOG(ERROR) << "ICMPv6 packet length is too small";
     return 0;
@@ -382,7 +388,8 @@ uint16_t Icmpv6Checksum(const uint8_t* ip6_packet, ssize_t len) {
   // ICMP
   const struct icmp6_hdr* icmp6 =
       reinterpret_cast<const struct icmp6_hdr*>(ip6_packet + sizeof(ip6_hdr));
-  ssize_t icmp6_len = len - sizeof(ip6_hdr);
+  // Safe subtraction because |len| is known to be larger than sizeof(iphdr)
+  size_t icmp6_len = len - sizeof(ip6_hdr);
   sum += NetChecksum(icmp6, icmp6_len);
 
   return FoldChecksum(sum);

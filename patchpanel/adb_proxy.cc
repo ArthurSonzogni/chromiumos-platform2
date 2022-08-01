@@ -10,6 +10,7 @@
 #include <sys/un.h>
 #include <sysexits.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -55,7 +56,7 @@ bool IsDevModeEnabled() {
 AdbProxy::AdbProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(std::move(control_fd)),
       arc_type_(GuestMessage::UNKNOWN_GUEST),
-      arcvm_vsock_cid_(-1) {
+      arcvm_vsock_cid_(std::nullopt) {
   msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
       &AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
@@ -91,7 +92,7 @@ void AdbProxy::Reset() {
   src_watcher_.reset();
   src_.reset();
   fwd_.clear();
-  arcvm_vsock_cid_ = -1;
+  arcvm_vsock_cid_ = std::nullopt;
   arc_type_ = GuestMessage::UNKNOWN_GUEST;
 }
 
@@ -148,10 +149,14 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       break;
     }
     case GuestMessage::ARC_VM: {
+      if (!arcvm_vsock_cid_.has_value()) {
+        LOG(ERROR) << "Undefined ARCVM CID";
+        return nullptr;
+      }
       struct sockaddr_vm addr_vm = {0};
       addr_vm.svm_family = AF_VSOCK;
       addr_vm.svm_port = kVsockPort;
-      addr_vm.svm_cid = arcvm_vsock_cid_;
+      addr_vm.svm_cid = arcvm_vsock_cid_.value();
       auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
       if (!dst->is_valid()) {
         PLOG(ERROR) << "Failed to create VSOCK socket";
@@ -208,11 +213,16 @@ void AdbProxy::OnGuestMessage(const SubprocessMessage& root_msg) {
 
   // On ARC down, cull any open connections and stop listening.
   if (msg.event() == GuestMessage::STOP) {
+    if (msg.type() == GuestMessage::ARC_VM && !arcvm_vsock_cid_.has_value()) {
+      LOG(WARNING)
+          << "Received STOP message for ARC_VM but ARCVM CID was undefined";
+      return;
+    }
     // The stop message for ARCVM may be sent after a new VM is started. Only
     // stop if the CID matched the latest started ARCVM CID.
     if (msg.type() == GuestMessage::ARC_VM &&
-        msg.arcvm_vsock_cid() != arcvm_vsock_cid_) {
-      LOG(WARNING) << "Mismatched ARCVM CIDs " << arcvm_vsock_cid_
+        msg.arcvm_vsock_cid() != arcvm_vsock_cid_.value()) {
+      LOG(WARNING) << "Mismatched ARCVM CIDs " << arcvm_vsock_cid_.value()
                    << " != " << msg.arcvm_vsock_cid();
       return;
     }

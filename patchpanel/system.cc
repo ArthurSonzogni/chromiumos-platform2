@@ -120,6 +120,8 @@ int System::IfNametoindex(const std::string& ifname) {
   int ifindex = net_util_IfNametoindex(ifname);
   if (ifindex > 0) {
     if_nametoindex_[ifname] = ifindex;
+    // If |ifindex| is not 0, the call succeeded and |ifindex| is a real
+    // interface index value. The cast to int is safe.
     return ifindex;
   }
 

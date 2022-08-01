@@ -10,7 +10,10 @@
 #include <string>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/at_exit.h>
+#pragma GCC diagnostic pop
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/logging.h>
@@ -71,7 +74,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider provider(data, size);
 
-  uint32_t pid = provider.ConsumeIntegral<uint32_t>();
+  int32_t pid = provider.ConsumeIntegral<int32_t>();
   std::string netns_name = provider.ConsumeRandomLengthString(10);
   std::string ifname = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   std::string ifname2 = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
@@ -79,8 +82,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string bridge = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   uint32_t addr = provider.ConsumeIntegral<uint32_t>();
   std::string addr_str = IPv4AddressToString(addr);
-  uint32_t prefix_len = provider.ConsumeIntegralInRange<uint32_t>(0, 31);
-  SubnetAddress subnet_addr(provider.ConsumeIntegral<int32_t>(), prefix_len,
+  int prefix_len = provider.ConsumeIntegralInRange<int>(0, 31);
+  SubnetAddress subnet_addr(provider.ConsumeIntegral<uint32_t>(), prefix_len,
                             base::DoNothing());
   MacAddress mac;
   std::vector<uint8_t> mac_addr_bytes =
@@ -138,8 +141,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.StopVpnRouting(ifname);
   datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),
                               provider.ConsumeIntegral<uint16_t>());
-  datapath.AddIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
-  datapath.RemoveIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
+  datapath.AddIPv6HostRoute(ifname, ipv6_addr_str,
+                            static_cast<int>(prefix_len));
+  datapath.RemoveIPv6HostRoute(ifname, ipv6_addr_str,
+                               static_cast<int>(prefix_len));
   datapath.AddIPv6Address(ifname, ipv6_addr_str);
   datapath.RemoveIPv6Address(ifname, ipv6_addr_str);
 

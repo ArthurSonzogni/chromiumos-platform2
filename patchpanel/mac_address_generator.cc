@@ -31,9 +31,9 @@ MacAddress MacAddressGenerator::Generate() {
   return addr;
 }
 
-MacAddress MacAddressGenerator::GetStable(uint8_t id) const {
+MacAddress MacAddressGenerator::GetStable(uint32_t id) const {
   MacAddress addr = kStableBaseAddr;
-  addr[5] = id;
+  addr[5] = static_cast<uint8_t>(id);
   return addr;
 }
 

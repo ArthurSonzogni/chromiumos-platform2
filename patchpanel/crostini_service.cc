@@ -16,9 +16,13 @@
 #include "base/threading/thread_task_runner_handle.h"
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
+// Ignore Wconversion warnings in dbus headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+#pragma GCC diagnostic pop
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/guest_type.h"
@@ -64,7 +68,9 @@ CrostiniService::~CrostiniService() {
     bus_->ShutdownAndBlock();
 }
 
-bool CrostiniService::Start(uint64_t vm_id, bool is_termina, int subnet_index) {
+bool CrostiniService::Start(uint64_t vm_id,
+                            bool is_termina,
+                            uint32_t subnet_index) {
   if (vm_id == kInvalidID) {
     LOG(ERROR) << "Invalid VM id";
     return false;
@@ -142,7 +148,7 @@ std::vector<const Device*> CrostiniService::GetDevices() const {
 }
 
 std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
-                                                int subnet_index) {
+                                                uint32_t subnet_index) {
   auto guest_type = is_termina ? GuestType::VM_TERMINA : GuestType::VM_PLUGIN;
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest_type, subnet_index);
   if (!ipv4_subnet) {

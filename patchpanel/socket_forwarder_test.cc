@@ -24,22 +24,21 @@ using testing::Each;
 namespace patchpanel {
 namespace {
 // SocketForwarder reads blocks of 4096 bytes.
-constexpr int kDataSize = 5000;
+constexpr size_t kDataSize = 5000;
 
 // Does a blocking read on |socket| until it receives |expected_byte_count|
 // bytes which will be written into |buf|.
-bool Read(Socket* socket, char* buf, int expected_byte_count) {
-  int read_byte_count = 0;
-  int bytes = 0;
+bool Read(Socket* socket, char* buf, size_t expected_byte_count) {
+  size_t read_byte_count = 0;
+  ssize_t bytes = 0;
   while (read_byte_count < expected_byte_count) {
     bytes = socket->RecvFrom(buf + read_byte_count, kDataSize);
-    if (bytes <= 0)
+    if (bytes <= 0) {
       return false;
-    read_byte_count += bytes;
+    }
+    read_byte_count += static_cast<size_t>(bytes);
   }
-  if (read_byte_count != expected_byte_count)
-    return false;
-  return true;
+  return read_byte_count == expected_byte_count;
 }
 }  // namespace
 

@@ -5,6 +5,8 @@
 #ifndef PATCHPANEL_SCOPED_NS_H_
 #define PATCHPANEL_SCOPED_NS_H_
 
+#include <sys/types.h>
+
 #include <memory>
 #include <string>
 

@@ -14,7 +14,7 @@
 #include <base/memory/weak_ptr.h>
 
 #include "patchpanel/datapath.h"
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subprocess_controller.h"
 

@@ -9,7 +9,11 @@
 
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+// Ignore Wconversion warnings in libbase headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/test/task_environment.h>
+#pragma GCC diagnostic pop
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <shill/net/mock_rtnl_handler.h>
@@ -181,8 +185,9 @@ class NeighborLinkMonitorTest : public testing::Test {
                                        std::vector<uint8_t>{1, 2, 3, 4, 5, 6}));
     }
 
-    registered_listener_->NotifyEvent(shill::RTNLHandler::kRequestNeighbor,
-                                      msg);
+    // TODO(b/2360921612) Remove static cast when shill-net types are fixed.
+    int event_type = static_cast<int>(shill::RTNLHandler::kRequestNeighbor);
+    registered_listener_->NotifyEvent(event_type, msg);
   }
 
   // The internal implementation of Timer uses Now() so we need

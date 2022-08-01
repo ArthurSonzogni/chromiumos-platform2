@@ -68,7 +68,7 @@ TEST(SubnetPool, Release) {
 
   // Now shuffle the elements.
   std::shuffle(subnets.begin(), subnets.end(),
-               std::mt19937(base::RandUint64()));
+               std::mt19937(static_cast<uint32_t>(base::RandUint64())));
 
   // Pop off the first element.
   auto subnet = std::move(subnets.front());

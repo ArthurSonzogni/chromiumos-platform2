@@ -12,10 +12,10 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
 
+#include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 
@@ -76,13 +76,13 @@ class BroadcastForwarder {
   // |dev_ifname_| using a temporary socket.
   bool SendToNetwork(uint16_t src_port,
                      const void* data,
-                     ssize_t len,
+                     size_t len,
                      const struct sockaddr_in& dst);
 
   // SendToGuests will forward the broadcast packet to all Chrome OS guests'
   // (ARC++, Crostini, etc) internal fd.
   bool SendToGuests(const void* ip_pkt,
-                    ssize_t len,
+                    size_t len,
                     const struct sockaddr_in& dst);
 
   // Wrapper around libc recvmsg, allowing override in fuzzer tests.

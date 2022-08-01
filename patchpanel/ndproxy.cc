@@ -32,7 +32,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
@@ -212,7 +212,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
 }
 
 ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
-                                   ssize_t packet_len,
+                                   size_t packet_len,
                                    const MacAddress& local_mac_addr,
                                    const in6_addr* new_src_ip,
                                    const in6_addr* new_dst_ip,
@@ -283,7 +283,7 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
   icmp6->icmp6_cksum =
       Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), packet_len);
 
-  return packet_len;
+  return static_cast<ssize_t>(packet_len);
 }
 
 void NDProxy::ReadAndProcessOnePacket(int fd) {
@@ -305,14 +305,15 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       .msg_flags = 0,
   };
 
-  ssize_t len;
-  if ((len = recvmsg(fd, &hdr, 0)) < 0) {
+  ssize_t slen;
+  if ((slen = recvmsg(fd, &hdr, 0)) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured
     if (errno != ENETDOWN) {
       PLOG(WARNING) << "recvmsg() failed";
     }
     return;
   }
+  size_t len = static_cast<size_t>(slen);
 
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_packet);
   icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(in_packet + sizeof(ip6_hdr));
@@ -363,8 +364,9 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       // larger that /64 is required.
       for (int target_if : if_map_ra_[dst_addr.sll_ifindex]) {
         MacAddress local_mac;
-        if (!GetLocalMac(target_if, &local_mac))
+        if (!GetLocalMac(target_if, &local_mac)) {
           continue;
+        }
         in6_addr eui64_ip;
         GenerateEUI64Address(&eui64_ip, prefix_info->nd_opt_pi_prefix,
                              local_mac);
@@ -407,8 +409,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       }
     }
 
-    int result = TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p,
-                                   new_dst_ip_p, out_packet);
+    ssize_t result = TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p,
+                                       new_dst_ip_p, out_packet);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Packet:

@@ -25,9 +25,7 @@ class BRILLO_EXPORT SubnetAddress {
   // |base_addr| must be in network-byte order. |release_cb| runs in the
   // destructor of this class and can be used to free other resources associated
   // with the subnet address.
-  SubnetAddress(uint32_t addr,
-                uint32_t prefix_length,
-                base::OnceClosure release_cb);
+  SubnetAddress(uint32_t addr, int prefix_length, base::OnceClosure release_cb);
   SubnetAddress(const SubnetAddress&) = delete;
   SubnetAddress& operator=(const SubnetAddress&) = delete;
 
@@ -51,7 +49,7 @@ class BRILLO_EXPORT SubnetAddress {
   // The address in network-byte order.
   uint32_t addr_;
   // The prefix length of the address.
-  uint32_t prefix_length_;
+  int prefix_length_;
 
   // Callback to run when this object is destroyed.
   base::OnceClosure release_cb_;
@@ -64,9 +62,7 @@ class BRILLO_EXPORT Subnet {
   // |base_addr| must be in network-byte order. |release_cb| runs in the
   // destructor of this class and can be used to free other resources associated
   // with the subnet.
-  Subnet(uint32_t base_addr,
-         uint32_t prefix_length,
-         base::OnceClosure release_cb);
+  Subnet(uint32_t base_addr, int prefix_length, base::OnceClosure release_cb);
   Subnet(const Subnet&) = delete;
   Subnet& operator=(const Subnet&) = delete;
 
@@ -102,7 +98,7 @@ class BRILLO_EXPORT Subnet {
   uint32_t Prefix() const;
 
   // Returns the prefix length.
-  uint32_t PrefixLength() const;
+  int PrefixLength() const;
 
   // Returns the CIDR representation of this subnet, for instance
   // 192.168.0.0/24.
@@ -116,7 +112,7 @@ class BRILLO_EXPORT Subnet {
   uint32_t base_addr_;
 
   // Prefix length.
-  uint32_t prefix_length_;
+  int prefix_length_;
 
   // Keeps track of allocated addresses.
   std::vector<bool> addrs_;

@@ -5,13 +5,21 @@
 #include "patchpanel/dbus/client.h"
 
 #include <base/bind.h>
+// Ignore Wconversion warnings in libbase headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/test/task_environment.h>
+#pragma GCC diagnostic pop
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
+// Ignore Wconversion warnings in dbus headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
+#pragma GCC diagnostic pop
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -19,7 +19,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {

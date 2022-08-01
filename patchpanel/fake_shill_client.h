@@ -12,8 +12,12 @@
 #include <utility>
 
 #include <base/memory/ref_counted.h>
+// Ignore Wconversion warnings in dbus headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#pragma GCC diagnostic pop
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -11,7 +11,10 @@
 #include <optional>
 #include <utility>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/big_endian.h"
+#pragma GCC diagnostic pop
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"
@@ -162,21 +165,22 @@ DnsRecordParser::DnsRecordParser(const void* packet,
   DCHECK_LE(offset, length);
 }
 
-unsigned DnsRecordParser::ReadName(const void* const vpos,
-                                   std::string* out) const {
+size_t DnsRecordParser::ReadName(const void* const vpos,
+                                 std::string* out) const {
   static const char kAbortMsg[] = "Abort parsing of noncompliant DNS record.";
 
-  const char* const pos = reinterpret_cast<const char*>(vpos);
-  DCHECK(packet_);
-  DCHECK_LE(packet_, pos);
-  DCHECK_LE(pos, packet_ + length_);
+  const uint8_t* pos = reinterpret_cast<const uint8_t*>(vpos);
+  const uint8_t* packet = reinterpret_cast<const uint8_t*>(packet_);
+  DCHECK(packet);
+  DCHECK_LE(packet, pos);
+  DCHECK_LE(pos, packet + length_);
 
-  const char* p = pos;
-  const char* end = packet_ + length_;
+  const uint8_t* p = pos;
+  const uint8_t* end = packet + length_;
   // Count number of seen bytes to detect loops.
   unsigned seen = 0;
   // Remember how many bytes were consumed before first jump.
-  unsigned consumed = 0;
+  size_t consumed = 0;
   // The length of the encoded name (sum of label octets and label lengths).
   // For context, RFC 1034 states that the total number of octets representing a
   // domain name (the sum of all label octets and label lengths) is limited to
@@ -202,7 +206,7 @@ unsigned DnsRecordParser::ReadName(const void* const vpos,
           return 0;
         }
         if (consumed == 0) {
-          consumed = p - pos + sizeof(uint16_t);
+          consumed = static_cast<size_t>(p - pos) + sizeof(uint16_t);
           if (!out)
             return consumed;  // If name is not stored, that's all we need.
         }
@@ -216,7 +220,7 @@ unsigned DnsRecordParser::ReadName(const void* const vpos,
         base::ReadBigEndian<uint16_t>(reinterpret_cast<const uint8_t*>(p),
                                       &offset);
         offset &= dns_protocol::kOffsetMask;
-        p = packet_ + offset;
+        p = packet + offset;
         if (p >= end) {
           LOG(ERROR) << kAbortMsg << " Label pointer points outside packet.";
           return 0;
@@ -236,7 +240,7 @@ unsigned DnsRecordParser::ReadName(const void* const vpos,
         // Note: root domain (".") is NOT included.
         if (label_len == 0) {
           if (consumed == 0) {
-            consumed = p - pos;
+            consumed = static_cast<size_t>(p - pos);
           }  // else we set |consumed| before first jump
           return consumed;
         }
@@ -247,7 +251,7 @@ unsigned DnsRecordParser::ReadName(const void* const vpos,
         if (out) {
           if (!out->empty())
             out->append(".");
-          out->append(p, label_len);
+          out->append(reinterpret_cast<const char*>(p), label_len);
         }
         p += label_len;
         seen += 1 + label_len;
@@ -264,16 +268,19 @@ unsigned DnsRecordParser::ReadName(const void* const vpos,
 bool DnsRecordParser::ReadRecord(DnsResourceRecord* out) {
   DCHECK(packet_);
   size_t consumed = ReadName(cur_, &out->name);
-  if (!consumed)
+  if (!consumed) {
     return false;
-  base::BigEndianReader reader(
-      reinterpret_cast<const uint8_t*>(cur_ + consumed),
-      packet_ + length_ - (cur_ + consumed));
+  }
+  const char* packet_end = packet_ + length_;
+  const char* record = cur_ + consumed;
+  if (packet_end < record) {
+    return false;
+  }
+  base::BigEndianReader reader(reinterpret_cast<const uint8_t*>(record),
+                               static_cast<size_t>(packet_end - record));
   uint16_t rdlen;
-  if (reader.ReadU16(&out->type) &&
-      reader.ReadU16(&out->klass) &&
-      reader.ReadU32(&out->ttl) &&
-      reader.ReadU16(&rdlen) &&
+  if (reader.ReadU16(&out->type) && reader.ReadU16(&out->klass) &&
+      reader.ReadU32(&out->ttl) && reader.ReadU16(&rdlen) &&
       reader.ReadPiece(&out->rdata, rdlen)) {
     cur_ = reinterpret_cast<const char*>(reader.ptr());
     return true;
@@ -319,9 +326,11 @@ DnsResponse::DnsResponse(
   DCHECK_EQ(0, rcode & ~kRcodeMask);
   header.flags |= rcode;
 
-  header.ancount = answers.size();
-  header.nscount = authority_records.size();
-  header.arcount = additional_records.size();
+  // ANCOUNT, NSCOUNT, and ARCOUNT are defined in the DNS RFCS as unsigned 16
+  // bits fields in the packet DNS header.
+  header.ancount = static_cast<uint16_t>(answers.size());
+  header.nscount = static_cast<uint16_t>(authority_records.size());
+  header.arcount = static_cast<uint16_t>(additional_records.size());
 
   // Response starts with the header and the question section (if any).
   size_t response_size = has_query
@@ -565,7 +574,9 @@ bool DnsResponse::WriteRecord(base::BigEndianWriter* writer,
   return writer->WriteBytes(domain_name.data(), domain_name.size()) &&
          writer->WriteU16(record.type) && writer->WriteU16(record.klass) &&
          writer->WriteU32(record.ttl) &&
-         writer->WriteU16(record.owned_rdata.size()) &&
+         // RDLENGTH is defined in the DNS RFCS as unsigned 16 bits field in the
+         // packet DNS header.
+         writer->WriteU16(static_cast<uint16_t>(record.owned_rdata.size())) &&
          // Use the owned RDATA in the record to construct the response.
          writer->WriteBytes(record.owned_rdata.data(),
                             record.owned_rdata.size());

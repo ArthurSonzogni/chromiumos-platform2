@@ -6,6 +6,7 @@
 
 #include <linux/rtnetlink.h>
 #include <net/if.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
 
 #include <utility>
@@ -68,7 +69,7 @@ bool KernelVersion(int* major, int* minor) {
 
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
-bool SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
+bool SetSysfsOwnerToAndroidRoot(pid_t pid, const std::string& path) {
   auto ns = ScopedNS::EnterMountNS(pid);
   if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
@@ -84,7 +85,7 @@ bool SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
   return true;
 }
 
-bool OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
+bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
   static bool done = false;
   if (done)
     return true;
@@ -170,8 +171,7 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
     return nullptr;
   }
 
-  int subnet_index = (guest == GuestMessage::ARC_VM) ? 1 : kAnySubnetIndex;
-
+  uint32_t subnet_index = (guest == GuestMessage::ARC_VM) ? 1 : kAnySubnetIndex;
   auto config = std::make_unique<Device::Config>(
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
@@ -209,7 +209,7 @@ bool ArcService::IsStarted() const {
 void ArcService::AllocateAddressConfigs() {
   // The first usable subnet is the "other" ARC Device subnet.
   // As a temporary workaround, for ARCVM, allocate fixed MAC addresses.
-  uint8_t mac_addr_index = 2;
+  uint32_t mac_addr_index = 2;
   // Allocate 2 subnets each for Ethernet and WiFi and 1 for LTE WAN interfaces.
   for (const auto type :
        {ShillClient::Device::Type::kEthernet,
@@ -328,13 +328,18 @@ bool ArcService::Start(uint32_t id) {
     }
     arc_device_ifname = arc_device_->config().tap_ifname();
   } else {
-    if (!OneTimeContainerSetup(*datapath_, id)) {
+    pid_t pid = static_cast<int>(id);
+    if (pid < 0) {
+      LOG(ERROR) << "Invalid ARC container pid " << pid;
+      return false;
+    }
+    if (!OneTimeContainerSetup(*datapath_, pid)) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kOneTimeContainerSetupError);
       LOG(ERROR) << "One time container setup failed";
     }
-    if (!datapath_->NetnsAttachName(kArcNetnsName, id)) {
+    if (!datapath_->NetnsAttachName(kArcNetnsName, pid)) {
       LOG(ERROR) << "Failed to attach name " << kArcNetnsName << " to pid "
-                 << id;
+                 << pid;
       return false;
     }
     // b/208240700: Refresh MAC address in AddressConfigs every time ARC starts
@@ -343,7 +348,7 @@ bool ArcService::Start(uint32_t id) {
     RefreshMacAddressesInConfigs();
 
     arc_device_ifname = ArcVethHostName(arc_device_->guest_ifname());
-    if (!datapath_->ConnectVethPair(id, kArcNetnsName, arc_device_ifname,
+    if (!datapath_->ConnectVethPair(pid, kArcNetnsName, arc_device_ifname,
                                     arc_device_->guest_ifname(),
                                     arc_device_->config().mac_addr(),
                                     arc_device_->config().guest_ipv4_addr(), 30,
@@ -354,7 +359,7 @@ bool ArcService::Start(uint32_t id) {
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
     if (!SetSysfsOwnerToAndroidRoot(
-            id, "net/" + arc_device_->guest_ifname() + "/mtu")) {
+            pid, "net/" + arc_device_->guest_ifname() + "/mtu")) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
     }
   }
@@ -499,16 +504,21 @@ void ArcService::AddDevice(const std::string& ifname,
       return;
     }
   } else {
+    pid_t pid = static_cast<int>(id_);
+    if (pid < 0) {
+      LOG(ERROR) << "Invalid ARC container pid " << pid;
+      return;
+    }
     virtual_device_ifname = ArcVethHostName(device->guest_ifname());
     if (!datapath_->ConnectVethPair(
-            id_, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
+            pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
             device->config().mac_addr(), device->config().guest_ipv4_addr(), 30,
             IsMulticastInterface(device->phys_ifname()))) {
       LOG(ERROR) << "Cannot create veth link for device " << *device;
       return;
     }
     // Allow netd to write to /sys/class/net/<guest_ifname>/mtu (b/169936104).
-    SetSysfsOwnerToAndroidRoot(id_, "net/" + device->guest_ifname() + "/mtu");
+    SetSysfsOwnerToAndroidRoot(pid, "net/" + device->guest_ifname() + "/mtu");
   }
 
   if (!datapath_->AddToBridge(device->host_ifname(), virtual_device_ifname)) {

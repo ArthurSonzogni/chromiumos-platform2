@@ -174,7 +174,7 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
     struct ipv6_mreq mreqn;
     memset(&mreqn, 0, sizeof(mreqn));
     mreqn.ipv6mr_multiaddr = mcast_addr6_;
-    mreqn.ipv6mr_interface = ifindex;
+    mreqn.ipv6mr_interface = static_cast<uint32_t>(ifindex);
     if (setsockopt(fd.get(), IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreqn,
                    sizeof(mreqn)) < 0) {
       PLOG(ERROR) << "Can't add IPv6 multicast membership on " << ifname
@@ -293,14 +293,15 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
 
   socklen_t addrlen = sizeof(struct sockaddr_storage);
 
-  ssize_t len = Receive(fd, data, kBufSize, fromaddr, &addrlen);
-  if (len < 0) {
+  ssize_t r = Receive(fd, data, kBufSize, fromaddr, &addrlen);
+  if (r < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured
     if (errno != ENETDOWN) {
       PLOG(WARNING) << "recvfrom failed";
     }
     return;
   }
+  size_t len = static_cast<size_t>(r);
 
   socklen_t expectlen = sa_family == AF_INET ? sizeof(struct sockaddr_in)
                                              : sizeof(struct sockaddr_in6);
@@ -368,7 +369,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
 
 bool MulticastForwarder::SendTo(uint16_t src_port,
                                 const void* data,
-                                ssize_t len,
+                                size_t len,
                                 const struct sockaddr* dst,
                                 socklen_t dst_len) {
   if (src_port == port_) {
@@ -444,7 +445,7 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
 }
 
 bool MulticastForwarder::SendToGuests(const void* data,
-                                      ssize_t len,
+                                      size_t len,
                                       const struct sockaddr* dst,
                                       socklen_t dst_len,
                                       int ignore_fd) {
@@ -469,7 +470,7 @@ bool MulticastForwarder::SendToGuests(const void* data,
 void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
                                          const struct in_addr& guest_ip,
                                          char* data,
-                                         ssize_t len) {
+                                         size_t len) {
   if (guest_ip.s_addr == htonl(INADDR_ANY)) {
     return;
   }
@@ -507,7 +508,10 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
         // address inside the resource record by assuming that the
         // StringPiece returns a pointer inside the io_buffer.  It works
         // today, but future libchrome changes might break it.
-        size_t ip_offset = record.rdata.data() - resp.io_buffer()->data();
+        // |record|'s data is a pointer into |resp|'s data therefore it is safe
+        // to assume that subtraction is a positive number and cast it to size_t
+        size_t ip_offset =
+            static_cast<size_t>(record.rdata.data() - resp.io_buffer()->data());
         CHECK(ip_offset <= len - ipv4_addr_len);
         memcpy(&data[ip_offset], &lan_ip.s_addr, ipv4_addr_len);
       }

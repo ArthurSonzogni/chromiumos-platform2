@@ -21,13 +21,13 @@
 namespace patchpanel {
 namespace {
 
-constexpr size_t kContainerBaseAddress = Ipv4Addr(100, 115, 92, 192);
-constexpr size_t kVmBaseAddress = Ipv4Addr(100, 115, 92, 24);
-constexpr size_t kPluginBaseAddress = Ipv4Addr(100, 115, 92, 128);
+constexpr uint32_t kContainerBaseAddress = Ipv4Addr(100, 115, 92, 192);
+constexpr uint32_t kVmBaseAddress = Ipv4Addr(100, 115, 92, 24);
+constexpr uint32_t kPluginBaseAddress = Ipv4Addr(100, 115, 92, 128);
 
-constexpr size_t kContainerSubnetPrefixLength = 28;
-constexpr size_t kVmSubnetPrefixLength = 30;
-constexpr size_t kPluginSubnetPrefixLength = 28;
+constexpr uint32_t kContainerSubnetPrefixLength = 28;
+constexpr uint32_t kVmSubnetPrefixLength = 30;
+constexpr uint32_t kPluginSubnetPrefixLength = 28;
 
 uint32_t AddOffset(uint32_t base_addr_no, uint32_t offset_ho) {
   return htonl(ntohl(base_addr_no) + offset_ho);
@@ -35,7 +35,7 @@ uint32_t AddOffset(uint32_t base_addr_no, uint32_t offset_ho) {
 
 // kExpectedAvailableCount[i] == AvailableCount() for subnet with prefix_length
 // i.
-constexpr size_t kExpectedAvailableCount[] = {
+constexpr uint32_t kExpectedAvailableCount[] = {
     0xfffffffe, 0x7ffffffe, 0x3ffffffe, 0x1ffffffe, 0xffffffe, 0x7fffffe,
     0x3fffffe,  0x1fffffe,  0xfffffe,   0x7ffffe,   0x3ffffe,  0x1ffffe,
     0xffffe,    0x7fffe,    0x3fffe,    0x1fffe,    0xfffe,    0x7ffe,
@@ -101,9 +101,9 @@ const char* kExpectedCidrString[] = {
     "100.115.92.144/30", "100.115.92.148/30",
 };
 
-class VmSubnetTest : public ::testing::TestWithParam<size_t> {};
-class ContainerSubnetTest : public ::testing::TestWithParam<size_t> {};
-class PrefixTest : public ::testing::TestWithParam<size_t> {};
+class VmSubnetTest : public ::testing::TestWithParam<uint32_t> {};
+class ContainerSubnetTest : public ::testing::TestWithParam<uint32_t> {};
+class PrefixTest : public ::testing::TestWithParam<int> {};
 
 void SetTrue(bool* value) {
   *value = true;
@@ -112,7 +112,7 @@ void SetTrue(bool* value) {
 }  // namespace
 
 TEST_P(VmSubnetTest, Prefix) {
-  size_t index = GetParam();
+  uint32_t index = GetParam();
   Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::DoNothing());
 
@@ -120,7 +120,7 @@ TEST_P(VmSubnetTest, Prefix) {
 }
 
 TEST_P(VmSubnetTest, CidrString) {
-  size_t index = GetParam();
+  uint32_t index = GetParam();
   Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::DoNothing());
 
@@ -129,7 +129,7 @@ TEST_P(VmSubnetTest, CidrString) {
 }
 
 TEST_P(VmSubnetTest, AddressAtOffset) {
-  size_t index = GetParam();
+  uint32_t index = GetParam();
   Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::DoNothing());
 
@@ -141,10 +141,10 @@ TEST_P(VmSubnetTest, AddressAtOffset) {
 
 INSTANTIATE_TEST_SUITE_P(AllValues,
                          VmSubnetTest,
-                         ::testing::Range(size_t{0}, size_t{26}));
+                         ::testing::Range(uint32_t{0}, uint32_t{26}));
 
 TEST_P(ContainerSubnetTest, AddressAtOffset) {
-  size_t index = GetParam();
+  uint32_t index = GetParam();
   Subnet subnet(AddOffset(kContainerBaseAddress, index * 16),
                 kContainerSubnetPrefixLength, base::DoNothing());
 
@@ -157,25 +157,23 @@ TEST_P(ContainerSubnetTest, AddressAtOffset) {
 
 INSTANTIATE_TEST_SUITE_P(AllValues,
                          ContainerSubnetTest,
-                         ::testing::Range(size_t{1}, size_t{4}));
+                         ::testing::Range(uint32_t{1}, uint32_t{4}));
 
 TEST_P(PrefixTest, AvailableCount) {
-  size_t prefix_length = GetParam();
+  int prefix_length = GetParam();
 
   Subnet subnet(0, prefix_length, base::DoNothing());
   EXPECT_EQ(kExpectedAvailableCount[prefix_length], subnet.AvailableCount());
 }
 
 TEST_P(PrefixTest, Netmask) {
-  size_t prefix_length = GetParam();
+  int prefix_length = GetParam();
 
   Subnet subnet(0, prefix_length, base::DoNothing());
   EXPECT_EQ(kExpectedNetmask[prefix_length], subnet.Netmask());
 }
 
-INSTANTIATE_TEST_SUITE_P(AllValues,
-                         PrefixTest,
-                         ::testing::Range(size_t{8}, size_t{32}));
+INSTANTIATE_TEST_SUITE_P(AllValues, PrefixTest, ::testing::Range(8, 32));
 
 TEST(SubtnetAddress, StringConversion) {
   Subnet container_subnet(kContainerBaseAddress, kContainerSubnetPrefixLength,
@@ -282,7 +280,7 @@ TEST(PluginSubnet, Allocate) {
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
   addrs.reserve(subnet.AvailableCount());
 
-  for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
+  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     // Offset by one since the network id is not allocatable.
     auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, offset + 1));
     EXPECT_TRUE(addr);
@@ -299,7 +297,7 @@ TEST(PluginSubnet, AllocateAtOffset) {
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
   addrs.reserve(subnet.AvailableCount());
 
-  for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
+  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     auto addr = subnet.AllocateAtOffset(offset);
     EXPECT_TRUE(addr);
     EXPECT_EQ(AddOffset(kPluginBaseAddress, offset + 1), addr->Address());

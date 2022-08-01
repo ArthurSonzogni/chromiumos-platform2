@@ -51,15 +51,18 @@ int main(int argc, char* argv[]) {
     }
     added_mdns = added_mdns || mdns_fwd->AddGuest(args[1]);
     added_ssdp = added_ssdp || ssdp_fwd->AddGuest(args[1]);
-    if (added_mdns && added_ssdp)
+    if (added_mdns && added_ssdp) {
       break;
+    }
   }
-  if (!added_mdns)
+  if (!added_mdns) {
     LOG(ERROR) << "mDNS forwarder could not be started on " << args[0]
                << " and " << args[1];
-  if (!added_ssdp)
+  }
+  if (!added_ssdp) {
     LOG(ERROR) << "SSDP forwarder could not be started on " << args[0]
                << " and " << args[1];
+  }
   if (!added_mdns || !added_ssdp)
     return EXIT_FAILURE;
 

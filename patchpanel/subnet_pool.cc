@@ -39,7 +39,7 @@ SubnetPool::SubnetPool(uint32_t base_addr,
     : base_addr_(base_addr),
       prefix_length_(prefix_length),
       num_subnets_(num_subnets),
-      addr_per_index_(1ull << (kMaxSubnets - prefix_length)) {
+      addr_per_index_(1 << (kMaxSubnets - prefix_length)) {
   subnets_.set(0);  // unused.
 }
 

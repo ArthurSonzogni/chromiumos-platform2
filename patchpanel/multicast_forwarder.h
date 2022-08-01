@@ -15,9 +15,9 @@
 #include <string>
 #include <utility>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 
+#include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/net_util.h"
 
 namespace patchpanel {
@@ -65,7 +65,7 @@ class MulticastForwarder {
   static void TranslateMdnsIp(const struct in_addr& lan_ip,
                               const struct in_addr& guest_ip,
                               char* data,
-                              ssize_t len);
+                              size_t len);
 
   void OnFileCanReadWithoutBlocking(int fd, sa_family_t sa_family);
 
@@ -84,7 +84,7 @@ class MulticastForwarder {
   // create a temporary socket.
   virtual bool SendTo(uint16_t src_port,
                       const void* data,
-                      ssize_t len,
+                      size_t len,
                       const struct sockaddr* dst,
                       socklen_t dst_len);
 
@@ -92,7 +92,7 @@ class MulticastForwarder {
   // Crostini, etc) internal fd using |port|.
   // However, if ignore_fd is not 0, it will skip guest with fd = ignore_fd.
   virtual bool SendToGuests(const void* data,
-                            ssize_t len,
+                            size_t len,
                             const struct sockaddr* dst,
                             socklen_t dst_len,
                             int ignore_fd = -1);
@@ -111,7 +111,7 @@ class MulticastForwarder {
   // Name of the physical interface that this forwarder is bound to.
   std::string lan_ifname_;
   // UDP port of the protocol that this forwarder is processing.
-  unsigned int port_;
+  uint16_t port_;
   // IPv4 multicast address of the protocol that this forwarder is processing.
   struct in_addr mcast_addr_;
   // IPv6 multicast address of the protocol that this forwarder is processing.

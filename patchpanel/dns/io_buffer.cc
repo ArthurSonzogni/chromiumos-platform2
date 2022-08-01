@@ -5,7 +5,10 @@
 #include "patchpanel/dns/io_buffer.h"
 
 #include "base/logging.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/numerics/safe_math.h"
+#pragma GCC diagnostic pop
 
 #include <base/check_op.h>
 
@@ -32,7 +35,7 @@ IOBuffer::IOBuffer() : data_(nullptr) {}
 
 IOBuffer::IOBuffer(int buffer_size) {
   AssertValidBufferSize(buffer_size);
-  data_ = new char[buffer_size];
+  data_ = new char[static_cast<size_t>(buffer_size)];
 }
 
 IOBuffer::IOBuffer(size_t buffer_size) {
@@ -51,8 +54,10 @@ IOBufferWithSize::IOBufferWithSize(int size) : IOBuffer(size), size_(size) {
   AssertValidBufferSize(size);
 }
 
-IOBufferWithSize::IOBufferWithSize(size_t size) : IOBuffer(size), size_(size) {
-  // Note: Size check is done in superclass' constructor.
+IOBufferWithSize::IOBufferWithSize(size_t size)
+    : IOBuffer(size), size_(static_cast<int>(size)) {
+  // Note: Size check is done in superclass' constructor. This will check if
+  // |size| was larger than INT_MAX.
 }
 
 IOBufferWithSize::IOBufferWithSize(char* data, int size)
@@ -61,7 +66,7 @@ IOBufferWithSize::IOBufferWithSize(char* data, int size)
 }
 
 IOBufferWithSize::IOBufferWithSize(char* data, size_t size)
-    : IOBuffer(data), size_(size) {
+    : IOBuffer(data), size_(static_cast<int>(size)) {
   AssertValidBufferSize(size);
 }
 
@@ -92,7 +97,10 @@ DrainableIOBuffer::DrainableIOBuffer(IOBuffer* base, int size)
 }
 
 DrainableIOBuffer::DrainableIOBuffer(IOBuffer* base, size_t size)
-    : IOBuffer(base->data()), base_(base), size_(size), used_(0) {
+    : IOBuffer(base->data()),
+      base_(base),
+      size_(static_cast<int>(size)),
+      used_(0) {
   AssertValidBufferSize(size);
 }
 
@@ -126,7 +134,8 @@ GrowableIOBuffer::GrowableIOBuffer() : IOBuffer(), capacity_(0), offset_(0) {}
 void GrowableIOBuffer::SetCapacity(int capacity) {
   DCHECK_GE(capacity, 0);
   // realloc will crash if it fails.
-  real_data_.reset(static_cast<char*>(realloc(real_data_.release(), capacity)));
+  real_data_.reset(static_cast<char*>(
+      realloc(real_data_.release(), static_cast<size_t>(capacity))));
   capacity_ = capacity;
   if (offset_ > capacity)
     set_offset(capacity);

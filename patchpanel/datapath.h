@@ -135,7 +135,7 @@ class Datapath {
 
   virtual bool AddBridge(const std::string& ifname,
                          uint32_t ipv4_addr,
-                         uint32_t ipv4_prefix_len);
+                         int ipv4_prefix_len);
   virtual void RemoveBridge(const std::string& ifname);
 
   virtual bool AddToBridge(const std::string& br_ifname,
@@ -170,7 +170,7 @@ class Datapath {
                                const std::string& peer_ifname,
                                const MacAddress& remote_mac_addr,
                                uint32_t remote_ipv4_addr,
-                               uint32_t remote_ipv4_prefix_len,
+                               int remote_ipv4_prefix_len,
                                bool remote_multicast_flag);
 
   // Disable and re-enable IPv6.
@@ -366,7 +366,7 @@ class Datapath {
   bool ConfigureInterface(const std::string& ifname,
                           const MacAddress& mac_addr,
                           uint32_t ipv4_addr,
-                          uint32_t ipv4_prefix_len,
+                          int ipv4_prefix_len,
                           bool up,
                           bool enable_multicast);
   // Sets the link status.

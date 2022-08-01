@@ -12,9 +12,12 @@
 #include <string>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
 #include "base/time/time.h"
+#pragma GCC diagnostic pop
 #include "brillo/brillo_export.h"
 
 #include "patchpanel/dns/dns_protocol.h"
@@ -81,7 +84,10 @@ class BRILLO_EXPORT DnsRecordParser {
   bool AtEnd() const { return cur_ == packet_ + length_; }
 
   // Returns current offset into the packet.
-  size_t GetOffset() const { return cur_ - packet_; }
+  size_t GetOffset() const {
+    // Cast to size_t is safe assuming class invariant packet_ <= cur_ is true.
+    return static_cast<size_t>(cur_ - packet_);
+  }
 
   // Parses a (possibly compressed) DNS name from the packet starting at
   // |pos|. Stores output (even partial) in |out| unless |out| is NULL. |out|
@@ -90,7 +96,7 @@ class BRILLO_EXPORT DnsRecordParser {
   // This is exposed to allow parsing compressed names within RRDATA for TYPEs
   // such as NS, CNAME, PTR, MX, SOA.
   // See RFC 1035 section 4.1.4.
-  unsigned ReadName(const void* pos, std::string* out) const;
+  size_t ReadName(const void* pos, std::string* out) const;
 
   // Parses the next resource record into |record|. Returns true if succeeded.
   bool ReadRecord(DnsResourceRecord* record);
@@ -123,7 +129,7 @@ class BRILLO_EXPORT DnsResponse {
     DNS_ADDRESS_TTL_MISMATCH,  // OBSOLETE. No longer used.
     DNS_NO_ADDRESSES,          // OBSOLETE. No longer used.
     // Only add new values here.
-    DNS_PARSE_RESULT_MAX,      // Bounding value for histograms.
+    DNS_PARSE_RESULT_MAX,  // Bounding value for histograms.
   };
 
   // Constructs a response buffer large enough to store one byte more than

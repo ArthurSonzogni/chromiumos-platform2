@@ -31,7 +31,7 @@
 
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/guest_type.h"
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/net_util.h"
@@ -62,7 +62,7 @@ void HandleSynchronousDBusMethodCall(
 void FillSubnetProto(const Subnet& virtual_subnet,
                      patchpanel::IPv4Subnet* output) {
   output->set_base_addr(virtual_subnet.BaseAddress());
-  output->set_prefix_len(virtual_subnet.PrefixLength());
+  output->set_prefix_len(static_cast<uint32_t>(virtual_subnet.PrefixLength()));
 }
 
 void FillDeviceProto(const Device& virtual_device,
@@ -576,7 +576,12 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
 }
 
 bool Manager::StartArc(pid_t pid) {
-  if (!arc_svc_->Start(pid))
+  if (pid < 0) {
+    LOG(ERROR) << "Invalid ARC pid: " << pid;
+    return false;
+  }
+
+  if (!arc_svc_->Start(static_cast<uint32_t>(pid)))
     return false;
 
   GuestMessage msg;
@@ -850,7 +855,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
 
-  const int32_t cid = request.cid();
+  const uint32_t cid = request.cid();
   if (!StartCrosVm(cid, GuestMessage::TERMINA_VM)) {
     LOG(ERROR) << "Failed to start Termina VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
@@ -936,8 +941,14 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     return dbus_response;
   }
 
+  if (request.subnet_index() < 0) {
+    LOG(ERROR) << "Invalid subnet index: " << request.subnet_index();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
   const uint64_t vm_id = request.id();
-  if (!StartCrosVm(vm_id, GuestMessage::PLUGIN_VM, request.subnet_index())) {
+  if (!StartCrosVm(vm_id, GuestMessage::PLUGIN_VM, subnet_index)) {
     LOG(ERROR) << "Failed to start Plugin VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -1307,7 +1318,8 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   response->set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response->mutable_ipv4_subnet();
   response_subnet->set_base_addr(nsinfo.peer_subnet->BaseAddress());
-  response_subnet->set_prefix_len(nsinfo.peer_subnet->PrefixLength());
+  response_subnet->set_prefix_len(
+      static_cast<uint32_t>(nsinfo.peer_subnet->PrefixLength()));
 
   LOG(INFO) << "Connected network namespace " << nsinfo;
 

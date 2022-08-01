@@ -57,14 +57,14 @@ class TestMulticastForwarder : public MulticastForwarder {
 
   bool SendTo(uint16_t src_port,
               const void* data,
-              ssize_t len,
+              size_t len,
               const struct sockaddr* dst,
               socklen_t dst_len) override {
     return true;
   }
 
   bool SendToGuests(const void* data,
-                    ssize_t len,
+                    size_t len,
                     const struct sockaddr* dst,
                     socklen_t dst_len,
                     int ignore_fd) override {
@@ -76,7 +76,7 @@ class TestMulticastForwarder : public MulticastForwarder {
                   size_t buffer_size,
                   struct sockaddr* src_addr,
                   socklen_t* addrlen) override {
-    *addrlen = std::min(src_sockaddr.size(), (size_t)*addrlen);
+    *addrlen = std::min(static_cast<uint32_t>(src_sockaddr.size()), *addrlen);
     if (*addrlen > 0) {
       memcpy(src_addr, src_sockaddr.data(), *addrlen);
     }
@@ -122,8 +122,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   mcast_forwarder.AddGuest(guest_ifname1);
   mcast_forwarder.AddGuest(guest_ifname2);
 
-  int fd_index =
-      provider.ConsumeIntegralInRange<int>(0, mcast_forwarder.fds.size() - 1);
+  size_t fd_index = provider.ConsumeIntegralInRange<size_t>(
+      0, mcast_forwarder.fds.size() - 1);
   int fd = mcast_forwarder.fds[fd_index];
   if (provider.ConsumeBool()) {
     mcast_forwarder.sa_family = AF_INET;

@@ -67,7 +67,7 @@ AddressManager::AddressManager() {
   }
 }
 
-MacAddress AddressManager::GenerateMacAddress(uint8_t index) {
+MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
   return index == kAnySubnetIndex ? mac_addrs_.Generate()
                                   : mac_addrs_.GetStable(index);
 }

@@ -38,7 +38,7 @@ using testing::UnorderedElementsAre;
 
 namespace patchpanel {
 namespace {
-constexpr pid_t kTestPID = -2;
+constexpr uint32_t kTestPID = 2;
 constexpr uint32_t kTestCID = 2;
 constexpr uint32_t kArcHostIP = Ipv4Addr(100, 115, 92, 1);
 constexpr uint32_t kArcGuestIP = Ipv4Addr(100, 115, 92, 2);

@@ -32,7 +32,7 @@ class CrostiniService {
 
   ~CrostiniService();
 
-  bool Start(uint64_t vm_id, bool is_termina, int subnet_index);
+  bool Start(uint64_t vm_id, bool is_termina, uint32_t subnet_index);
   void Stop(uint64_t vm_id, bool is_termina);
 
   const Device* const TAP(uint64_t vm_id, bool is_termina) const;
@@ -41,7 +41,7 @@ class CrostiniService {
   std::vector<const Device*> GetDevices() const;
 
  private:
-  std::unique_ptr<Device> AddTAP(bool is_termina, int subnet_index);
+  std::unique_ptr<Device> AddTAP(bool is_termina, uint32_t subnet_index);
 
   // Checks ADB sideloading status and set it to |adb_sideloading_enabled_|.
   // This function will call itself again if ADB sideloading status is not

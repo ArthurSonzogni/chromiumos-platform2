@@ -32,11 +32,13 @@ class BRILLO_EXPORT MacAddressGenerator {
   // the generator.
   MacAddress Generate();
 
-  // Returns a stable MAC address whose first 5 octets are fixed and using |id|
+  // Returns a stable MAC address whose first 5 octets are fixed and using the
+  // least significant byte of |id|
   // as the sixth. The base address is itself random and was not generated from
   // any particular device, physical or virtual. Additionally, the |id| should
-  // associated with any specific device either, and should be set indepedently.
-  MacAddress GetStable(uint8_t id) const;
+  // associated with any specific device either, and should be set
+  // independently.
+  MacAddress GetStable(uint32_t id) const;
 
  private:
   // The standard library sadly does not provide a hash function for std::array.

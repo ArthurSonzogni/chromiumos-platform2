@@ -275,7 +275,7 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
 TEST(NDProxyTest, TranslateFrame) {
   uint8_t* in_buffer = new uint8_t[IP_MAXPACKET];
   uint8_t* out_buffer = new uint8_t[IP_MAXPACKET];
-  int result;
+  ssize_t result;
 
   NDProxy ndproxy;
   ndproxy.Init();

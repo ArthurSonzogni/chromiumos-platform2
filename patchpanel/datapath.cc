@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/if_tun.h>
 #include <linux/sockios.h>
 #include <net/if_arp.h>
@@ -531,7 +532,7 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
 
 bool Datapath::AddBridge(const std::string& ifname,
                          uint32_t ipv4_addr,
-                         uint32_t ipv4_prefix_len) {
+                         int ipv4_prefix_len) {
   if (!Ioctl(system_, SIOCBRADDBR, ifname.c_str())) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
@@ -606,7 +607,7 @@ std::string Datapath::AddTAP(const std::string& name,
   }
 
   if (!user.empty()) {
-    uid_t uid = -1;
+    uid_t uid = 0;
     if (!brillo::userdb::GetUserInfo(user, &uid, nullptr)) {
       PLOG(ERROR) << "Unable to look up UID for " << user;
       RemoveTAP(ifname);
@@ -691,7 +692,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
                                const std::string& peer_ifname,
                                const MacAddress& remote_mac_addr,
                                uint32_t remote_ipv4_addr,
-                               uint32_t remote_ipv4_prefix_len,
+                               int remote_ipv4_prefix_len,
                                bool remote_multicast_flag) {
   // Set up the virtual pair across the current namespace and |netns_name|.
   if (!AddVirtualInterfacePair(netns_name, veth_ifname, peer_ifname)) {
@@ -752,7 +753,7 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 bool Datapath::ConfigureInterface(const std::string& ifname,
                                   const MacAddress& mac_addr,
                                   uint32_t ipv4_addr,
-                                  uint32_t ipv4_prefix_len,
+                                  int ipv4_prefix_len,
                                   bool up,
                                   bool enable_multicast) {
   const std::string link = up ? "up" : "down";
@@ -905,7 +906,7 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
 
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
-    for (int i = 0; i < rule.nameservers.size(); i++) {
+    for (size_t i = 0; i < rule.nameservers.size(); i++) {
       std::vector<std::string> args{
           op,
           kRedirectChromeDnsChain,
@@ -1182,7 +1183,13 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
       LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
       return;
     }
-    if (!ModifyFwmarkRoutingTag(subchain, "-A", Fwmark::FromIfIndex(ifindex))) {
+    auto routing_mark = Fwmark::FromIfIndex(ifindex);
+    if (!routing_mark.has_value()) {
+      LOG(ERROR) << "Failed to compute fwmark value of interface " << ext_ifname
+                 << " with index " << ifindex;
+      return;
+    }
+    if (!ModifyFwmarkRoutingTag(subchain, "-A", routing_mark.value())) {
       LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname
                  << "<-" << int_ifname << " in " << subchain;
     }
@@ -1475,11 +1482,16 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
                << subchain;
   }
 
-  Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
+  auto routing_mark = Fwmark::FromIfIndex(ifindex);
+  if (!routing_mark.has_value()) {
+    LOG(ERROR) << "Failed to compute fwmark value of interface " << ext_ifname
+               << " with index " << ifindex;
+    return;
+  }
   LOG(INFO) << "Start connection pinning on " << ext_ifname
-            << " fwmark=" << routing_mark.ToString();
+            << " fwmark=" << routing_mark.value().ToString();
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
-  if (!ModifyConnmarkSet(IpFamily::Dual, subchain, "-A", routing_mark,
+  if (!ModifyConnmarkSet(IpFamily::Dual, subchain, "-A", routing_mark.value(),
                          kFwmarkRoutingMask)) {
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
   }
@@ -1522,9 +1534,14 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
     return;
   }
 
-  Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
+  auto routing_mark = Fwmark::FromIfIndex(ifindex);
+  if (!routing_mark.has_value()) {
+    LOG(ERROR) << "Failed to compute fwmark value of interface " << vpn_ifname
+               << " with index " << ifindex;
+    return;
+  }
   LOG(INFO) << "Start VPN routing on " << vpn_ifname
-            << " fwmark=" << routing_mark.ToString();
+            << " fwmark=" << routing_mark.value().ToString();
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-A", "POSTROUTING", "MASQUERADE",
                       "" /*iif*/, vpn_ifname)) {
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
@@ -1541,7 +1558,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   }
   // Otherwise, any new traffic from a new connection gets marked with the
   // VPN routing tag.
-  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark))
+  if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark.value()))
     LOG(ERROR) << "Failed to set up VPN set-mark rule for " << vpn_ifname;
 
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
@@ -1559,11 +1576,11 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   // All traffic with the VPN routing tag are explicitly accepted in the filter
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
   // lockdown is enabled.
-  if (!ModifyIptables(
-          IpFamily::Dual, "filter",
-          {"-A", kVpnAcceptChain, "-m", "mark", "--mark",
-           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(), "-j",
-           "ACCEPT", "-w"})) {
+  if (!ModifyIptables(IpFamily::Dual, "filter",
+                      {"-A", kVpnAcceptChain, "-m", "mark", "--mark",
+                       routing_mark.value().ToString() + "/" +
+                           kFwmarkRoutingMask.ToString(),
+                       "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to set filter rule for accepting VPN marked traffic";
   }
 }
@@ -1980,22 +1997,32 @@ bool Datapath::ModifyPortRule(
       LOG(ERROR) << "Unknown protocol " << request.proto();
       return false;
   }
+  if (request.input_dst_port() > UINT16_MAX) {
+    LOG(ERROR) << "Invalid matching destination port "
+               << request.input_dst_port();
+    return false;
+  }
+  if (request.dst_port() > UINT16_MAX) {
+    LOG(ERROR) << "Invalid forwarding destination port " << request.dst_port();
+    return false;
+  }
+  uint16_t input_dst_port = static_cast<uint16_t>(request.input_dst_port());
+  uint16_t dst_port = static_cast<uint16_t>(request.dst_port());
 
   switch (request.op()) {
     case patchpanel::ModifyPortRuleRequest::CREATE:
       switch (request.type()) {
         case patchpanel::ModifyPortRuleRequest::ACCESS: {
-          return firewall_->AddAcceptRules(request.proto(),
-                                           request.input_dst_port(),
+          return firewall_->AddAcceptRules(request.proto(), input_dst_port,
                                            request.input_ifname());
         }
         case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
           return firewall_->AddLoopbackLockdownRules(request.proto(),
-                                                     request.input_dst_port());
+                                                     input_dst_port);
         case patchpanel::ModifyPortRuleRequest::FORWARDING:
           return firewall_->AddIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), request.input_dst_port(),
-              request.input_ifname(), request.dst_ip(), request.dst_port());
+              request.proto(), request.input_dst_ip(), input_dst_port,
+              request.input_ifname(), request.dst_ip(), dst_port);
         default:
           LOG(ERROR) << "Unknown port rule type " << request.type();
           return false;
@@ -2003,16 +2030,15 @@ bool Datapath::ModifyPortRule(
     case patchpanel::ModifyPortRuleRequest::DELETE:
       switch (request.type()) {
         case patchpanel::ModifyPortRuleRequest::ACCESS:
-          return firewall_->DeleteAcceptRules(request.proto(),
-                                              request.input_dst_port(),
+          return firewall_->DeleteAcceptRules(request.proto(), input_dst_port,
                                               request.input_ifname());
         case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
-          return firewall_->DeleteLoopbackLockdownRules(
-              request.proto(), request.input_dst_port());
+          return firewall_->DeleteLoopbackLockdownRules(request.proto(),
+                                                        input_dst_port);
         case patchpanel::ModifyPortRuleRequest::FORWARDING:
           return firewall_->DeleteIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), request.input_dst_port(),
-              request.input_ifname(), request.dst_ip(), request.dst_port());
+              request.proto(), request.input_dst_ip(), input_dst_port,
+              request.input_ifname(), request.dst_ip(), dst_port);
         default:
           LOG(ERROR) << "Unknown port rule type " << request.type();
           return false;

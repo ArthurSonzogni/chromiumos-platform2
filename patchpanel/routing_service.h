@@ -6,10 +6,12 @@
 #define PATCHPANEL_ROUTING_SERVICE_H_
 
 #include <arpa/inet.h>
+#include <limits.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
 #include <array>
+#include <optional>
 #include <ostream>
 #include <string>
 
@@ -27,7 +29,7 @@ namespace patchpanel {
 // TODO(b/161507671) Consolidate with shill::kInterfaceTableIdIncrement
 // in platform2/shill/routing_table.cc once routing and ip rule configuration
 // is migrated to patchpanel.
-constexpr const uint32_t kInterfaceTableIdIncrement = 1000;
+constexpr const int kInterfaceTableIdIncrement = 1000;
 
 // The list of all sources of traffic that need to be distinguished
 // for routing or traffic accounting. Currently 6 bits are used for encoding
@@ -115,7 +117,10 @@ union Fwmark {
   }
 
   // Returns the logical uint32_t value of this Fwmark.
-  uint32_t Value() const { return rt_table_id << 16 | policy << 8 | legacy; }
+  uint32_t Value() const {
+    return static_cast<uint32_t>(rt_table_id) << 16 |
+           static_cast<uint32_t>(policy) << 8 | static_cast<uint32_t>(legacy);
+  }
 
   constexpr TrafficSource Source() {
     return static_cast<TrafficSource>(policy & 0x3f);
@@ -138,11 +143,14 @@ union Fwmark {
         .policy = static_cast<uint8_t>(source), .legacy = 0, .rt_table_id = 0};
   }
 
-  static Fwmark FromIfIndex(uint32_t ifindex) {
-    uint32_t table_id = ifindex + kInterfaceTableIdIncrement;
-    return {.policy = 0,
-            .legacy = 0,
-            .rt_table_id = static_cast<uint16_t>(table_id)};
+  static std::optional<Fwmark> FromIfIndex(int ifindex) {
+    int table_id = ifindex + kInterfaceTableIdIncrement;
+    if (ifindex < 0 || table_id > INT16_MAX) {
+      return std::nullopt;
+    }
+    return {{.policy = 0,
+             .legacy = 0,
+             .rt_table_id = static_cast<uint16_t>(table_id)}};
   }
 };
 

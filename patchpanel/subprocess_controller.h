@@ -15,7 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 
 namespace patchpanel {

@@ -13,8 +13,12 @@
 
 #include "base/files/scoped_file.h"
 #include <brillo/brillo_export.h>
+// Ignore Wconversion warnings in dbus headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
+#pragma GCC diagnostic pop
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 namespace patchpanel {

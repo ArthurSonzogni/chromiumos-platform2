@@ -18,10 +18,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   FuzzedDataProvider provider(data, size);
   auto buf = base::MakeRefCounted<IOBufferWithSize>(size);
-  base::BigEndianWriter writer(buf->data(), buf->size());
+  size_t buf_size = static_cast<size_t>(buf->size());
+  base::BigEndianWriter writer(buf->data(), buf_size);
   writer.WriteBytes(data, size);
   DnsQuery query(buf);
-  query.Parse(buf->size());
+  query.Parse(buf_size);
 
   return 0;
 }

@@ -63,7 +63,7 @@ class NDProxy {
   //   out_packet: buffer for output IPv6 pacet; should have at least
   //       packet_len space.
   ssize_t TranslateNDPacket(const uint8_t* in_packet,
-                            ssize_t packet_len,
+                            size_t packet_len,
                             const MacAddress& local_mac_addr,
                             const in6_addr* new_src_ip,
                             const in6_addr* new_dst_ip,

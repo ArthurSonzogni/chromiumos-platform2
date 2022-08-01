@@ -16,6 +16,9 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  cflags = [
+    "-Wconversion",
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",

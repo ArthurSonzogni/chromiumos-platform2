@@ -150,7 +150,7 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
   if (events & EPOLLOUT) {
     Socket* dst;
     char* buf;
-    ssize_t* len;
+    size_t* len;
     if (sock0_->fd() == efd) {
       dst = sock0_.get();
       buf = buf1_;
@@ -161,11 +161,12 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
       len = &len0_;
     }
 
-    ssize_t bytes = dst->SendTo(buf, *len);
-    if (bytes < 0) {
+    ssize_t r = dst->SendTo(buf, *len);
+    if (r < 0) {
       PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
     }
+    size_t bytes = static_cast<size_t>(r);
 
     // Still unavailable.
     if (bytes == 0)
@@ -184,7 +185,7 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
 
   Socket *src, *dst;
   char* buf;
-  ssize_t* len;
+  size_t* len;
   if (sock0_->fd() == efd) {
     src = sock0_.get();
     dst = sock1_.get();
@@ -203,20 +204,22 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
     return true;
 
   if (events & EPOLLIN) {
-    *len = src->RecvFrom(buf, kBufSize);
-    if (*len < 0) {
+    ssize_t r = src->RecvFrom(buf, kBufSize);
+    if (r < 0) {
       PLOG(ERROR) << "Failed to receive data from " << src;
       return false;
     }
+    *len = static_cast<size_t>(r);
 
     if (*len == 0)
       return HandleConnectionClosed(src, dst, cfd);
 
-    ssize_t bytes = dst->SendTo(buf, *len);
-    if (bytes < 0) {
+    r = dst->SendTo(buf, *len);
+    if (r < 0) {
       PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
     }
+    size_t bytes = static_cast<size_t>(r);
 
     if (bytes > 0) {
       // Partial write.

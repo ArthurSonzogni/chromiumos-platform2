@@ -118,7 +118,11 @@ void NeighborLinkMonitor::AddWatchingEntries(
   }
   UpdateWatchingEntry(gateway_addr, NeighborRole::kGateway);
 
-  shill::IPAddress local_addr(addr, prefix_length);
+  if (prefix_length < 0) {
+    LOG(ERROR) << "Invalid prefix length " << prefix_length;
+    return;
+  }
+  shill::IPAddress local_addr(addr, static_cast<uint32_t>(prefix_length));
   if (!local_addr.IsValid()) {
     LOG(ERROR) << "Local address " << local_addr << " is not valid";
     return;

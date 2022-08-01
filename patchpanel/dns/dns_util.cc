@@ -109,7 +109,8 @@ bool IsValidHostLabelCharacter(char c, bool is_first_char) {
 std::optional<std::string> DnsDomainToString(base::StringPiece domain) {
   std::string ret;
 
-  for (unsigned i = 0; i < domain.size() && domain[i]; i += domain[i] + 1) {
+  for (unsigned i = 0; i < domain.size() && domain[i];
+       i += static_cast<unsigned>(domain[i]) + 1) {
 #if CHAR_MIN < 0
     if (domain[i] < 0)
       return std::nullopt;
@@ -123,7 +124,7 @@ std::optional<std::string> DnsDomainToString(base::StringPiece domain) {
     if (static_cast<unsigned>(domain[i]) + i + 1 > domain.size())
       return std::nullopt;
 
-    ret.append(domain.data() + i + 1, domain[i]);
+    ret.append(domain.data() + i + 1, static_cast<size_t>(domain[i]));
   }
   return ret;
 }

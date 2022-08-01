@@ -16,6 +16,9 @@ proto_library("patchpanel_ipc_protos") {
 }
 
 executable("mcastd") {
+  cflags = [
+    "-Wconversion",
+  ]
   sources = [
     "../dns/big_endian.cc",
     "../dns/dns_query.cc",

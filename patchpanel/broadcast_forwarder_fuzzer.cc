@@ -55,18 +55,18 @@ class TestBroadcastForwarder : public BroadcastForwarder {
   }
 
   ssize_t ReceiveMessage(int fd, struct msghdr* msg) override {
-    ssize_t msg_len = std::min(payload.size(), msg->msg_iov->iov_len);
+    size_t msg_len = std::min(payload.size(), msg->msg_iov->iov_len);
     if (msg_len > 0) {
       memcpy(msg->msg_iov->iov_base, payload.data(), msg_len);
     }
-    return msg_len;
+    return static_cast<ssize_t>(msg_len);
   }
 
   ssize_t SendTo(int fd,
                  const void* buffer,
                  size_t buffer_len,
                  const struct sockaddr_in* dst_addr) override {
-    return buffer_len;
+    return static_cast<ssize_t>(buffer_len);
   }
 
   std::vector<int> fds;
@@ -86,8 +86,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   bcast_forwarder.AddGuest(guest_ifname1);
   bcast_forwarder.AddGuest(guest_ifname2);
 
-  int fd_index =
-      provider.ConsumeIntegralInRange<int>(0, bcast_forwarder.fds.size() - 1);
+  uint64_t fd_index = provider.ConsumeIntegralInRange<uint64_t>(
+      0, bcast_forwarder.fds.size() - 1);
   int fd = bcast_forwarder.fds[fd_index];
   bcast_forwarder.payload = provider.ConsumeRemainingBytes<uint8_t>();
   bcast_forwarder.OnFileCanReadWithoutBlocking(fd);

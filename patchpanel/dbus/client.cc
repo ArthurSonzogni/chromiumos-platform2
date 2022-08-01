@@ -254,7 +254,7 @@ bool ClientImpl::NotifyArcStartup(pid_t pid) {
   dbus::MessageWriter writer(&method_call);
 
   ArcStartupRequest request;
-  request.set_pid(static_cast<uint32_t>(pid));
+  request.set_pid(pid);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ArcStartupRequest proto";
@@ -617,7 +617,8 @@ ClientImpl::ConnectNamespace(pid_t pid,
   }
 
   std::string subnet_info = IPv4AddressToCidrString(
-      response.ipv4_subnet().base_addr(), response.ipv4_subnet().prefix_len());
+      response.ipv4_subnet().base_addr(),
+      static_cast<int>(response.ipv4_subnet().prefix_len()));
   LOG(INFO) << "ConnectNamespace for netns pid " << pid
             << " succeeded: peer_ifname=" << response.peer_ifname()
             << " peer_ipv4_address="

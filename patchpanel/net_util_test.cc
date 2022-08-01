@@ -47,30 +47,6 @@ const uint8_t udp_packet[] = {
     0x5d, 0x20, 0x69, 0x73, 0x20, 0x75, 0x73, 0x65, 0x64, 0x20, 0x61, 0x73,
     0x20, 0x74, 0x68, 0x65, 0x0a};
 
-TEST(Byteswap, 16bits) {
-  uint32_t test_cases[] = {
-      0x0000, 0x0001, 0x1000, 0xffff, 0x2244, 0xfffe,
-  };
-
-  for (uint32_t value : test_cases) {
-    EXPECT_EQ(Byteswap16(value), bswap_16(value));
-    EXPECT_EQ(ntohs(value), Ntohs(value));
-    EXPECT_EQ(htons(value), Htons(value));
-  }
-}
-
-TEST(Byteswap, 32bits) {
-  uint32_t test_cases[] = {
-      0x00000000, 0x00000001, 0x10000000, 0xffffffff, 0x11335577, 0xdeadbeef,
-  };
-
-  for (uint32_t value : test_cases) {
-    EXPECT_EQ(Byteswap32(value), bswap_32(value));
-    EXPECT_EQ(ntohl(value), Ntohl(value));
-    EXPECT_EQ(htonl(value), Htonl(value));
-  }
-}
-
 TEST(Ipv4, CreationAndStringConversion) {
   struct {
     std::string literal_address;
@@ -121,7 +97,7 @@ TEST(Ipv4, CreationAndCidrStringConversion) {
   struct {
     std::string literal_address;
     uint8_t bytes[4];
-    uint32_t prefix_length;
+    int prefix_length;
   } test_cases[] = {
       {"0.0.0.0/0", {0, 0, 0, 0}, 0},
       {"192.168.0.0/24", {192, 168, 0, 0}, 24},
@@ -170,7 +146,7 @@ TEST(Ipv6, IcmpChecksum) {
   memcpy(buffer, ping_frame, sizeof(ping_frame));
   uint16_t ori_cksum = icmp6->icmp6_cksum;
   icmp6->icmp6_cksum = 0;
-  ssize_t ip6_packet_len = sizeof(ping_frame) - ETHER_HDR_LEN;
+  size_t ip6_packet_len = sizeof(ping_frame) - ETHER_HDR_LEN;
   EXPECT_EQ(ori_cksum, Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6),
                                       ip6_packet_len));
 
@@ -218,7 +194,7 @@ TEST(IPv6, IsIPv6PrefixEqual) {
 TEST(Ipv4, BroadcastAddr) {
   uint32_t base = Ipv4Addr(100, 115, 92, 0);
   struct {
-    uint32_t prefix_len;
+    int prefix_len;
     uint32_t want;
   } test_cases[] = {
       {24, Ipv4Addr(100, 115, 92, 255)},

@@ -84,7 +84,7 @@ class ShillClient {
     };
 
     Type type;
-    uint32_t ifindex;
+    int ifindex;
     std::string ifname;
     std::string service_path;
     IPConfig ipconfig;

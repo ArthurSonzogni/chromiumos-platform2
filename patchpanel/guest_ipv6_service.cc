@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 

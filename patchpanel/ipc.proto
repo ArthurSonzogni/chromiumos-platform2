@@ -64,7 +64,7 @@ message GuestMessage {
   optional int32 arc_pid = 3;
 
   // The VSOCK CID of the ARCVM.
-  optional int32 arcvm_vsock_cid = 4;
+  optional uint32 arcvm_vsock_cid = 4;
 }
 
 // Messages sent by NDProxy daemon process to patchpanel main process

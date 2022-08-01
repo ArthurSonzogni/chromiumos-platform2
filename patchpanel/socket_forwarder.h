@@ -14,7 +14,11 @@
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
+// Ignore Wconversion warnings in libbase headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/threading/simple_thread.h>
+#pragma GCC diagnostic pop
 #include <brillo/brillo_export.h>
 
 #include "patchpanel/socket.h"
@@ -51,8 +55,8 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   std::unique_ptr<Socket> sock1_;
   char buf0_[kBufSize] = {0};
   char buf1_[kBufSize] = {0};
-  ssize_t len0_;
-  ssize_t len1_;
+  size_t len0_;
+  size_t len1_;
   // Indicates if an EOF has been sent (if it is greater than -1) and which
   // socket fd it was received on. This means that the socket file descriptor
   // indicated here should not be read from, only written to.

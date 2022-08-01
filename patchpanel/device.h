@@ -20,7 +20,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "patchpanel/guest_type.h"
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
 

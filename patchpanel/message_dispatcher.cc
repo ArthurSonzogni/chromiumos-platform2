@@ -42,7 +42,6 @@ void MessageDispatcher::OnFileCanReadWithoutBlocking() {
   std::vector<base::ScopedFD> fds{};
   ssize_t len =
       base::UnixDomainSocket::RecvMsg(fd_.get(), buffer, sizeof(buffer), &fds);
-
   if (len <= 0) {
     PLOG(ERROR) << "Read failed: exiting";
     watcher_.reset();
@@ -52,7 +51,7 @@ void MessageDispatcher::OnFileCanReadWithoutBlocking() {
   }
 
   msg_.Clear();
-  if (!msg_.ParseFromArray(buffer, len)) {
+  if (!msg_.ParseFromArray(buffer, static_cast<int>(len))) {
     LOG(ERROR) << "Error parsing protobuf";
     return;
   }

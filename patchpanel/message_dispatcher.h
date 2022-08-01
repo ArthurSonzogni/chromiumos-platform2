@@ -8,11 +8,11 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 
-#include "patchpanel/ipc.pb.h"
+#include "patchpanel/file_descriptor_watcher_posix.h"
+#include "patchpanel/ipc.h"
 
 namespace patchpanel {
 

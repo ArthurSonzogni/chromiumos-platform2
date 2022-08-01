@@ -13,7 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process/process_reaper.h>
@@ -26,6 +25,7 @@
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
