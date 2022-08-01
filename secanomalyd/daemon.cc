@@ -6,6 +6,7 @@
 
 #include <sysexits.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,6 @@
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
-#include "secanomalyd/processes.h"
 #include "secanomalyd/reporter.h"
 #include "secanomalyd/system_context.h"
 
@@ -50,7 +50,7 @@ int Daemon::OnInit() {
     return ret;
   }
 
-  session_manager_proxy_.reset(new SessionManagerProxy(bus_));
+  session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
 
   return EX_OK;
 }
