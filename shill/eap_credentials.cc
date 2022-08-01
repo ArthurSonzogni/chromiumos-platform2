@@ -636,13 +636,13 @@ std::optional<std::string> EapCredentials::TranslateSubjectAlternativeNameMatch(
     auto json_value = base::JSONReader::ReadAndReturnValueWithError(
         subject_alternative_name_match, base::JSON_PARSE_RFC);
 
-    if (!json_value.value || !json_value.value->is_dict()) {
+    if (!json_value.has_value() || !json_value->is_dict()) {
       LOG(ERROR)
           << "Could not deserialize a subject alternative name match. Error: "
-          << json_value.error_message;
+          << json_value.error().message;
       return std::nullopt;
     }
-    base::Value deserialized_value = std::move(*json_value.value);
+    base::Value deserialized_value = std::move(*json_value);
 
     const std::string* type = deserialized_value.FindStringKey(
         kEapSubjectAlternativeNameMatchTypeProperty);
