@@ -83,17 +83,17 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
   auto manifest_value = base::JSONReader::ReadAndReturnValueWithError(
       manifest_raw, base::JSON_PARSE_RFC);
-  if (!manifest_value.value) {
+  if (!manifest_value.has_value()) {
     LOG(ERROR) << "Could not parse the manifest file as JSON. Error: "
-               << manifest_value.error_message;
+               << manifest_value.error().message;
     return false;
   }
 
-  if (!manifest_value.value->is_dict()) {
+  if (!manifest_value->is_dict()) {
     LOG(ERROR) << "Manifest file is not dictionary.";
     return false;
   }
-  base::Value manifest_dict = std::move(*manifest_value.value);
+  base::Value manifest_dict = std::move(*manifest_value);
 
   // This will have to be changed if the manifest version is bumped.
   std::optional<int> manifest_version =
