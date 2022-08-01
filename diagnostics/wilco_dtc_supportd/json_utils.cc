@@ -16,8 +16,10 @@ bool IsJsonValid(base::StringPiece json, std::string* json_error_message) {
   DCHECK(json_error_message);
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       json, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
-  *json_error_message = result.error_message;
-  return result.value.has_value();
+  if (!result.has_value()) {
+    *json_error_message = result.error().message;
+  }
+  return result.has_value();
 }
 
 }  // namespace wilco
