@@ -109,6 +109,9 @@ class MetricsUtils {
       std::map<int, StateMetricsData>* state_metrics,
       RmadState::StateCase state_case,
       double leave_timestamp);
+
+  static base::Value::Dict RefineStateMetricsReadability(
+      const base::Value::Dict& original_state_metrics);
 };
 
 }  // namespace rmad

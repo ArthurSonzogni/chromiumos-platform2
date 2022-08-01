@@ -97,7 +97,7 @@ constexpr char kExpectedLog[] = R"({
    "ro_firmware_verified": true,
    "running_time": 333.333,
    "state_metrics": {
-      "1": {
+      "00_Welcome": {
          "state_case": 1,
          "state_get_log_count": 3,
          "state_is_aborted": false,
@@ -105,7 +105,7 @@ constexpr char kExpectedLog[] = R"({
          "state_save_log_count": 4,
          "state_transition_count": 2
       },
-      "2": {
+      "01_ComponentsRepair": {
          "state_case": 2,
          "state_get_log_count": 0,
          "state_is_aborted": true,

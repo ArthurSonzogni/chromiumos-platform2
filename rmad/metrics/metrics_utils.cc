@@ -15,6 +15,30 @@
 
 namespace rmad {
 
+// We map RmadState::StateCase (enum) to std::string to represent state in a
+// more readable way. Additionally, we added prefixes to ensure the order in
+// which we display messages to technicians.
+const std::map<RmadState::StateCase, std::string> kStateNames = {
+    {RmadState::kWelcome, "00_Welcome"},
+    {RmadState::kComponentsRepair, "01_ComponentsRepair"},
+    {RmadState::kDeviceDestination, "02_DeviceDestination"},
+    {RmadState::kWipeSelection, "03_WipeSelection"},
+    {RmadState::kWpDisableMethod, "04_WpDisableMethod"},
+    {RmadState::kWpDisableRsu, "05_WpDisableRsu"},
+    {RmadState::kWpDisablePhysical, "06_WpDisablePhysical"},
+    {RmadState::kWpDisableComplete, "07_WpDisableComplete"},
+    {RmadState::kUpdateRoFirmware, "08_UpdateRoFirmware"},
+    {RmadState::kRestock, "09_Restock"},
+    {RmadState::kUpdateDeviceInfo, "10_UpdateDeviceInfo"},
+    {RmadState::kProvisionDevice, "11_ProvisionDevice"},
+    {RmadState::kSetupCalibration, "12_SetupCalibration"},
+    {RmadState::kRunCalibration, "13_RunCalibration"},
+    {RmadState::kCheckCalibration, "14_CheckCalibration"},
+    {RmadState::kWpEnablePhysical, "15_WpEnablePhysical"},
+    {RmadState::kFinalize, "16_Finalize"},
+    {RmadState::kRepairComplete, "17_RepairComplete"},
+};
+
 bool StateMetricsData::operator==(const StateMetricsData& other) const {
   return state_case == other.state_case && is_aborted == other.is_aborted &&
          setup_timestamp == other.setup_timestamp &&
@@ -162,18 +186,25 @@ bool MetricsUtils::UpdateStateMetricsOnSaveLog(
 
 std::string MetricsUtils::GetMetricsSummaryAsString(
     scoped_refptr<JsonStore> json_store) {
-  base::Value metrics = base::Value(base::Value::Type::DICT);
-  if (json_store->GetValue(kMetrics, &metrics)) {
-    CHECK(metrics.is_dict());
+  base::Value metrics;
+  if (!json_store->GetValue(kMetrics, &metrics)) {
+    return "";
   }
-  metrics.RemoveKey(kFirstSetupTimestamp);
-  metrics.RemoveKey(kSetupTimestamp);
 
-  base::Value* state_metrics = metrics.FindKey(kStateMetrics);
-  if (state_metrics && state_metrics->is_dict()) {
-    for (auto [state_case, metrics_data] : state_metrics->DictItems()) {
-      metrics_data.RemoveKey(kStateSetupTimestamp);
-    }
+  // Since the type might change if we successfully get the value from the json
+  // store, we need to check here.
+  CHECK(metrics.is_dict());
+  // Remove timestamps for the entire process.
+  metrics.GetDict().Remove(kFirstSetupTimestamp);
+  metrics.GetDict().Remove(kSetupTimestamp);
+
+  // Refine readability of state metrics for better understanding.
+  const base::Value* original_state_metrics =
+      metrics.GetDict().Find(kStateMetrics);
+  if (original_state_metrics && original_state_metrics->is_dict()) {
+    metrics.GetDict().Set(
+        kStateMetrics,
+        RefineStateMetricsReadability(original_state_metrics->GetDict()));
   }
 
   std::string output;
@@ -228,6 +259,26 @@ bool MetricsUtils::CalculateStateOverallTime(
   (*state_metrics)[key].setup_timestamp = leave_timestamp;
 
   return true;
+}
+
+base::Value::Dict MetricsUtils::RefineStateMetricsReadability(
+    const base::Value::Dict& original_state_metrics) {
+  base::Value::Dict new_state_metrics;
+  for (const auto& [state_case_str, metrics_data] : original_state_metrics) {
+    // For each state, we should have a dict to store metrics data.
+    CHECK(metrics_data.is_dict());
+    auto it = kStateNames.end();
+    if (int state_case; base::StringToInt(state_case_str, &state_case)) {
+      it = kStateNames.find(static_cast<RmadState::StateCase>(state_case));
+      if (it != kStateNames.end()) {
+        // Remap state_cases to names and remove timestamps for all states.
+        auto new_metrics_data = metrics_data.Clone();
+        new_metrics_data.GetDict().Remove(kStateSetupTimestamp);
+        new_state_metrics.Set(it->second, std::move(new_metrics_data));
+      }
+    }
+  }
+  return new_state_metrics;
 }
 
 }  // namespace rmad
