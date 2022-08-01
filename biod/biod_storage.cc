@@ -225,17 +225,17 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
   auto record_value = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
 
-  if (!record_value.value) {
-    LOG_IF(ERROR, !record_value.error_message.empty())
-        << "JSON error message: " << record_value.error_message << ".";
+  if (!record_value.has_value()) {
+    LOG_IF(ERROR, !record_value.error().message.empty())
+        << "JSON error message: " << record_value.error().message << ".";
     return record;
   }
 
-  if (!record_value.value->is_dict()) {
+  if (!record_value->is_dict()) {
     LOG(ERROR) << "Value " << record_path.value() << " is not a dictionary.";
     return record;
   }
-  base::Value record_dictionary = std::move(*record_value.value);
+  base::Value record_dictionary = std::move(*record_value);
 
   const std::string* record_id = record_dictionary.FindStringKey(kRecordId);
 
