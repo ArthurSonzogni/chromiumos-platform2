@@ -46,7 +46,33 @@ constexpr char kWaylandDisplayEnv[] = "WAYLAND_DISPLAY";
 constexpr char kWaylandLowDensityDisplayEnv[] = "WAYLAND_DISPLAY_LOW_DENSITY";
 constexpr char kXCursorSizeEnv[] = "XCURSOR_SIZE";
 constexpr char kLowDensityXCursorSizeEnv[] = "XCURSOR_SIZE_LOW_DENSITY";
+constexpr char kGtkImModuleEnv[] = "GTK_IM_MODULE";
+constexpr char kGtkImModuleName[] = "cros";
+constexpr char kVirtualKeyboardEnv[] = "CROS_IM_VIRTUAL_KEYBOARD";
+constexpr char kVirtualKeyboardEnabled[] = "1";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
+
+void SetEnvForContainerFeatures(std::map<std::string, std::string>& env,
+                                google::protobuf::RepeatedField<int> features) {
+  for (int feature : features) {
+    switch (feature) {
+      case vm_tools::container::ContainerFeature::ENABLE_GTK3_IME_SUPPORT:
+        if (!std::getenv(kGtkImModuleEnv)) {
+          // Users may have manually set this so they can use a Linux IME.
+          // Don't override that until our IME support is on par.
+          env[kGtkImModuleEnv] = kGtkImModuleName;
+        }
+        break;
+      case vm_tools::container::ContainerFeature::
+          ENABLE_VIRTUAL_KEYBOARD_SUPPORT:
+        env[kVirtualKeyboardEnv] = kVirtualKeyboardEnabled;
+        break;
+      default:
+        LOG(WARNING) << "Received unknown container feature: " << feature;
+        break;
+    }
+  }
+}
 
 }  // namespace
 
@@ -120,6 +146,8 @@ grpc::Status ServiceImpl::LaunchApplication(
     env[kXCursorSizeEnv] = std::getenv(kLowDensityXCursorSizeEnv);
   }
 
+  SetEnvForContainerFeatures(env, request->container_features());
+
   // Discard child's process stdio,
   int stdio_fd[] = {-1, -1, -1};
 
@@ -180,10 +208,13 @@ grpc::Status ServiceImpl::LaunchVshd(
       "/opt/google/cros-containers/bin/vshd", "--inherit_env",
       base::StringPrintf("--forward_to_host_port=%u", request->port())};
 
+  std::map<std::string, std::string> env;
+  SetEnvForContainerFeatures(env, request->container_features());
+
   // Discard child's process stdio,
   int stdio_fd[] = {-1, -1, -1};
 
-  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
+  if (!Spawn(std::move(argv), std::move(env), "", stdio_fd)) {
     response->set_success(false);
     response->set_failure_reason("Failed to spawn vshd");
   } else {

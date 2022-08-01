@@ -12,6 +12,12 @@ package vm_tools.container;
 
 option go_package = "chromiumos/vm_tools/container_proto";
 
+enum ContainerFeature {
+  UNKNOWN = 0;
+  ENABLE_GTK3_IME_SUPPORT = 1;
+  ENABLE_VIRTUAL_KEYBOARD_SUPPORT = 2;
+}
+
 // Request protobuf for launching an application in the container.
 message LaunchApplicationRequest {
   // Display scaling of the app windows.
@@ -33,6 +39,9 @@ message LaunchApplicationRequest {
 
   // Display scaling requested.
   DisplayScaling display_scaling = 3;
+
+  // Features to enable in the container.
+  repeated ContainerFeature container_features = 4;
 }
 
 // Response protobuf for launching an application.
@@ -83,6 +92,9 @@ message IconResponse {
 message LaunchVshdRequest {
   // The host port for vshd to connect to.
   uint32 port = 1;
+
+  // Features to enable in the container.
+  repeated ContainerFeature container_features = 2;
 }
 
 // Response protobuf for launching a vshd instance.

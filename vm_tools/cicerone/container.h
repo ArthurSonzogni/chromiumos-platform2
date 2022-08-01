@@ -86,9 +86,13 @@ class Container {
       std::vector<std::string> files,
       vm_tools::container::LaunchApplicationRequest::DisplayScaling
           display_scaling,
+      std::vector<vm_tools::container::ContainerFeature> container_features,
       std::string* out_error);
 
-  bool LaunchVshd(uint32_t port, std::string* out_error);
+  bool LaunchVshd(
+      uint32_t port,
+      std::vector<vm_tools::container::ContainerFeature> container_features,
+      std::string* out_error);
 
   bool GetDebugInformation(std::string* out);
 

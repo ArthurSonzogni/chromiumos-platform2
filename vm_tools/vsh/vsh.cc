@@ -21,6 +21,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/process.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -70,6 +71,21 @@ dbus::ObjectProxy* GetServiceProxy(const scoped_refptr<dbus::Bus>& bus,
   return proxy;
 }
 
+// Parse list of container features like "1,3". Number should correspond to the
+// enum values of vm_tools.cicerone.ContainerFeature, but no validation is done.
+std::vector<int> ParseContainerFeatures(const std::string& container_features) {
+  std::vector<int> result;
+  for (const auto& piece :
+       base::SplitStringPiece(container_features, ",", base::KEEP_WHITESPACE,
+                              base::SPLIT_WANT_NONEMPTY)) {
+    int value;
+    if (base::StringToInt(piece, &value)) {
+      result.push_back(value);
+    }
+  }
+  return result;
+}
+
 bool GetCid(dbus::ObjectProxy* concierge_proxy,
             const std::string& owner_id,
             const std::string& vm_name,
@@ -114,6 +130,7 @@ bool LaunchVshd(dbus::ObjectProxy* cicerone_proxy,
                 const std::string& owner_id,
                 const std::string& vm_name,
                 const std::string& container_name,
+                const std::vector<int>& container_features,
                 unsigned int port,
                 uint32_t* cid) {
   DCHECK(cid);
@@ -126,6 +143,10 @@ bool LaunchVshd(dbus::ObjectProxy* cicerone_proxy,
   request.set_container_name(container_name);
   request.set_port(port);
   request.set_owner_id(owner_id);
+  for (int feature : container_features) {
+    request.add_container_features(
+        static_cast<vm_tools::cicerone::ContainerFeature>(feature));
+  }
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode LaunchVshdRequest protobuf";
@@ -162,7 +183,8 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
                    base::ScopedFD* peer_sock_fd,
                    const std::string& owner_id,
                    const std::string& vm_name,
-                   const std::string& container_name) {
+                   const std::string& container_name,
+                   const std::vector<int>& container_features) {
   DCHECK(peer_sock_fd);
 
   // Create a socket to listen for incoming vsh connections.
@@ -200,7 +222,7 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
   // The socket is listening. Request that cicerone start vshd.
   uint32_t expected_cid;
   if (!LaunchVshd(cicerone_proxy, owner_id, vm_name, container_name,
-                  addr.svm_port, &expected_cid))
+                  container_features, addr.svm_port, &expected_cid))
     return false;
 
   struct pollfd pollfds[] = {
@@ -288,6 +310,9 @@ int main(int argc, char** argv) {
   DEFINE_string(user, "", "Target user in the VM");
   DEFINE_string(target_container, "", "Target container");
   DEFINE_string(cwd, "", "Current working directory");
+  DEFINE_string(container_features, "",
+                "Features to enable in the container as a comma-separated list "
+                "of enum ids (integers).");
 
   brillo::FlagHelper::Init(argc, argv, kVshUsage);
 
@@ -343,9 +368,12 @@ int main(int argc, char** argv) {
     if (!cicerone_proxy)
       return EXIT_FAILURE;
 
+    std::vector<int> container_features =
+        ParseContainerFeatures(FLAGS_container_features);
     base::ScopedFD sock_fd;
     if (!ListenForVshd(cicerone_proxy, port, &sock_fd, FLAGS_owner_id,
-                       FLAGS_vm_name, FLAGS_target_container)) {
+                       FLAGS_vm_name, FLAGS_target_container,
+                       container_features)) {
       return EXIT_FAILURE;
     }
 

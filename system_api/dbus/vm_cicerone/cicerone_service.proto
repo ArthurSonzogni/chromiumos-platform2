@@ -116,6 +116,12 @@ message ContainerShutdownSignal {
   string owner_id = 3;
 }
 
+enum ContainerFeature {
+  UNKNOWN = 0;
+  ENABLE_GTK3_IME_SUPPORT = 1;
+  ENABLE_VIRTUAL_KEYBOARD_SUPPORT = 2;
+}
+
 // Request to launch on application in the specified VM/container. Used with the
 // LaunchContainerApplication D-Bus message into vm_cicerone.
 message LaunchContainerApplicationRequest {
@@ -148,6 +154,9 @@ message LaunchContainerApplicationRequest {
 
   // Display scaling requested.
   DisplayScaling display_scaling = 6;
+
+  // Features to enable in the container.
+  repeated ContainerFeature container_features = 7;
 }
 
 // Response sent back by vm_cicerone when it receives a
@@ -221,6 +230,9 @@ message LaunchVshdRequest {
 
   // The owner of the VM and container.
   string owner_id = 4;
+
+  // Features to enable in the container.
+  repeated ContainerFeature container_features = 5;
 }
 
 // Response sent back by vm_cicerone when it receives a LaunchVshd

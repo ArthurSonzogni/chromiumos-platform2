@@ -73,6 +73,7 @@ bool Container::LaunchContainerApplication(
     std::vector<std::string> files,
     vm_tools::container::LaunchApplicationRequest::DisplayScaling
         display_scaling,
+    std::vector<vm_tools::container::ContainerFeature> container_features,
     std::string* out_error) {
   CHECK(out_error);
   vm_tools::container::LaunchApplicationRequest container_request;
@@ -83,6 +84,8 @@ bool Container::LaunchContainerApplication(
             google::protobuf::RepeatedFieldBackInserter(
                 container_request.mutable_files()));
   container_request.set_display_scaling(display_scaling);
+  container_request.mutable_container_features()->Add(
+      container_features.begin(), container_features.end());
 
   grpc::ClientContext ctx;
   ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
@@ -100,10 +103,15 @@ bool Container::LaunchContainerApplication(
   return container_response.success();
 }
 
-bool Container::LaunchVshd(uint32_t port, std::string* out_error) {
+bool Container::LaunchVshd(
+    uint32_t port,
+    std::vector<vm_tools::container::ContainerFeature> container_features,
+    std::string* out_error) {
   vm_tools::container::LaunchVshdRequest container_request;
   vm_tools::container::LaunchVshdResponse container_response;
   container_request.set_port(port);
+  container_request.mutable_container_features()->Add(
+      container_features.begin(), container_features.end());
 
   grpc::ClientContext ctx;
   ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));

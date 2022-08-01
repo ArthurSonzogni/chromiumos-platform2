@@ -2010,13 +2010,19 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     display_scaling = vm_tools::container::LaunchApplicationRequest::SCALED;
   }
 
+  std::vector<vm_tools::container::ContainerFeature> container_features;
+  for (int feature : request.container_features()) {
+    container_features.emplace_back(
+        static_cast<vm_tools::container::ContainerFeature>(feature));
+  }
+
   std::string error_msg;
   response.set_success(container->LaunchContainerApplication(
       request.desktop_file_id(),
       std::vector<string>(
           std::make_move_iterator(request.mutable_files()->begin()),
           std::make_move_iterator(request.mutable_files()->end())),
-      display_scaling, &error_msg));
+      display_scaling, std::move(container_features), &error_msg));
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -2153,8 +2159,15 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
     return dbus_response;
   }
 
+  std::vector<vm_tools::container::ContainerFeature> container_features;
+  for (int feature : request.container_features()) {
+    container_features.emplace_back(
+        static_cast<vm_tools::container::ContainerFeature>(feature));
+  }
+
   std::string error_msg;
-  container->LaunchVshd(request.port(), &error_msg);
+  container->LaunchVshd(request.port(), std::move(container_features),
+                        &error_msg);
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
