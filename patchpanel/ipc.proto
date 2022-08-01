@@ -18,6 +18,7 @@ message ControlMessage {
   oneof message_type {
     GuestMessage guest_message = 1;
     DeviceMessage device_message = 2;
+    NDProxyControlMessage ndproxy_control = 3;
   }
 }
 
@@ -79,4 +80,23 @@ message NDProxyMessage {
   required NDProxyEventType type = 1;
   required string ifname = 2;
   optional string ip6addr = 3;
+}
+
+// Message sent from main process (GuestIPv6Service) to NDProxy daemon process.
+// For START_NS_NA_RS_RA and START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS,
+// |if_id_primary| contains the upstream interface id and |if_id_secondary|
+// contains the downstream. For other commands, |if_id_primary| and
+// |if_id_secondary| are exchangeable and contain the ids of the forwarding
+// interface pair.
+message NDProxyControlMessage {
+  enum NDProxyRequestType {
+    UNKNOWN = 0;
+    START_NS_NA = 1;
+    START_NS_NA_RS_RA = 2;
+    START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS = 3;
+    STOP_PROXY = 4;
+  }
+  required NDProxyRequestType type = 1;
+  required int32 if_id_primary = 2;
+  optional int32 if_id_secondary = 3;
 }

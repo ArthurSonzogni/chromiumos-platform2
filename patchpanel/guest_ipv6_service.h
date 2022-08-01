@@ -5,6 +5,9 @@
 #ifndef PATCHPANEL_GUEST_IPV6_SERVICE_H_
 #define PATCHPANEL_GUEST_IPV6_SERVICE_H_
 
+#include <map>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -19,7 +22,12 @@ namespace patchpanel {
 
 class GuestIPv6Service {
  public:
-  enum class ForwardMethod { kMethodUnknown, kMethodNDProxy, kMethodRAServer };
+  enum class ForwardMethod {
+    kMethodUnknown,
+    kMethodNDProxy,
+    kMethodRAServer,
+    kMethodNDProxyForCellular
+  };
 
   GuestIPv6Service(SubprocessController* nd_proxy,
                    Datapath* datapath,
@@ -56,6 +64,16 @@ class GuestIPv6Service {
   void SetForwardMethod(const std::string& ifname_uplink, ForwardMethod method);
 
  private:
+  struct ForwardEntry {
+    ForwardMethod method;
+    std::optional<std::string> upstream_ifname;
+    std::set<std::string> downstream_ifnames;
+  };
+
+  void SendNDProxyControl(NDProxyControlMessage::NDProxyRequestType type,
+                          int32_t if_id_primary,
+                          int32_t if_id_secondary);
+
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
   // address to guest-facing interface.
   void OnNDProxyMessage(const FeedbackMessage& msg);
@@ -66,6 +84,13 @@ class GuestIPv6Service {
   Datapath* datapath_;
   // Shill Dbus client. Owned by Manager.
   ShillClient* shill_client_;
+
+  std::vector<ForwardEntry> forward_record_;
+  // We cache the if_ids of netdevices when start forwarding to ensure that the
+  // same ones are used when stop forwarding. Note that it is possible that the
+  // netdevice is already no longer available when we received the StopUplink()
+  // call.
+  std::map<std::string, int32_t> if_cache_;
 
   base::WeakPtrFactory<GuestIPv6Service> weak_factory_{this};
 };

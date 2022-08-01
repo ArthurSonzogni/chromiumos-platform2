@@ -694,81 +694,58 @@ NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {
   }
 }
 
-bool NDProxy::AddInterfacePair(const std::string& ifname_physical,
-                               const std::string& ifname_guest) {
-  LOG(INFO) << "Adding interface pair between physical: " << ifname_physical
-            << ", guest: " << ifname_guest;
-  int ifid_physical = if_nametoindex(ifname_physical.c_str());
-  if (ifid_physical == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_physical;
-    return false;
+void NDProxy::StartRSRAProxy(int if_id_upstream,
+                             int if_id_downstream,
+                             bool modify_router_address) {
+  VLOG(1) << "StartRARSProxy(" << if_id_upstream << ", " << if_id_downstream
+          << (modify_router_address ? ", modify_router_address)" : ")");
+  if_map_ra_[if_id_upstream].insert(if_id_downstream);
+  if_map_rs_[if_id_downstream].insert(if_id_upstream);
+  if (modify_router_address) {
+    irregular_router_ifs_.insert(if_id_upstream);
   }
-  int ifid_guest = if_nametoindex(ifname_guest.c_str());
-  if (ifid_guest == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_guest;
-    return false;
-  }
-  if (ifid_physical == ifid_guest) {
-    LOG(ERROR) << "Rejected attempt to forward between same interface "
-               << ifname_physical << " and " << ifname_guest;
-    return false;
-  }
-  if_map_rs_[ifid_guest].insert(ifid_physical);
-  if_map_ra_[ifid_physical].insert(ifid_guest);
-  if_map_ns_na_[ifid_physical].insert(ifid_guest);
-  if_map_ns_na_[ifid_guest].insert(ifid_physical);
-  for (int ifid_other_guest : if_map_ra_[ifid_physical]) {
-    if (ifid_other_guest != ifid_guest) {
-      if_map_ns_na_[ifid_other_guest].insert(ifid_guest);
-      if_map_ns_na_[ifid_guest].insert(ifid_other_guest);
-    }
-  }
-  return true;
 }
 
-bool NDProxy::RemoveInterfacePair(const std::string& ifname_physical,
-                                  const std::string& ifname_guest) {
-  LOG(INFO) << "Removing interface pair between physical: " << ifname_physical
-            << ", guest: " << ifname_guest;
-  int ifid_physical = if_nametoindex(ifname_physical.c_str());
-  if (ifid_physical == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_physical;
-    return false;
-  }
-  int ifid_guest = if_nametoindex(ifname_guest.c_str());
-  if (ifid_guest == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_guest;
-    return false;
-  }
-  if (ifid_physical == ifid_guest) {
-    LOG(ERROR) << "Rejected attempt to forward between same interface "
-               << ifname_physical << " and " << ifname_guest;
-    return false;
-  }
-  if_map_rs_.erase(ifid_guest);
-  if_map_ra_[ifid_physical].erase(ifid_guest);
-  if_map_ns_na_.erase(ifid_guest);
-  if_map_ns_na_[ifid_physical].erase(ifid_guest);
-  for (int ifid_other_guest : if_map_ra_[ifid_physical]) {
-    if_map_ns_na_[ifid_other_guest].erase(ifid_guest);
-  }
-  return true;
+void NDProxy::StartNSNAProxy(int if_id1, int if_id2) {
+  VLOG(1) << "StartNSNAProxy(" << if_id1 << ", " << if_id2 << ")";
+  if_map_ns_na_[if_id1].insert(if_id2);
+  if_map_ns_na_[if_id2].insert(if_id1);
 }
 
-bool NDProxy::RemoveInterface(const std::string& ifname) {
-  LOG(INFO) << "Removing physical interface " << ifname;
-  int ifindex = if_nametoindex(ifname.c_str());
-  if (ifindex == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname;
-    return false;
+void NDProxy::StopProxy(int if_id1, int if_id2) {
+  VLOG(1) << "StopProxy(" << if_id1 << ", " << if_id2 << ")";
+
+  if_map_ra_[if_id1].erase(if_id2);
+  if (if_map_ra_[if_id1].empty()) {
+    if_map_ra_.erase(if_id1);
+    irregular_router_ifs_.erase(if_id1);
   }
-  for (int ifid_guest : if_map_ra_[ifindex]) {
-    if_map_rs_.erase(ifid_guest);
-    if_map_ns_na_.erase(ifid_guest);
+
+  if_map_rs_[if_id1].erase(if_id2);
+  if (if_map_rs_[if_id1].empty()) {
+    if_map_rs_.erase(if_id1);
   }
-  if_map_ra_.erase(ifindex);
-  if_map_ns_na_.erase(ifindex);
-  return true;
+
+  if_map_ns_na_[if_id1].erase(if_id2);
+  if (if_map_ns_na_[if_id1].empty()) {
+    if_map_rs_.erase(if_id1);
+  }
+
+  if_map_ra_[if_id2].erase(if_id1);
+  if (if_map_ra_[if_id2].empty()) {
+    if_map_ra_.erase(if_id2);
+    irregular_router_ifs_.erase(if_id2);
+  }
+
+  if_map_rs_[if_id2].erase(if_id1);
+  if (if_map_rs_[if_id2].empty()) {
+    if_map_rs_.erase(if_id2);
+  }
+
+  if_map_ns_na_[if_id2].erase(if_id1);
+  if (if_map_ns_na_[if_id2].empty()) {
+    if_map_ns_na_.erase(if_id2);
+  }
 }
 
 bool NDProxy::IsGuestInterface(int ifindex) {
@@ -777,29 +754,6 @@ bool NDProxy::IsGuestInterface(int ifindex) {
 
 bool NDProxy::IsRouterInterface(int ifindex) {
   return if_map_ra_.find(ifindex) != if_map_ra_.end();
-}
-
-void NDProxy::AddIrregularRouterInterface(const std::string& ifname_physical) {
-  int ifindex = if_nametoindex(ifname_physical.c_str());
-  if (ifindex == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_physical;
-    return;
-  }
-  irregular_router_ifs_.insert(ifindex);
-}
-
-std::vector<std::string> NDProxy::GetGuestInterfaces(
-    const std::string& ifname_physical) {
-  std::vector<std::string> result;
-  int ifid_physical = if_nametoindex(ifname_physical.c_str());
-  if (ifid_physical == 0)
-    return result;
-  for (int ifid_guest : if_map_ra_[ifid_physical]) {
-    char ifname[IFNAMSIZ];
-    if_indextoname(ifid_guest, ifname);
-    result.push_back(ifname);
-  }
-  return result;
 }
 
 NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
@@ -860,42 +814,37 @@ void NDProxyDaemon::OnParentProcessExit() {
 }
 
 void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
-  if (!root_msg.has_control_message()) {
+  if (!root_msg.has_control_message() ||
+      !root_msg.control_message().has_ndproxy_control()) {
     LOG(ERROR) << "Unexpected message type";
     return;
   }
-  if (!root_msg.control_message().has_device_message()) {
-    return;
-  }
-  const DeviceMessage& msg = root_msg.control_message().device_message();
-  const std::string& dev_ifname = msg.dev_ifname();
-  LOG_IF(DFATAL, dev_ifname.empty())
-      << "Received DeviceMessage w/ empty dev_ifname";
-  if (msg.has_teardown()) {
-    if (msg.has_br_ifname()) {
-      proxy_.RemoveInterfacePair(dev_ifname, msg.br_ifname());
-      if (guest_if_addrs_.find(msg.br_ifname()) != guest_if_addrs_.end()) {
-        SendMessage(NDProxyMessage::DEL_ADDR, msg.br_ifname(),
-                    guest_if_addrs_[msg.br_ifname()]);
-        guest_if_addrs_.erase(msg.br_ifname());
-      }
-
-    } else {
-      auto guest_ifs = proxy_.GetGuestInterfaces(dev_ifname);
-      proxy_.RemoveInterface(dev_ifname);
-      for (const auto& guest_if : guest_ifs) {
-        if (guest_if_addrs_.find(guest_if) != guest_if_addrs_.end()) {
-          SendMessage(NDProxyMessage::DEL_ADDR, guest_if,
-                      guest_if_addrs_[guest_if]);
-          guest_if_addrs_.erase(guest_if);
-        }
-      }
+  const NDProxyControlMessage& msg =
+      root_msg.control_message().ndproxy_control();
+  VLOG(4) << "Received NDProxyControlMessage: " << msg.type() << ": "
+          << msg.if_id_primary() << "<->" << msg.if_id_secondary();
+  switch (msg.type()) {
+    case NDProxyControlMessage::START_NS_NA: {
+      proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      break;
     }
-  } else if (msg.has_br_ifname()) {
-    proxy_.AddInterfacePair(dev_ifname, msg.br_ifname());
-    if (msg.force_local_next_hop()) {
-      proxy_.AddIrregularRouterInterface(msg.dev_ifname());
+    case NDProxyControlMessage::START_NS_NA_RS_RA: {
+      proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      proxy_.StartRSRAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      break;
     }
+    case NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS: {
+      proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      proxy_.StartRSRAProxy(msg.if_id_primary(), msg.if_id_secondary(), true);
+      break;
+    }
+    case NDProxyControlMessage::STOP_PROXY: {
+      proxy_.StopProxy(msg.if_id_primary(), msg.if_id_secondary());
+      break;
+    }
+    case NDProxyControlMessage::UNKNOWN:
+    default:
+      NOTREACHED();
   }
 }
 

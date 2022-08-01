@@ -109,24 +109,17 @@ class NDProxy {
       base::RepeatingCallback<void(const std::string&, const std::string&)>
           handler);
 
-  // To proxy between upstream interface and guest OS interface (eth0-arc_eth0)
-  // Outbound RS, inbound RA, and bidirectional NS/NA will be proxied.
-  bool AddInterfacePair(const std::string& ifname_physical,
-                        const std::string& ifname_guest);
-
-  // Remove a proxy interface pair.
-  bool RemoveInterfacePair(const std::string& ifname_physical,
-                           const std::string& ifname_guest);
-
-  // Remove all proxy interface pair with ifindex.
-  bool RemoveInterface(const std::string& ifname);
-
-  // Utility to get a list of guest interfaces names that are currently being
-  // proxied with a specific physical interface.
-  std::vector<std::string> GetGuestInterfaces(
-      const std::string& ifname_physical);
-
-  void AddIrregularRouterInterface(const std::string& ifname_physical);
+  // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
+  // other way around. If |modify_router_address| is true we modify source
+  // address when proxying RA so that downstream thinks ChromeOS host as the
+  // router. (b/187918638)
+  void StartRSRAProxy(int if_id_upstream,
+                      int if_id_downstream,
+                      bool modify_router_address = false);
+  // Start proxying NS and NA between |if_id1| and |if_id2|.
+  void StartNSNAProxy(int if_id1, int if_id2);
+  // Stop all proxying between |if_id1| and |if_id2|.
+  void StopProxy(int if_id1, int if_id2);
 
  private:
   // Data structure to store interface mapping for a certain kind of packet to

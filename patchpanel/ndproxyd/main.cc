@@ -55,9 +55,16 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  int ifid_host = if_nametoindex(args[0].c_str());
+  if (ifid_host == 0) {
+    LOG(ERROR) << "Host-bound network interface " << args[0]
+               << " does not exist.";
+    return EXIT_FAILURE;
+  }
+
   // Crostini depends on another daemon (LXD) creating the guest bridge
   // interface. This can take a few seconds, so retry if necessary.
-  bool added_interfaces = false;
+  int ifid_guest = 0;
   for (int i = 0; i < 6; i++) {
     if (i != 0) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
@@ -67,17 +74,15 @@ int main(int argc, char* argv[]) {
       // Guest bridge doesn't exist yet, try again later.
       continue;
     }
-    if (proxy.AddInterfacePair(args[0], args[1])) {
-      added_interfaces = true;
-      break;
-    }
   }
-  if (!added_interfaces) {
-    LOG(ERROR) << "Network interfaces " << args[0] << " and " << args[1]
-               << " could not be added; do they exist?";
+  if (ifid_guest == 0) {
+    LOG(ERROR) << "Guest-bound network interface " << args[1]
+               << " does not exist after retrying.";
     return EXIT_FAILURE;
   }
 
+  proxy.StartRSRAProxy(ifid_host, ifid_guest);
+  proxy.StartNSNAProxy(ifid_host, ifid_guest);
   proxy.RegisterOnGuestIpDiscoveryHandler(
       base::BindRepeating(&OnGuestIpDiscovery));
 
