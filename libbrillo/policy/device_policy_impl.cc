@@ -161,36 +161,36 @@ std::optional<base::Value> DecodeListValueFromJSON(
     const std::string& json_string) {
   auto decoded_json = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!decoded_json.value) {
-    LOG(ERROR) << "Invalid JSON string: " << decoded_json.error_message;
+  if (!decoded_json.has_value()) {
+    LOG(ERROR) << "Invalid JSON string: " << decoded_json.error().message;
     return std::nullopt;
   }
 
-  if (!decoded_json.value->is_list()) {
+  if (!decoded_json->is_list()) {
     LOG(ERROR) << "JSON string is not a list";
     return std::nullopt;
   }
 
-  return std::move(decoded_json.value);
+  return std::move(*decoded_json);
 }
 
 std::optional<base::Value> DecodeDictValueFromJSON(
     const std::string& json_string, const std::string& entry_name) {
   auto decoded_json = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!decoded_json.value) {
+  if (!decoded_json.has_value()) {
     LOG(ERROR) << "Invalid JSON string in " << entry_name << ": "
-               << decoded_json.error_message;
+               << decoded_json.error().message;
     return std::nullopt;
   }
 
-  if (!decoded_json.value->is_dict()) {
+  if (!decoded_json->is_dict()) {
     LOG(ERROR) << "Invalid JSON string in " << entry_name << ": "
                << "JSON string is not a dictionary";
     return std::nullopt;
   }
 
-  return std::move(decoded_json.value);
+  return std::move(*decoded_json);
 }
 
 }  // namespace

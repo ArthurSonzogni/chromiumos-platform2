@@ -343,21 +343,22 @@ std::optional<base::Value> ParseJsonResponse(Response* response,
   std::string json = response->ExtractDataAsString();
   auto json_result =
       base::JSONReader::ReadAndReturnValueWithError(json, base::JSON_PARSE_RFC);
-  if (!json_result.value) {
+  if (!json_result.has_value()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, brillo::errors::json::kDomain,
                                brillo::errors::json::kParseError,
                                "Error '%s' occurred parsing JSON string '%s'",
-                               json_result.error_message.c_str(), json.c_str());
+                               json_result.error().message.c_str(),
+                               json.c_str());
     return std::nullopt;
   }
-  if (!json_result.value->is_dict()) {
+  if (!json_result->is_dict()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, brillo::errors::json::kDomain,
                                brillo::errors::json::kObjectExpected,
                                "Response is not a valid dictionary: '%s'",
                                json.c_str());
     return std::nullopt;
   }
-  return std::move(json_result.value);
+  return std::move(*json_result);
 }
 
 std::string GetCanonicalHeaderName(const std::string& name) {
