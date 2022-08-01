@@ -34,6 +34,7 @@ source_set("storage_data_source") {
     "emmc_device_adapter.cc",
     "nvme_device_adapter.cc",
     "platform.cc",
+    "ufs_device_adapter.cc",
   ]
 }
 
@@ -50,6 +51,7 @@ if (use.test) {
       "device_resolver_test.cc",
       "emmc_device_adapter_test.cc",
       "nvme_device_adapter_test.cc",
+      "ufs_device_adapter_test.cc",
     ]
   }
 }

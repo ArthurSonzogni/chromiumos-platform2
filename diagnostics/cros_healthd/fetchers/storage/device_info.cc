@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/disk_iostat.h>
+#include <brillo/blkdev_utils/ufs.h>
 
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
@@ -24,6 +25,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/emmc_device_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/storage/nvme_device_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
+#include "diagnostics/cros_healthd/fetchers/storage/ufs_device_adapter.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -57,6 +59,8 @@ std::unique_ptr<StorageDeviceAdapter> CreateDeviceSpecificAdapter(
     return std::make_unique<NvmeDeviceAdapter>(dev_sys_path);
   if (subs[kBlockTypeSubsystemIndex] == kMmcSubsystem)
     return std::make_unique<EmmcDeviceAdapter>(dev_sys_path);
+  if (brillo::IsUfs(dev_sys_path))
+    return std::make_unique<UfsDeviceAdapter>(dev_sys_path);
   return std::make_unique<DefaultDeviceAdapter>(dev_sys_path);
 }
 

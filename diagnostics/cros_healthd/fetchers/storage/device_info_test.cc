@@ -64,6 +64,46 @@ TEST(StorageDeviceInfoTest, PopulateTest) {
   EXPECT_EQ(kPurpose, info.purpose);
 }
 
+TEST(StorageDeviceInfoTest, PopulateUFSTest) {
+  constexpr char kPath[] =
+      "cros_healthd/fetchers/storage/testdata/sys/block/sda";
+  constexpr char kDevnode[] = "dev/node/path";
+  constexpr char kSubsystem[] = "block:scsi:scsi:scsi:pci";
+  constexpr mojo_ipc::StorageDevicePurpose kPurpose =
+      mojo_ipc::StorageDevicePurpose::kBootDevice;
+  constexpr uint64_t kSize = 16 * 1024;
+  constexpr uint64_t kBlockSize = 512;
+  auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
+
+  EXPECT_CALL(*mock_platform, GetDeviceSizeBytes(base::FilePath(kDevnode)))
+      .WillOnce(Return(kSize));
+  EXPECT_CALL(*mock_platform, GetDeviceBlockSizeBytes(base::FilePath(kDevnode)))
+      .WillOnce(Return(kBlockSize));
+
+  auto dev_info =
+      StorageDeviceInfo::Create(base::FilePath(kPath), base::FilePath(kDevnode),
+                                kSubsystem, kPurpose, mock_platform.get());
+  mojo_ipc::NonRemovableBlockDeviceInfo info;
+  EXPECT_TRUE(dev_info->PopulateDeviceInfo(&info).ok());
+
+  EXPECT_EQ(kDevnode, info.path);
+  EXPECT_EQ(kSubsystem, info.type);
+  EXPECT_EQ(kSize, info.size);
+  EXPECT_EQ(198, info.read_time_seconds_since_last_boot);
+  EXPECT_EQ(89345, info.write_time_seconds_since_last_boot);
+  EXPECT_EQ((uint64_t)14995718 * kBlockSize, info.bytes_read_since_last_boot);
+  EXPECT_EQ((uint64_t)325649111 * kBlockSize,
+            info.bytes_written_since_last_boot);
+  EXPECT_EQ(7221, info.io_time_seconds_since_last_boot);
+  EXPECT_EQ(194, info.discard_time_seconds_since_last_boot->value);
+  EXPECT_EQ(0x1337, info.vendor_id->get_jedec_manfid());
+  EXPECT_EQ(0, info.product_id->get_other());
+  EXPECT_EQ(0, info.revision->get_other());
+  EXPECT_EQ("MYUFS", info.name);
+  EXPECT_EQ(0x32323032, info.firmware_version->get_ufs_fwrev());
+  EXPECT_EQ(kPurpose, info.purpose);
+}
+
 TEST(StorageDeviceInfoTest, PopulateLegacyTest) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/mmcblk0";
