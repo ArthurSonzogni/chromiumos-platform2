@@ -37,21 +37,13 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
   brillo::SecureBlob GenerateKeyAuthValue() override;
   // Performs the encryption by sealing the supplied crypto secret via the
   // TPM_Seal command.
-  bool EncryptEccPrivateKey(
-      const hwsec_foundation::EllipticCurve& ec,
-      const crypto::ScopedEC_KEY& own_key_pair,
-      const std::optional<brillo::SecureBlob>& auth_value,
-      const std::string& obfuscated_username,
-      brillo::SecureBlob* encrypted_own_priv_key) override;
+  bool EncryptEccPrivateKey(const EncryptEccPrivateKeyRequest& request,
+                            EncryptEccPrivateKeyResponse* response) override;
   // Performs the scalar multiplication by unsealing the encrypted secret via
   // the TPM_Unseal command and generated the corresponding shared secret via
   // ECDH_HKDF.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const hwsec_foundation::EllipticCurve& ec,
-      const brillo::SecureBlob& encrypted_own_priv_key,
-      const std::optional<brillo::SecureBlob>& auth_value,
-      const std::string& obfuscated_username,
-      const EC_POINT& others_pub_point) override;
+      const GenerateDhSharedSecretRequest& request) override;
   // Generate RSA key pair from tpm modules. Return true if the key generation
   // from TPM modules is successful.
   // Generated RSA private key would be used to sign recovery request payload

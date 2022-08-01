@@ -120,12 +120,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeySuccess) {
       .WillOnce(DoAll(SetArgPointee<7>(expected_encrypted_own_priv_key),
                       Return(TPM_RC_SUCCESS)));
 
-  brillo::SecureBlob encrypted_privated_key;
+  EncryptEccPrivateKeyRequest tpm_backend_request({.ec = ec_256_.value(),
+                                                   .own_key_pair = own_key_pair,
+                                                   .auth_value = std::nullopt,
+                                                   .obfuscated_username = ""});
+  EncryptEccPrivateKeyResponse tpm_backend_response;
   EXPECT_TRUE(recovery_crypto_tpm2_backend_->EncryptEccPrivateKey(
-      ec_256_.value(), own_key_pair,
-      /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-      &encrypted_privated_key));
-  EXPECT_EQ(encrypted_privated_key.to_string(),
+      tpm_backend_request, &tpm_backend_response));
+  EXPECT_EQ(tpm_backend_response.encrypted_own_priv_key.to_string(),
             expected_encrypted_own_priv_key);
 }
 
@@ -149,13 +151,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
               ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .Times(Exactly(0));
 
-  brillo::SecureBlob encrypted_privated_key;
   // the input key pair is not on the elliptic curve 521
+  EncryptEccPrivateKeyRequest tpm_backend_request({.ec = ec_521_.value(),
+                                                   .own_key_pair = own_key_pair,
+                                                   .auth_value = std::nullopt,
+                                                   .obfuscated_username = ""});
+  EncryptEccPrivateKeyResponse tpm_backend_response;
   EXPECT_FALSE(recovery_crypto_tpm2_backend_->EncryptEccPrivateKey(
-      ec_521_.value(), own_key_pair,
-      /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-      &encrypted_privated_key));
-  EXPECT_EQ(encrypted_privated_key.to_string(), "");
+      tpm_backend_request, &tpm_backend_response));
+  EXPECT_EQ(tpm_backend_response.encrypted_own_priv_key.to_string(), "");
 }
 
 TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeyWithSessionFailure) {
@@ -177,12 +181,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeyWithSessionFailure) {
               ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .Times(Exactly(0));
 
-  brillo::SecureBlob encrypted_privated_key;
+  EncryptEccPrivateKeyRequest tpm_backend_request({.ec = ec_256_.value(),
+                                                   .own_key_pair = own_key_pair,
+                                                   .auth_value = std::nullopt,
+                                                   .obfuscated_username = ""});
+  EncryptEccPrivateKeyResponse tpm_backend_response;
   EXPECT_FALSE(recovery_crypto_tpm2_backend_->EncryptEccPrivateKey(
-      ec_256_.value(), own_key_pair,
-      /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-      &encrypted_privated_key));
-  EXPECT_EQ(encrypted_privated_key.to_string(), "");
+      tpm_backend_request, &tpm_backend_response));
+  EXPECT_EQ(tpm_backend_response.encrypted_own_priv_key.to_string(), "");
 }
 
 TEST_F(RecoveryCryptoTpm2BackendTest,
@@ -209,12 +215,14 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
               ImportECCKeyWithPolicyDigest(_, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
 
-  brillo::SecureBlob encrypted_privated_key;
+  EncryptEccPrivateKeyRequest tpm_backend_request({.ec = ec_256_.value(),
+                                                   .own_key_pair = own_key_pair,
+                                                   .auth_value = std::nullopt,
+                                                   .obfuscated_username = ""});
+  EncryptEccPrivateKeyResponse tpm_backend_response;
   EXPECT_FALSE(recovery_crypto_tpm2_backend_->EncryptEccPrivateKey(
-      ec_256_.value(), own_key_pair,
-      /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-      &encrypted_privated_key));
-  EXPECT_EQ(encrypted_privated_key.to_string(), "");
+      tpm_backend_request, &tpm_backend_response));
+  EXPECT_EQ(tpm_backend_response.encrypted_own_priv_key.to_string(), "");
 }
 
 TEST_F(RecoveryCryptoTpm2BackendTest,
@@ -222,9 +230,13 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   // Set up inputs to the test.
   crypto::ScopedEC_KEY others_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(others_key_pair);
-  const EC_POINT* others_pub_key =
+  const EC_POINT* others_pub_key_ptr =
       EC_KEY_get0_public_key(others_key_pair.get());
+  ASSERT_TRUE(others_pub_key_ptr);
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256_->GetGroup()));
   ASSERT_TRUE(others_pub_key);
+
   // Generated shared point has to be on the curve to be converted to
   // TPMS_ECC_POINT, EC_KEY. Therefore, it cannot be dummy value.
   crypto::ScopedEC_KEY expected_key_pair = ec_256_->GenerateKey(context_.get());
@@ -264,11 +276,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
                           expected_shared_secret_ecc_point)),
                       Return(TPM_RC_SUCCESS)));
 
+  GenerateDhSharedSecretRequest tpm_backend_request(
+      {.ec = ec_256_.value(),
+       .encrypted_own_priv_key = brillo::SecureBlob(),
+       .auth_value = std::nullopt,
+       .obfuscated_username = "",
+       .others_pub_point = std::move(others_pub_key)});
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm2_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), /*encrypted_own_priv_key=*/brillo::SecureBlob(),
-          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-          *others_pub_key);
+          tpm_backend_request);
   EXPECT_NE(nullptr, shared_secret_point);
   EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point,
                                 *expected_shared_secret_point, context_.get()));
@@ -279,8 +295,11 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   // Set up inputs to the test.
   crypto::ScopedEC_KEY others_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(others_key_pair);
-  const EC_POINT* others_pub_key =
+  const EC_POINT* others_pub_key_ptr =
       EC_KEY_get0_public_key(others_key_pair.get());
+  ASSERT_TRUE(others_pub_key_ptr);
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256_->GetGroup()));
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
@@ -299,11 +318,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
   // the input key pair is not on the elliptic curve 521
+  GenerateDhSharedSecretRequest tpm_backend_request(
+      {.ec = ec_521_.value(),
+       .encrypted_own_priv_key = brillo::SecureBlob(),
+       .auth_value = std::nullopt,
+       .obfuscated_username = "",
+       .others_pub_point = std::move(others_pub_key)});
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm2_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_521_.value(), /*encrypted_own_priv_key=*/brillo::SecureBlob(),
-          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-          *others_pub_key);
+          tpm_backend_request);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -312,8 +335,11 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   // Set up inputs to the test.
   crypto::ScopedEC_KEY others_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(others_key_pair);
-  const EC_POINT* others_pub_key =
+  const EC_POINT* others_pub_key_ptr =
       EC_KEY_get0_public_key(others_key_pair.get());
+  ASSERT_TRUE(others_pub_key_ptr);
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256_->GetGroup()));
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
@@ -331,11 +357,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_policy_session_, GetDigest(_)).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
+  GenerateDhSharedSecretRequest tpm_backend_request(
+      {.ec = ec_256_.value(),
+       .encrypted_own_priv_key = brillo::SecureBlob(),
+       .auth_value = std::nullopt,
+       .obfuscated_username = "",
+       .others_pub_point = std::move(others_pub_key)});
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm2_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), /*encrypted_own_priv_key=*/brillo::SecureBlob(),
-          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-          *others_pub_key);
+          tpm_backend_request);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -344,8 +374,11 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   // Set up inputs to the test.
   crypto::ScopedEC_KEY others_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(others_key_pair);
-  const EC_POINT* others_pub_key =
+  const EC_POINT* others_pub_key_ptr =
       EC_KEY_get0_public_key(others_key_pair.get());
+  ASSERT_TRUE(others_pub_key_ptr);
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256_->GetGroup()));
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
@@ -365,11 +398,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_policy_session_, GetDigest(_)).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _)).Times(Exactly(0));
 
+  GenerateDhSharedSecretRequest tpm_backend_request(
+      {.ec = ec_256_.value(),
+       .encrypted_own_priv_key = brillo::SecureBlob(),
+       .auth_value = std::nullopt,
+       .obfuscated_username = "",
+       .others_pub_point = std::move(others_pub_key)});
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm2_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), /*encrypted_own_priv_key=*/brillo::SecureBlob(),
-          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-          *others_pub_key);
+          tpm_backend_request);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 
@@ -378,8 +415,11 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   // Set up inputs to the test.
   crypto::ScopedEC_KEY others_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(others_key_pair);
-  const EC_POINT* others_pub_key =
+  const EC_POINT* others_pub_key_ptr =
       EC_KEY_get0_public_key(others_key_pair.get());
+  ASSERT_TRUE(others_pub_key_ptr);
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256_->GetGroup()));
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
@@ -406,11 +446,15 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   EXPECT_CALL(mock_tpm_utility_, ECDHZGen(_, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
 
+  GenerateDhSharedSecretRequest tpm_backend_request(
+      {.ec = ec_256_.value(),
+       .encrypted_own_priv_key = brillo::SecureBlob(),
+       .auth_value = std::nullopt,
+       .obfuscated_username = "",
+       .others_pub_point = std::move(others_pub_key)});
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm2_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_256_.value(), /*encrypted_own_priv_key=*/brillo::SecureBlob(),
-          /*auth_value=*/std::nullopt, /*obfuscated_username=*/"",
-          *others_pub_key);
+          tpm_backend_request);
   EXPECT_EQ(nullptr, shared_secret_point);
 }
 

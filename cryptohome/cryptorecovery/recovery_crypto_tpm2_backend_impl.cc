@@ -123,12 +123,9 @@ brillo::SecureBlob RecoveryCryptoTpm2BackendImpl::GenerateKeyAuthValue() {
 }
 
 bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
-    const EllipticCurve& ec,
-    const crypto::ScopedEC_KEY& own_key_pair,
-    const std::optional<brillo::SecureBlob>& /*auth_value*/,
-    const std::string& obfuscated_username,
-    brillo::SecureBlob* encrypted_own_priv_key) {
-  DCHECK(encrypted_own_priv_key);
+    const EncryptEccPrivateKeyRequest& request,
+    EncryptEccPrivateKeyResponse* response) {
+  DCHECK(response);
 
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -136,24 +133,26 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     return false;
   }
 
-  const BIGNUM* own_priv_key_bn = EC_KEY_get0_private_key(own_key_pair.get());
+  const BIGNUM* own_priv_key_bn =
+      EC_KEY_get0_private_key(request.own_key_pair.get());
   if (!own_priv_key_bn) {
     LOG(ERROR) << "Failed to get own_priv_key_bn";
     return false;
   }
-  if (!ec.IsScalarValid(*own_priv_key_bn)) {
+  if (!request.ec.IsScalarValid(*own_priv_key_bn)) {
     LOG(ERROR) << "Scalar is not valid";
     return false;
   }
   // Convert own private key to blob.
   brillo::SecureBlob own_priv_key;
-  if (!BigNumToSecureBlob(*own_priv_key_bn, ec.ScalarSizeInBytes(),
+  if (!BigNumToSecureBlob(*own_priv_key_bn, request.ec.ScalarSizeInBytes(),
                           &own_priv_key)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
   }
 
-  const EC_POINT* pub_point = EC_KEY_get0_public_key(own_key_pair.get());
+  const EC_POINT* pub_point =
+      EC_KEY_get0_public_key(request.own_key_pair.get());
   if (!pub_point) {
     LOG(ERROR) << "Failed to get pub_point";
     return false;
@@ -164,8 +163,9 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     LOG(ERROR) << "Failed to allocate BIGNUM";
     return false;
   }
-  if (!ec.GetAffineCoordinates(*pub_point, context.get(), pub_point_x_bn.get(),
-                               pub_point_y_bn.get())) {
+  if (!request.ec.GetAffineCoordinates(*pub_point, context.get(),
+                                       pub_point_x_bn.get(),
+                                       pub_point_y_bn.get())) {
     LOG(ERROR) << "Failed to get destination share x coordinate";
     return false;
   }
@@ -199,7 +199,7 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
   }
   // Translate cryptohome CurveType to trunks curveID
   trunks::TPM_ECC_CURVE tpm_curve_id = trunks::TPM_ECC_NONE;
-  switch (ec.GetCurveType()) {
+  switch (request.ec.GetCurveType()) {
     case EllipticCurve::CurveType::kPrime256:
       tpm_curve_id = trunks::TPM_ECC_NIST_P256;
       break;
@@ -226,7 +226,7 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     return false;
   }
   std::string policy_digest;
-  if (!UpdatePolicyPcrOr(obfuscated_username, &policy_digest,
+  if (!UpdatePolicyPcrOr(request.obfuscated_username, &policy_digest,
                          trial_session.get(), tpm2_impl_)) {
     LOG(ERROR) << "Get policy digest from PCR map failed.";
     return false;
@@ -245,17 +245,14 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     return false;
   }
   // Return the share wrapped with the TPM storage key.
-  *encrypted_own_priv_key = brillo::SecureBlob(encrypted_own_priv_key_string);
+  response->encrypted_own_priv_key =
+      brillo::SecureBlob(encrypted_own_priv_key_string);
   return true;
 }
 
 crypto::ScopedEC_POINT
 RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
-    const EllipticCurve& ec,
-    const brillo::SecureBlob& encrypted_own_priv_key,
-    const std::optional<brillo::SecureBlob>& /*auth_value*/,
-    const std::string& obfuscated_username,
-    const EC_POINT& others_pub_point) {
+    const GenerateDhSharedSecretRequest& request) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -269,9 +266,9 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
     LOG(ERROR) << "Failed to allocate BIGNUM";
     return nullptr;
   }
-  if (!ec.GetAffineCoordinates(others_pub_point, context.get(),
-                               others_pub_point_x_bn.get(),
-                               others_pub_point_y_bn.get())) {
+  if (!request.ec.GetAffineCoordinates(*request.others_pub_point, context.get(),
+                                       others_pub_point_x_bn.get(),
+                                       others_pub_point_y_bn.get())) {
     LOG(ERROR) << "Failed to get the other party's public point x coordinate";
     return nullptr;
   }
@@ -308,7 +305,7 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
   // Load the destination share (as a key handle) via the TPM2_Load command.
   trunks::TPM_HANDLE key_handle;
   tpm_result =
-      trunks->tpm_utility->LoadKey(encrypted_own_priv_key.to_string(),
+      trunks->tpm_utility->LoadKey(request.encrypted_own_priv_key.to_string(),
                                    hmac_session->GetDelegate(), &key_handle);
   if (tpm_result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to load TPM key: "
@@ -346,7 +343,7 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
   }
 
   std::string policy_digest;
-  if (!UpdatePolicyPcrOr(obfuscated_username, &policy_digest,
+  if (!UpdatePolicyPcrOr(request.obfuscated_username, &policy_digest,
                          policy_session.get(), tpm2_impl_)) {
     LOG(ERROR) << "Get policy digest from PCR map failed.";
     return nullptr;
@@ -363,12 +360,12 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
     return nullptr;
   }
   // Return the point after converting it from the TPM representation.
-  crypto::ScopedEC_POINT point_dh = ec.CreatePoint();
+  crypto::ScopedEC_POINT point_dh = request.ec.CreatePoint();
   if (!point_dh) {
     LOG(ERROR) << "Failed to allocate EC_POINT";
     return nullptr;
   }
-  if (!trunks::TpmToOpensslEccPoint(tpm_point_dh.point, *ec.GetGroup(),
+  if (!trunks::TpmToOpensslEccPoint(tpm_point_dh.point, *request.ec.GetGroup(),
                                     point_dh.get())) {
     LOG(ERROR) << "TPM ECC point conversion failed";
     return nullptr;

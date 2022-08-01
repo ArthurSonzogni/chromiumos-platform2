@@ -36,21 +36,13 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
   // Returns the raw ECC private key (without any encryption). auth_value will
   // not be used as it's to seal the private key on TPM1 modules when ECC
   // operations are not supported.
-  bool EncryptEccPrivateKey(
-      const hwsec_foundation::EllipticCurve& ec,
-      const crypto::ScopedEC_KEY& own_key_pair,
-      const std::optional<brillo::SecureBlob>& /*auth_value*/,
-      const std::string& obfuscated_username,
-      brillo::SecureBlob* encrypted_own_priv_key) override;
+  bool EncryptEccPrivateKey(const EncryptEccPrivateKeyRequest& request,
+                            EncryptEccPrivateKeyResponse* response) override;
   // Performs the scalar multiplication of the raw private key and the
   // supplied point in software. auth_value will not be used as it's to seal
   // the private key on TPM1 modules when ECC operations are not supported.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const hwsec_foundation::EllipticCurve& ec,
-      const brillo::SecureBlob& encrypted_own_priv_key,
-      const std::optional<brillo::SecureBlob>& /*auth_value*/,
-      const std::string& obfuscated_username,
-      const EC_POINT& others_pub_point) override;
+      const GenerateDhSharedSecretRequest& request) override;
   // Generate RSA key pair from tpm modules. Return true if the key generation
   // from TPM modules is successful.
   // TODO(b:196191918): implement the function for testing

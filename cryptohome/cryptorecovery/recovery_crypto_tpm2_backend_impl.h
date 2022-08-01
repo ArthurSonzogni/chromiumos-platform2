@@ -38,22 +38,14 @@ class RecoveryCryptoTpm2BackendImpl final : public RecoveryCryptoTpmBackend {
   // Performs the encryption by importing the supplied share via the TPM2_Import
   // command. auth_value will not be used as it's to seal the private key on
   // TPM1 modules when ECC operations are not supported.
-  bool EncryptEccPrivateKey(
-      const hwsec_foundation::EllipticCurve& ec,
-      const crypto::ScopedEC_KEY& own_key_pair,
-      const std::optional<brillo::SecureBlob>& /*auth_value*/,
-      const std::string& obfuscated_username,
-      brillo::SecureBlob* encrypted_own_priv_key) override;
+  bool EncryptEccPrivateKey(const EncryptEccPrivateKeyRequest& request,
+                            EncryptEccPrivateKeyResponse* response) override;
   // Performs the scalar multiplication by loading the encrypted share via the
   // TPM2_Load command and multiplying it via the TPM2_ECDH_ZGen command.
   // auth_value will not be used as it's to seal the private key on TPM1
   // modules when ECC operations are not supported.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const hwsec_foundation::EllipticCurve& ec,
-      const brillo::SecureBlob& encrypted_own_priv_key,
-      const std::optional<brillo::SecureBlob>& /*auth_value*/,
-      const std::string& obfuscated_username,
-      const EC_POINT& others_pub_point) override;
+      const GenerateDhSharedSecretRequest& request) override;
   // Generate RSA key pair from tpm modules. Return true if the key generation
   // from TPM modules is successful.
   // For TPM2, a dummy true would be returned as RSA key pair is not required

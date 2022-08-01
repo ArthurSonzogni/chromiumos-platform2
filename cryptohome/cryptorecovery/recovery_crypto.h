@@ -15,12 +15,45 @@
 #include <openssl/ec.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/utility/no_default_init.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
 namespace cryptorecovery {
+// TPM backend input parameters for function EncryptEccPrivateKey.
+struct EncryptEccPrivateKeyRequest {
+  const hwsec_foundation::EllipticCurve& ec;
+  // Private key from one's own key pair would be imported to TPM2.0 or sealed
+  // by TPM1.2.
+  const crypto::ScopedEC_KEY& own_key_pair;
+  // Additional secret to seal the destination share. Used for TPM 1.2 only.
+  hwsec_foundation::NoDefault<std::optional<brillo::SecureBlob>> auth_value;
+  // Used to generate PCR map.
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+};
+
+// TPM backend output parameters for function EncryptEccPrivateKey.
+struct EncryptEccPrivateKeyResponse {
+  // One's own private key after imported/ sealed to TPM.
+  brillo::SecureBlob encrypted_own_priv_key;
+  // TODO(b:220907578): Add extended_pcr_bound_own_priv_key;
+};
+
+// TPM backend input parameters for function GenerateDiffieHellmanSharedSecret.
+struct GenerateDhSharedSecretRequest {
+  const hwsec_foundation::EllipticCurve& ec;
+  // One's own private key which is imported to TPM2.0 or sealed by TPM1.2.
+  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_own_priv_key;
+  // Additional secret to seal the destination share. Used for TPM 1.2 only.
+  hwsec_foundation::NoDefault<std::optional<brillo::SecureBlob>> auth_value;
+  // Used to generate PCR map.
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+  // Public key from the other part, used to generate shared secret.
+  crypto::ScopedEC_POINT others_pub_point;
+};
+
 // RecoveryCryptoTpmBackend - class for performing cryptorecovery
 // encryption/decryption in the TPM. For cryptorecovery, the TPM may be used as
 // a way to strengthen the secret shares/ private keys stored on disk.
@@ -36,12 +69,8 @@ class RecoveryCryptoTpmBackend {
   // this blob is TPM-specific). Returns false on failure.
   // As TPM1.2 does not support ECC, instead of encrypting the ECC private key,
   // it will seal the private key with the provided auth_value.
-  virtual bool EncryptEccPrivateKey(
-      const hwsec_foundation::EllipticCurve& ec,
-      const crypto::ScopedEC_KEY& own_key_pair,
-      const std::optional<brillo::SecureBlob>& auth_value,
-      const std::string& obfuscated_username,
-      brillo::SecureBlob* encrypted_own_priv_key) = 0;
+  virtual bool EncryptEccPrivateKey(const EncryptEccPrivateKeyRequest& request,
+                                    EncryptEccPrivateKeyResponse* response) = 0;
   // Multiplies the private key, provided in encrypted form, with the given the
   // other party's public EC point. Returns the multiplication, or nullptr on
   // failure.
@@ -50,11 +79,7 @@ class RecoveryCryptoTpmBackend {
   // unsealed with the provided auth_value and the shared secret will be
   // computed via openssl lib.
   virtual crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const hwsec_foundation::EllipticCurve& ec,
-      const brillo::SecureBlob& encrypted_own_priv_key,
-      const std::optional<brillo::SecureBlob>& auth_value,
-      const std::string& obfuscated_username,
-      const EC_POINT& others_pub_point) = 0;
+      const GenerateDhSharedSecretRequest& request) = 0;
   // Generate a TPM-backed RSA key pair. Return true if the key generation
   // from TPM modules is successful.
   // Generated RSA private key would be used to sign recovery request payload

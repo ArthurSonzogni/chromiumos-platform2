@@ -318,8 +318,12 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // decrypted response afterward
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
-          obfuscated_username, *epoch_pub_point);
+          GenerateDhSharedSecretRequest(
+              {.ec = ec_,
+               .encrypted_own_priv_key = encrypted_channel_priv_key,
+               .auth_value = std::nullopt,
+               .obfuscated_username = obfuscated_username,
+               .others_pub_point = std::move(epoch_pub_point)}));
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";
@@ -435,12 +439,20 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   } while (BN_is_zero(secret.get()));
 
   brillo::SecureBlob key_auth_value = tpm_backend_->GenerateKeyAuthValue();
-  if (!tpm_backend_->EncryptEccPrivateKey(ec_, destination_share_key_pair,
-                                          key_auth_value, obfuscated_username,
-                                          encrypted_destination_share)) {
+  EncryptEccPrivateKeyRequest tpm_backend_request_destination_share(
+      {.ec = ec_,
+       .own_key_pair = destination_share_key_pair,
+       .auth_value = key_auth_value,
+       .obfuscated_username = obfuscated_username});
+  EncryptEccPrivateKeyResponse tpm_backend_response_destination_share;
+  if (!tpm_backend_->EncryptEccPrivateKey(
+          tpm_backend_request_destination_share,
+          &tpm_backend_response_destination_share)) {
     LOG(ERROR) << "Failed to encrypt destination share";
     return false;
   }
+  *encrypted_destination_share =
+      tpm_backend_response_destination_share.encrypted_own_priv_key;
 
   crypto::ScopedEC_POINT recovery_pub_point =
       ec_.MultiplyWithGenerator(*secret, context.get());
@@ -471,13 +483,20 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
   // because key_auth_value will be unavailable when encrypted_channel_priv_key
   // is unsealed from TPM1.2
-  if (!tpm_backend_->EncryptEccPrivateKey(ec_, channel_key_pair,
-                                          /*auth_value=*/std::nullopt,
-                                          obfuscated_username,
-                                          encrypted_channel_priv_key)) {
+  EncryptEccPrivateKeyRequest tpm_backend_request_channel_priv_key(
+      {.ec = ec_,
+       .own_key_pair = channel_key_pair,
+       .auth_value = std::nullopt,
+       .obfuscated_username = obfuscated_username});
+  EncryptEccPrivateKeyResponse tpm_backend_response_channel_priv_key;
+  if (!tpm_backend_->EncryptEccPrivateKey(
+          tpm_backend_request_channel_priv_key,
+          &tpm_backend_response_channel_priv_key)) {
     LOG(ERROR) << "Failed to encrypt channel_priv_key";
     return false;
   }
+  *encrypted_channel_priv_key =
+      tpm_backend_response_channel_priv_key.encrypted_own_priv_key;
 
   crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
   if (!publisher_key_pair) {
@@ -632,10 +651,15 @@ bool RecoveryCryptoImpl::RecoverDestination(
     return false;
   }
   // Performs scalar multiplication of dealer_pub_point and destination_share.
+  GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
+      {.ec = ec_,
+       .encrypted_own_priv_key = encrypted_destination_share,
+       .auth_value = key_auth_value,
+       .obfuscated_username = obfuscated_username,
+       .others_pub_point = std::move(dealer_pub_point)});
   crypto::ScopedEC_POINT point_dh =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_destination_share, key_auth_value, obfuscated_username,
-          *dealer_pub_point);
+          tpm_backend_request_destination_share);
   if (!point_dh) {
     LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "
                   "and destination_share";
@@ -717,10 +741,15 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
   // because key_auth_value is unavailable and will only be recovered from the
   // decrypted response afterward
+  GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
+      {.ec = ec_,
+       .encrypted_own_priv_key = encrypted_channel_priv_key,
+       .auth_value = std::nullopt,
+       .obfuscated_username = obfuscated_username,
+       .others_pub_point = std::move(epoch_pub_point)});
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
-          obfuscated_username, *epoch_pub_point);
+          tpm_backend_request_destination_share);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";
