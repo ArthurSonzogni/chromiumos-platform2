@@ -38,12 +38,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const GenerateHsmPayloadRequest& request,
                           GenerateHsmPayloadResponse* response) const override;
-  bool RecoverDestination(const brillo::SecureBlob& dealer_pub_key,
-                          const brillo::SecureBlob& key_auth_value,
-                          const brillo::SecureBlob& encrypted_destination_share,
-                          const brillo::SecureBlob& ephemeral_pub_key,
-                          const brillo::SecureBlob& mediated_publisher_pub_key,
-                          const std::string& obfuscated_username,
+  bool RecoverDestination(const RecoverDestinationRequest& request,
                           brillo::SecureBlob* destination_dh) const override;
   bool DecryptResponsePayload(
       const brillo::SecureBlob& encrypted_channel_priv_key,

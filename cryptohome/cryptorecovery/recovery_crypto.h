@@ -131,6 +131,16 @@ struct GenerateRecoveryRequestRequest {
   hwsec_foundation::NoDefault<std::string> obfuscated_username;
 };
 
+// RecoveryCrypto input parameters for function RecoverDestination.
+struct RecoverDestinationRequest {
+  hwsec_foundation::NoDefault<brillo::SecureBlob> dealer_pub_key;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> key_auth_value;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_destination_share;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> ephemeral_pub_key;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> mediated_publisher_pub_key;
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+};
+
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
 // dealer is invoked during initial setup to generate random shares. The dealer
@@ -221,12 +231,7 @@ class RecoveryCrypto {
   // loaded back in the form of key handle, which requires no additional crypto
   // secret.
   virtual bool RecoverDestination(
-      const brillo::SecureBlob& dealer_pub_key,
-      const brillo::SecureBlob& key_auth_value,
-      const brillo::SecureBlob& encrypted_destination_share,
-      const brillo::SecureBlob& ephemeral_pub_key,
-      const brillo::SecureBlob& mediated_publisher_pub_key,
-      const std::string& obfuscated_username,
+      const RecoverDestinationRequest& request,
       brillo::SecureBlob* destination_recovery_key) const = 0;
 
   // Decrypt plain text from the Recovery Response.

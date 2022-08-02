@@ -609,12 +609,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
 }
 
 bool RecoveryCryptoImpl::RecoverDestination(
-    const brillo::SecureBlob& dealer_pub_key,
-    const brillo::SecureBlob& key_auth_value,
-    const brillo::SecureBlob& encrypted_destination_share,
-    const brillo::SecureBlob& ephemeral_pub_key,
-    const brillo::SecureBlob& mediated_publisher_pub_key,
-    const std::string& obfuscated_username,
+    const RecoverDestinationRequest& request,
     brillo::SecureBlob* destination_recovery_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -622,20 +617,20 @@ bool RecoveryCryptoImpl::RecoverDestination(
     return false;
   }
   crypto::ScopedEC_POINT dealer_pub_point =
-      ec_.DecodeFromSpkiDer(dealer_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(request.dealer_pub_key, context.get());
   if (!dealer_pub_point) {
     LOG(ERROR) << "Failed to convert dealer_pub_point SecureBlob to EC_POINT";
     return false;
   }
   crypto::ScopedEC_POINT mediated_point =
-      ec_.DecodeFromSpkiDer(mediated_publisher_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(request.mediated_publisher_pub_key, context.get());
   if (!mediated_point) {
     LOG(ERROR) << "Failed to convert mediated_point SecureBlob to EC_POINT";
     return false;
   }
   // Performs addition of mediated_point and ephemeral_pub_point.
   crypto::ScopedEC_POINT ephemeral_pub_point =
-      ec_.DecodeFromSpkiDer(ephemeral_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(request.ephemeral_pub_key, context.get());
   if (!ephemeral_pub_point) {
     LOG(ERROR)
         << "Failed to convert ephemeral_pub_point SecureBlob to EC_POINT";
@@ -650,9 +645,9 @@ bool RecoveryCryptoImpl::RecoverDestination(
   // Performs scalar multiplication of dealer_pub_point and destination_share.
   GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
       {.ec = ec_,
-       .encrypted_own_priv_key = encrypted_destination_share,
-       .auth_value = key_auth_value,
-       .obfuscated_username = obfuscated_username,
+       .encrypted_own_priv_key = request.encrypted_destination_share,
+       .auth_value = request.key_auth_value,
+       .obfuscated_username = request.obfuscated_username,
        .others_pub_point = std::move(dealer_pub_point)});
   crypto::ScopedEC_POINT point_dh =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
@@ -687,10 +682,10 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to convert destination_dh_x BIGNUM to SecureBlob";
     return false;
   }
-  if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
-                                 dealer_pub_key, /*salt=*/brillo::SecureBlob(),
-                                 HkdfHash::kSha256, /*result_len=*/0,
-                                 destination_recovery_key)) {
+  if (!ComputeHkdfWithInfoSuffix(
+          hkdf_secret, GetRecoveryKeyHkdfInfo(), request.dealer_pub_key,
+          /*salt=*/brillo::SecureBlob(), HkdfHash::kSha256, /*result_len=*/0,
+          destination_recovery_key)) {
     LOG(ERROR) << "Failed to compute HKDF of destination_dh";
     return false;
   }

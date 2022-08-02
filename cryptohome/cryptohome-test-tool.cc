@@ -353,13 +353,15 @@ bool DoRecoveryCryptoDecryptAction(
           /*obfuscated_username=*/kObfuscatedUsername, &response_plain_text)) {
     return false;
   }
-
   brillo::SecureBlob mediated_recovery_key;
   if (!recovery_crypto->RecoverDestination(
-          response_plain_text.dealer_pub_key,
-          response_plain_text.key_auth_value, destination_share,
-          ephemeral_pub_key, response_plain_text.mediated_point,
-          /*obfuscated_username=*/kObfuscatedUsername,
+          cryptohome::cryptorecovery::RecoverDestinationRequest(
+              {.dealer_pub_key = response_plain_text.dealer_pub_key,
+               .key_auth_value = response_plain_text.key_auth_value,
+               .encrypted_destination_share = destination_share,
+               .ephemeral_pub_key = ephemeral_pub_key,
+               .mediated_publisher_pub_key = response_plain_text.mediated_point,
+               .obfuscated_username = kObfuscatedUsername}),
           &mediated_recovery_key)) {
     return false;
   }

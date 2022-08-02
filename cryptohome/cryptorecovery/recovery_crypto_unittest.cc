@@ -228,12 +228,17 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
       response_proto,
       /*obfuscated_username=*/"", &response_plain_text));
 
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = response_plain_text.dealer_pub_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share =
+           generate_hsm_payload_response.encrypted_destination_share,
+       .ephemeral_pub_key = ephemeral_pub_key,
+       .mediated_publisher_pub_key = response_plain_text.mediated_point,
+       .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(
-      response_plain_text.dealer_pub_key, response_plain_text.key_auth_value,
-      generate_hsm_payload_response.encrypted_destination_share,
-      ephemeral_pub_key, response_plain_text.mediated_point,
-      /*obfuscated_username=*/"", &mediated_recovery_key));
+  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
+                                            &mediated_recovery_key));
 
   // Checks that cryptohome encryption key generated at enrollment and the
   // one obtained after migration are identical.
@@ -309,11 +314,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
 
   SecureBlob random_key = GeneratePublicKey();
 
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = random_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share = destination_share,
+       .ephemeral_pub_key = ephemeral_pub_key,
+       .mediated_publisher_pub_key = response_plain_text.mediated_point,
+       .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(
-      /*dealer_pub_key=*/random_key, response_plain_text.key_auth_value,
-      destination_share, ephemeral_pub_key, response_plain_text.mediated_point,
-      /*obfuscated_username=*/"", &mediated_recovery_key));
+  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
+                                            &mediated_recovery_key));
 
   // `mediated_recovery_key` is different from `recovery_key` when
   // `dealer_pub_key` is set to a wrong value.
@@ -335,12 +345,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
 
   SecureBlob random_scalar = GenerateScalar();
 
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = response_plain_text.dealer_pub_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share = random_scalar,
+       .ephemeral_pub_key = ephemeral_pub_key,
+       .mediated_publisher_pub_key = response_plain_text.mediated_point,
+       .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(
-      response_plain_text.dealer_pub_key, response_plain_text.key_auth_value,
-      /*destination_share=*/random_scalar, ephemeral_pub_key,
-      response_plain_text.mediated_point, /*obfuscated_username=*/"",
-      &mediated_recovery_key));
+  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
+                                            &mediated_recovery_key));
 
   // `mediated_recovery_key` is different from `recovery_key` when
   // `destination_share` is set to a wrong value.
@@ -362,12 +376,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
 
   SecureBlob random_key = GeneratePublicKey();
 
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = response_plain_text.dealer_pub_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share = destination_share,
+       .ephemeral_pub_key = random_key,
+       .mediated_publisher_pub_key = response_plain_text.mediated_point,
+       .obfuscated_username = "obfuscated_username"});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(
-      response_plain_text.dealer_pub_key, response_plain_text.key_auth_value,
-      destination_share,
-      /*ephemeral_pub_key=*/random_key, response_plain_text.mediated_point,
-      /*obfuscated_username=*/"obfuscated_username", &mediated_recovery_key));
+  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
+                                            &mediated_recovery_key));
 
   // `mediated_recovery_key` is different from `recovery_key` when
   // `ephemeral_pub_key` is set to a wrong value.
@@ -389,12 +407,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
 
   SecureBlob random_key = GeneratePublicKey();
 
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = response_plain_text.dealer_pub_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share = destination_share,
+       .ephemeral_pub_key = ephemeral_pub_key,
+       .mediated_publisher_pub_key = random_key,
+       .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(
-      response_plain_text.dealer_pub_key, response_plain_text.key_auth_value,
-      destination_share, ephemeral_pub_key,
-      /*mediated_point=*/random_key, /*obfuscated_username=*/"",
-      &mediated_recovery_key));
+  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
+                                            &mediated_recovery_key));
 
   // `mediated_recovery_key` is different from `recovery_key` when
   // `mediated_point` is set to a wrong point.
@@ -415,12 +437,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
       /*obfuscated_username=*/"", &response_plain_text));
 
   // `RecoverDestination` fails when `mediated_point` is not a point.
+  RecoverDestinationRequest recover_destination_request(
+      {.dealer_pub_key = response_plain_text.dealer_pub_key,
+       .key_auth_value = response_plain_text.key_auth_value,
+       .encrypted_destination_share = destination_share,
+       .ephemeral_pub_key = ephemeral_pub_key,
+       .mediated_publisher_pub_key = SecureBlob("not a point"),
+       .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_FALSE(recovery_->RecoverDestination(
-      response_plain_text.dealer_pub_key, response_plain_text.key_auth_value,
-      destination_share, ephemeral_pub_key,
-      /*mediated_point=*/SecureBlob("not a point"), /*obfuscated_username=*/"",
-      &mediated_recovery_key));
+  EXPECT_FALSE(recovery_->RecoverDestination(recover_destination_request,
+                                             &mediated_recovery_key));
 }
 
 TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {

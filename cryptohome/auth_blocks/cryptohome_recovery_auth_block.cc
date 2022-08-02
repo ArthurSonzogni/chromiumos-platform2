@@ -263,12 +263,16 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   brillo::SecureBlob recovery_key;
-  if (!recovery->RecoverDestination(response_plain_text.dealer_pub_key,
-                                    response_plain_text.key_auth_value,
-                                    auth_state->encrypted_destination_share,
-                                    ephemeral_pub_key,
-                                    response_plain_text.mediated_point,
-                                    obfuscated_username, &recovery_key)) {
+  if (!recovery->RecoverDestination(
+          cryptorecovery::RecoverDestinationRequest(
+              {.dealer_pub_key = response_plain_text.dealer_pub_key,
+               .key_auth_value = response_plain_text.key_auth_value,
+               .encrypted_destination_share =
+                   auth_state->encrypted_destination_share,
+               .ephemeral_pub_key = ephemeral_pub_key,
+               .mediated_publisher_pub_key = response_plain_text.mediated_point,
+               .obfuscated_username = obfuscated_username}),
+          &recovery_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive),
