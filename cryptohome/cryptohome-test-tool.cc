@@ -130,35 +130,41 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   }
 
   // Generates HSM payload that would be persisted on a chromebook.
-  HsmPayload hsm_payload;
-  SecureBlob rsa_priv_key;
-  SecureBlob destination_share;
-  SecureBlob recovery_key;
-  SecureBlob channel_pub_key;
-  SecureBlob channel_priv_key;
   OnboardingMetadata onboarding_metadata = GenerateFakeOnboardingMetadata();
-  if (!recovery_crypto->GenerateHsmPayload(
-          mediator_pub_key, onboarding_metadata,
-          /*obfuscated_username=*/kObfuscatedUsername, &hsm_payload,
-          &rsa_priv_key, &destination_share, &recovery_key, &channel_pub_key,
-          &channel_priv_key)) {
+  cryptohome::cryptorecovery::GenerateHsmPayloadRequest
+      generate_hsm_payload_request(
+          {.mediator_pub_key = mediator_pub_key,
+           .onboarding_metadata = GenerateFakeOnboardingMetadata(),
+           .obfuscated_username = kObfuscatedUsername});
+  cryptohome::cryptorecovery::GenerateHsmPayloadResponse
+      generate_hsm_payload_response;
+  if (!recovery_crypto->GenerateHsmPayload(generate_hsm_payload_request,
+                                           &generate_hsm_payload_response)) {
     return false;
   }
 
   SecureBlob serialized_hsm_payload;
-  if (!SerializeHsmPayloadToCbor(hsm_payload, &serialized_hsm_payload)) {
+  if (!SerializeHsmPayloadToCbor(generate_hsm_payload_response.hsm_payload,
+                                 &serialized_hsm_payload)) {
     LOG(ERROR) << "Failed to serialize HSM payload.";
     return false;
   }
 
-  return WriteHexFileLogged(rsa_priv_key_out_file_path, rsa_priv_key) &&
-         WriteHexFileLogged(destination_share_out_file_path,
-                            destination_share) &&
-         WriteHexFileLogged(channel_pub_key_out_file_path, channel_pub_key) &&
-         WriteHexFileLogged(channel_priv_key_out_file_path, channel_priv_key) &&
+  return WriteHexFileLogged(
+             rsa_priv_key_out_file_path,
+             generate_hsm_payload_response.encrypted_rsa_priv_key) &&
+         WriteHexFileLogged(
+             destination_share_out_file_path,
+             generate_hsm_payload_response.encrypted_destination_share) &&
+         WriteHexFileLogged(channel_pub_key_out_file_path,
+                            generate_hsm_payload_response.channel_pub_key) &&
+         WriteHexFileLogged(
+             channel_priv_key_out_file_path,
+             generate_hsm_payload_response.encrypted_channel_priv_key) &&
          WriteHexFileLogged(serialized_hsm_payload_out_file_path,
                             serialized_hsm_payload) &&
-         WriteHexFileLogged(recovery_secret_out_file_path, recovery_key);
+         WriteHexFileLogged(recovery_secret_out_file_path,
+                            generate_hsm_payload_response.recovery_key);
 }
 
 bool DoRecoveryCryptoCreateRecoveryRequestAction(

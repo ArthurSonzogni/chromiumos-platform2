@@ -99,18 +99,15 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   }
 
   // Generates HSM payload that would be persisted on a chromebook.
-  HsmPayload hsm_payload;
-  brillo::SecureBlob encrypted_rsa_priv_key;
-  brillo::SecureBlob encrypted_destination_share;
-  brillo::SecureBlob recovery_key;
-  brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob encrypted_channel_priv_key;
   // TODO(b/184924482): set values in onboarding_metadata.
   OnboardingMetadata onboarding_metadata;
-  if (!recovery->GenerateHsmPayload(
-          mediator_pub_key, onboarding_metadata, obfuscated_username,
-          &hsm_payload, &encrypted_rsa_priv_key, &encrypted_destination_share,
-          &recovery_key, &channel_pub_key, &encrypted_channel_priv_key)) {
+  cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
+      {.mediator_pub_key = mediator_pub_key,
+       .onboarding_metadata = onboarding_metadata,
+       .obfuscated_username = obfuscated_username});
+  cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
+  if (!recovery->GenerateHsmPayload(generate_hsm_payload_request,
+                                    &generate_hsm_payload_response)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
@@ -123,7 +120,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
+  if (!DeriveSecretsScrypt(generate_hsm_payload_response.recovery_key, salt,
+                           {&aes_skey, &vkk_iv})) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInCreate),
@@ -139,7 +137,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   CryptohomeRecoveryAuthBlockState auth_state;
 
   brillo::SecureBlob hsm_payload_cbor;
-  if (!SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_cbor)) {
+  if (!SerializeHsmPayloadToCbor(generate_hsm_payload_response.hsm_payload,
+                                 &hsm_payload_cbor)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockCborConvFailedInCreate),
@@ -149,10 +148,13 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   }
   auth_state.hsm_payload = hsm_payload_cbor;
 
-  auth_state.encrypted_destination_share = encrypted_destination_share;
-  auth_state.encrypted_channel_priv_key = encrypted_channel_priv_key;
-  auth_state.channel_pub_key = channel_pub_key;
-  auth_state.encrypted_rsa_priv_key = encrypted_rsa_priv_key;
+  auth_state.encrypted_destination_share =
+      generate_hsm_payload_response.encrypted_destination_share;
+  auth_state.encrypted_channel_priv_key =
+      generate_hsm_payload_response.encrypted_channel_priv_key;
+  auth_state.channel_pub_key = generate_hsm_payload_response.channel_pub_key;
+  auth_state.encrypted_rsa_priv_key =
+      generate_hsm_payload_response.encrypted_rsa_priv_key;
   auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
 

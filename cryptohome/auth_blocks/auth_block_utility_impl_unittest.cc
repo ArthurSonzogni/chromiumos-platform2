@@ -1579,12 +1579,22 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
 
     cryptorecovery::HsmPayload hsm_payload;
     brillo::SecureBlob recovery_key;
-    EXPECT_TRUE(recovery->GenerateHsmPayload(
-        mediator_pub_key, cryptorecovery::OnboardingMetadata{},
-        /*obfuscated_username=*/"obfuscated_username", &hsm_payload,
-        &rsa_priv_key_, &destination_share_, &recovery_key, &channel_pub_key_,
-        &channel_priv_key_));
-    EXPECT_TRUE(SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_));
+    cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
+        {.mediator_pub_key = mediator_pub_key,
+         .onboarding_metadata = cryptorecovery::OnboardingMetadata{},
+         .obfuscated_username = "obfuscated_username"});
+    cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
+    EXPECT_TRUE(recovery->GenerateHsmPayload(generate_hsm_payload_request,
+                                             &generate_hsm_payload_response));
+    rsa_priv_key_ = generate_hsm_payload_response.encrypted_rsa_priv_key;
+    destination_share_ =
+        generate_hsm_payload_response.encrypted_destination_share;
+    channel_pub_key_ = generate_hsm_payload_response.channel_pub_key;
+    channel_priv_key_ =
+        generate_hsm_payload_response.encrypted_channel_priv_key;
+    recovery_key = generate_hsm_payload_response.recovery_key;
+    EXPECT_TRUE(SerializeHsmPayloadToCbor(
+        generate_hsm_payload_response.hsm_payload, &hsm_payload_));
 
     crypto_.Init();
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(

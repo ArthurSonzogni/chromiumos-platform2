@@ -100,6 +100,26 @@ class RecoveryCryptoTpmBackend {
       brillo::SecureBlob* signature) = 0;
 };
 
+// RecoveryCrypto input parameters for function GenerateHsmPayload.
+struct GenerateHsmPayloadRequest {
+  hwsec_foundation::NoDefault<brillo::SecureBlob> mediator_pub_key;
+  // The metadata generated during the Onboarding workflow on a Chromebook
+  // (OMD).
+  hwsec_foundation::NoDefault<OnboardingMetadata> onboarding_metadata;
+  // Used to generate PCR map.
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+};
+
+// RecoveryCrypto output parameters for function GenerateHsmPayload.
+struct GenerateHsmPayloadResponse {
+  HsmPayload hsm_payload;
+  brillo::SecureBlob encrypted_rsa_priv_key;
+  brillo::SecureBlob encrypted_destination_share;
+  brillo::SecureBlob recovery_key;
+  brillo::SecureBlob channel_pub_key;
+  brillo::SecureBlob encrypted_channel_priv_key;
+};
+
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
 // dealer is invoked during initial setup to generate random shares. The dealer
@@ -183,15 +203,8 @@ class RecoveryCrypto {
   // The resulting destination share should be either added to TPM 2.0 or sealed
   // with kav for TPM 1.2 and stored in the host.
   virtual bool GenerateHsmPayload(
-      const brillo::SecureBlob& mediator_pub_key,
-      const OnboardingMetadata& onboarding_metadata,
-      const std::string& obfuscated_username,
-      HsmPayload* hsm_payload,
-      brillo::SecureBlob* encrypted_rsa_priv_key,
-      brillo::SecureBlob* encrypted_destination_share,
-      brillo::SecureBlob* recovery_key,
-      brillo::SecureBlob* channel_pub_key,
-      brillo::SecureBlob* encrypted_channel_priv_key) const = 0;
+      const GenerateHsmPayloadRequest& request,
+      GenerateHsmPayloadResponse* response) const = 0;
 
   // Recovers destination. Returns false if error occurred.
   // Formula:

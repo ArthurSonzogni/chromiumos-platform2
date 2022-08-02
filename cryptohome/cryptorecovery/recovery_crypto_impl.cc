@@ -386,15 +386,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 }
 
 bool RecoveryCryptoImpl::GenerateHsmPayload(
-    const brillo::SecureBlob& mediator_pub_key,
-    const OnboardingMetadata& onboarding_metadata,
-    const std::string& obfuscated_username,
-    HsmPayload* hsm_payload,
-    brillo::SecureBlob* encrypted_rsa_priv_key,
-    brillo::SecureBlob* encrypted_destination_share,
-    brillo::SecureBlob* recovery_key,
-    brillo::SecureBlob* channel_pub_key,
-    brillo::SecureBlob* encrypted_channel_priv_key) const {
+    const GenerateHsmPayloadRequest& request,
+    GenerateHsmPayloadResponse* response) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -437,7 +430,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
       {.ec = ec_,
        .own_key_pair = destination_share_key_pair,
        .auth_value = key_auth_value,
-       .obfuscated_username = obfuscated_username});
+       .obfuscated_username = request.obfuscated_username});
   EncryptEccPrivateKeyResponse tpm_backend_response_destination_share;
   if (!tpm_backend_->EncryptEccPrivateKey(
           tpm_backend_request_destination_share,
@@ -445,7 +438,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to encrypt destination share";
     return false;
   }
-  *encrypted_destination_share =
+  response->encrypted_destination_share =
       tpm_backend_response_destination_share.encrypted_own_priv_key;
 
   crypto::ScopedEC_POINT recovery_pub_point =
@@ -458,7 +451,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
 
   // Generate RSA key pair
   brillo::SecureBlob rsa_public_key_der;
-  if (!tpm_backend_->GenerateRsaKeyPair(encrypted_rsa_priv_key,
+  if (!tpm_backend_->GenerateRsaKeyPair(&response->encrypted_rsa_priv_key,
                                         &rsa_public_key_der)) {
     LOG(ERROR) << "Error creating PCR bound signing key.";
     return false;
@@ -470,7 +463,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to generate channel key pair";
     return false;
   }
-  if (!ec_.EncodeToSpkiDer(channel_key_pair, channel_pub_key, context.get())) {
+  if (!ec_.EncodeToSpkiDer(channel_key_pair, &response->channel_pub_key,
+                           context.get())) {
     LOG(ERROR) << "Failed to convert channel_pub_key to SubjectPublicKeyInfo";
     return false;
   }
@@ -481,7 +475,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
       {.ec = ec_,
        .own_key_pair = channel_key_pair,
        .auth_value = std::nullopt,
-       .obfuscated_username = obfuscated_username});
+       .obfuscated_username = request.obfuscated_username});
   EncryptEccPrivateKeyResponse tpm_backend_response_channel_priv_key;
   if (!tpm_backend_->EncryptEccPrivateKey(
           tpm_backend_request_channel_priv_key,
@@ -489,7 +483,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to encrypt channel_priv_key";
     return false;
   }
-  *encrypted_channel_priv_key =
+  response->encrypted_channel_priv_key =
       tpm_backend_response_channel_priv_key.encrypted_own_priv_key;
 
   crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
@@ -500,9 +494,10 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
 
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
-  if (!GenerateHsmAssociatedData(*channel_pub_key, rsa_public_key_der,
-                                 publisher_key_pair, onboarding_metadata,
-                                 &hsm_payload->associated_data)) {
+  if (!GenerateHsmAssociatedData(response->channel_pub_key, rsa_public_key_der,
+                                 publisher_key_pair,
+                                 request.onboarding_metadata,
+                                 &(response->hsm_payload.associated_data))) {
     LOG(ERROR) << "Failed to generate HSM associated data cbor";
     return false;
   }
@@ -546,7 +541,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Generate symmetric key for encrypting PT from (G*h)*u (where G*h is the
   // mediator public key provided as input, and u is the publisher private key).
   crypto::ScopedEC_POINT mediator_pub_point =
-      ec_.DecodeFromSpkiDer(mediator_pub_key, context.get());
+      ec_.DecodeFromSpkiDer(request.mediator_pub_key, context.get());
   if (!mediator_pub_point) {
     LOG(ERROR) << "Failed to convert mediator_pub_key to EC_POINT";
     return false;
@@ -585,9 +580,10 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
-  if (!AesGcmEncrypt(plain_text_cbor, hsm_payload->associated_data, aes_gcm_key,
-                     &hsm_payload->iv, &hsm_payload->tag,
-                     &hsm_payload->cipher_text)) {
+  if (!AesGcmEncrypt(plain_text_cbor, response->hsm_payload.associated_data,
+                     aes_gcm_key, &response->hsm_payload.iv,
+                     &response->hsm_payload.tag,
+                     &response->hsm_payload.cipher_text)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption of HSM plain text";
     return false;
   }
@@ -601,7 +597,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   dealer_pub_key.clear();
   publisher_key_pair.reset();
 
-  GenerateRecoveryKey(recovery_pub_point, dealer_key_pair, recovery_key);
+  GenerateRecoveryKey(recovery_pub_point, dealer_key_pair,
+                      &response->recovery_key);
   return true;
 }
 
