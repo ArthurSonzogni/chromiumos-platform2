@@ -16,7 +16,9 @@ ResourceCollectorStorage::ResourceCollectorStorage(
     base::TimeDelta interval, const base::FilePath& storage_directory)
     : ResourceCollector(interval), storage_directory_(storage_directory) {}
 
-ResourceCollectorStorage::~ResourceCollectorStorage() = default;
+ResourceCollectorStorage::~ResourceCollectorStorage() {
+  StopTimer();
+}
 
 int ResourceCollectorStorage::ConvertBytesToMibs(int bytes) {
   // Round the result to the nearest MiB.

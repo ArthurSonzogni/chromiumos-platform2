@@ -22,7 +22,9 @@ ResourceCollectorMemory::ResourceCollectorMemory(
   DCHECK(memory_resource_);
 }
 
-ResourceCollectorMemory::~ResourceCollectorMemory() = default;
+ResourceCollectorMemory::~ResourceCollectorMemory() {
+  StopTimer();
+}
 
 // static
 int ResourceCollectorMemory::ConvertBytesTo0_1Mibs(int bytes) {

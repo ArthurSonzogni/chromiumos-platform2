@@ -13,6 +13,7 @@ ResourceCollectorMock::ResourceCollectorMock(base::TimeDelta interval)
 
 ResourceCollectorMock::~ResourceCollectorMock() {
   Destruct();
+  StopTimer();
 }
 
 }  // namespace reporting::analytics

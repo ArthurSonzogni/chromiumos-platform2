@@ -21,7 +21,9 @@ namespace reporting::analytics {
 ResourceCollectorCpu::ResourceCollectorCpu(base::TimeDelta interval)
     : ResourceCollector(interval) {}
 
-ResourceCollectorCpu::~ResourceCollectorCpu() = default;
+ResourceCollectorCpu::~ResourceCollectorCpu() {
+  StopTimer();
+}
 
 void ResourceCollectorCpu::Collect() {
   const auto cpu_percentage = tallier_->Tally();
