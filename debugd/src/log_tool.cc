@@ -550,15 +550,15 @@ const std::array kFeedbackLogs {
 // Fills |dictionary| with the contents of the logs in |logs|.
 template <std::size_t N>
 void GetLogsInDictionary(const std::array<Log, N>& logs,
-                         base::Value* dictionary) {
+                         base::Value::Dict* dictionary) {
   for (const Log& log : logs) {
-    dictionary->SetStringKey(log.GetName(), log.GetLogData());
+    dictionary->Set(log.GetName(), log.GetLogData());
   }
 }
 
 // Serializes the |dictionary| into the file with the given |fd| in a JSON
 // format.
-void SerializeLogsAsJSON(const base::Value& dictionary,
+void SerializeLogsAsJSON(const base::Value::Dict& dictionary,
                          const base::ScopedFD& fd) {
   string logs_json;
   base::JSONWriter::WriteWithOptions(
@@ -618,9 +618,9 @@ void GetOsReleaseInfo(LogTool::LogMap* map) {
 }
 
 void PopulateDictionaryValue(const LogTool::LogMap& map,
-                             base::Value* dictionary) {
+                             base::Value::Dict* dictionary) {
   for (const auto& kv : map) {
-    dictionary->SetStringKey(kv.first, kv.second);
+    dictionary->Set(kv.first, kv.second);
   }
 }
 
@@ -993,7 +993,7 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username,
                                  PerfTool* perf_tool) {
   LogMap results;
-  base::Value dictionary(base::Value::Type::DICTIONARY);
+  base::Value::Dict dictionary;
   // Maps each subtask to a callable, which performs that task when invoked.
   // Should not contain ordered tasks, as the invocation order is not preserved.
   FuncMap subtasks;
@@ -1007,20 +1007,20 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                     base::Unretained(this), true)));
   subtasks.emplace(std::make_pair("kCommandLogsVerbose",
                                   base::BindOnce(
-                                      [](base::Value* dictionary) {
+                                      [](base::Value::Dict* dictionary) {
                                         GetLogsInDictionary(kCommandLogsVerbose,
                                                             dictionary);
                                       },
                                       &dictionary)));
   subtasks.emplace(std::make_pair(
       "kCommandLogs", base::BindOnce(
-                          [](base::Value* dictionary) {
+                          [](base::Value::Dict* dictionary) {
                             GetLogsInDictionary(kCommandLogs, dictionary);
                           },
                           &dictionary)));
   subtasks.emplace(std::make_pair(
       "kFeedbackLogs", base::BindOnce(
-                           [](base::Value* dictionary) {
+                           [](base::Value::Dict* dictionary) {
                              GetLogsInDictionary(kFeedbackLogs, dictionary);
                            },
                            &dictionary)));
@@ -1102,12 +1102,11 @@ std::string LogTool::GetArcBugReport(const std::string& username,
 }
 
 void LogTool::GetArcBugReportInDictionary(const std::string& username,
-                                          base::Value* dictionary) {
+                                          base::Value::Dict* dictionary) {
   bool is_backup;
   std::string arc_bug_report = GetArcBugReport(username, &is_backup);
-  dictionary->SetStringKey(kArcBugReportBackupKey,
-                           (is_backup ? "true" : "false"));
-  dictionary->SetStringKey(arc_bug_report_log_->GetName(), arc_bug_report);
+  dictionary->Set(kArcBugReportBackupKey, (is_backup ? "true" : "false"));
+  dictionary->Set(arc_bug_report_log_->GetName(), arc_bug_report);
 }
 
 void LogTool::BackupArcBugReport(const std::string& username) {

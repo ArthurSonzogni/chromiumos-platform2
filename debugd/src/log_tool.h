@@ -137,7 +137,7 @@ class LogTool : public debugd::LogProvider {
   bool IsUserHashValid(const std::string& userhash);
 
   void GetArcBugReportInDictionary(const std::string& username,
-                                   base::Value* dictionary);
+                                   base::Value::Dict* dictionary);
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>

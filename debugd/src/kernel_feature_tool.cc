@@ -32,10 +32,10 @@ constexpr char kErrorPath[] = "org.chromium.debugd.KernelFeatureError";
 constexpr char kKernelFeaturesPath[] = "/etc/init/kernel-features.json";
 
 // JSON Helper to retrieve a string value given a string key
-bool GetStringFromKey(base::Value* obj,
+bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
                       std::string* value) {
-  const std::string* val = obj->FindStringKey(key);
+  const std::string* val = obj.FindString(key);
   if (!val || val->empty()) {
     return false;
   }
@@ -122,41 +122,37 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
     return false;
   }
 
-  for (unsigned i = 0; i < root->GetList().size(); i++) {
-    base::Value item = std::move(root->GetList()[i]);
-    base::Value* feature_json_obj = &item;
-
-    if (!feature_json_obj->is_dict()) {
-      *err_str = "debugd: features conf not list of dicts!";
-      return false;
-    }
-
-    KernelFeature feature_obj;
-    if (!MakeFeatureObject(feature_json_obj, err_str, feature_obj)) {
-      return false;
-    }
-
-    auto got = feature_map_.find(feature_obj.name());
-    if (feature_obj.name() != "SpecPageFault") {
-      *err_str = "debugd should not be used for new trials; use featured!";
-      return false;
-    }
-    if (got != feature_map_.end()) {
-      *err_str =
-          "debugd: Duplicate feature name found! : " + feature_obj.name();
-      return false;
-    }
-
-    feature_map_.insert(
-        std::make_pair(feature_obj.name(), std::move(feature_obj)));
+  base::Value& item = root->GetList()[0];
+  if (!item.is_dict()) {
+    *err_str = "debugd: features conf not list of dicts!";
+    return false;
   }
+  base::Value::Dict& feature_json_obj = item.GetDict();
+
+  KernelFeature feature_obj;
+  if (!MakeFeatureObject(feature_json_obj, err_str, feature_obj)) {
+    return false;
+  }
+
+  auto got = feature_map_.find(feature_obj.name());
+  if (feature_obj.name() != "SpecPageFault") {
+    *err_str = "debugd should not be used for new trials; use featured!";
+    return false;
+  }
+  if (got != feature_map_.end()) {
+    *err_str = "debugd: Duplicate feature name found! : " + feature_obj.name();
+    return false;
+  }
+
+  feature_map_.insert(
+      std::make_pair(feature_obj.name(), std::move(feature_obj)));
 
   features_parsed_ = true;
   return true;
 }
 
 // KernelFeature implementation (collect and execute commands).
-bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
+bool JsonFeatureParser::MakeFeatureObject(base::Value::Dict& feature_obj,
                                           std::string* err_str,
                                           KernelFeature& kern_feat) {
   std::string feat_name;
@@ -168,8 +164,8 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
   kern_feat.SetName(feat_name);
 
   // Commands for querying if device is supported
-  base::Value* support_cmd_list_obj =
-      feature_obj->FindListKey("support_check_commands");
+  base::Value::List* support_cmd_list_obj =
+      feature_obj.FindList("support_check_commands");
 
   if (!support_cmd_list_obj) {
     // Feature is assumed to be always supported, such as a kernel parameter
@@ -177,19 +173,17 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
     kern_feat.AddQueryCmd(std::make_unique<AlwaysSupportedCommand>());
   } else {
     // A support check command was provided, add it to the feature object.
-    if (!support_cmd_list_obj->is_list() ||
-        support_cmd_list_obj->GetList().size() == 0) {
+    if (support_cmd_list_obj->size() == 0) {
       *err_str = "debugd: Invalid format for support_check_commands commands";
       return false;
     }
 
-    for (unsigned i = 0; i < support_cmd_list_obj->GetList().size(); i++) {
-      base::Value item = std::move(support_cmd_list_obj->GetList()[i]);
+    for (auto& item : *support_cmd_list_obj) {
       if (!item.is_dict()) {
         *err_str = "debugd: support_check_commands is not list of dicts.";
         return false;
       }
-      base::Value* cmd_obj = &item;
+      auto& cmd_obj = item.GetDict();
       std::string cmd_name;
 
       if (!GetStringFromKey(cmd_obj, "name", &cmd_name)) {
@@ -212,20 +206,18 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
   }
 
   // Commands to execute to enable feature
-  base::Value* cmd_list_obj = feature_obj->FindListKey("commands");
-  if (!cmd_list_obj || !cmd_list_obj->is_list() ||
-      cmd_list_obj->GetList().size() == 0) {
+  base::Value::List* cmd_list_obj = feature_obj.FindList("commands");
+  if (!cmd_list_obj || cmd_list_obj->size() == 0) {
     *err_str = "debugd: Failed to get commands list in feature.";
     return false;
   }
 
-  for (unsigned i = 0; i < cmd_list_obj->GetList().size(); i++) {
-    base::Value item = std::move(cmd_list_obj->GetList()[i]);
+  for (const auto& item : *cmd_list_obj) {
     if (!item.is_dict()) {
       *err_str = "debugd: cmd_list is not list of dicts.";
       return false;
     }
-    base::Value* cmd_obj = &item;
+    auto& cmd_obj = item.GetDict();
     std::string cmd_name;
 
     if (!GetStringFromKey(cmd_obj, "name", &cmd_name)) {

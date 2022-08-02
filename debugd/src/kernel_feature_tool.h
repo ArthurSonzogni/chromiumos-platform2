@@ -102,7 +102,7 @@ class JsonFeatureParser : public FeatureParserBase {
   bool ParseFile(const base::FilePath& path, std::string* err_str) override;
 
  private:
-  bool MakeFeatureObject(base::Value* feature_obj,
+  bool MakeFeatureObject(base::Value::Dict& feature_obj,
                          std::string* err_str,
                          KernelFeature& kf);
 };

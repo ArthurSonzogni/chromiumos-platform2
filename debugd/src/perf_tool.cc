@@ -116,26 +116,29 @@ void AddQuipperArguments(brillo::Process* process,
 //  },
 //
 // it will write "1" to /sys/devices/system/cpu/cpu3/cpuidle/state2/disable.
-bool WriteCpuIdleStates(const base::Value& all_cpu_states,
+bool WriteCpuIdleStates(const base::Value::Dict& all_cpu_states,
                         bool disable = false) {
-  if (!disable && (!all_cpu_states.is_dict() ||
-                   all_cpu_states.DictItems().size() > kMaxCpuNumber)) {
+  if (!disable && all_cpu_states.size() > kMaxCpuNumber) {
     LOG(ERROR) << "Malformed cpuidle states format";
     return false;
   }
   bool completed = true;
 
-  for (auto all_states : all_cpu_states.DictItems()) {
+  for (auto all_states : all_cpu_states) {
     int cpu;
     if (!disable && !base::StringToInt(all_states.first, &cpu)) {
       LOG(ERROR) << "Expecting a CPU number, found " << all_states.first;
       return false;
     }
-    if (!disable && all_states.second.DictItems().size() > kMaxStateNumber) {
+    if (!disable && !all_states.second.is_dict()) {
+      LOG(ERROR) << "Expecting a dictionary for cpuidle";
+      return false;
+    }
+    if (!disable && all_states.second.GetDict().size() > kMaxStateNumber) {
       LOG(ERROR) << "Too many states for cpuidle";
       return false;
     }
-    for (auto state_pair : all_states.second.DictItems()) {
+    for (auto state_pair : all_states.second.GetDict()) {
       int state;
       if (!base::StringToInt(state_pair.first, &state)) {
         LOG(ERROR) << "State is not a number: " << state_pair.first;
@@ -181,9 +184,9 @@ bool DisableCpuIdleStates() {
     return false;
   }
 
-  base::Value all_cpu_states(base::Value::Type::DICTIONARY);
+  base::Value::Dict all_cpu_states;
   for (const auto& cpu : cpu_nums) {
-    base::Value all_states(base::Value::Type::DICTIONARY);
+    base::Value::Dict all_states;
     for (int state = 0;; ++state) {
       const auto disable_file = base::FilePath(
           base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));
@@ -192,11 +195,10 @@ bool DisableCpuIdleStates() {
 
       std::string disable_state;
       base::ReadFileToString(disable_file, &disable_state);
-      all_states.SetKey(
-          base::NumberToString(state),
-          base::Value(base::CollapseWhitespaceASCII(disable_state, true)));
+      all_states.Set(base::NumberToString(state),
+                     base::CollapseWhitespaceASCII(disable_state, true));
     }
-    all_cpu_states.SetKey(cpu, std::move(all_states));
+    all_cpu_states.Set(cpu, std::move(all_states));
   }
   std::string json;
   base::JSONWriter::Write(all_cpu_states, &json);
@@ -225,8 +227,8 @@ void RestoreCpuIdleStates() {
     return;
   }
   std::optional<base::Value> all_cpu_states = base::JSONReader::Read(json);
-  if (all_cpu_states.has_value())
-    WriteCpuIdleStates(*all_cpu_states);
+  if (all_cpu_states.has_value() && all_cpu_states->is_dict())
+    WriteCpuIdleStates(all_cpu_states->GetDict());
   base::DeleteFile(cpuidle_states_map);
 }
 

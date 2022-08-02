@@ -234,9 +234,9 @@ void AddSignalStrengths(
   for (const auto& service_path : service_paths) {
     auto service_properties =
         proxy->GetProperties(shill::kFlimflamServiceInterface, service_path);
-    std::optional<int> strength = service_properties->FindIntKey("Strength");
-    const std::string* name = service_properties->FindStringKey("Name");
-    const std::string* device = service_properties->FindStringKey("Device");
+    std::optional<int> strength = service_properties->FindInt("Strength");
+    const std::string* name = service_properties->FindString("Name");
+    const std::string* device = service_properties->FindString("Device");
     if (!strength.has_value() || name == nullptr || device == nullptr) {
       continue;
     }

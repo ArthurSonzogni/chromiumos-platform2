@@ -5,6 +5,7 @@
 #include "debugd/src/helpers/system_service_proxy.h"
 
 #include <optional>
+#include <utility>
 
 #include <base/memory/ptr_util.h>
 #include <dbus/values_util.h>
@@ -57,33 +58,37 @@ std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
   return std::optional<base::Value>(dbus::PopDataAsValue(&reader));
 }
 
-std::optional<base::Value> SystemServiceProxy::GetProperties(
+std::optional<base::Value::Dict> SystemServiceProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(kDBusPropertiesInterface,
                                kDBusPropertiesGetAllMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(interface_name);
-  return CallMethodAndGetResponse(object_path, &method_call);
+  auto response = CallMethodAndGetResponse(object_path, &method_call);
+  if (!response || !response->is_dict())
+    return std::nullopt;
+  return std::move(response->GetDict());
 }
 
-base::Value SystemServiceProxy::BuildObjectPropertiesMap(
+base::Value::Dict SystemServiceProxy::BuildObjectPropertiesMap(
     const std::string& interface_name,
     const std::vector<dbus::ObjectPath>& object_paths) {
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value::Dict result;
   for (const auto& object_path : object_paths) {
-    result.SetKey(object_path.value(),
-                  *GetProperties(interface_name, object_path));
+    result.Set(object_path.value(),
+               *GetProperties(interface_name, object_path));
   }
   return result;
 }
 
 // static
 std::vector<dbus::ObjectPath> SystemServiceProxy::GetObjectPaths(
-    const base::Value& properties, const std::string& property_name) {
+    const base::Value::Dict& properties, const std::string& property_name) {
   std::vector<dbus::ObjectPath> object_paths;
-  const base::Value* paths = properties.FindListPath(property_name);
+  const base::Value::List* paths =
+      properties.FindListByDottedPath(property_name);
   if (paths != nullptr) {
-    for (const auto& path : paths->GetList()) {
+    for (const auto& path : *paths) {
       if (path.is_string()) {
         object_paths.emplace_back(path.GetString());
       }

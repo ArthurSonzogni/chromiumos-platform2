@@ -51,17 +51,17 @@ class SystemServiceProxy {
       const dbus::ObjectPath& object_path, dbus::MethodCall* method_call);
 
   // Gets the properties associated with the interface named |interface_name|
-  // of a D-Bus object identified by |object_path|. The properties are expected
-  // to be a dictionary. Returns std::nullopt on error. The implementation
-  // provided by this class uses org.freedesktop.DBus.Properties.GetAll to
-  // retrieve properties, but a derived class can override this method to use an
-  // alternative means to retrieve properties.
-  virtual std::optional<base::Value> GetProperties(
+  // of a D-Bus object identified by |object_path|. Returns std::nullopt on
+  // error. The implementation provided by this class uses
+  // org.freedesktop.DBus.Properties.GetAll to retrieve properties, but a
+  // derived class can override this method to use an alternative means to
+  // retrieve properties.
+  virtual std::optional<base::Value::Dict> GetProperties(
       const std::string& interface_name, const dbus::ObjectPath& object_path);
 
   // Returns a map from object path to object properties with the interface
   // named |interface_name| for each object listed in |object_paths|.
-  base::Value BuildObjectPropertiesMap(
+  base::Value::Dict BuildObjectPropertiesMap(
       const std::string& interface_name,
       const std::vector<dbus::ObjectPath>& object_paths);
 
@@ -70,7 +70,7 @@ class SystemServiceProxy {
   // of object paths. Any non-string entry in the list is ignored. If the
   // property isn't found or isn't a list, returns an empty list.
   static std::vector<dbus::ObjectPath> GetObjectPaths(
-      const base::Value& properties, const std::string& property_name);
+      const base::Value::Dict& properties, const std::string& property_name);
 
  protected:
   SystemServiceProxy(scoped_refptr<dbus::Bus> bus,

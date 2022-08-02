@@ -7,6 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include <optional>
+#include <utility>
 
 namespace debugd {
 
@@ -21,10 +22,13 @@ std::unique_ptr<ShillProxy> ShillProxy::Create() {
 ShillProxy::ShillProxy(scoped_refptr<dbus::Bus> bus)
     : SystemServiceProxy(bus, shill::kFlimflamServiceName) {}
 
-std::optional<base::Value> ShillProxy::GetProperties(
+std::optional<base::Value::Dict> ShillProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(interface_name, shill::kGetPropertiesFunction);
-  return CallMethodAndGetResponse(object_path, &method_call);
+  auto response = CallMethodAndGetResponse(object_path, &method_call);
+  if (!response || !response->is_dict())
+    return std::nullopt;
+  return std::move(response->GetDict());
 }
 
 }  // namespace debugd

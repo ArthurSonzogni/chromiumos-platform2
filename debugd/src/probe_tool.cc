@@ -87,10 +87,6 @@ bool GetFunctionNameFromProbeStatement(brillo::ErrorPtr* error,
 
 }  // namespace
 
-ProbeTool::ProbeTool() {
-  minijail_args_dict_ = base::Value(base::Value::Type::DICTIONARY);
-}
-
 bool ProbeTool::EvaluateProbeFunction(
     brillo::ErrorPtr* error,
     const std::string& probe_statement,
@@ -128,7 +124,7 @@ bool ProbeTool::EvaluateProbeFunction(
 void ProbeTool::SetMinijailArgumentsForTesting(
     std::unique_ptr<base::Value> dict) {
   DCHECK(dict && dict->is_dict());
-  minijail_args_dict_ = std::move(*dict);
+  minijail_args_dict_ = std::move(dict->GetDict());
 }
 
 bool ProbeTool::LoadMinijailArguments(brillo::ErrorPtr* error) {
@@ -149,7 +145,7 @@ bool ProbeTool::LoadMinijailArguments(brillo::ErrorPtr* error) {
                          minijail_args_str.c_str());
     return false;
   }
-  minijail_args_dict_ = std::move(*dict);
+  minijail_args_dict_ = std::move(dict->GetDict());
   return true;
 }
 
@@ -157,12 +153,12 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
                                           const std::string& function_name,
                                           std::vector<std::string>* args_out) {
   args_out->clear();
-  if (minijail_args_dict_.DictEmpty()) {
+  if (minijail_args_dict_.empty()) {
     if (!LoadMinijailArguments(error)) {
       return false;
     }
   }
-  const auto* minijail_args = minijail_args_dict_.FindListKey(function_name);
+  const auto* minijail_args = minijail_args_dict_.FindList(function_name);
   if (!minijail_args) {
     DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
                          "Arguments of \"%s\" is not found in Minijail "
@@ -173,7 +169,7 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
   DVLOG(1) << "Minijail arguments: " << (*minijail_args);
   std::string prev_arg;
   bool is_bind_arg = false;
-  for (const auto& arg : minijail_args->GetList()) {
+  for (const auto& arg : *minijail_args) {
     if (!arg.is_string()) {
       std::string arg_str;
       JSONStringValueSerializer serializer(&arg_str);

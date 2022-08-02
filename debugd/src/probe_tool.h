@@ -18,7 +18,7 @@ namespace debugd {
 
 class ProbeTool {
  public:
-  ProbeTool();
+  ProbeTool() = default;
   ProbeTool(const ProbeTool&) = delete;
   ProbeTool& operator=(const ProbeTool&) = delete;
 
@@ -43,7 +43,7 @@ class ProbeTool {
 
  private:
   bool LoadMinijailArguments(brillo::ErrorPtr* error);
-  base::Value minijail_args_dict_;
+  base::Value::Dict minijail_args_dict_;
 };
 
 }  // namespace debugd
