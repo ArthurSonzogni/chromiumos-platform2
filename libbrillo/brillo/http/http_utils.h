@@ -11,14 +11,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_form_data.h>
 #include <brillo/http/http_request.h>
-
-namespace base {
-class Value;
-}  // namespace base
 
 namespace brillo {
 namespace http {
@@ -293,8 +290,7 @@ BRILLO_EXPORT RequestID PatchJson(const std::string& url,
 // Given an http::Response object, parse the body data into Json object.
 // Returns null if failed. Optional |error| can be passed in to
 // get the extended error information as to why the parse failed.
-
-BRILLO_EXPORT std::optional<base::Value> ParseJsonResponse(
+BRILLO_EXPORT std::optional<base::Value::Dict> ParseJsonResponse(
     Response* response, int* status_code, brillo::ErrorPtr* error);
 
 // Converts a request header name to canonical form (lowercase with uppercase

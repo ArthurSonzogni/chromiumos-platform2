@@ -49,9 +49,9 @@ bool LogicalVolumeBackingDevice::Purge() {
 }
 
 bool LogicalVolumeBackingDevice::Create() {
-  base::Value lv_config(base::Value::Type::DICTIONARY);
-  lv_config.SetStringKey("name", name_);
-  lv_config.SetStringKey("size", base::NumberToString(size_));
+  base::Value::Dict lv_config;
+  lv_config.Set("name", name_);
+  lv_config.Set("size", base::NumberToString(size_));
 
   lv_ = lvm_->CreateLogicalVolume(*vg_.get(), *thinpool_.get(), lv_config);
   if (!lv_ || !lv_->IsValid()) {

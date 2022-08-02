@@ -161,11 +161,11 @@ bool Lvmd::CreateLogicalVolume(
   auto thinpool_name = in_thinpool.name();
   auto thinpool = brillo::Thinpool(thinpool_name, vg_name, {});
 
-  base::Value config(base::Value::Type::DICTIONARY);
+  base::Value::Dict config;
   auto lv_name = in_logical_volume_configuration.name();
-  config.SetStringKey("name", lv_name);
-  config.SetStringKey("size", brillo::string_utils::ToString(
-                                  in_logical_volume_configuration.size()));
+  config.Set("name", lv_name);
+  config.Set("size", brillo::string_utils::ToString(
+                         in_logical_volume_configuration.size()));
 
   auto opt_lv = lvm_->CreateLogicalVolume(vg, thinpool, config);
 

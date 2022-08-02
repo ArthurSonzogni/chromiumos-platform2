@@ -146,7 +146,7 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
 
   // The fetched config should be a valid json file.
   brillo::ErrorPtr error;
-  const std::optional<base::Value> json =
+  const std::optional<base::Value::Dict> json =
       brillo::http::ParseJsonResponse(response.get(), nullptr, &error);
   if (error || !json.has_value()) {
     LOG(WARNING) << "The fetched USS config is not a valid json file.";
@@ -160,11 +160,12 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   // config.
   const std::string last_invalid_path =
       base::JoinString({chromeos_release_track_, kConfigLastInvalidKey}, ".");
-  std::optional<int> last_invalid = json->FindIntPath(last_invalid_path);
+  std::optional<int> last_invalid =
+      json->FindIntByDottedPath(last_invalid_path);
   if (!last_invalid.has_value()) {
     const std::string default_last_invalid_path =
         base::JoinString({kDefaultConfigKey, kConfigLastInvalidKey}, ".");
-    last_invalid = json->FindIntPath(default_last_invalid_path);
+    last_invalid = json->FindIntByDottedPath(default_last_invalid_path);
   }
 
   // Check whether the `population` field is present in the config that
@@ -172,11 +173,12 @@ void UssExperimentConfigFetcher::OnFetchSuccess(
   // config.
   const std::string population_path =
       base::JoinString({chromeos_release_track_, kConfigPopulationKey}, ".");
-  std::optional<double> population = json->FindDoublePath(population_path);
+  std::optional<double> population =
+      json->FindDoubleByDottedPath(population_path);
   if (!population.has_value()) {
     const std::string default_population_path =
         base::JoinString({kDefaultConfigKey, kConfigPopulationKey}, ".");
-    population = json->FindDoublePath(default_population_path);
+    population = json->FindDoubleByDottedPath(default_population_path);
   }
 
   // Check that both fields are parsed successfully.

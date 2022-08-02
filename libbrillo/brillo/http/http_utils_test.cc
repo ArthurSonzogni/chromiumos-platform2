@@ -178,27 +178,27 @@ TEST(HttpUtils, SendRequest_Headers) {
             brillo::mime::RemoveParameters(response->GetContentType()));
 
   auto json = ParseJsonResponse(response.get(), nullptr, nullptr);
-  const std::string* value = json->FindStringKey("method");
+  const std::string* value = json->FindString("method");
   ASSERT_TRUE(value);
   EXPECT_EQ(request_type::kPost, *value);
 
-  value = json->FindStringKey("data");
+  value = json->FindString("data");
   ASSERT_TRUE(value);
   EXPECT_EQ("abcd", *value);
 
-  value = json->FindStringPath("header.Cookie");
+  value = json->FindStringByDottedPath("header.Cookie");
   ASSERT_TRUE(value);
   EXPECT_EQ("flavor=vanilla", *value);
 
-  value = json->FindStringPath("header.Content-Type");
+  value = json->FindStringByDottedPath("header.Content-Type");
   ASSERT_TRUE(value);
   EXPECT_EQ(brillo::mime::application::kOctet_stream, *value);
 
-  value = json->FindStringPath("header.Content-Length");
+  value = json->FindStringByDottedPath("header.Content-Length");
   ASSERT_TRUE(value);
   EXPECT_EQ("4", *value);
 
-  value = json->FindStringPath("header.If-Match");
+  value = json->FindStringByDottedPath("header.If-Match");
   ASSERT_TRUE(value);
   EXPECT_EQ("*", *value);
 }
@@ -380,11 +380,11 @@ TEST(HttpUtils, PostPatchJson) {
   auto resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   ASSERT_TRUE(resp_json);
 
-  value = resp_json->FindStringKey("method");
+  value = resp_json->FindString("method");
   ASSERT_TRUE(value);
   EXPECT_EQ(request_type::kPost, *value);
 
-  value = resp_json->FindStringKey("data");
+  value = resp_json->FindString("data");
   ASSERT_TRUE(value);
   EXPECT_EQ("{\"key1\":\"val1\",\"key2\":\"val2\"}", *value);
 
@@ -393,11 +393,11 @@ TEST(HttpUtils, PostPatchJson) {
   resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   ASSERT_TRUE(resp_json);
 
-  value = resp_json->FindStringKey("method");
+  value = resp_json->FindString("method");
   ASSERT_TRUE(value);
   EXPECT_EQ(request_type::kPatch, *value);
 
-  value = resp_json->FindStringKey("data");
+  value = resp_json->FindString("data");
   ASSERT_TRUE(value);
   EXPECT_EQ("{\"key1\":\"val1\",\"key2\":\"val2\"}", *value);
 }
@@ -424,7 +424,7 @@ TEST(HttpUtils, ParseJsonResponse) {
     int code = 0;
     auto json = http::ParseJsonResponse(response.get(), &code, nullptr);
     ASSERT_TRUE(json);
-    const std::string* value = json->FindStringKey("data");
+    const std::string* value = json->FindString("data");
     ASSERT_TRUE(value);
     EXPECT_EQ(pair.first, brillo::string_utils::ToString(code));
     EXPECT_EQ(pair.second, *value);

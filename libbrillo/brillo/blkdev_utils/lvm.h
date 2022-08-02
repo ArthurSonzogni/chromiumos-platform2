@@ -64,7 +64,7 @@ class BRILLO_EXPORT LogicalVolumeManager {
   virtual std::optional<LogicalVolume> CreateLogicalVolume(
       const VolumeGroup& vg,
       const Thinpool& thinpool,
-      const base::Value& config);
+      const base::Value::Dict& config);
 
   // Removes a logical volume, if it exists. Returns false if the logical volume
   // exists and failed removal.

@@ -1082,11 +1082,10 @@ void ClobberState::CreateLogicalVolumeStack() {
     return;
   }
 
-  base::Value lv_config(base::Value::Type::DICTIONARY);
-  lv_config.SetStringKey("name", "unencrypted");
-  lv_config.SetStringKey(
-      "size",
-      base::NumberToString(thinpool_size * kLogicalVolumeSizePercent / 100));
+  base::Value::Dict lv_config;
+  lv_config.Set("name", "unencrypted");
+  lv_config.Set("size", base::NumberToString(thinpool_size *
+                                             kLogicalVolumeSizePercent / 100));
 
   std::optional<brillo::LogicalVolume> lv =
       lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);

@@ -320,9 +320,9 @@ RequestID PatchJson(const std::string& url,
                      std::move(error_callback));
 }
 
-std::optional<base::Value> ParseJsonResponse(Response* response,
-                                             int* status_code,
-                                             brillo::ErrorPtr* error) {
+std::optional<base::Value::Dict> ParseJsonResponse(Response* response,
+                                                   int* status_code,
+                                                   brillo::ErrorPtr* error) {
   if (!response)
     return std::nullopt;
 
@@ -358,7 +358,7 @@ std::optional<base::Value> ParseJsonResponse(Response* response,
                                json.c_str());
     return std::nullopt;
   }
-  return std::move(*json_result);
+  return std::move(json_result->GetDict());
 }
 
 std::string GetCanonicalHeaderName(const std::string& name) {
