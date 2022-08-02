@@ -39,6 +39,12 @@ const char kSessionManagerStartDeviceWipe[] = "StartDeviceWipe";
 const char kSessionManagerStartRemoteDeviceWipe[] = "StartRemoteDeviceWipe";
 const char kSessionManagerClearForcedReEnrollmentVpd[] =
     "ClearForcedReEnrollmentVpd";
+const char kSessionManagerUnblockDevModeForEnrollment[] =
+    "UnblockDevModeForEnrollment";
+const char kSessionManagerUnblockDevModeForInitialStateDetermination[] =
+    "UnblockDevModeForInitialStateDetermination";
+const char kSessionManagerUnblockDevModeForCarrierLock[] =
+    "UnblockDevModeForCarrierLock";
 const char kSessionManagerHandleSupervisedUserCreationStarting[] =
     "HandleSupervisedUserCreationStarting";
 const char kSessionManagerHandleSupervisedUserCreationFinished[] =
