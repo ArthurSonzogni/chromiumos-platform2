@@ -6,6 +6,8 @@
 
 #include "features/auto_framing/tests/auto_framing_test_fixture.h"
 
+#include <sync/sync.h>
+
 #include <utility>
 
 #include "features/auto_framing/auto_framing_stream_manipulator.h"
@@ -22,16 +24,21 @@ bool IsAspectRatioMatched(const Rect<float>& crop,
   return std::abs((static_cast<float>(src_width) * crop.width) /
                       (static_cast<float>(src_height) * crop.height) -
                   static_cast<float>(dst_width) /
-                      static_cast<float>(dst_height)) < 1e-2f;
+                      static_cast<float>(dst_height)) < 2e-2f;
 }
 
-bool IsRoiOnFace(const Rect<float>& roi, const Rect<float>& face) {
-  constexpr float kThreshold = 0.05f;
-  // Relax bottom bound for FPP detection since the ROI contains body points.
-  return std::abs(roi.left - face.left) <= kThreshold &&
-         std::abs(roi.top - face.top) <= kThreshold &&
-         std::abs(roi.right() - face.right()) <= kThreshold &&
-         roi.bottom() + kThreshold >= face.bottom();
+bool AreSameRects(const Rect<float>& r1,
+                  const Rect<float>& r2,
+                  float threshold) {
+  return std::abs(r1.left - r2.left) <= threshold &&
+         std::abs(r1.top - r2.top) <= threshold &&
+         std::abs(r1.right() - r2.right()) <= threshold &&
+         std::abs(r1.bottom() - r2.bottom()) <= threshold;
+}
+
+bool IsFullCrop(const Rect<float>& rect) {
+  constexpr float kThreshold = 1e-5f;
+  return rect.width >= 1.0 - kThreshold || rect.height >= 1.0 - kThreshold;
 }
 
 bool PrepareStaticMetadata(android::CameraMetadata* static_info,
@@ -134,7 +141,8 @@ bool AutoFramingTestFixture::SetUp(
     const Size& full_size,
     const Size& stream_size,
     float frame_rate,
-    std::vector<TestFrameInfo> input_frame_infos) {
+    std::vector<TestStreamConfig> test_stream_configs,
+    const AutoFramingStreamManipulator::Options& options) {
   if (!PrepareStaticMetadata(&static_info_, full_size, stream_size,
                              frame_rate)) {
     return false;
@@ -144,7 +152,8 @@ bool AutoFramingTestFixture::SetUp(
       .auto_framing_state = mojom::CameraAutoFramingState::OFF,
   };
   auto_framing_stream_manipulator_ =
-      std::make_unique<AutoFramingStreamManipulator>(&runtime_options_);
+      std::make_unique<AutoFramingStreamManipulator>(&runtime_options_,
+                                                     options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   if (!locked_static_info) {
@@ -202,14 +211,14 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
 
-  input_frame_infos_ = std::move(input_frame_infos);
-  for (size_t i = 0; i < input_frame_infos_.size(); ++i) {
+  test_stream_configs_ = std::move(test_stream_configs);
+  for (size_t i = 0; i < test_stream_configs_.size(); ++i) {
     input_buffers_.push_back(CreateTestFrameWithFace(
         input_stream_->width, input_stream_->height, input_stream_->format,
-        input_stream_->usage, input_frame_infos_[i].face_rect));
+        input_stream_->usage, test_stream_configs_[i].face_rect));
     if (!input_buffers_.back()) {
       LOGF(ERROR) << "Failed to create input frame with face rect: "
-                  << input_frame_infos_[i].face_rect.ToString();
+                  << test_stream_configs_[i].face_rect.ToString();
       return false;
     }
   }
@@ -226,13 +235,13 @@ bool AutoFramingTestFixture::SetUp(
 
 bool AutoFramingTestFixture::ProcessFrame(int64_t sensor_timestamp,
                                           bool is_enabled,
-                                          bool* is_face_detected) {
+                                          FramingResult* framing_result) {
   runtime_options_.auto_framing_state =
       is_enabled ? mojom::CameraAutoFramingState::ON_SINGLE
                  : mojom::CameraAutoFramingState::OFF;
   ++frame_number_;
   return ProcessCaptureRequest() &&
-         ProcessCaptureResult(sensor_timestamp, is_face_detected);
+         ProcessCaptureResult(sensor_timestamp, framing_result);
 }
 
 ScopedBufferHandle AutoFramingTestFixture::CreateTestFrameWithFace(
@@ -301,34 +310,20 @@ bool AutoFramingTestFixture::ProcessCaptureRequest() {
 
   base::span<const camera3_stream_buffer_t> hal_buffers =
       request.GetOutputBuffers();
-  switch (runtime_options_.auto_framing_state) {
-    case mojom::CameraAutoFramingState::OFF:
-      if (hal_buffers.size() != 1 || hal_buffers[0].stream != &output_stream_ ||
-          hal_buffers[0].buffer != output_buffer_.get()) {
-        LOGF(ERROR) << "Invalid processed capture request in OFF state";
-        return false;
-      }
-      break;
-    case mojom::CameraAutoFramingState::ON_SINGLE:
-    case mojom::CameraAutoFramingState::ON_MULTI:
-      if (hal_buffers.size() != 1 || hal_buffers[0].stream != input_stream_) {
-        LOGF(ERROR) << "Invalid processed capture request in ON state";
-        return false;
-      }
-      break;
+  if (hal_buffers.size() != 1 || hal_buffers[0].stream != input_stream_) {
+    LOGF(ERROR) << "Invalid processed capture request";
+    return false;
   }
 
   return true;
 }
 
-bool AutoFramingTestFixture::ProcessCaptureResult(int64_t sensor_timestamp,
-                                                  bool* is_face_detected) {
-  const bool is_enabled =
-      runtime_options_.auto_framing_state != mojom::CameraAutoFramingState::OFF;
+bool AutoFramingTestFixture::ProcessCaptureResult(
+    int64_t sensor_timestamp, FramingResult* framing_result) {
   const size_t frame_index = GetFrameIndex(sensor_timestamp);
   if (!PrepareResultMetadata(
           &result_metadata_, sensor_timestamp,
-          input_frame_infos_[frame_index].face_rect.AsRect<int32_t>())) {
+          test_stream_configs_[frame_index].face_rect.AsRect<int32_t>())) {
     return false;
   }
 
@@ -339,12 +334,10 @@ bool AutoFramingTestFixture::ProcessCaptureResult(int64_t sensor_timestamp,
     return false;
   }
   camera3_stream_buffer_t result_buffer = {
-      .stream = is_enabled ? const_cast<camera3_stream_t*>(input_stream_)
-                           : &output_stream_,
+      .stream = const_cast<camera3_stream_t*>(input_stream_),
       // HACK: The input buffers allocated by the pipeline is replaced by our
       // pre-filled ones.
-      .buffer =
-          is_enabled ? input_buffers_[frame_index].get() : output_buffer_.get(),
+      .buffer = input_buffers_[frame_index].get(),
       .status = CAMERA3_BUFFER_STATUS_OK,
       .acquire_fence = -1,
       .release_fence = -1,
@@ -372,41 +365,56 @@ bool AutoFramingTestFixture::ProcessCaptureResult(int64_t sensor_timestamp,
     LOGF(ERROR) << "Invalid processed capture result";
     return false;
   }
-
-  if (is_enabled) {
-    if (!IsAspectRatioMatched(
-            auto_framing_stream_manipulator_->active_crop_region(),
-            input_stream_->width, input_stream_->height, output_stream_.width,
-            output_stream_.height)) {
-      LOGF(ERROR)
-          << "Crop window aspect ratio doesn't match the output: "
-          << auto_framing_stream_manipulator_->active_crop_region().ToString();
+  if (client_buffers[0].release_fence != -1) {
+    constexpr int kSyncWaitTimeoutMs = 300;
+    if (sync_wait(client_buffers[0].release_fence, kSyncWaitTimeoutMs) != 0) {
+      LOGF(ERROR) << "sync_wait() timed out";
       return false;
     }
-    if (is_face_detected != nullptr) {
-      *is_face_detected = IsRoiOnFace(
-          auto_framing_stream_manipulator_->region_of_interest(),
-          NormalizeRect(input_frame_infos_[frame_index].face_rect,
-                        Size(input_stream_->width, input_stream_->height)));
-    }
-  } else {
-    if (is_face_detected != nullptr) {
-      *is_face_detected = false;
-    }
+    close(client_buffers[0].release_fence);
   }
+
+  if (!IsAspectRatioMatched(
+          auto_framing_stream_manipulator_->active_crop_region(),
+          input_stream_->width, input_stream_->height, output_stream_.width,
+          output_stream_.height)) {
+    LOGF(ERROR)
+        << "Crop window aspect ratio doesn't match the output: "
+        << auto_framing_stream_manipulator_->active_crop_region().ToString();
+    return false;
+  }
+  if (framing_result != nullptr) {
+    *framing_result = FramingResult{
+        .is_face_detected = AreSameRects(
+            auto_framing_stream_manipulator_->region_of_interest(),
+            NormalizeRect(test_stream_configs_[frame_index].face_rect,
+                          Size(input_stream_->width, input_stream_->height)),
+            /*threshold=*/0.05f),
+        .is_crop_window_moving =
+            last_crop_window_.has_value()
+                ? !AreSameRects(
+                      *last_crop_window_,
+                      auto_framing_stream_manipulator_->active_crop_region(),
+                      /*threshold=*/1e-5f)
+                : false,
+        .is_crop_window_full =
+            IsFullCrop(auto_framing_stream_manipulator_->active_crop_region()),
+    };
+  }
+  last_crop_window_ = auto_framing_stream_manipulator_->active_crop_region();
 
   return true;
 }
 
 size_t AutoFramingTestFixture::GetFrameIndex(int64_t sensor_timestamp) const {
-  CHECK_GT(input_frame_infos_.size(), 0u);
-  for (size_t i = 0; i < input_frame_infos_.size(); ++i) {
-    if (sensor_timestamp <= input_frame_infos_[i].duration.InNanoseconds()) {
+  CHECK_GT(test_stream_configs_.size(), 0u);
+  for (size_t i = 0; i < test_stream_configs_.size(); ++i) {
+    if (sensor_timestamp <= test_stream_configs_[i].duration.InNanoseconds()) {
       return i;
     }
-    sensor_timestamp -= input_frame_infos_[i].duration.InNanoseconds();
+    sensor_timestamp -= test_stream_configs_[i].duration.InNanoseconds();
   }
-  return input_frame_infos_.size() - 1;
+  return test_stream_configs_.size() - 1;
 }
 
 }  // namespace cros::tests

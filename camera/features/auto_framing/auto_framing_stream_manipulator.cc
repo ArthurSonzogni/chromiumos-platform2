@@ -223,10 +223,11 @@ struct AutoFramingStreamManipulator::CaptureContext {
 };
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
-    RuntimeOptions* runtime_options)
+    RuntimeOptions* runtime_options, const Options& options)
     : config_(ReloadableConfigFile::Options{
           base::FilePath(kDefaultAutoFramingConfigFile),
           base::FilePath(kOverrideAutoFramingConfigFile)}),
+      options_(options),
       runtime_options_(runtime_options),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
       thread_("AutoFramingThread") {

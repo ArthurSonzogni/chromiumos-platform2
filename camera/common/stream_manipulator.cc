@@ -103,7 +103,8 @@ void MaybeEnableAutoFramingStreamManipulator(
           base::FilePath(constants::kForceEnableAutoFramingPath))) {
     // Auto-framing is forcibly enabled.
     out_stream_manipulators->emplace_back(
-        std::make_unique<AutoFramingStreamManipulator>(runtime_options));
+        std::make_unique<AutoFramingStreamManipulator>(
+            runtime_options, AutoFramingStreamManipulator::Options{}));
     LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif

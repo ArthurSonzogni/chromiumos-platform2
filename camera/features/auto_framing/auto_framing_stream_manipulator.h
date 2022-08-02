@@ -86,7 +86,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     bool debug = false;
   };
 
-  explicit AutoFramingStreamManipulator(RuntimeOptions* runtime_options);
+  explicit AutoFramingStreamManipulator(RuntimeOptions* runtime_options,
+                                        const Options& options);
   ~AutoFramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.

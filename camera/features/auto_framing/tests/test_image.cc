@@ -50,7 +50,7 @@ TestImage::Metadata ParseMetadata(const base::Value& value) {
   if (face_rects_value) {
     for (auto& face_rect_value : face_rects_value->GetList()) {
       CHECK(face_rect_value.is_list());
-      auto list_view = face_rect_value.GetList();
+      const auto& list_view = face_rect_value.GetList();
       CHECK_EQ(list_view.size(), 4);
       face_rectangles.emplace_back(
           base::checked_cast<uint32_t>(list_view[0].GetInt()),

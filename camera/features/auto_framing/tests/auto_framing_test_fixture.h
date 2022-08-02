@@ -18,9 +18,15 @@
 
 namespace cros::tests {
 
-struct TestFrameInfo {
+struct TestStreamConfig {
   base::TimeDelta duration;
   Rect<uint32_t> face_rect;
+};
+
+struct FramingResult {
+  bool is_face_detected = false;
+  bool is_crop_window_moving = false;
+  bool is_crop_window_full = false;
 };
 
 class AutoFramingTestFixture {
@@ -30,17 +36,19 @@ class AutoFramingTestFixture {
   bool LoadTestImage(const base::FilePath& path);
 
   // Sets up auto-framing pipeline that crops a |full_size| input into a
-  // |stream_size| output.  |input_frame_infos| describes the test video content
-  // piecewisely.
+  // |stream_size| output.  |test_stream_configs| describes the test video
+  // content piecewisely.  |options| is used to configure
+  // AutoFramingStreamManipulator.
   bool SetUp(const Size& full_size,
              const Size& stream_size,
              float frame_rate,
-             std::vector<TestFrameInfo> input_frame_infos);
+             std::vector<TestStreamConfig> test_stream_configs,
+             const AutoFramingStreamManipulator::Options& options);
 
   // Runs one test frame on the pipeline.
   bool ProcessFrame(int64_t sensor_timestamp,
                     bool is_enabled,
-                    bool* is_face_detected);
+                    FramingResult* framing_result);
 
  private:
   ScopedBufferHandle CreateTestFrameWithFace(uint32_t width,
@@ -49,7 +57,8 @@ class AutoFramingTestFixture {
                                              uint32_t usage,
                                              const Rect<uint32_t>& face_rect);
   bool ProcessCaptureRequest();
-  bool ProcessCaptureResult(int64_t sensor_timestamp, bool* is_face_detected);
+  bool ProcessCaptureResult(int64_t sensor_timestamp,
+                            FramingResult* framing_result);
   size_t GetFrameIndex(int64_t sensor_timestamp) const;
 
   base::test::SingleThreadTaskEnvironment task_environment_;
@@ -61,11 +70,12 @@ class AutoFramingTestFixture {
   camera3_stream_t output_stream_ = {};
   std::vector<camera3_stream_t*> output_streams_;
   const camera3_stream_t* input_stream_ = nullptr;
-  std::vector<TestFrameInfo> input_frame_infos_;
+  std::vector<TestStreamConfig> test_stream_configs_;
   std::vector<ScopedBufferHandle> input_buffers_;
   ScopedBufferHandle output_buffer_;
   android::CameraMetadata result_metadata_;
   uint32_t frame_number_ = 0;
+  std::optional<Rect<float>> last_crop_window_;
   std::unique_ptr<AutoFramingStreamManipulator>
       auto_framing_stream_manipulator_;
 };
