@@ -143,13 +143,20 @@ class RecoveryCryptoTest : public testing::Test {
         generate_hsm_payload_response.encrypted_channel_priv_key;
 
     // Start recovery process.
+    GenerateRecoveryRequestRequest generate_recovery_request_input_param(
+        {.hsm_payload = generate_hsm_payload_response.hsm_payload,
+         .request_meta_data = request_metadata_,
+         .epoch_response = epoch_response_,
+         .encrypted_rsa_priv_key =
+             generate_hsm_payload_response.encrypted_rsa_priv_key,
+         .encrypted_channel_priv_key =
+             generate_hsm_payload_response.encrypted_channel_priv_key,
+         .channel_pub_key = generate_hsm_payload_response.channel_pub_key,
+         .obfuscated_username = ""});
     CryptoRecoveryRpcRequest recovery_request;
     EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-        generate_hsm_payload_response.hsm_payload, request_metadata_,
-        epoch_response_, generate_hsm_payload_response.encrypted_rsa_priv_key,
-        generate_hsm_payload_response.encrypted_channel_priv_key,
-        generate_hsm_payload_response.channel_pub_key,
-        /*obfuscated_username=*/"", &recovery_request, ephemeral_pub_key));
+        generate_recovery_request_input_param, &recovery_request,
+        ephemeral_pub_key));
 
     // Simulates mediation performed by HSM.
     EXPECT_TRUE(mediator_->MediateRequestPayload(
@@ -187,14 +194,21 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
                                             &generate_hsm_payload_response));
 
   // Start recovery process.
+  GenerateRecoveryRequestRequest generate_recovery_request_input_param(
+      {.hsm_payload = generate_hsm_payload_response.hsm_payload,
+       .request_meta_data = request_metadata_,
+       .epoch_response = epoch_response_,
+       .encrypted_rsa_priv_key =
+           generate_hsm_payload_response.encrypted_rsa_priv_key,
+       .encrypted_channel_priv_key =
+           generate_hsm_payload_response.encrypted_channel_priv_key,
+       .channel_pub_key = generate_hsm_payload_response.channel_pub_key,
+       .obfuscated_username = ""});
   CryptoRecoveryRpcRequest recovery_request;
   SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      generate_hsm_payload_response.hsm_payload, request_metadata_,
-      epoch_response_, generate_hsm_payload_response.encrypted_rsa_priv_key,
-      generate_hsm_payload_response.encrypted_channel_priv_key,
-      generate_hsm_payload_response.channel_pub_key, /*obfuscated_username=*/"",
-      &recovery_request, &ephemeral_pub_key));
+      generate_recovery_request_input_param, &recovery_request,
+      &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
   CryptoRecoveryRpcResponse response_proto;
@@ -241,14 +255,21 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
                                             &generate_hsm_payload_response));
 
   // Start recovery process.
+  GenerateRecoveryRequestRequest generate_recovery_request_input_param(
+      {.hsm_payload = generate_hsm_payload_response.hsm_payload,
+       .request_meta_data = request_metadata_,
+       .epoch_response = epoch_response_,
+       .encrypted_rsa_priv_key =
+           generate_hsm_payload_response.encrypted_rsa_priv_key,
+       .encrypted_channel_priv_key =
+           generate_hsm_payload_response.encrypted_channel_priv_key,
+       .channel_pub_key = generate_hsm_payload_response.channel_pub_key,
+       .obfuscated_username = ""});
   CryptoRecoveryRpcRequest recovery_request;
   SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      generate_hsm_payload_response.hsm_payload, request_metadata_,
-      epoch_response_, generate_hsm_payload_response.encrypted_rsa_priv_key,
-      generate_hsm_payload_response.encrypted_channel_priv_key,
-      generate_hsm_payload_response.channel_pub_key, /*obfuscated_username=*/"",
-      &recovery_request, &ephemeral_pub_key));
+      generate_recovery_request_input_param, &recovery_request,
+      &ephemeral_pub_key));
 
   SecureBlob random_key = GeneratePublicKey();
 

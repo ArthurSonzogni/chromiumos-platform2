@@ -267,13 +267,7 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 }
 
 bool RecoveryCryptoImpl::GenerateRecoveryRequest(
-    const HsmPayload& hsm_payload,
-    const RequestMetadata& request_meta_data,
-    const CryptoRecoveryEpochResponse& epoch_response,
-    const brillo::SecureBlob& encrypted_rsa_priv_key,
-    const brillo::SecureBlob& encrypted_channel_priv_key,
-    const brillo::SecureBlob& channel_pub_key,
-    const std::string& obfuscated_username,
+    const GenerateRecoveryRequestRequest& request_param,
     CryptoRecoveryRpcRequest* recovery_request,
     brillo::SecureBlob* ephemeral_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -284,8 +278,9 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 
   RequestPayload request_payload;
   RecoveryRequestAssociatedData request_ad;
-  if (!GenerateRecoveryRequestAssociatedData(hsm_payload, request_meta_data,
-                                             epoch_response, &request_ad)) {
+  if (!GenerateRecoveryRequestAssociatedData(
+          request_param.hsm_payload, request_param.request_meta_data,
+          request_param.epoch_response, &request_ad)) {
     LOG(ERROR) << "Failed to generate recovery request associated data";
     return false;
   }
@@ -297,8 +292,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   }
 
   brillo::SecureBlob epoch_pub_key;
-  epoch_pub_key.assign(epoch_response.epoch_pub_key().begin(),
-                       epoch_response.epoch_pub_key().end());
+  epoch_pub_key.assign(request_param.epoch_response.epoch_pub_key().begin(),
+                       request_param.epoch_response.epoch_pub_key().end());
 
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
@@ -314,9 +309,10 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
           GenerateDhSharedSecretRequest(
               {.ec = ec_,
-               .encrypted_own_priv_key = encrypted_channel_priv_key,
+               .encrypted_own_priv_key =
+                   request_param.encrypted_channel_priv_key,
                .auth_value = std::nullopt,
-               .obfuscated_username = obfuscated_username,
+               .obfuscated_username = request_param.obfuscated_username,
                .others_pub_point = std::move(epoch_pub_point)}));
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
@@ -327,10 +323,10 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
   // requires the need to utilize a randomized salt value in the HKDF
   // computation.
-  if (!GenerateEcdhHkdfSymmetricKey(ec_, *shared_secret_point, channel_pub_key,
-                                    GetRequestPayloadPlainTextHkdfInfo(),
-                                    request_ad.request_payload_salt, kHkdfHash,
-                                    kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec_, *shared_secret_point, request_param.channel_pub_key,
+          GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
+          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for recovery "
                   "request plain text encryption";
     return false;
@@ -369,7 +365,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
   brillo::SecureBlob rsa_signature;
-  if (!tpm_backend_->SignRequestPayload(encrypted_rsa_priv_key,
+  if (!tpm_backend_->SignRequestPayload(request_param.encrypted_rsa_priv_key,
                                         request_payload_blob, &rsa_signature)) {
     LOG(ERROR) << "Failed to sign Recovery Request payload";
     return false;

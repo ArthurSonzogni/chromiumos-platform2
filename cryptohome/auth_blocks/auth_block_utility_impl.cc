@@ -609,12 +609,19 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
 
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.
+  cryptorecovery::GenerateRecoveryRequestRequest
+      generate_recovery_request_input_param(
+          {.hsm_payload = hsm_payload,
+           .request_meta_data = request_metadata,
+           .epoch_response = epoch_response_proto,
+           .encrypted_rsa_priv_key = state.encrypted_rsa_priv_key,
+           .encrypted_channel_priv_key = state.encrypted_channel_priv_key,
+           .channel_pub_key = state.channel_pub_key,
+           .obfuscated_username = obfuscated_username});
   cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
-  if (!recovery->GenerateRecoveryRequest(
-          hsm_payload, request_metadata, epoch_response_proto,
-          state.encrypted_rsa_priv_key, state.encrypted_channel_priv_key,
-          state.channel_pub_key, obfuscated_username, &recovery_request,
-          out_ephemeral_pub_key)) {
+  if (!recovery->GenerateRecoveryRequest(generate_recovery_request_input_param,
+                                         &recovery_request,
+                                         out_ephemeral_pub_key)) {
     LOG(ERROR) << "Call to GenerateRecoveryRequest failed";
     // TODO(b/231297066): send more specific error.
     return MakeStatus<CryptohomeCryptoError>(

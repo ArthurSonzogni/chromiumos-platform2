@@ -227,12 +227,19 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     }
     request_metadata.auth_claim.gaia_reauth_proof_token = gaia_rapt.to_string();
   }
+  cryptohome::cryptorecovery::GenerateRecoveryRequestRequest
+      generate_recovery_request_input_param(
+          {.hsm_payload = hsm_payload,
+           .request_meta_data = request_metadata,
+           .epoch_response = epoch_response,
+           .encrypted_rsa_priv_key = rsa_priv_key,
+           .encrypted_channel_priv_key = channel_priv_key,
+           .channel_pub_key = channel_pub_key,
+           .obfuscated_username = kObfuscatedUsername});
   brillo::SecureBlob ephemeral_pub_key;
   CryptoRecoveryRpcRequest recovery_request;
   if (!recovery_crypto->GenerateRecoveryRequest(
-          hsm_payload, request_metadata, epoch_response, rsa_priv_key,
-          channel_priv_key, channel_pub_key,
-          /*obfuscated_username=*/kObfuscatedUsername, &recovery_request,
+          generate_recovery_request_input_param, &recovery_request,
           &ephemeral_pub_key)) {
     return false;
   }

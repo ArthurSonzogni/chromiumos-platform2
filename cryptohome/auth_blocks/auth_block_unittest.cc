@@ -1292,13 +1292,22 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
         cryptorecovery::RecoveryCryptoImpl::Create(tpm_backend);
     ASSERT_TRUE(recovery);
     brillo::SecureBlob rsa_priv_key;
-    cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
+
     cryptorecovery::RequestMetadata request_metadata;
+    cryptorecovery::GenerateRecoveryRequestRequest
+        generate_recovery_request_input_param(
+            {.hsm_payload = hsm_payload,
+             .request_meta_data = request_metadata,
+             .epoch_response = epoch_response_,
+             .encrypted_rsa_priv_key = rsa_priv_key,
+             .encrypted_channel_priv_key =
+                 cryptohome_recovery_state.encrypted_channel_priv_key,
+             .channel_pub_key = cryptohome_recovery_state.channel_pub_key,
+             .obfuscated_username = kObfuscatedUsername});
+    cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
     ASSERT_TRUE(recovery->GenerateRecoveryRequest(
-        hsm_payload, request_metadata, epoch_response_, rsa_priv_key,
-        cryptohome_recovery_state.encrypted_channel_priv_key,
-        cryptohome_recovery_state.channel_pub_key, kObfuscatedUsername,
-        &recovery_request, ephemeral_pub_key));
+        generate_recovery_request_input_param, &recovery_request,
+        ephemeral_pub_key));
 
     // Simulate mediation (it will be done by Recovery Mediator service).
     std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =

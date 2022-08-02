@@ -120,6 +120,17 @@ struct GenerateHsmPayloadResponse {
   brillo::SecureBlob encrypted_channel_priv_key;
 };
 
+// RecoveryCrypto input parameters for function GenerateRecoveryRequest.
+struct GenerateRecoveryRequestRequest {
+  hwsec_foundation::NoDefault<HsmPayload> hsm_payload;
+  hwsec_foundation::NoDefault<RequestMetadata> request_meta_data;
+  CryptoRecoveryEpochResponse epoch_response;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_rsa_priv_key;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
+  hwsec_foundation::NoDefault<brillo::SecureBlob> channel_pub_key;
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+};
+
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
 // dealer is invoked during initial setup to generate random shares. The dealer
@@ -170,13 +181,7 @@ class RecoveryCrypto {
   // 7. Construct `CryptoRecoveryRpcRequest` which contains `RecoveryRequest`
   // serialized to CBOR.
   virtual bool GenerateRecoveryRequest(
-      const HsmPayload& hsm_payload,
-      const RequestMetadata& request_meta_data,
-      const CryptoRecoveryEpochResponse& epoch_response,
-      const brillo::SecureBlob& encrypted_rsa_priv_key,
-      const brillo::SecureBlob& encrypted_channel_priv_key,
-      const brillo::SecureBlob& channel_pub_key,
-      const std::string& obfuscated_username,
+      const GenerateRecoveryRequestRequest& request,
       CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
