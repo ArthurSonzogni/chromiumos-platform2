@@ -373,15 +373,15 @@ TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesRoundtrip) {
   ASSERT_TRUE(json_dict.has_value());
   ASSERT_TRUE(json_dict->is_dict());
 
-  auto test_bool = json_dict->FindBoolKey("TestBool");
+  auto test_bool = json_dict->GetDict().FindBool("TestBool");
   ASSERT_TRUE(test_bool.has_value());
   EXPECT_TRUE(*test_bool);
 
-  auto test_int = json_dict->FindIntKey("TestInt");
+  auto test_int = json_dict->GetDict().FindInt("TestInt");
   ASSERT_TRUE(test_int.has_value());
   EXPECT_EQ(*test_int, 123456);
 
-  auto test_string = json_dict->FindStringKey("TestString");
+  auto test_string = json_dict->GetDict().FindString("TestString");
   ASSERT_NE(test_string, nullptr);
   EXPECT_EQ(*test_string, "elephant");
 }
@@ -414,7 +414,7 @@ TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesInsideStringRoundtrip) {
   ASSERT_TRUE(json_dict.has_value());
   ASSERT_TRUE(json_dict->is_dict());
 
-  auto test_certificate = json_dict->FindStringKey("TestCertificate");
+  auto test_certificate = json_dict->GetDict().FindString("TestCertificate");
   ASSERT_NE(test_certificate, nullptr);
   EXPECT_EQ(*test_certificate,
             "A-B-C-D-E-F-G\nH-I-J-K-LMNOP\nQ-R-S...T-U-V\nW-X...Y-and-Z");

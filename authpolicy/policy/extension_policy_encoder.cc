@@ -23,15 +23,15 @@ namespace {
 const char* kColorPolicy = authpolicy::kColorPolicy;
 const char* kColorReset = authpolicy::kColorReset;
 
-// Converts a RegistryDict to a base::Value by converting all keys() to
+// Converts a RegistryDict to a base::Value::Dict by converting all keys() to
 // Values. In case of name collisions, keys win over values. Similar to
 // RegistryDict::ConvertToJSON, just without schema validation.
-base::Value ConvertToValue(const RegistryDict& dict) {
-  base::Value value(base::Value::Type::DICTIONARY);
+base::Value::Dict ConvertToValue(const RegistryDict& dict) {
+  base::Value::Dict value;
   for (const auto& entry : dict.values())
-    value.SetKey(entry.first, entry.second.Clone());
+    value.Set(entry.first, entry.second.Clone());
   for (const auto& entry : dict.keys())
-    value.SetKey(entry.first, ConvertToValue(*entry.second));
+    value.Set(entry.first, ConvertToValue(*entry.second));
   return value;
 }
 
@@ -70,7 +70,7 @@ void ExtensionPolicyEncoder::EncodePolicy(ExtensionPolicies* policies) const {
 
     // Convert dict to a JSON string.
     std::string json_data;
-    base::Value value = ConvertToValue(*dict);
+    base::Value::Dict value = ConvertToValue(*dict);
     JSONStringValueSerializer serializer(&json_data);
     if (!serializer.Serialize(value)) {
       LOG(ERROR) << "Failed to convert policy for extension '" << extension_id

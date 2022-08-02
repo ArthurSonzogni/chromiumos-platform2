@@ -41,8 +41,8 @@ class BoolFlag {
 
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   // Prints an error message if the value is not a Boolean.
-  void Handle(protos::DebugFlags* flags, base::Value* dict) const {
-    auto value = dict->ExtractKey(name_);
+  void Handle(protos::DebugFlags* flags, base::Value::Dict* dict) const {
+    auto value = dict->Extract(name_);
     if (value) {
       if (value->is_bool())
         (flags->*setter_)(value->GetBool());
@@ -73,8 +73,8 @@ class StringFlag {
 
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   // Prints an error message if the value is not a string.
-  void Handle(protos::DebugFlags* flags, base::Value* dict) const {
-    auto value = dict->ExtractKey(name_);
+  void Handle(protos::DebugFlags* flags, base::Value::Dict* dict) const {
+    auto value = dict->Extract(name_);
     if (value) {
       if (value->is_string())
         (flags->*setter_)(value->GetString());
@@ -193,7 +193,7 @@ void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
                                                 : root.error().message);
     return;
   }
-  base::Value dict = std::move(*root);
+  base::Value::Dict dict = std::move(root->GetDict());
 
   // Check bool flags.
   for (const BoolFlag& bool_flag : kBoolFlags)
@@ -204,8 +204,8 @@ void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
     string_flag.Handle(&flags_, &dict);
 
   // Print warnings for other parameters.
-  for (const auto& kv : dict.DictItems())
-    LOG(WARNING) << "Unhandled flag " << kv.first;
+  for (const auto& [key, _] : dict)
+    LOG(WARNING) << "Unhandled flag " << key;
 }
 
 void AuthPolicyFlags::Dump() const {

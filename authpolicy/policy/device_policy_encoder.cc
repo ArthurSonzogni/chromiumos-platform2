@@ -81,10 +81,10 @@ bool DecodeConnectionType(const std::string& value,
   return false;
 }
 
-// Parses the |json| string to a dictionary type base::Value. Returns nullopt on
-// error and sets the |error| string.
-std::optional<base::Value> JsonToDictionary(const std::string& json,
-                                            std::string* error) {
+// Parses the |json| string to a base::Value::Dict. Returns nullopt on error and
+// sets the |error| string.
+std::optional<base::Value::Dict> JsonToDictionary(const std::string& json,
+                                                  std::string* error) {
   DCHECK(error);
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       json, base::JSON_ALLOW_TRAILING_COMMAS);
@@ -97,7 +97,7 @@ std::optional<base::Value> JsonToDictionary(const std::string& json,
     *error = "JSON is not a dictionary: '" + json + "'";
     return std::nullopt;
   }
-  return std::move(*root);
+  return std::move(root->GetDict());
 }
 
 #define CONVERT_DAY_OF_WEEK(day_of_week) \
@@ -289,7 +289,7 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
   if (std::optional<std::string> value =
           EncodeString(key::kSystemProxySettings)) {
     std::string error;
-    std::optional<base::Value> dict_value =
+    std::optional<base::Value::Dict> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -748,15 +748,16 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     DCHECK(!list->id_size());
     for (const std::string& value : values.value()) {
       std::string error;
-      std::optional<base::Value> dict_value = JsonToDictionary(value, &error);
+      std::optional<base::Value::Dict> dict_value =
+          JsonToDictionary(value, &error);
       if (!dict_value) {
         LOG(ERROR) << "Failed to parse string as dictionary: '"
                    << (!error.empty() ? error : value) << "' for policy '"
                    << key::kUsbDetachableAllowlist << "', ignoring.";
         continue;
       }
-      std::optional<int> vid = dict_value->FindIntKey("vendor_id");
-      std::optional<int> pid = dict_value->FindIntKey("product_id");
+      std::optional<int> vid = dict_value->FindInt("vendor_id");
+      std::optional<int> pid = dict_value->FindInt("product_id");
       if (!vid.has_value() || !pid.has_value()) {
         LOG(ERROR) << "Invalid JSON string '"
                    << (!error.empty() ? error : value) << "' for policy '"
@@ -785,26 +786,26 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   if (std::optional<std::string> value = EncodeString(key::kDeviceOffHours)) {
     std::string error;
-    std::optional<base::Value> dict_value =
+    std::optional<base::Value::Dict> dict_value =
         JsonToDictionary(value.value(), &error);
     bool is_error = !dict_value;
     auto proto = std::make_unique<em::DeviceOffHoursProto>();
     if (!is_error) {
-      const base::Value* intervals = dict_value->FindListKey("intervals");
-      const base::Value* ignored_policy_proto_tags =
-          dict_value->FindListKey("ignored_policy_proto_tags");
-      const std::string* timezone = dict_value->FindStringKey("timezone");
+      const base::Value::List* intervals = dict_value->FindList("intervals");
+      const base::Value::List* ignored_policy_proto_tags =
+          dict_value->FindList("ignored_policy_proto_tags");
+      const std::string* timezone = dict_value->FindString("timezone");
       is_error = !intervals || !ignored_policy_proto_tags || !timezone;
 
       if (!is_error) {
         proto->set_timezone(*timezone);
 
-        for (const base::Value& entry : intervals->GetList()) {
+        for (const base::Value& entry : *intervals) {
           is_error |=
               !EncodeWeeklyTimeIntervalProto(entry, proto->add_intervals());
         }
 
-        for (const base::Value& entry : ignored_policy_proto_tags->GetList()) {
+        for (const base::Value& entry : *ignored_policy_proto_tags) {
           int tag = 0;
           if (entry.is_int())
             tag = entry.GetInt();
@@ -857,7 +858,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   if (std::optional<std::string> value =
           EncodeString(key::kTPMFirmwareUpdateSettings)) {
     std::string error;
-    std::optional<base::Value> dict_value =
+    std::optional<base::Value::Dict> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -866,18 +867,18 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     } else {
       em::TPMFirmwareUpdateSettingsProto* settings =
           policy->mutable_tpm_firmware_update_settings();
-      for (const auto& item : dict_value->DictItems()) {
-        if (!item.second.is_bool()) {
-          LOG(WARNING) << "Invalid value at: " << item.first;
+      for (const auto& [key, setting_value] : *dict_value) {
+        if (!setting_value.is_bool()) {
+          LOG(WARNING) << "Invalid value at: " << key;
           continue;
         }
-        bool flag = item.second.GetBool();
-        if (item.first == "allow-user-initiated-powerwash")
+        bool flag = setting_value.GetBool();
+        if (key == "allow-user-initiated-powerwash")
           settings->set_allow_user_initiated_powerwash(flag);
-        else if (item.first == "allow-user-initiated-preserve-device-state")
+        else if (key == "allow-user-initiated-preserve-device-state")
           settings->set_allow_user_initiated_preserve_device_state(flag);
         else
-          LOG(WARNING) << "Unknown JSON key: " << item.first;
+          LOG(WARNING) << "Unknown JSON key: " << key;
       }
     }
   }
@@ -1023,7 +1024,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   if (std::optional<std::string> value =
           EncodeString(key::kDeviceArcDataSnapshotHours)) {
     std::string error;
-    std::optional<base::Value> dict_value =
+    std::optional<base::Value::Dict> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -1038,7 +1039,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   if (std::optional<std::string> value =
           EncodeString(key::kDeviceScheduledReboot)) {
     std::string error;
-    std::optional<base::Value> dict_value =
+    std::optional<base::Value::Dict> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
