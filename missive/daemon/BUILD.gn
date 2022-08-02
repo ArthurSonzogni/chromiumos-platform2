@@ -33,6 +33,8 @@ source_set("unit_tests") {
   sources = [ "missive_daemon_test.cc" ]
   deps = [
     ":missive_daemon",
+    "//missive/missive:missive_service",
+    "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
     "//missive/util:status_macros",

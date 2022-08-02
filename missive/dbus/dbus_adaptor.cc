@@ -54,6 +54,7 @@ void DBusAdaptor::StartupFinished(Status status) {
     return;
   }
   daemon_is_ready_ = true;
+  missive_->OnReady();
 }
 
 void DBusAdaptor::RegisterAsync(

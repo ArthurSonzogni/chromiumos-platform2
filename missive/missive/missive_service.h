@@ -24,6 +24,7 @@ class MissiveService {
 
   virtual void StartUp(base::OnceCallback<void(Status)> cb) = 0;
   virtual Status ShutDown() = 0;
+  virtual void OnReady() const {}
 
   virtual void AsyncStartUpload(
       UploaderInterface::UploadReason reason,
