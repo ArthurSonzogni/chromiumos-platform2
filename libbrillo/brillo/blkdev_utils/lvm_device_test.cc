@@ -74,6 +74,8 @@ TEST(ThinpoolTest, ThinpoolSanityTest) {
   Thinpool thinpool("Foo", "Bar", lvm);
 
   EXPECT_EQ("Bar/Foo", thinpool.GetName());
+  EXPECT_EQ("Foo", thinpool.GetRawName());
+  EXPECT_EQ("Bar", thinpool.GetVolumeGroupName());
   EXPECT_TRUE(thinpool.Remove());
   EXPECT_EQ("", thinpool.GetName());
 }
@@ -111,6 +113,8 @@ TEST(LogicalVolumeTest, LogicalVolumeSanityTest) {
 
   EXPECT_EQ(base::FilePath("/dev/Bar/Foo"), lv.GetPath());
   EXPECT_EQ("Bar/Foo", lv.GetName());
+  EXPECT_EQ("Foo", lv.GetRawName());
+  EXPECT_EQ("Bar", lv.GetVolumeGroupName());
   EXPECT_TRUE(lv.Remove());
   EXPECT_EQ("", lv.GetName());
 }

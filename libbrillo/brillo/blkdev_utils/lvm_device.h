@@ -90,6 +90,8 @@ class BRILLO_EXPORT Thinpool {
     return thinpool_name_.empty() ? ""
                                   : volume_group_name_ + "/" + thinpool_name_;
   }
+  std::string GetRawName() const { return thinpool_name_; }
+  std::string GetVolumeGroupName() const { return volume_group_name_; }
   bool IsValid() { return !thinpool_name_.empty(); }
   bool Remove();
   bool GetTotalSpace(int64_t* size);
@@ -117,6 +119,8 @@ class BRILLO_EXPORT LogicalVolume {
                ? ""
                : volume_group_name_ + "/" + logical_volume_name_;
   }
+  std::string GetRawName() const { return logical_volume_name_; }
+  std::string GetVolumeGroupName() { return volume_group_name_; }
 
  private:
   std::string logical_volume_name_;
