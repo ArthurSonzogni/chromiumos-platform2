@@ -24,6 +24,9 @@ class FakeRtanalytics : public Rtanalytics {
     return most_recent_output_stream_name_;
   }
 
+  void SetFalconIp(const std::string& configuration_name,
+                   const std::string& falcon_ip);
+
   // Rtanalytics:
   SerializedPerceptionInterfaces SetupConfiguration(
       const std::string& configuration_name,
@@ -55,12 +58,17 @@ class FakeRtanalytics : public Rtanalytics {
       const std::string& output_stream,
       PipelineOutputHandler output_handler) override;
   SerializedGlobalPipelineState GetGlobalPipelineState() const override;
+  std::string GetFalconIp(const std::string& configuration_name) override;
+  void RespondToFalconPtzTransition(
+      const std::string& configuration_name,
+      const SerializedIndexedTransitionsResponse& response) override;
 
  private:
   // A list of device templates to be returned by GetTemplateDevices.
   std::vector<SerializedDeviceTemplate> serialized_device_templates_;
 
   std::string most_recent_output_stream_name_;
+  std::string falcon_ip_;
 };
 
 }  // namespace mri

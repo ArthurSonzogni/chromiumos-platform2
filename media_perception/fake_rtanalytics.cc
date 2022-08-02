@@ -106,4 +106,18 @@ SerializedSuccessStatus FakeRtanalytics::SetPipelineOutputHandler(
   return Serialized<SuccessStatus>(status).GetBytes();
 }
 
+void FakeRtanalytics::SetFalconIp(const std::string& configuration_name,
+                                  const std::string& falcon_ip) {
+  falcon_ip_ = falcon_ip;
+}
+
+std::string FakeRtanalytics::GetFalconIp(
+    const std::string& configuration_name) {
+  return falcon_ip_;
+}
+
+void FakeRtanalytics::RespondToFalconPtzTransition(
+    const std::string& configuration_name,
+    const SerializedIndexedTransitionsResponse& response) {}
+
 }  // namespace mri
