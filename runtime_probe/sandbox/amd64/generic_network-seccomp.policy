@@ -18,6 +18,7 @@ faccessat2: 1
 fcntl: 1
 fstat: 1
 geteuid: 1
+getpid: 1
 getresgid: 1
 getresuid: 1
 getsockname: 1
