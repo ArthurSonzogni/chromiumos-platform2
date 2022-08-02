@@ -17,7 +17,7 @@
 
 #define __packed __attribute((packed))
 #define __aligned(x) __attribute((aligned(x)))
-#include <trunks/cr50_headers/pinweaver_types.h>
+#include <pinweaver/pinweaver_types.h>
 
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
@@ -31,6 +31,8 @@ using LogEntry = Backend::PinWeaver::GetLogResult::LogEntry;
 using LogEntryType = Backend::PinWeaver::GetLogResult::LogEntryType;
 
 namespace {
+
+constexpr uint8_t kPinWeaverProtocolVersion = 1;
 
 StatusOr<std::string> EncodeAuxHashes(const std::vector<brillo::Blob>& h_aux) {
   std::string result;
@@ -126,8 +128,8 @@ StatusOr<uint8_t> PinWeaverTpm2::GetVersion() {
 
   uint8_t version = 255;
 
-  auto status = MakeStatus<TPM2Error>(
-      context.tpm_utility->PinWeaverIsSupported(PW_PROTOCOL_VERSION, &version));
+  auto status = MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverIsSupported(
+      kPinWeaverProtocolVersion, &version));
 
   if (!status.ok()) {
     if (status->ErrorCode() != trunks::SAPI_RC_ABI_MISMATCH) {
@@ -144,7 +146,7 @@ StatusOr<uint8_t> PinWeaverTpm2::GetVersion() {
   }
 
   protocol_version_ =
-      std::min(version, static_cast<uint8_t>(PW_PROTOCOL_VERSION));
+      std::min(version, static_cast<uint8_t>(kPinWeaverProtocolVersion));
   return protocol_version_.value();
 }
 

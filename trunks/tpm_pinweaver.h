@@ -8,7 +8,7 @@
 extern "C" {
 #define __packed __attribute((packed))
 #define __aligned(x) __attribute((aligned(x)))
-#include "trunks/cr50_headers/pinweaver_types.h"
+#include <pinweaver/pinweaver_types.h>
 }
 
 #include <map>
