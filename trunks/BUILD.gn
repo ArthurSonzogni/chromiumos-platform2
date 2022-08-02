@@ -50,10 +50,7 @@ config("target_defaults") {
   defines = [
     "USE_GENERIC_TPM2=${use.generic_tpm2}",
     "USE_PINWEAVER_CSME=${use.pinweaver_csme}",
-
-    # TODO(b/240207599): Before userland updates to use protocol version 2,
-    # we don't need to enable this flag.
-    "BIOMETRICS_DEV=false",
+    "BIOMETRICS_DEV=true",
   ]
 }
 

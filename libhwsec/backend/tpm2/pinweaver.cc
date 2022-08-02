@@ -32,7 +32,7 @@ using LogEntryType = Backend::PinWeaver::GetLogResult::LogEntryType;
 
 namespace {
 
-constexpr uint8_t kPinWeaverProtocolVersion = 1;
+constexpr uint8_t kPinWeaverProtocolVersion = 2;
 
 StatusOr<std::string> EncodeAuxHashes(const std::vector<brillo::Blob>& h_aux) {
   std::string result;

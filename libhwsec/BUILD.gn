@@ -45,9 +45,7 @@ pkg_config("target_defaults") {
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}||${use.test}",
-    # TODO(b/240207599): Before userland updates to use protocol version 2,
-    # we don't need to enable this flag.
-    "BIOMETRICS_DEV=false",
+    "BIOMETRICS_DEV=true",
   ]
 }
 

@@ -541,9 +541,6 @@ TEST_F(BackendPinweaverTpm2Test, GetLog) {
   trunks::PinWeaverLogEntry entry2;
   entry2.set_label(42);
   entry2.set_root(kFakeRoot);
-  entry2.mutable_auth()->mutable_timestamp()->set_boot_count(123);
-  entry2.mutable_auth()->mutable_timestamp()->set_timer_value(456);
-  entry2.mutable_auth()->set_return_code(789);
 
   trunks::PinWeaverLogEntry entry3;
   entry3.set_label(43);

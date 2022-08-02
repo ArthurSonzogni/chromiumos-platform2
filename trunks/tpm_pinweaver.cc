@@ -9,7 +9,6 @@
 #include <algorithm>
 
 #include <base/logging.h>
-
 #include <pinweaver/pinweaver_types.h>
 
 namespace trunks {
@@ -100,12 +99,17 @@ TPM_RC Serialize_pw_insert_leaf_t(
     return SAPI_RC_BAD_PARAMETER;
   }
 
-  struct pw_request_insert_leaf01_t data = {};
+  struct pw_request_insert_leaf02_t data = {};
   int pcr_criteria_size =
       sizeof(struct valid_pcr_value_t) * PW_MAX_PCR_CRITERIA_COUNT;
   int data_size = sizeof(data);
   if (protocol_version == 0) {
     data_size -= pcr_criteria_size;
+  }
+  if (protocol_version <= 1) {
+    size_t delta_in_bytes = offsetof(pw_request_insert_leaf02_t, path_hashes) -
+                            offsetof(pw_request_insert_leaf01_t, path_hashes);
+    data_size -= delta_in_bytes;
   }
 
   buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + data_size +
@@ -136,6 +140,11 @@ TPM_RC Serialize_pw_insert_leaf_t(
     }
   } else if (valid_pcr_criteria.valid_pcr_values_size() > 0) {
     return SAPI_RC_BAD_PARAMETER;
+  }
+
+  if (protocol_version > 1) {
+    data.expiration_delay_s.v = 0;
+    data.leaf_type.v = PW_LEAF_TYPE_NORMAL;
   }
 
   std::copy(le_secret.begin(), le_secret.end(), data.low_entropy_secret);
@@ -209,16 +218,28 @@ TPM_RC Serialize_pw_reset_auth_t(uint8_t protocol_version,
     return SAPI_RC_BAD_PARAMETER;
   }
 
-  buffer->reserve(buffer->size() + sizeof(pw_request_header_t) +
-                  sizeof(pw_request_reset_auth00_t) +
-                  (cred_metadata.size() - sizeof(unimported_leaf_data_t)) +
-                  h_aux.size());
+  struct pw_request_reset_auth02_t data = {};
+  size_t data_size =
+      sizeof(pw_request_reset_auth02_t) - sizeof(unimported_leaf_data_t);
+  if (protocol_version <= 1) {
+    // Prior to version 2, the strong_reset field, which is 1 byte, doesn't
+    // exist.
+    data_size -= 1;
+  }
 
-  Serialize_pw_request_header_t(
-      protocol_version, PW_RESET_AUTH,
-      reset_secret.size() + cred_metadata.size() + h_aux.size(), buffer);
+  buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + data_size +
+                  cred_metadata.size() + h_aux.size());
 
-  buffer->append(reset_secret.to_string());
+  std::copy(reset_secret.begin(), reset_secret.end(), data.reset_secret);
+  if (protocol_version > 1) {
+    data.strong_reset = 0;
+  }
+
+  Serialize_pw_request_header_t(protocol_version, PW_RESET_AUTH,
+                                data_size + cred_metadata.size() + h_aux.size(),
+                                buffer);
+  Serialize(&data, data_size, buffer);
+
   buffer->append(cred_metadata);
   buffer->append(h_aux);
   return TPM_RC_SUCCESS;
@@ -438,15 +459,27 @@ TPM_RC Parse_pw_reset_auth_t(const std::string& buffer,
     return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
   }
 
-  if (response_length < sizeof(pw_response_reset_auth00_t)) {
+  // Need this check before we read the version byte.
+  if (response_length < 1) {
+    LOG(ERROR) << "Pinweaver pw_response_reset_auth contained an unexpected "
+                  "number of bytes.";
+    return SAPI_RC_BAD_SIZE;
+  }
+  uint8_t protocol_version = static_cast<uint8_t>(buffer[0]);
+  size_t expected_response_length = protocol_version <= 1
+                                        ? sizeof(pw_response_reset_auth00_t)
+                                        : sizeof(pw_response_reset_auth02_t);
+  if (response_length < expected_response_length) {
     LOG(ERROR) << "Pinweaver pw_response_reset_auth contained an unexpected "
                   "number of bytes.";
     return SAPI_RC_BAD_SIZE;
   }
 
   auto itr = buffer.begin() + sizeof(pw_response_header_t);
-  // HE secret is included in the response prior to v2, but we don't parse it.
-  itr += PW_SECRET_SIZE;
+  if (protocol_version <= 1) {
+    // HE secret is included in the response prior to v2, but we don't parse it.
+    itr += PW_SECRET_SIZE;
+  }
 
   return Parse_unimported_leaf_data_t(itr, buffer.end(), cred_metadata_out,
                                       mac_out);
@@ -489,14 +522,10 @@ TPM_RC Parse_pw_get_log_t(const std::string& buffer,
       case LOG_PW_REMOVE_LEAF00:
         proto_entry->mutable_remove_leaf();
         break;
-      case LOG_PW_TRY_AUTH00: {
-        auto* ptr = proto_entry->mutable_auth();
-        ptr->mutable_timestamp()->set_boot_count(
-            entry->last_access_ts.boot_count);
-        ptr->mutable_timestamp()->set_timer_value(
-            entry->last_access_ts.timer_value);
-        ptr->set_return_code(entry->return_code);
-      } break;
+      case LOG_PW_TRY_AUTH00:
+      case LOG_PW_TRY_AUTH02:
+        proto_entry->mutable_auth();
+        break;
       case LOG_PW_RESET_TREE00:
         proto_entry->mutable_reset_tree();
         break;

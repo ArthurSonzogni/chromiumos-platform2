@@ -493,15 +493,6 @@ int HandleGetLog(base::CommandLine::StringVector::const_iterator begin,
         break;
       case trunks::PinWeaverLogEntry::TypeCase::kAuth:
         out_entry.Set("type", "Auth");
-        out_entry.Set("timestamp.boot_count",
-                      std::to_string(entry.auth().timestamp().boot_count()));
-        out_entry.Set("timestamp.timer_value",
-                      std::to_string(entry.auth().timestamp().timer_value()));
-        out_entry.SetByDottedPath("return_code.value",
-                                  std::to_string(entry.auth().return_code()));
-        out_entry.SetByDottedPath(
-            "return_code.name",
-            trunks::GetErrorString(entry.auth().return_code()));
         break;
       case trunks::PinWeaverLogEntry::TypeCase::kResetTree:
         out_entry.Set("type", "ResetTree");
@@ -681,11 +672,6 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   if (log.front().type_case() != trunks::PinWeaverLogEntry::TypeCase::kAuth) {
     LOG(ERROR) << "get_log verification failed: wrong entry type!";
     LOG(ERROR) << log.front().type_case();
-    fail = true;
-  }
-  if (log.front().auth().return_code() != PW_ERR_LOWENT_AUTH_FAILED) {
-    LOG(ERROR) << "get_log verification failed: wrong return code!";
-    LOG(ERROR) << PwErrorStr(log.front().auth().return_code());
     fail = true;
   }
   if (fail) {
