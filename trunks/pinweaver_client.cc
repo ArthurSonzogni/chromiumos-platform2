@@ -430,20 +430,18 @@ int HandleResetLeaf(base::CommandLine::StringVector::const_iterator begin,
 
   uint32_t result_code = 0;
   std::string root;
-  brillo::SecureBlob he_secret;
   std::string cred_metadata_out;
   std::string mac_out;
   std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
   trunks::TPM_RC result = tpm_utility->PinWeaverResetAuth(
       protocol_version, reset_secret, h_aux, cred_metadata, &result_code, &root,
-      &he_secret, &cred_metadata_out, &mac_out);
+      &cred_metadata_out, &mac_out);
 
   if (result) {
     LOG(ERROR) << "PinWeaverResetAuth: " << trunks::GetErrorString(result);
   }
 
   base::Value::Dict outcome = SetupBaseOutcome(result_code, root);
-  outcome.Set("he_secret", HexEncode(he_secret.to_string()));
   outcome.Set("cred_metadata", HexEncode(cred_metadata_out));
   outcome.Set("mac", HexEncode(mac_out));
   puts(GetOutcomeJson(outcome).c_str());
@@ -717,19 +715,12 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
 
   LOG(INFO) << "reset_auth";
   result_code = 0;
-  result = tpm_utility->PinWeaverResetAuth(
-      protocol_version, reset_secret, h_aux, cred_metadata, &result_code, &root,
-      &he_secret, &cred_metadata, &mac);
+  result = tpm_utility->PinWeaverResetAuth(protocol_version, reset_secret,
+                                           h_aux, cred_metadata, &result_code,
+                                           &root, &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "reset_auth failed! " << result_code << " "
                << PwErrorStr(result_code);
-    return EXIT_FAILURE;
-  }
-
-  if (he_secret.size() != PW_SECRET_SIZE ||
-      std::mismatch(he_secret.begin(), he_secret.end(), DEFAULT_HE_SECRET)
-              .first != he_secret.end()) {
-    LOG(ERROR) << "reset_auth credential retrieval failed!";
     return EXIT_FAILURE;
   }
 

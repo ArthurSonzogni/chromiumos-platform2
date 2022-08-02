@@ -497,7 +497,6 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeHeSecret("fake_he_secret");
   const brillo::SecureBlob kFakeResetSecret("fake_reset_secret");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
@@ -509,12 +508,11 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              PinWeaverResetAuth(kVersion, kFakeResetSecret, _, kFakeCred, _, _,
-                                 _, _, _))
+  EXPECT_CALL(
+      proxy_->GetMock().tpm_utility,
+      PinWeaverResetAuth(kVersion, kFakeResetSecret, _, kFakeCred, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(0), SetArgPointee<5>(kFakeRoot),
-                      SetArgPointee<6>(kFakeHeSecret),
-                      SetArgPointee<7>(kNewCred), SetArgPointee<8>(kFakeMac),
+                      SetArgPointee<6>(kNewCred), SetArgPointee<7>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::ResetCredential>(

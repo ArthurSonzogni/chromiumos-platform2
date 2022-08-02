@@ -280,7 +280,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             const std::string& cred_metadata,
                             uint32_t* result_code,
                             std::string* root_hash,
-                            brillo::SecureBlob* he_secret,
                             std::string* cred_metadata_out,
                             std::string* mac_out) override;
   TPM_RC PinWeaverGetLog(uint8_t protocol_version,

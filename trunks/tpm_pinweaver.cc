@@ -423,10 +423,8 @@ TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
 TPM_RC Parse_pw_reset_auth_t(const std::string& buffer,
                              uint32_t* result_code,
                              std::string* root_hash,
-                             brillo::SecureBlob* he_secret,
                              std::string* cred_metadata_out,
                              std::string* mac_out) {
-  he_secret->clear();
   cred_metadata_out->clear();
   mac_out->clear();
 
@@ -447,7 +445,7 @@ TPM_RC Parse_pw_reset_auth_t(const std::string& buffer,
   }
 
   auto itr = buffer.begin() + sizeof(pw_response_header_t);
-  he_secret->assign(itr, itr + PW_SECRET_SIZE);
+  // HE secret is included in the response prior to v2, but we don't parse it.
   itr += PW_SECRET_SIZE;
 
   return Parse_unimported_leaf_data_t(itr, buffer.end(), cred_metadata_out,

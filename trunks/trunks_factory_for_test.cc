@@ -589,12 +589,11 @@ class TpmUtilityForwarder : public TpmUtility {
                             const std::string& cred_metadata,
                             uint32_t* result_code,
                             std::string* root_hash,
-                            brillo::SecureBlob* he_secret,
                             std::string* cred_metadata_out,
                             std::string* mac_out) override {
     return target_->PinWeaverResetAuth(protocol_version, reset_secret, h_aux,
                                        cred_metadata, result_code, root_hash,
-                                       he_secret, cred_metadata_out, mac_out);
+                                       cred_metadata_out, mac_out);
   }
 
   TPM_RC PinWeaverGetLog(uint8_t protocol_version,

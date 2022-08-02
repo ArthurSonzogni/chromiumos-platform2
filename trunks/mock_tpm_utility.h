@@ -273,14 +273,13 @@ class MockTpmUtility : public TpmUtility {
                std::string*,
                std::string*),
               (override));
-  MOCK_METHOD9(PinWeaverResetAuth,
+  MOCK_METHOD8(PinWeaverResetAuth,
                TPM_RC(uint8_t,
                       const brillo::SecureBlob&,
                       const std::string&,
                       const std::string&,
                       uint32_t*,
                       std::string*,
-                      brillo::SecureBlob*,
                       std::string*,
                       std::string*));
   MOCK_METHOD5(PinWeaverGetLog,

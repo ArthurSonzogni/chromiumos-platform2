@@ -2947,7 +2947,6 @@ TPM_RC TpmUtilityImpl::PinWeaverResetAuth(
     const std::string& cred_metadata,
     uint32_t* result_code,
     std::string* root_hash,
-    brillo::SecureBlob* he_secret,
     std::string* cred_metadata_out,
     std::string* mac_out) {
   return PinWeaverCommand(
@@ -2957,9 +2956,9 @@ TPM_RC TpmUtilityImpl::PinWeaverResetAuth(
         return Serialize_pw_reset_auth_t(protocol_version, reset_secret, h_aux,
                                          cred_metadata, in);
       },
-      [result_code, root_hash, he_secret, cred_metadata_out,
+      [result_code, root_hash, cred_metadata_out,
        mac_out](const std::string& out) -> TPM_RC {
-        return Parse_pw_reset_auth_t(out, result_code, root_hash, he_secret,
+        return Parse_pw_reset_auth_t(out, result_code, root_hash,
                                      cred_metadata_out, mac_out);
       });
 }

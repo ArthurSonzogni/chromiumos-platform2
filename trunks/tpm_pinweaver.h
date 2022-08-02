@@ -109,7 +109,6 @@ BRILLO_EXPORT TPM_RC Parse_pw_try_auth_t(const std::string& buffer,
 BRILLO_EXPORT TPM_RC Parse_pw_reset_auth_t(const std::string& buffer,
                                            uint32_t* result_code,
                                            std::string* root_hash,
-                                           brillo::SecureBlob* he_secret,
                                            std::string* cred_metadata_out,
                                            std::string* mac_out);
 

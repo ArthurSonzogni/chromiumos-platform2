@@ -731,8 +731,6 @@ class TRUNKS_EXPORT TpmUtility {
   //   returns VENDOR_RC_SUCCESS
   //   |result_code| is set to EC_SUCCESS (0).
   //   |root_hash| is set to the updated root hash of the tree.
-  //   |he_secret| is the high entropy secret that is protected by Cr50 and
-  //       returned on successful authentication.
   //   |cred_metadata_out| is set to the updated wrapped leaf data.
   //   |mac_out| is set to the updated HMAC used in the Merkle tree
   //       calculations.
@@ -747,7 +745,6 @@ class TRUNKS_EXPORT TpmUtility {
                                     const std::string& cred_metadata,
                                     uint32_t* result_code,
                                     std::string* root_hash,
-                                    brillo::SecureBlob* he_secret,
                                     std::string* cred_metadata_out,
                                     std::string* mac_out) = 0;
 

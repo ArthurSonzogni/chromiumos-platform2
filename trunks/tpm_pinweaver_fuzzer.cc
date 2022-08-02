@@ -217,7 +217,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       case kParsePwResetAuth:
         retval = trunks::Parse_pw_reset_auth_t(
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &res32_1,
-            &buf1, &sec_blob1, &buf2, &buf3);
+            &buf1, &buf2, &buf3);
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;

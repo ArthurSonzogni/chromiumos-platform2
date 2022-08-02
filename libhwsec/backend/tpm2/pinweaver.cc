@@ -308,7 +308,6 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
 
   uint32_t pinweaver_status = 0;
   std::string root;
-  brillo::SecureBlob he_secret;
   std::string cred_metadata_string;
   std::string mac_string;
 
@@ -316,7 +315,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
       MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverResetAuth(
           version, reset_secret, encoded_aux,
           brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
-          &he_secret, &cred_metadata_string, &mac_string)))
+          &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to reset auth in pinweaver");
 
   return CredentialTreeResult{
