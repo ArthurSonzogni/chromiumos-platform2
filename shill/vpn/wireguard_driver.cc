@@ -283,7 +283,7 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
     Stringmap peer;
     for (const auto& property : kPeerProperties) {
       const std::string key = property.name;
-      const auto* value = val->FindStringKey(key);
+      const auto* value = val->GetDict().FindString(key);
       if (value != nullptr) {
         peer[key] = *value;
       } else {
@@ -365,10 +365,10 @@ bool WireGuardDriver::Save(StoreInterface* storage,
   // Handles peers.
   std::vector<std::string> encoded_peers;
   for (auto& peer : peers_) {
-    base::Value root(base::Value::Type::DICTIONARY);
+    base::Value::Dict root;
     for (const auto& property : kPeerProperties) {
       const auto& key = property.name;
-      root.SetStringKey(key, peer[key]);
+      root.Set(key, peer[key]);
     }
     std::string peer_json;
     if (!base::JSONWriter::Write(root, &peer_json)) {

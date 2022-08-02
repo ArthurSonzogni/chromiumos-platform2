@@ -642,9 +642,9 @@ std::optional<std::string> EapCredentials::TranslateSubjectAlternativeNameMatch(
           << json_value.error().message;
       return std::nullopt;
     }
-    base::Value deserialized_value = std::move(*json_value);
+    base::Value::Dict deserialized_value = std::move(json_value->GetDict());
 
-    const std::string* type = deserialized_value.FindStringKey(
+    const std::string* type = deserialized_value.FindString(
         kEapSubjectAlternativeNameMatchTypeProperty);
     if (!type) {
       LOG(ERROR) << "Could not find "
@@ -657,7 +657,7 @@ std::optional<std::string> EapCredentials::TranslateSubjectAlternativeNameMatch(
                  << "\" is not supported.";
       return std::nullopt;
     }
-    const std::string* value = deserialized_value.FindStringKey(
+    const std::string* value = deserialized_value.FindString(
         kEapSubjectAlternativeNameMatchValueProperty);
     if (!value) {
       LOG(ERROR) << "Could not find "
