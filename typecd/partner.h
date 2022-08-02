@@ -82,6 +82,7 @@ class Partner : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTDPAltPeripheral);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTPeripheral);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeDPAltHub);
+  FRIEND_TEST(MetricsTest, CheckPartnerTypePowerBrick);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
   FRIEND_TEST(PartnerTest, SupportsPD);
 

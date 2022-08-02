@@ -177,6 +177,20 @@ TEST_F(MetricsTest, CheckPartnerTypeDPAltHub) {
   EXPECT_EQ(PartnerTypeMetric::kDPAltHub, p.GetPartnerTypeMetric());
 }
 
+TEST_F(MetricsTest, CheckPartnerTypePowerBrick) {
+  // ASUS charger W19-065N2A.
+  Partner p(base::FilePath("foo"));
+  p.SetPDRevision(PDRevision::k30);
+  p.SetIdHeaderVDO(0x01800b05);
+  p.SetCertStatVDO(0x0);
+  p.SetProductVDO(0x0);
+  p.SetProductTypeVDO1(0x0);
+  p.SetProductTypeVDO2(0x0);
+  p.SetProductTypeVDO3(0x0);
+
+  EXPECT_EQ(PartnerTypeMetric::kPowerBrick, p.GetPartnerTypeMetric());
+}
+
 TEST_F(MetricsTest, CheckPartnerTypeOther) {
   // A partner which doesn't report any PD data.
   Partner p(base::FilePath("foo"));

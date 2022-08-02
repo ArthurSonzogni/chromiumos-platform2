@@ -29,7 +29,8 @@ enum class PartnerTypeMetric {
   kPDSink = 14,
   kPDSinkingHost = 15,
   kNonPDSink = 16,
-  kMaxValue = kNonPDSink,
+  kPowerBrick = 17,
+  kMaxValue = kPowerBrick,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and

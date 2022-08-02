@@ -231,6 +231,13 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
       ret = PartnerTypeMetric::kUSBPeripheral;
   }
 
+  // Edge case of power brick.
+  auto product_type_dfp =
+      GetIdHeaderVDO() >> kIDHeaderVDOProductTypeDFPBitOffset &
+      kIDHeaderVDOProductTypeMask;
+  if (product_type_dfp == kIDHeaderVDOProductTypePowerBrick)
+    ret = PartnerTypeMetric::kPowerBrick;
+
   // If we've found a valid category let's return.
   if (ret != PartnerTypeMetric::kOther)
     return ret;

@@ -15,12 +15,14 @@ namespace typecd {
 constexpr uint32_t kIDHeaderVDOModalOperationBitField = (1 << 26);
 // Bit Masks for Cable type.
 constexpr uint8_t kIDHeaderVDOProductTypeBitOffset = 27;
+constexpr uint8_t kIDHeaderVDOProductTypeDFPBitOffset = 23;
 constexpr uint8_t kIDHeaderVDOProductTypeMask = 0x7;
 constexpr uint8_t kIDHeaderVDOProductTypeCablePassive = 0x3;
 constexpr uint8_t kIDHeaderVDOProductTypeCableActive = 0x4;
 constexpr uint8_t kIDHeaderVDOProductTypeUFPHub = 0x1;
 constexpr uint8_t kIDHeaderVDOProductTypeUFPPeripheral = 0x2;
 constexpr uint8_t kIDHeaderVDOProductTypeUFPAMA = 0x5;
+constexpr uint8_t kIDHeaderVDOProductTypePowerBrick = 0x3;
 constexpr uint32_t kIdHeaderVDOVidMask = 0x0000ffff;
 
 // Bit Masks for Product VDO
