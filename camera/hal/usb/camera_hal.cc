@@ -416,7 +416,7 @@ int CameraHal::Init() {
   // camera as "camera1" in |characteristics_|. It's a workaround for them until
   // we revise our config format. (b/111770440)
   if (device_infos_.size() == 1 && device_infos_.cbegin()->first == 1 &&
-      num_builtin_cameras_ == 2) {
+      num_builtin_cameras_ == 1) {
     LOGF(INFO) << "Renumber camera1 to camera0";
 
     device_infos_.emplace(0, std::move(device_infos_[1]));
@@ -447,8 +447,6 @@ int CameraHal::Init() {
     request_template_android_.emplace(0,
                                       std::move(request_template_android_[1]));
     request_template_android_.erase(1);
-
-    num_builtin_cameras_ = 1;
   }
 
   bool enough_camera_probed = true;
@@ -611,7 +609,6 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
             ? cros_device_config_->GetOrientationFromFacing(info.lens_facing)
                   .value_or(0)
             : 0;
-    num_builtin_cameras_ = std::max(num_builtin_cameras_, info.camera_id + 1);
     if (info.constant_framerate_unsupported) {
       LOGF(WARNING) << "Camera module " << vid << ":" << pid
                     << " does not support constant frame rate";
@@ -697,9 +694,14 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
                      "camera would be ignored";
       return;
     } else {
-      LOGF(FATAL) << "FillMetadata failed for a built-in "
+      LOGF(ERROR) << "FillMetadata failed for a built-in "
                      "camera, please check your camera config";
+      return;
     }
+  }
+
+  if (info.lens_facing != LensFacing::kExternal) {
+    num_builtin_cameras_++;
   }
 
   path_to_id_[info.device_path] = info.camera_id;
