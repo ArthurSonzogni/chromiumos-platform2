@@ -11,6 +11,19 @@
 
 namespace {
 
+// The Anti-rollback firmware version data.
+constexpr uint32_t kFwIndex = 0x1007;
+constexpr char kFwVerRollback[] = "SIMU_FW";
+
+constexpr uint32_t kPPWrite = 1U << 0;
+constexpr uint32_t kBootWriteLock = 1U << 14;
+constexpr uint32_t kPPRead = 1U << 16;
+constexpr uint32_t kAuthRead = 1U << 18;
+constexpr uint32_t kPlatformCreate = 1U << 30;
+
+constexpr uint32_t kFwNvAttr =
+    kPPWrite | kBootWriteLock | kPPRead | kAuthRead | kPlatformCreate;
+
 // Resizes extend_data to size crypto::kSHA256Length and uses the result to
 // extend the indicated PCR.
 void ExtendPcr(unsigned int pcr_index, const std::string& extend_data) {
@@ -50,5 +63,11 @@ int main(int argc, char* argv[]) {
                      /*verified_firmware=*/0);
   // Assign an arbitrary value to PCR1.
   ExtendPcr(/*pcr_index=*/1, /*extend_data=*/"PCR1");
+
+  // Set the anti-rollback firmware version data.
+  TlclDefineSpace(kFwIndex, kFwNvAttr, sizeof(kFwVerRollback));
+  TlclWrite(kFwIndex, kFwVerRollback, sizeof(kFwVerRollback));
+
   TlclLockPhysicalPresence();
+  TlclSetGlobalLock();
 }

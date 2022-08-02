@@ -12,6 +12,7 @@ namespace tpm2_simulator {
 enum class TpmExecutorVersion {
   kTpm2 = 0,
   kTpm1 = 1,
+  kTi50 = 2,
 };
 
 // A function to get the TPM executor version.

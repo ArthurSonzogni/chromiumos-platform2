@@ -30,7 +30,6 @@ namespace tpm2_simulator {
 
 bool ExtractCommandSize(const std::string& command, uint32_t* size) {
   if (command.size() < kPartialHeaderSize) {
-    LOG(ERROR) << "Partial command too small.";
     return false;
   }
 

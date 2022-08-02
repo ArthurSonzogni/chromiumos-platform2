@@ -20,6 +20,10 @@
 #include "tpm2-simulator/tpm_executor_tpm2_impl.h"
 #endif
 
+#if USE_TI50
+#include "tpm2-simulator/tpm_executor_ti50_impl.h"
+#endif
+
 using tpm2_simulator::TpmExecutorVersion;
 
 int main(int argc, char* argv[]) {
@@ -49,6 +53,12 @@ int main(int argc, char* argv[]) {
 #if USE_TPM2
     case TpmExecutorVersion::kTpm2:
       executor = std::make_unique<tpm2_simulator::TpmExecutorTpm2Impl>();
+      break;
+#endif
+
+#if USE_TI50
+    case TpmExecutorVersion::kTi50:
+      executor = std::make_unique<tpm2_simulator::TpmExecutorTi50Impl>();
       break;
 #endif
 

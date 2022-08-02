@@ -20,7 +20,9 @@ const char kTpmVersionFile[] =
     "/mnt/stateful_partition/unencrypted/tpm2-simulator/tpm_executor_version";
 
 constexpr TpmExecutorVersion GetDefaultTpmExecutorVersion() {
-#if USE_TPM2
+#if USE_TI50
+  return TpmExecutorVersion::kTi50;
+#elif USE_TPM2
   return TpmExecutorVersion::kTpm2;
 #elif USE_TPM1
   return TpmExecutorVersion::kTpm1;

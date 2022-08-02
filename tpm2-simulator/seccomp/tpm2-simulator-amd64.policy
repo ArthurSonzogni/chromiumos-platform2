@@ -57,5 +57,12 @@ futex: 1
 getrandom: 1
 sysinfo: 1
 
+# For Ti50 emulator
+connect: 1
+recvmsg: 1
+sendmsg: 1
+socket: arg0 == AF_UNIX
+wait4: 1
+
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: 1
