@@ -20,6 +20,12 @@
 namespace {
 
 constexpr int kDelayTimeInSec = 1;
+constexpr std::array<rmad::AdditionalActivity, 5> kTestAdditionalActivities = {
+    rmad::RMAD_ADDITIONAL_ACTIVITY_REBOOT,
+    rmad::RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF,
+    rmad::RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS,
+    rmad::RMAD_ADDITIONAL_ACTIVITY_OS_UPDATE,
+    rmad::RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN};
 
 }  // namespace
 
@@ -194,7 +200,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_NothingSuccess) {
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
   std::vector<std::string> target_additional_activities;
 
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
     if (std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
@@ -234,14 +240,14 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_JsonFailed) {
                                             base::Time::Now().ToDoubleT()));
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
     EXPECT_FALSE(handler->StoreAdditionalActivity(activity));
   }
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_RunningTimeFailed) {
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
     // If it does power cycle, it needs to calculate the running time.
     if (std::find(kExpectedPowerCycleActivities.begin(),
@@ -277,7 +283,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
     }
   }
 
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
 
     if (std::find(kExpectedPowerCycleActivities.begin(),
@@ -342,7 +348,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
     EXPECT_EQ(reply.error, error_code);
   }
 
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
 
     BaseStateHandler::GetNextStateCaseReply reply =
@@ -383,7 +389,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
     }
   }
 
-  for (AdditionalActivity activity : kValidAdditionalActivities) {
+  for (AdditionalActivity activity : kTestAdditionalActivities) {
     auto handler = CreateStateHandler();
 
     BaseStateHandler::GetNextStateCaseReply reply =

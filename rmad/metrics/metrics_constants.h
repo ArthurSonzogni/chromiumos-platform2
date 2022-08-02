@@ -34,11 +34,6 @@ inline constexpr char kStateTransitionsCount[] = "state_transition_count";
 inline constexpr char kStateGetLogCount[] = "state_get_log_count";
 inline constexpr char kStateSaveLogCount[] = "state_save_log_count";
 
-constexpr std::array<AdditionalActivity, 4> kValidAdditionalActivities = {
-    RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN, RMAD_ADDITIONAL_ACTIVITY_REBOOT,
-    RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF,
-    RMAD_ADDITIONAL_ACTIVITY_DIAGNOSTICS};
-
 constexpr std::array<AdditionalActivity, 3> kExpectedPowerCycleActivities = {
     RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN, RMAD_ADDITIONAL_ACTIVITY_REBOOT,
     RMAD_ADDITIONAL_ACTIVITY_BATTERY_CUTOFF};

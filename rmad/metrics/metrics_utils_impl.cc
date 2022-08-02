@@ -185,9 +185,7 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
     for (std::string activity_name : additional_activities) {
       AdditionalActivity additional_activity;
       if (AdditionalActivity_Parse(activity_name, &additional_activity) &&
-          std::find(kValidAdditionalActivities.begin(),
-                    kValidAdditionalActivities.end(),
-                    additional_activity) != kValidAdditionalActivities.end()) {
+          additional_activity != RMAD_ADDITIONAL_ACTIVITY_NOTHING) {
         auto structured_additional_activity = StructuredAdditionalActivity();
         structured_additional_activity.SetActivityType(additional_activity);
         if (record_to_system_ && !structured_additional_activity.Record()) {
