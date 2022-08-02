@@ -63,6 +63,10 @@ void MessageDispatcher::OnFileCanReadWithoutBlocking() {
 }
 
 void MessageDispatcher::SendMessage(const SubprocessMessage& proto) const {
+  if (!proto.IsInitialized()) {
+    LOG(DFATAL) << "protobuf missing mandatory fields";
+    return;
+  }
   std::string str;
   if (!proto.SerializeToString(&str)) {
     LOG(ERROR) << "error serializing protobuf";
