@@ -13,8 +13,8 @@
 namespace rmad {
 
 // Allowed models for running Shimless RMA.
-inline constexpr std::array<const char*, 4> kAllowedModels = {
-    "fleex", "bobba", "bobba360", "blooguard"};
+inline constexpr std::array<const char*, 6> kAllowedModels = {
+    "fleex", "bobba", "bobba360", "blooguard", "phaser", "phaser360"};
 
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kDefaultJsonStoreFilePath[] =
