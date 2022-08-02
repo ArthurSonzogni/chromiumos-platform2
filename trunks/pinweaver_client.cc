@@ -910,6 +910,20 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   }
 
   if (protocol_version > 1) {
+    LOG(INFO) << "sending sys_info to check initial timestamp";
+    uint32_t boot_count;
+    uint64_t seconds_since_boot;
+    result =
+        tpm_utility->PinWeaverSysInfo(protocol_version, &result_code, &root,
+                                      &boot_count, &seconds_since_boot);
+    if (result || result_code) {
+      LOG(ERROR) << "sys_info failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    uint32_t old_boot_count = boot_count;
+    uint64_t old_seconds_since_boot = seconds_since_boot;
+
     GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
                           &delay_schedule, &valid_pcr_criteria);
     // Choose a reasonable value to test for credential expiration.
@@ -1006,6 +1020,31 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
       LOG(ERROR) << "remove_leaf failed! " << result_code << " "
                  << PwErrorStr(result_code);
       return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "sending sys_info to check final timestamp";
+    result =
+        tpm_utility->PinWeaverSysInfo(protocol_version, &result_code, &root,
+                                      &boot_count, &seconds_since_boot);
+    if (result || result_code) {
+      LOG(ERROR) << "sys_info failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+
+    LOG(INFO) << "boot_count: before = " << old_boot_count
+              << ", after = " << boot_count;
+    if (boot_count != old_boot_count) {
+      LOG(ERROR) << "boot_count increased!";
+    }
+    LOG(INFO) << "seconds_since_boot: before = " << old_seconds_since_boot
+              << ", after = " << seconds_since_boot;
+    if (seconds_since_boot < old_seconds_since_boot) {
+      LOG(ERROR) << "seconds_since_boot decreased!";
+    }
+    uint64_t seconds_passed = seconds_since_boot - old_seconds_since_boot;
+    if (seconds_passed < 2 || seconds_passed > 3) {
+      LOG(ERROR) << "seconds_passed isn't reasonable!";
     }
   }
 

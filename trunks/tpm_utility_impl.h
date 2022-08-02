@@ -297,6 +297,11 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             std::string* root_hash,
                             std::string* cred_metadata_out,
                             std::string* mac_out) override;
+  TPM_RC PinWeaverSysInfo(uint8_t protocol_version,
+                          uint32_t* result_code,
+                          std::string* root_hash,
+                          uint32_t* boot_count,
+                          uint64_t* seconds_since_boot) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 

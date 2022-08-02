@@ -42,6 +42,7 @@ typedef enum PinweaverFunc {
   kSerializePwResetAuth,
   kSerializePwGetLog,
   kSerializePwLogReplay,
+  kSerializePwSysInfo,
   kParsePwResponseHeader,
   kParsePwShortMessage,
   kParsePwPong,
@@ -50,7 +51,8 @@ typedef enum PinweaverFunc {
   kParsePwResetAuth,
   kParsePwGetLog,
   kParsePwLogReplay,
-  kMaxValue = kParsePwLogReplay,
+  kParsePwSysInfo,
+  kMaxValue = kParsePwSysInfo,
 } PinweaverFunc;
 
 // Manually create the fuzzed protobuf since it's only used in one function call
@@ -90,6 +92,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     uint16_t res16;
     uint32_t res32_1;
     uint32_t res32_2;
+    uint64_t res64;
     brillo::SecureBlob sec_blob1;
     brillo::SecureBlob sec_blob2;
     std::vector<trunks::PinWeaverLogEntry> logs;
@@ -183,6 +186,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;
+      case kSerializePwSysInfo:
+        retval = trunks::Serialize_pw_sys_info_t(
+            data_provider.ConsumeIntegral<uint8_t>(), &buf1);
+        if (retval == trunks::TPM_RC_SUCCESS)
+          CHECK(!buf1.empty());
+        break;
       case kParsePwResponseHeader:
         retval = trunks::Parse_pw_response_header_t(
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &res32_1,
@@ -235,6 +244,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         retval = trunks::Parse_pw_log_replay_t(
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &res32_1,
             &buf1, &buf2, &buf3);
+        if (retval == trunks::TPM_RC_SUCCESS)
+          CHECK(!buf1.empty());
+        break;
+      case kParsePwSysInfo:
+        retval = trunks::Parse_pw_sys_info_t(
+            data_provider.ConsumeRandomLengthString(kMaxStringLength), &res32_1,
+            &buf1, &res32_2, &res64);
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;

@@ -78,6 +78,9 @@ BRILLO_EXPORT TPM_RC Serialize_pw_log_replay_t(uint8_t protocol_version,
                                                const std::string& cred_metadata,
                                                std::string* buffer);
 
+BRILLO_EXPORT TPM_RC Serialize_pw_sys_info_t(uint8_t protocol_version,
+                                             std::string* buffer);
+
 // If TPM_RC_SUCCESS is returned, |result_code| and |root_hash| will be valid.
 // The other fields generally will not be valid unless |result_code| is zero.
 // Try auth has an exception for PW_ERR_LOWENT_AUTH_FAILED and
@@ -129,6 +132,11 @@ BRILLO_EXPORT TPM_RC Parse_pw_log_replay_t(const std::string& buffer,
                                            std::string* cred_metadata_out,
                                            std::string* mac_out);
 
+BRILLO_EXPORT TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
+                                         uint32_t* result_code,
+                                         std::string* root_hash,
+                                         uint32_t* boot_count,
+                                         uint64_t* seconds_since_boot);
 }  // namespace trunks
 
 #endif  // TRUNKS_TPM_PINWEAVER_H_

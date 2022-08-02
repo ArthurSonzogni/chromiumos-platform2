@@ -300,6 +300,8 @@ class MockTpmUtility : public TpmUtility {
                       std::string*,
                       std::string*,
                       std::string*));
+  MOCK_METHOD5(PinWeaverSysInfo,
+               TPM_RC(uint8_t, uint32_t*, std::string*, uint32_t*, uint64_t*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
   MOCK_METHOD(bool, IsCr50, (), (override));

@@ -621,6 +621,15 @@ class TpmUtilityForwarder : public TpmUtility {
                                        cred_metadata_out, mac_out);
   }
 
+  TPM_RC PinWeaverSysInfo(uint8_t protocol_version,
+                          uint32_t* result_code,
+                          std::string* root_hash,
+                          uint32_t* boot_count,
+                          uint64_t* seconds_since_boot) override {
+    return target_->PinWeaverSysInfo(protocol_version, result_code, root_hash,
+                                     boot_count, seconds_since_boot);
+  }
+
   TPM_RC GetRsuDeviceId(std::string* device_id) override {
     return target_->GetRsuDeviceId(device_id);
   }

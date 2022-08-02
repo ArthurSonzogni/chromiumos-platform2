@@ -803,6 +803,24 @@ class TRUNKS_EXPORT TpmUtility {
                                     std::string* cred_metadata_out,
                                     std::string* mac_out) = 0;
 
+  // Retrieves the current PinWeaver server system info.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |boot_count| is set to the current boot count of the PinWeaver server.
+  //   |seconds_since_boot| is set to the current PinWeaver server timer value,
+  //       which is equivalent to how many seconds had passed since last boot.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  virtual TPM_RC PinWeaverSysInfo(uint8_t protocol_version,
+                                  uint32_t* result_code,
+                                  std::string* root_hash,
+                                  uint32_t* boot_count,
+                                  uint64_t* seconds_since_boot) = 0;
+
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
 

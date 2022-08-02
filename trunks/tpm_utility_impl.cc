@@ -3008,6 +3008,23 @@ TPM_RC TpmUtilityImpl::PinWeaverLogReplay(uint8_t protocol_version,
       });
 }
 
+TPM_RC TpmUtilityImpl::PinWeaverSysInfo(uint8_t protocol_version,
+                                        uint32_t* result_code,
+                                        std::string* root_hash,
+                                        uint32_t* boot_count,
+                                        uint64_t* seconds_since_boot) {
+  return PinWeaverCommand(
+      __func__,
+      [protocol_version](std::string* in) -> TPM_RC {
+        return Serialize_pw_sys_info_t(protocol_version, in);
+      },
+      [result_code, root_hash, boot_count,
+       seconds_since_boot](const std::string& out) -> TPM_RC {
+        return Parse_pw_sys_info_t(out, result_code, root_hash, boot_count,
+                                   seconds_since_boot);
+      });
+}
+
 void TpmUtilityImpl::CacheVendorId() {
   if (vendor_id_.has_value()) {
     return;

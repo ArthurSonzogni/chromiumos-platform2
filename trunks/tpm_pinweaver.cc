@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <base/logging.h>
+#include <base/sys_byteorder.h>
 #include <pinweaver/pinweaver_types.h>
 
 namespace trunks {
@@ -293,6 +294,16 @@ TPM_RC Serialize_pw_log_replay_t(uint8_t protocol_version,
   buffer->append(log_root);
   buffer->append(cred_metadata);
   buffer->append(h_aux);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC Serialize_pw_sys_info_t(uint8_t protocol_version, std::string* buffer) {
+  if (protocol_version <= 1) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  buffer->reserve(buffer->size() + sizeof(pw_request_header_t));
+  Serialize_pw_request_header_t(protocol_version, PW_SYS_INFO, 0, buffer);
   return TPM_RC_SUCCESS;
 }
 
@@ -585,6 +596,38 @@ TPM_RC Parse_pw_log_replay_t(const std::string& buffer,
 
   return Parse_unimported_leaf_data_t(itr, buffer.end(), cred_metadata_out,
                                       mac_out);
+}
+
+TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
+                           uint32_t* result_code,
+                           std::string* root_hash,
+                           uint32_t* boot_count,
+                           uint64_t* seconds_since_boot) {
+  *boot_count = 0;
+  *seconds_since_boot = 0;
+
+  uint16_t response_length;
+  TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
+                                         &response_length);
+  if (rc != TPM_RC_SUCCESS)
+    return rc;
+
+  if (*result_code != 0) {
+    return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
+  }
+
+  if (response_length < sizeof(struct pw_response_sys_info02_t))
+    return SAPI_RC_BAD_SIZE;
+
+  auto itr = buffer.begin() + sizeof(struct pw_response_header_t);
+
+  memcpy(boot_count, &*itr, 4);
+  itr += 4;
+  *boot_count = base::ByteSwapToLE32(*boot_count);
+  memcpy(seconds_since_boot, &*itr, 8);
+  *seconds_since_boot = base::ByteSwapToLE64(*seconds_since_boot);
+
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks
