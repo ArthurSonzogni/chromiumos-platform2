@@ -59,6 +59,7 @@ CameraMonitor::~CameraMonitor() {
   auto stop_all_monitors = [](CameraMonitor* self) {
     for (auto& [k, v] : self->monitor_states_) {
       self->StopMonitorOnThread(k);
+      v.timer = nullptr;
     }
   };
   thread_.task_runner()->PostTask(
