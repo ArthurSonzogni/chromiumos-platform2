@@ -43,19 +43,6 @@ bool CheckPathPrefix(const base::FilePath& path) {
 
   return valid;
 }
-
-// JSON Helper to retrieve a string value given a string key
-bool GetStringFromKey(const base::Value& obj,
-                      const std::string& key,
-                      std::string* value) {
-  const std::string* val = obj.FindStringKey(key);
-  if (!val || val->empty()) {
-    return false;
-  }
-
-  *value = *val;
-  return true;
-}
 }  // namespace
 
 WriteFileCommand::WriteFileCommand(const std::string& file_name,
@@ -163,7 +150,7 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
       return false;
     }
 
-    auto feature_obj_optional = MakeFeatureObject(item);
+    auto feature_obj_optional = MakeFeatureObject(item.GetDict());
     if (!feature_obj_optional) {
       return false;
     }
@@ -185,16 +172,16 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
 
 // PlatformFeature implementation (collect and execute commands).
 std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
-    const base::Value& feature_obj) {
-  std::string feat_name;
-  if (!GetStringFromKey(feature_obj, "name", &feat_name)) {
+    const base::Value::Dict& feature_obj) {
+  const std::string* feat_name = feature_obj.FindString("name");
+  if (!feat_name) {
     LOG(ERROR) << "features conf contains empty names";
     return std::nullopt;
   }
 
   // Commands for querying if device is supported
-  const base::Value* support_cmd_list_obj =
-      feature_obj.FindListKey("support_check_commands");
+  const base::Value::List* support_cmd_list_obj =
+      feature_obj.FindList("support_check_commands");
 
   std::vector<std::unique_ptr<FeatureCommand>> query_cmds;
   if (!support_cmd_list_obj) {
@@ -203,103 +190,102 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
     query_cmds.push_back(std::make_unique<AlwaysSupportedCommand>());
   } else {
     // A support check command was provided, add it to the feature object.
-    if (!support_cmd_list_obj->is_list() ||
-        support_cmd_list_obj->GetList().size() == 0) {
+    if (support_cmd_list_obj->size() == 0) {
       LOG(ERROR) << "Invalid format for support_check_commands commands";
       return std::nullopt;
     }
 
-    for (const auto& item : support_cmd_list_obj->GetList()) {
+    for (const auto& item : *support_cmd_list_obj) {
       if (!item.is_dict()) {
         LOG(ERROR) << "support_check_commands is not list of dicts.";
         return std::nullopt;
       }
 
-      std::string cmd_name;
+      const std::string* cmd_name = item.GetDict().FindString("name");
 
-      if (!GetStringFromKey(item, "name", &cmd_name)) {
+      if (!cmd_name) {
         LOG(ERROR) << "Invalid/Empty command name in features config.";
         return std::nullopt;
       }
 
-      if (cmd_name == "FileExists" || cmd_name == "FileNotExists") {
-        std::string file_name;
+      if (*cmd_name == "FileExists" || *cmd_name == "FileNotExists") {
+        const std::string* file_name = item.GetDict().FindString("path");
 
-        VLOG(1) << "featured: command is " << cmd_name;
-        if (!GetStringFromKey(item, "path", &file_name)) {
+        VLOG(1) << "featured: command is " << *cmd_name;
+        if (!file_name) {
           LOG(ERROR) << "JSON contains invalid path!";
           return std::nullopt;
         }
 
         std::unique_ptr<FeatureCommand> cmd;
-        if (cmd_name == "FileExists") {
-          cmd = std::make_unique<FileExistsCommand>(file_name);
+        if (*cmd_name == "FileExists") {
+          cmd = std::make_unique<FileExistsCommand>(*file_name);
         } else {
-          cmd = std::make_unique<FileNotExistsCommand>(file_name);
+          cmd = std::make_unique<FileNotExistsCommand>(*file_name);
         }
 
         query_cmds.push_back(std::move(cmd));
       } else {
         LOG(ERROR) << "Invalid support command name in features config: "
-                   << cmd_name;
+                   << *cmd_name;
         return std::nullopt;
       }
     }
   }
 
   // Commands to execute to enable feature
-  const base::Value* cmd_list_obj = feature_obj.FindListKey("commands");
-  if (!cmd_list_obj || !cmd_list_obj->is_list() ||
-      cmd_list_obj->GetList().size() == 0) {
+  const base::Value::List* cmd_list_obj = feature_obj.FindList("commands");
+  if (!cmd_list_obj || cmd_list_obj->size() == 0) {
     LOG(ERROR) << "Failed to get commands list in feature.";
     return std::nullopt;
   }
 
   std::vector<std::unique_ptr<FeatureCommand>> feature_cmds;
-  for (const auto& item : cmd_list_obj->GetList()) {
+  for (const auto& item : *cmd_list_obj) {
     if (!item.is_dict()) {
       LOG(ERROR) << "Invalid command in features config.";
       return std::nullopt;
     }
-    std::string cmd_name;
+    const std::string* cmd_name = item.GetDict().FindString("name");
 
-    if (!GetStringFromKey(item, "name", &cmd_name)) {
+    if (!cmd_name) {
       LOG(ERROR) << "Invalid command in features config.";
       return std::nullopt;
     }
 
-    if (cmd_name == "WriteFile") {
-      std::string file_name, value;
+    if (*cmd_name == "WriteFile") {
+      const std::string* file_name = item.GetDict().FindString("path");
 
       VLOG(1) << "featured: command is WriteFile";
-      if (!GetStringFromKey(item, "path", &file_name)) {
+      if (!file_name) {
         LOG(ERROR) << "JSON contains invalid path!";
         return std::nullopt;
       }
 
-      if (!GetStringFromKey(item, "value", &value)) {
+      const std::string* value = item.GetDict().FindString("value");
+      if (!value) {
         LOG(ERROR) << "JSON contains invalid command value!";
         return std::nullopt;
       }
       feature_cmds.push_back(
-          std::make_unique<WriteFileCommand>(file_name, value));
-    } else if (cmd_name == "Mkdir") {
-      std::string file_name, value;
+          std::make_unique<WriteFileCommand>(*file_name, *value));
+    } else if (*cmd_name == "Mkdir") {
+      const std::string* file_name = item.GetDict().FindString("path");
 
       VLOG(1) << "featured: command is Mkdir";
-      if (!GetStringFromKey(item, "path", &file_name)) {
+      if (!file_name) {
         LOG(ERROR) << "JSON contains invalid path!";
         return std::nullopt;
       }
 
-      feature_cmds.push_back(std::make_unique<MkdirCommand>(file_name));
+      feature_cmds.push_back(std::make_unique<MkdirCommand>(*file_name));
     } else {
-      LOG(ERROR) << "Invalid command name in features config: " << cmd_name;
+      LOG(ERROR) << "Invalid command name in features config: " << *cmd_name;
       return std::nullopt;
     }
   }
 
-  return PlatformFeature(feat_name, std::move(query_cmds),
+  return PlatformFeature(*feat_name, std::move(query_cmds),
                          std::move(feature_cmds));
 }
 
