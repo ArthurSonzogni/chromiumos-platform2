@@ -83,7 +83,7 @@ bool Lvmd::GetThinpool(brillo::ErrorPtr* error,
   }
 
   *out_thinpool->mutable_volume_group() = in_volume_group;
-  out_thinpool->set_name(opt_thinpool->GetName());
+  out_thinpool->set_name(opt_thinpool->GetRawName());
 
   int64_t total_bytes;
   if (!opt_thinpool->GetTotalSpace(&total_bytes)) {
@@ -120,7 +120,7 @@ bool Lvmd::ListLogicalVolumes(
   for (auto& lv : lvs) {
     auto* new_lv = out_logical_volume_list->add_logical_volume();
     *new_lv->mutable_volume_group() = in_volume_group;
-    new_lv->set_name(lv.GetName());
+    new_lv->set_name(lv.GetRawName());
     // Iteration cannot be const in order to call `GetPath()`.
     new_lv->set_path(lv.GetPath().value());
   }
@@ -145,7 +145,7 @@ bool Lvmd::GetLogicalVolume(brillo::ErrorPtr* error,
   }
 
   *out_logical_volume->mutable_volume_group() = in_volume_group;
-  out_logical_volume->set_name(opt_lv->GetName());
+  out_logical_volume->set_name(opt_lv->GetRawName());
   out_logical_volume->set_path(opt_lv->GetPath().value());
   return true;
 }
