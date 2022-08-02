@@ -666,9 +666,9 @@ mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 # relabel need only be started if SELinux policy updates.
 if [ -f /sys/fs/selinux/enforce ]; then
   restorecon -R -D /var
-  # Restoring file contexts for sysfs. tracefs is excluded from this invocation
-  # and delayed in a separate job to improve boot time.
-  restorecon -R /sys -e /sys/kernel/debug/tracing -e /sys/kernel/tracing
+  # Restoring file contexts for sysfs. debugfs and tracefs are excluded from
+  # this invocation and delayed in separate jobs to improve boot time.
+  restorecon -R /sys -e /sys/kernel/debug -e /sys/kernel/tracing
   # We cannot do recursive for .shadow since userdata is encrypted (including
   # file names) before user logs-in. Restoring context for it may mislabel files
   # if encrypted filename happens to match something.

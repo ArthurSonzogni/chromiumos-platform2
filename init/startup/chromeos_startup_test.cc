@@ -33,7 +33,8 @@ class EarlySetupTest : public ::testing::Test {
     base_dir_ = temp_dir_.GetPath();
     kernel_debug_ = base_dir_.Append("sys/kernel/debug");
     kernel_config_ = base_dir_.Append("sys/kernel/config");
-    tracing_ = kernel_debug_.Append("tracing/tracing_on");
+    kernel_tracing_ = base_dir_.Append("sys/kernel/tracing");
+    tracing_ = kernel_tracing_.Append("tracing_on");
     security_hardening_ = base_dir_.Append(
         "usr/share/cros/startup/disable_stateful_security_hardening");
     kernel_security_ = base_dir_.Append("sys/kernel/security");
@@ -52,6 +53,7 @@ class EarlySetupTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_;
   base::FilePath kernel_debug_;
+  base::FilePath kernel_tracing_;
   base::FilePath dev_pts_;
   base::FilePath dev_shm_;
   base::FilePath kernel_config_;
@@ -63,6 +65,7 @@ class EarlySetupTest : public ::testing::Test {
 
 TEST_F(EarlySetupTest, NoTracing) {
   platform_->SetMountResultForPath(kernel_debug_, "debugfs");
+  platform_->SetMountResultForPath(kernel_tracing_, "tracefs");
   platform_->SetMountResultForPath(kernel_config_, "configfs");
   platform_->SetMountResultForPath(kernel_security_, "securityfs");
   platform_->SetMountResultForPath(namespaces_, "");
