@@ -21,9 +21,10 @@ DfuLogNotification::DfuLogNotification(const std::string& device_name)
     : device_name_(device_name) {}
 
 void DfuLogNotification::NotifyStartUpdate(unsigned int timeout_seconds) {
-  base::Value start_parameters(base::Value::Type::DICTIONARY);
-  start_parameters.SetStringKey(kNameParameter, device_name_);
-  start_parameters.SetIntKey(kTimeoutSecondsParameter, timeout_seconds);
+  base::Value::Dict start_parameters;
+  start_parameters.Set(kNameParameter, device_name_);
+  start_parameters.Set(kTimeoutSecondsParameter,
+                       static_cast<int>(timeout_seconds));
 
   std::string start_parameters_json;
   if (base::JSONWriter::Write(start_parameters, &start_parameters_json)) {
@@ -37,9 +38,9 @@ void DfuLogNotification::NotifyStartUpdate(unsigned int timeout_seconds) {
 }
 
 void DfuLogNotification::NotifyEndUpdate(bool success) {
-  base::Value end_parameters(base::Value::Type::DICTIONARY);
-  end_parameters.SetStringKey(kNameParameter, device_name_);
-  end_parameters.SetBoolKey(kSuccessParameter, success);
+  base::Value::Dict end_parameters;
+  end_parameters.Set(kNameParameter, device_name_);
+  end_parameters.Set(kSuccessParameter, success);
 
   std::string end_parameters_json;
   if (base::JSONWriter::Write(end_parameters, &end_parameters_json)) {
@@ -51,9 +52,9 @@ void DfuLogNotification::NotifyEndUpdate(bool success) {
 }
 
 void DfuLogNotification::NotifyUpdateProgress(float percent_done) {
-  base::Value progress_parameters(base::Value::Type::DICTIONARY);
-  progress_parameters.SetStringKey(kNameParameter, device_name_);
-  progress_parameters.SetDoubleKey(kPercentDoneParameter, percent_done);
+  base::Value::Dict progress_parameters;
+  progress_parameters.Set(kNameParameter, device_name_);
+  progress_parameters.Set(kPercentDoneParameter, percent_done);
 
   std::string progress_parameters_json;
   if (base::JSONWriter::Write(progress_parameters, &progress_parameters_json)) {
