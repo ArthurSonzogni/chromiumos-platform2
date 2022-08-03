@@ -631,30 +631,30 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
 
 std::string ScannerCapabilitiesToJson(
     const lorgnette::ScannerCapabilities& caps) {
-  base::Value caps_dict(base::Value::Type::DICTIONARY);
+  base::Value::Dict caps_dict;
 
   for (const lorgnette::DocumentSource& source : caps.sources()) {
-    base::Value source_dict(base::Value::Type::DICTIONARY);
-    source_dict.SetStringKey("Name", source.name());
+    base::Value::Dict source_dict;
+    source_dict.Set("Name", source.name());
     if (source.has_area()) {
-      base::Value area_dict(base::Value::Type::DICTIONARY);
-      area_dict.SetDoubleKey("Width", source.area().width());
-      area_dict.SetDoubleKey("Height", source.area().height());
-      source_dict.SetKey("ScannableArea", std::move(area_dict));
+      base::Value::Dict area_dict;
+      area_dict.Set("Width", source.area().width());
+      area_dict.Set("Height", source.area().height());
+      source_dict.Set("ScannableArea", std::move(area_dict));
     }
-    base::Value resolution_list(base::Value::Type::LIST);
+    base::Value::List resolution_list;
     for (const uint32_t resolution : source.resolutions()) {
       resolution_list.Append(static_cast<int>(resolution));
     }
-    source_dict.SetKey("Resolutions", std::move(resolution_list));
-    base::Value color_mode_list(base::Value::Type::LIST);
+    source_dict.Set("Resolutions", std::move(resolution_list));
+    base::Value::List color_mode_list;
     for (const int color_mode : source.color_modes()) {
       color_mode_list.Append(lorgnette::ColorMode_Name(color_mode));
     }
-    source_dict.SetKey("ColorModes", std::move(color_mode_list));
+    source_dict.Set("ColorModes", std::move(color_mode_list));
 
-    caps_dict.SetKey(lorgnette::SourceType_Name(source.type()),
-                     std::move(source_dict));
+    caps_dict.Set(lorgnette::SourceType_Name(source.type()),
+                  std::move(source_dict));
   }
 
   std::string json;
