@@ -87,25 +87,24 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Possible values are defined in
   // chrome/browser/resources/chromeos/login/components/oobe_types.js.
   // TODO(zentaro): Export these strings as constants.
-  base::Value dictionary(base::Value::Type::DICTIONARY);
+  base::Value::Dict dictionary;
   // Always skip next screen.
-  dictionary.SetBoolKey("welcomeNext", true);
+  dictionary.Set("welcomeNext", true);
   // Always skip network selection screen if possible.
-  dictionary.SetBoolKey("networkUseConnected", true);
+  dictionary.Set("networkUseConnected", true);
   // We don't want updates after rolling back.
-  dictionary.SetBoolKey("updateSkipNonCritical", true);
+  dictionary.Set("updateSkipNonCritical", true);
   // Set whether metrics should be enabled if it exists in |rollback_data|.
-  dictionary.SetBoolKey("eulaSendStatistics",
-                        rollback_data.eula_send_statistics());
+  dictionary.Set("eulaSendStatistics", rollback_data.eula_send_statistics());
   // Set whether the EULA as already accepted and can be skipped if the field is
   // present in |rollback_data|.
-  dictionary.SetBoolKey("eulaAutoAccept", rollback_data.eula_auto_accept());
+  dictionary.Set("eulaAutoAccept", rollback_data.eula_auto_accept());
   // Tell Chrome that it still has to create some robot accounts that were
   // destroyed during rollback.
-  dictionary.SetBoolKey("enrollmentRestoreAfterRollback", true);
+  dictionary.Set("enrollmentRestoreAfterRollback", true);
   // Send network config to Chrome. Chrome takes care of how to reconfigure the
   // networks.
-  dictionary.SetStringKey("networkConfig", rollback_data.network_config());
+  dictionary.Set("networkConfig", rollback_data.network_config());
 
   return base::JSONWriter::Write(dictionary, config);
 }
