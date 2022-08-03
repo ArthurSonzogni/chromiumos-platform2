@@ -42,6 +42,7 @@
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
+#include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
@@ -380,6 +381,20 @@ class Service final {
   // 50 meaning 50%) to be set as the cpu.cfs_quota_us cgroup. When the Feature
   // is not enabled, returns kCpuPercentUnlimited.
   int GetCpuQuota();
+
+  // Sets wayland server in |vm_builder| based on -
+  // |request_wayland_server| - The wayland server sent by the client in the
+  // request.
+  // |vm_id| - ID for the Vm.
+  // |classification| - type of Vm.
+  //
+  // Returns true if it's able to compute and set wayland server successfully
+  // in |vm_builder|. Else returns false and sets |error|.
+  bool SetWaylandServer(const std::string& request_wayland_server,
+                        const VmId& vm_id,
+                        VmInfo::VmType classification,
+                        VmBuilder& vm_builder,
+                        std::string& error);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;

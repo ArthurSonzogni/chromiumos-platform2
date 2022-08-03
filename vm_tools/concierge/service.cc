@@ -1994,28 +1994,13 @@ StartVmResponse Service::StartVm(StartVmRequest request,
                           .writable = request.writable_rootfs()});
   }
 
-  if (request.vm().wayland_server().empty()) {
-    std::string get_wayland_socket_error;
-    std::string wayland_server = vm_launch_interface_->GetWaylandSocketForVm(
-        vm_id, classification, get_wayland_socket_error);
-    if (wayland_server.empty()) {
-      // Prevent certain VMs from running without a secure server.
-      //
-      // TODO(b/212636975): All VMs should use this, not just special ones.
-      if (classification == VmInfo::BOREALIS ||
-          classification == VmInfo::TERMINA) {
-        response.set_failure_reason("Unable to start a wayland server: " +
-                                    get_wayland_socket_error);
-        LOG(ERROR) << response.failure_reason();
-        return response;
-      } else {
-        LOG(WARNING) << "Using default wayland server: "
-                     << get_wayland_socket_error;
-      }
-    }
-    vm_builder.SetWaylandSocket(std::move(wayland_server));
-  } else {
-    vm_builder.SetWaylandSocket(request.vm().wayland_server());
+  std::string wayland_error;
+  if (!SetWaylandServer(request.vm().wayland_server(), vm_id, classification,
+                        vm_builder, wayland_error)) {
+    response.set_failure_reason("Unable to start a wayland server: " +
+                                wayland_error);
+    LOG(ERROR) << response.failure_reason();
+    return response;
   }
 
   // Group the CPUs by their physical package ID to determine CPU cluster
@@ -4684,6 +4669,35 @@ int Service::GetCpuQuota() {
     return 30;
   }
   return kCpuPercentUnlimited;  // cfs_quota is disabled.
+}
+
+bool Service::SetWaylandServer(const std::string& request_wayland_server,
+                               const VmId& vm_id,
+                               VmInfo::VmType classification,
+                               VmBuilder& vm_builder,
+                               std::string& error) {
+  if (!request_wayland_server.empty()) {
+    vm_builder.SetWaylandSocket(request_wayland_server);
+    return true;
+  }
+
+  std::string get_wayland_socket_error;
+  std::string computed_wayland_server =
+      vm_launch_interface_->GetWaylandSocketForVm(vm_id, classification, error);
+  if (computed_wayland_server.empty()) {
+    // Prevent certain VMs from running without a secure server.
+    //
+    // TODO(b/212636975): All VMs should use this, not just special ones.
+    if (classification == VmInfo::BOREALIS ||
+        classification == VmInfo::TERMINA) {
+      return false;
+    } else {
+      LOG(WARNING) << "Using default wayland server: "
+                   << get_wayland_socket_error;
+    }
+  }
+  vm_builder.SetWaylandSocket(std::move(computed_wayland_server));
+  return true;
 }
 
 }  // namespace concierge
