@@ -281,7 +281,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--bam\u0000--bar-flag=baz\u0000--display-properties=[{\"connector-type\": 14, \"rounded-corners\": {\"bottom-left\": 15, \"bottom-right\": 15, \"top-left\": 15, \"top-right\": 15}}]\u0000--extra-web-apps-dir=another\u0000--foo-flag\u0000"
+          "serialized-ash-switches": "--bam\u0000--bar-flag=baz\u0000--display-properties=[{\"connector-type\": 14, \"rounded-corners\": {\"bottom-left\": 15, \"bottom-right\": 15, \"top-left\": 15, \"top-right\": 15}}]\u0000--enable-features=RoundedDisplay\u0000--extra-web-apps-dir=another\u0000--foo-flag\u0000"
         },
         "wallpaper": "default",
         "wifi": {

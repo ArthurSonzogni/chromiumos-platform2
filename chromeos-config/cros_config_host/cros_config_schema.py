@@ -404,6 +404,10 @@ def _GenerateInferredAshSwitches(device_config):
         ash_switches.add(
             "--display-properties=%s" % json.dumps(display_properties)
         )
+        for display in display_properties:
+            if display.get("rounded-corners"):
+                ash_enabled_features.add("RoundedDisplay")
+                break
 
     if ash_enabled_features:
         ash_switches.add(
