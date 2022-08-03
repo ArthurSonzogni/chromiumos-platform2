@@ -67,7 +67,8 @@ class MediaPerceptionImpl
       SetPipelineStateCallback callback) override;
   void GetGlobalPipelineState(GetGlobalPipelineStateCallback callback) override;
 
-  void set_connection_error_handler(base::Closure connection_error_handler);
+  void set_connection_error_handler(
+      base::RepeatingClosure connection_error_handler);
 
  private:
   mojo::Receiver<chromeos::media_perception::mojom::MediaPerception> receiver_;

@@ -89,9 +89,9 @@ void ProducerImpl::PushNextFrame(
   size->height = height;
   virtual_device_->RequestFrameBuffer(
       std::move(size), pixel_format, nullptr,
-      base::Bind(&ProducerImpl::OnFrameBufferReceived, base::Unretained(this),
-                 producer_impl, timestamp, base::Passed(&data), data_size,
-                 pixel_format, width, height));
+      base::BindOnce(&ProducerImpl::OnFrameBufferReceived,
+                     base::Unretained(this), producer_impl, timestamp,
+                     std::move(data), data_size, pixel_format, width, height));
 }
 
 void ProducerImpl::OnFrameBufferReceived(

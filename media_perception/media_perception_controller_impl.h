@@ -30,7 +30,8 @@ class MediaPerceptionControllerImpl
   MediaPerceptionControllerImpl& operator=(
       const MediaPerceptionControllerImpl&) = delete;
 
-  void set_connection_error_handler(base::Closure connection_error_handler);
+  void set_connection_error_handler(
+      base::RepeatingClosure connection_error_handler);
 
   // chromeos::media_perception::mojom::MediaPerceptionController:
   void ActivateMediaPerception(

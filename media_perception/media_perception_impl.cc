@@ -41,7 +41,7 @@ MediaPerceptionImpl::MediaPerceptionImpl(
 }
 
 void MediaPerceptionImpl::set_connection_error_handler(
-    base::Closure connection_error_handler) {
+    base::RepeatingClosure connection_error_handler) {
   receiver_.set_disconnect_handler(std::move(connection_error_handler));
 }
 

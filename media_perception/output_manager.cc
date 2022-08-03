@@ -20,7 +20,7 @@ namespace mri {
 
 namespace {
 
-// To avoid passing a lambda as a base::Closure.
+// To avoid passing a lambda as a base::RepeatingClosure.
 void OnConnectionClosedOrError(const std::string& interface_type) {
   LOG(INFO) << "Got closed connection: " << interface_type;
 }
@@ -61,8 +61,8 @@ OutputManager::OutputManager(
         PerceptionInterfaceType::INTERFACE_FRAME_PERCEPTION) {
       (*interfaces_ptr)->frame_perception_handler_request =
           frame_perception_handler_.BindNewPipeAndPassReceiver();
-      frame_perception_handler_.set_disconnect_handler(
-          base::Bind(&OnConnectionClosedOrError, "INTERFACE_FRAME_PERCEPTION"));
+      frame_perception_handler_.set_disconnect_handler(base::BindRepeating(
+          &OnConnectionClosedOrError, "INTERFACE_FRAME_PERCEPTION"));
 
       // Frame perception outputs setup.
       for (const PipelineOutput& output : interface.output()) {
@@ -90,7 +90,7 @@ OutputManager::OutputManager(
         PerceptionInterfaceType::INTERFACE_HOTWORD_DETECTION) {
       (*interfaces_ptr)->hotword_detection_handler_request =
           hotword_detection_handler_.BindNewPipeAndPassReceiver();
-      hotword_detection_handler_.set_disconnect_handler(base::Bind(
+      hotword_detection_handler_.set_disconnect_handler(base::BindRepeating(
           &OnConnectionClosedOrError, "INTERFACE_HOTWORD_DETECTION"));
 
       // Hotword detection outputs setup.
@@ -119,7 +119,7 @@ OutputManager::OutputManager(
         PerceptionInterfaceType::INTERFACE_PRESENCE_PERCEPTION) {
       (*interfaces_ptr)->presence_perception_handler_request =
           presence_perception_handler_.BindNewPipeAndPassReceiver();
-      presence_perception_handler_.set_disconnect_handler(base::Bind(
+      presence_perception_handler_.set_disconnect_handler(base::BindRepeating(
           &OnConnectionClosedOrError, "INTERFACE_PRESENCE_PERCEPTION"));
 
       // Presence perception outputs setup.
@@ -148,7 +148,7 @@ OutputManager::OutputManager(
         PerceptionInterfaceType::INTERFACE_OCCUPANCY_TRIGGER) {
       (*interfaces_ptr)->occupancy_trigger_handler_request =
           occupancy_trigger_handler_.BindNewPipeAndPassReceiver();
-      occupancy_trigger_handler_.set_disconnect_handler(base::Bind(
+      occupancy_trigger_handler_.set_disconnect_handler(base::BindRepeating(
           &OnConnectionClosedOrError, "INTERFACE_OCCUPANCY_TRIGGER"));
 
       // Occpancy trigger outputs setup.
@@ -178,7 +178,7 @@ OutputManager::OutputManager(
       (*interfaces_ptr)->appearances_handler_request =
           appearances_handler_.BindNewPipeAndPassReceiver();
       appearances_handler_.set_disconnect_handler(
-          base::Bind(&OnConnectionClosedOrError, "APPEARANCES"));
+          base::BindRepeating(&OnConnectionClosedOrError, "APPEARANCES"));
 
       // Appearances outputs setup.
       for (const PipelineOutput& output : interface.output()) {
@@ -205,8 +205,8 @@ OutputManager::OutputManager(
         PerceptionInterfaceType::INTERFACE_ONE_TOUCH_AUTOZOOM) {
       (*interfaces_ptr)->one_touch_autozoom_handler_request =
           one_touch_autozoom_handler_.BindNewPipeAndPassReceiver();
-      one_touch_autozoom_handler_.set_disconnect_handler(
-          base::Bind(&OnConnectionClosedOrError, "ONE_TOUCH_AUTOZOOM"));
+      one_touch_autozoom_handler_.set_disconnect_handler(base::BindRepeating(
+          &OnConnectionClosedOrError, "ONE_TOUCH_AUTOZOOM"));
 
       // One touch Autozoom outputs setup.
       for (const PipelineOutput& output : interface.output()) {
@@ -234,7 +234,7 @@ OutputManager::OutputManager(
       (*interfaces_ptr)->software_autozoom_handler_request =
           software_autozoom_handler_.BindNewPipeAndPassReceiver();
       software_autozoom_handler_.set_disconnect_handler(
-          base::Bind(&OnConnectionClosedOrError, "SOFTWARE_AUTOZOOM"));
+          base::BindRepeating(&OnConnectionClosedOrError, "SOFTWARE_AUTOZOOM"));
 
       // Software Autozoom outputs setup.
       for (const PipelineOutput& output : interface.output()) {
@@ -284,8 +284,8 @@ OutputManager::OutputManager(
           }
           dbus_connection_ = std::make_unique<brillo::DBusConnection>();
           thread_.task_runner()->PostTask(
-              FROM_HERE, base::Bind(&OutputManager::InitializeDbus,
-                                    base::Unretained(this)));
+              FROM_HERE, base::BindOnce(&OutputManager::InitializeDbus,
+                                        base::Unretained(this)));
         }
       }
       continue;

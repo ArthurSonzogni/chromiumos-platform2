@@ -15,7 +15,7 @@ namespace mri {
 
 namespace {
 
-// To avoid passing a lambda as a base::Closure.
+// To avoid passing a lambda as a base::RepeatingClosure.
 void OnConnectionClosedOrError(
     const MediaPerceptionImpl* const media_perception_impl) {
   DLOG(INFO) << "Got closed connection.";
@@ -36,7 +36,7 @@ MediaPerceptionControllerImpl::MediaPerceptionControllerImpl(
       rtanalytics_(rtanalytics) {}
 
 void MediaPerceptionControllerImpl::set_connection_error_handler(
-    base::Closure connection_error_handler) {
+    base::RepeatingClosure connection_error_handler) {
   receiver_.set_disconnect_handler(std::move(connection_error_handler));
 }
 
@@ -50,7 +50,7 @@ void MediaPerceptionControllerImpl::ActivateMediaPerception(
   MediaPerceptionImpl* const media_perception_impl = new MediaPerceptionImpl(
       std::move(receiver), video_capture_service_client_,
       chrome_audio_service_client_, rtanalytics_);
-  media_perception_impl->set_connection_error_handler(base::Bind(
+  media_perception_impl->set_connection_error_handler(base::BindRepeating(
       &OnConnectionClosedOrError, base::Unretained(media_perception_impl)));
 }
 

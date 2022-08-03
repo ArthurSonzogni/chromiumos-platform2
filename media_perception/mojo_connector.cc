@@ -109,8 +109,8 @@ void MojoConnector::ReceiveMojoInvitationFileDescriptor(int fd_int) {
     return;
   }
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::AcceptConnectionOnIpcThread,
-                            base::Unretained(this), base::Passed(&fd)));
+      FROM_HERE, base::BindOnce(&MojoConnector::AcceptConnectionOnIpcThread,
+                                base::Unretained(this), std::move(fd)));
 }
 
 void MojoConnector::OnConnectionErrorOrClosed() {
@@ -133,8 +133,8 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
   }
   media_perception_service_impl_ = std::make_unique<MediaPerceptionServiceImpl>(
       std::move(child_pipe),
-      base::Bind(&MojoConnector::OnConnectionErrorOrClosed,
-                 base::Unretained(this)),
+      base::BindRepeating(&MojoConnector::OnConnectionErrorOrClosed,
+                          base::Unretained(this)),
       video_capture_service_client_, chrome_audio_service_client_,
       rtanalytics_);
 }
@@ -144,8 +144,8 @@ void MojoConnector::ConnectToVideoCaptureService() {
   if (!is_connected_to_vcs_) {
     ipc_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&MojoConnector::ConnectToVideoCaptureServiceOnIpcThread,
-                   base::Unretained(this)));
+        base::BindOnce(&MojoConnector::ConnectToVideoCaptureServiceOnIpcThread,
+                       base::Unretained(this)));
     is_connected_to_vcs_ = true;
   }
 }
@@ -155,9 +155,9 @@ void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
 
   media_perception_service_impl_->ConnectToVideoCaptureService(
       video_source_provider_.BindNewPipeAndPassReceiver());
-  video_source_provider_.set_disconnect_handler(
-      base::Bind(&MojoConnector::OnVideoSourceProviderConnectionErrorOrClosed,
-                 base::Unretained(this)));
+  video_source_provider_.set_disconnect_handler(base::BindRepeating(
+      &MojoConnector::OnVideoSourceProviderConnectionErrorOrClosed,
+      base::Unretained(this)));
 }
 
 bool MojoConnector::IsConnectedToVideoCaptureService() {
@@ -168,13 +168,13 @@ bool MojoConnector::IsConnectedToVideoCaptureService() {
 void MojoConnector::GetDevices(
     const VideoCaptureServiceClient::GetDevicesCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::GetDevicesOnIpcThread,
-                            base::Unretained(this), callback));
+      FROM_HERE, base::BindOnce(&MojoConnector::GetDevicesOnIpcThread,
+                                base::Unretained(this), callback));
 }
 
 void MojoConnector::GetDevicesOnIpcThread(
     const VideoCaptureServiceClient::GetDevicesCallback& callback) {
-  video_source_provider_->GetSourceInfos(base::Bind(
+  video_source_provider_->GetSourceInfos(base::BindOnce(
       &MojoConnector::OnDeviceInfosReceived, base::Unretained(this), callback));
 }
 
@@ -239,9 +239,10 @@ void MojoConnector::OpenDevice(
     const VideoCaptureServiceClient::OpenDeviceCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&MojoConnector::OpenDeviceOnIpcThread, base::Unretained(this),
-                 device_id, force_reopen_with_settings,
-                 video_frame_handler_impl, capture_format, callback));
+      base::BindOnce(&MojoConnector::OpenDeviceOnIpcThread,
+                     base::Unretained(this), device_id,
+                     force_reopen_with_settings, video_frame_handler_impl,
+                     capture_format, callback));
 }
 
 void MojoConnector::OpenDeviceOnIpcThread(
@@ -302,8 +303,8 @@ void MojoConnector::OpenDeviceOnIpcThread(
       std::move(requested_settings), force_reopen_with_settings,
       device_it->second.push_video_stream_subscription
           .BindNewPipeAndPassReceiver(),
-      base::Bind(&MojoConnector::OnCreatePushSubscriptionCallback,
-                 base::Unretained(this), device_id, callback));
+      base::BindOnce(&MojoConnector::OnCreatePushSubscriptionCallback,
+                     base::Unretained(this), device_id, callback));
 }
 
 void MojoConnector::OnCreatePushSubscriptionCallback(
@@ -337,8 +338,8 @@ bool MojoConnector::ActivateDevice(const std::string& device_id) {
 
 void MojoConnector::StopVideoCapture(const std::string& device_id) {
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::StopVideoCaptureOnIpcThread,
-                            base::Unretained(this), device_id));
+      FROM_HERE, base::BindOnce(&MojoConnector::StopVideoCaptureOnIpcThread,
+                                base::Unretained(this), device_id));
 }
 
 void MojoConnector::StopVideoCaptureOnIpcThread(const std::string& device_id) {
@@ -350,9 +351,9 @@ void MojoConnector::CreateVirtualDevice(
     std::shared_ptr<ProducerImpl> producer_impl,
     const VideoCaptureServiceClient::VirtualDeviceCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::CreateVirtualDeviceOnIpcThread,
-                            base::Unretained(this), video_device, producer_impl,
-                            callback));
+      FROM_HERE, base::BindOnce(&MojoConnector::CreateVirtualDeviceOnIpcThread,
+                                base::Unretained(this), video_device,
+                                producer_impl, callback));
 }
 
 void MojoConnector::CreateVirtualDeviceOnIpcThread(
@@ -390,10 +391,11 @@ void MojoConnector::PushFrameToVirtualDevice(
     int frame_width,
     int frame_height) {
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::PushFrameToVirtualDeviceOnIpcThread,
-                            base::Unretained(this), producer_impl, timestamp,
-                            base::Passed(&data), data_size, pixel_format,
-                            frame_width, frame_height));
+      FROM_HERE,
+      base::BindOnce(&MojoConnector::PushFrameToVirtualDeviceOnIpcThread,
+                     base::Unretained(this), producer_impl, timestamp,
+                     std::move(data), data_size, pixel_format, frame_width,
+                     frame_height));
 }
 
 void MojoConnector::PushFrameToVirtualDeviceOnIpcThread(

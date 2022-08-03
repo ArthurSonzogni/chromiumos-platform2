@@ -26,7 +26,7 @@ class MediaPerceptionServiceImpl
   // connection error.
   MediaPerceptionServiceImpl(
       mojo::ScopedMessagePipeHandle pipe,
-      base::Closure connection_error_handler,
+      base::RepeatingClosure connection_error_handler,
       std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
       std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
       std::shared_ptr<Rtanalytics> rtanalytics);
