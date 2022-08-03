@@ -30,24 +30,20 @@ constexpr std::array<const char*, 3> kExpectedKeys = {kKeyIdentity, kKeyOwn,
 constexpr int kJSONOption =
     base::JSON_ALLOW_TRAILING_COMMAS | base::JSON_ALLOW_COMMENTS;
 
-bool ValidateDictKeys(const base::Value& value) {
-  if (!value.is_dict()) {
-    LOG(ERROR) << "Expected dict, got: " << value;
-    return false;
-  }
-  for (auto item : value.DictItems()) {
-    if (!base::Contains(kExpectedKeys, item.first)) {
-      LOG(ERROR) << "Got an unexpected field: " << item.first;
+bool ValidateDictKeys(const base::Value::Dict& value) {
+  for (const auto& [key, _] : value) {
+    if (!base::Contains(kExpectedKeys, key)) {
+      LOG(ERROR) << "Got an unexpected field: " << key;
       return false;
     }
   }
   return true;
 }
 
-bool ParseOptionalStringListByKey(const base::Value& value,
+bool ParseOptionalStringListByKey(const base::Value::Dict& value,
                                   base::StringPiece key,
                                   std::vector<std::string>* out) {
-  const auto* list = value.FindKey(key);
+  const auto* list = value.Find(key);
   // Returns true if not found because this is an optional field.
   if (!list)
     return true;
@@ -69,10 +65,10 @@ bool ParseOptionalStringListByKey(const base::Value& value,
   return true;
 }
 
-bool GetStringByKey(const base::Value& value,
+bool GetStringByKey(const base::Value::Dict& value,
                     const std::string& key,
                     std::string* out) {
-  const auto* str = value.FindKey(key);
+  const auto* str = value.Find(key);
   if (!str) {
     LOG(ERROR) << "Cannot find \"" << key << "\" in policy.";
     return false;
@@ -145,17 +141,22 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
                << ", column: " << value_with_error.error().column << ")";
     return std::nullopt;
   }
-  return ParseServicePolicyFromValue(*value_with_error);
+  if (!value_with_error->is_list()) {
+    LOG(ERROR) << "Expected policy to be a list, got: " << *value_with_error;
+    return std::nullopt;
+  }
+  return ParseServicePolicyFromValue(value_with_error->GetList());
 }
 
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
-    const base::Value& value) {
-  if (!value.is_list()) {
-    LOG(ERROR) << "Expected policy to be a list, got: " << value;
-    return std::nullopt;
-  }
+    const base::Value::List& value) {
   ServicePolicyMap result;
-  for (const auto& policy : value.GetList()) {
+  for (const auto& item : value) {
+    if (!item.is_dict()) {
+      LOG(ERROR) << "Expected dict, got: " << item;
+      return std::nullopt;
+    }
+    const auto& policy = item.GetDict();
     if (!ValidateDictKeys(policy))
       return std::nullopt;
 

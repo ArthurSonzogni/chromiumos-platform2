@@ -43,7 +43,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
 
 // Same as above but takes a |base::Value|.
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
-    const base::Value& value);
+    const base::Value::List& value);
 
 }  // namespace mojo_service_manager
 }  // namespace chromeos
