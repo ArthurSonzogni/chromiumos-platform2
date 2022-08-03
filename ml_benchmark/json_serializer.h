@@ -15,7 +15,7 @@
 namespace ml_benchmark {
 
 // In case of failure reports error to LOG(ERROR) and returns std::nullopt.
-std::optional<base::Value> BenchmarkResultsToJson(
+std::optional<base::Value::Dict> BenchmarkResultsToJson(
     const chrome::ml_benchmark::BenchmarkResults& results);
 
 void WriteResultsToPath(const chrome::ml_benchmark::BenchmarkResults& results,

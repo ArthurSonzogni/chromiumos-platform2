@@ -75,39 +75,38 @@ std::optional<std::string> metric_cardinality(const Metric::Cardinality c) {
 
 namespace ml_benchmark {
 
-std::optional<base::Value> BenchmarkResultsToJson(
+std::optional<base::Value::Dict> BenchmarkResultsToJson(
     const BenchmarkResults& results) {
-  base::Value doc(base::Value::Type::DICTIONARY);
-  doc.SetKey("status", base::Value(results.status()));
-  doc.SetKey("results_message", base::Value(results.results_message()));
+  base::Value::Dict doc;
+  doc.Set("status", results.status());
+  doc.Set("results_message", results.results_message());
   if (results.status() != chrome::ml_benchmark::OK) {
     return doc;
   }
 
-  base::Value percentiles(base::Value::Type::DICTIONARY);
+  base::Value::Dict percentiles;
   for (const auto& latencies : results.percentile_latencies_in_us()) {
     std::string percentile = std::to_string(latencies.first);
-    percentiles.SetKey(percentile,
-                       base::Value(static_cast<int>(latencies.second)));
+    percentiles.Set(percentile, static_cast<int>(latencies.second));
   }
-  doc.SetKey("percentile_latencies_in_us", std::move(percentiles));
+  doc.Set("percentile_latencies_in_us", std::move(percentiles));
 
-  base::Value metrics(base::Value::Type::LIST);
+  base::Value::List metrics;
   for (const auto& m : results.metrics()) {
-    base::Value metric(base::Value::Type::DICTIONARY);
-    metric.SetKey("name", base::Value(m.name()));
+    base::Value::Dict metric;
+    metric.Set("name", m.name());
     const auto direction = metric_direction(m.direction());
     if (!direction)
       return std::nullopt;
-    metric.SetKey("improvement_direction", base::Value(*direction));
+    metric.Set("improvement_direction", *direction);
     const auto units = metric_units(m.units());
     if (!units)
       return std::nullopt;
-    metric.SetKey("units", base::Value(*units));
+    metric.Set("units", *units);
     const auto cardinality = metric_cardinality(m.cardinality());
     if (!cardinality)
       return std::nullopt;
-    metric.SetKey("cardinality", base::Value(*cardinality));
+    metric.Set("cardinality", *cardinality);
 
     if (m.cardinality() == Metric::SINGLE && m.values().size() != 1) {
       LOG(ERROR) << "Single cardinality metrics should contain a single value. "
@@ -115,25 +114,24 @@ std::optional<base::Value> BenchmarkResultsToJson(
                  << m.name();
       return std::nullopt;
     }
-    base::Value values(base::Value::Type::LIST);
+    base::Value::List values;
     for (const auto& v : m.values()) {
-      values.Append(base::Value(v));
+      values.Append(v);
     }
-    metric.SetKey("values", std::move(values));
+    metric.Set("values", std::move(values));
 
     metrics.Append(std::move(metric));
   }
-  doc.SetKey("metrics", std::move(metrics));
+  doc.Set("metrics", std::move(metrics));
 
-  doc.SetKey("power_normalization_factor",
-             base::Value(results.power_normalization_factor()));
+  doc.Set("power_normalization_factor", results.power_normalization_factor());
 
   return doc;
 }
 
 void WriteResultsToPath(const BenchmarkResults& results,
                         const base::FilePath& output_path) {
-  std::optional<base::Value> doc = BenchmarkResultsToJson(results);
+  std::optional<base::Value::Dict> doc = BenchmarkResultsToJson(results);
   if (!doc) {
     return;
   }
