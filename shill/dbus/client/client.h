@@ -143,9 +143,10 @@ class BRILLO_EXPORT Client {
     // Asynchronous setter.
     virtual void Set(const std::string& name,
                      const brillo::Any& value,
-                     const base::Callback<void()>& success,
-                     const base::Callback<void(brillo::Error*)>& error) {
-      proxy_->SetPropertyAsync(name, value, success, error, timeout_);
+                     base::OnceCallback<void()> success,
+                     base::OnceCallback<void(brillo::Error*)> error) {
+      proxy_->SetPropertyAsync(name, value, std::move(success),
+                               std::move(error), timeout_);
     }
 
     // Get all properties.
@@ -209,8 +210,9 @@ class BRILLO_EXPORT Client {
       PropertyAccessor<org::chromium::flimflam::ServiceProxyInterface>;
 
   using DefaultServiceChangedHandler =
-      base::Callback<void(const std::string& type)>;
-  using DeviceChangedHandler = base::Callback<void(const Device* const)>;
+      base::RepeatingCallback<void(const std::string& type)>;
+  using DeviceChangedHandler =
+      base::RepeatingCallback<void(const Device* const)>;
 
   explicit Client(scoped_refptr<dbus::Bus> bus);
   virtual ~Client() = default;

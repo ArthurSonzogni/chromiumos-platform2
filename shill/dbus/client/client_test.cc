@@ -165,16 +165,16 @@ class ClientTest : public testing::Test {
     EXPECT_CALL(*base_mock_, SetNameOwnerChangedCallback(_));
 
     client_ = std::make_unique<FakeClient>(bus_mock_);
-    client_->RegisterDefaultServiceChangedHandler(
-        base::Bind(&ClientTest::DefaultServiceHandler, base::Unretained(this)));
-    client_->RegisterDefaultDeviceChangedHandler(
-        base::Bind(&ClientTest::DefaultDeviceHandler, base::Unretained(this)));
-    client_->RegisterDeviceAddedHandler(
-        base::Bind(&ClientTest::DeviceAddedHandler, base::Unretained(this)));
-    client_->RegisterDeviceRemovedHandler(
-        base::Bind(&ClientTest::DeviceRemovedHandler, base::Unretained(this)));
-    client_->RegisterDeviceChangedHandler(
-        base::Bind(&ClientTest::DeviceChangedHandler, base::Unretained(this)));
+    client_->RegisterDefaultServiceChangedHandler(base::BindRepeating(
+        &ClientTest::DefaultServiceHandler, base::Unretained(this)));
+    client_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
+        &ClientTest::DefaultDeviceHandler, base::Unretained(this)));
+    client_->RegisterDeviceAddedHandler(base::BindRepeating(
+        &ClientTest::DeviceAddedHandler, base::Unretained(this)));
+    client_->RegisterDeviceRemovedHandler(base::BindRepeating(
+        &ClientTest::DeviceRemovedHandler, base::Unretained(this)));
+    client_->RegisterDeviceChangedHandler(base::BindRepeating(
+        &ClientTest::DeviceChangedHandler, base::Unretained(this)));
 
     // These are not blindly added - we expect the Client to issue these calls
     // on the service in order to recover the path.
@@ -748,13 +748,11 @@ TEST_F(ClientTest, ManagerPropertyAccessor) {
 
   auto props = client_->ManagerProperties();
   props->Set("foo", "bar", nullptr);
-  props->Set("foo", "bar", base::DoNothing(),
-             base::Bind([](brillo::Error*) {}));
+  props->Set("foo", "bar", base::DoNothing(), base::DoNothing());
 
   props = client_->ManagerProperties(base::Milliseconds(10));
   props->Set("foo", "bar", nullptr);
-  props->Set("foo", "bar", base::DoNothing(),
-             base::Bind([](brillo::Error*) {}));
+  props->Set("foo", "bar", base::DoNothing(), base::DoNothing());
 }
 
 TEST_F(ClientTest, DefaultServicePropertyAccessor) {

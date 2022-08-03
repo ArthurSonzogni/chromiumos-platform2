@@ -106,9 +106,10 @@ Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
           &Client::OnOwnerChange, weak_factory_.GetWeakPtr()));
   manager_proxy_ = std::make_unique<ManagerProxy>(bus_);
   manager_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&Client::OnManagerPropertyChange, weak_factory_.GetWeakPtr()),
-      base::Bind(&Client::OnManagerPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&Client::OnManagerPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&Client::OnManagerPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void Client::NewDefaultServiceProxy(const dbus::ObjectPath& service_path) {
@@ -118,10 +119,10 @@ void Client::NewDefaultServiceProxy(const dbus::ObjectPath& service_path) {
 void Client::SetupDefaultServiceProxy(const dbus::ObjectPath& service_path) {
   NewDefaultServiceProxy(service_path);
   default_service_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&Client::OnDefaultServicePropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&Client::OnDefaultServicePropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&Client::OnDefaultServicePropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&Client::OnDefaultServicePropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void Client::ReleaseDefaultServiceProxy() {
@@ -147,10 +148,11 @@ void Client::SetupDeviceProxy(const dbus::ObjectPath& device_path) {
   devices_.emplace(device_path.value(),
                    std::make_unique<DeviceWrapper>(bus_, std::move(proxy)));
   ptr->RegisterPropertyChangedSignalHandler(
-      base::Bind(&Client::OnDevicePropertyChange, weak_factory_.GetWeakPtr(),
-                 false /*device_added*/, device_path.value()),
-      base::Bind(&Client::OnDevicePropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr(), device_path.value()));
+      base::BindRepeating(&Client::OnDevicePropertyChange,
+                          weak_factory_.GetWeakPtr(), false /*device_added*/,
+                          device_path.value()),
+      base::BindOnce(&Client::OnDevicePropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr(), device_path.value()));
 }
 
 std::unique_ptr<ServiceProxyInterface> Client::NewServiceProxy(
@@ -170,10 +172,10 @@ void Client::SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
   auto* ptr = proxy.get();
   it->second->set_service_proxy(std::move(proxy));
   ptr->RegisterPropertyChangedSignalHandler(
-      base::Bind(&Client::OnServicePropertyChange, weak_factory_.GetWeakPtr(),
-                 device_path.value()),
-      base::Bind(&Client::OnServicePropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr(), device_path.value()));
+      base::BindRepeating(&Client::OnServicePropertyChange,
+                          weak_factory_.GetWeakPtr(), device_path.value()),
+      base::BindOnce(&Client::OnServicePropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr(), device_path.value()));
 }
 
 void Client::RegisterOnAvailableCallback(
