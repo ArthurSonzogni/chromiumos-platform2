@@ -17,6 +17,9 @@ namespace imageloader {
 enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
 
 // A class to parse and store imageloader.json manifest. See manifest.md.
+//
+// NOTE: For developers, remember to update manifest.md when adding/removing
+// fields into the manifest.
 class BRILLO_EXPORT Manifest {
  public:
   Manifest() = default;
