@@ -709,7 +709,7 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayScheduleEmpty) {
   EXPECT_FALSE(result.ok());
 }
 
-TEST_F(BackendPinweaverTpm2Test, GetDelayInSeconds) {
+TEST_F(BackendPinweaverTpm2Test, GetDelayInSecondsV1) {
   brillo::Blob header(sizeof(unimported_leaf_data_t));
   brillo::Blob leaf(sizeof(leaf_public_data_t));
 
@@ -718,6 +718,11 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayInSeconds) {
   leaf_data->delay_schedule[0].attempt_count.v = 5;
   leaf_data->delay_schedule[0].time_diff.v = UINT32_MAX;
   leaf_data->attempt_count.v = 4;
+
+  // In version 1, GetDelayInSeconds only parses the cred metadata, without
+  // initiating any requests to the PinWeaver server.
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
       brillo::CombineBlobs({header, leaf}));
@@ -732,6 +737,67 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayInSeconds) {
 
   ASSERT_TRUE(result2.ok());
   EXPECT_EQ(result2.value(), UINT32_MAX);
+}
+
+TEST_F(BackendPinweaverTpm2Test, GetDelayInSecondsV2) {
+  const std::string kFakeRoot = "fake_root";
+
+  brillo::Blob header(sizeof(unimported_leaf_data_t));
+  brillo::Blob leaf(sizeof(leaf_public_data_t));
+
+  struct leaf_public_data_t* leaf_data =
+      reinterpret_cast<struct leaf_public_data_t*>(leaf.data());
+  leaf_data->delay_schedule[0].attempt_count.v = 5;
+  leaf_data->delay_schedule[0].time_diff.v = 60;
+  leaf_data->delay_schedule[1].attempt_count.v = 6;
+  leaf_data->delay_schedule[1].time_diff.v = 70;
+  leaf_data->delay_schedule[2].attempt_count.v = 7;
+  leaf_data->delay_schedule[2].time_diff.v = UINT32_MAX;
+  leaf_data->last_access_ts.boot_count = 0;
+  leaf_data->last_access_ts.timer_value = 100;
+  leaf_data->attempt_count.v = 4;
+
+  // In version 2, GetDelayInSeconds requests the current timestamp from the
+  // PinWeaver server, so that it can return a more accurate remaining seconds.
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(2), Return(trunks::TPM_RC_SUCCESS)));
+
+  // This is only called twice because when the delay is infinite, we don't have
+  // to query the current timestamp.
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverSysInfo(2, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
+                      SetArgPointee<3>(0), SetArgPointee<4>(120),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
+                      SetArgPointee<3>(1), SetArgPointee<4>(10),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(result.value(), 0);
+
+  // Ready timestamp is 100+60=160, and the current timestamp is 120.
+  leaf_data->attempt_count.v = 5;
+  auto result2 = middleware_->CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result2.ok());
+  EXPECT_EQ(result2.value(), 40);
+
+  // Ready timestamp is 70 because the boot count has changed, and the current
+  // timestamp is 10.
+  leaf_data->attempt_count.v = 6;
+  auto result3 = middleware_->CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result3.ok());
+  EXPECT_EQ(result3.value(), 60);
+
+  // Ready timestamp isn't important because the leaf is infinitely locked out.
+  leaf_data->attempt_count.v = 7;
+  auto result4 = middleware_->CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result4.ok());
+  EXPECT_EQ(result4.value(), UINT32_MAX);
 }
 
 }  // namespace hwsec

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -33,6 +34,7 @@ using LogEntryType = Backend::PinWeaver::GetLogResult::LogEntryType;
 namespace {
 
 constexpr uint8_t kPinWeaverProtocolVersion = 2;
+constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 
 StatusOr<std::string> EncodeAuxHashes(const std::vector<brillo::Blob>& h_aux) {
   std::string result;
@@ -482,6 +484,7 @@ StatusOr<PinWeaverTpm2::DelaySchedule> PinWeaverTpm2::GetDelaySchedule(
 
 StatusOr<uint32_t> PinWeaverTpm2::GetDelayInSeconds(
     const brillo::Blob& cred_metadata) {
+  ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(DelaySchedule delay_schedule,
                    GetDelaySchedule(cred_metadata));
   ASSIGN_OR_RETURN(int wrong_attempts, GetWrongAuthAttempts(cred_metadata));
@@ -500,9 +503,104 @@ StatusOr<uint32_t> PinWeaverTpm2::GetDelayInSeconds(
   }
   --iter;
 
-  // TODO(b/234715681): Calculate the more accurate delay if we need it in the
-  // future.
-  return iter->second;
+  uint32_t delay = iter->second;
+
+  // Prior to v2, we have no way of knowing actual remaining seconds, we can
+  // return an upper bound, by assuming the delay specified in the delay
+  // schedule starts counting from now.
+  if (version <= 1 || delay == kInfiniteDelay) {
+    return delay;
+  }
+
+  ASSIGN_OR_RETURN(PinWeaverTimestamp last_access_ts,
+                   GetLastAccessTimestamp(cred_metadata));
+  ASSIGN_OR_RETURN(PinWeaverTimestamp current_ts, GetSystemTimestamp());
+
+  uint64_t ready_ts;
+  if (last_access_ts.boot_count == current_ts.boot_count) {
+    ready_ts = last_access_ts.timer_value + delay;
+  } else {
+    ready_ts = delay;
+  }
+
+  if (ready_ts <= current_ts.timer_value) {
+    return 0;
+  }
+
+  // It shouldn't happen, but if system timer is broken and the delta becomes
+  // larger than kInfiniteDelay, we should cap it back to kInfiniteDelay to
+  // ensure static_cast's safety.
+  uint64_t remaining_seconds = std::min(ready_ts - current_ts.timer_value,
+                                        static_cast<uint64_t>(kInfiniteDelay));
+  return static_cast<uint32_t>(remaining_seconds);
+}
+
+StatusOr<PinWeaverTpm2::PinWeaverTimestamp>
+PinWeaverTpm2::GetLastAccessTimestamp(const brillo::Blob& cred_metadata) {
+  // The assumption is that leaf_public_data_t structure will have the existing
+  // part immutable in the future.
+  if (cred_metadata.size() <
+      offsetof(unimported_leaf_data_t, payload) +
+          offsetof(leaf_public_data_t, last_access_ts) +
+          sizeof(std::declval<leaf_public_data_t>().last_access_ts)) {
+    return MakeStatus<TPMError>("GetLastAccessTimestamp metadata too short",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // The below should equal to this:
+  //
+  // reinterpret_cast<struct leaf_public_data_t*>(
+  //   reinterpret_cast<struct unimported_leaf_data_t*>(
+  //     cred_metadata.data()
+  //   )->payload
+  // )->last_access_ts.boot_count/timer_value;
+  //
+  // But we should use memcpy to prevent misaligned accesses and endian issue.
+
+  PinWeaverTpm2::PinWeaverTimestamp timestamp;
+
+  static_assert(sizeof(std::declval<pw_timestamp_t>().boot_count) ==
+                sizeof(timestamp.boot_count));
+  static_assert(sizeof(std::declval<pw_timestamp_t>().timer_value) ==
+                sizeof(timestamp.timer_value));
+
+  const uint8_t* ptr = cred_metadata.data() +
+                       offsetof(unimported_leaf_data_t, payload) +
+                       offsetof(leaf_public_data_t, last_access_ts) +
+                       offsetof(pw_timestamp_t, boot_count);
+
+  memcpy(&timestamp.boot_count, ptr, sizeof(timestamp.boot_count));
+
+  ptr = cred_metadata.data() + offsetof(unimported_leaf_data_t, payload) +
+        offsetof(leaf_public_data_t, last_access_ts) +
+        offsetof(pw_timestamp_t, timer_value);
+
+  memcpy(&timestamp.timer_value, ptr, sizeof(timestamp.timer_value));
+
+  timestamp.boot_count = base::ByteSwapToLE32(timestamp.boot_count);
+  timestamp.timer_value = base::ByteSwapToLE64(timestamp.timer_value);
+
+  return timestamp;
+}
+
+StatusOr<PinWeaverTpm2::PinWeaverTimestamp>
+PinWeaverTpm2::GetSystemTimestamp() {
+  ASSIGN_OR_RETURN(uint8_t version, GetVersion());
+
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
+
+  uint32_t pinweaver_status = 0;
+  std::string root;
+  PinWeaverTpm2::PinWeaverTimestamp timestamp;
+
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverSysInfo(
+                      version, &pinweaver_status, &root, &timestamp.boot_count,
+                      &timestamp.timer_value)))
+      .WithStatus<TPMError>("Failed to get sysinfo in pinweaver");
+
+  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+
+  return timestamp;
 }
 
 }  // namespace hwsec

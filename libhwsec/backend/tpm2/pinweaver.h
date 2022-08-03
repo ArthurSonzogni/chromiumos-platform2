@@ -60,6 +60,9 @@ class PinWeaverTpm2 : public Backend::PinWeaver,
       const brillo::Blob& cred_metadata) override;
   StatusOr<uint32_t> GetDelayInSeconds(
       const brillo::Blob& cred_metadata) override;
+  StatusOr<PinWeaverTimestamp> GetLastAccessTimestamp(
+      const brillo::Blob& cred_metadata);
+  StatusOr<PinWeaverTimestamp> GetSystemTimestamp();
 
  private:
   // The protocol version used by pinweaver.

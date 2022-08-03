@@ -97,6 +97,14 @@ class PinWeaver {
     brillo::Blob new_mac;
   };
 
+  // The timestamp object used in PinWeaver servers. In addition to the
+  // timer_value, a boot_count is stored because PinWeaver servers typically
+  // reset the timer_value when they reboot.
+  struct PinWeaverTimestamp {
+    uint32_t boot_count;
+    uint64_t timer_value;
+  };
+
   // The delay schedule which determines the delay enforced between
   // authentication attempts.
   using DelaySchedule = std::map<uint32_t, uint32_t>;
