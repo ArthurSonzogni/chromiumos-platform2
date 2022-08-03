@@ -8,10 +8,14 @@
 #include <string>
 
 #include <base/logging.h>
+#include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "cryptohome/crypto.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::SecureBlob;
@@ -72,10 +76,28 @@ AuthInput FromSmartCardAuthInput(
   };
 }
 
+std::optional<AuthInput> FromKioskAuthInput(
+    Platform* platform,
+    const user_data_auth::KioskAuthInput& proto,
+    const std::string& username) {
+  brillo::SecureBlob public_mount_salt;
+  if (!GetPublicMountSalt(platform, &public_mount_salt)) {
+    LOG(ERROR) << "Could not get or create public salt from file";
+    return std::nullopt;
+  }
+  brillo::SecureBlob passkey;
+  Crypto::PasswordToPasskey(username.c_str(), public_mount_salt, &passkey);
+  return AuthInput{
+      .user_input = passkey,
+  };
+}
+
 }  // namespace
 
 std::optional<AuthInput> CreateAuthInput(
+    Platform* platform,
     const user_data_auth::AuthInput& auth_input_proto,
+    const std::string& username,
     const std::string& obfuscated_username,
     bool locked_to_single_user,
     const std::optional<brillo::SecureBlob>&
@@ -94,6 +116,8 @@ std::optional<AuthInput> CreateAuthInput(
           cryptohome_recovery_ephemeral_pub_key);
       break;
     case user_data_auth::AuthInput::kKioskInput:
+      auth_input = FromKioskAuthInput(platform, auth_input_proto.kiosk_input(),
+                                      username);
       break;
     case user_data_auth::AuthInput::kSmartCardInput:
       auth_input = FromSmartCardAuthInput(auth_input_proto.smart_card_input());

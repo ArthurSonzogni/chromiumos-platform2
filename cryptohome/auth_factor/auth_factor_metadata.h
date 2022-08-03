@@ -21,13 +21,18 @@ struct CryptohomeRecoveryAuthFactorMetadata {
   CryptohomeRecoveryAuthFactorMetadata() = default;
 };
 
+struct KioskAuthFactorMetadata {
+  KioskAuthFactorMetadata() = default;
+};
+
 struct AuthFactorMetadata {
   // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
   std::variant<std::monostate,
                PasswordAuthFactorMetadata,
                PinAuthFactorMetadata,
-               CryptohomeRecoveryAuthFactorMetadata>
+               CryptohomeRecoveryAuthFactorMetadata,
+               KioskAuthFactorMetadata>
       metadata;
 };
 

@@ -115,15 +115,17 @@ cryptorecovery::RequestMetadata RequestMetadataFromProto(
 }
 
 std::optional<AuthInput> CreateAuthInputWithResetSecret(
+    Platform* platform,
     AuthFactorType auth_factor_type,
     const user_data_auth::AuthInput& auth_input_proto,
+    const std::string& username,
     const std::string& obfuscated_username,
     bool locked_to_single_user,
     const std::optional<brillo::SecureBlob>&
         cryptohome_recovery_ephemeral_pub_key) {
   std::optional<AuthInput> auth_input = CreateAuthInput(
-      auth_input_proto, obfuscated_username, locked_to_single_user,
-      cryptohome_recovery_ephemeral_pub_key);
+      platform, auth_input_proto, username, obfuscated_username,
+      locked_to_single_user, cryptohome_recovery_ephemeral_pub_key);
   if (auth_input.has_value() && NeedsResetSecret(auth_factor_type)) {
     // Anything backed PinWeaver needs a reset secret. The list of is_le_cred
     // could expand in the future.
@@ -994,10 +996,10 @@ bool AuthSession::AuthenticateAuthFactor(
   }
 
   // Fill up the auth input.
-  std::optional<AuthInput> auth_input =
-      CreateAuthInput(request.auth_input(), obfuscated_username_,
-                      auth_block_utility_->GetLockedToSingleUser(),
-                      cryptohome_recovery_ephemeral_pub_key_);
+  std::optional<AuthInput> auth_input = CreateAuthInput(
+      platform_, request.auth_input(), username_, obfuscated_username_,
+      auth_block_utility_->GetLockedToSingleUser(),
+      cryptohome_recovery_ephemeral_pub_key_);
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for authenticating auth factor";
     ReplyWithError(
@@ -1275,8 +1277,8 @@ void AuthSession::UpdateAuthFactor(
   if (user_secret_stash_) {
     DCHECK(user_has_configured_auth_factor_);
     std::optional<AuthInput> auth_input = CreateAuthInputWithResetSecret(
-        auth_factor_type, request.auth_input(), obfuscated_username_,
-        auth_block_utility_->GetLockedToSingleUser(),
+        platform_, auth_factor_type, request.auth_input(), username_,
+        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
         /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
     if (!auth_input.has_value()) {
       LOG(ERROR) << "AuthSession: Failed to parse auth input for the updated "
@@ -1913,8 +1915,8 @@ void AuthSession::AddAuthFactor(
     // proceed with wrapping the USS via the new factor and persisting both.
 
     std::optional<AuthInput> auth_input = CreateAuthInputWithResetSecret(
-        auth_factor_type, request.auth_input(), obfuscated_username_,
-        auth_block_utility_->GetLockedToSingleUser(),
+        platform_, auth_factor_type, request.auth_input(), username_,
+        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
         /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
     if (!auth_input.has_value()) {
       LOG(ERROR) << "Failed to parse auth input for new auth factor with USS";
@@ -1939,10 +1941,10 @@ void AuthSession::AddAuthFactor(
     return;
   }
 
-  std::optional<AuthInput> auth_input =
-      CreateAuthInput(request.auth_input(), obfuscated_username_,
-                      auth_block_utility_->GetLockedToSingleUser(),
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+  std::optional<AuthInput> auth_input = CreateAuthInput(
+      platform_, request.auth_input(), username_, obfuscated_username_,
+      auth_block_utility_->GetLockedToSingleUser(),
+      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for new auth factor";
     ReplyWithError(

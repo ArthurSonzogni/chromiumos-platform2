@@ -38,6 +38,12 @@ void GetCryptohomeRecoveryMetadata(
   out_auth_factor_metadata.metadata = CryptohomeRecoveryAuthFactorMetadata();
 }
 
+// Set kiosk metadata here.
+void GetKioskMetadata(const user_data_auth::AuthFactor& auth_factor,
+                      AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = KioskAuthFactorMetadata();
+}
+
 // Creates a D-Bus proto for a password auth factor.
 std::optional<user_data_auth::AuthFactor> ToPasswordProto(
     const PasswordAuthFactorMetadata& metadata) {
@@ -67,6 +73,15 @@ std::optional<user_data_auth::AuthFactor> ToCryptohomeRecoveryProto(
   proto.mutable_cryptohome_recovery_metadata();
   return proto;
 }
+
+// Creates a D-Bus proto for a kiosk auth factor.
+std::optional<user_data_auth::AuthFactor> ToKioskProto(
+    const KioskAuthFactorMetadata& metadata) {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
+  proto.mutable_kiosk_metadata();
+  return proto;
+}
 }  // namespace
 
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
@@ -90,6 +105,11 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       DCHECK(auth_factor.has_cryptohome_recovery_metadata());
       GetCryptohomeRecoveryMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kCryptohomeRecovery;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_KIOSK:
+      DCHECK(auth_factor.has_kiosk_metadata());
+      GetKioskMetadata(auth_factor, out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kKiosk;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
@@ -131,6 +151,12 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
       proto = cryptohome_recovery_metadata
                   ? ToCryptohomeRecoveryProto(*cryptohome_recovery_metadata)
                   : std::nullopt;
+      break;
+    }
+    case AuthFactorType::kKiosk: {
+      auto* kiosk_metadata =
+          std::get_if<KioskAuthFactorMetadata>(&auth_factor_metadata.metadata);
+      proto = kiosk_metadata ? ToKioskProto(*kiosk_metadata) : std::nullopt;
       break;
     }
     case AuthFactorType::kUnspecified: {

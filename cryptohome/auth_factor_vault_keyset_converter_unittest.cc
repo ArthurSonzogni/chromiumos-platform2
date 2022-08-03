@@ -25,6 +25,7 @@
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -146,6 +147,13 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
   KeyData SetKeyData(const std::string& label) {
     KeyData key_data;
+    key_data.set_label(label);
+    return key_data;
+  }
+
+  KeyData SetKioskKeyData(const std::string& label) {
+    KeyData key_data;
+    key_data.set_type(KeyData_KeyType_KEY_TYPE_KIOSK);
     key_data.set_label(label);
     return key_data;
   }
@@ -292,17 +300,20 @@ TEST_F(AuthFactorVaultKeysetConverterTest, VaultKeysetToAuthFactorSuccess) {
   EXPECT_EQ(AuthFactorType::kPassword, auth_factor->type());
 }
 
-// Test that VaultKeysetToAuthFactor fails to return AuthFactor for a wrong
-// given label.
-TEST_F(AuthFactorVaultKeysetConverterTest, VaultKeysetToAuthFactorFail) {
-  KeyData test_key_data = SetKeyData(kLabel);
-  KeysetSetUpWithKeyData(test_key_data, kFirstIndice);
+// Test that VaultKeysetsToAuthFactors lists all the VaultKeysets in the
+// disk.
+TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListKiosk) {
+  KeysetSetUpWithKeyData(SetKioskKeyData(kLabel), kFirstIndice);
 
-  KeyData key_data;
-  std::string auth_factor_label = kLabel1;
-  std::unique_ptr<AuthFactor> auth_factor =
-      converter_->VaultKeysetToAuthFactor(kUsername, auth_factor_label);
-  EXPECT_EQ(nullptr, auth_factor);
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
+
+  EXPECT_EQ(
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+      converter_->VaultKeysetsToAuthFactors(kUsername, label_to_auth_factor));
+  EXPECT_EQ(1, label_to_auth_factor.size());
+
+  EXPECT_EQ(kLabel, label_to_auth_factor[kLabel]->label());
+  EXPECT_EQ(AuthFactorType::kKiosk, label_to_auth_factor[kLabel]->type());
 }
 
 }  // namespace cryptohome

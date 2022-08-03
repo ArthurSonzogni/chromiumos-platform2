@@ -7,6 +7,7 @@
 #include <base/check.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <stdint.h>
@@ -22,7 +23,6 @@
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -34,15 +34,26 @@ namespace {
 // Construct the AuthFactor metadata based on AuthFactor type.
 bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
                                    AuthFactorMetadata& metadata) {
-  if (type == AuthFactorType::kPassword) {
-    metadata.metadata = PasswordAuthFactorMetadata();
-    return true;
+  switch (type) {
+    case AuthFactorType::kPassword:
+      metadata.metadata = PasswordAuthFactorMetadata();
+      break;
+    case AuthFactorType::kKiosk:
+      metadata.metadata = KioskAuthFactorMetadata();
+      break;
+    default:
+      return false;
   }
-  return false;
+  return true;
 }
 
 // Returns the AuthFactor type mapped from the input VaultKeyset.
-AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags) {
+AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
+                                               const KeyData& key_data) {
+  if (key_data.type() == KeyData::KEY_TYPE_KIOSK) {
+    return AuthFactorType::kKiosk;
+  }
+
   AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
   if (!FlagsToAuthBlockType(vk_flags, auth_block_type)) {
     LOG(ERROR) << "Failed to get the AuthBlock type for AuthFactor convertion.";
@@ -76,7 +87,7 @@ std::unique_ptr<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
   }
 
   AuthFactorType auth_factor_type =
-      VaultKeysetTypeToAuthFactorType(vk.GetFlags());
+      VaultKeysetTypeToAuthFactorType(vk.GetFlags(), vk.GetKeyDataOrDefault());
   if (auth_factor_type == AuthFactorType::kUnspecified) {
     return nullptr;
   }
@@ -182,6 +193,9 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
     case AuthFactorType::kPin:
       out_key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
       out_key_data.mutable_policy()->set_low_entropy_credential(true);
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case AuthFactorType::kKiosk:
+      out_key_data.set_type(KeyData::KEY_TYPE_KIOSK);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kUnspecified:

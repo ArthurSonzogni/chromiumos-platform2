@@ -11,7 +11,7 @@ enum class AuthFactorType {
   kPassword,
   kPin,
   kCryptohomeRecovery,
-  // TODO(b:208351356): Add other factor types.
+  kKiosk,
   kUnspecified,
 };
 
