@@ -70,14 +70,13 @@ bool BiodStorage::WriteRecord(
   }
 
   const std::string& record_id(record_metadata.record_id);
-  base::Value record_value(base::Value::Type::DICTIONARY);
-  record_value.SetStringKey(kLabel, record_metadata.label);
-  record_value.SetStringKey(kRecordId, record_id);
-  record_value.SetStringKey(kValidationVal,
-                            record_metadata.GetValidationValBase64());
-  record_value.SetIntKey(kVersionMember, kRecordFormatVersion);
-  record_value.SetKey(kData, std::move(data));
-  record_value.SetStringKey(kBioManagerMember, biometrics_manager_name_);
+  base::Value::Dict record_value;
+  record_value.Set(kLabel, record_metadata.label);
+  record_value.Set(kRecordId, record_id);
+  record_value.Set(kValidationVal, record_metadata.GetValidationValBase64());
+  record_value.Set(kVersionMember, kRecordFormatVersion);
+  record_value.Set(kData, std::move(data));
+  record_value.Set(kBioManagerMember, biometrics_manager_name_);
 
   std::string json_string;
   JSONStringValueSerializer json_serializer(&json_string);
@@ -120,12 +119,12 @@ bool BiodStorage::WriteRecord(
 }
 
 std::unique_ptr<std::vector<uint8_t>>
-BiodStorage::ReadValidationValueFromRecord(const base::Value& record_dictionary,
-                                           const FilePath& record_path) {
+BiodStorage::ReadValidationValueFromRecord(
+    const base::Value::Dict& record_dictionary, const FilePath& record_path) {
   std::string validation_val_str;
 
   const std::string* validation_val_str_ptr =
-      record_dictionary.FindStringKey(kValidationVal);
+      record_dictionary.FindString(kValidationVal);
   if (!validation_val_str_ptr) {
     LOG(WARNING) << "Cannot read validation value from " << record_path.value()
                  << ".";
@@ -235,9 +234,9 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     LOG(ERROR) << "Value " << record_path.value() << " is not a dictionary.";
     return record;
   }
-  base::Value record_dictionary = std::move(*record_value);
+  base::Value::Dict record_dictionary = std::move(record_value->GetDict());
 
-  const std::string* record_id = record_dictionary.FindStringKey(kRecordId);
+  const std::string* record_id = record_dictionary.FindString(kRecordId);
 
   if (!record_id) {
     LOG(ERROR) << "Cannot read record id from " << record_path.value() << ".";
@@ -252,7 +251,7 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     return record;
   }
 
-  const std::string* label = record_dictionary.FindStringKey(kLabel);
+  const std::string* label = record_dictionary.FindString(kLabel);
 
   if (!label) {
     LOG(ERROR) << "Cannot read label from " << record_path.value() << ".";
@@ -261,7 +260,7 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
   record.metadata.label = *label;
 
   std::optional<int> record_format_version =
-      record_dictionary.FindIntKey(kVersionMember);
+      record_dictionary.FindInt(kVersionMember);
   if (!record_format_version.has_value()) {
     LOG(ERROR) << "Cannot read record format version from "
                << record_path.value() << ".";
@@ -290,13 +289,13 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
   }
   record.metadata.validation_val = *validation_val;
 
-  const base::Value* data = record_dictionary.FindKey(kData);
+  const std::string* data = record_dictionary.FindString(kData);
 
   if (!data) {
     LOG(ERROR) << "Cannot read data from " << record_path.value() << ".";
     return record;
   }
-  record.data = data->GetString();
+  record.data = *data;
 
   record.valid = true;
   return record;

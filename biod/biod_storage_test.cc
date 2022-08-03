@@ -101,14 +101,13 @@ class BiodStorageBaseTest : public ::testing::Test {
     EXPECT_TRUE(base::DeletePathRecursively(temp_dir_.GetPath()));
   }
 
-  base::Value CreateRecordDictionary(
+  base::Value::Dict CreateRecordDictionary(
       const std::vector<uint8_t>& validation_val) {
-    base::Value record_dictionary(base::Value::Type::DICTIONARY);
+    base::Value::Dict record_dictionary;
     std::string validation_value_str(validation_val.begin(),
                                      validation_val.end());
     base::Base64Encode(validation_value_str, &validation_value_str);
-    record_dictionary.SetStringKey("match_validation_value",
-                                   validation_value_str);
+    record_dictionary.Set("match_validation_value", validation_value_str);
     return record_dictionary;
   }
 
@@ -568,13 +567,13 @@ class BiodStorageMemlockTest
 };
 
 TEST_P(BiodStorageMemlockTest, ReadReadRecords) {
-  base::Value record_value(base::Value::Type::DICTIONARY);
-  record_value.SetStringKey("record_id", kRecordId1);
-  record_value.SetStringKey("label", "some_label");
-  record_value.SetStringKey("match_validation_value", "4567");
-  record_value.SetIntKey("version", 2);
+  base::Value::Dict record_value;
+  record_value.Set("record_id", kRecordId1);
+  record_value.Set("label", "some_label");
+  record_value.Set("match_validation_value", "4567");
+  record_value.Set("version", 2);
   std::vector<uint8_t> data(params_.template_size_bytes, 'a');
-  record_value.SetStringKey("data", base::Base64Encode(data));
+  record_value.Set("data", base::Base64Encode(data));
 
   std::string record;
   JSONStringValueSerializer json_serializer(&record);
