@@ -118,6 +118,7 @@ powerd_prefs: &powerd_prefs
   multiple-batteries:
     <<: *powerd_prefs_default
     default: "1"
+  has-barreljack: *powerd_prefs_default
   max-current-samples:
     <<: *powerd_prefs_default
     default: "5"

@@ -149,6 +149,12 @@ extern const char kBatteryStabilizedAfterResumeMsPref[];
 // If true, multiple battery directories will be read from sysfs if present.
 extern const char kMultipleBatteriesPref[];
 
+// If false, the AC directory will be ignored when enumerating
+// /sys/class/power_supply
+// TODO(b/247037119) evaluate whether this can be handled in firmware. If so,
+// remove this pref and all associated code.
+extern const char kHasBarreljackPref[];
+
 // Number of current and charge samples that need to be averaged before
 // providing time-to-empty/full estimates.
 extern const char kMaxCurrentSamplesPref[];

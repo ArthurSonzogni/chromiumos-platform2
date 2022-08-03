@@ -471,6 +471,13 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // |battery_time_to_*|, and |line_power_on| fields must already be set.
   bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
 
+  // Returns true if |sysname| indicates that a power supply is AC when the
+  // system does not have a barrel jack configured, indicating that the power
+  // supply should be ignored.
+  // TODO(b/247037119) evaluate whether this can be handled in firmware. If so,
+  // remove this method.
+  bool IsSupplyIgnored(const std::string& sysname) const;
+
   // Calls UpdatePowerStatus() and SchedulePoll() and notifies observers
   // according to |notify_policy| on success.
   bool PerformUpdate(UpdatePolicy update_policy, NotifyPolicy notify_policy);
@@ -522,6 +529,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Should multiple battery directories in sysfs be read and combined?
   bool allow_multiple_batteries_ = false;
+
+  // Should the ACPI AC power supply directory in sysfs be enumerated?
+  bool has_barreljack_ = false;
 
   // Remaining battery time at which the system will shut down automatically.
   // Empty if unset.

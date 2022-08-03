@@ -62,6 +62,12 @@ constexpr char kSerialNumber[] = "1000";
 // Default value for kPowerSupplyFullFactorPref.
 constexpr double kFullFactor = 0.98;
 
+// Values reported by udev
+const char* const kUdevSubsystemAC = "AC";
+const char* const kUdevSubsystemBAT0 = "BAT0";
+const char* const kUdevSubsystemBAT1 = "BAT1";
+const char* const kUdevSubsystemUSBPD0 = "CROS_USBPD_CHARGER0";
+
 // Starting value used by |power_supply_| as "now".
 const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
 
@@ -127,7 +133,8 @@ class PowerSupplyTest : public ::testing::Test {
     test_api_.reset(new PowerSupply::TestApi(power_supply_.get()));
     test_api_->SetCurrentTime(kStartTime);
 
-    ac_dir_ = temp_dir_.GetPath().Append("ac");
+    ac_dir_ = temp_dir_.GetPath().Append("AC");
+    usbpd_dir_ = temp_dir_.GetPath().Append("CROS_USBPD_CHARGER0");
     battery_dir_ = temp_dir_.GetPath().Append("battery");
     second_battery_dir_ = temp_dir_.GetPath().Append("battery_2");
   }
@@ -186,6 +193,7 @@ class PowerSupplyTest : public ::testing::Test {
     WriteValue(battery_dir_, "cycle_count", base::NumberToString(kCycleCount));
     WriteValue(battery_dir_, "serial_number", kSerialNumber);
     prefs_.SetDouble(kUsbMinAcWattsPref, 23.45);
+    prefs_.SetBool(kHasBarreljackPref, true);
   }
 
   // Updates the files describing the power source and battery status.
@@ -224,6 +232,12 @@ class PowerSupplyTest : public ::testing::Test {
                      kDefaultSecondChargeFullDesign);
     WriteDoubleValue(second_battery_dir_, "voltage_now", kVoltage);
     WriteDoubleValue(second_battery_dir_, "voltage_min_design", kVoltage);
+  }
+
+  void AddUSBPDCharger(const bool charging) {
+    ASSERT_TRUE(base::CreateDirectory(usbpd_dir_));
+    WriteValue(usbpd_dir_, "type", "USB");
+    WriteValue(usbpd_dir_, "online", "1");
   }
 
   // Returns a string describing battery estimates. If |time_to_empty_sec| is
@@ -273,9 +287,10 @@ class PowerSupplyTest : public ::testing::Test {
   }
 
   // Sends a udev event to |power_supply_|.
-  void SendUdevEvent() {
-    udev_.NotifySubsystemObservers({{PowerSupply::kUdevSubsystem, "", "AC", ""},
-                                    UdevEvent::Action::CHANGE});
+  void SendUdevEvent(const std::string& sysname) {
+    udev_.NotifySubsystemObservers(
+        {{PowerSupply::kUdevSubsystem, "", sysname, ""},
+         UdevEvent::Action::CHANGE});
   }
 
   // Makes a SetPowerSource D-Bus method call and returns true if the call was
@@ -292,6 +307,7 @@ class PowerSupplyTest : public ::testing::Test {
   FakePrefs prefs_;
   base::ScopedTempDir temp_dir_;
   base::FilePath ac_dir_;
+  base::FilePath usbpd_dir_;
   base::FilePath battery_dir_;
   base::FilePath second_battery_dir_;
   UdevStub udev_;
@@ -997,7 +1013,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // Connect AC, report a udev event, and check that the status is updated.
   UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kCharging);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemAC);
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -1031,7 +1047,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // Now test the delay when going back to battery power.
   UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
                                     kDischarging);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT0);
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -1669,7 +1685,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // notification.
   UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
                                     kDischarging);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemAC);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -1677,7 +1693,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // A second udev event should be disregarded if nothing has changed. Even
   // though the current has changed, the battery estimates shouldn't be updated.
   UpdateChargeAndCurrent(kCharge, kHighCurrent);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT0);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -1686,7 +1702,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // to the observers.
   observer.reset_num_updates();
   UpdateChargeAndCurrent(kCharge - 0.1, kHighCurrent);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT0);
   EXPECT_EQ(1, observer.num_updates());
   // Return to the low current and check that the high current sample wasn't
   // incorporated into the average.
@@ -1698,14 +1714,14 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // updated estimates.
   observer.reset_num_updates();
   UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kCharging);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemAC);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
 
   // Send another spurious event.
   UpdateChargeAndCurrent(kCharge, kHighCurrent);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemAC);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -1724,7 +1740,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   WriteValue(dir, "online", "1");
   WriteValue(dir, "status", kNotCharging);
   UpdateChargeAndCurrent(kCharge, kHighCurrent);
-  SendUdevEvent();
+  SendUdevEvent("foo");
   EXPECT_EQ(0, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -1733,7 +1749,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // notification is sent.
   WriteValue(dir, "type", kUsbType);
   UpdateChargeAndCurrent(kCharge, kLowCurrent);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemUSBPD0);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -1741,7 +1757,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // An updated max current and voltage shouldn't generate a notification.
   WriteDoubleValue(dir, "current_max", 3.0);
   WriteDoubleValue(dir, "voltage_max_design", 20.0);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemUSBPD0);
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
@@ -2173,23 +2189,23 @@ TEST_F(PowerSupplyTest, NotifyForUdevWithMultipleBatteries) {
   WriteDefaultValues(PowerSource::BATTERY);
   prefs_.SetInt64(kMultipleBatteriesPref, 1);
   Init();
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT0);
 
   // After adding a second battery, observers should be notified if a udev event
   // is received (but a second event should be ignored, since nothing's
   // changed).
   TestObserver observer(power_supply_.get());
   AddSecondBattery(kCharging);
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT1);
   EXPECT_EQ(1, observer.num_updates());
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT1);
   EXPECT_EQ(1, observer.num_updates());
 
   // The same thing should happen when the second battery is removed.
   ASSERT_TRUE(base::DeletePathRecursively(second_battery_dir_));
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT1);
   EXPECT_EQ(2, observer.num_updates());
-  SendUdevEvent();
+  SendUdevEvent(kUdevSubsystemBAT1);
   EXPECT_EQ(2, observer.num_updates());
 }
 
@@ -2270,6 +2286,77 @@ TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
   EXPECT_TRUE(proto.adaptive_charging_supported());
   EXPECT_TRUE(proto.adaptive_charging_heuristic_enabled());
   EXPECT_FALSE(proto.adaptive_delaying_charge());
+}
+
+// Test that barreljack AC is ignored when configured with no barreljack
+TEST_F(PowerSupplyTest, BarreljackNotPresent) {
+  TestObserver observer(power_supply_.get());
+  WriteDefaultValues(PowerSource::AC);
+  AddUSBPDCharger(true);
+  prefs_.SetBool(kHasBarreljackPref, false);
+  Init();
+
+  PowerStatus status;
+  PowerSupplyProperties proto;
+
+  // No barreljack means udev event should be ignored
+  SendUdevEvent(kUdevSubsystemAC);
+  EXPECT_EQ(0, observer.num_updates());
+
+  // AC directory should be ignored
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(1, status.ports.size());
+  EXPECT_EQ("USB", status.ports[0].type);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(1, proto.available_external_power_source_size());
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, proto.external_power());
+
+  dbus_wrapper_.ClearSentSignals();
+  proto.Clear();
+}
+
+// Test that barreljack AC is not ignored when configured with a barreljack
+TEST_F(PowerSupplyTest, BarreljackPresent) {
+  WriteDefaultValues(PowerSource::AC);
+  prefs_.SetBool(kHasBarreljackPref, true);
+  Init();
+
+  PowerStatus status;
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(1, status.ports.size());
+  EXPECT_EQ("Mains", status.ports[0].type);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(1, proto.available_external_power_source_size());
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, proto.external_power());
+
+  dbus_wrapper_.ClearSentSignals();
+  proto.Clear();
+}
+
+// Test that barreljack AC is not ignored when configured with a barreljack
+// and USB charging
+TEST_F(PowerSupplyTest, BarreljackAndUSBPresent) {
+  WriteDefaultValues(PowerSource::AC);
+  AddUSBPDCharger(true);
+  prefs_.SetBool(kHasBarreljackPref, true);
+  Init();
+
+  PowerStatus status;
+  PowerSupplyProperties proto;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(2, status.ports.size());
+  EXPECT_EQ("Mains", status.ports[0].type);
+  EXPECT_EQ("USB", status.ports[1].type);
+  ASSERT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kPowerSupplyPollSignal, &proto, nullptr));
+  EXPECT_EQ(2, proto.available_external_power_source_size());
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, proto.external_power());
+
+  dbus_wrapper_.ClearSentSignals();
+  proto.Clear();
 }
 
 }  // namespace system

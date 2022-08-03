@@ -614,6 +614,7 @@ void PowerSupply::Init(
   battery_percentage_converter_ = battery_percentage_converter;
 
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
+  prefs_->GetBool(kHasBarreljackPref, &has_barreljack_);
 
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref).value_or(kDefaultPoll);
   poll_delay_initial_ =
@@ -755,7 +756,7 @@ void PowerSupply::OnUdevEvent(const UdevEvent& event) {
   // Bail out of the update if the available power sources didn't actually
   // change to avoid recording new samples and updating battery estimates in
   // response to spurious udev events (see http://crosbug.com/p/37403).
-  if (!is_suspended_) {
+  if (!is_suspended_ && !IsSupplyIgnored(event.device_info.sysname)) {
     PerformUpdate(UpdatePolicy::ONLY_IF_STATE_CHANGED,
                   NotifyPolicy::SYNCHRONOUSLY);
   }
@@ -841,6 +842,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   for (base::FilePath path = file_enum.Next(); !path.empty();
        path = file_enum.Next()) {
     if (IsExternalPeripheral(path))
+      continue;
+
+    if (IsSupplyIgnored(path.BaseName().value()))
       continue;
 
     std::string type;
@@ -1428,6 +1432,14 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
     return below_threshold && status.observed_battery_charge_rate < 0.0;
 
   return below_threshold;
+}
+
+bool PowerSupply::IsSupplyIgnored(const std::string& sysname) const {
+  if (sysname == "AC" && !has_barreljack_) {
+    return true;
+  }
+
+  return false;
 }
 
 bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,

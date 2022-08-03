@@ -74,6 +74,24 @@ source (taken from an earlier [PowerSupplyProperties] protobuf), and
 switch to battery power; powerd writes `-1` to the active power source's node in
 this case.
 
+### Barrel jack connectors
+
+If a device has a barrel jack connector, the `has_barreljack` powerd pref must
+be set to `1` in order for powerd to report it. This is `0` by default, and any
+barrel jack connector will be ignored.
+
+This pref is set automatically from Boxster if the power supply is created
+correctly in a project's Boxster config (`config.star`). To enable a barrel
+jack, the topology should be constructed as:
+
+```
+POWER_SUPPLY = hw_topo.create_power_supply(
+    ...
+    bj_present = True,
+    ...
+)
+```
+
 ## Batteries
 
 Battery information is read by `PowerSupply::ReadBatteryDirectory`. The
