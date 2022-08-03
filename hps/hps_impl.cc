@@ -44,10 +44,10 @@ static constexpr base::TimeDelta kBankReadyTimeout = base::Seconds(240);
 static constexpr base::TimeDelta kMagicSleep = base::Milliseconds(100);
 static constexpr base::TimeDelta kMagicTimeout = base::Milliseconds(3000);
 
-// After requesting application launch, we must wait for verification
-// Observed time is 100 seconds.
-static constexpr base::TimeDelta kApplTimeout = base::Milliseconds(200000);
-static constexpr base::TimeDelta kApplSleep = base::Milliseconds(1000);
+// After requesting application launch, we must wait for signature verification.
+// Expected time is around 4200ms.
+static constexpr base::TimeDelta kApplTimeout = base::Milliseconds(6000);
+static constexpr base::TimeDelta kApplSleep = base::Milliseconds(200);
 
 // Time for letting the sensor settle after powering it off.
 static constexpr base::TimeDelta kPowerOffDelay = base::Milliseconds(100);
