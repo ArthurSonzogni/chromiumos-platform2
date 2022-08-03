@@ -243,11 +243,11 @@ CellularCapability3gpp::CellularCapability3gpp(
     PendingActivationStore* pending_activation_store)
     : CellularCapability(
           cellular, control_interface, metrics, pending_activation_store),
-      mobile_operator_info_(
+      parsed_scan_result_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       weak_ptr_factory_(this) {
   SLOG(this, 1) << "Cellular capability constructed: 3GPP";
-  mobile_operator_info_->Init();
+  parsed_scan_result_operator_info_->Init();
 }
 
 CellularCapability3gpp::~CellularCapability3gpp() {
@@ -1269,11 +1269,12 @@ Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
   if ((!base::Contains(parsed, kLongNameProperty) ||
        parsed[kLongNameProperty].empty()) &&
       base::Contains(parsed, kNetworkIdProperty)) {
-    mobile_operator_info_->Reset();
-    mobile_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
-    if (mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
-        !mobile_operator_info_->operator_name().empty()) {
-      parsed[kLongNameProperty] = mobile_operator_info_->operator_name();
+    parsed_scan_result_operator_info_->Reset();
+    parsed_scan_result_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
+    if (parsed_scan_result_operator_info_->IsMobileNetworkOperatorKnown() &&
+        !parsed_scan_result_operator_info_->operator_name().empty()) {
+      parsed[kLongNameProperty] =
+          parsed_scan_result_operator_info_->operator_name();
     }
   }
   return parsed;

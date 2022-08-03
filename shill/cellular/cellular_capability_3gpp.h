@@ -398,7 +398,7 @@ class CellularCapability3gpp : public CellularCapability {
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
   // once the context has been separated out. (crbug.com/363874)
-  std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
+  std::unique_ptr<MobileOperatorInfo> parsed_scan_result_operator_info_;
 
   MMModem3gppRegistrationState registration_state_ =
       MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN;
