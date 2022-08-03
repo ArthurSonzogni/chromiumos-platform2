@@ -1363,7 +1363,22 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       SLOG(this, 2) << "Assign static IPv6 configuration from bearer.";
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
-      AssignStaticIPv6Config(*bearer->ipv6_config_properties());
+
+      network()->StartIPv6();
+      const auto& ipv6_props = *bearer->ipv6_config_properties();
+      // Only apply static config if the address is link local. This is a
+      // workaround for b/230336493.
+      IPAddress link_local_mask("fe80::", 10);
+      if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
+        network()->set_ipv6_static_properties(ipv6_props);
+        dispatcher()->PostTask(
+            FROM_HERE, base::BindOnce(&Network::ConfigureStaticIPv6Address,
+                                      network()->AsWeakPtr()));
+        // Device::OnIPConfigsPropertyUpdated() will be called later when SLAAC
+        // finishes, that is also where static DNS configuration will be
+        // applied.
+      }
+
       ipv6_configured = true;
     }
 

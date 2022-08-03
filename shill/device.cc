@@ -531,24 +531,6 @@ void Device::OnNeighborReachabilityEvent(
   // Does nothing in the general case.
 }
 
-void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
-  network()->StartIPv6();
-
-  // Only apply static config if the address is link local. This is a workaround
-  // for b/230336493.
-  IPAddress link_local_mask("fe80::", 10);
-  if (!link_local_mask.CanReachAddress(IPAddress(properties.address))) {
-    return;
-  }
-
-  network()->set_ipv6_static_properties(properties);
-  dispatcher()->PostTask(FROM_HERE,
-                         base::BindOnce(&Network::ConfigureStaticIPv6Address,
-                                        network()->AsWeakPtr()));
-  // OnIPConfigsPropertyUpdated() will be called later when SLAAC finishes, that
-  // is also where static DNS configuration will be applied.
-}
-
 void Device::HelpRegisterConstDerivedString(
     const std::string& name, std::string (Device::*get)(Error* error)) {
   store_.RegisterDerivedString(

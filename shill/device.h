@@ -433,10 +433,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // connection, if any.
   virtual void DropConnection();
 
-  // Applies the static address from IPv6 configuration |properties|.
-  // |ip6config_| will be created later when SLAAC address is available.
-  void AssignStaticIPv6Config(const IPConfig::Properties& properties);
-
   // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
   // by the kernel when the link is connected and is currently not monitored by
   // shill. Derived class should implement this function to listen to this
