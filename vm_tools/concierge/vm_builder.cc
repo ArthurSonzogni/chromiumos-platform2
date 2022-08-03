@@ -562,6 +562,26 @@ std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     index++;
   }
 
+  // Sound VVU device.
+  // There need to be enough socket indices to support all VVU devices.
+  if (vvu_devices_info.size() < (index + audio_devices_.size())) {
+    LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
+    return std::nullopt;
+  }
+
+  for (const auto& audio_device : audio_devices_) {
+    const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index];
+    base::StringPairs cmd =
+        BuildVvuBaseCmd("snd", vvu_device_info.proxy_device);
+    cmd.emplace_back("--config", audio_device.params);
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-snd",
+         BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
+    index++;
+  }
+
   // TODO(morg): Refactor shared parameter logic with BuildVmArgs
   cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
                                {"--cpus", std::to_string(cpus_)});
