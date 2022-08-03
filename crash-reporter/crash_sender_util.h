@@ -225,9 +225,9 @@ class Sender : public SenderBase {
   void RecordCrashRemoveReason(SenderBase::CrashRemoveReason reason) override;
 
   // Creates a JSON entity with the required fields for uploads.log file.
-  std::unique_ptr<base::Value> CreateJsonEntity(const std::string& report_id,
-                                                const std::string& product_name,
-                                                const CrashDetails& details);
+  base::Value::Dict CreateJsonEntity(const std::string& report_id,
+                                     const std::string& product_name,
+                                     const CrashDetails& details);
 
   // Requests to send a crash report represented with the given crash details.
   // If the return code is kRetryUploading, the failure can be retried and the

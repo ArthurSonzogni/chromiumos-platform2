@@ -739,18 +739,16 @@ void Sender::RecordCrashRemoveReason(SenderBase::CrashRemoveReason reason) {
                               kSendReasonCount);
 }
 
-std::unique_ptr<base::Value> Sender::CreateJsonEntity(
-    const std::string& report_id,
-    const std::string& product_name,
-    const CrashDetails& details) {
-  auto root_dict = std::make_unique<base::Value>(base::Value::Type::DICTIONARY);
+base::Value::Dict Sender::CreateJsonEntity(const std::string& report_id,
+                                           const std::string& product_name,
+                                           const CrashDetails& details) {
+  base::Value::Dict root_dict;
 
   int64_t timestamp = (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
-  root_dict->SetKey(kJsonLogKeyUploadTime,
-                    base::Value(std::to_string(timestamp)));
+  root_dict.Set(kJsonLogKeyUploadTime, std::to_string(timestamp));
 
-  root_dict->SetKey(kJsonLogKeyUploadId, base::Value(report_id));
-  root_dict->SetKey(kJsonLogKeyLocalId, base::Value(product_name));
+  root_dict.Set(kJsonLogKeyUploadId, report_id);
+  root_dict.Set(kJsonLogKeyLocalId, product_name);
 
   // The |capture_timestamp| should be converted from milliseconds to seconds.
   std::string capture_timestamp;
@@ -758,14 +756,13 @@ std::unique_ptr<base::Value> Sender::CreateJsonEntity(
   if (details.metadata.GetString(kMetadataKeyCaptureTimeMillis,
                                  &capture_timestamp) &&
       base::StringToInt64(capture_timestamp, &capture_timestamp_millis)) {
-    root_dict->SetKey(
-        kJsonLogKeyCaptureTime,
-        base::Value(std::to_string(capture_timestamp_millis / 1000)));
+    root_dict.Set(kJsonLogKeyCaptureTime,
+                  std::to_string(capture_timestamp_millis / 1000));
   }
 
   // The state value is always same as
   // UploadList::UploadInfo::State::Uploaded.
-  root_dict->SetKey(kJsonLogKeyState, base::Value(3));
+  root_dict.Set(kJsonLogKeyState, 3);
 
   std::string source;
   if (details.metadata.GetString(kMetadataKeySource, &source)) {
@@ -773,7 +770,7 @@ std::unique_ptr<base::Value> Sender::CreateJsonEntity(
     // crash.
     if (!paths::Get(paths::kSystemCrashDirectory).IsParent(details.meta_file))
       source = kMetadataValueRedacted;
-    root_dict->SetKey(kJsonLogKeySource, base::Value(source));
+    root_dict.Set(kJsonLogKeySource, source);
   }
 
   return root_dict;
@@ -930,10 +927,10 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
     base::FilePath normalized_path;
     if (base::NormalizeFilePath(upload_logs_path, &normalized_path) &&
         upload_logs_path == normalized_path) {
-      std::unique_ptr<base::Value> json_entity =
+      base::Value::Dict json_entity =
           CreateJsonEntity(report_id, product_name, details);
       std::string upload_log_entry;
-      if (!base::JSONWriter::Write(*json_entity, &upload_log_entry)) {
+      if (!base::JSONWriter::Write(json_entity, &upload_log_entry)) {
         LOG(WARNING) << "Cannot construct a valid uploads.log entry in JSON "
                         "format, so skip the update.";
         return CrashRemoveReason::kUnparseableMetaFile;

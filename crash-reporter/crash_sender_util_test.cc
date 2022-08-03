@@ -54,10 +54,12 @@
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::ExitedWithCode;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 
@@ -1975,26 +1977,28 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // <value>}".
   // The first run should be for the meta file in the system directory.
   std::optional<base::Value> row = std::move(rows[0]);
-  ASSERT_TRUE(row.has_value());
-  ASSERT_EQ(6, row->DictSize());
-  EXPECT_TRUE(row->FindKey("upload_time"));
-  EXPECT_EQ("123", row->FindKey("upload_id")->GetString());
-  EXPECT_EQ("foo", row->FindKey("local_id")->GetString());
-  EXPECT_EQ("1000", row->FindKey("capture_time")->GetString());
-  EXPECT_EQ(3, row->FindKey("state")->GetInt());
-  EXPECT_EQ("exec_foo", row->FindKey("source")->GetString());
+  ASSERT_TRUE(row.has_value() && row->is_dict());
+  auto dict = std::move(row->GetDict());
+  ASSERT_EQ(6, dict.size());
+  EXPECT_TRUE(dict.Find("upload_time"));
+  EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq("123")));
+  EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
+  EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
+  EXPECT_EQ(3, dict.FindInt("state"));
+  EXPECT_THAT(dict.FindString("source"), Pointee(Eq("exec_foo")));
 
   // The second run should be for the meta file in the "user" directory.
   row = std::move(rows[1]);
-  ASSERT_TRUE(row.has_value());
-  ASSERT_EQ(6, row->DictSize());
-  EXPECT_TRUE(row->FindKey("upload_time"));
-  EXPECT_EQ("123", row->FindKey("upload_id")
-                       ->GetString());  // This is the value we set before
-  EXPECT_EQ("bar", row->FindKey("local_id")->GetString());
-  EXPECT_EQ("2000", row->FindKey("capture_time")->GetString());
-  EXPECT_EQ(3, row->FindKey("state")->GetInt());
-  EXPECT_EQ("REDACTED", row->FindKey("source")->GetString());
+  ASSERT_TRUE(row.has_value() && row->is_dict());
+  dict = std::move(row->GetDict());
+  ASSERT_EQ(6, dict.size());
+  EXPECT_TRUE(dict.Find("upload_time"));
+  EXPECT_THAT(dict.FindString("upload_id"),
+              Pointee(Eq("123")));  // This is the value we set before
+  EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("bar")));
+  EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
+  EXPECT_EQ(3, dict.FindInt("state"));
+  EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
 
   // The uploaded crash files should be removed now.
   EXPECT_FALSE(base::PathExists(system_meta_file));
