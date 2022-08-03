@@ -42,6 +42,8 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
             << "\"vm\": \"" << vm << "\","
             << "\"critical_margin\": " << critical_host_available << ","
             << "\"bias\": " << guest_available_bias << " }";
+  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size, "
+            << "balloon_delta, host_available, guest_cached, guest_free]";
 }
 
 int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
@@ -112,14 +114,10 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
       balloon_delta_abs * 100 / host_above_critical > 1) {
     // Finally, make sure the balloon delta won't cause a negative size.
     const int64_t delta = std::max(balloon_delta_capped, -balloon_actual);
-    LOG(INFO) << "BalloonTrace: { "
-              << "\"vm\": \"" << vm << "\", "
-              << "\"game_mode\": " << (game_mode ? "true" : "false") << ", "
-              << "\"balloon\": " << balloon_actual << ", "
-              << "\"guest_cached\": " << guest_cached << ", "
-              << "\"guest_free\": " << guest_free << ", "
-              << "\"host_available\": " << host_available << ", "
-              << "\"delta\": " << delta << " }";
+    LOG(INFO) << "BalloonTrace:[" << vm << ","
+              << (game_mode ? "game_mode_on," : ",") << (balloon_actual / MIB)
+              << "," << (delta / MIB) << (host_available / MIB) << ","
+              << (guest_cached / MIB) << "," << (guest_free / MIB) << "]";
     return delta;
   }
 
@@ -161,6 +159,9 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
             << ","
             << "\"responsive_max_deflate_bytes\": "
             << params.responsive_max_deflate_bytes << " }";
+  LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size, "
+            << "balloon_delta, host_free_above_lwm, chromeos_available, "
+            << "guest_free_above_lwm, guest_reclaimable]";
 }
 
 int64_t LimitCacheBalloonPolicy::ComputeBalloonDelta(
@@ -186,7 +187,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
     int64_t host_available,
     bool game_mode,
     const std::string& vm,
-    int64_t total_avaialble_memory,
+    int64_t total_available_mem,
     ComponentMemoryMargins component_margins) {
   const int64_t max_free = MaxFree();
   const int64_t min_free = MinFree();
@@ -266,30 +267,30 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   }
 
   UpdateBalloonDeflationLimits(
-      component_margins, total_avaialble_memory,
+      component_margins, total_available_mem,
       std::max(static_cast<int64_t>(0),
                static_cast<int64_t>(stats.balloon_actual) + delta));
 
-  LOG(INFO) << "BalloonTrace: { "
-            << "\"vm\": \"" << vm << "\", "
-            << "\"game_mode\": " << (game_mode ? "true" : "false") << ", "
-            << "\"balloon\": " << stats.balloon_actual << ", "
-            << "\"guest_cached\": " << guest_cache << ", "
-            << "\"guest_unreclaimable\": " << guest_unreclaimable << ", "
-            << "\"guest_free\": " << guest_free << ", "
-            << "\"target_free\": " << target_free << ", "
-            << "\"host_available\": " << host_available << ", "
-            << "\"host_free\": " << host_free << ", "
-            << "\"deflation_limit_1\": ["
-            << balloon_deflation_limits_[0].oom_score_adj << ", "
-            << balloon_deflation_limits_[0].min_balloon_size << "], "
-            << "\"deflation_limit_2\": ["
-            << balloon_deflation_limits_[1].oom_score_adj << ", "
-            << balloon_deflation_limits_[1].min_balloon_size << "], "
-            << "\"deflation_limit_3\": ["
-            << balloon_deflation_limits_[2].oom_score_adj << ", "
-            << balloon_deflation_limits_[2].min_balloon_size << "], "
-            << "\"delta\": " << delta << " }";
+  LOG(INFO) << "BalloonTrace[" << vm << ","
+            << (game_mode ? "game_mode_on," : ",")
+            // Balloon size.
+            << (stats.balloon_actual / MIB)
+            << ","
+            // The amount we are changing the balloon.
+            << (delta / MIB)
+            << ","
+            // Host free memory above the low water mark.
+            << ((host_free - host_lwm_) / MIB)
+            << ","
+            // ChromeOS Available. We can compute host_available by knowing if
+            // we are in game mode.
+            << (total_available_mem / MIB)
+            << ","
+            // Guest free memory above low water mark.
+            << ((guest_free - guest_lwm) / MIB)
+            << ","
+            // Reclaimable guest cache (should match with LMKD's view).
+            << (guest_cache / MIB) << "]";
 
   return delta;
 }
