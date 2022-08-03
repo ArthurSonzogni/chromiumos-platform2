@@ -49,7 +49,7 @@ bool CreateDirectories(const base::FilePath& full_path) {
 
 // Converts the given policy to a JSON string and writes it to file
 // <dir_path>/<file_name>. Returns whether successul.
-bool WritePolicyToFile(const base::Value& policy,
+bool WritePolicyToFile(const base::Value::Dict& policy,
                        const base::FilePath& dir_path,
                        const char* file_name) {
   if (!file_name) {
@@ -86,22 +86,22 @@ PolicyWriter::PolicyWriter(const std::string& dest_dir_path)
 PolicyWriter::~PolicyWriter() {}
 
 bool PolicyWriter::SetDeviceAllowBluetooth(bool is_allowed) const {
-  base::Value policy(base::Value::Type::DICTIONARY);
-  policy.SetBoolKey(kPolicyDeviceAllowBluetooth, is_allowed);
+  base::Value::Dict policy;
+  policy.Set(kPolicyDeviceAllowBluetooth, is_allowed);
   return WritePolicyToFile(policy, dest_dir_path_,
                            kPolicyDeviceAllowBluetoothFileName);
 }
 
 bool PolicyWriter::SetShowHomeButton(bool show) const {
-  base::Value policy(base::Value::Type::DICTIONARY);
-  policy.SetBoolKey(kPolicyShowHomeButton, show);
+  base::Value::Dict policy;
+  policy.Set(kPolicyShowHomeButton, show);
   return WritePolicyToFile(policy, dest_dir_path_,
                            kPolicyShowHomeButtonFileName);
 }
 
 bool PolicyWriter::SetBookmarkBarEnabled(bool is_enabled) const {
-  base::Value policy(base::Value::Type::DICTIONARY);
-  policy.SetBoolKey(kPolicyBookmarkBarEnabled, is_enabled);
+  base::Value::Dict policy;
+  policy.Set(kPolicyBookmarkBarEnabled, is_enabled);
   return WritePolicyToFile(policy, dest_dir_path_,
                            kPolicyBookmarkBarEnabledFileName);
 }

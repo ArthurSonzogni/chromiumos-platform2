@@ -4,15 +4,15 @@
 
 #include "policy_utils/policy_tool.h"
 
+#include <optional>
+
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/values.h>
 
 namespace {
 using base::CommandLine;
 using base::CompareCaseInsensitiveASCII;
-using base::Value;
 using policy_utils::PolicyWriter;
 
 // The command that is being executed.
@@ -57,35 +57,36 @@ Command GetCommandFromArgs(const CommandLine::StringVector& args) {
   return Command::CMD_UNKNOWN;
 }
 
-// Parse and return a boolean value from the cmd-line arguments. Returns a null
-// Value if the cmd-line value argument is missing or not a boolean.
-Value GetBoolValueFromArgs(const CommandLine::StringVector& args) {
+// Parse and return a boolean value from the cmd-line arguments. Returns a
+// nullopt if the cmd-line value argument is missing or not a boolean.
+std::optional<bool> GetBoolValueFromArgs(
+    const CommandLine::StringVector& args) {
   if (args.size() >= 3) {
     const std::string& value = args[2];
     if (IsEqualNoCase(value, "true"))
-      return Value(true);
+      return true;
     else if (IsEqualNoCase(value, "false"))
-      return Value(false);
+      return false;
 
     LOG(ERROR) << "Not a valid boolean value: " << value;
-    return Value();
+    return std::nullopt;
   }
 
-  return Value();
+  return std::nullopt;
 }
 
 // Parse and return the value that is being set for the given policy. Returns
-// a null Value if the set-value is missing or is not not the right type for
-// the given policy.
-Value GetValueForSetCommand(const std::string& policy,
-                            const CommandLine::StringVector& args) {
+// a nullopt if the set-value is missing or is not not the right type for the
+// given policy.
+std::optional<bool> GetValueForSetCommand(
+    const std::string& policy, const CommandLine::StringVector& args) {
   if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth) ||
       IsEqualNoCase(policy, kShowHomeButton) ||
       IsEqualNoCase(policy, kBookmarkBarEnabled)) {
     return GetBoolValueFromArgs(args);
   }
 
-  return Value();
+  return std::nullopt;
 }
 
 // Handle command |cmd| for the given policy, taking any required value from
@@ -102,10 +103,10 @@ bool HandleCommandForPolicy(Command cmd,
   }
 
   // If this is a 'set' command, parse the value to set from the args.
-  Value set_value;
+  std::optional<bool> set_value;
   if (cmd == Command::CMD_SET) {
     set_value = GetValueForSetCommand(policy, args);
-    if (set_value.type() == Value::Type::NONE) {
+    if (!set_value.has_value()) {
       LOG(ERROR) << "No value or invalid value specified";
       return false;
     }
@@ -114,17 +115,17 @@ bool HandleCommandForPolicy(Command cmd,
   bool result = false;
   if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
     if (cmd == Command::CMD_SET)
-      result = writer.SetDeviceAllowBluetooth(set_value.GetBool());
+      result = writer.SetDeviceAllowBluetooth(*set_value);
     else
       result = writer.ClearDeviceAllowBluetooth();
   } else if (IsEqualNoCase(policy, kShowHomeButton)) {
     if (cmd == Command::CMD_SET)
-      result = writer.SetShowHomeButton(set_value.GetBool());
+      result = writer.SetShowHomeButton(*set_value);
     else
       result = writer.ClearShowHomeButton();
   } else if (IsEqualNoCase(policy, kBookmarkBarEnabled)) {
     if (cmd == Command::CMD_SET)
-      result = writer.SetBookmarkBarEnabled(set_value.GetBool());
+      result = writer.SetBookmarkBarEnabled(*set_value);
     else
       result = writer.ClearBookmarkBarEnabled();
   }
