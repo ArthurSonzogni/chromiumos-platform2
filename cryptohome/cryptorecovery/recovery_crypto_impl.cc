@@ -694,10 +694,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
 }
 
 bool RecoveryCryptoImpl::DecryptResponsePayload(
-    const brillo::SecureBlob& encrypted_channel_priv_key,
-    const CryptoRecoveryEpochResponse& epoch_response,
-    const CryptoRecoveryRpcResponse& recovery_response_proto,
-    const std::string& obfuscated_username,
+    const DecryptResponsePayloadRequest& request,
     HsmResponsePlainText* response_plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -706,7 +703,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   }
 
   RecoveryResponse recovery_response;
-  if (!GetRecoveryResponseFromProto(recovery_response_proto,
+  if (!GetRecoveryResponseFromProto(request.recovery_response_proto,
                                     &recovery_response)) {
     LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
     return false;
@@ -719,11 +716,11 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
 
-  if (!epoch_response.has_epoch_pub_key()) {
+  if (!request.epoch_response.has_epoch_pub_key()) {
     LOG(ERROR) << "Epoch response doesn't have epoch public key";
     return false;
   }
-  brillo::SecureBlob epoch_pub_key(epoch_response.epoch_pub_key());
+  brillo::SecureBlob epoch_pub_key(request.epoch_response.epoch_pub_key());
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
   if (!epoch_pub_point) {
@@ -736,9 +733,9 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   // decrypted response afterward
   GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
       {.ec = ec_,
-       .encrypted_own_priv_key = encrypted_channel_priv_key,
+       .encrypted_own_priv_key = request.encrypted_channel_priv_key,
        .auth_value = std::nullopt,
-       .obfuscated_username = obfuscated_username,
+       .obfuscated_username = request.obfuscated_username,
        .others_pub_point = std::move(epoch_pub_point)});
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(

@@ -41,10 +41,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool RecoverDestination(const RecoverDestinationRequest& request,
                           brillo::SecureBlob* destination_dh) const override;
   bool DecryptResponsePayload(
-      const brillo::SecureBlob& encrypted_channel_priv_key,
-      const CryptoRecoveryEpochResponse& epoch_response,
-      const CryptoRecoveryRpcResponse& recovery_response_proto,
-      const std::string& obfuscated_username,
+      const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const override;
 
   bool GenerateOnboardingMetadata(

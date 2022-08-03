@@ -30,6 +30,7 @@ using brillo::SecureBlob;
 using cryptohome::cryptorecovery::CryptoRecoveryEpochResponse;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcRequest;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcResponse;
+using cryptohome::cryptorecovery::DecryptResponsePayloadRequest;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
@@ -349,8 +350,12 @@ bool DoRecoveryCryptoDecryptAction(
 
   HsmResponsePlainText response_plain_text;
   if (!recovery_crypto->DecryptResponsePayload(
-          channel_priv_key, epoch_response, recovery_response_proto,
-          /*obfuscated_username=*/kObfuscatedUsername, &response_plain_text)) {
+          DecryptResponsePayloadRequest(
+              {.encrypted_channel_priv_key = channel_priv_key,
+               .epoch_response = epoch_response,
+               .recovery_response_proto = recovery_response_proto,
+               .obfuscated_username = kObfuscatedUsername}),
+          &response_plain_text)) {
     return false;
   }
   brillo::SecureBlob mediated_recovery_key;

@@ -249,11 +249,15 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                         ErrorAction::kReboot, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-
   HsmResponsePlainText response_plain_text;
   if (!recovery->DecryptResponsePayload(
-          auth_state->encrypted_channel_priv_key, epoch_response,
-          response_proto, obfuscated_username, &response_plain_text)) {
+          cryptorecovery::DecryptResponsePayloadRequest(
+              {.encrypted_channel_priv_key =
+                   auth_state->encrypted_channel_priv_key,
+               .epoch_response = epoch_response,
+               .recovery_response_proto = response_proto,
+               .obfuscated_username = obfuscated_username}),
+          &response_plain_text)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive),

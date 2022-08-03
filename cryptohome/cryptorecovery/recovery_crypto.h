@@ -141,6 +141,14 @@ struct RecoverDestinationRequest {
   hwsec_foundation::NoDefault<std::string> obfuscated_username;
 };
 
+// RecoveryCrypto input parameters for function DecryptResponsePayload.
+struct DecryptResponsePayloadRequest {
+  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
+  CryptoRecoveryEpochResponse epoch_response;
+  CryptoRecoveryRpcResponse recovery_response_proto;
+  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+};
+
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
 // dealer is invoked during initial setup to generate random shares. The dealer
@@ -244,10 +252,7 @@ class RecoveryCrypto {
   // and store the result in `response_plain_text`. The key for decryption is
   // HKDF(ECDH(channel_priv_key, epoch_response.epoch_pub_key)).
   virtual bool DecryptResponsePayload(
-      const brillo::SecureBlob& encrypted_channel_priv_key,
-      const CryptoRecoveryEpochResponse& epoch_response,
-      const CryptoRecoveryRpcResponse& recovery_response_proto,
-      const std::string& obfuscated_username,
+      const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const = 0;
 };
 
