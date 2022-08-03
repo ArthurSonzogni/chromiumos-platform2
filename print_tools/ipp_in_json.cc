@@ -55,10 +55,10 @@ base::Value SaveAsJson(const ipp::Attribute* attr, unsigned index) {
       attr->GetValue(&vs, index);
       if (vs.language.empty())
         return base::Value(vs.value);
-      base::Value obj(base::Value::Type::DICTIONARY);
-      obj.SetStringKey("value", vs.value);
-      obj.SetStringKey("language", vs.language);
-      return obj;
+      base::Value::Dict obj;
+      obj.Set("value", vs.value);
+      obj.Set("language", vs.language);
+      return base::Value(std::move(obj));
     }
     case ipp::ValueTag::textWithoutLanguage:
     case ipp::ValueTag::nameWithoutLanguage:
@@ -87,10 +87,10 @@ base::Value SaveAsJson(const ipp::Attribute* attr) {
   CHECK(attr != nullptr);
   const unsigned size = attr->Size();
   if (size > 1) {
-    base::Value arr(base::Value::Type::LIST);
+    base::Value::List arr;
     for (unsigned i = 0; i < size; ++i)
       arr.Append(SaveAsJson(attr, i));
-    return arr;
+    return base::Value(std::move(arr));
   } else {
     return SaveAsJson(attr, 0);
   }
@@ -100,28 +100,27 @@ base::Value SaveAsJson(const ipp::Attribute* attr) {
 // The parameter "coll" cannot be nullptr.
 base::Value SaveAsJson(const ipp::Collection* coll) {
   CHECK(coll != nullptr);
-  base::Value obj(base::Value::Type::DICTIONARY);
+  base::Value::Dict obj;
   auto attrs = coll->GetAllAttributes();
 
   for (auto a : attrs) {
     auto tag = a->Tag();
     if (!ipp::IsOutOfBand(tag)) {
-      base::Value obj2(base::Value::Type::DICTIONARY);
-      obj2.SetStringKey("type", ToStringPiece(ipp::ToStrView(tag)));
-      obj2.SetKey("value", SaveAsJson(a));
-      obj.SetKey(ToStringPiece(a->Name()), std::move(obj2));
+      base::Value::Dict obj2;
+      obj2.Set("type", ToStringPiece(ipp::ToStrView(tag)));
+      obj2.Set("value", SaveAsJson(a));
+      obj.Set(ToStringPiece(a->Name()), std::move(obj2));
     } else {
-      obj.SetStringKey(ToStringPiece(a->Name()),
-                       ToStringPiece(ipp::ToStrView(tag)));
+      obj.Set(ToStringPiece(a->Name()), ToStringPiece(ipp::ToStrView(tag)));
     }
   }
 
-  return obj;
+  return base::Value(std::move(obj));
 }
 
 // It saves all groups from given Package as JSON object.
 base::Value SaveAsJson(const ipp::Frame& pkg) {
-  base::Value obj(base::Value::Type::DICTIONARY);
+  base::Value::Dict obj;
   for (ipp::GroupTag gt : ipp::kGroupTags) {
     auto groups = pkg.GetGroups(gt);
     if (groups.empty())
@@ -130,27 +129,27 @@ base::Value SaveAsJson(const ipp::Frame& pkg) {
       base::Value arr(base::Value::Type::LIST);
       for (auto g : groups)
         arr.Append(SaveAsJson(g));
-      obj.SetKey(ToString(gt), std::move(arr));
+      obj.Set(ToString(gt), std::move(arr));
     } else {
-      obj.SetKey(ToString(gt), SaveAsJson(groups.front()));
+      obj.Set(ToString(gt), SaveAsJson(groups.front()));
     }
   }
-  return obj;
+  return base::Value(std::move(obj));
 }
 
 // Saves given logs as JSON array.
 base::Value SaveAsJson(const ipp::ParsingResults& log) {
-  base::Value arr(base::Value::Type::LIST);
+  base::Value::List arr;
   for (const auto& l : log.errors) {
-    base::Value obj(base::Value::Type::DICTIONARY);
-    obj.SetStringKey("message", l.message);
+    base::Value::Dict obj;
+    obj.Set("message", l.message);
     if (!l.frame_context.empty())
-      obj.SetStringKey("frame_context", l.frame_context);
+      obj.Set("frame_context", l.frame_context);
     if (!l.parser_context.empty())
-      obj.SetStringKey("parser_context", l.parser_context);
+      obj.Set("parser_context", l.parser_context);
     arr.Append(std::move(obj));
   }
-  return arr;
+  return base::Value(std::move(arr));
 }
 
 }  // namespace
@@ -160,12 +159,12 @@ bool ConvertToJson(const ipp::Frame& response,
                    bool compressed_json,
                    std::string* json) {
   // Build structure.
-  base::Value doc(base::Value::Type::DICTIONARY);
-  doc.SetStringKey("status", ipp::ToString(response.StatusCode()));
+  base::Value::Dict doc;
+  doc.Set("status", ipp::ToString(response.StatusCode()));
   if (!log.errors.empty()) {
-    doc.SetKey("parsing_logs", SaveAsJson(log));
+    doc.Set("parsing_logs", SaveAsJson(log));
   }
-  doc.SetKey("response", SaveAsJson(response));
+  doc.Set("response", SaveAsJson(response));
   // Convert to JSON.
   bool result;
   if (compressed_json) {
