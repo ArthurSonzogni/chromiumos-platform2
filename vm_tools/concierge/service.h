@@ -490,14 +490,15 @@ class Service final {
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
 
-  base::WeakPtrFactory<Service> weak_ptr_factory_;
-
   // Used to serialize erasing and creating the GPU shader disk cache in the
   // event that VMs are started simultaneously from multiple threads.
   base::Lock cache_mutex_;
 
   // Watcher to monitor changes to the system timezone file.
   base::FilePathWatcher localtime_watcher_;
+
+  // This should be the last member of the class.
+  base::WeakPtrFactory<Service> weak_ptr_factory_;
 };
 
 }  // namespace concierge
