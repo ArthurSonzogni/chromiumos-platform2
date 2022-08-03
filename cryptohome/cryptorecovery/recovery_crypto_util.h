@@ -143,8 +143,6 @@ struct RecoveryRequestAssociatedData {
   // The metadata generated on the Reverse Proxy, and retrieved by the
   // Chromebook from the Recovery Service when it obtains the Epoch Beacon.
   EpochMetadata epoch_meta_data;
-  // Current epoch beacon value (G*r).
-  brillo::SecureBlob epoch_pub_key;
   // Salt used in the derivation of request payload encryption key.
   brillo::SecureBlob request_payload_salt;
 };

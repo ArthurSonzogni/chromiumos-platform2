@@ -509,7 +509,6 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   request_ad.hsm_payload = std::move(hsm_payload);
   request_ad.request_meta_data = request_meta_data_;
   request_ad.epoch_meta_data = epoch_meta_data_;
-  request_ad.epoch_pub_key = epoch_pub_key_;
   request_ad.request_payload_salt = salt;
   ASSERT_TRUE(
       SerializeRecoveryRequestAssociatedDataToCbor(request_ad, &cbor_output));
@@ -524,8 +523,6 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   EXPECT_EQ(deserialized_hsm_payload.iv.to_string(), kFakeHsmPayloadIv);
   EXPECT_EQ(deserialized_hsm_payload.tag.to_string(), kFakeHsmPayloadTag);
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kEpochPublicKey, epoch_pub_key_));
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kRequestPayloadSalt, salt));
 
@@ -570,7 +567,7 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
                                       &expected_epoch_meta_data_blob));
   EXPECT_EQ(epoch_meta_data_blob, expected_epoch_meta_data_blob);
 
-  EXPECT_EQ(GetCborMapSize(cbor_output), 5);
+  EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
 
 // Verifies serialization of Recovery Request payload plain text encrypted

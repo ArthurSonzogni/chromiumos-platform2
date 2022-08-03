@@ -170,7 +170,6 @@ const char kAeadTag[] = "tag";
 const char kRequestMetaData[] = "request_meta_data";
 const char kRequestAead[] = "req_aead";
 const char kRequestRsaSignature[] = "rsa_signature";
-const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const char kRequestPayloadSalt[] = "request_salt";
 const char kResponseAead[] = "resp_aead";
@@ -270,7 +269,6 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
   cbor::Value::MapValue ad_map;
 
   ad_map.emplace(kHsmAead, ConvertAeadPayloadToCborMap(args.hsm_payload));
-  ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
   ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);
 
   ad_map.emplace(kRequestMetaData,

@@ -82,12 +82,6 @@ bool GenerateRecoveryRequestAssociatedData(
     LOG(ERROR) << "Failed to deserialize epoch metadata from cbor";
     return false;
   }
-  if (!epoch_response.has_epoch_pub_key()) {
-    LOG(ERROR) << "Epoch response doesn't have epoch public key";
-    return false;
-  }
-  request_ad->epoch_pub_key.assign(epoch_response.epoch_pub_key().begin(),
-                                   epoch_response.epoch_pub_key().end());
   request_ad->request_payload_salt =
       CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
   return true;
