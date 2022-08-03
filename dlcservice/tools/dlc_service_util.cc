@@ -37,6 +37,8 @@
 
 using base::FilePath;
 using base::Value;
+using Dict = base::Value::Dict;
+using List = base::Value::List;
 using dlcservice::DlcState;
 using dlcservice::DlcsWithContent;
 using org::chromium::DlcServiceInterfaceProxy;
@@ -298,13 +300,13 @@ class DlcServiceUtil : public brillo::Daemon {
 
   // Prints the DLC state.
   void PrintDlcState(const string& dump, const DlcState& state) {
-    Value dict(Value::Type::DICTIONARY);
-    dict.SetStringKey("id", state.id());
-    dict.SetStringKey("last_error_code", state.last_error_code());
-    dict.SetDoubleKey("progress", state.progress());
-    dict.SetStringKey("root_path", state.root_path());
-    dict.SetIntKey("state", state.state());
-    PrintToFileOrStdout(dump, dict);
+    Dict dict;
+    dict.Set("id", state.id());
+    dict.Set("last_error_code", state.last_error_code());
+    dict.Set("progress", state.progress());
+    dict.Set("root_path", state.root_path());
+    dict.Set("state", state.state());
+    PrintToFileOrStdout(dump, Value(std::move(dict)));
   }
 
   // Retrieves a list of all installed DLC modules. Returns true if the list is
@@ -330,18 +332,18 @@ class DlcServiceUtil : public brillo::Daemon {
   // Prints the information for DLCs with content.
   void PrintDlcsWithContent(const string& dump,
                             const dlcservice::DlcsWithContent& dlcs) {
-    Value dict(Value::Type::LIST);
+    List list;
     for (const auto& dlc_info : dlcs.dlc_infos()) {
-      Value info(Value::Type::DICTIONARY);
-      info.SetStringKey("id", dlc_info.id());
-      info.SetStringKey("name", dlc_info.name());
-      info.SetStringKey("description", dlc_info.description());
-      info.SetStringKey("used_bytes_on_disk",
-                        base::NumberToString(dlc_info.used_bytes_on_disk()));
-      info.SetBoolKey("is_removable", dlc_info.is_removable());
-      dict.Append(std::move(info));
+      Dict info;
+      info.Set("id", dlc_info.id());
+      info.Set("name", dlc_info.name());
+      info.Set("description", dlc_info.description());
+      info.Set("used_bytes_on_disk",
+               base::NumberToString(dlc_info.used_bytes_on_disk()));
+      info.Set("is_removable", dlc_info.is_removable());
+      list.Append(std::move(info));
     }
-    PrintToFileOrStdout(dump, dict);
+    PrintToFileOrStdout(dump, Value(std::move(list)));
   }
 
   // Retrieves a list of all existing DLC modules. Returns true if the list is
@@ -368,10 +370,10 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Helper to print to file, or stdout if |path| is empty.
-  void PrintToFileOrStdout(const string& path, const Value& dict) {
+  void PrintToFileOrStdout(const string& path, const Value& value) {
     string json;
     if (!base::JSONWriter::WriteWithOptions(
-            dict, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
+            value, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
       LOG(ERROR) << "Failed to write json.";
       return;
     }
@@ -384,47 +386,46 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   void PrintInstalled(const string& dump, const vector<DlcState>& dlcs) {
-    Value dict(Value::Type::DICTIONARY);
+    Dict dict;
     for (const auto& dlc_state : dlcs) {
       const auto& id = dlc_state.id();
       const auto& packages = GetPackages(id);
       if (packages.empty())
         continue;
-      Value dlc_info_list(Value::Type::LIST);
+      List dlc_info_list;
       for (const auto& package : packages) {
         auto manifest = GetManifest(id, package);
         if (!manifest)
           return;
-        Value dlc_info(Value::Type::DICTIONARY);
-        dlc_info.SetStringKey("name", manifest->name());
-        dlc_info.SetStringKey("id", manifest->id());
-        dlc_info.SetStringKey("package", manifest->package());
-        dlc_info.SetStringKey("version", manifest->version());
-        dlc_info.SetStringKey(
-            "preallocated_size",
-            base::NumberToString(manifest->preallocated_size()));
-        dlc_info.SetStringKey("size", base::NumberToString(manifest->size()));
-        dlc_info.SetStringKey("image_type", manifest->image_type());
+        Dict dlc_info;
+        dlc_info.Set("name", manifest->name());
+        dlc_info.Set("id", manifest->id());
+        dlc_info.Set("package", manifest->package());
+        dlc_info.Set("version", manifest->version());
+        dlc_info.Set("preallocated_size",
+                     base::NumberToString(manifest->preallocated_size()));
+        dlc_info.Set("size", base::NumberToString(manifest->size()));
+        dlc_info.Set("image_type", manifest->image_type());
         switch (manifest->fs_type()) {
           case imageloader::FileSystem::kExt4:
-            dlc_info.SetStringKey("fs-type", "ext4");
+            dlc_info.Set("fs-type", "ext4");
             break;
           case imageloader::FileSystem::kSquashFS:
-            dlc_info.SetStringKey("fs-type", "squashfs");
+            dlc_info.Set("fs-type", "squashfs");
             break;
         }
-        dlc_info.SetStringKey(
+        dlc_info.Set(
             "manifest",
             dlcservice::JoinPaths(FilePath(imageloader::kDlcManifestRootpath),
                                   id, package, dlcservice::kManifestName)
                 .value());
-        dlc_info.SetStringKey("root_mount", dlc_state.root_path());
+        dlc_info.Set("root_mount", dlc_state.root_path());
         dlc_info_list.Append(std::move(dlc_info));
       }
-      dict.SetKey(id, std::move(dlc_info_list));
+      dict.Set(id, std::move(dlc_info_list));
     }
 
-    PrintToFileOrStdout(dump, dict);
+    PrintToFileOrStdout(dump, Value(std::move(dict)));
   }
 
   std::unique_ptr<DlcServiceInterfaceProxy> dlc_service_proxy_;
