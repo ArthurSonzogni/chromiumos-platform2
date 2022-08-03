@@ -171,7 +171,9 @@ int Daemon::OnInit() {
       CreateModemHelperDirectory(helper_dir_path_, variant_, bus_);
   if (!helper_directory_) {
     auto err =
-        Error::Create(FROM_HERE, kErrorResultInitFailure,
+        Error::Create(FROM_HERE,
+                      (variant_.empty() ? kErrorResultInitFailureNonLteSku
+                                        : kErrorResultInitFailure),
                       base::StringPrintf("No suitable helpers found in %s",
                                          helper_dir_path_.value().c_str()));
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());

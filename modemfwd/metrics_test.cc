@@ -495,7 +495,15 @@ TEST_F(MetricsTest, SendFwInstallResult_Failures) {
   metrics_->SendFwInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricFwInstallResult,
+                            8 /*kInitFailureNonLteSku*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              kErrorResultInitFailureNonLteSku, "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
   // Check that all values were tested.
-  EXPECT_EQ(8, static_cast<int>(FwInstallResult::kNumConstants));
+  EXPECT_EQ(9, static_cast<int>(FwInstallResult::kNumConstants));
 }
 }  // namespace modemfwd

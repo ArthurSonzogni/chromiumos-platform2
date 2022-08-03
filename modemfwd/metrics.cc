@@ -112,6 +112,8 @@ Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
      FwInstallResult::kFailureReturnedByHelper},  // dbus error
     {kErrorResultInitJournalFailure,
      FwInstallResult::kInitJournalFailure},  // dbus error
+    {kErrorResultInitFailureNonLteSku,
+     FwInstallResult::kInitFailureNonLteSku},  // dbus error
 };
 
 void Metrics::Init() {
