@@ -47,6 +47,7 @@ constexpr char kCriticalUpdate[] = "critical-update";
 constexpr char kUsedBy[] = "used-by";
 constexpr char kDaysToPurge[] = "days-to-purge";
 constexpr char kDescription[] = "description";
+constexpr char kUseLogicalVolume[] = "use-logical-volume";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -177,8 +178,12 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // If 'reserved' field does not exist, by default it is false.
   reserved_ = manifest_dict.FindBoolKey(kReserved).value_or(false);
 
-  // If 'reserved' field does not exist, by default it is false.
+  // If 'critical-update` field does not exist, by default it is false.
   critical_update_ = manifest_dict.FindBoolKey(kCriticalUpdate).value_or(false);
+
+  // if `use-logical-volume` field does not exist, by default it is false.
+  use_logical_volume_ =
+      manifest_dict.FindBoolKey(kUseLogicalVolume).value_or(false);
 
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindStringKey(kId);

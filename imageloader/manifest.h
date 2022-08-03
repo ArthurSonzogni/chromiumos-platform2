@@ -58,6 +58,7 @@ class BRILLO_EXPORT Manifest {
   const std::map<std::string, std::string> metadata() const {
     return metadata_;
   }
+  bool use_logical_volume() const { return use_logical_volume_; }
 
  private:
   // Required manifest fields:
@@ -84,6 +85,7 @@ class BRILLO_EXPORT Manifest {
   int64_t days_to_purge_ = 0;
   std::string description_;
   std::map<std::string, std::string> metadata_;
+  bool use_logical_volume_ = false;
 };
 
 }  // namespace imageloader

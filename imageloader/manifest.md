@@ -31,3 +31,4 @@ the dlcservice daemon.
 - `days-to-purge`: Delay for cleaning up zero referenced DLC.
 - `description`: Human readable DLC description.
 - `metadata`: Expandable metadata.
+- `use-logical-volume`: True if DLC should use logical volumes.

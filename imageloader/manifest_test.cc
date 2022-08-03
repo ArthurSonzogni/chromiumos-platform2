@@ -30,6 +30,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string critical_update = R"(true)";
   const std::string description = R"("foo-description")";
   const std::string manifest_version = R"(1)";
+  const std::string use_logical_volume = R"(true)";
   const std::string manifest_raw = std::string() + R"(
     {
     "critical-update":)" + critical_update +
@@ -61,7 +62,9 @@ TEST(ManifestTest, ParseManifest) {
     "used-by":)" + used_by + R"(,
     "days-to-purge":)" + days_to_purge +
                                    R"(,
-    "version":)" + version + R"(
+    "version":)" + version + R"(,
+    "use-logical-volume":)" + use_logical_volume +
+                                   R"(
     }
   )";
   Manifest manifest;
@@ -86,6 +89,7 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.description(), "foo-description");
   EXPECT_EQ(manifest.reserved(), true);
   EXPECT_EQ(manifest.critical_update(), true);
+  EXPECT_TRUE(manifest.use_logical_volume());
 }
 
 TEST(ManifestTest, ParseManifestNoOptional) {
@@ -126,6 +130,7 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.description(), "");
   EXPECT_EQ(manifest.reserved(), false);
   EXPECT_EQ(manifest.critical_update(), false);
+  EXPECT_FALSE(manifest.use_logical_volume());
 
   // Sizes should default to 0.
   EXPECT_EQ(manifest.preallocated_size(), 0);
