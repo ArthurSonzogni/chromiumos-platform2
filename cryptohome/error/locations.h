@@ -502,7 +502,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionDeriveUSSSecretFailedInPersistToUSS = 338,
   /* ./auth_session.cc */
-  kLocAuthSessionAddMainKeyFailedInPersistToUSS = 339,
+  kLocAuthSessionAddMainKeyFailedInAddSecretToUSS = 339,
   /* ./auth_session.cc */
   kLocAuthSessionEncryptFailedInPersistToUSS = 340,
   /* ./auth_session.cc */
@@ -740,7 +740,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./user_session/real_user_session.cc */
   kLocUserSessionMountFailedInMountEphemeral = 457,
   /* ./auth_session.cc */
-  kLocAuthSessionAddResetSecretFailedInPersistToUSS = 458,
+  kLocAuthSessionAddResetSecretFailedInAddSecretToUSS = 458,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockStateInvalidInGenerateRecoveryRequest = 459,
   /* ./auth_blocks/auth_block_utility_impl.cc */
@@ -1046,7 +1046,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor = 610,
   /* ./auth_session.cc */
-  kLocAuthSessionRemoveMainKeyFailedInRemoveAuthFactor = 611,
+  kLocAuthSessionRemoveMainKeyFailedInRemoveSecretFromUss = 611,
   /* ./auth_session.cc */
   kLocAuthSessionEncryptFailedInRemoveAuthFactor = 612,
   /* ./auth_session.cc */
@@ -1083,6 +1083,48 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthHwsecNotReadyInInitChalRespAuth = 628,
   /* ./userdataauth.cc */
   kLocUserDataAuthUserNonexistentInListAuthFactors = 629,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInUpdateAuthFactor = 630,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFromUssFailedInRemoveAuthFactor = 631,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnauthedInUpdateAuthFactor = 632,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoOldLabelInUpdateAuthFactor = 633,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInUpdateAuthFactor = 634,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnknownFactorInUpdateAuthFactor = 635,
+  /* ./auth_session.cc */
+  kLocAuthSessionDifferentLabelInUpdateAuthFactor = 636,
+  /* ./auth_session.cc */
+  kLocAuthSessionDifferentTypeInUpdateAuthFactor = 637,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoInputInUpdateAuthFactor = 638,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor = 639,
+  /* ./auth_session.cc */
+  kLocAuthSessionVaultKeysetNotImplementedInUpdateAuthFactor = 640,
+  /* ./auth_session.cc */
+  kLocAuthSessionNullParamInUpdateViaUSS = 641,
+  /* ./auth_session.cc */
+  kLocAuthSessionCreateFailedInUpdateViaUSS = 642,
+  /* ./auth_session.cc */
+  kLocAuthSessionDeriveUSSSecretFailedInUpdateViaUSS = 643,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFromUSSFailedInUpdateViaUSS = 644,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddToUSSFailedInUpdateViaUSS = 645,
+  /* ./auth_session.cc */
+  kLocAuthSessionEncryptFailedInUpdateViaUSS = 646,
+  /* ./auth_session.cc */
+  kLocAuthSessionPersistFactorFailedInUpdateViaUSS = 647,
+  /* ./auth_session.cc */
+  kLocAuthSessionPersistUSSFailedInUpdateViaUSS = 648,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddToUssFailedInPersistToUSS = 649,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoInputWithUssInAddAuthFactor = 650,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -136,6 +136,14 @@ class AuthSession final {
       base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
           on_done);
 
+  // UpdateAuthFactor is called when the user wants to update auth factor
+  // provided in the `request`. Note: only USS users are supported currently.
+  // TODO(b/239671134): Implement for VaultKeyset users.
+  void UpdateAuthFactor(
+      const user_data_auth::UpdateAuthFactorRequest& request,
+      base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
+          on_done);
+
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
   // AuthSession state. This call is required before the AuthenticateAuthFactor
@@ -342,6 +350,12 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
+  // Add the new factor into the USS in-memory.
+  CryptohomeStatus AddAuthFactorToUssInMemory(
+      AuthFactor& auth_factor,
+      const AuthInput& auth_input,
+      const brillo::SecureBlob& uss_credential_secret);
+
   // Creates a new per-credential secret, adds the key block for the new secret
   // to the USS and persists it to disk.
   void AddAuthFactorViaUserSecretStash(
@@ -431,6 +445,23 @@ class AuthSession final {
   // Removes the auth factor with the provided `auth_factor_label` from the USS.
   CryptohomeStatus RemoveAuthFactorViaUserSecretStash(
       const std::string& auth_factor_label);
+
+  // Remove the factor from the USS in-memory.
+  CryptohomeStatus RemoveAuthFactorFromUssInMemory(
+      const std::string& auth_factor_label);
+
+  // Creates a new per-credential secret, updates the secret in the USS and
+  // updates the auth block state on disk.
+  void UpdateAuthFactorViaUserSecretStash(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
+          on_done,
+      CryptoStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
 
   // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
   // corresponding AuthFactors for testing purpose.

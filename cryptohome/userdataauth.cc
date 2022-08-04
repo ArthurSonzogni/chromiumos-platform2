@@ -4673,10 +4673,21 @@ void UserDataAuth::UpdateAuthFactor(
     base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  // TODO(b/208357704): Implement UpdateAuthFactor.
+
   user_data_auth::UpdateAuthFactorReply reply;
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-  std::move(on_done).Run(reply);
+
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInUpdateAuthFactor))
+            .Wrap(std::move(auth_session_status).status()));
+    return;
+  }
+
+  auth_session_status.value()->UpdateAuthFactor(request, std::move(on_done));
 }
 
 void UserDataAuth::RemoveAuthFactor(

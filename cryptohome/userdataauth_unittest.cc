@@ -813,12 +813,17 @@ static_assert(
         static_cast<int>(cryptohome::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED),
     "Enum member CRYPTOHOME_REMOVE_CREDENTIALS_FAILED differs between "
     "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED),
+    "Enum member CRYPTOHOME_UPDATE_CREDENTIALS_FAILED differs between "
+    "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 54,
-    "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 54,
-              "cryptohome::CrytpohomeErrorCode's element count is incorrect");
+    user_data_auth::CryptohomeErrorCode_MAX == 55,
+    "user_data_auth::CryptohomeErrorCode's element count is incorrect");
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 55,
+              "cryptohome::CryptohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
 namespace SignatureAlgorithmEquivalenceTest {
