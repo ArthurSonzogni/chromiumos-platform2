@@ -10,6 +10,7 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -32,8 +33,8 @@ class DataFilter {
   ~DataFilter();
 
   // The given callback will be run when this filter stops.
-  void set_on_stopped_callback(const base::Closure& callback) {
-    on_stopped_callback_ = callback;
+  void set_on_stopped_callback(base::OnceClosure callback) {
+    on_stopped_callback_ = std::move(callback);
   }
 
   // Starts watching the given /dev/fuse FD and returns a filtered FD.
@@ -90,7 +91,7 @@ class DataFilter {
   std::map<uint64_t, uint32_t> unique_to_opcode_;
 
   scoped_refptr<base::TaskRunner> origin_task_runner_;
-  base::Closure on_stopped_callback_;
+  base::OnceClosure on_stopped_callback_;
 };
 
 }  // namespace appfuse

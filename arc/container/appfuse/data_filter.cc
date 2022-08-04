@@ -83,7 +83,7 @@ base::ScopedFD DataFilter::Start(base::ScopedFD fd_dev) {
   // Unretained(this) here is safe because watch_thread_ is owned by |this|.
   watch_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&DataFilter::StartWatching, base::Unretained(this)));
+      base::BindOnce(&DataFilter::StartWatching, base::Unretained(this)));
   return socket_for_app;
 }
 

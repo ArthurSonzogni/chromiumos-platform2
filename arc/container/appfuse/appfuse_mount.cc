@@ -64,7 +64,7 @@ base::ScopedFD AppfuseMount::Mount() {
     return base::ScopedFD();
   }
   // OnDataFilterStopped will be called when the data filter stops on an error.
-  data_filter_.set_on_stopped_callback(base::Bind(
+  data_filter_.set_on_stopped_callback(base::BindOnce(
       &AppfuseMount::OnDataFilterStopped, weak_ptr_factory_.GetWeakPtr()));
   return data_filter_.Start(std::move(dev_fuse));
 }

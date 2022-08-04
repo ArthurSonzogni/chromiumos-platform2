@@ -26,7 +26,7 @@ class DataFilterTest : public testing::Test {
 
   void SetUp() override {
     data_filter_.set_on_stopped_callback(
-        base::Bind(&DataFilterTest::OnStopped, base::Unretained(this)));
+        base::BindOnce(&DataFilterTest::OnStopped, base::Unretained(this)));
     int raw_socks[2];
     ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_SEQPACKET, 0, raw_socks));
     fd_dev_ = base::ScopedFD(raw_socks[0]);
