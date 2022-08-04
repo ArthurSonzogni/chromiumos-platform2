@@ -351,7 +351,7 @@ class ArcMounterImpl : public ArcMounter {
 
     // Cleanup in case mount fails. This frees |device_num| altogether.
     base::ScopedClosureRunner loop_device_cleanup(
-        base::Bind(&RemoveLoopDevice, scoped_control_fd.get(), device_num));
+        base::BindOnce(&RemoveLoopDevice, scoped_control_fd.get(), device_num));
 
     const base::FilePath device_path = GetLoopDevicePath(device_num);
     base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
@@ -408,7 +408,7 @@ class ArcMounterImpl : public ArcMounter {
     // Substitute the removal of the device number by disassociating |source|
     // from the loop device, such that the autoclear flag on |device_num| can
     // automatically remove the loop device.
-    loop_device_cleanup.ReplaceClosure(base::Bind(
+    loop_device_cleanup.ReplaceClosure(base::BindOnce(
         &DisassociateLoopDevice, scoped_loop_fd.get(), source, device_path));
 
     if (Mount(device_path.value(), target, "squashfs", mount_flags, nullptr)) {
@@ -565,8 +565,9 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
                          const std::string& prop_name,
                          std::string* out_prop) {
   const std::string line_prefix_to_find = prop_name + '=';
-  if (FindLine(prop_file_path,
-               base::Bind(&FindProperty, line_prefix_to_find, out_prop))) {
+  if (FindLine(
+          prop_file_path,
+          base::BindRepeating(&FindProperty, line_prefix_to_find, out_prop))) {
     return true;  // found the line.
   }
   LOG(WARNING) << prop_name << " is not in " << prop_file_path.value();
@@ -576,7 +577,7 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
 bool GetPropertiesFromFile(const base::FilePath& prop_file_path,
                            std::map<std::string, std::string>* out_properties) {
   if (FindLine(prop_file_path,
-               base::Bind(&FindAllProperties, out_properties))) {
+               base::BindRepeating(&FindAllProperties, out_properties))) {
     // Failed to parse the file.
     out_properties->clear();
     return false;
