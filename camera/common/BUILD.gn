@@ -78,6 +78,7 @@ source_set("base") {
     "//camera/common/camera_buffer_pool.cc",
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_hal3_helpers.cc",
+    "//camera/common/camera_metadata_string_utils.cc",
     "//camera/common/device_config.cc",
     "//camera/common/embed_file_toc.cc",
     "//camera/common/exif_utils.cc",

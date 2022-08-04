@@ -22,6 +22,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "features/frame_annotator/face_rectangles_frame_annotator.h"
+#include "features/frame_annotator/metadata_previewer_frame_annotator.h"
 #include "gpu/gles/texture_2d.h"
 #include "gpu/shared_image.h"
 
@@ -63,6 +64,8 @@ FrameAnnotatorStreamManipulator::FrameAnnotatorStreamManipulator()
   CHECK(gpu_thread_.Start());
   frame_annotators_.emplace_back(
       std::make_unique<FaceRectanglesFrameAnnotator>());
+  frame_annotators_.emplace_back(
+      std::make_unique<MetadataPreviewerFrameAnnotator>());
 }
 
 FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
