@@ -8,6 +8,7 @@
 
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <brillo/udev/mock_udev.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,6 +38,9 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
       bool ro_verified, int hwwp_status) {
     MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified,
                                   ro_verified);
+    // Mock |UdevUtils|.
+    auto mock_udev = std::make_unique<NiceMock<brillo::MockUdev>>();
+    auto mock_udev_utils = std::make_unique<UdevUtils>(std::move(mock_udev));
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
 
@@ -59,9 +63,9 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
         std::make_unique<NiceMock<MockPowerManagerClient>>();
 
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_cmd_utils),
-        std::move(mock_crossystem_utils), std::move(mock_flashrom_utils),
-        std::move(mock_cros_disks_client),
+        json_store_, daemon_callback_, std::move(mock_udev_utils),
+        std::move(mock_cmd_utils), std::move(mock_crossystem_utils),
+        std::move(mock_flashrom_utils), std::move(mock_cros_disks_client),
         std::move(mock_power_manager_client));
   }
 

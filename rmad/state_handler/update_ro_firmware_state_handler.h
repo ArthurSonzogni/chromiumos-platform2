@@ -10,12 +10,14 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/task_runner.h>
 #include <base/timer/timer.h>
 
+#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cros_disks_client.h"
 #include "rmad/system/power_manager_client.h"
@@ -34,11 +36,13 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,
-  // |cros_disks_client_| and |power_manager_client_| for testing.
+  // Used to inject mock |udev_utils_|, |cmd_utils_|, |crossystem_utils|,
+  // |flashrom_utils|, |cros_disks_client| and |power_manager_client_| for
+  // testing.
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      std::unique_ptr<UdevUtils> udev_utils,
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<FlashromUtils> flashrom_utils,
@@ -60,6 +64,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   bool CanSkipUpdate();
 
   void SendFirmwareUpdateStatusSignal();
+  std::vector<std::unique_ptr<UdevDevice>> GetRemovableBlockDevices() const;
   void WaitUsb();
   void OnMountCompleted(const rmad::MountEntry& entry);
   bool RunFirmwareUpdater(const std::string& firmware_updater_path);
@@ -82,6 +87,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   UpdateRoFirmwareStatus status_;
   bool poll_usb_;
 
+  std::unique_ptr<UdevUtils> udev_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;

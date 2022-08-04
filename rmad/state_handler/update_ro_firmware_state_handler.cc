@@ -21,6 +21,8 @@
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
+#include "rmad/executor/udev/udev_device.h"
+#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/cros_disks_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
@@ -48,6 +50,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
       is_mocked_(false),
       active_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
+  udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
@@ -59,6 +62,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils,
@@ -67,6 +71,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       active_(false),
+      udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)),
@@ -192,34 +197,41 @@ void UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
   daemon_callback_->GetUpdateRoFirmwareSignalCallback().Run(status_);
 }
 
+std::vector<std::unique_ptr<UdevDevice>>
+UpdateRoFirmwareStateHandler::GetRemovableBlockDevices() const {
+  std::vector<std::unique_ptr<UdevDevice>> devices =
+      udev_utils_->EnumerateBlockDevices();
+  devices.erase(std::remove_if(devices.begin(), devices.end(),
+                               [](const std::unique_ptr<UdevDevice>& device) {
+                                 return !device->IsRemovable();
+                               }),
+                devices.end());
+  return devices;
+}
+
 void UpdateRoFirmwareStateHandler::WaitUsb() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!poll_usb_) {
     return;
   }
-  bool found_root_partition = false;
-  if (std::vector<std::string> result;
-      cros_disks_client_->EnumerateDevices(&result) && result.size()) {
-    for (const std::string& device : result) {
-      if (DeviceProperties device_properties;
-          cros_disks_client_->GetDeviceProperties(device, &device_properties)) {
-        if (IsRootfsPartition(device_properties.device_file)) {
-          // Only try to mount the first root partition found.
-          found_root_partition = true;
-          poll_usb_ = false;
-          cros_disks_client_->Mount(device_properties.device_file, "ext2",
-                                    {"ro"});
-          break;
-        }
+  std::vector<std::unique_ptr<UdevDevice>> removable_devices =
+      GetRemovableBlockDevices();
+  if (removable_devices.empty()) {
+    // External disk is not detected. Keep waiting.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
+  } else {
+    for (auto& device : removable_devices) {
+      if (IsRootfsPartition(device->GetDeviceNode())) {
+        // Only try to mount the first root partition found. Stop the polling to
+        // prevent mounting twice.
+        poll_usb_ = false;
+        cros_disks_client_->Mount(device->GetDeviceNode(), "ext2", {"ro"});
+        return;
       }
     }
-    if (!found_root_partition) {
-      // USB is inserted but no root partition found. Treat as file not found.
-      status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-    }
-  } else {
-    // No detected USB.
-    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
+    // External disk is detected but no rootfs partition found. Treat this case
+    // as file not found.
+    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
   }
 }
 

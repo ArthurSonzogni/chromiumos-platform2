@@ -127,3 +127,4 @@ getpgrp: 1
 sigaltstack: 1
 fadvise64: 1
 unlinkat: 1
+readlinkat: 1
