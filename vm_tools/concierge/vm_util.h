@@ -120,7 +120,8 @@ bool CheckProcessExists(pid_t pid);
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path);
 
 // Parses balloon stats info from a JSON value.
-std::optional<BalloonStats> ParseBalloonStats(const base::Value& balloon_stats);
+std::optional<BalloonStats> ParseBalloonStats(
+    const base::Value::Dict& balloon_stats);
 
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.

@@ -185,7 +185,7 @@ bool ExecutePvmHelper(const std::string& owner_id,
   }
 }
 
-static std::optional<base::Value> GetVmInfo(const VmId& vm_id) {
+static std::optional<base::Value::Dict> GetVmInfo(const VmId& vm_id) {
   std::string output;
   if (!ExecutePvmHelper(vm_id.owner_id(),
                         {"list", "--info", "--json", vm_id.name()}, &output)) {
@@ -217,7 +217,7 @@ static std::optional<base::Value> GetVmInfo(const VmId& vm_id) {
     return std::nullopt;
   }
 
-  return std::move(vm_info);
+  return std::move(vm_info.GetDict());
 }
 
 bool DisconnectDevice(const VmId& vm_id, const std::string& device_name) {
@@ -266,24 +266,24 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
     return;
   }
 
-  const base::Value* hardware = vm_info->FindDictKey("Hardware");
+  const base::Value::Dict* hardware = vm_info->FindDict("Hardware");
   if (!hardware) {
     LOG(ERROR) << "Failed to obtain hardware info for " << vm_id;
     return;
   }
 
-  for (const auto& kv : hardware->DictItems()) {
-    if (!base::StartsWith(kv.first, "cdrom"))
+  for (const auto& [key, value] : *hardware) {
+    if (!base::StartsWith(key, "cdrom"))
       continue;
 
-    const base::Value& cdrom = kv.second;
-    if (!cdrom.is_dict()) {
-      LOG(WARNING) << "Hardware node " << kv.first << " in " << vm_id
+    if (!value.is_dict()) {
+      LOG(WARNING) << "Hardware node " << key << " in " << vm_id
                    << "is not a dictionary";
       continue;
     }
+    const base::Value::Dict& cdrom = value.GetDict();
 
-    const std::string* image_name = cdrom.FindStringKey("image");
+    const std::string* image_name = cdrom.FindString("image");
     if (!image_name)
       continue;  // The device is not backed by an image.
 
@@ -293,10 +293,10 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
         *image_name != plugin::kToolsIsoPath)
       continue;
 
-    const std::string* state = cdrom.FindStringKey("state");
+    const std::string* state = cdrom.FindString("state");
     if (!state || *state != "disconnected") {
-      if (!DisconnectDevice(vm_id, kv.first)) {
-        LOG(ERROR) << "Failed to disconnect " << kv.first << " from " << vm_id;
+      if (!DisconnectDevice(vm_id, key)) {
+        LOG(ERROR) << "Failed to disconnect " << key << " from " << vm_id;
         continue;
       }
     }

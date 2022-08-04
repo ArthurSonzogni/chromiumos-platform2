@@ -48,11 +48,10 @@ constexpr uint32_t kPrepareVmId = 3;
 constexpr uint32_t kFinishAddVmId = 4;
 constexpr uint32_t kRemoveVmId = 5;
 
-std::optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
-                                             uint32_t type,
-                                             base::Value msg) {
+std::optional<base::Value::Dict> DoSynchronousCall(
+    base::ScopedFD& fd, uint32_t type, const base::Value::Dict& msg) {
   std::string msg_str;
-  if (!msg.DictEmpty()) {
+  if (!msg.empty()) {
     base::JSONWriter::Write(msg, &msg_str);
   }
 
@@ -92,15 +91,15 @@ std::optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
   }
 
   auto root_value = base::JSONReader::Read(resp);
-  if (!root_value) {
+  if (!root_value || !root_value->is_dict()) {
     LOG(ERROR) << "Failed to parse resp '" << resp << "'";
   }
-  return root_value;
+  return std::move(root_value->GetDict());
 }
 
-bool check_simple_response(const std::optional<base::Value>& resp,
+bool check_simple_response(const std::optional<base::Value::Dict>& resp,
                            const char* type) {
-  auto res = resp ? resp->FindIntKey("res") : std::nullopt;
+  auto res = resp ? resp->FindInt("res") : std::nullopt;
   if (!resp || !res) {
     LOG(ERROR) << "Malformed " << type << " resp";
     return false;
@@ -146,29 +145,33 @@ void ManateeMemoryService::GetBalloonStats(
 
 TaggedBalloonStats ManateeMemoryService::GetBalloonStatsOnThread(
     std::vector<VmMemoryId> ids) {
-  base::Value msg(base::Value::Type::DICTIONARY);
-  base::Value::ListStorage ids_list;
+  base::Value::Dict msg;
+  base::Value::List ids_list;
   for (auto id : ids) {
-    ids_list.push_back(base::Value(static_cast<int>(id)));
+    ids_list.Append(static_cast<int>(id));
   }
-  msg.SetKey("ids", base::Value(std::move(ids_list)));
+  msg.Set("ids", std::move(ids_list));
 
-  auto resp = DoSynchronousCall(mms_socket_, kGetBallonStatsId, std::move(msg));
+  auto resp = DoSynchronousCall(mms_socket_, kGetBallonStatsId, msg);
   if (!resp) {
     LOG(ERROR) << "Malformed balloon stats response";
     return TaggedBalloonStats();
   }
 
-  auto all_stats_resp = resp->FindListKey("all_stats");
+  auto all_stats_resp = resp->FindList("all_stats");
   if (!all_stats_resp) {
     LOG(ERROR) << "Malformed balloon stats response";
     return TaggedBalloonStats();
   }
 
   TaggedBalloonStats tagged_stats;
-  for (auto& resp_stats : all_stats_resp->GetList()) {
-    auto id = resp_stats.FindIntKey("id");
-    auto stats = vm_tools::concierge::ParseBalloonStats(resp_stats);
+  for (const auto& resp_stats : *all_stats_resp) {
+    if (!resp_stats.is_dict()) {
+      LOG(ERROR) << "Malformed balloon stats response";
+      return TaggedBalloonStats();
+    }
+    auto id = resp_stats.GetDict().FindInt("id");
+    auto stats = vm_tools::concierge::ParseBalloonStats(resp_stats.GetDict());
     if (!id || !stats) {
       LOG(ERROR) << "Malformed balloon stats response";
       return TaggedBalloonStats();
@@ -196,33 +199,36 @@ void ManateeMemoryService::RebalanceMemory(
 
 bool ManateeMemoryService::RebalanceMemoryOnThread(TaggedMemoryMiBDeltas deltas,
                                                    int64_t reserve_delta) {
-  base::Value msg(base::Value::Type::DICTIONARY);
-  base::Value::ListStorage cfgs_list;
+  base::Value::Dict msg;
+  base::Value::List cfgs_list;
   for (auto& delta : deltas) {
-    base::Value cfg_dict(base::Value::Type::DICTIONARY);
-    cfg_dict.SetKey("id", base::Value(static_cast<int>(delta.first)));
-    cfg_dict.SetKey("delta", base::Value(static_cast<double>(delta.second)));
-    cfgs_list.push_back(std::move(cfg_dict));
+    base::Value::Dict cfg_dict;
+    cfg_dict.Set("id", static_cast<int>(delta.first));
+    cfg_dict.Set("delta", static_cast<double>(delta.second));
+    cfgs_list.Append(std::move(cfg_dict));
   }
-  msg.SetKey("deltas", base::Value(std::move(cfgs_list)));
+  msg.Set("deltas", std::move(cfgs_list));
 
-  auto resp =
-      DoSynchronousCall(mms_socket_, kRebalanceMemoryId, std::move(msg));
+  auto resp = DoSynchronousCall(mms_socket_, kRebalanceMemoryId, msg);
   if (!resp) {
     LOG(ERROR) << "Malformed rebalance memory response";
     return false;
   }
 
-  auto actual_deltas = resp->FindListKey("actual_deltas");
+  auto actual_deltas = resp->FindList("actual_deltas");
   if (!actual_deltas) {
     LOG(ERROR) << "Malformed rebalance memory response";
     return false;
   }
 
   bool full_rebalance = true;
-  for (auto& actual : actual_deltas->GetList()) {
-    auto id = actual.FindIntKey("id");
-    auto delta = actual.FindDoubleKey("delta");
+  for (const auto& actual : *actual_deltas) {
+    if (!actual.is_dict()) {
+      LOG(ERROR) << "Malformed rebalance memory response";
+      return false;
+    }
+    auto id = actual.GetDict().FindInt("id");
+    auto delta = actual.GetDict().FindDouble("delta");
     if (!id || !delta) {
       LOG(ERROR) << "Malformed rebalance memory response";
       return false;
@@ -274,14 +280,13 @@ bool ManateeMemoryService::LaunchVmOnThread(
                 << delay_ms;
       base::PlatformThread::Sleep(delay_ms);
     }
-    base::Value msg(base::Value::Type::DICTIONARY);
-    msg.SetKey("mem_size", base::Value(static_cast<double>(mem_size)));
-    msg.SetKey("init_mem_size",
-               base::Value(static_cast<double>(init_mem_size)));
+    base::Value::Dict msg;
+    msg.Set("mem_size", static_cast<double>(mem_size));
+    msg.Set("init_mem_size", static_cast<double>(init_mem_size));
 
-    auto resp = DoSynchronousCall(mms_socket_, kPrepareVmId, std::move(msg));
-    auto res = resp ? resp->FindIntKey("res") : std::nullopt;
-    auto ret_id = resp ? resp->FindIntKey("id") : std::nullopt;
+    auto resp = DoSynchronousCall(mms_socket_, kPrepareVmId, msg);
+    auto res = resp ? resp->FindInt("res") : std::nullopt;
+    auto ret_id = resp ? resp->FindInt("id") : std::nullopt;
     if (!resp || !res || !ret_id) {
       LOG(ERROR) << "Malformed prepare vm resp";
       break;
@@ -296,11 +301,10 @@ bool ManateeMemoryService::LaunchVmOnThread(
     auto future = AsyncNoReject<bool>(
         start_vm_runner, base::BindOnce(std::move(start_vm_cb), id));
     if (future.Get().val) {
-      base::Value msg(base::Value::Type::DICTIONARY);
-      msg.SetKey("id", base::Value(static_cast<int>(id)));
+      base::Value::Dict msg;
+      msg.Set("id", static_cast<int>(id));
 
-      auto resp =
-          DoSynchronousCall(mms_socket_, kFinishAddVmId, std::move(msg));
+      auto resp = DoSynchronousCall(mms_socket_, kFinishAddVmId, msg);
       if (!check_simple_response(resp, "finish add VM")) {
         // The underlying failure could either be an mms failure or a crash in
         // the new VM. If it was a crash, then the normal crash monitoring could
@@ -329,10 +333,10 @@ void ManateeMemoryService::RemoveVm(VmMemoryId id) {
 }
 
 void ManateeMemoryService::RemoveVmOnThread(VmMemoryId id) {
-  base::Value msg(base::Value::Type::DICTIONARY);
-  msg.SetKey("id", base::Value(static_cast<int>(id)));
+  base::Value::Dict msg;
+  msg.Set("id", static_cast<int>(id));
 
-  auto resp = DoSynchronousCall(mms_socket_, kRemoveVmId, std::move(msg));
+  auto resp = DoSynchronousCall(mms_socket_, kRemoveVmId, msg);
   check_simple_response(resp, "remove VM");
 }
 

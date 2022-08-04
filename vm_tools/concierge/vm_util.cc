@@ -308,39 +308,39 @@ std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
 }
 
 std::optional<BalloonStats> ParseBalloonStats(
-    const base::Value& balloon_stats) {
-  auto additional_stats = balloon_stats.FindDictKey("stats");
-  if (!additional_stats || !additional_stats->is_dict()) {
+    const base::Value::Dict& balloon_stats) {
+  auto additional_stats = balloon_stats.FindDict("stats");
+  if (!additional_stats) {
     LOG(ERROR) << "stats dict not found";
     return std::nullopt;
   }
 
   BalloonStats stats;
-  // Using FindDoubleKey here since the value may exceeds 32bit integer range.
+  // Using FindDouble here since the value may exceeds 32bit integer range.
   // This is safe since double has 52bits of integer precision.
   stats.balloon_actual = static_cast<int64_t>(
-      balloon_stats.FindDoubleKey("balloon_actual").value_or(0));
+      balloon_stats.FindDouble("balloon_actual").value_or(0));
 
   stats.stats_ffi.available_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("available_memory").value_or(0));
+      additional_stats->FindDouble("available_memory").value_or(0));
   stats.stats_ffi.disk_caches = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("disk_caches").value_or(0));
+      additional_stats->FindDouble("disk_caches").value_or(0));
   stats.stats_ffi.free_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("free_memory").value_or(0));
+      additional_stats->FindDouble("free_memory").value_or(0));
   stats.stats_ffi.major_faults = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("major_faults").value_or(0));
+      additional_stats->FindDouble("major_faults").value_or(0));
   stats.stats_ffi.minor_faults = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("minor_faults").value_or(0));
-  stats.stats_ffi.swap_in = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("swap_in").value_or(0));
+      additional_stats->FindDouble("minor_faults").value_or(0));
+  stats.stats_ffi.swap_in =
+      static_cast<int64_t>(additional_stats->FindDouble("swap_in").value_or(0));
   stats.stats_ffi.swap_out = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("swap_out").value_or(0));
+      additional_stats->FindDouble("swap_out").value_or(0));
   stats.stats_ffi.total_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("total_memory").value_or(0));
+      additional_stats->FindDouble("total_memory").value_or(0));
   stats.stats_ffi.shared_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("shared_memory").value_or(0));
+      additional_stats->FindDouble("shared_memory").value_or(0));
   stats.stats_ffi.unevictable_memory = static_cast<int64_t>(
-      additional_stats->FindDoubleKey("unevictable_memory").value_or(0));
+      additional_stats->FindDouble("unevictable_memory").value_or(0));
   return stats;
 }
 
