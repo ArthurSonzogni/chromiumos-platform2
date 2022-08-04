@@ -81,6 +81,9 @@ export class LineChart extends Chart {
         keepInBounds: true,
         actions: ['dragToZoom', 'rightClickToReset'],
       },
+      hAxis: {
+        format: 'hh:mm:ss a',
+      },
     };
     // @ts-ignore: The ChartLegendPosition guard is rejecting all values.
     options.legend.position = 'top';
@@ -94,10 +97,25 @@ export class LineChart extends Chart {
       if (typeof name !== 'string') {
         name = index.toString();
       }
-      let value = {
+
+      let value: any = {
         label: name,
         sourceColumn: index,
       };
+
+      // The value in index 0 is the unix time, we transform
+      // the unix time format to user readable time format
+      if (index === 0) {
+        value['type'] = 'datetime';
+        // The calculate function could transform the time format
+        value['calc'] =
+            ((dataTable: google.visualization.DataTable, row: number) => {
+              let unixtime = dataTable.getValue(row, index) as number;
+              // Get the data in millisecond
+              let time = new Date(unixtime * 1000);
+              return time;
+            });
+      }
       columns.push(value);
     }
 
