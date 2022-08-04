@@ -63,7 +63,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  private:
   bool CanSkipUpdate();
 
-  void SendFirmwareUpdateStatusSignal();
+  void SendFirmwareUpdateSignal();
   std::vector<std::unique_ptr<UdevDevice>> GetRemovableBlockDevices() const;
   void WaitUsb();
   void OnMountCompleted(const rmad::MountEntry& entry);
@@ -80,11 +80,12 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   // True if the class is not initialized with default constructor.
   bool is_mocked_;
 
-  // All accesses to |active_|, |status_| and |poll_usb_| should be on the
-  // same sequence.
+  // All accesses to |active_|, |status_|, |usb_detected_| and |poll_usb_|
+  // should be on the same sequence.
   SEQUENCE_CHECKER(sequence_checker_);
   bool active_;
   UpdateRoFirmwareStatus status_;
+  bool usb_detected_;
   bool poll_usb_;
 
   std::unique_ptr<UdevUtils> udev_utils_;
@@ -98,8 +99,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   base::RepeatingTimer status_signal_timer_;
   // Timer for checking USB.
   base::RepeatingTimer check_usb_timer_;
-  // Sequence runner for thread-safe read/write of |active_|, |status_| and
-  // |poll_usb_|.
+  // Sequence runner for thread-safe read/write of |active_|, |status_|,
+  // |usb_detected_| and |poll_usb_|.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   // Task runner for firmware updater.
   scoped_refptr<base::TaskRunner> updater_task_runner_;
@@ -129,7 +130,7 @@ class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
   ~FakeUpdateRoFirmwareStateHandler() override = default;
 
  private:
-  void SendFirmwareUpdateStatusSignal();
+  void SendFirmwareUpdateSignal();
 
   // Timer for sending status signals.
   base::RepeatingTimer status_signal_timer_;

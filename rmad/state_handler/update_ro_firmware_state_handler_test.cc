@@ -9,6 +9,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_enumerate.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -24,8 +25,10 @@
 #include "rmad/utils/mock_flashrom_utils.h"
 
 using testing::_;
+using testing::ByMove;
 using testing::DoAll;
 using testing::Eq;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
@@ -40,6 +43,16 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
                                   ro_verified);
     // Mock |UdevUtils|.
     auto mock_udev = std::make_unique<NiceMock<brillo::MockUdev>>();
+    ON_CALL(*mock_udev, CreateEnumerate()).WillByDefault(Invoke([]() {
+      auto mock_enumerate =
+          std::make_unique<NiceMock<brillo::MockUdevEnumerate>>();
+      ON_CALL(*mock_enumerate, AddMatchSubsystem(_))
+          .WillByDefault(Return(true));
+      ON_CALL(*mock_enumerate, ScanDevices()).WillByDefault(Return(true));
+      ON_CALL(*mock_enumerate, GetListEntry())
+          .WillByDefault(Return(ByMove(nullptr)));
+      return mock_enumerate;
+    }));
     auto mock_udev_utils = std::make_unique<UdevUtils>(std::move(mock_udev));
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();

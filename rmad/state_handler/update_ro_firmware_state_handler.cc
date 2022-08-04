@@ -107,19 +107,19 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
       json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
       firmware_updated) {
     status_ = RMAD_UPDATE_RO_FIRMWARE_COMPLETE;
-    poll_usb_ = false;
   } else {
     status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
-    poll_usb_ = true;
   }
   active_ = true;
+  usb_detected_ = !GetRemovableBlockDevices().empty();
+  poll_usb_ = true;
   return RMAD_ERROR_OK;
 }
 
 void UpdateRoFirmwareStateHandler::RunState() {
   status_signal_timer_.Start(
       FROM_HERE, kPollInterval, this,
-      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
+      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
   check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
                          &UpdateRoFirmwareStateHandler::WaitUsb);
 }
@@ -192,9 +192,11 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
   return false;
 }
 
-void UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
+void UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   daemon_callback_->GetUpdateRoFirmwareSignalCallback().Run(status_);
+  // |usb_detected_| is not up-to-date when firmware update is in progress.
+  daemon_callback_->GetExternalDiskSignalCallback().Run(usb_detected_);
 }
 
 std::vector<std::unique_ptr<UdevDevice>>
@@ -214,24 +216,30 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
   if (!poll_usb_) {
     return;
   }
+  // Update |usb_detected_|.
   std::vector<std::unique_ptr<UdevDevice>> removable_devices =
       GetRemovableBlockDevices();
-  if (removable_devices.empty()) {
-    // External disk is not detected. Keep waiting.
-    status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
-  } else {
-    for (auto& device : removable_devices) {
-      if (IsRootfsPartition(device->GetDeviceNode())) {
-        // Only try to mount the first root partition found. Stop the polling to
-        // prevent mounting twice.
-        poll_usb_ = false;
-        cros_disks_client_->Mount(device->GetDeviceNode(), "ext2", {"ro"});
-        return;
+  usb_detected_ = !removable_devices.empty();
+  // Update |status_| if firmware update is not completed.
+  if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
+    if (removable_devices.empty()) {
+      // External disk is not detected. Keep waiting.
+      status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
+    } else {
+      // External disk is detected. Look for rootfs partition.
+      for (auto& device : removable_devices) {
+        if (IsRootfsPartition(device->GetDeviceNode())) {
+          // Only try to mount the first root partition found. Stop the polling
+          // to prevent mounting twice.
+          poll_usb_ = false;
+          cros_disks_client_->Mount(device->GetDeviceNode(), "ext2", {"ro"});
+          return;
+        }
       }
+      // External disk is detected but no rootfs partition found. Treat this
+      // case as file not found.
+      status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
     }
-    // External disk is detected but no rootfs partition found. Treat this case
-    // as file not found.
-    status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
   }
 }
 
@@ -380,7 +388,7 @@ RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
 void FakeUpdateRoFirmwareStateHandler::RunState() {
   status_signal_timer_.Start(
       FROM_HERE, kPollInterval, this,
-      &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
+      &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
 }
 
 void FakeUpdateRoFirmwareStateHandler::CleanUpState() {
@@ -394,7 +402,7 @@ FakeUpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
 }
 
-void FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
+void FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal() {
   daemon_callback_->GetUpdateRoFirmwareSignalCallback().Run(
       RMAD_UPDATE_RO_FIRMWARE_COMPLETE);
 }
