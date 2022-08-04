@@ -453,9 +453,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // later time.
   virtual void OnNetworkValidationFailure();
 
-  // Called when IPv6 configuration changes.
-  virtual void OnIPv6ConfigUpdated();
-
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected
   // service with Service::kFailureDHCP.

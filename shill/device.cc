@@ -403,7 +403,7 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   }
   ip6config()->set_properties(properties);
   OnIPConfigsPropertyUpdated();
-  OnIPv6ConfigUpdated();
+  network_->OnIPv6ConfigUpdated();
   OnGetSLAACAddress();
 }
 
@@ -452,7 +452,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
 
   ip6config()->UpdateDNSServers(std::move(addresses_str));
   OnIPConfigsPropertyUpdated();
-  OnIPv6ConfigUpdated();
+  network_->OnIPv6ConfigUpdated();
 }
 
 void Device::StopAllActivities() {
@@ -557,23 +557,6 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
-}
-
-void Device::OnIPv6ConfigUpdated() {
-  if (!ip6config()) {
-    LOG(WARNING) << LoggingTag() << ": " << __func__
-                 << " called but |ip6config_| is empty";
-    return;
-  }
-
-  // Setup connection using IPv6 configuration only if the IPv6 configuration
-  // is ready for connection (contained both IP address and DNS servers), and
-  // there is no existing IPv4 connection. We always prefer IPv4
-  // configuration over IPv6.
-  if (ip6config()->properties().HasIPAddressAndDNS() &&
-      (!network_->HasConnectionObject() || network_->IsIPv6())) {
-    network_->SetupConnection(ip6config());
-  }
 }
 
 void Device::OnConnectionUpdated(IPConfig* ipconfig) {

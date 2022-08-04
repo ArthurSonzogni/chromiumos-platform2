@@ -217,8 +217,6 @@ class DeviceStub : public Device {
   void Stop(Error* /*error*/,
             const EnabledStateChangedCallback& /*callback*/) override {}
   void Initialize() override {}
-
-  void OnIPv6ConfigUpdated() override {}
 };
 
 }  // namespace

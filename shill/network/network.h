@@ -160,6 +160,8 @@ class Network {
   }
   // Configures static IP address received from cellular bearer.
   void ConfigureStaticIPv6Address();
+  // Called when IPv6 configuration changes.
+  void OnIPv6ConfigUpdated();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is

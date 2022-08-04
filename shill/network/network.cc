@@ -357,6 +357,23 @@ void Network::ConfigureStaticIPv6Address() {
                                      IPAddress(IPAddress::kFamilyIPv6));
 }
 
+void Network::OnIPv6ConfigUpdated() {
+  if (!ip6config()) {
+    LOG(WARNING) << interface_name_ << ": " << __func__
+                 << " called but |ip6config_| is empty";
+    return;
+  }
+
+  // Setup connection using IPv6 configuration only if the IPv6 configuration is
+  // ready for connection (contained both IP address and DNS servers), and there
+  // is no existing IPv4 connection. We always prefer IPv4 configuration over
+  // IPv6.
+  if (ip6config()->properties().HasIPAddressAndDNS() &&
+      (!HasConnectionObject() || connection_->IsIPv6())) {
+    SetupConnection(ip6config());
+  }
+}
+
 bool Network::SetIPFlag(IPAddress::Family family,
                         const std::string& flag,
                         const std::string& value) {
