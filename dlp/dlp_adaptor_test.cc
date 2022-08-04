@@ -168,22 +168,6 @@ class DlpAdaptorTest : public ::testing::Test {
     std::move(*response_callback).Run(response.get());
   }
 
-  void StubIsRestricted(
-      dbus::MethodCall* method_call,
-      int /* timeout_ms */,
-      dbus::MockObjectProxy::ResponseCallback* response_callback,
-      dbus::MockObjectProxy::ErrorCallback* error_callback) {
-    method_call->SetSerial(kDBusSerial);
-    auto response = dbus::Response::FromMethodCall(method_call);
-    dbus::MessageWriter writer(response.get());
-
-    IsRestrictedResponse response_proto;
-    response_proto.set_restricted(is_file_policy_restricted_);
-
-    writer.AppendProtoAsArrayOfBytes(response_proto);
-    std::move(*response_callback).Run(response.get());
-  }
-
   void StubIsFilesTransferRestricted(
       dbus::MethodCall* method_call,
       int /* timeout_ms */,
@@ -306,11 +290,10 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path2.value(), "source", "referrer"));
 
-  // Setup callback for DlpFilesPolicyService::IsRestricted()
-  is_file_policy_restricted_ = false;
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
   std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
@@ -376,11 +359,10 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
   GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path1.value(), "source", "referrer"));
 
-  // Setup callback for DlpFilesPolicyService::IsRestricted()
-  is_file_policy_restricted_ = false;
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
   std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
@@ -438,7 +420,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
   GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
   EXPECT_TRUE(waiter.GetResult());
 
-  // Setup callback for DlpFilesPolicyService::IsRestricted()
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .Times(0);
@@ -491,11 +473,11 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
-  // Setup callback for DlpFilesPolicyService::IsRestricted()
-  is_file_policy_restricted_ = true;
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
+  restricted_files_srcs_.emplace_back(file_path.value());
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
   std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
@@ -552,11 +534,10 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
-  // Setup callback for DlpFilesPolicyService::IsRestricted()
-  is_file_policy_restricted_ = false;
+  // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
   std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<

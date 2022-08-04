@@ -271,17 +271,20 @@ void DlpAdaptor::RequestFileAccess(
       base::SplitOnceCallback(base::BindOnce(
           &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
           std::move(response), std::move(remote_fd)));
-  IsRestrictedRequest is_restricted_request;
-  *is_restricted_request.mutable_source_urls() = {file_sources.begin(),
-                                                  file_sources.end()};
-  is_restricted_request.set_destination_url(request.destination_url());
-  dlp_files_policy_service_->IsRestrictedAsync(
-      SerializeProto(is_restricted_request),
-      base::BindOnce(&DlpAdaptor::OnIsRestrictedReply, base::Unretained(this),
+
+  IsFilesTransferRestrictedRequest matching_request;
+  for (const std::string& file_source : file_sources) {
+    matching_request.add_files_sources(file_source);
+  }
+  matching_request.set_destination_url(request.destination_url());
+
+  dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
+      SerializeProto(matching_request),
+      base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
                      inodes, request.process_id(), std::move(local_fd),
                      std::move(callbacks.first)),
-      base::BindOnce(&DlpAdaptor::OnIsRestrictedError, base::Unretained(this),
-                     std::move(callbacks.second)));
+      base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
+                     base::Unretained(this), std::move(callbacks.second)));
 }
 
 std::vector<uint8_t> DlpAdaptor::GetFilesSources(
@@ -486,33 +489,34 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
   std::move(callback).Run(/*allowed=*/false);
 }
 
-void DlpAdaptor::OnIsRestrictedReply(
+void DlpAdaptor::OnRequestFileAccess(
     std::vector<uint64_t> inodes,
     int pid,
     base::ScopedFD local_fd,
     RequestFileAccessCallback callback,
     const std::vector<uint8_t>& response_blob) {
-  IsRestrictedResponse response;
+  IsFilesTransferRestrictedResponse response;
   std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
   if (!parse_error.empty()) {
-    LOG(ERROR) << "Failed to parse IsRestricted response: " << parse_error;
+    LOG(ERROR) << "Failed to parse IsFilesTransferRestrictedResponse response: "
+               << parse_error;
     std::move(callback).Run(
         /*allowed=*/false, parse_error);
     return;
   }
 
-  if (!response.restricted()) {
+  if (response.files_sources().empty()) {
     int lifeline_fd = AddLifelineFd(local_fd.get());
     approved_requests_.insert_or_assign(lifeline_fd,
                                         std::make_pair(std::move(inodes), pid));
   }
 
-  std::move(callback).Run(!response.restricted(),
+  std::move(callback).Run(response.files_sources().empty(),
                           /*error_message=*/std::string());
 }
 
-void DlpAdaptor::OnIsRestrictedError(RequestFileAccessCallback callback,
-                                     brillo::Error* error) {
+void DlpAdaptor::OnRequestFileAccessError(RequestFileAccessCallback callback,
+                                          brillo::Error* error) {
   LOG(ERROR) << "Failed to check whether file could be restricted";
   std::move(callback).Run(/*allowed=*/false, error->GetMessage());
 }

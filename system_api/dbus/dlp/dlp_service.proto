@@ -81,18 +81,6 @@ message RequestFileAccessResponse {
   optional bool allowed = 2;
 }
 
-message IsRestrictedRequest {
-  // URLs from where the files were downloaded.
-  repeated string source_urls = 1;
-  // URL where the files are going to be uploaded.
-  optional string destination_url = 2;
-}
-
-message IsRestrictedResponse {
-  // Whether the operation should be allowed or not.
-  optional bool restricted = 1;
-}
-
 message IsDlpPolicyMatchedRequest {
   // URL from where the file was downloaded.
   optional string source_url = 1;

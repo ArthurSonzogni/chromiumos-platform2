@@ -7,19 +7,6 @@
 <node name="/org/chromium/DlpFilesPolicyService"
     xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.DlpFilesPolicyService">
-    <method name="IsRestricted">
-      <tp:docstring>
-        Returns whether a file copy/upload from the given source to the destination should be
-        restricted according to Data Leak Prevention policy.
-      </tp:docstring>
-      <arg name="request" type="ay" direction="in">
-        Serialized IsRestrictedRequest message.
-      </arg>
-      <arg name="response" type="ay" direction="out">
-        Serialized IsRestrictedResponse message.
-      </arg>
-    </method>
-
     <method name="IsDlpPolicyMatched">
       <tp:docstring>
         Returns whether a file from the given source could be restricted by any of files
@@ -32,7 +19,6 @@
         Serialized IsDlpPolicyMatchedResponse message.
       </arg>
     </method>
-
     <method name="IsFilesTransferRestricted">
       <tp:docstring>
         Returns the source of files which are restricted to be transferred to the given destination according

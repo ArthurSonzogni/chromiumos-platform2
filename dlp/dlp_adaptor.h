@@ -112,14 +112,14 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   using RequestFileAccessCallback =
       base::OnceCallback<void(bool, const std::string&)>;
-  // Callbacks on IsRestricted D-Bus request.
-  void OnIsRestrictedReply(std::vector<uint64_t> inodes,
+  // Callbacks on IsFilesTransferRestricted D-Bus request.
+  void OnRequestFileAccess(std::vector<uint64_t> inodes,
                            int pid,
                            base::ScopedFD local_fd,
                            RequestFileAccessCallback callback,
                            const std::vector<uint8_t>& response_blob);
-  void OnIsRestrictedError(RequestFileAccessCallback callback,
-                           brillo::Error* error);
+  void OnRequestFileAccessError(RequestFileAccessCallback callback,
+                                brillo::Error* error);
   void ReplyOnRequestFileAccess(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<uint8_t>,
