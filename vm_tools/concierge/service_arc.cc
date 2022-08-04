@@ -442,6 +442,10 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
                       std::to_string(kArcVmRamoopsPmsgSize));
   params.emplace_back("ramoops.dump_oops=1");
 
+  // Customize cache size of squashfs metadata for faster guest OS
+  // boot/provisioning.
+  params.emplace_back("squashfs.cached_blks=20");
+
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
       .SetCpus(topology.NumCPUs())
