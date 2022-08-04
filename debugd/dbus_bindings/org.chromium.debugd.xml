@@ -1546,7 +1546,7 @@
       </tp:docstring>
       <tp:enumvalue suffix="TRACE" value='0'>
         <tp:docstring>
-          Snapshot /sys/kernel/debug/tracing/instances/drm/trace.
+          Snapshot /sys/kernel/tracing/instances/drm/trace.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="MODETEST" value='1'>

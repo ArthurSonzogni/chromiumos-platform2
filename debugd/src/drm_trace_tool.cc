@@ -65,9 +65,9 @@ constexpr uint32_t kMaxLogSize = 256 * 1024;
 // Drop the first slash since the root path can be set for testing.
 constexpr char kTraceMaskFile[] = "sys/module/drm/parameters/trace";
 constexpr char kTraceBufferSizeFile[] =
-    "sys/kernel/debug/tracing/instances/drm/buffer_size_kb";
+    "sys/kernel/tracing/instances/drm/buffer_size_kb";
 constexpr char kTraceMarkerFile[] =
-    "sys/kernel/debug/tracing/instances/drm/trace_marker";
+    "sys/kernel/tracing/instances/drm/trace_marker";
 constexpr char kSnapshotDirPath[] = "var/log/display_debug";
 constexpr char kDrmTraceLogName[] = "drm_trace_verbose";
 constexpr char kModetestLogName[] = "modetest";
@@ -253,8 +253,8 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
   }
 
   // SafeFD::Replace is not used here because
-  // /sys/kernel/debug/tracing/instances/drm/trace_marker
-  // does not support seek (b/227339558).
+  // /sys/kernel/tracing/instances/drm/trace_marker does not support seek
+  // (b/227339558).
   brillo::SafeFD::Error safefd_error =
       result.first.Write(contents.c_str(), contents.size());
   if (brillo::SafeFD::IsError(safefd_error)) {

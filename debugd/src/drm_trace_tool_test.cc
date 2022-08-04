@@ -52,20 +52,18 @@ class DRMTraceToolTest : public testing::Test {
                                  "", 0));
 
     ASSERT_TRUE(base::CreateDirectory(
-        temp_dir_.GetPath().Append("sys/kernel/debug/tracing/instances/drm")));
-    ASSERT_EQ(0,
-              base::WriteFile(
-                  temp_dir_.GetPath().Append(
-                      "sys/kernel/debug/tracing/instances/drm/buffer_size_kb"),
-                  "", 0));
+        temp_dir_.GetPath().Append("sys/kernel/tracing/instances/drm")));
     ASSERT_EQ(0, base::WriteFile(
                      temp_dir_.GetPath().Append(
-                         "sys/kernel/debug/tracing/instances/drm/trace_marker"),
+                         "sys/kernel/tracing/instances/drm/buffer_size_kb"),
                      "", 0));
     ASSERT_EQ(
         0, base::WriteFile(temp_dir_.GetPath().Append(
-                               "sys/kernel/debug/tracing/instances/drm/trace"),
+                               "sys/kernel/tracing/instances/drm/trace_marker"),
                            "", 0));
+    ASSERT_EQ(0, base::WriteFile(temp_dir_.GetPath().Append(
+                                     "sys/kernel/tracing/instances/drm/trace"),
+                                 "", 0));
 
     ASSERT_TRUE(base::CreateDirectory(
         temp_dir_.GetPath().Append("var/log/display_debug")));
@@ -124,7 +122,7 @@ TEST_F(DRMTraceToolTest, AnnotateLog) {
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(
       temp_dir_.GetPath().Append(
-          "sys/kernel/debug/tracing/instances/drm/trace_marker"),
+          "sys/kernel/tracing/instances/drm/trace_marker"),
       &contents));
   EXPECT_EQ(contents, "elephant");
 }
@@ -137,7 +135,7 @@ TEST_F(DRMTraceToolTest, AnnotateLogInvalidCharacter) {
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(
       temp_dir_.GetPath().Append(
-          "sys/kernel/debug/tracing/instances/drm/trace_marker"),
+          "sys/kernel/tracing/instances/drm/trace_marker"),
       &contents));
   EXPECT_EQ(contents, "bell_");
 }

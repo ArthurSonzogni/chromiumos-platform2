@@ -33,7 +33,7 @@ class DRMTraceTool : public SessionManagerObserverInterface {
   bool SetSize(brillo::ErrorPtr* error, uint32_t size_enum);
 
   // Annotate the drm trace log by writing |log| to
-  // /sys/kernel/debug/tracing/instances/drm/trace_marker
+  // /sys/kernel/tracing/instances/drm/trace_marker.
   bool AnnotateLog(brillo::ErrorPtr* error, const std::string& log);
 
   // Copy the log specified by |type_enum| to

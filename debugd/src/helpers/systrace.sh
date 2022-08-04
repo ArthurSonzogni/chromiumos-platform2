@@ -28,7 +28,7 @@ set -e
 
 CMD=${1:-status}
 
-tracing_path=/sys/kernel/debug/tracing
+tracing_path=/sys/kernel/tracing
 # TODO(sleffler) enable more/different events
 sched_events="
     sched:sched_switch
@@ -88,14 +88,14 @@ input_events="
 buffer_size_running=7040           # ring-buffer size in kb / cpu
 buffer_size_idle=1408              # ring-buffer size while idle
 
-if test ! -e ${tracing_path}; then
+if test ! -e "${tracing_path}"; then
     echo "Kernel tracing not available (missing ${tracing_path})" >&2
     exit
 fi
 
 tracing_write()
 {
-    echo $1 > $tracing_path/$2
+    echo "$1" > "${tracing_path}/$2"
 }
 
 tracing_enable()
@@ -114,7 +114,7 @@ tracing_enable_events()
     local events_failed
     for ev; do
         # NB: note >>
-        if echo ${ev} >> ${tracing_path}/set_event; then
+        if echo "${ev}" >> "${tracing_path}/set_event"; then
             events_enabled="${events_enabled} ${ev}"
         else
             events_failed="${events_failed} ${ev}"
@@ -162,7 +162,7 @@ start)
     events=""
     shift
     for cat; do
-        events="${events} $(parse_event_or_category $cat)"
+        events="${events} $(parse_event_or_category "${cat}")"
     done
     if [ -z "${events}" ]; then
         events=$(parse_event_or_category 'all')
@@ -203,14 +203,14 @@ stop)
     tracing_reset
 
     # NB: debugd attaches stdout to an fd passed in by the client
-    cat ${tracing_path}/trace
+    cat "${tracing_path}/trace"
     tracing_write "0" trace                     # clear trace buffer
     tracing_write "${buffer_size_idle}" buffer_size_kb
     ;;
 status)
-    echo -n 'enabled: '; cat ${tracing_path}/tracing_on
-    echo -n 'clock:   '; cat ${tracing_path}/trace_clock
-    echo 'enabled events:'; cat ${tracing_path}/set_event | sed 's/^/   /'
+    printf 'enabled: '; cat "${tracing_path}/tracing_on"
+    printf 'clock:   '; cat "${tracing_path}/trace_clock"
+    echo 'enabled events:'; sed 's/^/   /' "${tracing_path}/set_event"
     ;;
 *)
     echo "Unknown request ${CMD}; use one of start, stop, status" >&2

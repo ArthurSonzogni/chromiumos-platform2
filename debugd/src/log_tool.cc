@@ -250,7 +250,7 @@ const std::array kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kGlob, "drm_state", "/sys/kernel/debug/dri/?/state",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  Log{kFile, "drm_trace", "/sys/kernel/debug/tracing/instances/drm/trace",
+  Log{kFile, "drm_trace", "/sys/kernel/tracing/instances/drm/trace",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kUtf8},
   // TODO(seanpaul): Once we've finished moving over to the upstream tracefs
@@ -438,8 +438,7 @@ const std::array kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
     Log{kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn", kRoot, kRoot},
     // Same as drm_trace, but a larger log. Caller should trim it as needed.
-    Log{kFile, "drm_trace_verbose",
-        "/sys/kernel/debug/tracing/instances/drm/trace",
+    Log{kFile, "drm_trace_verbose", "/sys/kernel/tracing/instances/drm/trace",
         SandboxedProcess::kDefaultUser, kDebugfsGroup, 10 * 1024 * 1024,
         LogTool::Encoding::kUtf8},
 };
