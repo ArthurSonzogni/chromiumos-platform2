@@ -71,8 +71,8 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
   DCHECK(task_runner_->BelongsToCurrentThread());
   for (const auto& output_buffer : request->output_buffers) {
     TRACE_CAMERA_EVENT_BEGIN(
-        ToString(CameraTraceEvent::kCapture),
-        GetTraceTrack(CameraTraceEvent::kCapture, request->frame_number,
+        ToString(HalAdapterTraceEvent::kCapture),
+        GetTraceTrack(HalAdapterTraceEvent::kCapture, request->frame_number,
                       output_buffer->stream_id),
         kCameraTraceKeyFrameNumber, request->frame_number,
         kCameraTraceKeyStreamId, output_buffer->stream_id,

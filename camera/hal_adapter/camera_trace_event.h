@@ -9,29 +9,13 @@
 
 #include <string>
 
-#include <perfetto/perfetto.h>
-
 #include <base/strings/stringprintf.h>
+
+#include "cros-camera/tracing.h"
 
 namespace cros {
 
-constexpr char kCameraTraceCategory[] = "cros_camera";
-
-constexpr char kCameraTraceKeyFrameNumber[] = "frame_number";
-
-constexpr char kCameraTraceKeyBufferId[] = "buffer_id";
-
-constexpr char kCameraTraceKeyCameraId[] = "camera_id";
-
-constexpr char kCameraTraceKeyStreamId[] = "stream_id";
-
-constexpr char kCameraTraceKeyWidth[] = "width";
-
-constexpr char kCameraTraceKeyHeight[] = "height";
-
-constexpr char kCameraTraceKeyFormat[] = "format";
-
-enum class CameraTraceEvent {
+enum class HalAdapterTraceEvent {
   kCapture,
 };
 
@@ -41,29 +25,23 @@ enum class CameraTraceEvent {
 #define TRACE_CAMERA_SCOPED(...)                            \
   static const std::string trace_name =                     \
       base::StringPrintf("%s_L%d", __FUNCTION__, __LINE__); \
-  TRACE_EVENT(kCameraTraceCategory,                         \
+  TRACE_EVENT(kHalAdapterTraceCategory,                     \
               perfetto::StaticString(trace_name.c_str()), ##__VA_ARGS__);
 
 #define TRACE_CAMERA_EVENT_BEGIN(event, track, ...) \
-  TRACE_EVENT_BEGIN(kCameraTraceCategory, event, track, ##__VA_ARGS__);
+  TRACE_EVENT_BEGIN(kHalAdapterTraceCategory, event, track, ##__VA_ARGS__);
 
 #define TRACE_CAMERA_EVENT_END(track) \
-  TRACE_EVENT_END(kCameraTraceCategory, track);
-
-void InitializeCameraTrace();
+  TRACE_EVENT_END(kHalAdapterTraceCategory, track);
 
 // Generates unique track by given |event|, |primary_id| and |secondary_id|. For
 // |secondary_id|, only the last 16 bits will be used.
-perfetto::Track GetTraceTrack(CameraTraceEvent event,
+perfetto::Track GetTraceTrack(HalAdapterTraceEvent event,
                               int primary_id = 0,
                               int secondary_id = 0);
 
-perfetto::StaticString ToString(CameraTraceEvent event);
+perfetto::StaticString ToString(HalAdapterTraceEvent event);
 
 }  // namespace cros
-
-PERFETTO_DEFINE_CATEGORIES(
-    perfetto::Category(cros::kCameraTraceCategory)
-        .SetDescription("Events from CrOS Camera Service"));
 
 #endif  // CAMERA_HAL_ADAPTER_CAMERA_TRACE_EVENT_H_

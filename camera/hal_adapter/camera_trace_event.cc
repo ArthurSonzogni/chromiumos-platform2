@@ -10,18 +10,9 @@
 
 #include <base/notreached.h>
 
-PERFETTO_TRACK_EVENT_STATIC_STORAGE();
-
 namespace cros {
 
-void InitializeCameraTrace() {
-  perfetto::TracingInitArgs args;
-  args.backends |= perfetto::kSystemBackend;
-  perfetto::Tracing::Initialize(args);
-  perfetto::TrackEvent::Register();
-}
-
-perfetto::Track GetTraceTrack(CameraTraceEvent event,
+perfetto::Track GetTraceTrack(HalAdapterTraceEvent event,
                               int primary_id,
                               int secondary_id) {
   auto uuid = (static_cast<uint64_t>(primary_id) << 32) +
@@ -30,9 +21,9 @@ perfetto::Track GetTraceTrack(CameraTraceEvent event,
   return perfetto::Track(uuid);
 }
 
-perfetto::StaticString ToString(CameraTraceEvent event) {
+perfetto::StaticString ToString(HalAdapterTraceEvent event) {
   switch (event) {
-    case CameraTraceEvent::kCapture:
+    case HalAdapterTraceEvent::kCapture:
       return "capture";
     default:
       NOTREACHED() << "Unexpected camera trace event: "

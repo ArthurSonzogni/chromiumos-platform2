@@ -67,6 +67,7 @@ pkg_config("pkg_config_base") {
     "libsync",
     "libudev",
     "libyuv",
+    "perfetto",
   ]
 }
 
@@ -85,6 +86,7 @@ source_set("base") {
     "//camera/common/metadata_logger.cc",
     "//camera/common/reloadable_config_file.cc",
     "//camera/common/timezone.cc",
+    "//camera/common/tracing.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",
   ]

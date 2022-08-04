@@ -18,23 +18,38 @@ You can specify how long you want to record by `duration_ms` field. Example:
 perfetto -c - --txt -o /tmp/perfetto-trace \
 <<EOF
 
+# Buffer 0
 buffers: {
     size_kb: 63488
     fill_policy: DISCARD
 }
+
+# Buffer 1
 buffers: {
     size_kb: 63488
     fill_policy: DISCARD
 }
+
+# Buffer 2
+buffers: {
+    size_kb: 63488
+    fill_policy: DISCARD
+}
+
+# Events from cros-camera. Enable more categories as you see fit.
+
 data_sources: {
     config {
         name: "track_event"
         target_buffer: 0
         track_event_config {
-            enabled_categories: "cros_camera"
+            enabled_categories: "hal_adapter"
         }
     }
 }
+
+# Camera related events from Chrome.
+
 data_sources: {
     config {
         name: "org.chromium.trace_event"
@@ -44,6 +59,59 @@ data_sources: {
         }
     }
 }
+
+# Event-driven recording of frequency and idle state changes.
+#
+# The sched/* and task/* events produce a lot of noise. Disable them if you
+# don't need them.
+
+data_sources: {
+    config {
+        name: "linux.ftrace"
+        target_buffer: 2
+        ftrace_config {
+            ftrace_events: "power/cpu_frequency"
+            ftrace_events: "power/cpu_idle"
+            ftrace_events: "power/suspend_resume"
+            ftrace_events: "sched/sched_switch"
+            ftrace_events: "sched/sched_process_exit"
+            ftrace_events: "sched/sched_process_free"
+            ftrace_events: "task/task_newtask"
+            ftrace_events: "task/task_rename"
+        }
+    }
+}
+
+# Polling the current cpu frequency.
+
+data_sources: {
+    config {
+        name: "linux.sys_stats"
+        target_buffer: 2
+        sys_stats_config {
+            cpufreq_period_ms: 500
+        }
+    }
+}
+
+# Reporting the list of available frequency for each CPU.
+
+data_sources {
+    config {
+        name: "linux.system_info"
+        target_buffer: 2
+    }
+}
+
+# This is to get full process name and thread<>process relationships.
+
+data_sources: {
+    config {
+        name: "linux.process_stats"
+        target_buffer: 2
+    }
+}
+
 duration_ms: 20000
 
 EOF

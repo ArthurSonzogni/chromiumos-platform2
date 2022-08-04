@@ -54,7 +54,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
   TRACE_CAMERA_SCOPED(kCameraTraceKeyFrameNumber, result->frame_number);
   if (result->output_buffers) {
     for (const auto& output_buffer : *result->output_buffers) {
-      TRACE_CAMERA_EVENT_END(GetTraceTrack(CameraTraceEvent::kCapture,
+      TRACE_CAMERA_EVENT_END(GetTraceTrack(HalAdapterTraceEvent::kCapture,
                                            result->frame_number,
                                            output_buffer->stream_id));
     }
