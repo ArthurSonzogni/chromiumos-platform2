@@ -1021,8 +1021,12 @@ bool CryptoUtilityImpl::GetCertificateIssuerName(const std::string& certificate,
     return false;
   }
   char issuer_buf[100];  // A longer CN will truncate.
-  X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()), NID_commonName,
-                            issuer_buf, std::size(issuer_buf));
+  if (X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()),
+                                NID_commonName, issuer_buf,
+                                std::size(issuer_buf)) == -1) {
+    LOG(ERROR) << __func__ << ": Failed to get the issuer name text by NID";
+    return false;
+  }
   issuer_name->assign(issuer_buf);
   return true;
 }
