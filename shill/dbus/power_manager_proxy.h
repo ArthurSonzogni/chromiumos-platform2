@@ -32,8 +32,8 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   PowerManagerProxy(EventDispatcher* dispatcher,
                     const scoped_refptr<dbus::Bus>& bus,
                     PowerManagerProxyDelegate* delegate,
-                    const base::Closure& service_appeared_callback,
-                    const base::Closure& service_vanished_callback);
+                    const base::RepeatingClosure& service_appeared_callback,
+                    const base::RepeatingClosure& service_vanished_callback);
   PowerManagerProxy(const PowerManagerProxy&) = delete;
   PowerManagerProxy& operator=(const PowerManagerProxy&) = delete;
 
@@ -89,8 +89,8 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   std::unique_ptr<org::chromium::PowerManagerProxy> proxy_;
   EventDispatcher* dispatcher_;
   PowerManagerProxyDelegate* delegate_;
-  base::Closure service_appeared_callback_;
-  base::Closure service_vanished_callback_;
+  base::RepeatingClosure service_appeared_callback_;
+  base::RepeatingClosure service_vanished_callback_;
   bool service_available_;
 
   base::WeakPtrFactory<PowerManagerProxy> weak_factory_{this};

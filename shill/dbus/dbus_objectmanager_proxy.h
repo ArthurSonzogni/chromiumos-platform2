@@ -19,12 +19,13 @@ class EventDispatcher;
 
 class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
  public:
-  DBusObjectManagerProxy(EventDispatcher* dispatcher,
-                         const scoped_refptr<dbus::Bus>& bus,
-                         const RpcIdentifier& path,
-                         const std::string& service,
-                         const base::Closure& service_appeared_callback,
-                         const base::Closure& service_vanished_callback);
+  DBusObjectManagerProxy(
+      EventDispatcher* dispatcher,
+      const scoped_refptr<dbus::Bus>& bus,
+      const RpcIdentifier& path,
+      const std::string& service,
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback);
   DBusObjectManagerProxy(const DBusObjectManagerProxy&) = delete;
   DBusObjectManagerProxy& operator=(const DBusObjectManagerProxy&) = delete;
 
@@ -86,8 +87,8 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
 
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy> proxy_;
   EventDispatcher* dispatcher_;
-  base::Closure service_appeared_callback_;
-  base::Closure service_vanished_callback_;
+  base::RepeatingClosure service_appeared_callback_;
+  base::RepeatingClosure service_vanished_callback_;
   bool service_available_;
 
   base::WeakPtrFactory<DBusObjectManagerProxy> weak_factory_{this};

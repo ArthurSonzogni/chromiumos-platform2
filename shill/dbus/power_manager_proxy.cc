@@ -47,8 +47,8 @@ PowerManagerProxy::PowerManagerProxy(
     EventDispatcher* dispatcher,
     const scoped_refptr<dbus::Bus>& bus,
     PowerManagerProxyDelegate* delegate,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback)
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback)
     : proxy_(new org::chromium::PowerManagerProxy(bus)),
       dispatcher_(dispatcher),
       delegate_(delegate),

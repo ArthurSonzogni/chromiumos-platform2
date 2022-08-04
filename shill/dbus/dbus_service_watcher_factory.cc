@@ -22,7 +22,7 @@ std::unique_ptr<DBusServiceWatcher>
 DBusServiceWatcherFactory::CreateDBusServiceWatcher(
     scoped_refptr<dbus::Bus> bus,
     const std::string& connection_name,
-    const base::Closure& on_connection_vanish) {
+    const base::RepeatingClosure& on_connection_vanish) {
   return std::make_unique<DBusServiceWatcher>(bus, connection_name,
                                               on_connection_vanish);
 }

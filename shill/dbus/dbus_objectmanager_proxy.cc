@@ -24,8 +24,8 @@ DBusObjectManagerProxy::DBusObjectManagerProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const RpcIdentifier& path,
     const std::string& service,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback)
+    const base::RepeatingClosure& service_appeared_callback,
+    const base::RepeatingClosure& service_vanished_callback)
     : proxy_(
           new org::freedesktop::DBus::ObjectManagerProxy(bus, service, path)),
       dispatcher_(dispatcher),
@@ -34,24 +34,24 @@ DBusObjectManagerProxy::DBusObjectManagerProxy(
       service_available_(false) {
   // Register signal handlers.
   proxy_->RegisterInterfacesAddedSignalHandler(
-      base::Bind(&DBusObjectManagerProxy::InterfacesAdded,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&DBusObjectManagerProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&DBusObjectManagerProxy::InterfacesAdded,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&DBusObjectManagerProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
   proxy_->RegisterInterfacesRemovedSignalHandler(
-      base::Bind(&DBusObjectManagerProxy::InterfacesRemoved,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&DBusObjectManagerProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&DBusObjectManagerProxy::InterfacesRemoved,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&DBusObjectManagerProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 
   // Monitor service owner changes. This callback lives for the lifetime of
   // the ObjectProxy.
   proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
-      base::Bind(&DBusObjectManagerProxy::OnServiceOwnerChanged,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&DBusObjectManagerProxy::OnServiceOwnerChanged,
+                          weak_factory_.GetWeakPtr()));
 
   // One time callback when service becomes available.
-  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
+  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
       &DBusObjectManagerProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
 }
 
@@ -65,10 +65,10 @@ void DBusObjectManagerProxy::GetManagedObjects(
     return;
   }
   proxy_->GetManagedObjectsAsync(
-      base::Bind(&DBusObjectManagerProxy::OnGetManagedObjectsSuccess,
-                 weak_factory_.GetWeakPtr(), callback),
-      base::Bind(&DBusObjectManagerProxy::OnGetManagedObjectsFailure,
-                 weak_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&DBusObjectManagerProxy::OnGetManagedObjectsSuccess,
+                     weak_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&DBusObjectManagerProxy::OnGetManagedObjectsFailure,
+                     weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
 

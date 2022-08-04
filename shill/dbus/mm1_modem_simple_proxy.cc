@@ -52,10 +52,10 @@ void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
                                   int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
   proxy_->DisconnectAsync(dbus::ObjectPath(bearer),
-                          base::Bind(&ModemSimpleProxy::OnDisconnectSuccess,
-                                     weak_factory_.GetWeakPtr(), callback),
-                          base::Bind(&ModemSimpleProxy::OnDisconnectFailure,
-                                     weak_factory_.GetWeakPtr(), callback),
+                          base::BindOnce(&ModemSimpleProxy::OnDisconnectSuccess,
+                                         weak_factory_.GetWeakPtr(), callback),
+                          base::BindOnce(&ModemSimpleProxy::OnDisconnectFailure,
+                                         weak_factory_.GetWeakPtr(), callback),
                           timeout);
 }
 

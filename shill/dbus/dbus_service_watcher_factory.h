@@ -26,7 +26,7 @@ class DBusServiceWatcherFactory {
   virtual std::unique_ptr<DBusServiceWatcher> CreateDBusServiceWatcher(
       scoped_refptr<dbus::Bus> bus,
       const std::string& connection_name,
-      const base::Closure& on_connection_vanish);
+      const base::RepeatingClosure& on_connection_vanish);
 
  protected:
   DBusServiceWatcherFactory();

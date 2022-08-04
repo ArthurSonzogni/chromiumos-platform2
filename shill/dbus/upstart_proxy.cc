@@ -23,10 +23,10 @@ void UpstartProxy::EmitEvent(const std::string& name,
   std::vector<std::string> start_job_env = env;
   start_job_env.push_back("EVENT_NAME=" + name);
   shill_event_proxy_->StartAsync(
-      start_job_env, wait, base::Bind([](const dbus::ObjectPath& path) {
+      start_job_env, wait, base::BindOnce([](const dbus::ObjectPath& path) {
         VLOG(2) << "Event emitted successful";
       }),
-      base::Bind([](brillo::Error* error) {
+      base::BindOnce([](brillo::Error* error) {
         LOG(ERROR) << "Failed to emit event: " << error->GetCode() << " "
                    << error->GetMessage();
       }));

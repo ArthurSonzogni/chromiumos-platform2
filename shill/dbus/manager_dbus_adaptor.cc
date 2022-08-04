@@ -419,8 +419,8 @@ bool ManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
     watcher_for_device_claimer_ =
         dbus_service_watcher_factory_->CreateDBusServiceWatcher(
             proxy_bus_, claimer,
-            base::Bind(&ManagerDBusAdaptor::OnDeviceClaimerVanished,
-                       base::Unretained(this)));
+            base::BindRepeating(&ManagerDBusAdaptor::OnDeviceClaimerVanished,
+                                base::Unretained(this)));
   }
   return !e.ToChromeosError(error);
 }

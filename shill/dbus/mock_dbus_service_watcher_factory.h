@@ -27,7 +27,7 @@ class MockDBusServiceWatcherFactory : public DBusServiceWatcherFactory {
               CreateDBusServiceWatcher,
               (scoped_refptr<dbus::Bus>,
                const std::string&,
-               const base::Closure&),
+               const base::RepeatingClosure&),
               (override));
 };
 

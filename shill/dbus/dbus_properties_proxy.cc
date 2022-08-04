@@ -24,14 +24,16 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 namespace {
 
 void RunSuccessCallback(
-    const base::Callback<void(const KeyValueStore&)>& success_callback,
+    base::OnceCallback<void(const KeyValueStore&)> success_callback,
     const brillo::VariantDictionary& properties) {
-  success_callback.Run(KeyValueStore::ConvertFromVariantDictionary(properties));
+  std::move(success_callback)
+      .Run(KeyValueStore::ConvertFromVariantDictionary(properties));
 }
 
-void RunErrorCallback(const base::Callback<void(const Error&)>& error_callback,
+void RunErrorCallback(base::OnceCallback<void(const Error&)> error_callback,
                       brillo::Error* dbus_error) {
-  error_callback.Run(Error(Error::kOperationFailed, dbus_error->GetMessage()));
+  std::move(error_callback)
+      .Run(Error(Error::kOperationFailed, dbus_error->GetMessage()));
 }
 
 }  // namespace
@@ -78,12 +80,13 @@ KeyValueStore DBusPropertiesProxy::GetAll(const std::string& interface_name) {
 
 void DBusPropertiesProxy::GetAllAsync(
     const std::string& interface_name,
-    const base::Callback<void(const KeyValueStore&)>& success_callback,
-    const base::Callback<void(const Error&)>& error_callback) {
+    base::OnceCallback<void(const KeyValueStore&)> success_callback,
+    base::OnceCallback<void(const Error&)> error_callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface_name << ")";
-  proxy_->GetAllAsync(interface_name,
-                      base::Bind(RunSuccessCallback, success_callback),
-                      base::Bind(RunErrorCallback, error_callback));
+  proxy_->GetAllAsync(
+      interface_name,
+      base::BindOnce(RunSuccessCallback, std::move(success_callback)),
+      base::BindOnce(RunErrorCallback, std::move(error_callback)));
 }
 
 brillo::Any DBusPropertiesProxy::Get(const std::string& interface_name,
@@ -103,12 +106,12 @@ brillo::Any DBusPropertiesProxy::Get(const std::string& interface_name,
 void DBusPropertiesProxy::GetAsync(
     const std::string& interface_name,
     const std::string& property,
-    const base::Callback<void(const brillo::Any&)>& success_callback,
-    const base::Callback<void(const Error&)>& error_callback) {
+    base::OnceCallback<void(const brillo::Any&)> success_callback,
+    base::OnceCallback<void(const Error&)> error_callback) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << "(" << interface_name << ", " << property << ")";
-  proxy_->GetAsync(interface_name, property, success_callback,
-                   base::Bind(RunErrorCallback, error_callback));
+  proxy_->GetAsync(interface_name, property, std::move(success_callback),
+                   base::BindOnce(RunErrorCallback, std::move(error_callback)));
 }
 
 void DBusPropertiesProxy::SetPropertiesChangedCallback(
@@ -116,10 +119,10 @@ void DBusPropertiesProxy::SetPropertiesChangedCallback(
   CHECK(properties_changed_callback_.is_null());
   properties_changed_callback_ = callback;
   proxy_->RegisterPropertiesChangedSignalHandler(
-      base::Bind(&DBusPropertiesProxy::PropertiesChanged,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&DBusPropertiesProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&DBusPropertiesProxy::PropertiesChanged,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&DBusPropertiesProxy::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void DBusPropertiesProxy::PropertiesChanged(

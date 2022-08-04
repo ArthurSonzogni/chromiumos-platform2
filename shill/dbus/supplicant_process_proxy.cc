@@ -57,7 +57,7 @@ SupplicantProcessProxy::SupplicantProcessProxy(
                           weak_factory_.GetWeakPtr())));
 
   // Register signal handlers.
-  auto on_connected_callback = base::Bind(
+  auto on_connected_callback = base::BindRepeating(
       &SupplicantProcessProxy::OnSignalConnected, weak_factory_.GetWeakPtr());
   supplicant_proxy_->RegisterInterfaceAddedSignalHandler(
       base::BindRepeating(&SupplicantProcessProxy::InterfaceAdded,

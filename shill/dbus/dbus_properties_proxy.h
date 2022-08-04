@@ -25,7 +25,7 @@ namespace shill {
 class DBusPropertiesProxy {
  public:
   // Callback invoked when an object sends a DBus property change signal.
-  using PropertiesChangedCallback = base::Callback<void(
+  using PropertiesChangedCallback = base::RepeatingCallback<void(
       const std::string& interface, const KeyValueStore& changed_properties)>;
 
   DBusPropertiesProxy(const scoped_refptr<dbus::Bus>& bus,
@@ -39,15 +39,14 @@ class DBusPropertiesProxy {
   KeyValueStore GetAll(const std::string& interface_name);
   void GetAllAsync(
       const std::string& interface_name,
-      const base::Callback<void(const KeyValueStore&)>& success_callback,
-      const base::Callback<void(const Error&)>& error_callback);
+      base::OnceCallback<void(const KeyValueStore&)> success_callback,
+      base::OnceCallback<void(const Error&)> error_callback);
   brillo::Any Get(const std::string& interface_name,
                   const std::string& property);
-  void GetAsync(
-      const std::string& interface_name,
-      const std::string& property,
-      const base::Callback<void(const brillo::Any&)>& success_callback,
-      const base::Callback<void(const Error&)>& error_callback);
+  void GetAsync(const std::string& interface_name,
+                const std::string& property,
+                base::OnceCallback<void(const brillo::Any&)> success_callback,
+                base::OnceCallback<void(const Error&)> error_callback);
 
   void SetPropertiesChangedCallback(const PropertiesChangedCallback& callback);
 

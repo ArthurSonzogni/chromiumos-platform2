@@ -54,57 +54,58 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
     : interface_proxy_(new fi::w1::wpa_supplicant1::InterfaceProxy(
           bus, WPASupplicant::kDBusAddr, object_path)),
       delegate_(delegate) {
-  // Register properites.
-  properties_.reset(
-      new PropertySet(interface_proxy_->GetObjectProxy(), kInterfaceName,
-                      base::Bind(&SupplicantInterfaceProxy::OnPropertyChanged,
-                                 weak_factory_.GetWeakPtr())));
+  // Register properties.
+  properties_.reset(new PropertySet(
+      interface_proxy_->GetObjectProxy(), kInterfaceName,
+      base::BindRepeating(&SupplicantInterfaceProxy::OnPropertyChanged,
+                          weak_factory_.GetWeakPtr())));
 
   // Register signal handlers.
-  auto on_connected_callback = base::Bind(
+  auto on_connected_callback = base::BindRepeating(
       &SupplicantInterfaceProxy::OnSignalConnected, weak_factory_.GetWeakPtr());
   interface_proxy_->RegisterScanDoneSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::ScanDone,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::ScanDone,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterBSSAddedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::BSSAdded,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::BSSAdded,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterBSSRemovedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::BSSRemoved,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::BSSRemoved,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterBlobAddedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::BlobAdded,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::BlobAdded,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterBlobRemovedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::BlobRemoved,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::BlobRemoved,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterCertificationSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::Certification,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::Certification,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterEAPSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::EAP, weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::EAP,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterNetworkAddedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::NetworkAdded,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::NetworkAdded,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterNetworkRemovedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::NetworkRemoved,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::NetworkRemoved,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterNetworkSelectedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::NetworkSelected,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::NetworkSelected,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterPropertiesChangedSignalHandler(
-      base::Bind(&SupplicantInterfaceProxy::PropertiesChanged,
-                 weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SupplicantInterfaceProxy::PropertiesChanged,
+                          weak_factory_.GetWeakPtr()),
       on_connected_callback);
   interface_proxy_->RegisterInterworkingAPAddedSignalHandler(
       base::BindRepeating(&SupplicantInterfaceProxy::InterworkingAPAdded,

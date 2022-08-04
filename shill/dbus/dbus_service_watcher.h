@@ -18,7 +18,7 @@ class DBusServiceWatcher {
  public:
   DBusServiceWatcher(scoped_refptr<dbus::Bus> bus,
                      const std::string& connection_name,
-                     const base::Closure& on_connection_vanished);
+                     const base::RepeatingClosure& on_connection_vanished);
   DBusServiceWatcher(const DBusServiceWatcher&) = delete;
   DBusServiceWatcher& operator=(const DBusServiceWatcher&) = delete;
 

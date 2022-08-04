@@ -4,6 +4,8 @@
 
 #include "shill/dbus/dbus_properties_proxy.h"
 
+#include <utility>
+
 #include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
@@ -55,16 +57,16 @@ TEST_F(DBusPropertiesProxyTest, GetAllAsync) {
   base::RunLoop run_loop;
   dbus_properties_proxy_->GetAllAsync(
       kInterface,
-      base::Bind(
-          [](base::Closure callback, KeyValueStore* result,
+      base::BindOnce(
+          [](base::OnceClosure callback, KeyValueStore* result,
              const KeyValueStore& dict) {
             *result = dict;
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure(), &properties),
-      base::Bind(
-          [](base::Closure callback, const Error& error) { callback.Run(); },
-          run_loop.QuitClosure()));
+      base::BindOnce([](base::OnceClosure callback,
+                        const Error& error) { std::move(callback).Run(); },
+                     run_loop.QuitClosure()));
   EXPECT_EQ(properties.properties(), kTestDictionary);
 }
 
@@ -88,16 +90,16 @@ TEST_F(DBusPropertiesProxyTest, GetAsync) {
   base::RunLoop run_loop;
   dbus_properties_proxy_->GetAsync(
       kInterface, kProperty1,
-      base::Bind(
-          [](base::Closure callback, brillo::Any* result,
+      base::BindOnce(
+          [](base::OnceClosure callback, brillo::Any* result,
              const brillo::Any& value) {
             *result = value;
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure(), &property1),
-      base::Bind(
-          [](base::Closure callback, const Error& error) { callback.Run(); },
-          run_loop.QuitClosure()));
+      base::BindOnce([](base::OnceClosure callback,
+                        const Error& error) { std::move(callback).Run(); },
+                     run_loop.QuitClosure()));
   EXPECT_EQ(property1, kTestDictionary.at(kProperty1));
 }
 
@@ -109,13 +111,14 @@ TEST_F(DBusPropertiesProxyTest, GetAsyncFailed) {
   base::RunLoop run_loop;
   dbus_properties_proxy_->GetAsync(
       kBadInterface, kBadProperty,
-      base::Bind([](base::Closure callback, brillo::Any* result,
-                    const brillo::Any& value) { callback.Run(); },
-                 run_loop.QuitClosure(), &property),
-      base::Bind(
-          [](base::Closure callback, Error* errorp, const Error& error) {
+      base::BindOnce(
+          [](base::OnceClosure callback, brillo::Any* result,
+             const brillo::Any& value) { std::move(callback).Run(); },
+          run_loop.QuitClosure(), &property),
+      base::BindOnce(
+          [](base::OnceClosure callback, Error* errorp, const Error& error) {
             errorp->CopyFrom(error);
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure(), &error));
   EXPECT_TRUE(property.IsEmpty());
