@@ -147,7 +147,7 @@ constexpr char kSdcardRootfsImage[] =
     "/opt/google/containers/arc-sdcard/rootfs.squashfs";
 constexpr char kSharedMountDirectory[] = "/run/arc/shared_mounts";
 constexpr char kSysfsCpu[] = "/sys/devices/system/cpu";
-constexpr char kSysfsTracing[] = "/sys/kernel/debug/tracing";
+constexpr char kSysfsTracing[] = "/sys/kernel/tracing";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
 constexpr char kSystemLibArm64DirectoryRelative[] = "system/lib64/arm64";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
@@ -1397,7 +1397,7 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
   if (!is_dev_mode)
     return;
 
-  const base::FilePath tracing_directory("/sys/kernel/debug/tracing");
+  const base::FilePath tracing_directory("/sys/kernel/tracing");
   EXIT_IF(!arc_mounter_->BindMount(tracing_directory, tracing_mount_directory));
 }
 

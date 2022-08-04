@@ -106,8 +106,8 @@ resgid only accepts 16-bit gid, and hence the originally mapped gid
 A special GID 5005 (inside container, also called vendor_arc_debugfs), according
 to the rule above, is mapped to GID 605 (outside container, also called
 debugfs-access). This GID is added as supplementary group of init process to
-allow write access to some tracing files under /sys/kernel/debug/tracing/ (in
-dev mode).
+allow write access to some tracing files under /sys/kernel/tracing/ (in dev
+mode).
 
 ### Network namespace
 

@@ -190,8 +190,7 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Create fake procfs entries expected by android.
   void CreateFakeProcfsFiles();
 
-  // Bind-mounts /sys/kernel/debug/tracing to
-  // |arc_paths.debugfs_directory|/tracing.
+  // Bind-mounts /sys/kernel/tracing to |arc_paths.debugfs_directory|/tracing.
   void SetUpMountPointForDebugFilesystem(bool is_dev_mode);
 
   // Sets up media mount points such as arc-removable-media and arc-myfiles.
