@@ -1382,41 +1382,39 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       ipv6_configured = true;
     }
 
+    std::optional<IPConfig::Properties> static_ipv4_props = std::nullopt;
+    std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
+
     if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodStatic) {
       SLOG(this, 2) << "Assign static IPv4 configuration from bearer.";
-      SelectService(service_);
-      SetServiceState(Service::kStateConfiguring);
       // Override the MTU with a given limit for a specific serving operator
       // if the network doesn't report something lower.
-      IPConfig::Properties properties = *bearer->ipv4_config_properties();
+      static_ipv4_props = *bearer->ipv4_config_properties();
       if (serving_operator_info_ &&
           serving_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
-          (properties.mtu == IPConfig::kUndefinedMTU ||
-           serving_operator_info_->mtu() < properties.mtu)) {
-        properties.mtu = serving_operator_info_->mtu();
+          (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
+           serving_operator_info_->mtu() < static_ipv4_props->mtu)) {
+        static_ipv4_props->mtu = serving_operator_info_->mtu();
       }
-      network()->set_link_protocol_ipv4_properties(properties);
-      network()->Start(Network::StartOptions{
-          .dhcp = std::nullopt,
-          .accept_ra = true,
-      });
+    } else if (!ipv6_configured || (bearer && bearer->ipv4_config_method() ==
+                                                  IPConfig::kMethodDHCP)) {
+      SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
+      dhcp_opts = DHCPProvider::Options::Create(*manager());
+      dhcp_opts->use_arp_gateway = false;
+    } else {
+      // Do not call Network::Start() if v4 is unknown and v6 is configured.
       return;
     }
 
-    if (!ipv6_configured ||
-        (bearer && bearer->ipv4_config_method() == IPConfig::kMethodDHCP)) {
-      auto dhcp_opts = DHCPProvider::Options::Create(*manager());
-      dhcp_opts.use_arp_gateway = false;
-      Network::StartOptions opts = {
-          .dhcp = dhcp_opts,
-          .accept_ra = true,
-      };
-      SelectService(service_);
-      SetServiceState(Service::kStateConfiguring);
-      network()->set_link_protocol_ipv4_properties(std::nullopt);
-      network()->Start(opts);
-      SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
-    }
+    Network::StartOptions opts = {
+        .dhcp = dhcp_opts,
+        .accept_ra = true,
+    };
+    SelectService(service_);
+    SetServiceState(Service::kStateConfiguring);
+    network()->set_link_protocol_ipv4_properties(static_ipv4_props);
+    network()->Start(opts);
+
     return;
   }
 
