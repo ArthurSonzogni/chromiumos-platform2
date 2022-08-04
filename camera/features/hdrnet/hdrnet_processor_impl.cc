@@ -19,6 +19,7 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/texture_2d_descriptor.h"
+#include "features/hdrnet/tracing.h"
 #include "gpu/egl/egl_fence.h"
 
 namespace cros {
@@ -48,6 +49,7 @@ HdrNetProcessorImpl::HdrNetProcessorImpl(
 bool HdrNetProcessorImpl::Initialize(Size input_size,
                                      const std::vector<Size>& output_sizes) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   for (const auto& s : output_sizes) {
     if (s.width > input_size.width || s.height > input_size.height) {
@@ -103,6 +105,7 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
 
 void HdrNetProcessorImpl::TearDown() {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   processor_device_adapter_->TearDown();
 }
@@ -118,6 +121,7 @@ void HdrNetProcessorImpl::SetOptions(const Options& options) {
 bool HdrNetProcessorImpl::WriteRequestParameters(
     Camera3CaptureDescriptor* request) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   return processor_device_adapter_->WriteRequestParameters(request,
                                                            metadata_logger_);
@@ -126,6 +130,7 @@ bool HdrNetProcessorImpl::WriteRequestParameters(
 void HdrNetProcessorImpl::ProcessResultMetadata(
     Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   processor_device_adapter_->ProcessResultMetadata(result, metadata_logger_);
 }
@@ -139,6 +144,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
     HdrnetMetrics* hdrnet_metrics) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   DCHECK(hdrnet_metrics);
+  TRACE_HDRNET();
 
   for (const auto& b : output_nv12_buffers) {
     if (CameraBufferManager::GetWidth(b) > input_yuv.y_texture().width() ||
@@ -196,7 +202,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
             LOGF(ERROR) << "Failed to dump input YUV buffer";
           }
           buf_mgr->Deregister(input_yuv.buffer());
-        } while (0);
+        } while (false);
       }
       {
         base::ElapsedTimer t;
@@ -272,10 +278,10 @@ base::ScopedFD HdrNetProcessorImpl::Run(
               LOGF(ERROR) << "Failed to dump output NV12 buffer";
             }
             buf_mgr->Deregister(output_nv12.buffer());
-          } while (0);
+          } while (false);
         }
       }
-    } while (0);
+    } while (false);
 
     ++hdrnet_metrics->num_frames_processed;
     if (!success) {
@@ -291,6 +297,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
 void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
                                     const SharedImage& output_nv12) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   bool result = image_processor_->YUVToYUV(
       input_yuv.y_texture(), input_yuv.uv_texture(), output_nv12.y_texture(),
@@ -313,6 +320,7 @@ bool HdrNetProcessorImpl::RunLinearRgbPipeline(
     const SharedImage& input_rgba,
     const SharedImage& output_rgba) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   // Run the HDRnet linear RGB pipeline
   HdrNetLinearRgbPipelineCrOS::RunOptions run_options = {
@@ -337,6 +345,7 @@ bool HdrNetProcessorImpl::RunLinearRgbPipeline(
 void HdrNetProcessorImpl::DumpGpuTextureSharedImage(
     const SharedImage& image, base::FilePath output_file_path) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HDRNET();
 
   uint32_t kDumpBufferUsage = GRALLOC_USAGE_SW_WRITE_OFTEN |
                               GRALLOC_USAGE_SW_READ_OFTEN |

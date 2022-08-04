@@ -14,6 +14,7 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "features/gcam_ae/gcam_ae_controller_impl.h"
+#include "features/gcam_ae/tracing.h"
 
 namespace cros {
 
@@ -49,6 +50,8 @@ GcamAeStreamManipulator::GcamAeStreamManipulator(
 bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
+  TRACE_GCAM_AE();
+
   static_info_.acquire(clone_camera_metadata(static_info));
   {
     base::AutoLock lock(ae_controller_lock_);
@@ -75,6 +78,8 @@ bool GcamAeStreamManipulator::Initialize(
 
 bool GcamAeStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_GCAM_AE();
+
   yuv_stream_ = nullptr;
 
   for (auto* s : stream_config->GetStreams()) {
@@ -114,16 +119,20 @@ bool GcamAeStreamManipulator::ConfigureStreams(
 
 bool GcamAeStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_GCAM_AE();
   return true;
 }
 
 bool GcamAeStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  TRACE_GCAM_AE();
   return true;
 }
 
 bool GcamAeStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
+  TRACE_GCAM_AE();
+
   if (request->GetInputBuffer() != nullptr) {
     // Skip reprocessing requests.
     return true;
@@ -135,6 +144,8 @@ bool GcamAeStreamManipulator::ProcessCaptureRequest(
 
 bool GcamAeStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
+  TRACE_GCAM_AE();
+
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Got result:";
     for (const auto& hal_result_buffer : result->GetOutputBuffers()) {
@@ -168,10 +179,12 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
 }
 
 bool GcamAeStreamManipulator::Notify(camera3_notify_msg_t* msg) {
+  TRACE_GCAM_AE();
   return true;
 }
 
 bool GcamAeStreamManipulator::Flush() {
+  TRACE_GCAM_AE();
   return true;
 }
 

@@ -15,7 +15,9 @@
 #include <base/posix/safe_strerror.h>
 #include <libyuv.h>
 
+#include "common/tracing.h"
 #include "cros-camera/common.h"
+#include "cros-camera/tracing.h"
 
 namespace cros {
 
@@ -53,6 +55,9 @@ FaceDetectResult FaceDetector::Detect(
     buffer_handle_t buffer,
     std::vector<human_sensing::CrosFace>* faces,
     std::optional<Size> active_sensor_array_size) {
+  TRACE_COMMON(kCameraTraceKeyWidth, buffer_manager_->GetWidth(buffer),
+               kCameraTraceKeyHeight, buffer_manager_->GetHeight(buffer));
+
   DCHECK(faces);
   base::AutoLock l(lock_);
   Size input_size = Size(buffer_manager_->GetWidth(buffer),
@@ -71,9 +76,13 @@ FaceDetectResult FaceDetector::Detect(
     return FaceDetectResult::kBufferError;
   }
 
-  if (!wrapper_->Detect(scaled_buffer_.data(), scaled_size.width,
-                        scaled_size.height, faces)) {
-    return FaceDetectResult::kDetectError;
+  {
+    TRACE_EVENT_BEGIN(kCameraTraceCategoryCommon, "FaceDetector::Detect::Run");
+    if (!wrapper_->Detect(scaled_buffer_.data(), scaled_size.width,
+                          scaled_size.height, faces)) {
+      return FaceDetectResult::kDetectError;
+    }
+    TRACE_EVENT_END(kCameraTraceCategoryCommon, "num_faces", faces->size());
   }
 
   if (!faces->empty()) {

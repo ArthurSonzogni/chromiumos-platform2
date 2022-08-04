@@ -20,7 +20,9 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/texture_2d_descriptor.h"
+#include "cros-camera/tracing.h"
 #include "features/hdrnet/hdrnet_processor_impl.h"
+#include "features/hdrnet/tracing.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/egl/utils.h"
 #include "gpu/gles/texture_2d.h"
@@ -274,6 +276,7 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET();
 
   static_info_.acquire(clone_camera_metadata(static_info));
   result_callback_ = std::move(result_callback);
@@ -283,6 +286,8 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
 bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET(kCameraTraceKeyStreamConfigurations,
+               stream_config->ToJsonString());
 
   // Clear the stream configuration from the previous session.
   ResetStateOnGpuThread();
@@ -398,6 +403,8 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET(kCameraTraceKeyStreamConfigurations,
+               stream_config->ToJsonString());
 
   // Restore HDRnet streams to the original streams.
   if (VLOG_IS_ON(1)) {
@@ -456,6 +463,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
 bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET(kCameraTraceKeyFrameNumber, request->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << " Got request:";
@@ -600,6 +608,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET(kCameraTraceKeyFrameNumber, result->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Got result:";
@@ -675,6 +684,12 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   // Process each HDRnet buffer in this capture result and produce the client
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
+    TRACE_EVENT(kCameraTraceCategoryHdrnet,
+                "HdrNetStreamManipulator::ProcessHdrnetBuffer",
+                kCameraTraceKeyFrameNumber, result->frame_number(),
+                kCameraTraceKeyWidth, hdrnet_buffer.stream->width,
+                kCameraTraceKeyHeight, hdrnet_buffer.stream->height,
+                kCameraTraceKeyFormat, hdrnet_buffer.stream->format);
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream);
     auto request_buffer_info =
@@ -682,6 +697,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     DCHECK(request_buffer_info != pending_request_buffers.end());
 
     if (options_.denoiser_enable) {
+      TRACE_EVENT(kCameraTraceCategoryHdrnet,
+                  "HdrNetStreamManipulator::RunIirDenoise");
       // Run the denoiser.
       SharedImage& input_img =
           stream_context->shared_images[request_buffer_info->buffer_index];
@@ -751,6 +768,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
 bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET();
   // Free up buffers in case of error.
 
   if (msg->type == CAMERA3_MSG_ERROR) {
@@ -810,6 +828,7 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
 
 bool HdrNetStreamManipulator::FlushOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET();
 
   return true;
 }
@@ -964,6 +983,7 @@ void HdrNetStreamManipulator::OnBuffersRendered(
 
 bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET();
 
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
@@ -981,12 +1001,14 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
 
   std::vector<Size> all_output_sizes;
   for (const auto& context : hdrnet_stream_context_) {
-    all_output_sizes.push_back(
-        Size(context->hdrnet_stream->width, context->hdrnet_stream->height));
+    all_output_sizes.emplace_back(context->hdrnet_stream->width,
+                                  context->hdrnet_stream->height);
   }
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   for (const auto& context : hdrnet_stream_context_) {
+    TRACE_EVENT(kCameraTraceCategoryHdrnet,
+                "HdrNetStreamManipulator::SetUpContextResources");
     camera3_stream_t* stream = context->hdrnet_stream.get();
     Size stream_size(stream->width, stream->height);
     std::vector<Size> viable_output_sizes;
@@ -995,23 +1017,35 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
         viable_output_sizes.push_back(s);
       }
     }
-    context->processor = hdrnet_processor_factory_.Run(
-        locked_static_info, gpu_thread_.task_runner());
-    context->denoiser = SpatiotemporalDenoiser::CreateInstance(
-        {.frame_width = static_cast<int>(stream_size.width),
-         .frame_height = static_cast<int>(stream_size.height),
-         .mode = SpatiotemporalDenoiser::Mode::kIirMode});
-    if (!context->denoiser) {
-      LOGF(ERROR) << "Failed to initialize Spatiotemporal denoiser";
-      ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
-      return false;
+
+    {
+      TRACE_EVENT(kCameraTraceCategoryHdrnet,
+                  "HdrNetStreamManipulator::CreateHdrnetProcessor");
+      context->processor = hdrnet_processor_factory_.Run(
+          locked_static_info, gpu_thread_.task_runner());
+      context->processor->Initialize(stream_size, viable_output_sizes);
+      if (!context->processor) {
+        LOGF(ERROR) << "Failed to initialize HDRnet processor";
+        ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
+        return false;
+      }
     }
-    context->processor->Initialize(stream_size, viable_output_sizes);
-    if (!context->processor) {
-      LOGF(ERROR) << "Failed to initialize HDRnet processor";
-      ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
-      return false;
+
+    {
+      TRACE_EVENT(kCameraTraceCategoryHdrnet,
+                  "HdrNetStreamManipulator::CreateDenoiser");
+      context->denoiser = SpatiotemporalDenoiser::CreateInstance(
+          {.frame_width = static_cast<int>(stream_size.width),
+           .frame_height = static_cast<int>(stream_size.height),
+           .mode = SpatiotemporalDenoiser::Mode::kIirMode});
+      if (!context->denoiser) {
+        LOGF(ERROR) << "Failed to initialize Spatiotemporal denoiser";
+        ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
+        return false;
+      }
     }
+
+    TRACE_HDRNET_BEGIN("HdrNetStreamManipulator::AllocateIntermediateBuffers");
 
     constexpr uint32_t kBufferUsage =
         GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_TEXTURE;
@@ -1068,6 +1102,8 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
           base::BindOnce([](ScopedBufferHandle buffer) {}, std::move(buffer)));
       context->denoiser_intermediate = std::move(shared_image);
     }
+
+    TRACE_HDRNET_END();
   }
   static_info_.unlock(locked_static_info);
 
@@ -1076,9 +1112,13 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
 
 void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_HDRNET();
 
   still_capture_processor_->Reset();
   request_buffer_info_.clear();
+  for (auto& ctx : hdrnet_stream_context_) {
+    ctx->processor->TearDown();
+  }
   hdrnet_stream_context_.clear();
   request_stream_mapping_.clear();
   result_stream_mapping_.clear();
