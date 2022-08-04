@@ -49,8 +49,8 @@ void Daemon::InitDBus() {
   CHECK(exported_object);
   CHECK(exported_object->ExportMethodAndBlock(
       kArcKeymasterInterfaceName, kBootstrapMojoConnectionMethod,
-      base::Bind(&Daemon::BootstrapMojoConnection,
-                 weak_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::BootstrapMojoConnection,
+                          weak_factory_.GetWeakPtr())));
   CHECK(bus_->RequestOwnershipAndBlock(kArcKeymasterServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
   LOG(INFO) << "D-Bus registration succeeded";

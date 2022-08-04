@@ -47,12 +47,12 @@ void CertStoreInstance::RequestSecurityTokenOperation() {
   mojo::PendingReceiver<mojom::SecurityTokenOperation> receiver =
       security_token_operation_proxy_.BindNewPipeAndPassReceiver();
   security_token_operation_proxy_.set_disconnect_handler(
-      base::Bind(&CertStoreInstance::ResetSecurityTokenOperationProxy,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&CertStoreInstance::ResetSecurityTokenOperationProxy,
+                          weak_ptr_factory_.GetWeakPtr()));
   host_->GetSecurityTokenOperation(
       std::move(receiver),
-      base::Bind(&CertStoreInstance::OnSecurityTokenOperationProxyReady,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&CertStoreInstance::OnSecurityTokenOperationProxyReady,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void CertStoreInstance::ResetSecurityTokenOperationProxy() {
