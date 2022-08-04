@@ -146,9 +146,7 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
     if (CanSkipEnablingFactoryMode()) {
       daemon_callback_->GetWriteProtectSignalCallback().Run(false);
     } else {
-      reboot_timer_.Start(
-          FROM_HERE, kRebootDelay, this,
-          &WriteProtectDisablePhysicalStateHandler::EnableFactoryMode);
+      EnableFactoryMode();
     }
   }
 }
@@ -168,6 +166,11 @@ void WriteProtectDisablePhysicalStateHandler::EnableFactoryMode() {
     LOG(ERROR) << "Failed to request powerwash";
   }
   // Reboot.
+  reboot_timer_.Start(FROM_HERE, kRebootDelay, this,
+                      &WriteProtectDisablePhysicalStateHandler::Reboot);
+}
+
+void WriteProtectDisablePhysicalStateHandler::Reboot() {
   power_manager_client_->Restart();
 }
 

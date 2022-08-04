@@ -25,8 +25,10 @@ class PowerManagerClient;
 
 class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
  public:
-  // Wait for 1 second before rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
+  // Wait for 3 seconds between RSU and rebooting.
+  // Enabling factory mode can take up to 2 seconds. Wait for at least 3 seconds
+  // to be safe.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(3);
 
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
