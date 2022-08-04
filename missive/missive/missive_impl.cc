@@ -51,16 +51,15 @@ void MissiveImpl::StartUp(base::OnceCallback<void(Status)> cb) {
   upload_client_ = UploadClient::Create();
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
       args_->enqueuing_record_tallier());
-  analytics_registry_.Add("Storage",
-                          std::make_unique<analytics::ResourceCollectorStorage>(
-                              args_->storage_collector_interval(),
-                              base::FilePath(kReportingDirectory)));
+  const base::FilePath kReportingPath(kReportingDirectory);
+  analytics_registry_.Add(
+      "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
+                     args_->storage_collector_interval(), kReportingPath));
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
                               args_->cpu_collector_interval()));
-  base::FilePath reporting_path(kReportingDirectory);
   StorageOptions storage_options;
-  storage_options.set_directory(reporting_path)
+  storage_options.set_directory(kReportingPath)
       .set_signature_verification_public_key(
           SignatureVerifier::VerificationKey());
   auto memory_resource = storage_options.memory_resource();
