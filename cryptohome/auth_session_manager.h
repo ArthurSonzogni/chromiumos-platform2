@@ -17,17 +17,19 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
 namespace cryptohome {
 
 class AuthSessionManager {
  public:
-  // The `Crypto`, `KeysetManagement*`, `AuthBlockUtility*`,
+  // The `Crypto*`, 'Platform*', `KeysetManagement*`, `AuthBlockUtility*`,
   // `AuthFactorManager*`, `UserSecretStashStorage*` are unowned and must
   // outlive the created object.
   explicit AuthSessionManager(
       Crypto* crypto,
+      Platform* platform,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
@@ -57,6 +59,8 @@ class AuthSessionManager {
  private:
   // Unowned; must outlive `this`.
   Crypto* const crypto_;
+  // Unowned; must outlive `this`.
+  Platform* const platform_;
   // Unowned; must outlive `this`.
   KeysetManagement* const keyset_management_;
   // Unowned; must outlive `this`.

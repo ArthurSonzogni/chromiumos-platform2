@@ -22,7 +22,6 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
-#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -34,9 +33,9 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/vault_keyset.h"
@@ -122,6 +121,7 @@ AuthSession::AuthSession(
     unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     Crypto* crypto,
+    Platform* platform,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
@@ -134,6 +134,7 @@ AuthSession::AuthSession(
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       on_timeout_(std::move(on_timeout)),
       crypto_(crypto),
+      platform_(platform),
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),

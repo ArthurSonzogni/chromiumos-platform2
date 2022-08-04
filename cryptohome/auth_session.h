@@ -22,7 +22,6 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
@@ -31,6 +30,7 @@
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -65,6 +65,7 @@ class AuthSession final {
       unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       Crypto* crypto,
+      Platform* platform,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
@@ -462,6 +463,9 @@ class AuthSession final {
   // The creator of the AuthSession object is responsible for the life of
   // Crypto object.
   Crypto* const crypto_;
+  // The creator of the AuthSession object is responsible for the life of
+  // Platform object.
+  Platform* const platform_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.

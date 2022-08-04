@@ -452,8 +452,8 @@ bool UserDataAuth::Initialize() {
 
   if (!auth_session_manager_) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        crypto_, keyset_management_, auth_block_utility_, auth_factor_manager_,
-        user_secret_stash_storage_);
+        crypto_, platform_, keyset_management_, auth_block_utility_,
+        auth_factor_manager_, user_secret_stash_storage_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 

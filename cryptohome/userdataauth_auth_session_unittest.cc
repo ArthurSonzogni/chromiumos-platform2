@@ -107,7 +107,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &keyset_management_, auth_block_utility_.get(),
+        &crypto_, &platform_, &keyset_management_, auth_block_utility_.get(),
         &auth_factor_manager_, &user_secret_stash_storage_);
 
     userdataauth_.set_platform(&platform_);

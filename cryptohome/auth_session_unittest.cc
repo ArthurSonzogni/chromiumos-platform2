@@ -144,8 +144,9 @@ const CryptohomeError::ErrorLocationPair kErrorLocationForTestingAuthSession =
 TEST_F(AuthSessionTest, Username) {
   AuthSession auth_session(
       kFakeUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
-      /*on_timeout=*/base::DoNothing(), &crypto_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &keyset_management_, &auth_block_utility_, &auth_factor_manager_,
+      &user_secret_stash_storage_);
 
   EXPECT_EQ(auth_session.username(), kFakeUsername);
   EXPECT_EQ(auth_session.obfuscated_username(),
@@ -159,8 +160,9 @@ TEST_F(AuthSessionTest, TimeoutTest) {
       base::Unretained(&called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated();
@@ -213,8 +215,9 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
       base::Unretained(&called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
@@ -251,8 +254,9 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
       brillo::BlobFromString(kFakeUsername));
 
   AuthSession auth_session(kFakeUsername, 0, std::move(on_timeout), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
       .WillOnce(Return(ByMove(fake_pass_blob)));
   EXPECT_EQ(auth_session.GetStatus(),
@@ -297,7 +301,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
                                              &platform_);
   // Setting the expectation that the user does not exist.
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_,
+                           &crypto_, &platform_, &keyset_management_,
                            auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
 
@@ -347,7 +351,8 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, auth_block_utility_impl_.get(),
+                           &platform_, &keyset_management_,
+                           auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
 
   base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)> on_done =
@@ -415,8 +420,9 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -489,8 +495,9 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -562,8 +569,9 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -630,8 +638,9 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -697,8 +706,9 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
   EXPECT_CALL(keyset_management_,
               GetVaultKeysetLabelsAndData(obfuscated_username, _));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -770,8 +780,9 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
@@ -811,8 +822,9 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   user_data_auth::UpdateCredentialRequest update_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
@@ -849,7 +861,7 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_,
+                           &crypto_, &platform_, &keyset_management_,
                            auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
   auth_session.SetStatus(AuthStatus::kAuthStatusAuthenticated);
@@ -882,8 +894,9 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &crypto_, &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   user_data_auth::UpdateCredentialRequest update_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
@@ -911,8 +924,9 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -944,8 +958,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
 
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1030,8 +1045,9 @@ TEST_F(AuthSessionTest,
 
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1124,8 +1140,9 @@ TEST_F(AuthSessionTest,
 
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1220,8 +1237,9 @@ TEST_F(AuthSessionTest,
 
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1298,8 +1316,9 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
                                              &platform_);
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, auth_block_utility_impl.get(),
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           auth_block_utility_impl.get(), &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Setting the expectation that the user does not exist.
   EXPECT_EQ(auth_session.GetStatus(),
@@ -1351,8 +1370,9 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Setting the expectation that the user does not exist.
   EXPECT_EQ(auth_session.GetStatus(),
@@ -1599,8 +1619,9 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -1623,8 +1644,9 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -1644,8 +1666,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -1713,8 +1736,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -1788,8 +1812,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -1861,8 +1886,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -1897,8 +1923,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2049,8 +2076,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2140,8 +2168,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2238,8 +2267,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2339,8 +2369,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2392,8 +2423,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2492,8 +2524,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2592,8 +2625,9 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2680,8 +2714,9 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2726,8 +2761,9 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
