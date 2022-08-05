@@ -145,17 +145,17 @@ template <typename T, typename U>
 bool InternalRgbKeyboard::SetCommunicationType(ec::EcCommand<T, U>& command) {
   LOG(INFO) << "Deducing Communication type";
 
-  usb_endpoint_ = CreateEcUsbEndpoint();
-  if (usb_endpoint_ && command.Run(*usb_endpoint_)) {
-    LOG(INFO) << "Internal RGB Keyboard communicates over USB";
-    communication_type_ = CommunicationType::kUsb;
-    return true;
-  }
-
   ec_fd_ = CreateFileDescriptorForEc();
   if (ec_fd_.is_valid() && command.Run(ec_fd_.get())) {
     LOG(INFO) << "Internal RGB Keyboard communicates over FD";
     communication_type_ = CommunicationType::kFileDescriptor;
+    return true;
+  }
+
+  usb_endpoint_ = CreateEcUsbEndpoint();
+  if (usb_endpoint_ && command.Run(*usb_endpoint_)) {
+    LOG(INFO) << "Internal RGB Keyboard communicates over USB";
+    communication_type_ = CommunicationType::kUsb;
     return true;
   }
 
