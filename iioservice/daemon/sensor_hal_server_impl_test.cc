@@ -115,9 +115,7 @@ TEST_F(SensorHalServerImplTest, CreateChannelAndDisconnect) {
   mojo::Remote<cros::mojom::SensorHalServer> remote;
   server_ = FakeSensorHalServerImpl::Create(
       task_environment_.GetMainThreadTaskRunner(),
-      remote.BindNewPipeAndPassReceiver(),
-      base::BindOnce([](base::Closure closure) { closure.Run(); },
-                     loop.QuitClosure()));
+      remote.BindNewPipeAndPassReceiver(), loop.QuitClosure());
 
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote;
   remote->CreateChannel(sensor_service_remote.BindNewPipeAndPassReceiver());

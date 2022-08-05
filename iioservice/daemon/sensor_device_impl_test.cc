@@ -163,7 +163,7 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
                                cros::mojom::kLocation, cros::mojom::kScale,
                                kDummyChnAttrName2},
       base::BindOnce(
-          [](base::Closure closure, base::FilePath link_to,
+          [](base::OnceClosure closure, base::FilePath link_to,
              const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), 7u);
             EXPECT_FALSE(values.front().has_value());
@@ -178,7 +178,7 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
             EXPECT_EQ(values[4].value().compare(cros::mojom::kLocationLid), 0);
             EXPECT_TRUE(values[5].has_value());
             EXPECT_EQ(values[5].value().compare(kChannelAttributeValue), 0);
-            closure.Run();
+            std::move(closure).Run();
           },
           loop.QuitClosure(), link_to_));
   loop.Run();
@@ -188,10 +188,10 @@ TEST_F(SensorDeviceImplTest, SetFrequency) {
   base::RunLoop loop;
   remote_->SetFrequency(libmems::fakes::kFakeSamplingFrequency,
                         base::BindOnce(
-                            [](base::Closure closure, double result_freq) {
+                            [](base::OnceClosure closure, double result_freq) {
                               EXPECT_EQ(result_freq,
                                         libmems::fakes::kFakeSamplingFrequency);
-                              closure.Run();
+                              std::move(closure).Run();
                             },
                             loop.QuitClosure()));
   loop.Run();
@@ -263,13 +263,14 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
   base::RunLoop loop;
   remote_->GetChannelsEnabled(
       indices, base::BindOnce(
-                   [](base::Closure closure, const std::vector<bool>& enabled) {
+                   [](base::OnceClosure closure,
+                      const std::vector<bool>& enabled) {
                      EXPECT_EQ(enabled.size(),
                                std::size(libmems::fakes::kFakeAccelChns));
                      for (int i = 0; i < enabled.size(); ++i)
                        EXPECT_EQ(enabled[i], i % 2 == 0);
 
-                     closure.Run();
+                     std::move(closure).Run();
                    },
                    loop.QuitClosure()));
   loop.Run();
@@ -284,7 +285,7 @@ TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
   remote_->GetChannelsAttributes(
       indices, kChnAttrName,
       base::BindOnce(
-          [](base::Closure closure,
+          [](base::OnceClosure closure,
              const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), std::size(libmems::fakes::kFakeAccelChns));
             for (int i = 0; i < values.size(); ++i) {
@@ -293,7 +294,7 @@ TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
                 EXPECT_EQ(values[i].value().compare(kChnAttrValue), 0);
               }
             }
-            closure.Run();
+            std::move(closure).Run();
           },
           loop.QuitClosure()));
   loop.Run();
