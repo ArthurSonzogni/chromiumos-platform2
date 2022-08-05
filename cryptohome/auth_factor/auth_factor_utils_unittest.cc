@@ -176,4 +176,105 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithUnreadableFactors) {
   EXPECT_THAT(protos, IsEmpty());
 }
 
+// Test `GetAuthFactorProto()` for a pin auth factor.
+TEST(AuthFactorUtilsTest, GetProtoPin) {
+  // Setup
+  AuthFactorMetadata metadata = {.metadata = PinAuthFactorMetadata()};
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kPin, kLabel);
+
+  // Verify
+  ASSERT_TRUE(proto.has_value());
+  EXPECT_EQ(proto.value().type(), user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  EXPECT_EQ(proto.value().label(), kLabel);
+  ASSERT_TRUE(proto.value().has_pin_metadata());
+}
+
+// Test `GetAuthFactorProto()` for a kiosk auth factor.
+TEST(AuthFactorUtilsTest, GetProtoKiosk) {
+  // Setup
+  AuthFactorMetadata metadata = {.metadata = KioskAuthFactorMetadata()};
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kKiosk, kLabel);
+
+  // Verify
+  ASSERT_TRUE(proto.has_value());
+  EXPECT_EQ(proto.value().type(), user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
+  EXPECT_EQ(proto.value().label(), kLabel);
+  ASSERT_TRUE(proto.value().has_kiosk_metadata());
+}
+
+// Test `GetAuthFactorProto()` for a recovery auth factor.
+TEST(AuthFactorUtilsTest, GetProtoRecovery) {
+  // Setup
+  AuthFactorMetadata metadata = {.metadata =
+                                     CryptohomeRecoveryAuthFactorMetadata()};
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kCryptohomeRecovery, kLabel);
+
+  // Verify
+  ASSERT_TRUE(proto.has_value());
+  EXPECT_EQ(proto.value().type(),
+            user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  EXPECT_EQ(proto.value().label(), kLabel);
+  ASSERT_TRUE(proto.value().has_cryptohome_recovery_metadata());
+}
+
+// Test `GetAuthFactorProto()` for  when pin auth factor does not have metadata.
+TEST(AuthFactorUtilsTest, GetProtoPinNullOpt) {
+  // Setup
+  AuthFactorMetadata metadata;
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kPin, kLabel);
+
+  // Verify
+  ASSERT_FALSE(proto.has_value());
+}
+
+// Test `GetAuthFactorProto()` for  when kiosk auth factor does not have
+// metadata.
+TEST(AuthFactorUtilsTest, GetProtoKioskNullOpt) {
+  // Setup
+  AuthFactorMetadata metadata;
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kKiosk, kLabel);
+
+  // Verify
+  ASSERT_FALSE(proto.has_value());
+}
+
+// Test `GetAuthFactorProto()` for  when recovery auth factor does not have
+// metadata.
+TEST(AuthFactorUtilsTest, GetProtoRecoveryNullOpt) {
+  // Setup
+  AuthFactorMetadata metadata;
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kCryptohomeRecovery, kLabel);
+
+  // Verify
+  ASSERT_FALSE(proto.has_value());
+}
+
+// Test `NeedsResetSecret()` to return correct value.
+TEST(AuthFactorUtilsTest, NeedsResetSecret) {
+  EXPECT_TRUE(NeedsResetSecret(AuthFactorType::kPin));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kPassword));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kKiosk));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kCryptohomeRecovery));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 4,
+                "All types of AuthFactorType are not all included here");
+}
+
 }  // namespace cryptohome
