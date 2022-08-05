@@ -34,7 +34,7 @@ source_set("libmojo_service_manager_daemon") {
     "service_request_queue.cc",
   ]
   configs += [ ":target_default" ]
-  deps = [ "//mojo_service_manager/lib/mojom" ]
+  deps = [ "//mojo_service_manager/lib/mojom:libmojo_service_manager-mojom" ]
 }
 
 executable("mojo_service_manager") {
@@ -43,7 +43,7 @@ executable("mojo_service_manager") {
   install_path = "bin"
   deps = [
     ":libmojo_service_manager_daemon",
-    "//mojo_service_manager/lib/mojom",
+    "//mojo_service_manager/lib/mojom:libmojo_service_manager-mojom",
   ]
 }
 

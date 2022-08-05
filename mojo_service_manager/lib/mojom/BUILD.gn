@@ -4,8 +4,11 @@
 
 import("//common-mk/mojom_bindings_generator.gni")
 
-# TODO(b/226016871): Link this target to shared library.
-generate_mojom_bindings("mojom") {
+# TODO(b/233325104): Link this target to a shared library. This target is linked
+# to each binary which using service manager. Currently, we use static link
+# which could cause more disk and memory usage. However, the shared library
+# support of mojo bindings in platform2 is still under discussion.
+generate_mojom_bindings("libmojo_service_manager-mojom") {
   sources = [
     "service_manager.mojom",
     "time.mojom",
@@ -15,5 +18,5 @@ generate_mojom_bindings("mojom") {
     "--typemap",
     rebase_path("type_mappings.json"),
   ]
-  standalone = true
+  install_package = "mojo_service_manager"
 }
