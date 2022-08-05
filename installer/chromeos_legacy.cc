@@ -114,6 +114,8 @@ bool EfiGrubCfg::UpdateBootParameters(BootSlot slot,
 }
 
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
+  bool is_install = getenv("IS_INSTALL");
+
   const base::FilePath root_mount(install_config.root.mount());
   const base::FilePath boot_mount(install_config.boot.mount());
 
@@ -121,6 +123,24 @@ bool UpdateLegacyKernel(const InstallConfig& install_config) {
   const base::FilePath kernel_to =
       boot_mount.Append("syslinux").Append("vmlinuz." + install_config.slot);
 
+  // In the event of a typical install, `kernel_from` may not exist.
+  // There is an expectation that `include_vmlinuz` be added to the board
+  // overlay's `profiles/base/make.defaults` as a `USE=` flag. Without this,
+  // `src/scripts/build_library/base_image_util.sh` will move the Kernel during
+  // `build_image`.
+  if (is_install && (install_config.bios_type == kBiosTypeLegacy ||
+                     install_config.bios_type == kBiosTypeEFI)) {
+    // This is a non-fatal condition. The new Kernel is already present at the
+    // destination. Log a warning and continue.
+    if (!base::PathExists(kernel_from) && base::PathExists(kernel_to)) {
+      LOG(WARNING) << "Legacy Kernel '" << kernel_from
+                   << "' does not exist. Consider adding "
+                   << "`USE=\"${USE} include_vmlinuz\"` "
+                   << "to the board's `make.defaults`.";
+      return true;
+    }
+  }
+  // In any other scenario (like an update), ensure we copy the new Kernel.
   return base::CopyFile(kernel_from, kernel_to);
 }
 
