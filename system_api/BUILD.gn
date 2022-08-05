@@ -155,6 +155,8 @@ goproto_library("system_api-cryptohome-goprotos") {
   proto_in_dir = "dbus/cryptohome"
   proto_out_dir = "go/src/"
   sources = [
+    "${proto_in_dir}/UserDataAuth.proto",
+    "${proto_in_dir}/auth_factor.proto",
     "${proto_in_dir}/fido.proto",
     "${proto_in_dir}/key.proto",
     "${proto_in_dir}/rpc.proto",
