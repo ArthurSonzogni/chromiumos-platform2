@@ -976,7 +976,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
@@ -1000,7 +1000,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_NE(device_->ip6config(), nullptr);
   EXPECT_EQ(dns_server_addresses_str,
             device_->ip6config()->properties().dns_servers);
@@ -1031,7 +1031,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
             device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1048,7 +1048,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
@@ -1063,7 +1063,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
             device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1077,7 +1077,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6DnsServerAddressesChanged();
+  device_->network()->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config()->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);

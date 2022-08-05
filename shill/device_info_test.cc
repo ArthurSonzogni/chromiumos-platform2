@@ -1234,6 +1234,10 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   std::vector<IPAddress> dns_server_addresses_out;
   uint32_t lifetime_out;
 
+  device->set_network_for_testing(std::make_unique<MockNetwork>(
+      kTestDeviceIndex, "null0", Technology::kEthernet));
+  auto* mock_network = static_cast<MockNetwork*>(device->network());
+
   // Device info entry does not exist.
   EXPECT_FALSE(device_info_.GetIPv6DnsServerAddresses(
       kTestDeviceIndex, &dns_server_addresses_out, &lifetime_out));
@@ -1258,7 +1262,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
                                    dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*mock_network, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_CALL(time_, GetSecondsBoottime(_)).Times(0);
   EXPECT_TRUE(device_info_.GetIPv6DnsServerAddresses(
@@ -1276,9 +1280,9 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
                                     dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*mock_network, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message1);
-  // 10 seconds passed when GetIPv6DnsServerAddreses is called.
+  // 10 seconds passed when GetIPv6DnsServerAddresses is called.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(kElapseTime10), Return(true)));
   EXPECT_TRUE(device_info_.GetIPv6DnsServerAddresses(
@@ -1292,9 +1296,9 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   // Lifetime of 120, retrieve DNS server addresses after lifetime expired.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*mock_network, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message1);
-  // 120 seconds passed when GetIPv6DnsServerAddreses is called.
+  // 120 seconds passed when GetIPv6DnsServerAddresses is called.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(kLifetime120), Return(true)));
   EXPECT_TRUE(device_info_.GetIPv6DnsServerAddresses(

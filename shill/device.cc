@@ -41,7 +41,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
@@ -389,54 +388,6 @@ void Device::ResetConnection() {
   SLOG(this, 2) << __func__;
   network_->Stop();
   SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
-}
-
-void Device::OnIPv6DnsServerAddressesChanged() {
-  std::vector<IPAddress> server_addresses;
-  uint32_t lifetime = 0;
-
-  // Stop any existing timer.
-  network_->StopIPv6DNSServerTimer();
-
-  if (!manager_->device_info()->GetIPv6DnsServerAddresses(
-          interface_index_, &server_addresses, &lifetime) ||
-      lifetime == 0) {
-    network_->IPv6DNSServerExpired();
-    return;
-  }
-
-  std::vector<std::string> addresses_str;
-  for (const auto& ip : server_addresses) {
-    std::string address_str;
-    if (!ip.IntoString(&address_str)) {
-      LOG(ERROR) << LoggingTag()
-                 << ": Unable to convert IPv6 address into a string!";
-      network_->IPv6DNSServerExpired();
-      return;
-    }
-    addresses_str.push_back(address_str);
-  }
-
-  if (!ip6config()) {
-    set_ip6config(std::make_unique<IPConfig>(control_interface(), link_name_));
-  }
-
-  if (lifetime != ND_OPT_LIFETIME_INFINITY) {
-    // Setup timer to monitor DNS server lifetime if not infinite lifetime.
-    base::TimeDelta delay = base::Seconds(lifetime);
-    network_->StartIPv6DNSServerTimer(delay);
-  }
-
-  // Done if no change in server addresses.
-  if (ip6config()->properties().dns_servers == addresses_str) {
-    SLOG(this, 2) << __func__ << " IPv6 DNS server list for " << link_name_
-                  << " is unchanged.";
-    return;
-  }
-
-  ip6config()->UpdateDNSServers(std::move(addresses_str));
-  OnIPConfigsPropertyUpdated();
-  network_->OnIPv6ConfigUpdated();
 }
 
 void Device::StopAllActivities() {

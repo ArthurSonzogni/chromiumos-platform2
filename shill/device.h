@@ -259,10 +259,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // there is nothing to be done in the general case.
   virtual void OnDarkResume(const ResultCallback& callback);
 
-  // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
-  // addresses from this interface.
-  mockable void OnIPv6DnsServerAddressesChanged();
-
   // Sets MAC address source for USB Ethernet device. Callback will only be
   // invoke when device successfully changed MAC address or failed to change MAC
   // address.

@@ -1445,7 +1445,7 @@ void DeviceInfo::RdnssMsgHandler(const RTNLMessage& msg) {
   // Notify device of the IPv6 DNS server addresses update.
   DeviceRefPtr device = GetDevice(interface_index);
   if (device) {
-    device->OnIPv6DnsServerAddressesChanged();
+    device->network()->OnIPv6DnsServerAddressesChanged();
   }
 }
 
