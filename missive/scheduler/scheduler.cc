@@ -16,7 +16,6 @@
 #include <base/task/thread_pool.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
-#include "missive/util/shared_queue.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
