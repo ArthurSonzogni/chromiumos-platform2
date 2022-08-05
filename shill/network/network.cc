@@ -11,13 +11,24 @@
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/routing_table.h"
+#include "shill/routing_table_entry.h"
 #include "shill/service.h"
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDevice;
+static std::string ObjectID(const Network* n) {
+  return n->interface_name();
+}
+}  // namespace Logging
 
 namespace {
 
@@ -52,6 +63,7 @@ Network::Network(int interface_index,
       device_info_(device_info),
       dispatcher_(dispatcher),
       dhcp_provider_(DHCPProvider::GetInstance()),
+      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {}
 
 void Network::Start(const Network::StartOptions& opts) {
@@ -355,6 +367,67 @@ void Network::ConfigureStaticIPv6Address() {
   rtnl_handler_->AddInterfaceAddress(interface_index_, local,
                                      local.GetDefaultBroadcast(),
                                      IPAddress(IPAddress::kFamilyIPv6));
+}
+
+void Network::OnIPv6AddressChanged(const IPAddress* address) {
+  if (!address) {
+    if (ip6config()) {
+      set_ip6config(nullptr);
+      event_handler_->OnIPConfigsPropertyUpdated();
+    }
+    return;
+  }
+
+  CHECK_EQ(address->family(), IPAddress::kFamilyIPv6);
+  IPConfig::Properties properties;
+  if (!address->IntoString(&properties.address)) {
+    LOG(ERROR) << interface_name_
+               << ": Unable to convert IPv6 address into a string";
+    return;
+  }
+  properties.subnet_prefix = address->prefix();
+
+  RoutingTableEntry default_route;
+  if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
+                                                &default_route)) {
+    if (!default_route.gateway.IntoString(&properties.gateway)) {
+      LOG(ERROR) << interface_name_
+                 << ": Unable to convert IPv6 gateway into a string";
+      return;
+    }
+  } else {
+    // The kernel normally populates the default route before it performs
+    // a neighbor solicitation for the new address, so it shouldn't be
+    // missing at this point.
+    LOG(WARNING) << interface_name_
+                 << ": No default route for global IPv6 address "
+                 << properties.address;
+  }
+
+  if (!ip6config()) {
+    set_ip6config(
+        std::make_unique<IPConfig>(control_interface_, interface_name_));
+  } else if (properties.address == ip6config()->properties().address &&
+             properties.subnet_prefix ==
+                 ip6config()->properties().subnet_prefix &&
+             properties.gateway == ip6config()->properties().gateway) {
+    SLOG(this, 2) << __func__ << " primary address for " << interface_name_
+                  << " is unchanged";
+    return;
+  }
+
+  properties.address_family = IPAddress::kFamilyIPv6;
+  properties.method = kTypeIPv6;
+  // It is possible for device to receive DNS server notification before IP
+  // address notification, so preserve the saved DNS server if it exist.
+  properties.dns_servers = ip6config()->properties().dns_servers;
+  if (ipv6_static_properties_ && ipv6_static_properties_->dns_servers.empty()) {
+    properties.dns_servers = ipv6_static_properties_->dns_servers;
+  }
+  ip6config()->set_properties(properties);
+  event_handler_->OnIPConfigsPropertyUpdated();
+  OnIPv6ConfigUpdated();
+  event_handler_->OnGetSLAACAddress();
 }
 
 void Network::OnIPv6ConfigUpdated() {

@@ -58,7 +58,6 @@ class MockDevice : public Device {
   MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
   MOCK_METHOD(void, OnDarkResume, (const ResultCallback&), (override));
   MOCK_METHOD(void, OnAfterResume, (), (override));
-  MOCK_METHOD(void, OnIPv6AddressChanged, (const IPAddress*), (override));
   MOCK_METHOD(std::vector<GeolocationInfo>,
               GetGeolocationObjects,
               (),

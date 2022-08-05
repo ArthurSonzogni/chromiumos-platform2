@@ -905,7 +905,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
-  device_->OnIPv6AddressChanged(nullptr);
+  device_->network()->OnIPv6AddressChanged(nullptr);
   EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
@@ -918,7 +918,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6AddressChanged(&address0);
+  device_->network()->OnIPv6AddressChanged(&address0);
   EXPECT_NE(device_->ip6config(), nullptr);
   EXPECT_EQ(kAddress0, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -927,7 +927,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _))
       .Times(0);
-  device_->OnIPv6AddressChanged(&address0);
+  device_->network()->OnIPv6AddressChanged(&address0);
   EXPECT_EQ(kAddress0, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
@@ -940,7 +940,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6AddressChanged(&address1);
+  device_->network()->OnIPv6AddressChanged(&address1);
   EXPECT_EQ(kAddress1, device_->ip6config()->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 
@@ -950,14 +950,14 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6AddressChanged(&address1);
+  device_->network()->OnIPv6AddressChanged(&address1);
   EXPECT_EQ(kAddress1, device_->ip6config()->properties().address);
 
   // Return the IPv6 address to nullptr.
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                             std::vector<RpcIdentifier>()));
-  device_->OnIPv6AddressChanged(nullptr);
+  device_->network()->OnIPv6AddressChanged(nullptr);
   EXPECT_EQ(device_->ip6config(), nullptr);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
 }
@@ -1015,7 +1015,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
-  device_->OnIPv6AddressChanged(&address3);
+  device_->network()->OnIPv6AddressChanged(&address3);
   EXPECT_NE(device_->ip6config(), nullptr);
   EXPECT_EQ(kAddress3, device_->ip6config()->properties().address);
   EXPECT_EQ(dns_server_addresses_str,
@@ -1104,7 +1104,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-  device_->OnIPv6AddressChanged(&address1);
+  device_->network()->OnIPv6AddressChanged(&address1);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());
@@ -1134,7 +1134,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  device_->OnIPv6AddressChanged(&address2);
+  device_->network()->OnIPv6AddressChanged(&address2);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());

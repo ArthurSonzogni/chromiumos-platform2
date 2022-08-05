@@ -47,8 +47,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network.h"
 #include "shill/refptr_types.h"
-#include "shill/routing_table.h"
-#include "shill/routing_table_entry.h"
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -101,7 +99,6 @@ Device::Device(Manager* manager,
                            manager->dispatcher())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
-      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       is_multi_homed_(false),
       traffic_counter_callback_id_(0),
@@ -344,67 +341,6 @@ void Device::ResetConnection() {
   SLOG(this, 2) << __func__;
   network_->Stop();
   SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
-}
-
-void Device::OnIPv6AddressChanged(const IPAddress* address) {
-  if (!address) {
-    if (ip6config()) {
-      set_ip6config(nullptr);
-      OnIPConfigsPropertyUpdated();
-    }
-    return;
-  }
-
-  CHECK_EQ(address->family(), IPAddress::kFamilyIPv6);
-  IPConfig::Properties properties;
-  if (!address->IntoString(&properties.address)) {
-    LOG(ERROR) << LoggingTag()
-               << ": Unable to convert IPv6 address into a string";
-    return;
-  }
-  properties.subnet_prefix = address->prefix();
-
-  RoutingTableEntry default_route;
-  if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
-                                                &default_route)) {
-    if (!default_route.gateway.IntoString(&properties.gateway)) {
-      LOG(ERROR) << LoggingTag()
-                 << ": Unable to convert IPv6 gateway into a string";
-      return;
-    }
-  } else {
-    // The kernel normally populates the default route before it performs
-    // a neighbor solicitation for the new address, so it shouldn't be
-    // missing at this point.
-    LOG(WARNING) << LoggingTag()
-                 << ": No default route for global IPv6 address "
-                 << properties.address;
-  }
-
-  if (!ip6config()) {
-    set_ip6config(std::make_unique<IPConfig>(control_interface(), link_name_));
-  } else if (properties.address == ip6config()->properties().address &&
-             properties.subnet_prefix ==
-                 ip6config()->properties().subnet_prefix &&
-             properties.gateway == ip6config()->properties().gateway) {
-    SLOG(this, 2) << __func__ << " primary address for " << link_name_
-                  << " is unchanged";
-    return;
-  }
-
-  properties.address_family = IPAddress::kFamilyIPv6;
-  properties.method = kTypeIPv6;
-  // It is possible for device to receive DNS server notification before IP
-  // address notification, so preserve the saved DNS server if it exist.
-  properties.dns_servers = ip6config()->properties().dns_servers;
-  if (network()->ipv6_static_properties() &&
-      !network()->ipv6_static_properties()->dns_servers.empty()) {
-    properties.dns_servers = network()->ipv6_static_properties()->dns_servers;
-  }
-  ip6config()->set_properties(properties);
-  OnIPConfigsPropertyUpdated();
-  network_->OnIPv6ConfigUpdated();
-  OnGetSLAACAddress();
 }
 
 void Device::OnIPv6DnsServerAddressesChanged() {

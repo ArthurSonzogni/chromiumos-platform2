@@ -44,7 +44,6 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class RoutingTable;
 class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
@@ -260,10 +259,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // there is nothing to be done in the general case.
   virtual void OnDarkResume(const ResultCallback& callback);
 
-  // Called by DeviceInfo when the kernel adds or removes a globally-scoped
-  // IPv6 address from this interface.
-  mockable void OnIPv6AddressChanged(const IPAddress* address);
-
   // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
@@ -323,6 +318,9 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
   void OnGetDHCPFailure() override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
+  void OnGetSLAACAddress() override;
   std::vector<uint32_t> GetBlackholedUids() override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
@@ -432,12 +430,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
   virtual void DropConnection();
-
-  // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
-  // by the kernel when the link is connected and is currently not monitored by
-  // shill. Derived class should implement this function to listen to this
-  // event. Base class does nothing.
-  virtual void OnGetSLAACAddress();
 
   // Called every time PortalDetector finishes a network validation attempt
   // starts. If network validation is used for this Service, PortalDetector
@@ -630,7 +622,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   ServiceRefPtr selected_service_;
 
   // Cache singleton pointers for performance and test purposes.
-  RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
   // Track the current same-net multi-home state.

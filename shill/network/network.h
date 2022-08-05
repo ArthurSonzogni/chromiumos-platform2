@@ -27,6 +27,7 @@ namespace shill {
 
 class DeviceInfo;
 class EventDispatcher;
+class RoutingTable;
 class Service;
 
 // An object of Network class represents a network interface in the kernel, and
@@ -62,6 +63,10 @@ class Network {
     virtual void OnGetDHCPLease() = 0;
     // Called when DHCPv4 fails to acquire a lease.
     virtual void OnGetDHCPFailure() = 0;
+    // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
+    // by the kernel when the link is connected and is currently not monitored
+    // by shill.
+    virtual void OnGetSLAACAddress() = 0;
 
     // TODO(b/232177767): Get the list of uids whose traffic should be blocked
     // on this connection. This is not a signal or callback. Put it here just to
@@ -160,6 +165,9 @@ class Network {
   }
   // Configures static IP address received from cellular bearer.
   void ConfigureStaticIPv6Address();
+  // Called by DeviceInfo when the kernel adds or removes a globally-scoped
+  // IPv6 address from this interface.
+  mockable void OnIPv6AddressChanged(const IPAddress* address);
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
 
@@ -294,6 +302,7 @@ class Network {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
+  RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
   base::WeakPtrFactory<Network> weak_factory_{this};

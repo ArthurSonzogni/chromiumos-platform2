@@ -41,6 +41,8 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
 
+  MOCK_METHOD(void, OnIPv6AddressChanged, (const IPAddress*), (override));
+
   MOCK_METHOD(bool,
               SetIPFlag,
               (IPAddress::Family, const std::string&, const std::string&),
@@ -65,6 +67,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (), (override));
   MOCK_METHOD(void, OnGetDHCPLease, (), (override));
   MOCK_METHOD(void, OnGetDHCPFailure, (), (override));
+  MOCK_METHOD(void, OnGetSLAACAddress, (), (override));
   MOCK_METHOD(std::vector<uint32_t>, GetBlackholedUids, (), (override));
 };
 

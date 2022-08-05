@@ -46,6 +46,7 @@
 #include "shill/net/mock_time.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
+#include "shill/network/mock_network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
@@ -1142,6 +1143,10 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   scoped_refptr<MockDevice> device(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
 
+  device->set_network_for_testing(std::make_unique<MockNetwork>(
+      kTestDeviceIndex, "null0", Technology::kEthernet));
+  auto* mock_network = static_cast<MockNetwork*>(device->network());
+
   // Device info entry does not exist.
   EXPECT_EQ(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex), nullptr);
 
@@ -1154,7 +1159,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
   auto message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
 
-  EXPECT_CALL(*device, OnIPv6AddressChanged(_)).Times(0);
+  EXPECT_CALL(*mock_network, OnIPv6AddressChanged(_)).Times(0);
 
   // We should ignore IPv4 addresses.
   SendMessageToDeviceInfo(*message);
@@ -1176,7 +1181,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Add a temporary address.
-  EXPECT_CALL(*device, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*mock_network, OnIPv6AddressChanged(_));
   SendMessageToDeviceInfo(*message);
   EXPECT_EQ(*device_info_.GetPrimaryIPv6Address(kTestDeviceIndex),
             ipv6_address2);
@@ -1189,7 +1194,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   // Adding a non-temporary address alerts the Device, but does not override
   // the primary address since the previous one was temporary.
-  EXPECT_CALL(*device, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*mock_network, OnIPv6AddressChanged(_));
   SendMessageToDeviceInfo(*message);
   EXPECT_EQ(*device_info_.GetPrimaryIPv6Address(kTestDeviceIndex),
             ipv6_address2);
@@ -1203,7 +1208,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   // Adding a temporary deprecated address alerts the Device, but does not
   // override the primary address since the previous one was non-deprecated.
-  EXPECT_CALL(*device, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*mock_network, OnIPv6AddressChanged(_));
   SendMessageToDeviceInfo(*message);
   EXPECT_EQ(*device_info_.GetPrimaryIPv6Address(kTestDeviceIndex),
             ipv6_address2);
@@ -1216,7 +1221,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   // Another temporary (non-deprecated) address alerts the Device, and will
   // override the previous primary address.
-  EXPECT_CALL(*device, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*mock_network, OnIPv6AddressChanged(_));
   SendMessageToDeviceInfo(*message);
   EXPECT_EQ(*device_info_.GetPrimaryIPv6Address(kTestDeviceIndex),
             ipv6_address7);
