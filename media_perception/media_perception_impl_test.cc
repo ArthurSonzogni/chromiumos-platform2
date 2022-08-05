@@ -51,7 +51,7 @@ class MediaPerceptionImplTest : public testing::Test {
 
 TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
   bool get_devices_callback_done = false;
-  media_perception_->GetVideoDevices(base::Bind(
+  media_perception_->GetVideoDevices(base::BindOnce(
       [](bool* get_devices_callback_done,
          std::vector<chromeos::media_perception::mojom::VideoDevicePtr>
              devices) {
@@ -72,7 +72,7 @@ TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
   fake_vidcap_client_->SetDevicesForGetDevices(serialized_devices);
 
   get_devices_callback_done = false;
-  media_perception_->GetVideoDevices(base::Bind(
+  media_perception_->GetVideoDevices(base::BindOnce(
       [](bool* get_devices_callback_done,
          std::vector<chromeos::media_perception::mojom::VideoDevicePtr>
              devices) {
@@ -88,7 +88,7 @@ TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
 
 TEST_F(MediaPerceptionImplTest, TestGetAudioDevices) {
   bool get_devices_callback_done = false;
-  media_perception_->GetAudioDevices(base::Bind(
+  media_perception_->GetAudioDevices(base::BindOnce(
       [](bool* get_devices_callback_done,
          std::vector<chromeos::media_perception::mojom::AudioDevicePtr>
              devices) {
@@ -109,7 +109,7 @@ TEST_F(MediaPerceptionImplTest, TestGetAudioDevices) {
   fake_cras_client_->SetDevicesForGetInputDevices(serialized_devices);
 
   get_devices_callback_done = false;
-  media_perception_->GetAudioDevices(base::Bind(
+  media_perception_->GetAudioDevices(base::BindOnce(
       [](bool* get_devices_callback_done,
          std::vector<chromeos::media_perception::mojom::AudioDevicePtr>
              devices) {
@@ -128,7 +128,7 @@ TEST_F(MediaPerceptionImplTest, TestSetupConfiguration) {
 
   media_perception_->SetupConfiguration(
       "test_configuration",
-      base::Bind(
+      base::BindOnce(
           [](bool* setup_configuration_callback_done,
              chromeos::media_perception::mojom::SuccessStatusPtr status,
              chromeos::media_perception::mojom::PerceptionInterfacesPtr
@@ -148,7 +148,7 @@ TEST_F(MediaPerceptionImplTest, TestSetTemplateArguments) {
 
   media_perception_->SetTemplateArguments(
       "test_configuration", arguments,
-      base::Bind(
+      base::BindOnce(
           [](bool* set_template_arguments_callback_done,
              chromeos::media_perception::mojom::SuccessStatusPtr status) {
             EXPECT_EQ(status->success, true);
@@ -175,7 +175,7 @@ TEST_F(MediaPerceptionImplTest, TestGetTemplateDevices) {
   bool get_template_devices_callback_done = false;
   media_perception_->GetTemplateDevices(
       "test_configuration",
-      base::Bind(
+      base::BindOnce(
           [](bool* get_template_devices_callback_done,
              std::vector<chromeos::media_perception::mojom::DeviceTemplatePtr>
                  device_templates) {
@@ -196,7 +196,7 @@ TEST_F(MediaPerceptionImplTest, TestSetVideoDeviceForTemplateName) {
       chromeos::media_perception::mojom::VideoDevice::New();
   media_perception_->SetVideoDeviceForTemplateName(
       "test_configuration", "test_template", std::move(video_device),
-      base::Bind(
+      base::BindOnce(
           [](bool* callback_done,
              chromeos::media_perception::mojom::SuccessStatusPtr status) {
             EXPECT_EQ(status->success, true);
@@ -215,7 +215,7 @@ TEST_F(MediaPerceptionImplTest, TestSetAudioDeviceForTemplateName) {
       chromeos::media_perception::mojom::AudioDevice::New();
   media_perception_->SetAudioDeviceForTemplateName(
       "test_configuration", "test_template", std::move(audio_device),
-      base::Bind(
+      base::BindOnce(
           [](bool* callback_done,
              chromeos::media_perception::mojom::SuccessStatusPtr status) {
             EXPECT_EQ(status->success, true);
@@ -236,7 +236,7 @@ TEST_F(MediaPerceptionImplTest, TestSetVirtualVideoDeviceForTemplateName) {
       chromeos::media_perception::mojom::VideoDevice::New();
   media_perception_->SetVirtualVideoDeviceForTemplateName(
       "test_configuration", "test_template", std::move(video_device),
-      base::Bind(
+      base::BindOnce(
           [](bool* callback_done,
              chromeos::media_perception::mojom::SuccessStatusPtr status) {
             EXPECT_EQ(status->success, true);
@@ -253,7 +253,7 @@ TEST_F(MediaPerceptionImplTest, TestGetPipelineState) {
 
   media_perception_->GetPipelineState(
       "test_configuration",
-      base::Bind(
+      base::BindOnce(
           [](bool* get_pipeline_callback_done,
              chromeos::media_perception::mojom::PipelineStatePtr
                  pipeline_state) {
@@ -276,7 +276,7 @@ TEST_F(MediaPerceptionImplTest, TestSetPipelineState) {
       chromeos::media_perception::mojom::PipelineStatus::RUNNING;
   media_perception_->SetPipelineState(
       "test_configuration", std::move(desired_pipeline_state),
-      base::Bind(
+      base::BindOnce(
           [](bool* set_pipeline_callback_done,
              chromeos::media_perception::mojom::PipelineStatePtr
                  pipeline_state) {
@@ -293,7 +293,7 @@ TEST_F(MediaPerceptionImplTest, TestSetPipelineState) {
 TEST_F(MediaPerceptionImplTest, TestGetGlobalPipelineState) {
   bool get_global_pipeline_callback_done = false;
 
-  media_perception_->GetGlobalPipelineState(base::Bind(
+  media_perception_->GetGlobalPipelineState(base::BindOnce(
       [](bool* get_global_pipeline_callback_done,
          chromeos::media_perception::mojom::GlobalPipelineStatePtr state) {
         EXPECT_EQ(*state->states[0]->configuration_name, "fake_configuration");
