@@ -69,20 +69,17 @@ impl Default for UswsuspKeyBlob {
 pub struct UswsuspUserKey {
     meta_size: i64,
     key_len: u32,
-    key: [u8; 16],
+    key: [u8; 32],
     pad: u32,
 }
 
 impl UswsuspUserKey {
     pub fn new_from_u8_slice(key: &[u8]) -> Self {
-        UswsuspUserKey {
-            meta_size: 0,
-            key_len: 16,
-            key: key
-                .try_into()
-                .expect("UswsuspUserKey with incorrect length"),
-            pad: 0,
-        }
+        let key_len = key.len();
+        let mut user_key = UswsuspUserKey::default();
+        user_key.key[..key_len].copy_from_slice(key);
+        user_key.key_len = key_len.try_into().expect("Silly key size");
+        user_key
     }
 }
 
