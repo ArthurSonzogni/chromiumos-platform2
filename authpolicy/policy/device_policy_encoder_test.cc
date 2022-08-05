@@ -449,11 +449,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kDeviceCrostiniArcAdbSideloadingAllowedOutOfRangeInt);
   EXPECT_FALSE(policy.has_device_crostini_arc_adb_sideloading_allowed());
 
-  // TODO(crbug.com/1092593): The following policy was recently removed from
-  // Chromium. So, it will no longer need to be marked as handled after the next
-  // policy protofiles uprev.
-  MarkHandled(key::kDeviceSamlLoginAuthenticationType);
-
   EncodeString(&policy, key::kSystemProxySettings,
                R"!!!(
                {
