@@ -66,9 +66,16 @@ typedef struct camera_buffer_handle {
 
   ~camera_buffer_handle() {
     for (size_t i = 0; i < kMaxPlanes; ++i) {
-      if (fds[i] != -1) {
-        close(fds[i]);
+      if (fds[i] == -1) {
+        continue;
       }
+      // See the comments in base/files/scoped_file.cc in libchrome for why we
+      // need to crash here when close fails.
+      int ret = IGNORE_EINTR(close(fds[i]));
+      if (ret != 0 && errno != EBADF) {
+        ret = 0;
+      }
+      PCHECK(0 == ret);
     }
   }
 

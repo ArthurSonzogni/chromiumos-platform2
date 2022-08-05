@@ -895,8 +895,10 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
       auto num_planes = CameraBufferManager::GetNumPlanes(buffer_handle);
       mojo_buffer_handle->sizes = std::vector<uint32_t>();
       for (size_t plane = 0; plane < num_planes; plane++) {
+        auto dup_fd = DupWithCloExec(buffer_handle->data[plane]);
+        CHECK(dup_fd.is_valid());
         mojo_buffer_handle->fds.push_back(
-            mojo::WrapPlatformFile(base::ScopedFD(buffer_handle->data[plane])));
+            mojo::WrapPlatformFile(std::move(dup_fd)));
         mojo_buffer_handle->strides.push_back(
             CameraBufferManager::GetPlaneStride(buffer_handle, plane));
         mojo_buffer_handle->offsets.push_back(

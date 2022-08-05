@@ -80,7 +80,7 @@ inline base::ScopedFD DupWithCloExec(int fd) {
   if (fd < 0) {
     return base::ScopedFD();
   }
-  return base::ScopedFD(HANDLE_EINTR(fcntl(fd, F_DUPFD_CLOEXEC)));
+  return base::ScopedFD(HANDLE_EINTR(fcntl(fd, F_DUPFD_CLOEXEC, 0)));
 }
 
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_
