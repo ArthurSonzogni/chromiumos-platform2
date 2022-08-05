@@ -26,8 +26,7 @@ enum class RgbKeyboardCapabilities {
   kIndividualKey = 1,
   kFourZoneFortyLed = 2,
   kFourZoneTwelveLed = 3,
-  kFourZoneFifteenLed = 4,
-  kFourZoneFourLed = kFourZoneFifteenLed,
+  kFourZoneFourLed = 4,
   kMaxValue = kFourZoneFourLed,
 };
 

@@ -124,15 +124,14 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeBarelyInBoundsCapabilities) {
 TEST_F(RgbkbdDaemonTest, SetTestingModeWithinBoundsCapabilities) {
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
-      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFifteenLed));
+      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
 
   dbus::MethodCall method_call(rgbkbd::kRgbkbdServiceName,
                                rgbkbd::kGetRgbKeyboardCapabilities);
   method_call.SetSerial(kDBusSerial);
   auto cb = std::make_unique<brillo::dbus_utils::DBusMethodResponse<uint32_t>>(
-      &method_call,
-      base::BindOnce(&OnGetRgbKeyboardCapabilities,
-                     RgbKeyboardCapabilities::kFourZoneFifteenLed));
+      &method_call, base::BindOnce(&OnGetRgbKeyboardCapabilities,
+                                   RgbKeyboardCapabilities::kFourZoneFourLed));
 
   adaptor_->GetRgbKeyboardCapabilities(std::move(cb));
 }
@@ -140,14 +139,13 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeWithinBoundsCapabilities) {
 TEST_F(RgbkbdDaemonTest, SetTestingModeOffDoesntChangeCapability) {
   adaptor_->SetTestingMode(
       /*enable_testing=*/true,
-      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFifteenLed));
+      static_cast<uint32_t>(RgbKeyboardCapabilities::kFourZoneFourLed));
   dbus::MethodCall method_call(rgbkbd::kRgbkbdServiceName,
                                rgbkbd::kGetRgbKeyboardCapabilities);
   method_call.SetSerial(kDBusSerial);
   auto cb = std::make_unique<brillo::dbus_utils::DBusMethodResponse<uint32_t>>(
-      &method_call,
-      base::BindOnce(&OnGetRgbKeyboardCapabilities,
-                     RgbKeyboardCapabilities::kFourZoneFifteenLed));
+      &method_call, base::BindOnce(&OnGetRgbKeyboardCapabilities,
+                                   RgbKeyboardCapabilities::kFourZoneFourLed));
 
   adaptor_->GetRgbKeyboardCapabilities(std::move(cb));
 
@@ -160,7 +158,7 @@ TEST_F(RgbkbdDaemonTest, SetTestingModeOffDoesntChangeCapability) {
       std::make_unique<brillo::dbus_utils::DBusMethodResponse<uint32_t>>(
           &method_call,
           base::BindOnce(&OnGetRgbKeyboardCapabilities,
-                         RgbKeyboardCapabilities::kFourZoneFifteenLed));
+                         RgbKeyboardCapabilities::kFourZoneFourLed));
   adaptor_->GetRgbKeyboardCapabilities(std::move(cb_2));
 }
 
