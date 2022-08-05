@@ -12629,7 +12629,7 @@ mno {
     mobile_apn {
       apn : "fast.t-mobile.com"
       localized_name {
-        name : "LTE"
+        name : "fast.t-mobile.com"
       }
       ip_type: IPV4V6
     }
