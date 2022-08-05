@@ -31,6 +31,7 @@ geteuid: 1
 getgid: 1
 getpid: 1
 getppid: 1
+getrandom: 1
 getresgid: 1
 getresuid: 1
 getsockname: 1
