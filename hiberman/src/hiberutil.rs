@@ -107,6 +107,9 @@ pub enum HibernateError {
     /// Device mapper error
     #[error("Device mapper error: {0}")]
     DeviceMapperError(String),
+    /// Merge timeout error
+    #[error("Merge timeout error")]
+    MergeTimeoutError(),
 }
 
 /// Options taken from the command line affecting hibernate.

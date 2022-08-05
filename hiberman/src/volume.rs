@@ -19,6 +19,7 @@ use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
 use crate::files::HIBERNATE_DIR;
 use crate::hiberutil::{
     checked_command, checked_command_output, get_device_mounted_at_dir, get_page_size,
@@ -60,6 +61,10 @@ const SNAPSHOT_SIZE: u64 = 512 * 1024 * 1024;
 
 /// Define the size of the unencrypted snapshot, which is a little bit bigger.
 const UNENCRYPTED_SNAPSHOT_SIZE: u64 = 1024 * 1024 * 1024;
+
+/// Define the number of milliseconds to wait for all dm-snapshot merges to
+/// complete.
+const MERGE_TIMEOUT_MS: i64 = 1000 * 60 * 20;
 
 /// The pending stateful merge is simply a token object that when dropped will
 /// ask the volume manager to merge the stateful snapshots.
@@ -355,6 +360,7 @@ impl VolumeManager {
         self.make_thinpool_rw()
             .context("Failed to make thinpool RW")?;
         let mut snapshots = vec![];
+        let mut bad_snapshots = vec![];
         let mut result = Ok(());
         let snapshot_files = read_dir(snapshot_dir())?;
         for snap_entry in snapshot_files {
@@ -368,16 +374,12 @@ impl VolumeManager {
                     }
                 },
                 Err(e) => {
+                    // Upon failure to kick off the merge for a snapshot, record
+                    // it, but still try to complete the merges for the other
+                    // snapshots.
                     error!("Failed to setup snapshot merge for {}: {:?}", name, e);
                     result = Err(e);
-                    // Upon failure to start the snapshot merge, try to delete
-                    // the snapshot to avoid infinite loops. Since we're already
-                    // in a failure path, all we can do upon failure to delete
-                    // the snapshot is just log and report the original failure.
-                    if let Err(e) = delete_snapshot(&name) {
-                        error!("Failed to delete snapshot {}: {:?}", name, e);
-                    }
-
+                    bad_snapshots.push(name.to_string());
                     continue;
                 }
             };
@@ -385,7 +387,32 @@ impl VolumeManager {
             snapshots.push(snapshot);
         }
 
-        wait_for_snapshots_merge(snapshots).and(result)
+        // Wait for the merges that were successfully started to complete.
+        wait_for_snapshots_merge(&mut snapshots, MERGE_TIMEOUT_MS)?;
+
+        // Clear the hibernate cookie now that all snapshots have progressed as
+        // far as they can towards completion.
+        set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
+            .context("Failed to clear the hibernate cookie")?;
+
+        // Now delete the all snapshots
+        let mut delete_result = Ok(());
+        for snapshot in snapshots {
+            if let Err(e) = delete_snapshot(&snapshot.name) {
+                error!("Failed to delete snapshot: {}", snapshot.name);
+                delete_result = Err(e);
+            }
+        }
+
+        for name in bad_snapshots {
+            if let Err(e) = delete_snapshot(&name) {
+                error!("Failed to delete bad snapshot: {}", name);
+                delete_result = Err(e);
+            }
+        }
+
+        // Return the merge setup error first, or the delete error second.
+        result.and(delete_result)
     }
 
     /// Set the thinpool mode for the current volume group.
@@ -527,23 +554,41 @@ impl Drop for SuspendedDmDevice {
 }
 
 /// Function that waits for a vector of references to DmSnapshotMerge objects to
-/// finish. Returns an error if any failed, and waits fully for any that did not
-/// fail.
-fn wait_for_snapshots_merge(mut snapshots: Vec<DmSnapshotMerge>) -> Result<()> {
+/// finish. Returns an error if any failed, and waits with a timeout for any
+/// that did not fail.
+fn wait_for_snapshots_merge(snapshots: &mut Vec<DmSnapshotMerge>, mut timeout: i64) -> Result<()> {
     info!("Waiting for {} snapshots to merge", snapshots.len());
     let mut result = Ok(());
-    while !snapshots.is_empty() {
-        for snapshot in &mut snapshots {
+    loop {
+        let mut all_done = true;
+        for snapshot in &mut *snapshots {
+            if snapshot.complete || snapshot.error {
+                continue;
+            }
+
+            all_done = false;
             if let Err(e) = snapshot.check_merge_progress() {
                 error!("Failed to check snapshot {}: {:?}", snapshot.name, e);
                 result = Err(e);
             }
         }
 
-        // Only keep elements in the list that are still active.
-        snapshots.retain(|snapshot| !snapshot.complete && !snapshot.error);
+        if all_done {
+            break;
+        }
 
+        if timeout <= 0 {
+            return result.and(
+                Err(HibernateError::MergeTimeoutError())
+                    .context("Timed out waiting for snapshot merges"),
+            );
+        }
+
+        // Wait long enough that this thread isn't busy spinning and real I/O
+        // progress can be made, but not so long that our I/O rate measurements
+        // would be significantly skewed by the wait period remainder.
         thread::sleep(Duration::from_millis(50));
+        timeout -= 50;
     }
 
     result
@@ -553,11 +598,11 @@ fn wait_for_snapshots_merge(mut snapshots: Vec<DmSnapshotMerge>) -> Result<()> {
 struct DmSnapshotMerge {
     pub name: String,
     pub complete: bool,
+    pub error: bool,
     snapshot_name: String,
     origin_majmin: String,
     start: Instant,
     starting_sectors: i64,
-    error: bool,
 }
 
 impl DmSnapshotMerge {
@@ -688,8 +733,6 @@ impl DmSnapshotMerge {
         rename_dm_target(&self.snapshot_name, &merged_name)
             .context("Failed to rename dm target")?;
 
-        // With the snapshot totally merged, delete the file backing it.
-        delete_snapshot(&self.name)?;
         // Victory log!
         log_io_duration(
             &format!("Merged {} snapshot", &self.snapshot_name),
