@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
@@ -259,8 +260,7 @@ void Executor::GetScanDump(const std::string& interface_name,
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void Executor::RunMemtester(uint32_t test_mem_kib,
-                            RunMemtesterCallback callback) {
+void Executor::RunMemtester(RunMemtesterCallback callback) {
   mojom::ExecutedProcessResult result;
 
   // TODO(b/193211343): Design a mechanism for multiple resource intensive task.
@@ -270,7 +270,19 @@ void Executor::RunMemtester(uint32_t test_mem_kib,
   auto itr = processes_.find(kMemtesterBinary);
   if (itr != processes_.end()) {
     result.return_code = MemtesterErrorCodes::kAllocatingLockingInvokingError;
-    result.err = kMemoryRoutineMemtesterAlreadyRunningMessage;
+    result.err = "Memtester process already running.";
+    std::move(callback).Run(result.Clone());
+    return;
+  }
+
+  // Get AvailablePhysicalMemory in MiB.
+  int64_t available_mem = base::SysInfo::AmountOfAvailablePhysicalMemory();
+  available_mem /= (1024 * 1024);
+
+  available_mem -= kMemoryRoutineReservedSizeMiB;
+  if (available_mem <= 0) {
+    result.err = "Not enough available memory to run memtester.";
+    result.return_code = MemtesterErrorCodes::kAllocatingLockingInvokingError;
     std::move(callback).Run(result.Clone());
     return;
   }
@@ -284,7 +296,7 @@ void Executor::RunMemtester(uint32_t test_mem_kib,
   std::vector<std::string> memtester_args;
   // Run with all free memory, except that which we left to the operating system
   // above.
-  memtester_args.push_back(base::StringPrintf("%uK", test_mem_kib));
+  memtester_args.push_back(base::StringPrintf("%" PRId64, available_mem));
   // Run for one loop.
   memtester_args.push_back("1");
 
