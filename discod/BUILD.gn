@@ -30,6 +30,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmetrics",
   ]
   libs = [
     "rootdev",
@@ -49,6 +50,7 @@ static_library("libdiscod") {
     "controls/file_based_binary_control.cc",
     "controls/real_ufs_write_booster_control_logic.cc",
     "daemon.cc",
+    "metrics/real_metrics.cc",
     "server.cc",
     "utils/ufs.cc",
   ]

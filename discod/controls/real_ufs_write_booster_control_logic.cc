@@ -12,6 +12,7 @@
 
 #include "discod/controls/binary_control.h"
 #include "discod/controls/ufs_write_booster_control_logic.h"
+#include "discod/metrics/metrics.h"
 #include "discod/utils/libhwsec_status_import.h"
 
 namespace discod {
@@ -33,11 +34,17 @@ constexpr uint64_t kWriteBwThresholdDisableExplicitHysteresis = 60;
 
 constexpr uint64_t kUfsBlockSize = 4096;
 
+constexpr uint64_t kCyclesHistogramMinValue = 0;
+constexpr uint64_t kCyclesHistogramMaxValue = 10000;
+constexpr uint64_t kCyclesHistogramNumBuckets = 100;
+
 }  // namespace
 
 RealUfsWriteBoosterControlLogic::RealUfsWriteBoosterControlLogic(
-    std::unique_ptr<BinaryControl> control)
-    : UfsWriteBoosterControlLogic(), control_(std::move(control)) {}
+    std::unique_ptr<BinaryControl> control, Metrics* metrics)
+    : UfsWriteBoosterControlLogic(),
+      control_(std::move(control)),
+      metrics_(metrics) {}
 
 Status RealUfsWriteBoosterControlLogic::Reset() {
   RETURN_IF_ERROR(control_->Toggle(BinaryControl::State::kOff));
@@ -51,10 +58,19 @@ Status RealUfsWriteBoosterControlLogic::Reset() {
 }
 
 void RealUfsWriteBoosterControlLogic::UpdateStatistics(uint64_t bw) {
+  if (last_decision_ == BinaryControl::State::kOn) {
+    ++wb_on_cycles_;
+  }
+
   if (bw >= kWriteBwThreshold) {
     ++cycles_over_write_threshold_;
+    ++wb_on_with_high_traffic_cycles_;
     cycles_under_write_threshold_ = 0;
   } else {
+    if (cycles_over_write_threshold_ != 0 &&
+        last_decision_ == BinaryControl::State::kOff && !explicit_trigger_) {
+      SendBurstResultUMA(RealUfsWriteBoosterControlLogic::BurstResult::kRemain);
+    }
     cycles_over_write_threshold_ = 0;
     ++cycles_under_write_threshold_;
   }
@@ -91,6 +107,35 @@ Status RealUfsWriteBoosterControlLogic::UpdateState(
   return OkStatus();
 }
 
+void RealUfsWriteBoosterControlLogic::SendWBActivityUMA() {
+  uint64_t wb_utilization =
+      wb_on_with_high_traffic_cycles_ * 100 / wb_on_cycles_;
+
+  if (explicit_trigger_) {
+    metrics_->SendPercentageToUMA(kExplicitWbBwUtilizationHistogram,
+                                  wb_utilization);
+    metrics_->SendToUMA(kExplicitWbOnCyclesHistogram, wb_on_cycles_,
+                        kCyclesHistogramMinValue, kCyclesHistogramMaxValue,
+                        kCyclesHistogramNumBuckets);
+  } else {
+    metrics_->SendPercentageToUMA(kAutoWbBwUtilizationHistogram,
+                                  wb_utilization);
+    metrics_->SendToUMA(kAutoWbOnCyclesHistogram, wb_on_cycles_,
+                        kCyclesHistogramMinValue, kCyclesHistogramMaxValue,
+                        kCyclesHistogramNumBuckets);
+  }
+
+  wb_on_cycles_ = 0;
+  wb_on_with_high_traffic_cycles_ = 0;
+}
+
+void RealUfsWriteBoosterControlLogic::SendBurstResultUMA(
+    RealUfsWriteBoosterControlLogic::BurstResult value) {
+  metrics_->SendEnumToUMA(
+      kBurstResultHistogram, value,
+      RealUfsWriteBoosterControlLogic::BurstResult::kMaxValue);
+}
+
 Status RealUfsWriteBoosterControlLogic::Update(
     const brillo::DiskIoStat::Delta& delta) {
   uint64_t written_bytes = delta->GetWrittenSectors() * kUfsBlockSize;
@@ -117,6 +162,11 @@ Status RealUfsWriteBoosterControlLogic::Update(
 
   if (target != last_decision_) {
     VLOG(1) << "  toggle target=" << static_cast<int32_t>(target);
+    if (target == BinaryControl::State::kOff) {
+      SendWBActivityUMA();
+    } else {
+      SendBurstResultUMA(RealUfsWriteBoosterControlLogic::BurstResult::kEnable);
+    }
     RETURN_IF_ERROR(UpdateState(target));
   }
 

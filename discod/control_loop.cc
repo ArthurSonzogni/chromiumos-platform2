@@ -14,6 +14,7 @@
 #include <brillo/blkdev_utils/disk_iostat.h>
 
 #include "discod/controls/ufs_write_booster_control_logic.h"
+#include "discod/metrics/metrics.h"
 
 namespace discod {
 
@@ -29,10 +30,12 @@ void LogControlLoopStatus(Status status) {
 
 ControlLoop::ControlLoop(
     std::unique_ptr<UfsWriteBoosterControlLogic> ufs_write_boost_control_logic,
-    std::unique_ptr<brillo::DiskIoStat> disk_io_stat)
+    std::unique_ptr<brillo::DiskIoStat> disk_io_stat,
+    std::unique_ptr<Metrics> metrics)
     : base::Thread("discod_control_loop"),
       ufs_write_boost_control_logic_(std::move(ufs_write_boost_control_logic)),
-      disk_io_stat_(std::move(disk_io_stat)) {}
+      disk_io_stat_(std::move(disk_io_stat)),
+      metrics_(std::move(metrics)) {}
 
 void ControlLoop::StartControlLogic() {
   VLOG(3) << __func__;

@@ -11,6 +11,7 @@
 #include <brillo/blkdev_utils/disk_iostat.h>
 
 #include "discod/controls/ufs_write_booster_control_logic.h"
+#include "discod/metrics/metrics.h"
 
 namespace discod {
 
@@ -18,7 +19,8 @@ class ControlLoop : public base::Thread {
  public:
   ControlLoop(std::unique_ptr<UfsWriteBoosterControlLogic>
                   ufs_write_boost_control_logic,
-              std::unique_ptr<brillo::DiskIoStat> disk_io_stat);
+              std::unique_ptr<brillo::DiskIoStat> disk_io_stat,
+              std::unique_ptr<Metrics> metrics);
   ControlLoop(const ControlLoop&) = delete;
   ControlLoop& operator=(const ControlLoop&) = delete;
   ~ControlLoop() override = default;
@@ -29,6 +31,7 @@ class ControlLoop : public base::Thread {
  private:
   std::unique_ptr<UfsWriteBoosterControlLogic> ufs_write_boost_control_logic_;
   std::unique_ptr<brillo::DiskIoStat> disk_io_stat_;
+  std::unique_ptr<Metrics> metrics_;
   brillo::DiskIoStat::Snapshot latest_snapshot_;
 
   void HandleControlLogic();

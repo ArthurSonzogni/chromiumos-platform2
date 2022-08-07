@@ -8,7 +8,5 @@ explicit signal an application can send.
 
 ## TODOs
 * Add SELinux policies
-* Add UMA reporting
 * Add/Tune state transition rules
-* Add Check for WB support (depends on adding functionality upstream)
 * Include build into image

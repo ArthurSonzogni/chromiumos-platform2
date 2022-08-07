@@ -12,6 +12,7 @@
 #include "discod/controls/file_based_binary_control.h"
 #include "discod/controls/real_ufs_write_booster_control_logic.h"
 #include "discod/daemon.h"
+#include "discod/metrics/real_metrics.h"
 #include "discod/utils/ufs.h"
 
 namespace discod {
@@ -62,10 +63,13 @@ std::unique_ptr<ControlLoop> MakeControlLoop(const base::FilePath& root_device,
 
   LOG(INFO) << "UFS device found:" << root_device;
 
+  std::unique_ptr<RealMetrics> metrics = RealMetrics::Create();
+  auto* raw_metrics = metrics.get();
+
   return std::make_unique<ControlLoop>(
       std::make_unique<RealUfsWriteBoosterControlLogic>(
-          std::make_unique<FileBasedBinaryControl>(ufs_wb_node)),
-      std::make_unique<brillo::DiskIoStat>(device_node));
+          std::make_unique<FileBasedBinaryControl>(ufs_wb_node), raw_metrics),
+      std::make_unique<brillo::DiskIoStat>(device_node), std::move(metrics));
 }
 
 }  // namespace discod
