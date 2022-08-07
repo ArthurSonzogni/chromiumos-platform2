@@ -106,3 +106,4 @@ prlimit64: arg2 == 0 && arg3 != 0
 
 sched_getattr: 1
 sched_setattr: 1
+sched_getaffinity: 1
