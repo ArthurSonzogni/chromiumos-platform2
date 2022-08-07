@@ -42,140 +42,140 @@ class RealUfsWriteBoosterControlLogicTest : public ::testing::Test {
 TEST_F(RealUfsWriteBoosterControlLogicTest, ErrorPropagation) {
   // Default false after first Update.
   ASSERT_THAT(control_logic_.Reset(), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   for (int i = 0; i < 2; ++i) {
-    EXPECT_FALSE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
     ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
   }
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Inject error
   binary_control_->InjectError("XXX");
   // Expect error instead of state transition.
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), NotOk());
 
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Next update succeeds.
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   // Trigger turn off.
   for (int i = 0; i < 5; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Inject error
   binary_control_->InjectError("XXX");
 
   // Expect and error on enable
   EXPECT_THAT(control_logic_.Enable(), NotOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Next one succeeds
   EXPECT_THAT(control_logic_.Enable(), IsOk());
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 }
 
 TEST_F(RealUfsWriteBoosterControlLogicTest, NoExplicitTrigger) {
   ASSERT_THAT(control_logic_.Reset(), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Off when under threshold
   for (int i = 0; i < 10; ++i) {
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
-    EXPECT_FALSE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
   }
 
   // Off->On counter reset when under threshold
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   for (int i = 0; i < 2; ++i) {
-    EXPECT_FALSE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
     ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
   }
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   // Off->On when overthreshold for hysteresis period
   for (int i = 0; i < 3; ++i) {
-    EXPECT_FALSE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
     ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   // On->Off counter reset when over threshold
   for (int i = 0; i < 3; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
 
   for (int i = 0; i < 3; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
 
   // On->Off when under threshold for hysteresis
   for (int i = 0; i < 5; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 }
 
 TEST_F(RealUfsWriteBoosterControlLogicTest, ExplicitTrigger) {
   ASSERT_THAT(control_logic_.Reset(), IsOk());
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 
   EXPECT_THAT(control_logic_.Enable(), IsOk());
 
   // On->Off counter reset when over threshold
   for (int i = 0; i < 59; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
 
   for (int i = 0; i < 3; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   ASSERT_THAT(control_logic_.Update(over_threshold_delta_), IsOk());
 
   // On->Off when under threshold for hysteresis, and another enable resets
   // counter.
   for (int i = 0; i < 59; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_TRUE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
 
   EXPECT_THAT(control_logic_.Enable(), IsOk());
 
   for (int i = 0; i < 60; ++i) {
-    EXPECT_TRUE(binary_control_->Current().value());
+    EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOn);
     ASSERT_THAT(control_logic_.Update(under_threshold_delta_), IsOk());
   }
-  EXPECT_FALSE(binary_control_->Current().value());
+  EXPECT_THAT(binary_control_->Current().value(), BinaryControl::State::kOff);
 }
 
 }  // namespace discod

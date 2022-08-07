@@ -20,7 +20,7 @@ class FakeBinaryControl : public BinaryControl {
 
   void InjectError(const std::string& error) { error_ = error; }
 
-  Status Toggle(bool value) override {
+  Status Toggle(BinaryControl::State value) override {
     if (error_) {
       std::string error = error_.value();
       error_ = std::nullopt;
@@ -30,7 +30,7 @@ class FakeBinaryControl : public BinaryControl {
     return OkStatus();
   }
 
-  StatusOr<bool> Current() const override {
+  StatusOr<BinaryControl::State> Current() const override {
     if (error_) {
       std::string error = error_.value();
       error_ = std::nullopt;
@@ -40,7 +40,7 @@ class FakeBinaryControl : public BinaryControl {
   }
 
  private:
-  bool value_ = true;
+  BinaryControl::State value_ = BinaryControl::State::kOn;
   mutable std::optional<std::string> error_;
 };
 

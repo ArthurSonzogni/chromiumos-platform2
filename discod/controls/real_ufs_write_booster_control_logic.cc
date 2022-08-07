@@ -40,12 +40,12 @@ RealUfsWriteBoosterControlLogic::RealUfsWriteBoosterControlLogic(
     : UfsWriteBoosterControlLogic(), control_(std::move(control)) {}
 
 Status RealUfsWriteBoosterControlLogic::Reset() {
-  RETURN_IF_ERROR(control_->Toggle(false));
+  RETURN_IF_ERROR(control_->Toggle(BinaryControl::State::kOff));
 
   cycles_over_write_threshold_ = 0;
   cycles_under_write_threshold_ = 0;
   explicit_trigger_ = false;
-  last_decision_ = false;
+  last_decision_ = BinaryControl::State::kOff;
 
   return OkStatus();
 }
@@ -74,30 +74,32 @@ Status RealUfsWriteBoosterControlLogic::Update(
   VLOG(2) << "  cycles_under_write_threshold_=" << cycles_under_write_threshold_
           << "  cycles_over_write_threshold_=" << cycles_over_write_threshold_
           << "  explicit_trigger_=" << explicit_trigger_
-          << "  last_decision_=" << last_decision_;
+          << "  last_decision_=" << static_cast<int32_t>(last_decision_);
 
-  bool target = last_decision_;
+  BinaryControl::State target = last_decision_;
 
   if (cycles_over_write_threshold_ >= kWriteBwThresholdEnableHysteresis) {
-    target = true;
+    target = BinaryControl::State::kOn;
   }
 
   if (!explicit_trigger_ &&
       cycles_under_write_threshold_ >= kWriteBwThresholdDisableHysteresis) {
-    target = false;
+    target = BinaryControl::State::kOff;
   }
 
   if (explicit_trigger_ && cycles_under_write_threshold_ >=
                                kWriteBwThresholdDisableExplicitHysteresis) {
-    target = false;
+    target = BinaryControl::State::kOff;
   }
 
-  VLOG(2) << "  decision target=" << target;
+  VLOG(2) << "  decision target=" << static_cast<int32_t>(target);
 
   if (target != last_decision_) {
-    VLOG(1) << "  toggle target=" << target;
+    VLOG(1) << "  toggle target=" << static_cast<int32_t>(target);
     RETURN_IF_ERROR(control_->Toggle(target));
-    explicit_trigger_ &= target;
+    if (target == BinaryControl::State::kOff) {
+      explicit_trigger_ = false;
+    }
     last_decision_ = target;
   }
 
@@ -110,8 +112,8 @@ Status RealUfsWriteBoosterControlLogic::Enable() {
   explicit_trigger_ = true;
   cycles_over_write_threshold_ = 0;
   cycles_under_write_threshold_ = 0;
-  RETURN_IF_ERROR(control_->Toggle(true));
-  last_decision_ = true;
+  RETURN_IF_ERROR(control_->Toggle(BinaryControl::State::kOn));
+  last_decision_ = BinaryControl::State::kOn;
 
   return OkStatus();
 }

@@ -17,8 +17,8 @@ class FileBasedBinaryControl : public BinaryControl {
   explicit FileBasedBinaryControl(const base::FilePath& control_node);
   ~FileBasedBinaryControl() override = default;
 
-  Status Toggle(bool value) override;
-  StatusOr<bool> Current() const override;
+  Status Toggle(BinaryControl::State state) override;
+  StatusOr<BinaryControl::State> Current() const override;
 
  private:
   base::FilePath control_node_;

@@ -11,12 +11,17 @@ namespace discod {
 
 class BinaryControl {
  public:
+  enum class State {
+    kOff,
+    kOn,
+  };
+
   BinaryControl() = default;
   virtual ~BinaryControl() = default;
 
   // XXX status or
-  virtual Status Toggle(bool value) = 0;
-  virtual StatusOr<bool> Current() const = 0;
+  virtual Status Toggle(State state) = 0;
+  virtual StatusOr<State> Current() const = 0;
 };
 
 }  // namespace discod
