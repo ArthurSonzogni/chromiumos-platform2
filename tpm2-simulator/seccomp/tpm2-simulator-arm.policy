@@ -61,6 +61,8 @@ clock_nanosleep_time64: 1
 futex: 1
 getrandom: 1
 sysinfo: 1
+mlock: 1
+munlock: 1
 
 # For Ti50 emulator
 connect: 1

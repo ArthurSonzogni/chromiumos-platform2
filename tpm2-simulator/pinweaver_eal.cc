@@ -3,12 +3,15 @@
  * found in the LICENSE file.
  */
 
+#include <optional>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/file_utils.h>
+#include <brillo/secure_blob.h>
 #include <fcntl.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -23,6 +26,8 @@
 #include <tpm2/tpm_types.h>
 #include <unistd.h>
 
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <pinweaver/pinweaver_eal.h>
 
 #define DEVICE_KEY_SIZE 32
@@ -30,6 +35,8 @@
 #define PW_NONCE_SIZE (128 / 8)
 #define PINWEAVER_EAL_CONST 2
 #define RESTART_TIMER_THRESHOLD 10
+
+using hwsec_foundation::EllipticCurve;
 
 namespace {
 constexpr char kLogPath[] = "log";
@@ -342,4 +349,137 @@ uint8_t pinweaver_eal_get_current_pcr_digest(
     const uint8_t bitmask[2], uint8_t sha256_of_selected_pcr[32]) {
   return get_current_pcr_digest(bitmask, sha256_of_selected_pcr);
 }
+
+#if BIOMETRICS_DEV
+
+namespace {
+constexpr char kPkPathPrefix[] = "pk";
+}
+
+int pinweaver_eal_get_ba_pk(uint8_t auth_channel,
+                            struct pw_ba_pk_status_t* status,
+                            struct pw_ba_pk_t* pk) {
+  base::FilePath path =
+      base::FilePath(std::string(kPkPathPrefix) + std::to_string(auth_channel));
+  std::string contents;
+  if (!base::ReadFileToString(path, &contents)) {
+    // Before we decide on the criteria of device state to accept establishment,
+    // allow the first establishment unconditionally.
+    status->v = PW_BA_PK_NOT_ESTABLISHED;
+    return 0;
+  }
+  if (contents.size() != sizeof(struct pw_ba_pk_t)) {
+    PINWEAVER_EAL_INFO("Error: Mismatched Pk file size.");
+    return -1;
+  }
+  memcpy(pk, contents.data(), sizeof(struct pw_ba_pk_t));
+  status->v = PW_BA_PK_ESTABLISHED;
+  return 0;
+}
+
+int pinweaver_eal_set_ba_pk(uint8_t auth_channel, const struct pw_ba_pk_t* pk) {
+  base::FilePath path =
+      base::FilePath(std::string(kPkPathPrefix) + std::to_string(auth_channel));
+  if (!brillo::WriteStringToFile(path,
+                                 std::string(reinterpret_cast<const char*>(pk),
+                                             sizeof(struct pw_ba_pk_t)))) {
+    PINWEAVER_EAL_INFO("Error: Failed to write Pk file.");
+    return -1;
+  }
+  return 0;
+}
+
+int pinweaver_eal_ecdh_derive(const struct pw_ba_ecc_pt_t* ecc_pt_in,
+                              void* secret,
+                              size_t* secret_size,
+                              struct pw_ba_ecc_pt_t* ecc_pt_out) {
+  hwsec_foundation::ScopedBN_CTX context =
+      hwsec_foundation::CreateBigNumContext();
+  if (!context) {
+    PINWEAVER_EAL_INFO("Error: Failed to create bignum context.");
+    return -1;
+  }
+  std::optional<EllipticCurve> ec =
+      EllipticCurve::Create(EllipticCurve::CurveType::kPrime256, context.get());
+  if (!ec.has_value()) {
+    PINWEAVER_EAL_INFO("Error: Failed to create EllipticCurve.");
+    return -1;
+  }
+
+  const crypto::ScopedEC_KEY out_key_pair = ec->GenerateKey(context.get());
+  if (!out_key_pair) {
+    PINWEAVER_EAL_INFO("Error: Failed to generate EC key.");
+    return -1;
+  }
+  const EC_POINT* out_point = EC_KEY_get0_public_key(out_key_pair.get());
+  const BIGNUM* out_priv_key = EC_KEY_get0_private_key(out_key_pair.get());
+
+  crypto::ScopedEC_POINT in_point = ec->CreatePoint();
+  if (!in_point) {
+    PINWEAVER_EAL_INFO("Error: Failed to create EC point.");
+    return -1;
+  }
+  brillo::SecureBlob in_x_blob(ecc_pt_in->x,
+                               ecc_pt_in->x + PW_BA_ECC_CORD_SIZE),
+      in_y_blob(ecc_pt_in->y, ecc_pt_in->y + PW_BA_ECC_CORD_SIZE);
+  const crypto::ScopedBIGNUM in_x =
+      hwsec_foundation::SecureBlobToBigNum(in_x_blob);
+  const crypto::ScopedBIGNUM in_y =
+      hwsec_foundation::SecureBlobToBigNum(in_y_blob);
+  if (!in_x || !in_y) {
+    PINWEAVER_EAL_INFO("Error: Failed to transform secure blobs to bignums.");
+    return -1;
+  }
+  if (!EC_POINT_set_affine_coordinates(ec->GetGroup(), in_point.get(),
+                                       in_x.get(), in_y.get(), context.get())) {
+    PINWEAVER_EAL_INFO("Error: Failed to set affine coords for input point");
+    return -1;
+  }
+
+  const crypto::ScopedEC_POINT shared_point =
+      hwsec_foundation::ComputeEcdhSharedSecretPoint(*ec, *in_point,
+                                                     *out_priv_key);
+  if (!shared_point) {
+    PINWEAVER_EAL_INFO("Error: Failed to compute shared secret point.");
+    return -1;
+  }
+  brillo::SecureBlob shared_secret;
+  if (!hwsec_foundation::ComputeEcdhSharedSecret(*ec, *shared_point,
+                                                 &shared_secret)) {
+    PINWEAVER_EAL_INFO("Error: Failed to compute shared secret.");
+    return -1;
+  }
+
+  if (*secret_size < shared_secret.size()) {
+    PINWEAVER_EAL_INFO("Error: Input secret size is smaller than %lu",
+                       shared_secret.size());
+    return -1;
+  }
+  memcpy(secret, shared_secret.data(), shared_secret.size());
+  *secret_size = shared_secret.size();
+  crypto::ScopedBIGNUM out_x = hwsec_foundation::CreateBigNum(),
+                       out_y = hwsec_foundation::CreateBigNum();
+  if (!out_x || !out_y) {
+    PINWEAVER_EAL_INFO("Error: Failed to create bignums.");
+    return -1;
+  }
+  if (!EC_POINT_get_affine_coordinates(ec->GetGroup(), out_point, out_x.get(),
+                                       out_y.get(), context.get())) {
+    PINWEAVER_EAL_INFO("Error: Failed to get affine coords for output point");
+    return -1;
+  }
+  brillo::SecureBlob out_x_blob, out_y_blob;
+  if (!hwsec_foundation::BigNumToSecureBlob(*out_x, PW_BA_ECC_CORD_SIZE,
+                                            &out_x_blob) ||
+      !hwsec_foundation::BigNumToSecureBlob(*out_y, PW_BA_ECC_CORD_SIZE,
+                                            &out_y_blob)) {
+    PINWEAVER_EAL_INFO("Error: Failed to transform bignums to secure blobs.");
+    return -1;
+  }
+  memcpy(ecc_pt_out->x, out_x_blob.data(), out_x_blob.size());
+  memcpy(ecc_pt_out->y, out_y_blob.data(), out_y_blob.size());
+  return 0;
+}
+
+#endif
 }

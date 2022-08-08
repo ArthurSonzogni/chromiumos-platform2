@@ -66,6 +66,7 @@ static_library("libtpm2_simulator_executor") {
       "tpm_vendor_cmd_pinweaver.cc",
     ]
     libs += [
+      "hwsec-foundation",
       "pinweaver",
       "tpm2",
     ]
