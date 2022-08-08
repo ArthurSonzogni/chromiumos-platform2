@@ -177,10 +177,9 @@ std::string WakeOnWiFi::GetLastWakeReason(Error* /*error*/) {
   }
 }
 
-void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error& error) {
+void WakeOnWiFi::RunSuspendActionsDoneCallback(const Error& error) {
   if (!suspend_actions_done_callback_.is_null()) {
-    suspend_actions_done_callback_.Run(error);
-    suspend_actions_done_callback_.Reset();
+    std::move(suspend_actions_done_callback_).Run(error);
   }
 }
 
@@ -564,7 +563,7 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
           "Unexpected auxilliary message type: " + std::to_string(type));
       break;
   }
-  RunAndResetSuspendActionsDoneCallback(error);
+  RunSuspendActionsDoneCallback(error);
 }
 
 // static
@@ -600,7 +599,7 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
                               wake_on_allowed_ssids_)) {
     SLOG(this, 2) << __func__ << ": "
                   << "Wake on WiFi settings successfully verified";
-    RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
+    RunSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
     LOG(ERROR) << __func__
                << " failed: discrepancy between wake-on-packet "
@@ -627,7 +626,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
           &set_wowlan_msg, wake_on_wifi_triggers_, wiphy_index_,
           net_detect_scan_period_seconds_, wake_on_allowed_ssids_, &error)) {
     LOG(ERROR) << error.message();
-    RunAndResetSuspendActionsDoneCallback(
+    RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, error.message()));
     return;
   }
@@ -637,7 +636,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
           base::Bind(&NetlinkManager::OnAckDoNothing),
           base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                      weak_ptr_factory_.GetWeakPtr()))) {
-    RunAndResetSuspendActionsDoneCallback(
+    RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
   }
@@ -657,7 +656,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   if (!ConfigureDisableWakeOnWiFiMessage(&disable_wowlan_msg, wiphy_index_,
                                          &error)) {
     LOG(ERROR) << error.message();
-    RunAndResetSuspendActionsDoneCallback(
+    RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, error.message()));
     return;
   }
@@ -668,7 +667,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
           base::Bind(&NetlinkManager::OnAckDoNothing),
           base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                      weak_ptr_factory_.GetWeakPtr()))) {
-    RunAndResetSuspendActionsDoneCallback(
+    RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
   }
@@ -688,7 +687,7 @@ void WakeOnWiFi::RetrySetWakeOnWiFiConnections() {
   } else {
     SLOG(this, 3) << __func__ << ": max retry attempts reached";
     num_set_wake_on_wifi_retries_ = 0;
-    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
+    RunSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
 }
 
@@ -808,19 +807,19 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
-    const ResultCallback& done_callback,
+    ResultOnceCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     base::OnceClosure remove_supplicant_networks_callback,
     std::optional<base::TimeDelta> time_to_next_lease_renewal) {
   connected_before_suspend_ = is_connected;
   if (WakeOnWiFiDisabled()) {
     // Wake on WiFi not supported or not enabled, so immediately report success.
-    done_callback.Run(Error(Error::kSuccess));
+    std::move(done_callback).Run(Error(Error::kSuccess));
     return;
   }
   LOG(INFO) << __func__ << ": Wake on WiFi features enabled: "
             << wake_on_wifi_features_enabled_;
-  suspend_actions_done_callback_ = done_callback;
+  suspend_actions_done_callback_ = std::move(done_callback);
   wake_on_allowed_ssids_ = allowed_ssids;
   dark_resume_history_.Clear();
   if (time_to_next_lease_renewal && is_connected &&
@@ -857,20 +856,20 @@ void WakeOnWiFi::OnAfterResume() {
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
-    const ResultCallback& done_callback,
+    ResultOnceCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     InitiateScanCallback initiate_scan_callback,
     const base::Closure& remove_supplicant_networks_callback) {
   if (WakeOnWiFiDisabled()) {
     // Wake on WiFi not supported or not enabled, so immediately report success.
-    done_callback.Run(Error(Error::kSuccess));
+    std::move(done_callback).Run(Error(Error::kSuccess));
     return;
   }
 
   LOG(INFO) << __func__ << ": "
             << "Wake reason " << last_wake_reason_;
   dark_resume_scan_retries_left_ = 0;
-  suspend_actions_done_callback_ = done_callback;
+  suspend_actions_done_callback_ = std::move(done_callback);
   wake_on_allowed_ssids_ = allowed_ssids;
 
   if (last_wake_reason_ == kWakeTriggerSSID ||
@@ -1021,7 +1020,7 @@ void WakeOnWiFi::BeforeSuspendActions(
     // would already have been disabled on the last (non-dark) resume.
     SLOG(this, 1) << "No need to disable wake on WiFi on NIC in regular "
                      "suspend";
-    RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
+    RunSuspendActionsDoneCallback(Error(Error::kSuccess));
     return;
   }
 

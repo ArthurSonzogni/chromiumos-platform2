@@ -200,7 +200,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   void OnBeforeSuspend(
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
-      const ResultCallback& done_callback,
+      ResultOnceCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       base::OnceClosure remove_supplicant_networks_callback,
       std::optional<base::TimeDelta> time_to_next_lease_renewal) override;
@@ -222,7 +222,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   void OnDarkResume(
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
-      const ResultCallback& done_callback,
+      ResultOnceCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       InitiateScanCallback initiate_scan_callback,
       const base::Closure& remove_supplicant_networks_callback) override;
@@ -308,8 +308,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error);
   std::string GetLastWakeReason(Error* error);
-  // Helper function to run and reset |suspend_actions_done_callback_|.
-  void RunAndResetSuspendActionsDoneCallback(const Error& error);
+  // Helper function to run |suspend_actions_done_callback_|.
+  void RunSuspendActionsDoneCallback(const Error& error);
 
   // Creates and sets an attribute in a NL80211 message |msg| which indicates
   // the index of the wiphy interface to program. Returns true iff |msg| is
@@ -432,7 +432,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   base::CancelableOnceClosure verify_wake_on_wifi_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.
-  ResultCallback suspend_actions_done_callback_;
+  ResultOnceCallback suspend_actions_done_callback_;
   // Number of retry attempts to program the NIC's wake-on-WiFi settings.
   int num_set_wake_on_wifi_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from

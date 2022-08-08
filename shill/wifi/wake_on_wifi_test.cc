@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback_helpers.h>
@@ -568,7 +569,7 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void SetSuspendActionsDoneCallback() {
     wake_on_wifi_->suspend_actions_done_callback_ =
-        base::Bind(&WakeOnWiFiTest::DoneCallback, base::Unretained(this));
+        base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this));
   }
 
   void ResetSuspendActionsDoneCallback() {
@@ -580,7 +581,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void RunSuspendActionsCallback(const Error& error) {
-    wake_on_wifi_->suspend_actions_done_callback_.Run(error);
+    std::move(wake_on_wifi_->suspend_actions_done_callback_).Run(error);
   }
 
   int GetNumSetWakeOnWiFiRetries() {
