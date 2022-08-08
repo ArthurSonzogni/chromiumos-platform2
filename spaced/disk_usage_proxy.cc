@@ -5,10 +5,22 @@
 #include "spaced/disk_usage_proxy.h"
 
 #include <memory>
+#include <string>
 
 #include <base/logging.h>
 
 namespace spaced {
+namespace {
+void LogOnSignalConnected(const std::string& interface_name,
+                          const std::string& signal_name,
+                          bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to signal " << signal_name
+               << " of interface " << interface_name;
+  }
+}
+
+}  // namespace
 
 DiskUsageProxy::DiskUsageProxy(const scoped_refptr<dbus::Bus>& bus)
     : spaced_proxy_(std::make_unique<org::chromium::SpacedProxy>(bus)) {}
@@ -65,6 +77,30 @@ int64_t DiskUsageProxy::GetRootDeviceSize() {
   }
 
   return root_device_size;
+}
+
+void DiskUsageProxy::OnStatefulDiskSpaceUpdate(
+    const StatefulDiskSpaceUpdate& update) {
+  for (SpacedObserverInterface& observer : observer_list_) {
+    observer.OnStatefulDiskSpaceUpdate(update);
+  }
+}
+
+void DiskUsageProxy::AddObserver(SpacedObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer";
+  observer_list_.AddObserver(observer);
+}
+
+void DiskUsageProxy::RemoveObserver(SpacedObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer";
+  observer_list_.RemoveObserver(observer);
+}
+
+void DiskUsageProxy::StartMonitoring() {
+  spaced_proxy_->RegisterStatefulDiskSpaceUpdateSignalHandler(
+      base::BindRepeating(&DiskUsageProxy::OnStatefulDiskSpaceUpdate,
+                          base::Unretained(this)),
+      base::BindOnce(LogOnSignalConnected));
 }
 
 }  // namespace spaced

@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <base/observer_list.h>
 #include <brillo/brillo_export.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 
@@ -15,6 +16,14 @@
 #include "spaced/disk_usage.h"
 
 namespace spaced {
+
+class BRILLO_EXPORT SpacedObserverInterface : public base::CheckedObserver {
+ public:
+  ~SpacedObserverInterface() override = default;
+
+  virtual void OnStatefulDiskSpaceUpdate(
+      const StatefulDiskSpaceUpdate& update) = 0;
+};
 
 class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
  public:
@@ -27,8 +36,16 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
   int64_t GetTotalDiskSpace(const base::FilePath& path) override;
   int64_t GetRootDeviceSize() override;
 
+  void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& space);
+
+  void AddObserver(SpacedObserverInterface* observer);
+  void RemoveObserver(SpacedObserverInterface* observer);
+
+  void StartMonitoring();
+
  private:
   std::unique_ptr<org::chromium::SpacedProxy> spaced_proxy_;
+  base::ObserverList<SpacedObserverInterface> observer_list_;
 };
 
 }  // namespace spaced
