@@ -19,6 +19,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <brillo/udev/udev_device.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
@@ -990,9 +991,11 @@ bool RecoveryCryptoImpl::PersistRecoveryIdContainer(
 }
 
 std::string RecoveryCryptoImpl::GetRlzCode() const {
-  constexpr char kRlzCodePath[] = "/run/chromeos-config/v1/brand-code";
+  constexpr char kPath[] = "/";
+  constexpr char kProperty[] = "brand-code";
   std::string data;
-  if (!platform_->ReadFileToString(base::FilePath(kRlzCodePath), &data)) {
+  brillo::CrosConfig cros_config;
+  if (!cros_config.GetString(kPath, kProperty, &data)) {
     return kDeviceUnknown;
   }
   return data;

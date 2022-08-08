@@ -291,6 +291,7 @@ generate_dbus_proxies("cryptohome-key-delegate-proxies") {
 
 pkg_config("libcrosplatform_dependent_config") {
   pkg_deps = [
+    "libcros_config",
     "libecryptfs",
     "libmetrics",
     "vboot_host",
