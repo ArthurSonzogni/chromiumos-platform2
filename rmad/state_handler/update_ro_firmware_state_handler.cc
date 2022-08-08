@@ -112,24 +112,43 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   }
   active_ = true;
   usb_detected_ = !GetRemovableBlockDevices().empty();
-  poll_usb_ = true;
   return RMAD_ERROR_OK;
 }
 
 void UpdateRoFirmwareStateHandler::RunState() {
-  status_signal_timer_.Start(
-      FROM_HERE, kPollInterval, this,
-      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
-  check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
-                         &UpdateRoFirmwareStateHandler::WaitUsb);
+  StartSignalTimer();
+  StartPollingTimer();
 }
 
 void UpdateRoFirmwareStateHandler::CleanUpState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   active_ = false;
+  StopSignalTimer();
+  StopPollingTimer();
+}
+
+void UpdateRoFirmwareStateHandler::StartSignalTimer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  status_signal_timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
+}
+
+void UpdateRoFirmwareStateHandler::StopSignalTimer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (status_signal_timer_.IsRunning()) {
     status_signal_timer_.Stop();
   }
+}
+
+void UpdateRoFirmwareStateHandler::StartPollingTimer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
+                         &UpdateRoFirmwareStateHandler::WaitUsb);
+}
+
+void UpdateRoFirmwareStateHandler::StopPollingTimer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (check_usb_timer_.IsRunning()) {
     check_usb_timer_.Stop();
   }
@@ -213,9 +232,6 @@ UpdateRoFirmwareStateHandler::GetRemovableBlockDevices() const {
 
 void UpdateRoFirmwareStateHandler::WaitUsb() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!poll_usb_) {
-    return;
-  }
   // Update |usb_detected_|.
   std::vector<std::unique_ptr<UdevDevice>> removable_devices =
       GetRemovableBlockDevices();
@@ -231,7 +247,7 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
         if (IsRootfsPartition(device->GetDeviceNode())) {
           // Only try to mount the first root partition found. Stop the polling
           // to prevent mounting twice.
-          poll_usb_ = false;
+          StopPollingTimer();
           cros_disks_client_->Mount(device->GetDeviceNode(), "ext2", {"ro"});
           return;
         }
@@ -276,7 +292,8 @@ void UpdateRoFirmwareStateHandler::OnMountCompleted(
 
   LOG(WARNING) << "Cannot find firmware updater";
   status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-  poll_usb_ = true;
+  DCHECK(!check_usb_timer_.IsRunning());
+  StartPollingTimer();
 }
 
 bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
@@ -351,7 +368,8 @@ void UpdateRoFirmwareStateHandler::OnUpdateFinished(bool update_success) {
     // Treat update failure as "no valid updater file".
     // TODO(chenghan): Add an enum for update failure.
     status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
-    poll_usb_ = true;
+    DCHECK(!check_usb_timer_.IsRunning());
+    StartPollingTimer();
   }
 }
 

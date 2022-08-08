@@ -61,6 +61,11 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   ~UpdateRoFirmwareStateHandler() override = default;
 
  private:
+  void StartSignalTimer();
+  void StopSignalTimer();
+  void StartPollingTimer();
+  void StopPollingTimer();
+
   bool CanSkipUpdate();
 
   void SendFirmwareUpdateSignal();
@@ -80,13 +85,16 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   // True if the class is not initialized with default constructor.
   bool is_mocked_;
 
-  // All accesses to |active_|, |status_|, |usb_detected_| and |poll_usb_|
-  // should be on the same sequence.
+  // All accesses to |active_|, |status_|, |usb_detected_| and timers should be
+  // on the same sequence.
   SEQUENCE_CHECKER(sequence_checker_);
   bool active_;
   UpdateRoFirmwareStatus status_;
   bool usb_detected_;
-  bool poll_usb_;
+  // Timer for sending status signals.
+  base::RepeatingTimer status_signal_timer_;
+  // Timer for checking USB.
+  base::RepeatingTimer check_usb_timer_;
 
   std::unique_ptr<UdevUtils> udev_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;
@@ -95,10 +103,6 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   std::unique_ptr<CrosDisksClient> cros_disks_client_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
 
-  // Timer for sending status signals.
-  base::RepeatingTimer status_signal_timer_;
-  // Timer for checking USB.
-  base::RepeatingTimer check_usb_timer_;
   // Sequence runner for thread-safe read/write of |active_|, |status_|,
   // |usb_detected_| and |poll_usb_|.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
