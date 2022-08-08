@@ -154,6 +154,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
 
   auth_state.encrypted_destination_share =
       generate_hsm_payload_response.encrypted_destination_share;
+  auth_state.extended_pcr_bound_destination_share =
+      generate_hsm_payload_response.extended_pcr_bound_destination_share;
   auth_state.encrypted_channel_priv_key =
       generate_hsm_payload_response.encrypted_channel_priv_key;
   auth_state.channel_pub_key = generate_hsm_payload_response.channel_pub_key;
@@ -273,6 +275,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                .key_auth_value = response_plain_text.key_auth_value,
                .encrypted_destination_share =
                    auth_state->encrypted_destination_share,
+               .extended_pcr_bound_destination_share =
+                   auth_state->extended_pcr_bound_destination_share,
                .ephemeral_pub_key = ephemeral_pub_key,
                .mediated_publisher_pub_key = response_plain_text.mediated_point,
                .obfuscated_username = obfuscated_username}),

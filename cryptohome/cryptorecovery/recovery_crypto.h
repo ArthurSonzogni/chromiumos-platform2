@@ -38,7 +38,8 @@ struct EncryptEccPrivateKeyRequest {
 struct EncryptEccPrivateKeyResponse {
   // One's own private key after imported/ sealed to TPM.
   brillo::SecureBlob encrypted_own_priv_key;
-  // TODO(b:220907578): Add extended_pcr_bound_own_priv_key;
+  // One's own private key after sealed to TPM1.2 with binding to extended PCR.
+  brillo::SecureBlob extended_pcr_bound_own_priv_key;
 };
 
 // TPM backend input parameters for function GenerateDiffieHellmanSharedSecret.
@@ -46,6 +47,9 @@ struct GenerateDhSharedSecretRequest {
   const hwsec_foundation::EllipticCurve& ec;
   // One's own private key which is imported to TPM2.0 or sealed by TPM1.2.
   hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_own_priv_key;
+  // One's own private key which is sealed by TPM1.2 and bound to extended PCR.
+  hwsec_foundation::NoDefault<brillo::SecureBlob>
+      extended_pcr_bound_own_priv_key;
   // Additional secret to seal the destination share. Used for TPM 1.2 only.
   hwsec_foundation::NoDefault<std::optional<brillo::SecureBlob>> auth_value;
   // Used to generate PCR map.
@@ -115,6 +119,7 @@ struct GenerateHsmPayloadResponse {
   HsmPayload hsm_payload;
   brillo::SecureBlob encrypted_rsa_priv_key;
   brillo::SecureBlob encrypted_destination_share;
+  brillo::SecureBlob extended_pcr_bound_destination_share;
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
   brillo::SecureBlob encrypted_channel_priv_key;
@@ -136,6 +141,8 @@ struct RecoverDestinationRequest {
   hwsec_foundation::NoDefault<brillo::SecureBlob> dealer_pub_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> key_auth_value;
   hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_destination_share;
+  hwsec_foundation::NoDefault<brillo::SecureBlob>
+      extended_pcr_bound_destination_share;
   hwsec_foundation::NoDefault<brillo::SecureBlob> ephemeral_pub_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> mediated_publisher_pub_key;
   hwsec_foundation::NoDefault<std::string> obfuscated_username;

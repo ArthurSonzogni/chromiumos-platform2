@@ -279,6 +279,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = brillo::SecureBlob(),
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -321,6 +322,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_521_.value(),
        .encrypted_own_priv_key = brillo::SecureBlob(),
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -360,6 +362,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = brillo::SecureBlob(),
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -401,6 +404,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = brillo::SecureBlob(),
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -449,6 +453,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = brillo::SecureBlob(),
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});

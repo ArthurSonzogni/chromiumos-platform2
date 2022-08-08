@@ -112,6 +112,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& mediator_pub_key_in_file_path,
     const FilePath& rsa_priv_key_out_file_path,
     const FilePath& destination_share_out_file_path,
+    const FilePath& extended_pcr_bound_destination_share_out_file_path,
     const FilePath& channel_pub_key_out_file_path,
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
@@ -163,6 +164,9 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
          WriteHexFileLogged(
              destination_share_out_file_path,
              generate_hsm_payload_response.encrypted_destination_share) &&
+         WriteHexFileLogged(extended_pcr_bound_destination_share_out_file_path,
+                            generate_hsm_payload_response
+                                .extended_pcr_bound_destination_share) &&
          WriteHexFileLogged(channel_pub_key_out_file_path,
                             generate_hsm_payload_response.channel_pub_key) &&
          WriteHexFileLogged(
@@ -305,9 +309,10 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& channel_priv_key_in_file_path,
     const FilePath& ephemeral_pub_key_in_file_path,
     const FilePath& destination_share_in_file_path,
+    const FilePath& extended_pcr_bound_destination_share_in_file_path,
     const FilePath& recovery_secret_out_file_path) {
   SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
-      destination_share;
+      destination_share, extended_pcr_bound_destination_share;
   if (!ReadHexFileToSecureBlobLogged(recovery_response_in_file_path,
                                      &recovery_response) ||
       !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
@@ -315,7 +320,10 @@ bool DoRecoveryCryptoDecryptAction(
       !ReadHexFileToSecureBlobLogged(ephemeral_pub_key_in_file_path,
                                      &ephemeral_pub_key) ||
       !ReadHexFileToSecureBlobLogged(destination_share_in_file_path,
-                                     &destination_share)) {
+                                     &destination_share) ||
+      !ReadHexFileToSecureBlobLogged(
+          extended_pcr_bound_destination_share_in_file_path,
+          &extended_pcr_bound_destination_share)) {
     return false;
   }
 
@@ -364,6 +372,8 @@ bool DoRecoveryCryptoDecryptAction(
               {.dealer_pub_key = response_plain_text.dealer_pub_key,
                .key_auth_value = response_plain_text.key_auth_value,
                .encrypted_destination_share = destination_share,
+               .extended_pcr_bound_destination_share =
+                   extended_pcr_bound_destination_share,
                .ephemeral_pub_key = ephemeral_pub_key,
                .mediated_publisher_pub_key = response_plain_text.mediated_point,
                .obfuscated_username = kObfuscatedUsername}),
@@ -419,10 +429,18 @@ int main(int argc, char* argv[]) {
       destination_share_out_file, "",
       "Path to the file where to store the hex-encoded Cryptohome Recovery "
       "encrypted destination share.");
+  DEFINE_string(
+      extended_pcr_bound_destination_share_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "extended pcr bound destination share.");
   DEFINE_string(destination_share_in_file, "",
                 "Path to the file containing the hex-encoded Cryptohome "
                 "Recovery encrypted "
                 "destination share.");
+  DEFINE_string(extended_pcr_bound_destination_share_in_file, "",
+                "Path to the file containing the hex-encoded Cryptohome "
+                "Recovery encrypted "
+                "extended pcr bound destination share.");
   DEFINE_string(
       channel_pub_key_out_file, "",
       "Path to the file where to store the hex-encoded Cryptohome Recovery "
@@ -499,6 +517,9 @@ int main(int argc, char* argv[]) {
                            FLAGS_rsa_priv_key_out_file) &&
         CheckMandatoryFlag("destination_share_out_file",
                            FLAGS_destination_share_out_file) &&
+        CheckMandatoryFlag(
+            "extended_pcr_bound_destination_share_out_file",
+            FLAGS_extended_pcr_bound_destination_share_out_file) &&
         CheckMandatoryFlag("channel_pub_key_out_file",
                            FLAGS_channel_pub_key_out_file) &&
         CheckMandatoryFlag("channel_priv_key_out_file",
@@ -511,6 +532,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_mediator_pub_key_in_file),
           FilePath(FLAGS_rsa_priv_key_out_file),
           FilePath(FLAGS_destination_share_out_file),
+          FilePath(FLAGS_extended_pcr_bound_destination_share_out_file),
           FilePath(FLAGS_channel_pub_key_out_file),
           FilePath(FLAGS_channel_priv_key_out_file),
           FilePath(FLAGS_serialized_hsm_payload_out_file),
@@ -557,6 +579,9 @@ int main(int argc, char* argv[]) {
                            FLAGS_ephemeral_pub_key_in_file) &&
         CheckMandatoryFlag("destination_share_in_file",
                            FLAGS_destination_share_in_file) &&
+        CheckMandatoryFlag(
+            "extended_pcr_bound_destination_share_in_file",
+            FLAGS_extended_pcr_bound_destination_share_in_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoDecryptAction(
@@ -565,6 +590,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_channel_priv_key_in_file),
           FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),
+          FilePath(FLAGS_extended_pcr_bound_destination_share_in_file),
           FilePath(FLAGS_recovery_secret_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_get_fake_epoch") {

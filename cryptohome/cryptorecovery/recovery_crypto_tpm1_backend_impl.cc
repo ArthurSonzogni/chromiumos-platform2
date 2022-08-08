@@ -116,13 +116,28 @@ bool RecoveryCryptoTpm1BackendImpl::EncryptEccPrivateKey(
   // and if auth_value is provided, one's own private key will be sealed.
   if (!request.auth_value.has_value()) {
     response->encrypted_own_priv_key = own_priv_key;
-  } else if (hwsec::Status err = tpm_impl_->SealToPcrWithAuthorization(
-                 own_priv_key, request.auth_value.value(),
-                 /*pcr_map=*/{{}}, &response->encrypted_own_priv_key);
-             !err.ok()) {
+    return true;
+  }
+
+  std::map<uint32_t, brillo::Blob> default_pcr_map = tpm_impl_->GetPcrMap(
+      request.obfuscated_username, /*use_extended_pcr=*/false);
+  if (hwsec::Status err = tpm_impl_->SealToPcrWithAuthorization(
+          own_priv_key, request.auth_value.value(), default_pcr_map,
+          &response->encrypted_own_priv_key);
+      !err.ok()) {
     LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
+  std::map<uint32_t, brillo::Blob> extended_pcr_map = tpm_impl_->GetPcrMap(
+      request.obfuscated_username, /*use_extended_pcr=*/true);
+  if (hwsec::Status err = tpm_impl_->SealToPcrWithAuthorization(
+          own_priv_key, request.auth_value.value(), extended_pcr_map,
+          &response->extended_pcr_bound_own_priv_key);
+      !err.ok()) {
+    LOG(ERROR) << "Error sealing the blob to extended PCRs: " << err;
+    return false;
+  }
+
   return true;
 }
 
@@ -137,17 +152,45 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
   // Unseal crypto secret with auth_value
   brillo::SecureBlob unencrypted_own_priv_key;
 
+  // if TPM is locked to single user, extended_pcr_bound_own_priv_key will be
+  // used.
+  hwsec::StatusOr<bool> is_current_user_set =
+      tpm_impl_->GetHwsec()->IsCurrentUserSet();
+  if (!is_current_user_set.ok()) {
+    LOG(ERROR) << "Failed to get current user status for "
+                  "LockToSingleUserMountUntilReboot(): "
+               << is_current_user_set.status();
+    return nullptr;
+  }
   // If auth_value is not provided, one's own private key will not be unsealed
   // and if auth_value is provided, one's own private key will be unsealed.
   if (!request.auth_value.has_value()) {
     unencrypted_own_priv_key = request.encrypted_own_priv_key;
-  } else if (hwsec::Status err = tpm_impl_->UnsealWithAuthorization(
-                 /*preload_handle=*/std::nullopt,
-                 request.encrypted_own_priv_key, request.auth_value.value(),
-                 /* pcr_map=*/{}, &unencrypted_own_priv_key);
-             !err.ok()) {
-    LOG(ERROR) << "Failed to unseal the secret value: " << err;
-    return nullptr;
+  } else if (is_current_user_set.value()) {
+    // If TPM is locked to a single user, unsealing with extended PCR map.
+    if (hwsec::Status err = tpm_impl_->UnsealWithAuthorization(
+            /*preload_handle=*/std::nullopt,
+            request.extended_pcr_bound_own_priv_key, request.auth_value.value(),
+            tpm_impl_->GetPcrMap(request.obfuscated_username,
+                                 /*use_extended_pcr=*/true),
+            &unencrypted_own_priv_key);
+        !err.ok()) {
+      LOG(ERROR) << "Failed to unseal the secret value bound to extended PCR: "
+                 << err;
+      return nullptr;
+    }
+  } else {
+    if (hwsec::Status err = tpm_impl_->UnsealWithAuthorization(
+            /*preload_handle=*/std::nullopt, request.encrypted_own_priv_key,
+            request.auth_value.value(),
+            tpm_impl_->GetPcrMap(request.obfuscated_username,
+                                 /*use_extended_pcr=*/false),
+            &unencrypted_own_priv_key);
+        !err.ok()) {
+      LOG(ERROR) << "Failed to unseal the secret value bound to default PCR: "
+                 << err;
+      return nullptr;
+    }
   }
 
   crypto::ScopedBIGNUM unencrypted_own_priv_key_bn =

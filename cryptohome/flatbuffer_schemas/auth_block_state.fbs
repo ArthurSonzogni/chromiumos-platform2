@@ -102,12 +102,14 @@ table CryptohomeRecoveryAuthBlockState (secure) {
   salt:[ubyte] (id: 1);
   // Secret share of the destination (encrypted with TPM).
   encrypted_destination_share:[ubyte] (id: 2);
+  // Secret share of the destination sealed to TPM1.2 with binding to extended PCR).
+  extended_pcr_bound_destination_share:[ubyte] (id: 3);
   // Channel keys that will be used for secure communication during recovery.
   // Private key is encrypted with TPM.
-  channel_pub_key:[ubyte] (id: 3);
-  encrypted_channel_priv_key:[ubyte] (id: 4);
+  channel_pub_key:[ubyte] (id: 4);
+  encrypted_channel_priv_key:[ubyte] (id: 5);
   // RSA private key is used only on TMP 1.2 devices.
-  encrypted_rsa_priv_key:[ubyte] (id: 5);
+  encrypted_rsa_priv_key:[ubyte] (id: 6);
 }
 
 table TpmEccAuthBlockState (secure) {

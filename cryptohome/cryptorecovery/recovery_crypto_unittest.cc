@@ -237,6 +237,8 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share =
            generate_hsm_payload_response.encrypted_destination_share,
+       .extended_pcr_bound_destination_share =
+           generate_hsm_payload_response.extended_pcr_bound_destination_share,
        .ephemeral_pub_key = ephemeral_pub_key,
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = ""});
@@ -330,6 +332,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
       {.dealer_pub_key = random_key,
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share = destination_share,
+       .extended_pcr_bound_destination_share = SecureBlob(),
        .ephemeral_pub_key = ephemeral_pub_key,
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = ""});
@@ -365,6 +368,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share = random_scalar,
+       .extended_pcr_bound_destination_share = SecureBlob(),
        .ephemeral_pub_key = ephemeral_pub_key,
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = ""});
@@ -400,6 +404,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share = destination_share,
+       .extended_pcr_bound_destination_share = SecureBlob(),
        .ephemeral_pub_key = random_key,
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = "obfuscated_username"});
@@ -435,6 +440,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share = destination_share,
+       .extended_pcr_bound_destination_share = SecureBlob(),
        .ephemeral_pub_key = ephemeral_pub_key,
        .mediated_publisher_pub_key = random_key,
        .obfuscated_username = ""});
@@ -469,6 +475,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
        .key_auth_value = response_plain_text.key_auth_value,
        .encrypted_destination_share = destination_share,
+       .extended_pcr_bound_destination_share = SecureBlob(),
        .ephemeral_pub_key = ephemeral_pub_key,
        .mediated_publisher_pub_key = SecureBlob("not a point"),
        .obfuscated_username = ""});

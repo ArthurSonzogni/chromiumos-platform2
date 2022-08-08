@@ -322,6 +322,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
               {.ec = ec_,
                .encrypted_own_priv_key =
                    request_param.encrypted_channel_priv_key,
+               .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
                .auth_value = std::nullopt,
                .obfuscated_username = request_param.obfuscated_username,
                .others_pub_point = std::move(epoch_pub_point)}));
@@ -447,6 +448,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   }
   response->encrypted_destination_share =
       tpm_backend_response_destination_share.encrypted_own_priv_key;
+  response->extended_pcr_bound_destination_share =
+      tpm_backend_response_destination_share.extended_pcr_bound_own_priv_key;
 
   crypto::ScopedEC_POINT recovery_pub_point =
       ec_.MultiplyWithGenerator(*secret, context.get());
@@ -647,6 +650,8 @@ bool RecoveryCryptoImpl::RecoverDestination(
   GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
       {.ec = ec_,
        .encrypted_own_priv_key = request.encrypted_destination_share,
+       .extended_pcr_bound_own_priv_key =
+           request.extended_pcr_bound_destination_share,
        .auth_value = request.key_auth_value,
        .obfuscated_username = request.obfuscated_username,
        .others_pub_point = std::move(dealer_pub_point)});
@@ -734,6 +739,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
       {.ec = ec_,
        .encrypted_own_priv_key = request.encrypted_channel_priv_key,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = request.obfuscated_username,
        .others_pub_point = std::move(epoch_pub_point)});

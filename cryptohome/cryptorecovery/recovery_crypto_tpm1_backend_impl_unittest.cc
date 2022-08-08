@@ -26,6 +26,7 @@ using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::ScopedBN_CTX;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::DoAll;
 using testing::Exactly;
@@ -82,22 +83,41 @@ TEST_F(RecoveryCryptoTpm1BackendTest, EncryptEccPrivateKeySuccess) {
   crypto::ScopedEC_KEY own_key_pair = ec_256_->GenerateKey(context_.get());
   ASSERT_TRUE(own_key_pair);
   const brillo::SecureBlob auth_value(kAuthValueSizeBytes, 'a');
+  std::string obfuscated_username = "obfuscated username";
 
   // Set up mock expectations
+  std::map<uint32_t, brillo::Blob> default_pcr_map = {
+      {0, brillo::BlobFromString("default_pcr_map")}};
+  EXPECT_CALL(tpm_, GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false))
+      .WillOnce(Return(default_pcr_map));
   const brillo::SecureBlob expected_encrypted_own_priv_key(256, 'b');
-  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, auth_value, _, _))
+  EXPECT_CALL(tpm_,
+              SealToPcrWithAuthorization(_, auth_value, default_pcr_map, _))
       .WillOnce(DoAll(SetArgPointee<3>(expected_encrypted_own_priv_key),
                       ReturnError<hwsec::TPMErrorBase>()));
+  std::map<uint32_t, brillo::Blob> extended_pcr_map = {
+      {0, brillo::BlobFromString("extended_pcr_map")}};
+  EXPECT_CALL(tpm_, GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true))
+      .WillOnce(Return(extended_pcr_map));
+  const brillo::SecureBlob expected_extended_pcr_bound_own_priv_key(256, 'c');
+  EXPECT_CALL(tpm_,
+              SealToPcrWithAuthorization(_, auth_value, extended_pcr_map, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(expected_extended_pcr_bound_own_priv_key),
+                ReturnError<hwsec::TPMErrorBase>()));
 
-  EncryptEccPrivateKeyRequest tpm_backend_request({.ec = ec_256_.value(),
-                                                   .own_key_pair = own_key_pair,
-                                                   .auth_value = auth_value,
-                                                   .obfuscated_username = ""});
+  EncryptEccPrivateKeyRequest tpm_backend_request(
+      {.ec = ec_256_.value(),
+       .own_key_pair = own_key_pair,
+       .auth_value = auth_value,
+       .obfuscated_username = obfuscated_username});
   EncryptEccPrivateKeyResponse tpm_backend_response;
   EXPECT_TRUE(recovery_crypto_tpm1_backend_.EncryptEccPrivateKey(
       tpm_backend_request, &tpm_backend_response));
   EXPECT_EQ(tpm_backend_response.encrypted_own_priv_key.to_string(),
             expected_encrypted_own_priv_key.to_string());
+  EXPECT_EQ(tpm_backend_response.extended_pcr_bound_own_priv_key.to_string(),
+            expected_extended_pcr_bound_own_priv_key.to_string());
 }
 
 TEST_F(RecoveryCryptoTpm1BackendTest,
@@ -178,6 +198,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   ASSERT_TRUE(expected_shared_secret);
 
   // Set up mock expectations
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(own_priv_point_blob),
                       ReturnError<hwsec::TPMErrorBase>()));
@@ -185,6 +207,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = own_priv_point_blob,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = auth_value,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -219,6 +242,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up mock expectations
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(own_priv_point_blob),
                       ReturnError<hwsec::TPMErrorBase>()));
@@ -226,6 +251,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = own_priv_point_blob,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = auth_value,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -258,6 +284,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up mock expectations
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
       .WillOnce(ReturnError<hwsec::TPMError>("fake",
                                              hwsec::TPMRetryAction::kNoRetry));
@@ -265,6 +293,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = own_priv_point_blob,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = auth_value,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -297,6 +326,8 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up mock expectations
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, auth_value, _, _))
       .WillOnce(ReturnError<hwsec::TPMError>(
           "fake", hwsec::TPMRetryAction::kCommunication));
@@ -304,6 +335,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = own_priv_point_blob,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = auth_value,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
@@ -340,11 +372,14 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   ASSERT_TRUE(expected_shared_secret);
 
   // Set up mock expectations
+  EXPECT_CALL(*tpm_.get_mock_hwsec(), IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
   EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(0));
 
   GenerateDhSharedSecretRequest tpm_backend_request(
       {.ec = ec_256_.value(),
        .encrypted_own_priv_key = own_priv_point_blob,
+       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
        .auth_value = std::nullopt,
        .obfuscated_username = "",
        .others_pub_point = std::move(others_pub_key)});
