@@ -160,7 +160,11 @@ void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
 
 void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
+  if (camera_hal_adapter_->GetCameraSWPrivacySwitchState() == state) {
+    return;
+  }
   camera_hal_adapter_->SetCameraSWPrivacySwitchState(state);
+  callbacks_->CameraSWPrivacySwitchStateChange(state);
 }
 
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(
