@@ -37,6 +37,10 @@ class RealUfsWriteBoosterControlLogic : public UfsWriteBoosterControlLogic {
   uint64_t cycles_under_write_threshold_ = 0;
   bool explicit_trigger_ = false;
   BinaryControl::State last_decision_ = BinaryControl::State::kOff;
+
+  void UpdateStatistics(uint64_t bw);
+  BinaryControl::State CalculateTargetState();
+  Status UpdateState(BinaryControl::State target);
 };
 
 }  // namespace discod

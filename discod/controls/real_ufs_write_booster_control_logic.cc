@@ -50,19 +50,7 @@ Status RealUfsWriteBoosterControlLogic::Reset() {
   return OkStatus();
 }
 
-Status RealUfsWriteBoosterControlLogic::Update(
-    const brillo::DiskIoStat::Delta& delta) {
-  uint64_t written_bytes = delta->GetWrittenSectors() * kUfsBlockSize;
-  uint64_t ts_delta = delta->GetTimestamp().InMilliseconds();
-
-  VLOG(2) << "RealUfsWriteBoosterControlLogic::Update"
-          << "  written_bytes_delta=" << written_bytes
-          << "  timestamp_delta=" << ts_delta;
-
-  uint64_t bw = written_bytes * 1000 / ts_delta;
-
-  VLOG(2) << "  bw=" << bw;
-
+void RealUfsWriteBoosterControlLogic::UpdateStatistics(uint64_t bw) {
   if (bw >= kWriteBwThreshold) {
     ++cycles_over_write_threshold_;
     cycles_under_write_threshold_ = 0;
@@ -70,12 +58,9 @@ Status RealUfsWriteBoosterControlLogic::Update(
     cycles_over_write_threshold_ = 0;
     ++cycles_under_write_threshold_;
   }
+}
 
-  VLOG(2) << "  cycles_under_write_threshold_=" << cycles_under_write_threshold_
-          << "  cycles_over_write_threshold_=" << cycles_over_write_threshold_
-          << "  explicit_trigger_=" << explicit_trigger_
-          << "  last_decision_=" << static_cast<int32_t>(last_decision_);
-
+BinaryControl::State RealUfsWriteBoosterControlLogic::CalculateTargetState() {
   BinaryControl::State target = last_decision_;
 
   if (cycles_over_write_threshold_ >= kWriteBwThresholdEnableHysteresis) {
@@ -92,15 +77,47 @@ Status RealUfsWriteBoosterControlLogic::Update(
     target = BinaryControl::State::kOff;
   }
 
+  return target;
+}
+
+Status RealUfsWriteBoosterControlLogic::UpdateState(
+    BinaryControl::State target) {
+  RETURN_IF_ERROR(control_->Toggle(target));
+  last_decision_ = target;
+  if (last_decision_ == BinaryControl::State::kOff) {
+    explicit_trigger_ = false;
+  }
+
+  return OkStatus();
+}
+
+Status RealUfsWriteBoosterControlLogic::Update(
+    const brillo::DiskIoStat::Delta& delta) {
+  uint64_t written_bytes = delta->GetWrittenSectors() * kUfsBlockSize;
+  uint64_t ts_delta = delta->GetTimestamp().InMilliseconds();
+
+  VLOG(2) << "RealUfsWriteBoosterControlLogic::Update"
+          << "  written_bytes_delta=" << written_bytes
+          << "  timestamp_delta=" << ts_delta;
+
+  uint64_t bw = written_bytes * 1000 / ts_delta;
+
+  VLOG(2) << "  bw=" << bw;
+
+  UpdateStatistics(bw);
+
+  VLOG(2) << "  cycles_under_write_threshold_=" << cycles_under_write_threshold_
+          << "  cycles_over_write_threshold_=" << cycles_over_write_threshold_
+          << "  explicit_trigger_=" << explicit_trigger_
+          << "  last_decision_=" << static_cast<int32_t>(last_decision_);
+
+  BinaryControl::State target = CalculateTargetState();
+
   VLOG(2) << "  decision target=" << static_cast<int32_t>(target);
 
   if (target != last_decision_) {
     VLOG(1) << "  toggle target=" << static_cast<int32_t>(target);
-    RETURN_IF_ERROR(control_->Toggle(target));
-    if (target == BinaryControl::State::kOff) {
-      explicit_trigger_ = false;
-    }
-    last_decision_ = target;
+    RETURN_IF_ERROR(UpdateState(target));
   }
 
   return OkStatus();
