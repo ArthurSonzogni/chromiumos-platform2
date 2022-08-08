@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "tpm2-simulator/tpm_executor_tpm2_impl.h"
+
 #include <memory>
 #include <string>
 
@@ -11,7 +13,6 @@
 
 #include "tpm2-simulator/constants.h"
 #include "tpm2-simulator/tpm_command_utils.h"
-#include "tpm2-simulator/tpm_executor_tpm2_impl.h"
 #include "tpm2-simulator/tpm_vendor_cmd_locality.h"
 #include "tpm2-simulator/tpm_vendor_cmd_pinweaver.h"
 
