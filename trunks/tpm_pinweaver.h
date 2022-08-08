@@ -21,7 +21,7 @@ extern "C" {
 #include <brillo/secure_blob.h>
 
 #include "trunks/error_codes.h"
-#include "trunks/pinweaver.pb.h"
+#include "trunks/tpm_utility.h"
 
 namespace trunks {
 
@@ -81,6 +81,20 @@ BRILLO_EXPORT TPM_RC Serialize_pw_log_replay_t(uint8_t protocol_version,
 BRILLO_EXPORT TPM_RC Serialize_pw_sys_info_t(uint8_t protocol_version,
                                              std::string* buffer);
 
+BRILLO_EXPORT TPM_RC
+Serialize_pw_generate_ba_pk_t(uint8_t protocol_version,
+                              uint8_t auth_channel,
+                              const PinWeaverEccPoint& client_public_key,
+                              std::string* buffer);
+
+BRILLO_EXPORT TPM_RC
+Serialize_pw_start_bio_auth_t(uint8_t protocol_version,
+                              uint8_t auth_channel,
+                              const brillo::SecureBlob& client_nonce,
+                              const std::string& h_aux,
+                              const std::string& cred_metadata,
+                              std::string* buffer);
+
 // If TPM_RC_SUCCESS is returned, |result_code| and |root_hash| will be valid.
 // The other fields generally will not be valid unless |result_code| is zero.
 // Try auth has an exception for PW_ERR_LOWENT_AUTH_FAILED and
@@ -137,6 +151,29 @@ BRILLO_EXPORT TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
                                          std::string* root_hash,
                                          uint32_t* boot_count,
                                          uint64_t* seconds_since_boot);
+
+BRILLO_EXPORT TPM_RC
+Parse_pw_generate_ba_pk_t(const std::string& buffer,
+                          uint32_t* result_code,
+                          std::string* root_hash,
+                          PinWeaverEccPoint* server_public_key);
+
+BRILLO_EXPORT TPM_RC
+Parse_pw_ba_create_rate_limiter_t(const std::string& buffer,
+                                  uint32_t* result_code,
+                                  std::string* root_hash,
+                                  std::string* cred_metadata,
+                                  std::string* mac);
+
+BRILLO_EXPORT TPM_RC
+Parse_pw_start_bio_auth_t(const std::string& buffer,
+                          uint32_t* result_code,
+                          std::string* root_hash,
+                          brillo::SecureBlob* server_nonce,
+                          brillo::SecureBlob* encrypted_high_entropy_secret,
+                          brillo::SecureBlob* iv,
+                          std::string* cred_metadata_out,
+                          std::string* mac_out);
 }  // namespace trunks
 
 #endif  // TRUNKS_TPM_PINWEAVER_H_

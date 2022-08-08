@@ -54,6 +54,13 @@ constexpr uint32_t kRsaEndorsementCertificateNonRealIndex =
 constexpr uint32_t kEccEndorsementCertificateNonRealIndex =
     kEccEndorsementCertificateIndex & 0xFFFFFF;
 
+constexpr int PinWeaverEccPointSize = 32;
+
+struct PinWeaverEccPoint {
+  uint8_t x[PinWeaverEccPointSize];
+  uint8_t y[PinWeaverEccPointSize];
+};
+
 // An interface which provides convenient methods for common TPM operations.
 class TRUNKS_EXPORT TpmUtility {
  public:
@@ -597,7 +604,7 @@ class TRUNKS_EXPORT TpmUtility {
                                     std::string* root_hash) = 0;
 
   // Insert a leaf to the Merkle tree where:
-  //   |protocol_version| is the protocol version used to comunicate with
+  //   |protocol_version| is the protocol version used to communicate with
   //       pinweaver.
   //   |label| is the location of the leaf in the tree.
   //   |h_aux| is the auxiliary hashes started from the bottom of the tree
@@ -642,7 +649,7 @@ class TRUNKS_EXPORT TpmUtility {
       std::string* mac) = 0;
 
   // Remove a leaf from the Merkle tree where:
-  //   |protocol_version| is the protocol version used to comunicate with
+  //   |protocol_version| is the protocol version used to communicate with
   //       pinweaver.
   //   |label| is the location of the leaf in the tree.
   //   |h_aux| is the auxiliary hashes started from the bottom of the tree
@@ -664,7 +671,7 @@ class TRUNKS_EXPORT TpmUtility {
                                      std::string* root_hash) = 0;
 
   // Attempts to authenticate a leaf from the Merkle tree where:
-  //   |protocol_version| is the protocol version used to comunicate with
+  //   |protocol_version| is the protocol version used to communicate with
   //       pinweaver.
   //   |le_secret| is the low entropy secret that is limited by the delay
   //       schedule.
@@ -724,7 +731,7 @@ class TRUNKS_EXPORT TpmUtility {
                                   std::string* mac_out) = 0;
 
   // Attempts to reset a leaf from the Merkle tree where:
-  //   |protocol_version| is the protocol version used to comunicate with
+  //   |protocol_version| is the protocol version used to communicate with
   //       pinweaver.
   //   |reset_secret| is the high entropy secret used to reset the attempt
   //       counters and authenticate without following the delay schedule.
@@ -757,7 +764,7 @@ class TRUNKS_EXPORT TpmUtility {
                                     std::string* mac_out) = 0;
 
   // Retrieves the log of recent operations where:
-  //   |protocol_version| is the protocol version used to comunicate with
+  //   |protocol_version| is the protocol version used to communicate with
   //       pinweaver.
   //   |root| is the last known root hash.
   // On success:
@@ -820,6 +827,123 @@ class TRUNKS_EXPORT TpmUtility {
                                   std::string* root_hash,
                                   uint32_t* boot_count,
                                   uint64_t* seconds_since_boot) = 0;
+
+  // Establishes the Pk of the specified auth channel with the server.
+  //   |protocol_version| is the protocol version used to communicate with
+  //       pinweaver.
+  //   |auth_channel| is the auth channel to establish the Pk.
+  //   |client_public_key| is the ECDH public key of the client, which is
+  //       a point on the P256 curve.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |server_public_key| is set to the ECDH public key of the server, which is
+  //       a point on the P256 curve.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |server_public_key| is empty.
+  virtual TPM_RC PinWeaverGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const PinWeaverEccPoint& client_public_key,
+      uint32_t* result_code,
+      std::string* root_hash,
+      PinWeaverEccPoint* server_public_key) = 0;
+
+  // Inserts a biometrics rate-limiter to the Merkle tree where:
+  //   |protocol_version| is the protocol version used to communicate with
+  //       pinweaver.
+  //   |auth_channel| is the auth channel of the rate-limiter.
+  //   |label| is the location of the leaf in the tree.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |reset_secret| is the high entropy secret used to reset the attempt
+  //       counters and authenticate without following the delay schedule.
+  //   |delay_schedule| is constructed of (attempt_count, time_delay) with at
+  //       most PW_SCHED_COUNT entries.
+  //   |valid_pcr_criteria| is list of at most PW_MAX_PCR_CRITERIA_COUNT entries
+  //       where each entry represents a bitmask of PCR indexes and the expected
+  //       digest corresponding to those PCR.
+  //   |expiration_delay| is the expiration window of the leaf, in seconds.
+  //       Nullopt means the leaf doesn't expire.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  //   |mac| is set to the HMAC used in the Merkle tree calculations.
+  // On failure:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   |cred_metadata| and |mac| are both empty.
+  virtual TPM_RC PinWeaverCreateBiometricsAuthRateLimiter(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      uint64_t label,
+      const std::string& h_aux,
+      const brillo::SecureBlob& reset_secret,
+      const std::map<uint32_t, uint32_t>& delay_schedule,
+      const ValidPcrCriteria& valid_pcr_criteria,
+      std::optional<uint32_t> expiration_delay,
+      uint32_t* result_code,
+      std::string* root_hash,
+      std::string* cred_metadata,
+      std::string* mac) = 0;
+
+  // Tries to start an authentication attempt with a rate-limiter
+  // from the Merkle tree where:
+  //   |protocol_version| is the protocol version used to communicate with
+  //       pinweaver.
+  //   |auth_channel| is the auth channel of the rate-limiter.
+  //   |client_nonce| is the nonce used for establish the session key used for
+  //       encrypting the returned HEC.
+  //   |h_aux| is the auxiliary hashes started from the bottom of the tree
+  //       working toward the root in index order.
+  //   |cred_metadata| is set to the wrapped leaf data.
+  // On auth success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |server_nonce| is the nonce used for establish the session key used for
+  //       encrypting the returned HEC.
+  //   |encrypted_high_entropy_secret| is the high entropy secret that is
+  //       protected by Cr50 and returned on successful authentication. It
+  //       is encrypted with the session key derived from the client nonce,
+  //       server nonce, and Pk of that auth channel.
+  //   |iv| is the IV used for the AES-CTR encryption of the HEC.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //       calculations.
+  // On auth fail:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to PW_ERR_LOWENT_AUTH_FAILED.
+  //   |root_hash| is set to the updated root hash of the tree.
+  //   |cred_metadata_out| is set to the updated wrapped leaf data.
+  //   |mac_out| is set to the updated HMAC used in the Merkle tree
+  //        calculations.
+  //   other output fields are empty.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  //   other output fields are empty.
+  virtual TPM_RC PinWeaverStartBiometricsAuth(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const brillo::SecureBlob& client_nonce,
+      const std::string& h_aux,
+      const std::string& cred_metadata,
+      uint32_t* result_code,
+      std::string* root_hash,
+      brillo::SecureBlob* server_nonce,
+      brillo::SecureBlob* encrypted_high_entropy_secret,
+      brillo::SecureBlob* iv,
+      std::string* cred_metadata_out,
+      std::string* mac_out) = 0;
 
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;

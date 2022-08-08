@@ -630,6 +630,56 @@ class TpmUtilityForwarder : public TpmUtility {
                                      boot_count, seconds_since_boot);
   }
 
+  TPM_RC PinWeaverGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const PinWeaverEccPoint& client_public_key,
+      uint32_t* result_code,
+      std::string* root_hash,
+      PinWeaverEccPoint* server_public_key) override {
+    return target_->PinWeaverGenerateBiometricsAuthPk(
+        protocol_version, auth_channel, client_public_key, result_code,
+        root_hash, server_public_key);
+  }
+
+  TPM_RC PinWeaverCreateBiometricsAuthRateLimiter(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      uint64_t label,
+      const std::string& h_aux,
+      const brillo::SecureBlob& reset_secret,
+      const std::map<uint32_t, uint32_t>& delay_schedule,
+      const ValidPcrCriteria& valid_pcr_criteria,
+      std::optional<uint32_t> expiration_delay,
+      uint32_t* result_code,
+      std::string* root_hash,
+      std::string* cred_metadata,
+      std::string* mac) override {
+    return target_->PinWeaverCreateBiometricsAuthRateLimiter(
+        protocol_version, auth_channel, label, h_aux, reset_secret,
+        delay_schedule, valid_pcr_criteria, expiration_delay, result_code,
+        root_hash, cred_metadata, mac);
+  }
+
+  TPM_RC PinWeaverStartBiometricsAuth(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const brillo::SecureBlob& client_nonce,
+      const std::string& h_aux,
+      const std::string& cred_metadata,
+      uint32_t* result_code,
+      std::string* root_hash,
+      brillo::SecureBlob* server_nonce,
+      brillo::SecureBlob* encrypted_high_entropy_secret,
+      brillo::SecureBlob* iv,
+      std::string* cred_metadata_out,
+      std::string* mac_out) override {
+    return target_->PinWeaverStartBiometricsAuth(
+        protocol_version, auth_channel, client_nonce, h_aux, cred_metadata,
+        result_code, root_hash, server_nonce, encrypted_high_entropy_secret, iv,
+        cred_metadata_out, mac_out);
+  }
+
   TPM_RC GetRsuDeviceId(std::string* device_id) override {
     return target_->GetRsuDeviceId(device_id);
   }

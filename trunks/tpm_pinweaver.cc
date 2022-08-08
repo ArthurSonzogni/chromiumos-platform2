@@ -307,6 +307,77 @@ TPM_RC Serialize_pw_sys_info_t(uint8_t protocol_version, std::string* buffer) {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC Serialize_pw_generate_ba_pk_t(uint8_t protocol_version,
+                                     uint8_t auth_channel,
+                                     const PinWeaverEccPoint& client_public_key,
+                                     std::string* buffer) {
+  if (protocol_version <= 1) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  struct pw_request_generate_ba_pk02_t data = {};
+  size_t data_size = sizeof(data);
+  buffer->reserve(buffer->size() + sizeof(pw_request_header_t) + data_size);
+
+  data.auth_channel = auth_channel;
+  // Version 0 is the raw point format.
+  data.client_pbk.version = 0;
+  memcpy(data.client_pbk.pt.x, client_public_key.x, PW_BA_ECC_CORD_SIZE);
+  memcpy(data.client_pbk.pt.y, client_public_key.y, PW_BA_ECC_CORD_SIZE);
+  Serialize_pw_request_header_t(protocol_version, PW_GENERATE_BA_PK, data_size,
+                                buffer);
+  Serialize(&data, data_size, buffer);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC Serialize_pw_start_bio_auth_t(uint8_t protocol_version,
+                                     uint8_t auth_channel,
+                                     const brillo::SecureBlob& client_nonce,
+                                     const std::string& h_aux,
+                                     const std::string& cred_metadata,
+                                     std::string* buffer) {
+  if (protocol_version <= 1 || auth_channel > PW_BA_PK_ENTRY_COUNT) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  // A standard try_auth request is part of the start_bio_auth request,
+  // so we call Serialize_pw_try_auth_t first then modify its body and
+  // header.
+  brillo::SecureBlob zeroed_secret(PW_SECRET_SIZE, 0);
+  TPM_RC ret = Serialize_pw_try_auth_t(
+      /*protocol_version=*/2, zeroed_secret, h_aux, cred_metadata, buffer);
+  if (ret != TPM_RC_SUCCESS) {
+    return ret;
+  }
+
+  if (buffer->size() <
+      sizeof(pw_request_header_t) + sizeof(pw_request_try_auth00_t)) {
+    return SAPI_RC_BAD_SIZE;
+  }
+
+  // Reserve space for the full start_bio_auth request.
+  size_t offset = offsetof(pw_request_start_bio_auth02_t, uninit_request);
+  buffer->insert(sizeof(pw_request_header_t), offset, '\0');
+
+  // To prevent misalignment issues, memcpy to allocated structs, modify them
+  // accordingly, then memcpy back.
+  pw_request_header_t header;
+  pw_request_start_bio_auth02_t request;
+  memcpy(&header, buffer->data(), sizeof(pw_request_header_t));
+  memcpy(&request, buffer->data() + sizeof(pw_request_header_t),
+         sizeof(pw_request_start_bio_auth02_t));
+  header.version = protocol_version;
+  header.type.v = PW_START_BIO_AUTH;
+  header.data_length += offset;
+  request.auth_channel = auth_channel;
+  memcpy(request.client_nonce, client_nonce.data(), PW_SECRET_SIZE);
+  memcpy(buffer->data(), &header, sizeof(pw_request_header_t));
+  memcpy(buffer->data() + sizeof(pw_request_header_t), &request,
+         sizeof(pw_request_start_bio_auth02_t));
+
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC Parse_pw_response_header_t(const std::string& buffer,
                                   uint32_t* result_code,
                                   std::string* root_hash,
@@ -628,6 +699,80 @@ TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
   *seconds_since_boot = base::ByteSwapToLE64(*seconds_since_boot);
 
   return TPM_RC_SUCCESS;
+}
+
+TPM_RC Parse_pw_generate_ba_pk_t(const std::string& buffer,
+                                 uint32_t* result_code,
+                                 std::string* root_hash,
+                                 PinWeaverEccPoint* server_public_key) {
+  uint16_t response_length;
+  TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
+                                         &response_length);
+  if (rc != TPM_RC_SUCCESS)
+    return rc;
+
+  if (*result_code != 0) {
+    return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
+  }
+
+  if (response_length < sizeof(struct pw_response_generate_ba_pk02_t))
+    return SAPI_RC_BAD_SIZE;
+
+  const auto* pbk = reinterpret_cast<const struct pw_ba_pbk_t*>(
+      buffer.data() + sizeof(struct pw_response_header_t));
+  if (pbk->version != 0)
+    return SAPI_RC_BAD_SEQUENCE;
+
+  memcpy(server_public_key->x, pbk->pt.x, PW_BA_ECC_CORD_SIZE);
+  memcpy(server_public_key->y, pbk->pt.y, PW_BA_ECC_CORD_SIZE);
+
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC
+Parse_pw_start_bio_auth_t(const std::string& buffer,
+                          uint32_t* result_code,
+                          std::string* root_hash,
+                          brillo::SecureBlob* server_nonce,
+                          brillo::SecureBlob* encrypted_high_entropy_secret,
+                          brillo::SecureBlob* iv,
+                          std::string* cred_metadata_out,
+                          std::string* mac_out) {
+  server_nonce->clear();
+  encrypted_high_entropy_secret->clear();
+  iv->clear();
+  cred_metadata_out->clear();
+  mac_out->clear();
+
+  uint16_t response_length;
+  TPM_RC rc = Parse_pw_response_header_t(buffer, result_code, root_hash,
+                                         &response_length);
+  if (rc != TPM_RC_SUCCESS)
+    return rc;
+
+  // For EC_SUCCESS and PW_ERR_LOWENT_AUTH_FAILED a full size response is sent.
+  // However, only particular fields are valid.
+  if (*result_code != 0 && *result_code != PW_ERR_LOWENT_AUTH_FAILED) {
+    return response_length == 0 ? TPM_RC_SUCCESS : SAPI_RC_BAD_SIZE;
+  }
+
+  if (response_length < sizeof(pw_response_start_bio_auth02_t))
+    return SAPI_RC_BAD_SIZE;
+
+  auto itr = buffer.begin() + sizeof(pw_response_header_t);
+
+  // secrets are only valid for EC_SUCCESS.
+  if (*result_code == 0) {
+    server_nonce->assign(itr, itr + PW_SECRET_SIZE);
+    encrypted_high_entropy_secret->assign(itr + PW_SECRET_SIZE,
+                                          itr + 2 * PW_SECRET_SIZE);
+    iv->assign(itr + 2 * PW_SECRET_SIZE,
+               itr + 2 * PW_SECRET_SIZE + PW_WRAP_BLOCK_SIZE);
+  }
+  itr += 2 * PW_SECRET_SIZE + PW_WRAP_BLOCK_SIZE;
+
+  return Parse_unimported_leaf_data_t(itr, buffer.end(), cred_metadata_out,
+                                      mac_out);
 }
 
 }  // namespace trunks

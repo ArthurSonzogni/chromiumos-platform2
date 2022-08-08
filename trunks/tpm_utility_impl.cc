@@ -76,6 +76,8 @@ const uint16_t kCr50SubcmdGetRoStatus = 57;
 const char kRsuSalt[] = "Wu8oGt0uu0H8uSGxfo75uSDrGcRk2BXh";
 
 constexpr uint8_t kPwLeafTypeNormal = 0;
+constexpr uint8_t kPwLeafTypeBiometrics = 1;
+constexpr uint8_t kPwSecretSize = 32;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -3022,6 +3024,87 @@ TPM_RC TpmUtilityImpl::PinWeaverSysInfo(uint8_t protocol_version,
        seconds_since_boot](const std::string& out) -> TPM_RC {
         return Parse_pw_sys_info_t(out, result_code, root_hash, boot_count,
                                    seconds_since_boot);
+      });
+}
+
+TPM_RC TpmUtilityImpl::PinWeaverGenerateBiometricsAuthPk(
+    uint8_t protocol_version,
+    uint8_t auth_channel,
+    const PinWeaverEccPoint& client_public_key,
+    uint32_t* result_code,
+    std::string* root_hash,
+    PinWeaverEccPoint* server_public_key) {
+  return PinWeaverCommand(
+      __func__,
+      [protocol_version, auth_channel,
+       client_public_key](std::string* in) -> TPM_RC {
+        return Serialize_pw_generate_ba_pk_t(protocol_version, auth_channel,
+                                             client_public_key, in);
+      },
+      [result_code, root_hash,
+       server_public_key](const std::string& out) -> TPM_RC {
+        return Parse_pw_generate_ba_pk_t(out, result_code, root_hash,
+                                         server_public_key);
+      });
+}
+
+TPM_RC TpmUtilityImpl::PinWeaverCreateBiometricsAuthRateLimiter(
+    uint8_t protocol_version,
+    uint8_t auth_channel,
+    uint64_t label,
+    const std::string& h_aux,
+    const brillo::SecureBlob& reset_secret,
+    const std::map<uint32_t, uint32_t>& delay_schedule,
+    const ValidPcrCriteria& valid_pcr_criteria,
+    std::optional<uint32_t> expiration_delay,
+    uint32_t* result_code,
+    std::string* root_hash,
+    std::string* cred_metadata,
+    std::string* mac) {
+  return PinWeaverCommand(
+      __func__,
+      [protocol_version, auth_channel, label, h_aux, reset_secret,
+       delay_schedule, valid_pcr_criteria,
+       expiration_delay](std::string* in) -> TPM_RC {
+        brillo::SecureBlob zeroes(kPwSecretSize, 0);
+        return Serialize_pw_insert_leaf_t(
+            protocol_version, label, h_aux, zeroes, zeroes, reset_secret,
+            delay_schedule, valid_pcr_criteria, expiration_delay,
+            kPwLeafTypeBiometrics, auth_channel, in);
+      },
+      [result_code, root_hash, cred_metadata,
+       mac](const std::string& out) -> TPM_RC {
+        return Parse_pw_insert_leaf_t(out, result_code, root_hash,
+                                      cred_metadata, mac);
+      });
+}
+
+TPM_RC TpmUtilityImpl::PinWeaverStartBiometricsAuth(
+    uint8_t protocol_version,
+    uint8_t auth_channel,
+    const brillo::SecureBlob& client_nonce,
+    const std::string& h_aux,
+    const std::string& cred_metadata,
+    uint32_t* result_code,
+    std::string* root_hash,
+    brillo::SecureBlob* server_nonce,
+    brillo::SecureBlob* encrypted_high_entropy_secret,
+    brillo::SecureBlob* iv,
+    std::string* cred_metadata_out,
+    std::string* mac_out) {
+  return PinWeaverCommand(
+      __func__,
+      [protocol_version, auth_channel, client_nonce, h_aux,
+       cred_metadata](std::string* in) -> TPM_RC {
+        return Serialize_pw_start_bio_auth_t(protocol_version, auth_channel,
+                                             client_nonce, h_aux, cred_metadata,
+                                             in);
+      },
+      [result_code, root_hash, server_nonce, encrypted_high_entropy_secret, iv,
+       cred_metadata_out, mac_out](const std::string& out) -> TPM_RC {
+        return Parse_pw_start_bio_auth_t(
+            out, result_code, root_hash, server_nonce,
+            encrypted_high_entropy_secret, iv, cred_metadata_out, mac_out);
       });
 }
 

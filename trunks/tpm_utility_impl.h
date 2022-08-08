@@ -302,6 +302,39 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           std::string* root_hash,
                           uint32_t* boot_count,
                           uint64_t* seconds_since_boot) override;
+  TPM_RC PinWeaverGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const PinWeaverEccPoint& client_public_key,
+      uint32_t* result_code,
+      std::string* root_hash,
+      PinWeaverEccPoint* server_public_key) override;
+  TPM_RC PinWeaverCreateBiometricsAuthRateLimiter(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      uint64_t label,
+      const std::string& h_aux,
+      const brillo::SecureBlob& reset_secret,
+      const std::map<uint32_t, uint32_t>& delay_schedule,
+      const ValidPcrCriteria& valid_pcr_criteria,
+      std::optional<uint32_t> expiration_delay,
+      uint32_t* result_code,
+      std::string* root_hash,
+      std::string* cred_metadata,
+      std::string* mac) override;
+  TPM_RC PinWeaverStartBiometricsAuth(
+      uint8_t protocol_version,
+      uint8_t auth_channel,
+      const brillo::SecureBlob& client_nonce,
+      const std::string& h_aux,
+      const std::string& cred_metadata,
+      uint32_t* result_code,
+      std::string* root_hash,
+      brillo::SecureBlob* server_nonce,
+      brillo::SecureBlob* encrypted_high_entropy_secret,
+      brillo::SecureBlob* iv,
+      std::string* cred_metadata_out,
+      std::string* mac_out) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 
