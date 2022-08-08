@@ -27,23 +27,27 @@ std::vector<arc::mojom::KeyParameterPtr> consumeKeyParameters(
 
   for (size_t i = 0; i < size; ++i) {
     uint32_t tag = fdp->ConsumeIntegral<uint32_t>();
-    auto param = arc::mojom::IntegerKeyParam::New();
+    arc::mojom::IntegerKeyParamPtr param;
 
     switch (fdp->ConsumeIntegralInRange<uint8_t>(0, 4)) {
       case 0:
-        param->set_boolean_value(fdp->ConsumeBool());
+        param =
+            arc::mojom::IntegerKeyParam::NewBooleanValue(fdp->ConsumeBool());
         break;
       case 1:
-        param->set_integer(fdp->ConsumeIntegral<uint32_t>());
+        param = arc::mojom::IntegerKeyParam::NewInteger(
+            fdp->ConsumeIntegral<uint32_t>());
         break;
       case 2:
-        param->set_long_integer(fdp->ConsumeIntegral<uint64_t>());
+        param = arc::mojom::IntegerKeyParam::NewLongInteger(
+            fdp->ConsumeIntegral<uint64_t>());
         break;
       case 3:
-        param->set_date_time(fdp->ConsumeIntegral<uint64_t>());
+        param = arc::mojom::IntegerKeyParam::NewDateTime(
+            fdp->ConsumeIntegral<uint64_t>());
         break;
       case 4:
-        param->set_blob(
+        param = arc::mojom::IntegerKeyParam::NewBlob(
             fdp->ConsumeBytes<uint8_t>(fdp->ConsumeIntegral<uint8_t>()));
         break;
     }
