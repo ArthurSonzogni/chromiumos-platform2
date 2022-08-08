@@ -34,6 +34,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
+#include "cros-camera/tracing.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_associated_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
@@ -60,6 +61,9 @@ const uint32_t kIdAll = 0xFFFFFFFF;
 constexpr char kArcvmVendorTagSectionName[] = "com.google.arcvm";
 constexpr char kArcvmVendorTagHostTimeTagName[] = "hostSensorTimestamp";
 constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
+
+constexpr char kCameraTraceKeyDeviceStatus[] = "device_status";
+constexpr char kCameraTraceKeyClientType[] = "client_type";
 
 }  // namespace
 
@@ -108,7 +112,7 @@ CameraHalAdapter::~CameraHalAdapter() {
 
 bool CameraHalAdapter::Start() {
   VLOGF_ENTER();
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER();
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -131,7 +135,8 @@ void CameraHalAdapter::OpenCameraHal(
     mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type);
+
   auto module_delegate = std::make_unique<CameraModuleDelegate>(
       this, camera_module_thread_.task_runner(), camera_client_type);
   uint32_t module_id = module_id_++;
@@ -152,7 +157,8 @@ int32_t CameraHalAdapter::OpenDevice(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
+                    kCameraTraceKeyCameraId, camera_id);
 
   session_timer_map_.emplace(std::piecewise_construct,
                              std::forward_as_tuple(camera_id),
@@ -288,7 +294,7 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER();
   return num_builtin_cameras_;
 }
 
@@ -298,7 +304,8 @@ int32_t CameraHalAdapter::GetCameraInfo(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
+                    kCameraTraceKeyCameraId, camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -360,7 +367,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
 int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -381,7 +388,8 @@ int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
 int32_t CameraHalAdapter::Init() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER();
+
   return 0;
 }
 
@@ -389,6 +397,7 @@ void CameraHalAdapter::GetVendorTagOps(
     mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
 
   auto vendor_tag_ops_delegate = std::make_unique<VendorTagOpsDelegate>(
       camera_module_thread_.task_runner(), &vendor_tag_manager_);
@@ -410,6 +419,14 @@ void CameraHalAdapter::CloseDeviceCallback(
       FROM_HERE,
       base::BindOnce(&CameraHalAdapter::CloseDevice, base::Unretained(this),
                      camera_id, camera_client_type));
+  task_runner->PostTask(FROM_HERE, base::BindOnce([]() {
+                          // Inject an empty event to end the CloseDevice event.
+                          // The CameraHalAdapter::CloseDevice event emitted by
+                          // the callback above is usually the last event from
+                          // the cros-camera process, and there's a known issue
+                          // in Perfetto where the last event does not end.
+                          PERFETTO_INTERNAL_ADD_EMPTY_EVENT();
+                        }));
 }
 
 // static
@@ -418,7 +435,6 @@ void CameraHalAdapter::camera_device_status_change(
     int internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
-  TRACE_CAMERA_SCOPED();
 
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
@@ -435,7 +451,6 @@ void CameraHalAdapter::torch_mode_status_change(
     const char* internal_camera_id,
     int new_status) {
   VLOGF_ENTER();
-  TRACE_CAMERA_SCOPED();
 
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
@@ -450,6 +465,9 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
     int camera_id,
     mojom::CameraClientType camera_client_type,
     const camera_metadata_t* static_metadata) {
+  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
+                    kCameraTraceKeyCameraId, camera_id);
+
   auto& metadata_scoped =
       static_metadata_map_[std::make_pair(camera_id, camera_client_type)];
   if (metadata_scoped) {
@@ -486,7 +504,8 @@ void CameraHalAdapter::CameraDeviceStatusChange(
     camera_device_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, internal_camera_id,
+                    kCameraTraceKeyDeviceStatus, new_status);
 
   int public_camera_id = GetPublicId(aux->module_id, internal_camera_id);
 
@@ -549,7 +568,7 @@ void CameraHalAdapter::TorchModeStatusChange(
     torch_mode_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, internal_camera_id);
 
   int camera_id = GetPublicId(aux->module_id, internal_camera_id);
   if (camera_id == -1) {
@@ -860,7 +879,9 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
                                    mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
+                    kCameraTraceKeyCameraId, camera_id);
+
   LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id;
   if (device_adapters_.find(camera_id) == device_adapters_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << camera_id
@@ -914,7 +935,7 @@ int32_t CameraHalAdapter::SetCallbacks(
     mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER();
 
   auto callbacks_delegate =
       std::make_unique<CameraModuleCallbacksAssociatedDelegate>(

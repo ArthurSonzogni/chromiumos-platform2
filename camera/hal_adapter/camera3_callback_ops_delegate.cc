@@ -45,18 +45,19 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     mojom::Camera3CaptureResultPtr result) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result->frame_number);
+
   // process_capture_result may be called multiple times for a single frame,
   // each time with a new disjoint piece of metadata and/or set of gralloc
   // buffers. The framework will accumulate these partial metadata results into
   // one result.
   // ref:
   // https://android.googlesource.com/platform/hardware/libhardware/+/8a6fed0d280014d84fe0f6a802f1cf29600e5bae/include/hardware/camera3.h#284
-  TRACE_CAMERA_SCOPED(kCameraTraceKeyFrameNumber, result->frame_number);
   if (result->output_buffers) {
     for (const auto& output_buffer : *result->output_buffers) {
-      TRACE_CAMERA_EVENT_END(GetTraceTrack(HalAdapterTraceEvent::kCapture,
-                                           result->frame_number,
-                                           output_buffer->stream_id));
+      TRACE_HAL_ADAPTER_END(GetTraceTrack(HalAdapterTraceEvent::kCapture,
+                                          result->frame_number,
+                                          output_buffer->stream_id));
     }
   }
 
@@ -67,7 +68,8 @@ void Camera3CallbackOpsDelegate::NotifyOnThread(
     mojom::Camera3NotifyMsgPtr msg) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED();
+  TRACE_HAL_ADAPTER();
+
   remote_->Notify(std::move(msg));
 }
 

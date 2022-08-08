@@ -117,6 +117,9 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   // Unlocks the instance for further modification.
   void Unlock();
 
+  // Returns a JSON string describing the stream configurations.
+  std::string ToJsonString() const;
+
   bool is_valid() const { return !streams_.empty(); }
   uint32_t num_streams() const { return streams_.size(); }
   uint32_t operation_mode() const { return operation_mode_; }
@@ -213,6 +216,9 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
 
   // Unlocks the descriptor for further modification.
   void Unlock();
+
+  // Returns a JSON string describing the capture request / result.
+  std::string ToJsonString() const;
 
   bool is_valid() const { return type_ != Type::kInvalidType; }
   uint32_t frame_number() const { return frame_number_; }

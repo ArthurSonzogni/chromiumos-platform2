@@ -33,9 +33,11 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
+#include "cros-camera/tracing.h"
 #include "cros-camera/utils/camera_config.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
+#include "hal_adapter/camera_trace_event.h"
 
 namespace cros {
 
@@ -255,6 +257,8 @@ void CameraDeviceAdapter::Bind(
 int32_t CameraDeviceAdapter::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   {
     base::AutoLock l(fence_sync_thread_lock_);
     if (!fence_sync_thread_.Start()) {
@@ -269,28 +273,31 @@ int32_t CameraDeviceAdapter::Initialize(
 
   auto result_callback = base::BindRepeating(
       &CameraDeviceAdapter::ReturnResultToClient, base::Unretained(this));
-  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
-       ++it) {
-    (*it)->Initialize(static_info_, result_callback);
+  for (auto& stream_manipulator : stream_manipulators_) {
+    stream_manipulator->Initialize(static_info_, result_callback);
   }
 
   base::AutoLock l(callback_ops_delegate_lock_);
   // Unlike the camera module, only one peer is allowed to access a camera
   // device at any time.
   DCHECK(!callback_ops_delegate_);
-  callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
-      camera_callback_ops_thread_.task_runner()));
+  callback_ops_delegate_ = std::make_unique<Camera3CallbackOpsDelegate>(
+      camera_callback_ops_thread_.task_runner());
   callback_ops_delegate_->Bind(
       std::move(callback_ops),
       base::BindOnce(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
                      base::Unretained(this)));
-  return camera_device_->ops->initialize(camera_device_, this);
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::Initialize");
+    return camera_device_->ops->initialize(camera_device_, this);
+  }
 }
 
 int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     mojom::Camera3StreamConfigurationPtr* updated_config) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
 
   base::ElapsedTimer timer;
 
@@ -306,7 +313,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
                << ", format = " << s->format;
     uint64_t id = s->id;
     auto& stream = new_streams[id];
-    stream.reset(new internal::camera3_stream_aux_t);
+    stream = std::make_unique<internal::camera3_stream_aux_t>();
     memset(stream.get(), 0, sizeof(*stream.get()));
     stream->stream_type = static_cast<camera3_stream_type_t>(s->stream_type);
     stream->width = s->width;
@@ -373,15 +380,17 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       .session_parameters = session_parameters.get(),
   });
 
-  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
-       ++it) {
-    (*it)->ConfigureStreams(&stream_config);
+  for (auto& stream_manipulator : stream_manipulators_) {
+    stream_manipulator->ConfigureStreams(&stream_config);
   }
 
-  camera3_stream_configuration_t* raw_config = stream_config.Lock();
-  int32_t result =
-      camera_device_->ops->configure_streams(camera_device_, raw_config);
-  stream_config.Unlock();
+  int32_t result = 0;
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ConfigureStreams");
+    camera3_stream_configuration_t* raw_config = stream_config.Lock();
+    result = camera_device_->ops->configure_streams(camera_device_, raw_config);
+    stream_config.Unlock();
+  }
 
   // Call OnConfiguredStreams in reverse order so the stream manipulators can
   // unwind the stream modifications.
@@ -458,6 +467,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   size_t type_index = static_cast<size_t>(type);
   if (type_index >= CAMERA3_TEMPLATE_COUNT) {
     LOGF(ERROR) << "Invalid template index given";
@@ -469,9 +480,9 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     request_template.acquire(clone_camera_metadata(
         camera_device_->ops->construct_default_request_settings(camera_device_,
                                                                 request_type)));
-    for (auto it = stream_manipulators_.begin();
-         it != stream_manipulators_.end(); ++it) {
-      (*it)->ConstructDefaultRequestSettings(&request_template, request_type);
+    for (auto& stream_manipulator : stream_manipulators_) {
+      stream_manipulator->ConstructDefaultRequestSettings(&request_template,
+                                                          request_type);
     }
   }
   return internal::SerializeCameraMetadata(request_template.getAndLock());
@@ -480,6 +491,7 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, request->frame_number);
 
   // Complete the pending reprocess request first if exists. We need to
   // prioritize reprocess requests because CCA can be waiting for the
@@ -617,7 +629,12 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
           request_descriptor.LockForRequest(), i);
       request_descriptor.Unlock();
     }
-    stream_manipulators_[i]->ProcessCaptureRequest(&request_descriptor);
+    {
+      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureRequest",
+                  kCameraTraceKeyFrameNumber,
+                  request_descriptor.frame_number());
+      stream_manipulators_[i]->ProcessCaptureRequest(&request_descriptor);
+    }
   }
   if (camera_metadata_inspector_ &&
       camera_metadata_inspector_->IsPositionInspected(
@@ -627,23 +644,29 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     request_descriptor.Unlock();
   }
 
-  int ret = camera_device_->ops->process_capture_request(
-      camera_device_, request_descriptor.LockForRequest());
-
-  return ret;
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ProcessCaptureRequest",
+                kCameraTraceKeyFrameNumber, request_descriptor.frame_number(),
+                kCameraTraceKeyCaptureInfo, request_descriptor.ToJsonString());
+    return camera_device_->ops->process_capture_request(
+        camera_device_, request_descriptor.LockForRequest());
+  }
 }
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
 
 int32_t CameraDeviceAdapter::Flush() {
   VLOGF_ENTER();
-  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
-       ++it) {
-    (*it)->Flush();
+  TRACE_HAL_ADAPTER();
+
+  for (auto& stream_manipulator : stream_manipulators_) {
+    stream_manipulator->Flush();
   }
   return camera_device_->ops->flush(camera_device_);
 }
@@ -658,6 +681,8 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     uint32_t height,
     const std::vector<uint32_t>& strides,
     const std::vector<uint32_t>& offsets) {
+  TRACE_HAL_ADAPTER();
+
   base::AutoLock l(buffer_handles_lock_);
   return CameraDeviceAdapter::RegisterBufferLocked(
       buffer_id, std::move(fds), drm_format, hal_pixel_format, width, height,
@@ -665,8 +690,9 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 }
 
 int32_t CameraDeviceAdapter::Close() {
-  // Close the device.
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   {
     base::AutoLock l(close_lock_);
     if (close_called_) {
@@ -680,8 +706,12 @@ int32_t CameraDeviceAdapter::Close() {
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kResultsMonitor);
 
   reprocess_effect_thread_.Stop();
-  int32_t ret = camera_device_->common.close(&camera_device_->common);
-  DCHECK_EQ(ret, 0);
+  int32_t ret = 0;
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::Close");
+    ret = camera_device_->common.close(&camera_device_->common);
+    DCHECK_EQ(ret, 0);
+  }
   {
     base::AutoLock l(fence_sync_thread_lock_);
     fence_sync_thread_.Stop();
@@ -697,6 +727,8 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
     mojom::Camera3StreamConfigurationPtr* updated_config,
     AllocatedBuffers* allocated_buffers) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   int32_t result = ConfigureStreams(std::move(config), updated_config);
 
   // Early return if configure streams failed.
@@ -725,6 +757,8 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
 void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result->frame_number);
+
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
 
@@ -742,7 +776,11 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   }
   for (size_t i = 0; i < self->stream_manipulators_.size(); ++i) {
     size_t j = self->stream_manipulators_.size() - i - 1;
-    self->stream_manipulators_[j]->ProcessCaptureResult(&result_descriptor);
+    {
+      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureResult",
+                  kCameraTraceKeyFrameNumber, result_descriptor.frame_number());
+      self->stream_manipulators_[j]->ProcessCaptureResult(&result_descriptor);
+    }
     if (self->camera_metadata_inspector_ &&
         self->camera_metadata_inspector_->IsPositionInspected(j)) {
       self->camera_metadata_inspector_->InspectResult(
@@ -751,7 +789,12 @@ void CameraDeviceAdapter::ProcessCaptureResult(
     }
   }
 
-  ReturnResultToClient(ops, std::move(result_descriptor));
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "Client::ProcessCaptureResult",
+                kCameraTraceKeyFrameNumber, result_descriptor.frame_number(),
+                kCameraTraceKeyCaptureInfo, result_descriptor.ToJsonString());
+    ReturnResultToClient(ops, std::move(result_descriptor));
+  }
 }
 
 // static
@@ -759,6 +802,8 @@ void CameraDeviceAdapter::ReturnResultToClient(
     const camera3_callback_ops_t* ops,
     Camera3CaptureDescriptor result_descriptor) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   if (!result_descriptor.has_metadata() &&
       result_descriptor.GetInputBuffer() == nullptr &&
       result_descriptor.num_output_buffers() == 0) {
@@ -814,6 +859,7 @@ void CameraDeviceAdapter::ReturnResultToClient(
 void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
                                  const camera3_notify_msg_t* msg) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
@@ -827,9 +873,8 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   }
 
   camera3_notify_msg_t* mutable_msg = const_cast<camera3_notify_msg_t*>(msg);
-  for (auto it = self->stream_manipulators_.begin();
-       it != self->stream_manipulators_.end(); ++it) {
-    (*it)->Notify(mutable_msg);
+  for (auto& stream_manipulator : self->stream_manipulators_) {
+    stream_manipulator->Notify(mutable_msg);
   }
 
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(mutable_msg);
@@ -842,6 +887,8 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 bool CameraDeviceAdapter::AllocateBuffersForStreams(
     const std::vector<mojom::Camera3StreamPtr>& streams,
     AllocatedBuffers* allocated_buffers) {
+  TRACE_HAL_ADAPTER();
+
   AllocatedBuffers tmp_allocated_buffers;
   auto* camera_buffer_manager = CameraBufferManager::GetInstance();
   for (const auto& stream : streams) {
@@ -928,6 +975,8 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
 }
 
 void CameraDeviceAdapter::FreeAllocatedStreamBuffers() {
+  TRACE_HAL_ADAPTER();
+
   auto camera_buffer_manager = CameraBufferManager::GetInstance();
   if (allocated_stream_buffers_.empty()) {
     return;
@@ -1171,6 +1220,8 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
 void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc) {
   VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
   DCHECK(desc->GetInputBuffer());
   DCHECK_GT(desc->num_output_buffers(), 0);
   const camera3_stream_t* input_stream = desc->GetInputBuffer()->stream;

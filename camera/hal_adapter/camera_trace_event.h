@@ -19,20 +19,15 @@ enum class HalAdapterTraceEvent {
   kCapture,
 };
 
-#define TRACE_CAMERA_COMBINE_NAME(X, Y) X##Y
-#define TRACE_NAME TRACE_CAMERA_COMBINE_NAME(trace_, __LINE__)
+#define TRACE_HAL_ADAPTER(...) \
+  TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHalAdapter, ##__VA_ARGS__);
 
-#define TRACE_CAMERA_SCOPED(...)                            \
-  static const std::string trace_name =                     \
-      base::StringPrintf("%s_L%d", __FUNCTION__, __LINE__); \
-  TRACE_EVENT(kHalAdapterTraceCategory,                     \
-              perfetto::StaticString(trace_name.c_str()), ##__VA_ARGS__);
+#define TRACE_HAL_ADAPTER_BEGIN(event, track, ...)                \
+  TRACE_EVENT_BEGIN(kCameraTraceCategoryHalAdapter, event, track, \
+                    ##__VA_ARGS__);
 
-#define TRACE_CAMERA_EVENT_BEGIN(event, track, ...) \
-  TRACE_EVENT_BEGIN(kHalAdapterTraceCategory, event, track, ##__VA_ARGS__);
-
-#define TRACE_CAMERA_EVENT_END(track) \
-  TRACE_EVENT_END(kHalAdapterTraceCategory, track);
+#define TRACE_HAL_ADAPTER_END(track) \
+  TRACE_EVENT_END(kCameraTraceCategoryHalAdapter, track);
 
 // Generates unique track by given |event|, |primary_id| and |secondary_id|. For
 // |secondary_id|, only the last 16 bits will be used.

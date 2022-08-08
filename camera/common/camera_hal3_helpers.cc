@@ -9,7 +9,47 @@
 #include <algorithm>
 #include <utility>
 
+#include <base/json/json_writer.h>
+#include <base/values.h>
+
+#include "cros-camera/tracing.h"
+
 namespace cros {
+
+namespace {
+
+base::Value::Dict ToValueDict(const camera3_stream_t* stream) {
+  if (!stream) {
+    return base::Value::Dict();
+  }
+  base::Value::Dict s;
+  s.Set("stream_type", stream->stream_type);
+  s.Set("width", base::checked_cast<int>(stream->width));
+  s.Set("height", base::checked_cast<int>(stream->height));
+  s.Set("format", stream->format);
+  s.Set("usage", base::checked_cast<int>(stream->usage));
+  s.Set("max_buffers", base::checked_cast<int>(stream->max_buffers));
+  s.Set("data_space", stream->data_space);
+  s.Set("rotation", stream->rotation);
+  if (stream->physical_camera_id) {
+    s.Set("physical_camera_id", stream->physical_camera_id);
+  }
+  return s;
+}
+
+base::Value::Dict ToValueDict(const camera3_stream_buffer_t* buffer) {
+  if (!buffer) {
+    return base::Value::Dict();
+  }
+  base::Value::Dict b;
+  b.Set("stream", ToValueDict(buffer->stream));
+  b.Set("status", buffer->status);
+  b.Set("acquire_fence", buffer->acquire_fence);
+  b.Set("release_fence", buffer->release_fence);
+  return b;
+}
+
+}  // namespace
 
 Rect<uint32_t> GetCenteringFullCrop(Size size,
                                     uint32_t aspect_ratio_x,
@@ -71,6 +111,20 @@ camera3_stream_configuration_t* Camera3StreamConfiguration::Lock() {
       .operation_mode = operation_mode_,
       .session_parameters = session_parameters_};
   return &raw_configuration_.value();
+}
+
+std::string Camera3StreamConfiguration::ToJsonString() const {
+  base::Value::List val;
+  for (const auto* stream : GetStreams()) {
+    val.Append(ToValueDict(stream));
+  }
+  std::string json_string;
+  if (!base::JSONWriter::WriteWithOptions(
+          val, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string)) {
+    LOGF(ERROR) << "Cannot convert stream configurations to JSON string";
+    return std::string();
+  }
+  return json_string;
 }
 
 void Camera3StreamConfiguration::Unlock() {
@@ -355,6 +409,37 @@ void Camera3CaptureDescriptor::Unlock() {
       NOTREACHED() << "Cannot unlock invalid descriptor";
   }
   raw_descriptor_.reset();
+}
+
+std::string Camera3CaptureDescriptor::ToJsonString() const {
+  if (!is_valid()) {
+    return std::string();
+  }
+
+  base::Value::Dict val;
+  val.Set(kCameraTraceKeyCaptureType,
+          type_ == Type::kCaptureRequest ? "Request" : "Result");
+  val.Set(kCameraTraceKeyFrameNumber, base::checked_cast<int>(frame_number_));
+  val.Set(kCameraTraceKeyInputBuffer, ToValueDict(GetInputBuffer()));
+
+  base::Value::List out_bufs;
+  for (const auto& b : GetOutputBuffers()) {
+    out_bufs.Append(ToValueDict(&b));
+  }
+  val.Set(kCameraTraceKeyOutputBuffers, std::move(out_bufs));
+
+  if (type_ == Type::kCaptureResult) {
+    val.Set(kCameraTraceKeyPartialResult,
+            base::checked_cast<int>(partial_result_));
+  }
+
+  std::string json_string;
+  if (!base::JSONWriter::WriteWithOptions(
+          val, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string)) {
+    LOGF(ERROR) << "Cannot convert capture descriptor to JSON string";
+    return std::string();
+  }
+  return json_string;
 }
 
 void Camera3CaptureDescriptor::Invalidate() {
