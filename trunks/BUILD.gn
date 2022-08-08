@@ -52,6 +52,7 @@ config("target_defaults") {
     "USE_PINWEAVER_CSME=${use.pinweaver_csme}",
     "BIOMETRICS_DEV=true",
   ]
+  libs = [ "hwsec-foundation" ]
 }
 
 proto_library("interface_proto") {
@@ -126,7 +127,6 @@ shared_library("trunks") {
     "vtpm_client_support/create_dbus_proxy.cc",
   ]
   configs += [ ":target_defaults" ]
-  libs = [ "hwsec-foundation" ]
   defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
   if (use.ftdi_tpm) {
     sources += [
