@@ -1329,6 +1329,15 @@ bool Init::Setup() {
     }
   }
 
+  // Enable hierarchial memory accounting for LXD.
+  base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
+                                     .Append("memory")
+                                     .Append("memory.use_hierarchy");
+  if (base::WriteFile(use_hierarchy, "1", 1) != 1) {
+    PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
+    return false;
+  }
+
   // Change the ownership of the kCgroupContainerSuffix directory in each cgroup
   // subsystem to "chronos".
   base::FileEnumerator enumerator(base::FilePath(kCgroupRootDir),
