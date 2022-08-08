@@ -637,15 +637,12 @@ SessionImpl::SessionImpl(int slot_id,
       is_read_only_(is_read_only),
       slot_id_(slot_id),
       token_object_pool_(token_object_pool),
-      tpm_utility_(tpm_utility),
-      is_legacy_loaded_(false),
-      private_root_key_(0),
-      public_root_key_(0) {
+      tpm_utility_(tpm_utility) {
   CHECK(token_object_pool_);
   CHECK(tpm_utility_);
   CHECK(factory_);
   session_object_pool_.reset(
-      factory_->CreateObjectPool(handle_generator, nullptr, nullptr, nullptr));
+      factory_->CreateObjectPool(handle_generator, nullptr, nullptr));
   CHECK(session_object_pool_.get());
 }
 
@@ -1651,24 +1648,10 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
     // not use the TPM (and use OpenSSL instead).
     if (key->GetObjectClass() == CKO_PRIVATE_KEY) {
       string auth_data = key->GetAttributeString(kAuthDataAttribute);
-      if (key->GetAttributeBool(kLegacyAttribute, false)) {
-        // This is a legacy key and it needs to be loaded with the legacy root
-        // key.
-        if (!LoadLegacyRootKeys())
-          return false;
-        bool is_private = key->GetAttributeBool(CKA_PRIVATE, true);
-        int root_key_handle = is_private ? private_root_key_ : public_root_key_;
-        if (!tpm_utility_->LoadKeyWithParent(
-                slot_id_, key->GetAttributeString(kKeyBlobAttribute),
-                SecureBlob(auth_data.begin(), auth_data.end()), root_key_handle,
-                key_handle))
-          return false;
-      } else {
-        if (!tpm_utility_->LoadKey(
-                slot_id_, key->GetAttributeString(kKeyBlobAttribute),
-                SecureBlob(auth_data.begin(), auth_data.end()), key_handle))
-          return false;
-      }
+      if (!tpm_utility_->LoadKey(
+              slot_id_, key->GetAttributeString(kKeyBlobAttribute),
+              SecureBlob(auth_data.begin(), auth_data.end()), key_handle))
+        return false;
     } else {
       LOG(ERROR) << "Invalid object class for loading into TPM.";
       return false;
@@ -1677,38 +1660,6 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
   } else {
     *key_handle = it->second;
   }
-  return true;
-}
-
-bool SessionImpl::LoadLegacyRootKeys() {
-  if (is_legacy_loaded_)
-    return true;
-
-  // Load the legacy root keys. See http://trousers.sourceforge.net/pkcs11.html
-  // for details on where these come from.
-  string private_blob;
-  if (!token_object_pool_->GetInternalBlob(kLegacyPrivateRootKey,
-                                           &private_blob)) {
-    LOG(ERROR) << "Failed to read legacy private root key blob.";
-    return false;
-  }
-  if (!tpm_utility_->LoadKey(slot_id_, private_blob, SecureBlob(),
-                             &private_root_key_)) {
-    LOG(ERROR) << "Failed to load legacy private root key.";
-    return false;
-  }
-  string public_blob;
-  if (!token_object_pool_->GetInternalBlob(kLegacyPublicRootKey,
-                                           &public_blob)) {
-    LOG(ERROR) << "Failed to read legacy public root key blob.";
-    return false;
-  }
-  if (!tpm_utility_->LoadKey(slot_id_, public_blob, SecureBlob(),
-                             &public_root_key_)) {
-    LOG(ERROR) << "Failed to load legacy public root key.";
-    return false;
-  }
-  is_legacy_loaded_ = true;
   return true;
 }
 

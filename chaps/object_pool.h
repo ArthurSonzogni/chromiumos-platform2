@@ -26,8 +26,10 @@ enum InternalBlobId {
   // blob but its existence indicates that objects have been imported and we
   // don't need to attempt that work again.
   kImportedTracker,
+  // This filed had been deprecated.
   // The legacy private root key blob, as imported from opencryptoki.
   kLegacyPrivateRootKey,
+  // This filed had been deprecated.
   // The legacy public root key blob, as imported from opencryptoki.
   kLegacyPublicRootKey,
   // A hash of the authorization data.

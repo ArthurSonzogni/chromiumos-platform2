@@ -25,14 +25,10 @@ class ChapsFactoryImpl : public ChapsFactory {
                          bool is_read_only) override;
   ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
                                SlotPolicy* slot_policy,
-                               ObjectStore* store,
-                               ObjectImporter* importer) override;
+                               ObjectStore* store) override;
   ObjectStore* CreateObjectStore(const base::FilePath& file_name) override;
   Object* CreateObject() override;
   ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) override;
-  ObjectImporter* CreateObjectImporter(int slot_id,
-                                       const base::FilePath& path,
-                                       TPMUtility* tpm_utility) override;
   SlotPolicy* CreateSlotPolicy(bool is_shared_slot) override;
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);

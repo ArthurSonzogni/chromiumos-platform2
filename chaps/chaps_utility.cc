@@ -402,8 +402,6 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "kKeyBlobAttribute";
     case kAuthDataAttribute:
       return "kAuthDataAttribute";
-    case kLegacyAttribute:
-      return "kLegacyAttribute";
     case kForceSoftwareAttribute:
       return "kForceSoftwareAttribute";
     case kKeyInSoftware:
@@ -495,7 +493,6 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"CKA_NSS_KRL", CKA_NSS_KRL},
       {"kKeyBlobAttribute", kKeyBlobAttribute},
       {"kAuthDataAttribute", kAuthDataAttribute},
-      {"kLegacyAttribute", kLegacyAttribute},
       {"kForceSoftwareAttribute", kForceSoftwareAttribute},
       {"kKeyInSoftware", kKeyInSoftware},
   });

@@ -20,7 +20,6 @@
 #include "chaps/object_pool_impl.h"
 #include "chaps/object_store_fake.h"
 #include "chaps/object_store_impl.h"
-#include "chaps/opencryptoki_importer.h"
 #include "chaps/session_impl.h"
 #include "chaps/slot_policy_default.h"
 #include "chaps/slot_policy_shared_slot.h"
@@ -47,10 +46,9 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
     SlotPolicy* slot_policy,
-    ObjectStore* object_store,
-    ObjectImporter* object_importer) {
-  std::unique_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(
-      this, handle_generator, slot_policy, object_store, object_importer));
+    ObjectStore* object_store) {
+  std::unique_ptr<ObjectPoolImpl> pool(
+      new ObjectPoolImpl(this, handle_generator, slot_policy, object_store));
   CHECK(pool.get());
   if (!pool->Init())
     return NULL;
@@ -76,14 +74,6 @@ Object* ChapsFactoryImpl::CreateObject() {
 
 ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
   return ChapsFactoryImpl::GetObjectPolicyForType(type);
-}
-
-ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
-    int slot_id, const FilePath& path, TPMUtility* tpm_utility) {
-  if (!tpm_utility->IsTPMAvailable()) {
-    return NULL;
-  }
-  return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
 }
 
 SlotPolicy* ChapsFactoryImpl::CreateSlotPolicy(bool is_shared_slot) {

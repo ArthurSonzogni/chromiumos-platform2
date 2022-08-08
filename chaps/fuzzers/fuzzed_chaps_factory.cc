@@ -26,8 +26,7 @@ Session* FuzzedChapsFactory::CreateSession(int slot_id,
 ObjectPool* FuzzedChapsFactory::CreateObjectPool(
     HandleGenerator* handle_generator,
     SlotPolicy* slot_policy,
-    ObjectStore* store,
-    ObjectImporter* importer) {
+    ObjectStore* store) {
   return new FuzzedObjectPool(data_provider_);
 }
 
@@ -41,11 +40,6 @@ Object* FuzzedChapsFactory::CreateObject() {
 }
 
 ObjectPolicy* FuzzedChapsFactory::CreateObjectPolicy(CK_OBJECT_CLASS type) {
-  return nullptr;
-}
-
-ObjectImporter* FuzzedChapsFactory::CreateObjectImporter(
-    int slot_id, const base::FilePath& path, TPMUtility* tpm_utility) {
   return nullptr;
 }
 

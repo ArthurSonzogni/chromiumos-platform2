@@ -19,7 +19,6 @@ namespace chaps {
 
 class ChapsFactory;
 class HandleGenerator;
-class ObjectImporter;
 class SlotPolicy;
 
 // Key: Object handle.
@@ -38,8 +37,7 @@ class ObjectPoolImpl : public ObjectPool {
   ObjectPoolImpl(ChapsFactory* factory,
                  HandleGenerator* handle_generator,
                  SlotPolicy* slot_policy,
-                 ObjectStore* store,
-                 ObjectImporter* importer);
+                 ObjectStore* store);
   ObjectPoolImpl(const ObjectPoolImpl&) = delete;
   ObjectPoolImpl& operator=(const ObjectPoolImpl&) = delete;
 
@@ -78,9 +76,7 @@ class ObjectPoolImpl : public ObjectPool {
   HandleGenerator* handle_generator_;
   SlotPolicy* slot_policy_;
   std::unique_ptr<ObjectStore> store_;
-  std::unique_ptr<ObjectImporter> importer_;
   bool is_private_loaded_;
-  bool finish_import_required_;
 };
 
 }  // namespace chaps

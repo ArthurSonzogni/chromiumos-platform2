@@ -26,7 +26,6 @@ group("all") {
       ":object_pool_test",
       ":object_store_test",
       ":object_test",
-      ":opencryptoki_importer_test",
       ":session_test",
       ":slot_manager_test",
       ":slot_policy_test",
@@ -149,7 +148,6 @@ source_set("chaps_common") {
     "object_policy_secret_key.cc",
     "object_pool_impl.cc",
     "object_store_impl.cc",
-    "opencryptoki_importer.cc",
     "platform_globals_chromeos.cc",
     "session_impl.cc",
     "slot_manager_impl.cc",
@@ -243,7 +241,6 @@ if (use.test || use.fuzzer) {
   source_set("libchaps_test") {
     sources = [
       "chaps_factory_mock.cc",
-      "object_importer_mock.cc",
       "object_mock.cc",
       "object_policy_mock.cc",
       "object_pool_mock.cc",
@@ -346,15 +343,6 @@ if (use.test) {
 
   executable("object_store_test") {
     sources = [ "object_store_test.cc" ]
-    configs += [ ":target_defaults" ]
-    deps = [
-      ":libchaps_test",
-      "//common-mk/testrunner",
-    ]
-  }
-
-  executable("opencryptoki_importer_test") {
-    sources = [ "opencryptoki_importer_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
       ":libchaps_test",

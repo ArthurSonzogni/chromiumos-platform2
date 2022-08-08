@@ -17,7 +17,6 @@
 #include "chaps/chaps_utility.h"
 #include "chaps/handle_generator.h"
 #include "chaps/object.h"
-#include "chaps/object_importer.h"
 #include "chaps/object_store.h"
 #include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/slot_policy.h"
@@ -34,15 +33,12 @@ namespace chaps {
 ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
                                HandleGenerator* handle_generator,
                                SlotPolicy* slot_policy,
-                               ObjectStore* store,
-                               ObjectImporter* importer)
+                               ObjectStore* store)
     : factory_(factory),
       handle_generator_(handle_generator),
       slot_policy_(slot_policy),
       store_(store),
-      importer_(importer),
-      is_private_loaded_(false),
-      finish_import_required_(false) {}
+      is_private_loaded_(false) {}
 
 ObjectPoolImpl::~ObjectPoolImpl() {}
 
@@ -50,16 +46,6 @@ bool ObjectPoolImpl::Init() {
   if (store_.get()) {
     if (!LoadPublicObjects())
       return false;
-    // Import legacy objects. The existence of the 'imported' blob indicates
-    // that legacy objects have already been imported. The contents of this blob
-    // are ignored.
-    string imported_blob;
-    if (importer_.get() && !GetInternalBlob(kImportedTracker, &imported_blob)) {
-      finish_import_required_ = importer_->ImportObjects(this);
-      if (!SetInternalBlob(kImportedTracker, imported_blob)) {
-        LOG(WARNING) << "Failed to set the import tracker.";
-      }
-    }
   } else {
     // There are no objects to load.
     is_private_loaded_ = true;
@@ -88,11 +74,6 @@ bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
     // Once we have the encryption key we can load private objects.
     if (!LoadPrivateObjects())
       LOG(WARNING) << "Failed to load private objects.";
-    if (finish_import_required_) {
-      CHECK(importer_.get());
-      if (!importer_->FinishImportAsync(this))
-        LOG(WARNING) << "Failed to finish importing objects.";
-    }
   }
   // Signal any callers waiting for private objects that they're ready.
   is_private_loaded_ = true;

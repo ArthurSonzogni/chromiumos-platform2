@@ -30,7 +30,6 @@
 #include "chaps/chaps_metrics.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
-#include "chaps/object_importer.h"
 #include "chaps/session.h"
 #include "chaps/slot_policy_default.h"
 #include "chaps/slot_policy_shared_slot.h"
@@ -528,8 +527,7 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   // Setup the object pool.
   *slot_id = FindEmptySlot();
   shared_ptr<ObjectPool> object_pool(factory_->CreateObjectPool(
-      this, slot_policy.get(), factory_->CreateObjectStore(path),
-      factory_->CreateObjectImporter(*slot_id, path, tpm_utility_)));
+      this, slot_policy.get(), factory_->CreateObjectStore(path)));
   CHECK(object_pool.get());
 
   if (tpm_utility_->IsTPMAvailable()) {
@@ -925,8 +923,8 @@ bool SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   std::unique_ptr<ObjectPool> scoped_object_pool;
   int slot_id = 0;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    object_pool = factory_->CreateObjectPool(
-        this, nullptr, factory_->CreateObjectStore(path), nullptr);
+    object_pool = factory_->CreateObjectPool(this, nullptr,
+                                             factory_->CreateObjectStore(path));
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
   } else {

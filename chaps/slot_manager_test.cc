@@ -21,7 +21,6 @@
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
-#include "chaps/object_importer_mock.h"
 #include "chaps/object_pool_mock.h"
 #include "chaps/object_store_mock.h"
 #include "chaps/session_mock.h"
@@ -128,16 +127,13 @@ class TestSlotManager : public ::testing::Test {
     ObjectStore* null_store = NULL;
     EXPECT_CALL(factory_, CreateObjectStore(_))
         .WillRepeatedly(Return(null_store));
-    ObjectImporter* null_importer = NULL;
-    EXPECT_CALL(factory_, CreateObjectImporter(_, _, _))
-        .WillRepeatedly(Return(null_importer));
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
   }
   void SetUp() {
     // The default style "fast" does not support multi-threaded death tests.
     testing::FLAGS_gtest_death_test_style = "threadsafe";
 
-    EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     auto tpm_mock = std::make_unique<TPMUtilityMock>();
     tpm_ = tpm_mock.get();
@@ -261,13 +257,10 @@ TEST(DeathTest, OutOfMemoryInit) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
-  EXPECT_CALL(factory, CreateObjectPool(_, _, _, _))
+  EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   ObjectStore* null_store = NULL;
   EXPECT_CALL(factory, CreateObjectStore(_)).WillRepeatedly(Return(null_store));
-  ObjectImporter* null_importer = NULL;
-  EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
-      .WillRepeatedly(Return(null_importer));
   SlotManagerImpl sm(&factory, tpm_thread_utility.get(), false, nullptr,
                      &chaps_metrics);
   EXPECT_CALL(
@@ -562,7 +555,7 @@ class SoftwareOnlyTest : public TestSlotManager {
     EXPECT_CALL(factory_, CreateSlotPolicy(false))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::SlotPolicyFactory));
-    EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
     auto tpm_mock = std::make_unique<StrictMock<TPMUtilityMock>>();

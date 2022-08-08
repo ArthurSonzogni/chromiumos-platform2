@@ -15,7 +15,6 @@ namespace chaps {
 
 class HandleGenerator;
 class Object;
-class ObjectImporter;
 class ObjectPolicy;
 class ObjectPool;
 class ObjectStore;
@@ -36,15 +35,10 @@ class ChapsFactory {
                                  bool is_read_only) = 0;
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
                                        SlotPolicy* slot_policy,
-                                       ObjectStore* store,
-                                       ObjectImporter* importer) = 0;
+                                       ObjectStore* store) = 0;
   virtual ObjectStore* CreateObjectStore(const base::FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
-  // Returns NULL if no importer is available.
-  virtual ObjectImporter* CreateObjectImporter(int slot_id,
-                                               const base::FilePath& path,
-                                               TPMUtility* tpm_utility) = 0;
   virtual SlotPolicy* CreateSlotPolicy(bool is_shared_slot) = 0;
 };
 

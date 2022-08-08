@@ -15,7 +15,6 @@
 
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/handle_generator_mock.h"
-#include "chaps/object_importer_mock.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
 #include "chaps/proto_bindings/attributes.pb.h"
@@ -92,11 +91,10 @@ class TestObjectPool : public ::testing::Test {
         .WillRepeatedly(Return(true));
     // Create object pools to test with.
     store_ = new ObjectStoreMock();
-    importer_ = new ObjectImporterMock();
     pool_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, &slot_policy_,
-                                   store_, importer_));
-    pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_,
-                                    &slot_policy_, NULL, NULL));
+                                   store_));
+    pool2_.reset(
+        new ObjectPoolImpl(&factory_, &handle_generator_, &slot_policy_, NULL));
   }
 
   // Initialize and load private objects.
@@ -107,10 +105,6 @@ class TestObjectPool : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
     EXPECT_CALL(*store_, SetInternalBlob(_, _)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*importer_, FinishImportAsync(pool_.get()))
-        .WillRepeatedly(Return(true));
 
     EXPECT_TRUE(pool_->Init());
     EXPECT_TRUE(pool_->SetEncryptionKey(SecureBlob()));
@@ -120,12 +114,10 @@ class TestObjectPool : public ::testing::Test {
     EXPECT_TRUE(pool2_->IsPrivateLoaded());
 
     testing::Mock::VerifyAndClearExpectations(store_);
-    testing::Mock::VerifyAndClearExpectations(importer_);
   }
 
   ChapsFactoryMock factory_;
   ObjectStoreMock* store_;
-  ObjectImporterMock* importer_;
   HandleGeneratorMock handle_generator_;
   SlotPolicyMock slot_policy_;
 
@@ -162,12 +154,6 @@ TEST_F(TestObjectPool, Init) {
       .WillOnce(Return(false))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(persistent_objects), Return(true)));
-  EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*importer_, FinishImportAsync(pool_.get()))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
   // Loading of public objects happens when the pool is initialized.
   EXPECT_TRUE(pool2_->Init());
   EXPECT_FALSE(pool_->Init());
@@ -378,7 +364,7 @@ TEST_F(TestObjectPool, InsertRespectsSlotPolicy) {
 TEST_F(TestObjectPool, NullSlotPolicyMeansAcceptEverything) {
   std::unique_ptr<ObjectPool> pool_without_slot_policy =
       std::make_unique<ObjectPoolImpl>(&factory_, &handle_generator_, nullptr,
-                                       nullptr, nullptr);
+                                       nullptr);
   EXPECT_TRUE(pool2_->Init());
   EXPECT_TRUE(pool2_->IsPrivateLoaded());
 

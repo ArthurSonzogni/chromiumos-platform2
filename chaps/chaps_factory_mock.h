@@ -21,16 +21,11 @@ class ChapsFactoryMock : public ChapsFactory {
 
   MOCK_METHOD5(CreateSession,
                Session*(int, ObjectPool*, TPMUtility*, HandleGenerator*, bool));
-  MOCK_METHOD4(CreateObjectPool,
-               ObjectPool*(HandleGenerator*,
-                           SlotPolicy*,
-                           ObjectStore*,
-                           ObjectImporter*));
+  MOCK_METHOD3(CreateObjectPool,
+               ObjectPool*(HandleGenerator*, SlotPolicy*, ObjectStore*));
   MOCK_METHOD1(CreateObjectStore, ObjectStore*(const base::FilePath&));
   MOCK_METHOD0(CreateObject, Object*());
   MOCK_METHOD1(CreateObjectPolicy, ObjectPolicy*(CK_OBJECT_CLASS));
-  MOCK_METHOD3(CreateObjectImporter,
-               ObjectImporter*(int, const base::FilePath&, TPMUtility*));
   MOCK_METHOD1(CreateSlotPolicy, SlotPolicy*(bool));
 };
 
