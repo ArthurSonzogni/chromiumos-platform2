@@ -55,12 +55,6 @@ static_library("time") {
   deps = [ ":status" ]
 }
 
-source_set("shared_queue") {
-  sources = [ "shared_queue.h" ]
-  deps = [ ":status" ]
-  configs += [ ":target_defaults" ]
-}
-
 source_set("status_macros") {
   sources = [ "status_macros.h" ]
 

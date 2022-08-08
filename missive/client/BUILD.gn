@@ -106,7 +106,6 @@ static_library("report_queue_provider") {
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/storage:storage_module_interface",
-    "//missive/util:shared_queue",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]

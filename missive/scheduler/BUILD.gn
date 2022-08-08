@@ -16,7 +16,6 @@ static_library("scheduler") {
   sources = [ "scheduler.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//missive/util:shared_queue",
     "//missive/util:status",
     "//missive/util:task_runner_context",
   ]
@@ -29,7 +28,6 @@ static_library("enqueue_job") {
     ":scheduler",
     "//missive/proto:libmissiveprotointerface",
     "//missive/storage:storage_module_interface",
-    "//missive/util:shared_queue",
     "//missive/util:status",
     "//missive/util:task_runner_context",
   ]
