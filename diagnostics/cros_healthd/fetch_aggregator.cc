@@ -125,8 +125,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {
-        system_fetcher_.FetchSystemInfo(
-            CreateFetchCallback(&barrier, &info->system_result),
+        system_fetcher_.FetchSystemInfoV2(
             CreateFetchCallback(&barrier, &info->system_result_v2));
         break;
       }

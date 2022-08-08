@@ -169,24 +169,6 @@ void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoV2Callback callback,
       mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
 }
 
-void HandleSystemInfoV2Response(
-    SystemFetcher::FetchSystemInfoCallback callback,
-    SystemFetcher::FetchSystemInfoV2Callback callback_v2,
-    mojom::SystemResultV2Ptr result) {
-  if (result->is_error()) {
-    std::move(callback).Run(
-        mojom::SystemResult::NewError(result->get_error()->Clone()));
-    std::move(callback_v2).Run(std::move(result));
-    return;
-  }
-  CHECK(result->is_system_info_v2());
-  auto system_info =
-      SystemFetcher::ConvertToSystemInfo(result->get_system_info_v2());
-  std::move(callback).Run(
-      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
-  std::move(callback_v2).Run(std::move(result));
-}
-
 }  // namespace
 
 void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
@@ -258,46 +240,6 @@ void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
   // os_info.boot_mode requires ipc with executor, handle separately
   FetchBootMode(std::move(system_info_v2), context_->root_dir(),
                 std::move(callback));
-}
-
-mojom::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
-    const mojom::SystemInfoV2Ptr& system_info_v2) {
-  if (system_info_v2.is_null())
-    return nullptr;
-
-  auto system_info = mojom::SystemInfo::New();
-
-  const auto& vpd_info = system_info_v2->vpd_info;
-  if (vpd_info) {
-    system_info->first_power_date = vpd_info->activate_date;
-    system_info->manufacture_date = vpd_info->mfg_date;
-    system_info->product_sku_number = vpd_info->sku_number;
-    system_info->product_serial_number = vpd_info->serial_number;
-    system_info->product_model_name = vpd_info->model_name;
-  }
-  const auto& dmi_info = system_info_v2->dmi_info;
-  if (dmi_info) {
-    system_info->bios_version = dmi_info->bios_version;
-    system_info->board_name = dmi_info->board_name;
-    system_info->board_version = dmi_info->board_version;
-    system_info->chassis_type = dmi_info->chassis_type.Clone();
-  }
-  const auto& os_info = system_info_v2->os_info;
-  CHECK(os_info);
-  system_info->product_name = os_info->code_name;
-  // |marketing_name| is an optional field in cros_confg. Set it to null string
-  // if it is missed.
-  system_info->marketing_name = os_info->marketing_name.value_or("");
-  system_info->os_version = os_info->os_version.Clone();
-
-  return system_info;
-}
-
-void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback,
-                                    FetchSystemInfoV2Callback callback_v2) {
-  FetchSystemInfoV2(base::BindOnce(&HandleSystemInfoV2Response,
-                                   std::move(callback),
-                                   std::move(callback_v2)));
 }
 
 }  // namespace diagnostics

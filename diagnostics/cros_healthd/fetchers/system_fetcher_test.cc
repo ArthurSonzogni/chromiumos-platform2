@@ -41,11 +41,6 @@ std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
   return std::nullopt;
 }
 
-void OnGetSystemInfoResponse(mojom::SystemResultPtr* response_update,
-                             mojom::SystemResultPtr response) {
-  *response_update = std::move(response);
-}
-
 void OnGetSystemInfoV2Response(mojom::SystemResultV2Ptr* response_update,
                                mojom::SystemResultV2Ptr response) {
   *response_update = std::move(response);
@@ -185,8 +180,7 @@ class SystemUtilsTest : public BaseFileTest {
   void SetUEFISceureBootResponse(const std::string& content) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
-        .Times(2)
-        .WillRepeatedly(WithArg<0>(Invoke(
+        .WillOnce(WithArg<0>(Invoke(
             [content](
                 mojom::Executor::GetUEFISecureBootContentCallback callback) {
               std::move(callback).Run(content);
@@ -225,17 +219,10 @@ class SystemUtilsTest : public BaseFileTest {
     auto res = std::move(system_result->get_system_info_v2());
     EXPECT_EQ(res, expected_system_info_)
         << GetDiffString(res, expected_system_info_);
-
-    auto system_result_old = FetchSystemInfo();
-    ASSERT_FALSE(system_result_old.is_null());
-    ASSERT_FALSE(system_result_old->is_error());
-    ASSERT_TRUE(system_result_old->is_system_info());
-    EXPECT_EQ(system_result_old->get_system_info(),
-              SystemFetcher::ConvertToSystemInfo(expected_system_info_));
   }
 
   void ExpectFetchProbeError(const mojom::ErrorType& expected) {
-    auto system_result = FetchSystemInfo();
+    auto system_result = FetchSystemInfoV2();
     ASSERT_TRUE(system_result->is_error());
     EXPECT_EQ(system_result->get_error()->type, expected);
   }
@@ -243,14 +230,6 @@ class SystemUtilsTest : public BaseFileTest {
  protected:
   mojom::SystemInfoV2Ptr expected_system_info_;
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-  mojom::SystemResultPtr FetchSystemInfo() {
-    base::RunLoop run_loop;
-    mojom::SystemResultPtr result;
-    system_fetcher_.FetchSystemInfo(
-        base::BindOnce(&OnGetSystemInfoResponse, &result), base::DoNothing());
-    run_loop.RunUntilIdle();
-    return result;
-  }
   mojom::SystemResultV2Ptr FetchSystemInfoV2() {
     base::RunLoop run_loop;
     mojom::SystemResultV2Ptr result;
@@ -391,8 +370,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
 TEST_F(SystemUtilsTest, TestUEFISceureBootFailure) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
-      .Times(2)
-      .WillRepeatedly(WithArg<0>(Invoke(
+      .WillOnce(WithArg<0>(Invoke(
           [](mojom::Executor::GetUEFISecureBootContentCallback callback) {
             std::move(callback).Run("");
           })));
