@@ -72,7 +72,7 @@ bool StorageBalloon::Fallocate(int64_t offset, int64_t length) {
     return false;
   }
 
-  return fallocate(balloon_fd_.get(), 0, offset, length);
+  return fallocate(balloon_fd_.get(), 0, offset, length) == 0;
 }
 
 bool StorageBalloon::Ftruncate(int64_t length) {
