@@ -2499,7 +2499,7 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestInternalFailure) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertificateRequestNotEnrolled) {
-  // No identiy certificate, so not enrolled.
+  // No identity certificate, so not enrolled.
   mock_database_.GetMutableProtobuf()->Clear();
   SetUpIdentity(identity_);
   auto callback = [](base::OnceClosure quit_closure,
