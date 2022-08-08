@@ -42,9 +42,6 @@ namespace mojom = chromeos::cros_healthd::mojom;
 namespace network_config_mojom = chromeos::network_config::mojom;
 namespace network_health_mojom = chromeos::network_health::mojom;
 
-// Value printed for optional fields when they aren't populated.
-constexpr char kNotApplicableString[] = "N/A";
-
 constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
     {
         {"battery", mojom::ProbeCategoryEnum::kBattery},
@@ -57,7 +54,6 @@ constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
         {"stateful_partition", mojom::ProbeCategoryEnum::kStatefulPartition},
         {"bluetooth", mojom::ProbeCategoryEnum::kBluetooth},
         {"system", mojom::ProbeCategoryEnum::kSystem},
-        {"system2", mojom::ProbeCategoryEnum::kSystem2},
         {"network", mojom::ProbeCategoryEnum::kNetwork},
         {"audio", mojom::ProbeCategoryEnum::kAudio},
         {"boot_performance", mojom::ProbeCategoryEnum::kBootPerformance},
@@ -440,27 +436,6 @@ void SetJsonDictValue(const std::string& key,
       string_vector->Append(s);
   } else {
     output->SetKey(key, base::Value(value));
-  }
-}
-
-void OutputCSVLine(const std::vector<std::string>& datas,
-                   const std::string separator = ",") {
-  bool is_first = true;
-  for (const auto& data : datas) {
-    if (!is_first) {
-      std::cout << separator;
-    }
-    is_first = false;
-    std::cout << data;
-  }
-  std::cout << std::endl;
-}
-
-void OutputCSV(const std::vector<std::string>& headers,
-               const std::vector<std::vector<std::string>>& values) {
-  OutputCSVLine(headers);
-  for (const auto& value : values) {
-    OutputCSVLine(value);
   }
 }
 
@@ -1038,50 +1013,6 @@ void DisplayStatefulPartitionInfo(
   OutputJson(output);
 }
 
-void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
-  if (system_result->is_error()) {
-    DisplayError(system_result->get_error());
-    return;
-  }
-  const auto& system_info = system_result->get_system_info();
-  const std::vector<std::string> headers = {
-      "first_power_date",   "manufacture_date",
-      "product_sku_number", "product_serial_number",
-      "marketing_name",     "bios_version",
-      "board_name",         "board_version",
-      "chassis_type",       "product_name",
-      "os_version",         "os_channel"};
-  std::string chassis_type =
-      !system_info->chassis_type.is_null()
-          ? std::to_string(system_info->chassis_type->value)
-          : kNotApplicableString;
-  std::string os_version =
-      base::JoinString({system_info->os_version->release_milestone,
-                        system_info->os_version->build_number,
-                        system_info->os_version->patch_number},
-                       ".");
-
-  // The marketing name sometimes has a comma, for example:
-  // "Acer Chromebook Spin 11 (CP311-H1, CP311-1HN)"
-  // This messes up the tast logic, which splits on commas. To fix it, we
-  // replace any ", " patterns found with "/".
-  std::string marketing_name = system_info->marketing_name;
-  base::ReplaceSubstringsAfterOffset(&marketing_name, 0, ", ", "/");
-
-  const std::vector<std::vector<std::string>> values = {
-      {system_info->first_power_date.value_or(kNotApplicableString),
-       system_info->manufacture_date.value_or(kNotApplicableString),
-       system_info->product_sku_number.value_or(kNotApplicableString),
-       system_info->product_serial_number.value_or(kNotApplicableString),
-       marketing_name, system_info->bios_version.value_or(kNotApplicableString),
-       system_info->board_name.value_or(kNotApplicableString),
-       system_info->board_version.value_or(kNotApplicableString), chassis_type,
-       system_info->product_name.value_or(kNotApplicableString), os_version,
-       system_info->os_version->release_channel}};
-
-  OutputCSV(headers, values);
-}
-
 void DisplaySystemInfoV2(const mojom::SystemResultV2Ptr& system_result) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
@@ -1440,10 +1371,6 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   if (bluetooth_result)
     DisplayBluetoothInfo(bluetooth_result);
 
-  const auto& system_result = info->system_result;
-  if (system_result)
-    DisplaySystemInfo(system_result);
-
   const auto& network_result = info->network_result;
   if (network_result)
     DisplayNetworkInfo(network_result);
@@ -1469,8 +1396,7 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
     DisplayTpmInfo(tpm_result);
 
   const auto& system_result_v2 = info->system_result_v2;
-  // TODO(b/190459636): Remove |!system_result| after migration.
-  if (!system_result && system_result_v2)
+  if (system_result_v2)
     DisplaySystemInfoV2(system_result_v2);
 
   const auto& graphics_result = info->graphics_result;

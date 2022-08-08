@@ -130,11 +130,6 @@ void FetchAggregator::Run(
             CreateFetchCallback(&barrier, &info->system_result_v2));
         break;
       }
-      case mojom::ProbeCategoryEnum::kSystem2: {
-        system_fetcher_.FetchSystemInfoV2(
-            CreateFetchCallback(&barrier, &info->system_result_v2));
-        break;
-      }
       case mojom::ProbeCategoryEnum::kNetwork: {
         network_fetcher_.FetchNetworkInfo(
             CreateFetchCallback(&barrier, &info->network_result));

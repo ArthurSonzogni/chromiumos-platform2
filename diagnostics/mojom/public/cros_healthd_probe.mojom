@@ -27,7 +27,7 @@ enum CpuArchitectureEnum {
 // An enumeration of each category of information that cros_healthd can report.
 //
 // NextMinVersion: 2, NextIndex: 21
-[Extensible]
+[Stable, Extensible]
 enum ProbeCategoryEnum {
   [Default] kUnknown = 16,
   kBattery = 0,
@@ -50,9 +50,6 @@ enum ProbeCategoryEnum {
   kNetworkInterface = 18,
   kInput = 19,
   [MinVersion=1] kAudioHardware = 20,
-
-  // TODO(b/190459636): Rename it to kSystem after migration.
-  kSystem2 = 0x10000,
 };
 
 // An enumeration of the different categories of errors that can occur when
@@ -1650,8 +1647,8 @@ struct TelemetryInfo {
   // Information about the bus devices. Only present when kBus was included
   // in the categories input to ProbeTelemetryInfo.
   BusResult? bus_result@13;
-  // Information about the system. Only present when kSystem2 was included in
-  // the categories input to ProbeTelemetryInfo.
+  // Information about the system. Only present when kSystem was included in the
+  // categories input to ProbeTelemetryInfo.
   SystemResultV2? system_result_v2@14;
   // Information about the tpm. Only present when kTpm was included in
   // the categories input to ProbeTelemetryInfo.
