@@ -320,11 +320,15 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
     return false;
   }
 
-  // Make sure SWWP is off.
-  if (bool swwp_enabled;
-      !flashrom_utils_->GetSoftwareWriteProtectionStatus(&swwp_enabled) ||
-      swwp_enabled) {
-    LOG(ERROR) << "SWWP is enabled. Aborting firmware update.";
+  // Make sure AP/EC WP are off.
+  if (bool enabled;
+      !flashrom_utils_->GetApWriteProtectionStatus(&enabled) || enabled) {
+    LOG(ERROR) << "AP SWWP is enabled. Aborting firmware update.";
+    return false;
+  }
+  if (bool enabled;
+      !flashrom_utils_->GetEcWriteProtectionStatus(&enabled) || enabled) {
+    LOG(ERROR) << "EC SWWP is enabled. Aborting firmware update.";
     return false;
   }
 

@@ -39,12 +39,23 @@ FlashromUtilsImpl::FlashromUtilsImpl() : FlashromUtils() {
 FlashromUtilsImpl::FlashromUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
     : FlashromUtils(), cmd_utils_(std::move(cmd_utils)) {}
 
-bool FlashromUtilsImpl::GetSoftwareWriteProtectionStatus(bool* enabled) {
+bool FlashromUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
+  return GetSoftwareWriteProtectionStatus("host", enabled);
+}
+
+bool FlashromUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
+  return GetSoftwareWriteProtectionStatus("ec", enabled);
+}
+
+bool FlashromUtilsImpl::GetSoftwareWriteProtectionStatus(const char* programmer,
+                                                         bool* enabled) {
   std::string flashrom_output;
-  if (!cmd_utils_->GetOutput({kFlashromCmd, "-p", "host", "--wp-status"},
+  // Get WP status output string.
+  if (!cmd_utils_->GetOutput({kFlashromCmd, "-p", programmer, "--wp-status"},
                              &flashrom_output)) {
     return false;
   }
+  // Check if WP is disabled.
   if (flashrom_output.find(kWriteProtectEnabledStr) != std::string::npos) {
     *enabled = true;
   } else {
@@ -54,37 +65,55 @@ bool FlashromUtilsImpl::GetSoftwareWriteProtectionStatus(bool* enabled) {
 }
 
 bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
-  int wp_start, wp_len;
-  if (!GetWriteProtectionRange(&wp_start, &wp_len)) {
-    LOG(ERROR) << "Failed to get write protection range";
+  int ap_wp_start, ap_wp_len;
+  if (!GetApWriteProtectionRange(&ap_wp_start, &ap_wp_len)) {
+    LOG(ERROR) << "Failed to get AP write protection range";
     return false;
   }
 
-  std::stringstream wp_range_arg;
-  wp_range_arg << wp_start << "," << wp_len;
+  std::stringstream ap_wp_range_arg;
+  ap_wp_range_arg << ap_wp_start << "," << ap_wp_len;
+  // Enable AP WP.
   if (std::string output;
       !cmd_utils_->GetOutput({kFlashromCmd, "-p", "host", "--wp-enable",
-                              "--wp-range", wp_range_arg.str()},
+                              "--wp-range", ap_wp_range_arg.str()},
                              &output)) {
-    LOG(ERROR) << "Failed to enable SWWP";
+    LOG(ERROR) << "Failed to enable AP SWWP";
     LOG(ERROR) << output;
     return false;
   }
+  // Enable EC WP. EC doesn't require WP range.
+  if (std::string output; !cmd_utils_->GetOutput(
+          {kFlashromCmd, "-p", "ec", "--wp-enable"}, &output)) {
+    LOG(ERROR) << "Failed to enable EC SWWP";
+    LOG(ERROR) << output;
+    return false;
+  }
+
   return true;
 }
 
 bool FlashromUtilsImpl::DisableSoftwareWriteProtection() {
+  // Disable AP WP.
   if (std::string output; !cmd_utils_->GetOutput(
           {kFlashromCmd, "-p", "host", "--wp-disable", "--wp-range", "0,0"},
           &output)) {
-    LOG(ERROR) << "Failed to disable SWWP";
+    LOG(ERROR) << "Failed to disable AP SWWP";
     LOG(ERROR) << output;
     return false;
   }
+  // Disable EC WP. EC doesn't require WP range.
+  if (std::string output; !cmd_utils_->GetOutput(
+          {kFlashromCmd, "-p", "ec", "--wp-disable"}, &output)) {
+    LOG(ERROR) << "Failed to disable EC SWWP";
+    LOG(ERROR) << output;
+    return false;
+  }
+
   return true;
 }
 
-bool FlashromUtilsImpl::GetWriteProtectionRange(int* wp_start, int* wp_len) {
+bool FlashromUtilsImpl::GetApWriteProtectionRange(int* wp_start, int* wp_len) {
   base::ScopedTempDir temp_dir_;
   CHECK(temp_dir_.CreateUniqueTempDir());
   const base::FilePath firmware_file_path =

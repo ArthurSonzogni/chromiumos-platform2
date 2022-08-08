@@ -19,12 +19,14 @@ class FlashromUtilsImpl : public FlashromUtils {
   explicit FlashromUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
   ~FlashromUtilsImpl() override = default;
 
-  bool GetSoftwareWriteProtectionStatus(bool* enabled) override;
+  bool GetApWriteProtectionStatus(bool* enabled) override;
+  bool GetEcWriteProtectionStatus(bool* enabled) override;
   bool EnableSoftwareWriteProtection() override;
   bool DisableSoftwareWriteProtection() override;
 
  private:
-  bool GetWriteProtectionRange(int* wp_start, int* wp_len);
+  bool GetSoftwareWriteProtectionStatus(const char* programmer, bool* enabled);
+  bool GetApWriteProtectionRange(int* wp_start, int* wp_len);
 
   std::unique_ptr<CmdUtils> cmd_utils_;
 };

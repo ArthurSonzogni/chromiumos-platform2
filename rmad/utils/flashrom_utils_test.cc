@@ -40,7 +40,7 @@ class FlashromUtilsTest : public testing::Test {
   ~FlashromUtilsTest() override = default;
 };
 
-TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Enabled) {
+TEST_F(FlashromUtilsTest, GetApWriteProtectionStatus_Enabled) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(
@@ -49,11 +49,11 @@ TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Enabled) {
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
   bool enabled;
-  EXPECT_TRUE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+  EXPECT_TRUE(flashrom_utils->GetApWriteProtectionStatus(&enabled));
   EXPECT_TRUE(enabled);
 }
 
-TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Disabled) {
+TEST_F(FlashromUtilsTest, GetApWriteProtectionStatus_Disabled) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(
@@ -62,18 +62,54 @@ TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Disabled) {
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
   bool enabled;
-  EXPECT_TRUE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+  EXPECT_TRUE(flashrom_utils->GetApWriteProtectionStatus(&enabled));
   EXPECT_FALSE(enabled);
 }
 
-TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Failed) {
+TEST_F(FlashromUtilsTest, GetApWriteProtectionStatus_Failed) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
   bool enabled;
-  EXPECT_FALSE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+  EXPECT_FALSE(flashrom_utils->GetApWriteProtectionStatus(&enabled));
+}
+
+TEST_F(FlashromUtilsTest, GetEcWriteProtectionStatus_Enabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kWriteProtectEnabledOutput), Return(true)));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_TRUE(flashrom_utils->GetEcWriteProtectionStatus(&enabled));
+  EXPECT_TRUE(enabled);
+}
+
+TEST_F(FlashromUtilsTest, GetEcWriteProtectionStatus_Disabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kWriteProtectDisabledOutput), Return(true)));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_TRUE(flashrom_utils->GetEcWriteProtectionStatus(&enabled));
+  EXPECT_FALSE(enabled);
+}
+
+TEST_F(FlashromUtilsTest, GetEcWriteProtectionStatus_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_FALSE(flashrom_utils->GetEcWriteProtectionStatus(&enabled));
 }
 
 TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
@@ -85,7 +121,9 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
     // Parse fmap.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
         .WillOnce(DoAll(SetArgPointee<1>(kFmapOutput), Return(true)));
-    // Flashrom set WP range.
+    // Flashrom set AP WP range.
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+    // Flashrom set EC WP range.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
   }
   auto flashrom_utils =
@@ -138,7 +176,7 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_FmapParseFail) {
   EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableFail) {
+TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableApWpFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -147,7 +185,27 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableFail) {
     // Parse fmap.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
         .WillOnce(DoAll(SetArgPointee<1>(kFmapOutput), Return(true)));
-    // Flashrom set WP range.
+    // Flashrom set AP WP range.
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  }
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
+}
+
+TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableEcWpFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  {
+    InSequence seq;
+    // Flashrom read.
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+    // Parse fmap.
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+        .WillOnce(DoAll(SetArgPointee<1>(kFmapOutput), Return(true)));
+    // Flashrom set AP WP range.
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+    // Flashrom set EC WP range.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   }
   auto flashrom_utils =

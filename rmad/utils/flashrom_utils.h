@@ -12,7 +12,8 @@ class FlashromUtils {
   FlashromUtils() = default;
   virtual ~FlashromUtils() = default;
 
-  virtual bool GetSoftwareWriteProtectionStatus(bool* enabled) = 0;
+  virtual bool GetApWriteProtectionStatus(bool* enabled) = 0;
+  virtual bool GetEcWriteProtectionStatus(bool* enabled) = 0;
   virtual bool EnableSoftwareWriteProtection() = 0;
   virtual bool DisableSoftwareWriteProtection() = 0;
 };
