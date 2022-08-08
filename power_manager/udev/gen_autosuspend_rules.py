@@ -236,6 +236,8 @@ PCI_IDS += [
     "8086:a0ed",
     # Brya xHCI controller
     "8086:51ed",
+    # ADL-N PCH xHCI controller
+    "8086:54ed",
     # Graphics
     "8086:9b41",
     # DSP
