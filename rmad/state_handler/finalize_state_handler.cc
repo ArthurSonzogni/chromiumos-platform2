@@ -200,8 +200,7 @@ void FinalizeStateHandler::FinalizeTask() {
                                  board_id_type == kEmptyBoardIdType ||
                                  board_id_type == kTestBoardIdType) {
     LOG(ERROR) << "Cr50 board ID type is invalid: " << board_id_type;
-    if (base::PathExists(
-            working_dir_path_.AppendASCII(kTestDeviceTagFilePath))) {
+    if (base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
       LOG(INFO) << "Cr50 board ID check bypassed";
     } else {
       status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
@@ -214,8 +213,7 @@ void FinalizeStateHandler::FinalizeTask() {
       (board_id_flags != kPvtBoardIdFlags &&
        board_id_flags != kCustomLabelPvtBoardIdFlags)) {
     LOG(ERROR) << "Cr50 board ID flags is invalid: " << board_id_flags;
-    if (base::PathExists(
-            working_dir_path_.AppendASCII(kTestDeviceTagFilePath))) {
+    if (base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
       LOG(INFO) << "Cr50 board ID flags check bypassed";
     } else {
       status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);

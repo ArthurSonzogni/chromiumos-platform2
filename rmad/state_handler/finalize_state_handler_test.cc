@@ -213,8 +213,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Bypass board ID check.
-  EXPECT_TRUE(
-      brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDeviceTagFilePath)));
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
       .WillOnce(Invoke([](const FinalizeStatus& status) {
@@ -249,8 +248,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Bypass board ID check.
-  EXPECT_TRUE(
-      brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDeviceTagFilePath)));
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
       .WillOnce(Invoke([](const FinalizeStatus& status) {
