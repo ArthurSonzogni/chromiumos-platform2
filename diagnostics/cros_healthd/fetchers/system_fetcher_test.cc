@@ -41,8 +41,8 @@ std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
   return std::nullopt;
 }
 
-void OnGetSystemInfoV2Response(mojom::SystemResultV2Ptr* response_update,
-                               mojom::SystemResultV2Ptr response) {
+void OnGetSystemInfoResponse(mojom::SystemResultPtr* response_update,
+                             mojom::SystemResultPtr response) {
   *response_update = std::move(response);
 }
 
@@ -55,7 +55,7 @@ class SystemUtilsTest : public BaseFileTest {
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
 
-    expected_system_info_ = mojom::SystemInfoV2::New();
+    expected_system_info_ = mojom::SystemInfo::New();
     auto& vpd_info = expected_system_info_->vpd_info;
     vpd_info = mojom::VpdInfo::New();
     vpd_info->activate_date = "2020-40";
@@ -94,7 +94,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetHasSkuNumber(true);
   }
 
-  void SetSystemInfo(const mojom::SystemInfoV2Ptr& system_info) {
+  void SetSystemInfo(const mojom::SystemInfoPtr& system_info) {
     SetVpdInfo(system_info->vpd_info);
     SetDmiInfo(system_info->dmi_info);
     SetOsInfo(system_info->os_info);
@@ -212,29 +212,29 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchSystemInfo() {
-    auto system_result = FetchSystemInfoV2();
+    auto system_result = FetchSystemInfo();
     ASSERT_FALSE(system_result.is_null());
     ASSERT_FALSE(system_result->is_error());
-    ASSERT_TRUE(system_result->is_system_info_v2());
-    auto res = std::move(system_result->get_system_info_v2());
+    ASSERT_TRUE(system_result->is_system_info());
+    auto res = std::move(system_result->get_system_info());
     EXPECT_EQ(res, expected_system_info_)
         << GetDiffString(res, expected_system_info_);
   }
 
   void ExpectFetchProbeError(const mojom::ErrorType& expected) {
-    auto system_result = FetchSystemInfoV2();
+    auto system_result = FetchSystemInfo();
     ASSERT_TRUE(system_result->is_error());
     EXPECT_EQ(system_result->get_error()->type, expected);
   }
 
  protected:
-  mojom::SystemInfoV2Ptr expected_system_info_;
+  mojom::SystemInfoPtr expected_system_info_;
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-  mojom::SystemResultV2Ptr FetchSystemInfoV2() {
+  mojom::SystemResultPtr FetchSystemInfo() {
     base::RunLoop run_loop;
-    mojom::SystemResultV2Ptr result;
-    system_fetcher_.FetchSystemInfoV2(
-        base::BindOnce(&OnGetSystemInfoV2Response, &result));
+    mojom::SystemResultPtr result;
+    system_fetcher_.FetchSystemInfo(
+        base::BindOnce(&OnGetSystemInfoResponse, &result));
     run_loop.RunUntilIdle();
     return result;
   }

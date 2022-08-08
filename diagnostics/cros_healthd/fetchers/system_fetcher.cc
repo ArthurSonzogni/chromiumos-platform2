@@ -156,25 +156,25 @@ bool IsUEFISecureBoot(const std::string& s) {
   }
 }
 
-void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoV2Callback callback,
-                              mojom::SystemInfoV2Ptr system_info_v2,
+void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoCallback callback,
+                              mojom::SystemInfoPtr system_info,
                               const std::string& content) {
-  DCHECK(system_info_v2);
+  DCHECK(system_info);
 
-  system_info_v2->os_info->boot_mode = !IsUEFISecureBoot(content)
-                                           ? mojom::BootMode::kCrosEfi
-                                           : mojom::BootMode::kCrosEfiSecure;
+  system_info->os_info->boot_mode = !IsUEFISecureBoot(content)
+                                        ? mojom::BootMode::kCrosEfi
+                                        : mojom::BootMode::kCrosEfiSecure;
 
   std::move(callback).Run(
-      mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
 }  // namespace
 
-void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
+void SystemFetcher::FetchBootMode(mojom::SystemInfoPtr system_info,
                                   const base::FilePath& root_dir,
-                                  FetchSystemInfoV2Callback callback) {
-  mojom::BootMode* boot_mode = &system_info_v2->os_info->boot_mode;
+                                  FetchSystemInfoCallback callback) {
+  mojom::BootMode* boot_mode = &system_info->os_info->boot_mode;
   // default unknown if there's no match
   *boot_mode = mojom::BootMode::kUnknown;
 
@@ -182,7 +182,7 @@ void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
   const auto path = root_dir.Append(kFilePathProcCmdline);
   if (!ReadAndTrimString(path, &cmdline)) {
     std::move(callback).Run(
-        mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+        mojom::SystemResult::NewSystemInfo(std::move(system_info)));
     return;
   }
 
@@ -196,7 +196,7 @@ void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
     if (token == "cros_efi") {
       context_->executor()->GetUEFISecureBootContent(
           base::BindOnce(&HandleSecureBootResponse, std::move(callback),
-                         std::move(system_info_v2)));
+                         std::move(system_info)));
       return;
     }
     if (token == "cros_legacy") {
@@ -206,7 +206,7 @@ void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
   }
 
   std::move(callback).Run(
-      mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
 bool SystemFetcher::FetchOsInfoWithoutBootMode(
@@ -221,24 +221,24 @@ bool SystemFetcher::FetchOsInfoWithoutBootMode(
   return true;
 }
 
-void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
+void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback) {
   const auto& root_dir = context_->root_dir();
   mojom::ProbeErrorPtr error;
-  auto system_info_v2 = mojom::SystemInfoV2::New();
+  auto system_info = mojom::SystemInfo::New();
 
-  auto& vpd_info = system_info_v2->vpd_info;
-  auto& dmi_info = system_info_v2->dmi_info;
-  auto& os_info = system_info_v2->os_info;
+  auto& vpd_info = system_info->vpd_info;
+  auto& dmi_info = system_info->dmi_info;
+  auto& os_info = system_info->os_info;
   if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
       !FetchOsInfoWithoutBootMode(&os_info, &error)) {
-    std::move(callback).Run(mojom::SystemResultV2::NewError(std::move(error)));
+    std::move(callback).Run(mojom::SystemResult::NewError(std::move(error)));
     return;
   }
 
   // os_info.boot_mode requires ipc with executor, handle separately
-  FetchBootMode(std::move(system_info_v2), context_->root_dir(),
+  FetchBootMode(std::move(system_info), context_->root_dir(),
                 std::move(callback));
 }
 

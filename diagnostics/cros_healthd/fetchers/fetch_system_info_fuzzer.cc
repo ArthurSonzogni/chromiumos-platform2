@@ -60,8 +60,8 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
 }
 
 void OnGetSystemInfoResponse(
-    chromeos::cros_healthd::mojom::SystemResultV2Ptr* response_update,
-    chromeos::cros_healthd::mojom::SystemResultV2Ptr response) {
+    chromeos::cros_healthd::mojom::SystemResultPtr* response_update,
+    chromeos::cros_healthd::mojom::SystemResultPtr response) {
   *response_update = std::move(response);
 }
 
@@ -107,8 +107,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   SystemFetcher system_fetcher{&mock_context};
 
   base::RunLoop run_loop;
-  chromeos::cros_healthd::mojom::SystemResultV2Ptr result;
-  system_fetcher.FetchSystemInfoV2(
+  chromeos::cros_healthd::mojom::SystemResultPtr result;
+  system_fetcher.FetchSystemInfo(
       base::BindOnce(&OnGetSystemInfoResponse, &result));
   run_loop.RunUntilIdle();
 

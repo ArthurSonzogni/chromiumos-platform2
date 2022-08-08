@@ -1013,12 +1013,12 @@ void DisplayStatefulPartitionInfo(
   OutputJson(output);
 }
 
-void DisplaySystemInfoV2(const mojom::SystemResultV2Ptr& system_result) {
+void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
   }
-  const auto& system_info = system_result->get_system_info_v2();
+  const auto& system_info = system_result->get_system_info();
   base::Value output{base::Value::Type::DICTIONARY};
 
   const auto& os_info = system_info->os_info;
@@ -1395,9 +1395,9 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   if (tpm_result)
     DisplayTpmInfo(tpm_result);
 
-  const auto& system_result_v2 = info->system_result_v2;
-  if (system_result_v2)
-    DisplaySystemInfoV2(system_result_v2);
+  const auto& system_result = info->system_result;
+  if (system_result)
+    DisplaySystemInfo(system_result);
 
   const auto& graphics_result = info->graphics_result;
   if (graphics_result)

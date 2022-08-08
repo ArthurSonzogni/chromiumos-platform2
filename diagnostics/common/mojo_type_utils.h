@@ -151,9 +151,9 @@ std::string GetDiffString<::chromeos::cros_healthd::mojom::OsInfo>(
     const ::chromeos::cros_healthd::mojom::OsInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::SystemInfoV2>(
-    const ::chromeos::cros_healthd::mojom::SystemInfoV2& a,
-    const ::chromeos::cros_healthd::mojom::SystemInfoV2& b);
+std::string GetDiffString<::chromeos::cros_healthd::mojom::SystemInfo>(
+    const ::chromeos::cros_healthd::mojom::SystemInfo& a,
+    const ::chromeos::cros_healthd::mojom::SystemInfo& b);
 
 template <>
 std::string GetDiffString<::chromeos::cros_healthd::mojom::BusDevice>(

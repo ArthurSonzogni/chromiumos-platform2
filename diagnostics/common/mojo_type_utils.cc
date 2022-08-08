@@ -199,8 +199,8 @@ std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::SystemInfoV2>(
-    const mojo_ipc::SystemInfoV2& a, const mojo_ipc::SystemInfoV2& b) {
+std::string GetDiffString<mojo_ipc::SystemInfo>(const mojo_ipc::SystemInfo& a,
+                                                const mojo_ipc::SystemInfo& b) {
   return CompareHelper(a, b)
       .FIELD(vpd_info)
       .FIELD(dmi_info)
