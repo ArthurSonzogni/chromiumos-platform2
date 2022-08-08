@@ -240,7 +240,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
 
   std::sort(
       unmounted_homedirs.begin(), unmounted_homedirs.end(),
-      [&](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
+      [this](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
         return timestamp_manager_->GetLastUserActivityTimestamp(a.obfuscated) >
                timestamp_manager_->GetLastUserActivityTimestamp(b.obfuscated);
       });
@@ -482,7 +482,7 @@ bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
 
   std::sort(
       unmounted_homedirs.begin(), unmounted_homedirs.end(),
-      [&](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
+      [this](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
         return timestamp_manager_->GetLastUserActivityTimestamp(a.obfuscated) >
                timestamp_manager_->GetLastUserActivityTimestamp(b.obfuscated);
       });
@@ -550,7 +550,7 @@ void DiskCleanup::FilterHomedirsProcessedBeforeCutoff(
     base::Time cutoff, std::vector<HomeDirs::HomeDir>* homedirs) {
   homedirs->erase(
       std::remove_if(homedirs->begin(), homedirs->end(),
-                     [&](const HomeDirs::HomeDir& dir) {
+                     [this, cutoff](const HomeDirs::HomeDir& dir) {
                        return timestamp_manager_->GetLastUserActivityTimestamp(
                                   dir.obfuscated) < cutoff;
                      }),

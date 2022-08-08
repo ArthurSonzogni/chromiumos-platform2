@@ -604,7 +604,7 @@ int32_t HomeDirs::GetUnmountedAndroidDataCount() {
   const auto homedirs = GetHomeDirs();
 
   return std::count_if(
-      homedirs.begin(), homedirs.end(), [&](const HomeDirs::HomeDir& dir) {
+      homedirs.begin(), homedirs.end(), [this](const HomeDirs::HomeDir& dir) {
         if (dir.is_mounted)
           return false;
 
