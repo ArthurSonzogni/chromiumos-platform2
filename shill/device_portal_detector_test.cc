@@ -29,6 +29,7 @@
 #include "shill/testing.h"
 
 using ::testing::_;
+using ::testing::ElementsAre;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -242,9 +243,9 @@ class DevicePortalDetectorTest : public testing::Test {
         metric.n.name, kTestTechnology, metric.n.location));
   }
 
-  int LastEnumMetricsCall(
+  std::vector<int> MetricsEnumCalls(
       const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
-    return fake_metrics_library_.GetLast(Metrics::GetFullMetricName(
+    return fake_metrics_library_.GetCalls(Metrics::GetFullMetricName(
         metric.n.name, kTestTechnology, metric.n.location));
   }
 
@@ -297,8 +298,8 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultDNSFailure);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultDNSFailure));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
@@ -317,8 +318,8 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultDNSTimeout);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultDNSTimeout));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
@@ -339,8 +340,8 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   EXPECT_EQ(GetServiceProbeUrlString(),
             portal_detector->result().probe_url_string);
 
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultContentRedirect);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultContentRedirect));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
@@ -360,8 +361,8 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultContentRedirect);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultContentRedirect));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
@@ -382,8 +383,8 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
 
   // NOTE: Since we only report on the HTTP phase, a portal-suspected result
   // reports 'success'. This will be addressed when the metrics are updated.
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultSuccess);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultSuccess));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 0);
 
   // Portal detection should be started again.
@@ -413,9 +414,11 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
-  EXPECT_EQ(NumEnumMetricsCalls(Metrics::kMetricPortalResult), 2);
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultSuccess);
+  // NOTE: Since we only report on the HTTP phase, a portal-suspected result
+  // reports 'success'. This will be addressed when the metrics are updated.
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultSuccess,
+                          Metrics::kPortalResultSuccess));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 1);
 
   // Portal detection should be completed and the PortalDetector destroyed.
@@ -431,8 +434,8 @@ TEST_F(DevicePortalDetectorTest, Online) {
   portal_detector->Complete();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
-  EXPECT_EQ(LastEnumMetricsCall(Metrics::kMetricPortalResult),
-            Metrics::kPortalResultSuccess);
+  EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
+              ElementsAre(Metrics::kPortalResultSuccess));
   EXPECT_EQ(NumHistogramCalls(Metrics::kMetricPortalAttemptsToOnline), 1);
 
   // Portal detection should be completed and the PortalDetector destroyed.
