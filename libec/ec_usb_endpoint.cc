@@ -14,11 +14,6 @@
 
 namespace ec {
 
-// Sleep to allow time for USB device to be ready for input after resetting.
-// If sleep time is set <4 seconds, behavior is inconsistent and occasionally
-// fails to initialize correctly.
-constexpr int kResetEndpointTimeoutMs = 4000;
-
 int EcUsbEndpoint::FindInterfaceWithEndpoint(struct usb_endpoint* uep) {
   struct libusb_config_descriptor* conf;
   struct libusb_device* dev = libusb_->get_device(uep->dev_handle);
@@ -170,9 +165,6 @@ bool EcUsbEndpoint::ResetEndpoint() {
     LOG(ERROR) << "Failed to reset usb endpoint.";
     return false;
   }
-
-  // Sleep to allow time for USB device to be ready for input.
-  absl::SleepFor(absl::Milliseconds(kResetEndpointTimeoutMs));
 
   return true;
 }
