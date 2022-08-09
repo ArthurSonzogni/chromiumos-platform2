@@ -19,7 +19,9 @@ namespace {
 
 std::optional<FeatureProfile::FeatureType> GetFeatureType(
     const std::string& feature_key) {
-  if (feature_key == "face_detection") {
+  if (feature_key == "auto_framing") {
+    return FeatureProfile::FeatureType::kAutoFraming;
+  } else if (feature_key == "face_detection") {
     return FeatureProfile::FeatureType::kFaceDetection;
   } else if (feature_key == "gcam_ae") {
     return FeatureProfile::FeatureType::kGcamAe;

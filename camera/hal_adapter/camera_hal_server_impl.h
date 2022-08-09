@@ -70,12 +70,17 @@ class CameraHalServerImpl final {
 
     void SetTracingEnabled(bool enabled) final;
 
-    void SetAutoFramingState(mojom::CameraAutoFramingState state);
+    void SetAutoFramingState(mojom::CameraAutoFramingState state) final;
 
     void GetCameraSWPrivacySwitchState(
-        mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback);
+        mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback)
+        final;
 
-    void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+    void SetCameraSWPrivacySwitchState(
+        mojom::CameraPrivacySwitchState state) final;
+
+    void GetAutoFramingSupported(
+        mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) final;
 
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,

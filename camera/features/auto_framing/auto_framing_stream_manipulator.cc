@@ -223,10 +223,13 @@ struct AutoFramingStreamManipulator::CaptureContext {
 };
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
-    RuntimeOptions* runtime_options, const Options& options)
+    RuntimeOptions* runtime_options,
+    const Options& options,
+    base::FilePath config_file_path)
     : config_(ReloadableConfigFile::Options{
-          base::FilePath(kDefaultAutoFramingConfigFile),
-          base::FilePath(kOverrideAutoFramingConfigFile)}),
+          .default_config_file_path = std::move(config_file_path),
+          .override_config_file_path =
+              base::FilePath(kOverrideAutoFramingConfigFile)}),
       options_(options),
       runtime_options_(runtime_options),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
@@ -234,6 +237,10 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
   DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
 
+  if (!config_.IsValid()) {
+    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+    options_.enable = false;
+  }
   config_.SetCallback(base::BindRepeating(
       &AutoFramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }

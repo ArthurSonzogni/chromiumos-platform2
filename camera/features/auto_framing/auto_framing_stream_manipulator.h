@@ -27,16 +27,13 @@
 #include "features/auto_framing/framer.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/image_processor.h"
-#include "gpu/shared_image.h"
 
 namespace cros {
 
 class AutoFramingStreamManipulator : public StreamManipulator {
  public:
-  // The default auto framing config file. The file should contain a JSON map
-  // for the Options defined below.
-  static constexpr const char kDefaultAutoFramingConfigFile[] =
-      "/etc/camera/auto_framing_config.json";
+  // The auto framing config file that overrides the default one for debugging.
+  // The file should contain a JSON map for the Options defined below.
   static constexpr const char kOverrideAutoFramingConfigFile[] =
       "/run/camera/auto_framing_config.json";
 
@@ -87,7 +84,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   };
 
   explicit AutoFramingStreamManipulator(RuntimeOptions* runtime_options,
-                                        const Options& options);
+                                        const Options& options,
+                                        base::FilePath config_file_path);
   ~AutoFramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.

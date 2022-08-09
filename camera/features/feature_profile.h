@@ -13,17 +13,21 @@
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/device_config.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
 // FeatureProfile is a utility class that parses the device/model specific
 // feature profile configs and exposes the feature settings.
-class FeatureProfile {
+class CROS_CAMERA_EXPORT FeatureProfile {
  public:
   static constexpr char kFeatureProfileFilePath[] =
       "/etc/camera/feature_profile.json";
 
   enum class FeatureType {
+    // CrOS auto-framing with key "auto_framing".
+    kAutoFraming,
+
     // CrOS face detection with key "face_detection".
     kFaceDetection,
 
@@ -40,8 +44,9 @@ class FeatureProfile {
   // If |feature_config| is nullopt, then by default the config stored in
   // kFeatureProfileFilePath will be loaded. If |device_config| is nullopt, then
   // the default DeviceConfig instance from DeviceConfig::Create() will be used.
-  FeatureProfile(std::optional<base::Value> feature_config = std::nullopt,
-                 std::optional<DeviceConfig> device_config = std::nullopt);
+  explicit FeatureProfile(
+      std::optional<base::Value> feature_config = std::nullopt,
+      std::optional<DeviceConfig> device_config = std::nullopt);
 
   // Checks if |feature| is enabled.
   bool IsEnabled(FeatureType feature) const;

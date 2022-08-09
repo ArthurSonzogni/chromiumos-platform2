@@ -31,13 +31,12 @@
 #include <base/posix/safe_strerror.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-#include "common/camera_mojo_channel_manager_impl.h"
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
-#include "cros-camera/ipc_util.h"
 #include "cros-camera/utils/camera_config.h"
+#include "features/feature_profile.h"
 #include "hal_adapter/camera_hal_test_adapter.h"
 #include "hal_adapter/camera_trace_event.h"
 
@@ -178,6 +177,21 @@ void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
   }
   camera_hal_adapter_->SetCameraSWPrivacySwitchState(state);
   callbacks_->CameraSWPrivacySwitchStateChange(state);
+}
+
+void CameraHalServerImpl::IPCBridge::GetAutoFramingSupported(
+    mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) {
+  if (base::PathExists(
+          base::FilePath(constants::kForceDisableAutoFramingPath))) {
+    std::move(callback).Run(false);
+    return;
+  }
+  FeatureProfile feature_profile;
+  if (base::PathExists(
+          base::FilePath(constants::kForceEnableAutoFramingPath)) ||
+      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
+    std::move(callback).Run(true);
+  }
 }
 
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(

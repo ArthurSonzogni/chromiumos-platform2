@@ -99,12 +99,16 @@ void MaybeEnableAutoFramingStreamManipulator(
     // Auto-framing is forcibly disabled.
     return;
   }
+  FeatureProfile feature_profile;
   if (base::PathExists(
-          base::FilePath(constants::kForceEnableAutoFramingPath))) {
-    // Auto-framing is forcibly enabled.
+          base::FilePath(constants::kForceEnableAutoFramingPath)) ||
+      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
+    // Auto-framing is forcibly enabled, or enabled by feature profile.
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>(
-            runtime_options, AutoFramingStreamManipulator::Options{}));
+            runtime_options, AutoFramingStreamManipulator::Options{},
+            feature_profile.GetConfigFilePath(
+                FeatureProfile::FeatureType::kAutoFraming)));
     LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif
