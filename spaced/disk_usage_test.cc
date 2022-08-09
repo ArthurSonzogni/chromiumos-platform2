@@ -114,13 +114,11 @@ TEST(DiskUsageUtilTest, ThinProvisionedVolumeLowDiskSpace) {
       "--reportformat",   "json", "--units",      "b",
       "STATEFUL/thinpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 80.0);
+  std::string report = base::StringPrintf(kSampleReport, 16777216L, 3.0);
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
-  // With 80% of the thinpool full, disk usage should use the amount of space
-  // available on the thinpool.
-  EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 3355443);
+  EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 4194304);
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 8388608);
 }
 
@@ -146,8 +144,6 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
-  // With 80% of the thinpool full, disk usage should use the amount of space
-  // available on the thinpool.
   EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 4194304);
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 16777216);
 }

@@ -42,12 +42,6 @@ int64_t DiskUsageUtilImpl::GetFreeDiskSpace(const base::FilePath& path) {
 
   int64_t free_disk_space = static_cast<int64_t>(stat.f_bavail) * stat.f_frsize;
 
-  int64_t thinpool_free_space;
-  if (thinpool_ && thinpool_->IsValid() &&
-      thinpool_->GetFreeSpace(&thinpool_free_space)) {
-    free_disk_space = std::min(free_disk_space, thinpool_free_space);
-  }
-
   return free_disk_space;
 }
 

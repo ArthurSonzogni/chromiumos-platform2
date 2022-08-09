@@ -8,7 +8,8 @@
 #include <atomic>
 
 // Calculator provides an interface for applications to represent disk
-// space calculations.
+// space calculations. The calculator |size_| is atomic to make it thread-safe;
+// this allows offload of calculations to an asynchronous thread.
 class Calculator {
  public:
   Calculator() = default;
@@ -23,7 +24,6 @@ class Calculator {
   void SetSize(int64_t size) { size_ = size; }
 
  private:
-  // GetSize() and SetSize() can be asynchronous
   std::atomic<int64_t> size_;
 };
 

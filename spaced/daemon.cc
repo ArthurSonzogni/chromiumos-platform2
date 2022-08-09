@@ -13,6 +13,9 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
+#include <base/task/task_runner.h>
+#include <base/task/thread_pool.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/spaced/dbus-constants.h>
@@ -22,6 +25,7 @@
 
 namespace spaced {
 namespace {
+constexpr int64_t kCriticalRefreshPeriodSeconds = 1;
 
 base::FilePath GetRootDevice() {
   // Get the root device.
@@ -77,8 +81,14 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SpacedAdaptor(this),
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(::spaced::kSpacedServicePath)),
-      disk_usage_util_(std::make_unique<DiskUsageUtilImpl>(GetRootDevice(),
-                                                           GetThinpool())) {}
+      disk_usage_util_(
+          std::make_unique<DiskUsageUtilImpl>(GetRootDevice(), GetThinpool())),
+      task_runner_(bus->GetOriginTaskRunner()),
+      stateful_free_space_calculator_(
+          std::make_unique<StatefulFreeSpaceCalculator>(
+              task_runner_, kCriticalRefreshPeriodSeconds, GetThinpool())) {
+  stateful_free_space_calculator_->Start();
+}
 
 void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
@@ -87,9 +97,12 @@ void DBusAdaptor::RegisterAsync(
 }
 
 int64_t DBusAdaptor::GetFreeDiskSpace(const std::string& path) {
-  return disk_usage_util_->GetFreeDiskSpace(base::FilePath(path));
-}
+  int64_t free_space = disk_usage_util_->GetFreeDiskSpace(base::FilePath(path));
 
+  // Note that GetSize() occurs on the D-bus thread whereas the actual stateful
+  // free space calculation will be asynchronously handled and updated.
+  return std::min(free_space, stateful_free_space_calculator_->GetSize());
+}
 int64_t DBusAdaptor::GetTotalDiskSpace(const std::string& path) {
   return disk_usage_util_->GetTotalDiskSpace(base::FilePath(path));
 }

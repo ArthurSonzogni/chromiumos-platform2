@@ -11,6 +11,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/task/task_runner.h>
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/brillo_export.h>
