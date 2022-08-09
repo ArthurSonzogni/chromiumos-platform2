@@ -34,6 +34,11 @@ int GpuFunction::GbmDetectDeviceInfoPath(unsigned int detect_flags,
   return ::gbm_detect_device_info_path(detect_flags, dev_node, info);
 }
 
+// If fails to call gbm library, this function will return true because:
+// * If it is not work due to driver issue, it should be more likely a dGPU,
+//   because we have better iGPU support.
+// * Probing additional devices should be better than dropping devices
+//   silently.
 bool GpuFunction::IsDGPUDeviceByGBMLibrary(
     const base::FilePath& sysfs_node) const {
   base::FilePath drm_node_pattern = sysfs_node.Append("drm/renderD*");
