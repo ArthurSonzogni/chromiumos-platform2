@@ -22,14 +22,15 @@ FederatedLibrary* FederatedLibrary::GetInstance(const std::string& lib_path) {
 }
 
 FederatedLibrary::FederatedLibrary(const std::string& lib_path)
-    : library_(base::LoadNativeLibraryWithOptions(
-          base::FilePath(lib_path),
-          /* options */ {.prefer_own_symbols = true},
-          /* error */ nullptr)),
-      run_plan_(nullptr),
-      free_run_plan_result_(nullptr) {
+    : run_plan_(nullptr), free_run_plan_result_(nullptr) {
+  base::NativeLibraryLoadError error;
+  library_.emplace(base::LoadNativeLibraryWithOptions(
+      base::FilePath(lib_path),
+      /* options */ {.prefer_own_symbols = true}, &error));
   if (!library_->is_valid()) {
-    status_ = absl::FailedPreconditionError("Failed to load library");
+    LOG(ERROR) << "Failed to load library, error message: " << error.ToString();
+    status_ = absl::FailedPreconditionError(
+        "Failed to load library, error message: " + error.ToString());
     return;
   }
 
