@@ -63,7 +63,7 @@ class MemoryRoutine final : public DiagnosticRoutine {
   base::Value output_dict_{base::Value::Type::DICTIONARY};
 
   // Expected duration of the routine, in microseconds.
-  double expected_duration_us_;
+  double expected_duration_us_ = 0;
   // When the routine started. Used to calculate the routine's progress percent.
   base::TimeTicks start_ticks_;
   // Tracks the passage of time. Should never be used directly - instead, use
