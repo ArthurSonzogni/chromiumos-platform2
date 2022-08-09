@@ -1216,6 +1216,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->ParseFeatureFlags(nl80211_message);
   }
 
+  void ParseCipherSuites(const Nl80211Message& nl80211_message) {
+    wifi_->ParseCipherSuites(nl80211_message);
+  }
+
+  bool CipherSuiteSupported(uint32_t cipher_suite) {
+    return base::Contains(wifi_->supported_cipher_suites_, cipher_suite);
+  }
+
   bool GetRandomMacSupported() { return wifi_->random_mac_supported_; }
 
   void SetRandomMacSupported(bool supported) {
@@ -1310,6 +1318,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->supplicant_state_ = WPASupplicant::kInterfaceStateDisconnected;
     wifi_->StateChanged(WPASupplicant::kInterfaceStateCompleted);
   }
+
+  bool GetWEPSupport() { return wifi_->SupportsWEP(); }
 
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
@@ -5016,6 +5026,86 @@ TEST_F(WiFiMainTest, ParseFeatureFlags_RandomMacSupport) {
   msg.attributes()->SetU32AttributeValue(NL80211_ATTR_FEATURE_FLAGS, flags);
   ParseFeatureFlags(msg);
   EXPECT_TRUE(GetRandomMacSupported());
+}
+
+TEST_F(WiFiMainTest, ParseCipherSuites) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+
+  ByteString ciphers({0x01, 0xac, 0x0f, 0x00, 0x05, 0xac, 0x0f,
+                      0x00, 0x02, 0xac, 0x0f, 0x00, 0x04, 0xac,
+                      0x0f, 0x00, 0x06, 0xac, 0x0f, 0x00});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES, ciphers);
+  ParseCipherSuites(msg);
+
+  EXPECT_TRUE(CipherSuiteSupported(0x000fac01));
+  EXPECT_TRUE(CipherSuiteSupported(0x000fac05));
+  EXPECT_TRUE(CipherSuiteSupported(0x000fac02));
+  EXPECT_TRUE(CipherSuiteSupported(0x000fac06));
+  EXPECT_FALSE(CipherSuiteSupported(0x000fac07));
+
+  // This is an empty ByteString.
+  ByteString ciphers_empty({});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES,
+                                         ciphers_empty);
+  ParseCipherSuites(msg);
+  EXPECT_FALSE(CipherSuiteSupported(0x000fac01));
+  EXPECT_FALSE(CipherSuiteSupported(0x000fac05));
+}
+
+TEST_F(WiFiMainTest, WEPInCipherSuites_Unsupported) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(GetWEPSupport());
+  // This ByteString indicates support for WEP40 (0x01, 0xac, 0x0f, 0x00), but
+  // not WEP104 (0x05, 0xac, 0x0f, 0x00).
+  ByteString ciphers_no_wep40({0x01, 0xac, 0x0f, 0x00, 0x07, 0xac, 0x0f,
+                               0x00, 0x02, 0xac, 0x0f, 0x00, 0x04, 0xac,
+                               0x0f, 0x00, 0x06, 0xac, 0x0f, 0x00});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES,
+                                         ciphers_no_wep40);
+  ParseCipherSuites(msg);
+  EXPECT_FALSE(GetWEPSupport());
+
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  // This ByteString indicates support for WEP104 (0x05, 0xac, 0x0f, 0x00), but
+  // not WEP40 (0x01, 0xac, 0x0f, 0x00).
+  ByteString ciphers_no_wep104({0x05, 0xac, 0x0f, 0x00, 0x07, 0xac, 0x0f,
+                                0x00, 0x02, 0xac, 0x0f, 0x00, 0x04, 0xac,
+                                0x0f, 0x00, 0x06, 0xac, 0x0f, 0x00});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES,
+                                         ciphers_no_wep104);
+  ParseCipherSuites(msg);
+  EXPECT_FALSE(GetWEPSupport());
+
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  // This ByteString indicates no support for WEP40 (0x01, 0xac, 0x0f, 0x00) or
+  // WEP104 (0x05, 0xac, 0x0f, 0x00).
+  ByteString ciphers_no_wep({0x09, 0xac, 0x0f, 0x00, 0x07, 0xac, 0x0f,
+                             0x00, 0x02, 0xac, 0x0f, 0x00, 0x04, 0xac,
+                             0x0f, 0x00, 0x06, 0xac, 0x0f, 0x00});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES,
+                                         ciphers_no_wep);
+  ParseCipherSuites(msg);
+  EXPECT_FALSE(GetWEPSupport());
+}
+
+TEST_F(WiFiMainTest, WEPInCipherSuites_Supported) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+
+  // This ByteString indicates support for WEP40 (0x01, 0xac, 0x0f, 0x00), and
+  // WEP104 (0x05, 0xac, 0x0f, 0x00).
+  ByteString ciphers_with_wep({0x01, 0xac, 0x0f, 0x00, 0x05, 0xac, 0x0f,
+                               0x00, 0x02, 0xac, 0x0f, 0x00, 0x04, 0xac,
+                               0x0f, 0x00, 0x06, 0xac, 0x0f, 0x00});
+  msg.attributes()->SetRawAttributeValue(NL80211_ATTR_CIPHER_SUITES,
+                                         ciphers_with_wep);
+  ParseCipherSuites(msg);
+  EXPECT_TRUE(GetWEPSupport());
 }
 
 TEST_F(WiFiMainTest, RandomMacProperty_Unsupported) {

@@ -1844,6 +1844,35 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
   }
 }
 
+void WiFi::ParseCipherSuites(const Nl80211Message& nl80211_message) {
+  // Verify NL80211_CMD_NEW_WIPHY.
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
+    return;
+  }
+
+  ByteString cipher_suites_raw;
+  if (!nl80211_message.const_attributes()->GetRawAttributeValue(
+          NL80211_ATTR_CIPHER_SUITES, &cipher_suites_raw)) {
+    return;
+  }
+
+  int num_bytes = cipher_suites_raw.GetLength();
+  const uint8_t* cipher_suites = cipher_suites_raw.GetConstData();
+
+  // NL80211_ATTR_CIPHER_SUITES is a set of U32 values, each of which represent
+  // a supported cipher suite. Each of these U32 values is represented as 4
+  // consecutive bytes in the raw data, which we parse here.
+  supported_cipher_suites_.clear();
+  for (int i = 0; i + 3 < num_bytes; i += 4) {
+    uint32_t cipher_suite = ((uint32_t)cipher_suites[i + 3]) << 24 |
+                            ((uint32_t)cipher_suites[i + 2]) << 16 |
+                            ((uint32_t)cipher_suites[i + 1]) << 8 |
+                            ((uint32_t)cipher_suites[i]);
+    supported_cipher_suites_.insert(cipher_suite);
+  }
+}
+
 void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
   // We only handle nl80211 commands.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
@@ -3436,6 +3465,10 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   // This checks NL80211_ATTR_FEATURE_FLAGS.
   ParseFeatureFlags(nl80211_message);
 
+  // This checks NL80211_ATTR_CIPHER_SUITES and pupulates
+  // supported_cipher_suites_.
+  ParseCipherSuites(nl80211_message);
+
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...
   AttributeListConstRefPtr wiphy_bands;
@@ -4195,5 +4228,10 @@ void WiFi::OnReceivedRtnlLinkStatistics(old_rtnl_link_stats64& stats) {
   // Reset current_rtnl_network_event_, so that RTNL link statistics is not
   // updated/printed repeatedly.
   current_rtnl_network_event_ = NetworkEvent::kUnknown;
+}
+
+bool WiFi::SupportsWEP() {
+  return (base::Contains(supported_cipher_suites_, kWEP40CipherCode) &&
+          base::Contains(supported_cipher_suites_, kWEP104CipherCode));
 }
 }  // namespace shill

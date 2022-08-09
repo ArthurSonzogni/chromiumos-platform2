@@ -470,6 +470,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const std::vector<unsigned char> kRandomMacMask;
   // Used when wake_on_wifi_ is not available but related method is called.
   static const char kWakeOnWiFiNotSupported[];
+  // Each cipher suite is 4 bytes as defined by IEEE 802.11-2016 section
+  // 9.4.2.25.2.
+  static constexpr uint32_t kWEP40CipherCode = 0x000FAC01;
+  static constexpr uint32_t kWEP104CipherCode = 0x000FAC05;
 
   void GetPhyInfo();
   std::string AppendBgscan(WiFiService* service,
@@ -751,6 +755,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // feature flags and sets members of this WiFi class appropriately.
   void ParseFeatureFlags(const Nl80211Message& nl80211_message);
 
+  // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
+  // cipher suites and sets members of this WiFi class appropriately.
+  void ParseCipherSuites(const Nl80211Message& nl80211_message);
+
   // Callback invoked when broadcasted netlink messages are received.
   // Forwards (Wiphy)RegChangeMessages and TriggerScanMessages to their
   // appropriate handler functions.
@@ -804,6 +812,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Get total received byte counters for the underlying network interface.
   uint64_t GetReceiveByteCount();
+
+  bool SupportsWEP();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
@@ -974,6 +984,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // For weak pointers that will only be invalidated at destruction. Useful for
   // callbacks that need to survive Restart().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
+
+  std::set<uint32_t> supported_cipher_suites_;
 };
 
 }  // namespace shill
