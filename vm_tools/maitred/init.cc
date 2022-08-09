@@ -71,9 +71,6 @@ namespace {
 // Path to the root directory for cgroups.
 constexpr char kCgroupRootDir[] = "/sys/fs/cgroup";
 
-// Name of the directory in every cgroup subsystem for dealing with containers.
-constexpr char kCgroupContainerSuffix[] = "chronos_containers";
-
 // Default value of the PATH environment variable.
 constexpr char kDefaultPath[] = "/usr/bin:/usr/sbin:/bin:/sbin";
 
@@ -81,10 +78,6 @@ constexpr char kDefaultPath[] = "/usr/bin:/usr/sbin:/bin:/sbin";
 // Name of the file that specifies the hostname within the VM.
 constexpr char kHostnameConfigFile[] = "/etc/hostname";
 #endif
-
-// Uid and Gid for the chronos user and group, respectively.
-constexpr uid_t kChronosUid = 1000;
-constexpr gid_t kChronosGid = 1000;
 
 // Retry threshould and duration for processes that respawn.  If a process needs
 // to be respawned more than kMaxRespawnCount times in the last
@@ -406,31 +399,6 @@ constexpr struct {
         .value = "2097152",
     },
 };
-
-// Recursively changes the owner and group for all files and directories in
-// |path| (including |path|) to |uid| and |gid|, respectively.
-bool ChangeOwnerAndGroup(base::FilePath path, uid_t uid, gid_t gid) {
-  base::FileEnumerator enumerator(
-      path, true /*recursive*/,
-      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath current = enumerator.Next(); !current.empty();
-       current = enumerator.Next()) {
-    if (chown(current.value().c_str(), uid, gid) != 0) {
-      PLOG(ERROR) << "Failed to change owner and group for " << current.value()
-                  << " to " << uid << ":" << gid;
-      return false;
-    }
-  }
-
-  // FileEnumerator doesn't include the root path so change it manually here.
-  if (chown(path.value().c_str(), uid, gid) != 0) {
-    PLOG(ERROR) << "Failed to change owner and group for " << path.value()
-                << " to " << uid << ":" << gid;
-    return false;
-  }
-
-  return true;
-}
 
 // Waits for all the processes in |pids| to exit.  Returns when all processes
 // have exited or when |deadline| is reached, whichever happens first.
@@ -1336,44 +1304,6 @@ bool Init::Setup() {
   if (base::WriteFile(use_hierarchy, "1", 1) != 1) {
     PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
     return false;
-  }
-
-  // Change the ownership of the kCgroupContainerSuffix directory in each cgroup
-  // subsystem to "chronos".
-  base::FileEnumerator enumerator(base::FilePath(kCgroupRootDir),
-                                  false /*recursive*/,
-                                  base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath current = enumerator.Next(); !current.empty();
-       current = enumerator.Next()) {
-    base::FilePath target_cgroup = current.Append(kCgroupContainerSuffix);
-    if (mkdir(target_cgroup.value().c_str(), 0755) != 0 && errno != EEXIST) {
-      PLOG(ERROR) << "Failed to create cgroup " << target_cgroup.value();
-      return false;
-    }
-    if (!ChangeOwnerAndGroup(target_cgroup, kChronosUid, kChronosGid)) {
-      return false;
-    }
-  }
-
-  // Create and setup the container cpusets with the default settings (all cpus,
-  // all mems).
-  const char* sets[] = {"cpuset.cpus", "cpuset.mems"};
-  base::FilePath root_dir = base::FilePath(kCgroupRootDir).Append("cpuset");
-  base::FilePath chronos_dir = root_dir.Append(kCgroupContainerSuffix);
-  for (const char* set : sets) {
-    string contents;
-    if (!base::ReadFileToString(root_dir.Append(set), &contents)) {
-      PLOG(ERROR) << "Failed to read contents from "
-                  << root_dir.Append(set).value();
-      return false;
-    }
-
-    if (base::WriteFile(chronos_dir.Append(set), contents.c_str(),
-                        contents.length()) != contents.length()) {
-      PLOG(ERROR) << "Failed to write cpuset contents to "
-                  << chronos_dir.Append(set).value();
-      return false;
-    }
   }
 
   // Become the session leader.
