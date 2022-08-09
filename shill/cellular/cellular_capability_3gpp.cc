@@ -1574,6 +1574,9 @@ bool CellularCapability3gpp::RetriableConnectError(const Error& error) const {
 
 std::string CellularCapability3gpp::NormalizeMdn(const std::string& mdn) const {
   std::string normalized_mdn;
+  if (mdn[0] == '+')
+    normalized_mdn += mdn[0];
+
   for (size_t i = 0; i < mdn.size(); ++i) {
     if (base::IsAsciiDigit(mdn[i]))
       normalized_mdn += mdn[i];

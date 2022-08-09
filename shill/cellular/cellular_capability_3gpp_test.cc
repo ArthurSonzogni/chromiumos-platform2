@@ -1233,9 +1233,9 @@ TEST_F(CellularCapability3gppTest, IsValidSimPath) {
 TEST_F(CellularCapability3gppTest, NormalizeMdn) {
   EXPECT_EQ("", capability_->NormalizeMdn(""));
   EXPECT_EQ("12345678901", capability_->NormalizeMdn("12345678901"));
-  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1 234 567 8901"));
-  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1-234-567-8901"));
-  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1 (234) 567-8901"));
+  EXPECT_EQ("+12345678901", capability_->NormalizeMdn("+1 234 567 8901"));
+  EXPECT_EQ("+12345678901", capability_->NormalizeMdn("+1-234-567-8901"));
+  EXPECT_EQ("+12345678901", capability_->NormalizeMdn("+1 (234) 567-8901"));
   EXPECT_EQ("12345678901", capability_->NormalizeMdn("1 234  567 8901 "));
   EXPECT_EQ("2345678901", capability_->NormalizeMdn("(234) 567-8901"));
 }
