@@ -319,16 +319,13 @@ INSTANTIATE_TEST_SUITE_P(
                           {"pressure"}, {cros::mojom::DeviceType::BARO}),
                       std::pair<std::vector<std::string>,
                                 std::vector<cros::mojom::DeviceType>>(
-                          {"proximity"}, {cros::mojom::DeviceType::PROXIMITY}),
-                      std::pair<std::vector<std::string>,
-                                std::vector<cros::mojom::DeviceType>>(
                           {"accel_x", "accel_y", "magn_z", "abc"},
                           {cros::mojom::DeviceType::ACCEL,
                            cros::mojom::DeviceType::MAGN}),
                       std::pair<std::vector<std::string>,
                                 std::vector<cros::mojom::DeviceType>>(
                           {"accel", "anglvel", "illuminance_x", "count_y",
-                           "magn", "angl_z", "pressure_x", "proximity_x"},
+                           "magn", "angl_z", "pressure_x"},
                           {})));
 
 }  // namespace
