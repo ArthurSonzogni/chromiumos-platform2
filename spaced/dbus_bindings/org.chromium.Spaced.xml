@@ -4,7 +4,8 @@
   Use of this source code is governed by a BSD-style license that can be
   found in the LICENSE file.
 -->
-<node name="/org/chromium/Spaced">
+<node name="/org/chromium/Spaced"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Spaced">
     <method name="GetFreeDiskSpace">
       <tp:docstring>
@@ -29,5 +30,15 @@
       <arg name="reply" type="x" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <signal name="StatefulDiskSpaceUpdate">
+      <arg name="status" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (StatefulDiskSpaceUpdate,
+        platform2/system_api/dbus/spaced/spaced.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="spaced::StatefulDiskSpaceUpdate"/>
+      </arg>
+    </signal>
   </interface>
 </node>

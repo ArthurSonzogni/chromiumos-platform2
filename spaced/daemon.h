@@ -12,6 +12,7 @@
 #include <base/task/task_runner.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 #include "spaced/calculator/stateful_free_space_calculator.h"
 #include "spaced/dbus_adaptors/org.chromium.Spaced.h"
@@ -34,6 +35,8 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
   int64_t GetFreeDiskSpace(const std::string& path) override;
   int64_t GetTotalDiskSpace(const std::string& path) override;
   int64_t GetRootDeviceSize() override;
+
+  void StatefulDiskSpaceUpdateCallback(const StatefulDiskSpaceUpdate& state);
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

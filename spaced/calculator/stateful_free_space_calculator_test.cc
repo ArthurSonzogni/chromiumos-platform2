@@ -37,8 +37,10 @@ class StatefulFreeSpaceCalculatorMock : public StatefulFreeSpaceCalculator {
       struct statvfs st,
       scoped_refptr<base::SequencedTaskRunner> task_runner,
       int64_t time_delta_seconds,
-      std::optional<brillo::Thinpool> thinpool)
-      : StatefulFreeSpaceCalculator(task_runner, time_delta_seconds, thinpool),
+      std::optional<brillo::Thinpool> thinpool,
+      base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal)
+      : StatefulFreeSpaceCalculator(
+            task_runner, time_delta_seconds, thinpool, signal),
         st_(st) {}
 
  protected:
@@ -66,6 +68,11 @@ class StatefulFreeSpaceCalculatorTest : public testing::Test {
     return task_environment_.GetMainThreadTaskRunner();
   }
 
+  base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)>
+  GetEmptyCallback() {
+    return base::BindRepeating([](const StatefulDiskSpaceUpdate&) {});
+  }
+
  private:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
@@ -76,32 +83,26 @@ TEST_F(StatefulFreeSpaceCalculatorTest, StatVfsError) {
   struct statvfs st = {};
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
-                                             std::nullopt);
+                                             std::nullopt, GetEmptyCallback());
 
   calculator.UpdateSize();
   EXPECT_EQ(calculator.GetSize(), -1);
 }
 
 TEST_F(StatefulFreeSpaceCalculatorTest, NoThinpoolCalculator) {
-  struct statvfs st = {};
-  st.f_fsid = 1;
-  st.f_bavail = 1024;
-  st.f_blocks = 2048;
-  st.f_frsize = 4096;
+  struct statvfs st = {
+      .f_frsize = 4096, .f_blocks = 2048, .f_bavail = 1024, .f_fsid = 1};
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
-                                             std::nullopt);
+                                             std::nullopt, GetEmptyCallback());
 
   calculator.UpdateSize();
   EXPECT_EQ(calculator.GetSize(), 4194304);
 }
 
 TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
-  struct statvfs st = {};
-  st.f_fsid = 1;
-  st.f_bavail = 1024;
-  st.f_blocks = 2048;
-  st.f_frsize = 4096;
+  struct statvfs st = {
+      .f_frsize = 4096, .f_blocks = 2048, .f_bavail = 1024, .f_fsid = 1};
 
   auto lvm_command_runner = std::make_shared<brillo::MockLvmCommandRunner>();
   brillo::Thinpool thinpool("thinpool", "STATEFUL", lvm_command_runner);
@@ -116,10 +117,45 @@ TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
-                                             thinpool);
+                                             thinpool, GetEmptyCallback());
 
   calculator.UpdateSize();
   EXPECT_EQ(calculator.GetSize(), 3355443);
+}
+
+TEST_F(StatefulFreeSpaceCalculatorTest, SignalStatefulDiskSpaceUpdate) {
+  int64_t free_disk_space = -1;
+  StatefulDiskSpaceState status = StatefulDiskSpaceState::NORMAL;
+
+  base::RepeatingCallback callback = base::BindRepeating(
+      [](int64_t* free_disk_space, StatefulDiskSpaceState* status,
+         const StatefulDiskSpaceUpdate& state) {
+        *free_disk_space = state.free_space_bytes();
+        *status = state.state();
+      },
+      &free_disk_space, &status);
+
+  struct statvfs st = {
+      .f_frsize = 4096, .f_blocks = 2048, .f_bavail = 1024, .f_fsid = 1};
+
+  auto lvm_command_runner = std::make_shared<brillo::MockLvmCommandRunner>();
+  brillo::Thinpool thinpool("thinpool", "STATEFUL", lvm_command_runner);
+
+  std::vector<std::string> cmd = {
+      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
+      "--reportformat",   "json", "--units",      "b",
+      "STATEFUL/thinpool"};
+
+  std::string report = base::StringPrintf(kSampleReport, 16777216L, 80.0);
+  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
+                                             thinpool, callback);
+  calculator.UpdateSizeAndSignal();
+  EXPECT_EQ(calculator.GetSize(), 3355443);
+  EXPECT_EQ(free_disk_space, 3355443);
+  EXPECT_EQ(status, StatefulDiskSpaceState::CRITICAL);
 }
 
 }  // namespace spaced

@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 #include "spaced/dbus-proxies.h"
 #include "spaced/disk_usage.h"

@@ -20,6 +20,7 @@
 #include <dbus/bus.h>
 #include <dbus/spaced/dbus-constants.h>
 #include <rootdev/rootdev.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 #include "spaced/disk_usage_impl.h"
 
@@ -86,7 +87,11 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       task_runner_(bus->GetOriginTaskRunner()),
       stateful_free_space_calculator_(
           std::make_unique<StatefulFreeSpaceCalculator>(
-              task_runner_, kCriticalRefreshPeriodSeconds, GetThinpool())) {
+              task_runner_,
+              kCriticalRefreshPeriodSeconds,
+              GetThinpool(),
+              base::BindRepeating(&DBusAdaptor::StatefulDiskSpaceUpdateCallback,
+                                  base::Unretained(this)))) {
   stateful_free_space_calculator_->Start();
 }
 
@@ -109,6 +114,11 @@ int64_t DBusAdaptor::GetTotalDiskSpace(const std::string& path) {
 
 int64_t DBusAdaptor::GetRootDeviceSize() {
   return disk_usage_util_->GetRootDeviceSize();
+}
+
+void DBusAdaptor::StatefulDiskSpaceUpdateCallback(
+    const StatefulDiskSpaceUpdate& state) {
+  SendStatefulDiskSpaceUpdateSignal(state);
 }
 
 Daemon::Daemon() : DBusServiceDaemon(::spaced::kSpacedServiceName) {}
