@@ -40,7 +40,7 @@ class MemoryFetcher final : public BaseFetcher {
   void CreateErrorAndSendBack(mojom::ErrorType error_type,
                               const std::string& message);
   void SendBackResult(mojom::MemoryResultPtr result);
-  void ParseProcMeminfo(mojom::MemoryInfo* info);
+  void ParseProcMemInfo(mojom::MemoryInfo* info);
   void ParseProcVmStat(mojom::MemoryInfo* info);
   uint64_t tme_capability_value_;
   uint64_t tme_activate_value_;

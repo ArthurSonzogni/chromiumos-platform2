@@ -24,6 +24,7 @@ source_set("libcros_healthd_utils") {
     "file_utils.cc",
     "fwupd_utils.cc",
     "helper_tool_utils.cc",
+    "memory_info.cc",
     "procfs_utils.cc",
     "usb_utils.cc",
   ]
@@ -46,6 +47,7 @@ if (use.test) {
       "file_utils_test.cc",
       "fwupd_utils_test.cc",
       "helper_tool_utils_test.cc",
+      "memory_info_test.cc",
       "procfs_utils_test.cc",
       "usb_utils_test.cc",
     ]
