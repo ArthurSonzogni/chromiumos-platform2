@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":arc-adbd",
     ":install_init",
+    ":install_policy",
   ]
 
   if (use.fuzzer) {
@@ -18,10 +19,7 @@ group("all") {
     ]
   }
   if (use.arcvm) {
-    deps += [
-      ":install_policy",
-      ":install_systemd",
-    ]
+    deps += [ ":install_systemd" ]
   }
   if (use.test) {
     deps += [
