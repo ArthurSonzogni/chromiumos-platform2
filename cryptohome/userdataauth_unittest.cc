@@ -4496,6 +4496,66 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsButHasNoFactors) {
   EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
 }
 
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
+  static constexpr char kUser[] = "foo@example.com";
+  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+
+  // Set up mocks for a few of VKs. We deliberately have the second not work to
+  // test that the listing correctly skips it.
+  std::vector<int> vk_indicies = {0, 1, 2};
+  EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
+      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
+      .WillOnce([](const std::string&, int) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        KeyData key_data;
+        key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+        key_data.set_label("password-label");
+        vk->SetKeyData(key_data);
+        vk->SetTPMKey(SecureBlob("fake tpm key"));
+        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        return vk;
+      });
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 1))
+      .WillOnce(Return(ByMove(nullptr)));
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 2))
+      .WillOnce([](const std::string&, int) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
+        KeyData key_data;
+        key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+        key_data.set_label("password-scrypt-label");
+        vk->SetKeyData(key_data);
+        return vk;
+      });
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id(kUser);
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_EQ(list_reply.configured_auth_factors_size(), 2);
+  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
+  EXPECT_EQ(list_reply.configured_auth_factors(1).label(),
+            "password-scrypt-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(1).has_password_metadata());
+}
+
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   static constexpr char kUser[] = "foo@example.com";
   const std::string kObfuscatedUser = SanitizeUserName(kUser);
@@ -4562,7 +4622,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                const user_data_auth::AuthFactor* rhs) {
               return lhs->label() < rhs->label();
             });
-  EXPECT_EQ(list_reply.configured_auth_factors().size(), 2);
+  ASSERT_EQ(list_reply.configured_auth_factors_size(), 2);
   EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
   EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
   EXPECT_EQ(list_reply.configured_auth_factors(1).label(), "pin-label");
@@ -4580,7 +4640,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
         base::BindOnce(save_reply, base::Unretained(&list_reply)));
   }
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(list_reply.configured_auth_factors().size(), 1);
+  ASSERT_EQ(list_reply.configured_auth_factors_size(), 1);
   EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
   EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
 }

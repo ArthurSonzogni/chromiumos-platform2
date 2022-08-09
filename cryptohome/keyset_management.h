@@ -87,8 +87,8 @@ class KeysetManagement {
       const Credentials& creds);
 
   // Loads the vault keyset for the supplied obfuscated username and index.
-  // Returns true for success, false for failure.
-  std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
+  // Returns null on failure.
+  virtual std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
       const std::string& obfuscated_user, int index) const;
 
   // Checks if the directory containing user keys exists.
