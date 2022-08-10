@@ -766,10 +766,12 @@ struct SupportedCapabilities {
 };
 
 // System probe result. DEPRECATED.
+[Stable]
 union DEPRECATE_SystemResult { ProbeError error; };
 
 // System probe result. Can either be populated with the SystemInfo or an error
 // retrieving the information.
+[Stable]
 union SystemResult {
   // Valid SystemInfo.
   SystemInfo system_info;
@@ -780,6 +782,7 @@ union SystemResult {
 // System Information.
 //
 // NextMinVersion: 1, NextIndex: 3
+[Stable]
 struct SystemInfo {
   // The info related to the OS.
   OsInfo os_info@0;
@@ -793,6 +796,7 @@ struct SystemInfo {
 // The OS information.
 //
 // NextMinVersion: 2, NextIndex: 5
+[Stable]
 struct OsInfo {
   // Google code name for the given model. While it is OK to use this string for
   // human-display purposes (such as in a debug log or help dialog), or for a
@@ -814,6 +818,7 @@ struct OsInfo {
 // (e.g. "87.13544.59.0") into its parts:
 //
 // NextMinVersion: 1, NextIndex: 4
+[Stable]
 struct OsVersion {
   // The OS version release milestone (e.g. "87").
   string release_milestone@0;
@@ -828,7 +833,7 @@ struct OsVersion {
 // The boot mode of the current os.
 //
 // NextMinVersion: 1, NextIndex: 5
-[Extensible]
+[Stable, Extensible]
 enum BootMode {
   [Default] kUnknown = 0,
   // Boot with ChromeOS firmware.
@@ -848,6 +853,7 @@ enum BootMode {
 // exist in some situation. (e.g. in a early stage device)
 //
 // NextMinVersion: 1, NextIndex: 6
+[Stable]
 struct VpdInfo {
   // A unique identifier of the device. (Required RO VPD field)
   string? serial_number@0;
@@ -870,6 +876,7 @@ struct VpdInfo {
 // to identify the hardware.
 //
 // NextMinVersion: 1, NextIndex: 11
+[Stable]
 struct DmiInfo {
   // The BIOS vendor.
   string? bios_vendor@0;
