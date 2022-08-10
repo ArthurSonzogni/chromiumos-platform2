@@ -61,6 +61,23 @@ could be checked via `cros-health-tool telem --help`.
 | underruns | uint32 | Numbers of underruns. |
 | severe_underruns | uint32 | Numbers of severe underruns. |
 
+##### AudioHardwareInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| audio_cards | [array&lt;AudioCard&gt;](#AudioCard) | Audio cards information. |
+
+##### AudioCard
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| alsa_id | string | The id used by ALSA(Advanced Linux Sound Architecture). |
+| bus_device | [BusDevice?](#BusDevice) | The bus device. If omits, the card is belongs to a bus type which is not yet supported by Healthd. |
+| hd_audio_codecs | [array&lt;HDAudioCodec&gt;](#HDAudioCodec) | The hd-audio codecs. |
+
+##### HDAudioCodec
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| name | string | The name. E.g. "ATI R6xx HDMI". |
+| address | uint8 | The address. E.g. "0". |
 
 ###  Backlight
 
@@ -136,7 +153,34 @@ could be checked via `cros-health-tool telem --help`.
 | address | string | The MAC address of the adapter. |
 | powered | bool | Indicates whether the adapter is on or off. |
 | num_connected_devices | uint32 | The number of devices connected to this adapter. |
+| connected_devices | [array&lt;BluetoothDeviceInfo&gt;?](#BluetoothDeviceInfo) | The info of connected devices to this adapter. |
+| discoverable | bool | The adapter is visible or not. |
+| discovering | bool | The device discovery procedure is active or not. |
+| uuids | array&lt;string&gt;? | The list of the available local services. |
+| modalias | string? | Local Device ID information. |
+| service_allow_list | array&lt;string&gt;? | List of allowed system devices. |
+| supported_capabilities | [SupportedCapabilities?](#SupportedCapabilities) | A dictionary of supported capabilities. |
 
+##### BluetoothDeviceInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| address | string | The MAC address of the device. |
+| name | string? | The name of the device. |
+| type | BluetoothDeviceType | The carriers supported by this remote device ("BR/EDR", "LE", or "DUAL"). |
+| appearance | uint16? | The external appearance of the device. |
+| modalias | string? | Remote Device ID information. |
+| rssi | uint16? | Received Signal Strength Indicator. |
+| mtu | uint16? | The Maximum Transmission Unit used in ATT communication. |
+| uuids | array&lt;string&gt;? | The list of the available remote services. |
+| battery_percentage | uint8? | The battery percentage of the device. |
+
+##### SupportedCapabilities
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| max_adv_len | uint8 | Max advertising data length. |
+| max_scn_rsp_len | uint8 | Max advertising scan response length. |
+| min_tx_power | int16 | Min advertising tx power (dBm). |
+| max_tx_power | int16 | Max advertising tx power (dBm). |
 
 ###  Bus
 
@@ -173,7 +217,7 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | security_level | ThunderboltSecurityLevel | Security level none, user, secure, dponly. |
-| thunderbolt_interfaces | [array<ThunderboltBusInterfaceInfo>](#ThunderboltBusInterfaceInfo) | Info of devices attached to the controller. |
+| thunderbolt_interfaces | [array&lt;ThunderboltBusInterfaceInfo&gt;](#ThunderboltBusInterfaceInfo) | Info of devices attached to the controller. |
 
 #####  ThunderboltBusInterfaceInfo
 | Field | Type | Description |
@@ -197,7 +241,14 @@ could be checked via `cros-health-tool telem --help`.
 | protocol_id | uint8 |  |
 | vendor_id | uint16 |  |
 | product_id | uint16 |  |
-| interfaces | [array<UsbBusInterfaceInfo>](#UsbBusInterfaceInfo) | The usb interfaces under the device. A usb device has at least one<br />interface. Each interface may or may not work independently, based on each<br />device. This allows a usb device to provide multiple features.<br />The interfaces are sorted by the |interface_number| field. |
+| interfaces | [array&lt;UsbBusInterfaceInfo&gt;](#UsbBusInterfaceInfo) | The usb interfaces under the device. A usb device has at least one<br />interface. Each interface may or may not work independently, based on each<br />device. This allows a usb device to provide multiple features.<br />The interfaces are sorted by the |interface_number| field. |
+| fwupd_firmware_version_info | [FwupdFirmwareVersionInfo?](#FwupdFirmwareVersionInfo) | The firmware version obtained from fwupd. |
+
+##### FwupdFirmwareVersionInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| version | string | The string form of the firmware version. |
+| version_format | FwupdVersionFormat | The format for parsing the version string. |
 
 #####  UsbBusInterfaceInfo
 | Field | Type | Description |
@@ -208,7 +259,6 @@ could be checked via `cros-health-tool telem --help`.
 | protocol_id | uint8 |  |
 | driver | string? | The driver used by the device. This is the name of the matched driver which<br />is registered in the kernel. See "{kernel root}/drivers/". for the list of<br />the built in drivers. |
 
-
 ###  CPU
 
 #####  CpuInfo
@@ -216,17 +266,28 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 | num_total_threads | uint32 | Number of total threads available. |
 | architecture | CpuArchitectureEnum | The CPU architecture - it's assumed all of a device's CPUs share an<br />architecture. |
-| physical_cpus | [array<PhysicalCpuInfo>](#PhysicalCpuInfo) | Information about the device's physical CPUs. |
-| temperature_channels | [array<CpuTemperatureChannel>](#CpuTemperatureChannel) | Information about the CPU temperature channels. |
+| physical_cpus | [array&lt;PhysicalCpuInfo&gt;](#PhysicalCpuInfo) | Information about the device's physical CPUs. |
+| temperature_channels | [array&lt;CpuTemperatureChannel&gt;](#CpuTemperatureChannel) | Information about the CPU temperature channels. |
 | keylocker_info | [KeylockerInfo?](#KeylockerInfo) | Information about keylocker. |
+| virtualization | [VirtualizationInfo?](#VirtualizationInfo) | The general virtualization info. Guaranteed to be not null unless the version doesn't match. |
+| vulnerabilities | [map&lt;string, VulnerabilityInfo&gt;?](#VulnerabilityInfo) | The cpu vulnerability info. The key is the name of the vulnerability. Guaranteed to be not null unless the version doesn't match. |
 
-####  C State
+#### Virtualization
 
-#####  CpuCStateInfo
+##### VirtualizationInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| name | string | Name of the state. |
-| time_in_state_since_last_boot_us | uint64 | Time spent in the state since the last reboot, in microseconds. |
+| has_kvm_device | bool | Whether the /dev/kvm device exists. |
+| is_smt_active | bool | Whether SMT is active. This will always be false if SMT detection is not supported by the kernel of this device. |
+| smt_control | SMTControl | The state of SMT control. |
+
+#### Vulnerability
+
+##### VulnerabilityInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| status | Status | The status of the vulnerability. |
+| message | string | The description of the vulnerability. |
 
 ####  KeyLocker
 
@@ -234,6 +295,23 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | keylocker_configured | bool | Has Keylocker been configured or not. |
+
+####  Physical Core
+
+#####  PhysicalCpuInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| model_name | string? | The CPU model name, if available.<br />For Arm devices, we will return SoC model instead. |
+| logical_cpus | [array&lt;LogicalCpuInfo&gt;](#LogicalCpuInfo) | Logical CPUs corresponding to this physical CPU. |
+| flags | array&lt;string&gt;? | The cpu flags, labelled as |flags| in x86 architecture and |Features| in ARM architecture. |
+| virtualization | [CpuVirtualizationInfo?](#CpuVirtualizationInfo) | The virtualization info of this cpu. |
+
+##### CpuVirtualizationInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| type | Type | The type of cpu hardware virtualization. |
+| is_enabled | bool | Whether virtualization is enabled. |
+| is_locked | bool | Whether the virtualization configuration is locked and cannot be modified. This is usually set by the BIOS to prevent the OS changing the setting after booting into the OS. |
 
 ####  Logical Core
 
@@ -250,19 +328,19 @@ could be checked via `cros-health-tool telem --help`.
 | user_time_user_hz | uint64 | Time spent in user mode since last boot. USER_HZ can be converted to<br />seconds with the conversion factor given by sysconf(_SC_CLK_TCK). |
 | system_time_user_hz | uint64 | Time spent in system mode since last boot. USER_HZ can be converted to<br />seconds with the conversion factor given by sysconf(_SC_CLK_TCK). |
 | idle_time_user_hz | uint64 | Idle time since last boot. USER_HZ can be converted to seconds with the<br />conversion factor given by sysconf(_SC_CLK_TCK). |
-| c_states | [array<CpuCStateInfo>](#CpuCStateInfo) | Information about the logical CPU's time in various C-states. |
+| c_states | [array&lt;CpuCStateInfo&gt;](#CpuCStateInfo) | Information about the logical CPU's time in various C-states. |
 |  |  | (planned) total_time_in_ticks (time in state since beginning) |
 |  |  | (planned) Current Throttle% (for each logical) |
 |  |  | (planned) Used percentage |
 |  |  | (planned) Average Utilization percentage |
 
-####  Physical Core
+####  C State
 
-#####  PhysicalCpuInfo
+#####  CpuCStateInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| model_name | string? | The CPU model name, if available.<br />For Arm devices, we will return SoC model instead. |
-| logical_cpus | [array<LogicalCpuInfo>](#LogicalCpuInfo) | Logical CPUs corresponding to this physical CPU. |
+| name | string | Name of the state. |
+| time_in_state_since_last_boot_us | uint64 | Time spent in the state since the last reboot, in microseconds. |
 
 ####  Temperature
 
@@ -319,7 +397,7 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | edp_info | [EmbeddedDisplayInfo](#EmbeddedDisplayInfo) | Embedded display info. |
-| dp_infos | [array<ExternalDisplayInfo>?](#ExternalDisplayInfo) | External display info. |
+| dp_infos | [array&lt;ExternalDisplayInfo&gt;?](#ExternalDisplayInfo) | External display info. |
 
 ####  Embedded Display
 
@@ -333,9 +411,16 @@ could be checked via `cros-health-tool telem --help`.
 | resolution_horizontal | uint32? | Horizontal resolution. |
 | resolution_vertical | uint32? | Vertical resolution. |
 | refresh_rate | double? | Refresh rate. |
+| manufacturer | string? | Three letter manufacturer ID. |
+| model_id | uint16? | Manufacturer product code. |
+| serial_number | uint32? | 32 bits serial number. |
+| manufacture_week | uint8? | Week of manufacture. |
+| manufacture_year | uint16? | Year of manufacture. |
+| edid_version | string? | EDID version. |
+| input_type | DisplayInputType | Digital or analog input. |
+| display_name | string? | Name of display product. |
 
-####  External Display
-
+####  ExternalDisplay
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 |  |  | (planned) Number of Monitor |
@@ -352,7 +437,14 @@ could be checked via `cros-health-tool telem --help`.
 | resolution_horizontal | uint32? | Horizontal resolution. |
 | resolution_vertical | uint32? | Vertical resolution. |
 | refresh_rate | double? | Refresh rate. |
-
+| manufacturer | string? | Three letter manufacturer ID. |
+| model_id | uint16? | Manufacturer product code. |
+| serial_number | uint32? | 32 bits serial number. |
+| manufacture_week | uint8? | Week of manufacture. |
+| manufacture_year | uint16? | Year of manufacture. |
+| edid_version | string? | EDID version. |
+| input_type | DisplayInputType | Digital or analog input. |
+| display_name | string? | Name of display product. |
 
 ###  Fan
 
@@ -394,7 +486,7 @@ could be checked via `cros-health-tool telem --help`.
 | version | string | EGL version. |
 | vendor | string | EGL vendor. |
 | client_api | string | EGL client API. |
-| extensions | array<string> | EGL extensions. |
+| extensions | array&lt;string&gt; | EGL extensions. |
 
 ####  GL ES
 
@@ -405,17 +497,32 @@ could be checked via `cros-health-tool telem --help`.
 | shading_version | string | GL shading version. |
 | vendor | string | GL vendor. |
 | renderer | string | GL renderer. |
-| extensions | array<string> | GL extensions. |
+| extensions | array&lt;string&gt; | GL extensions. |
 
 
 ###  Input
 
-####  Touchscreen
-
+##### InputInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-|  |  | (planned) does the device have a touchscreen |
-|  |  | (planned) is touchscreen usable |
+| touchpad_library_name | string | The touchpad library name used by the input stack. |
+| touchscreen_devices | [array&lt;TouchscreenDevice&gt;](#TouchscreenDevice) | The touchscreen devices. |
+
+##### TouchscreenDevice
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| input_device | [InputDevice](#InputDevice) | The input device of this touchscreen. |
+| touch_points | int32 | Number of touch points this device supports (0 if unknown). |
+| has_stylus | bool | True if the specified touchscreen device is stylus capable. |
+| has_stylus_garage_switch | bool | True if there is a garage/dock switch associated with the stylus. |
+
+##### InputDevice
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| name | string | Name of the device. |
+| connection_type | ConnectionType | The connection type of the input device. |
+| physical_location | string | The physical location(port) associated with the input device. This is (supposed to be) stable between reboots and hotplugs. However this may not always be set and will change when the device is connected via a different port. |
+| is_enabled | bool | If the device is enabled, and whether events should be dispatched to UI. |
 
 
 ###  Lid
@@ -480,14 +587,14 @@ could be checked via `cros-health-tool telem --help`.
 | mac_address | string? | Optional string for the network's mac_address. |
 | signal_strength | uint32? | Signal strength of the network provided only for wireless networks. Values<br />are normalized between 0 to 100 inclusive. Values less than 30 are<br />considered potentially problematic for the connection. See<br />src/platform2/shill/doc/service-api.txt for more details. |
 | ipv4_address | string? | Optional string for the network's ipv4_address. This is only intended to be<br />used for display and is not meant to be parsed. |
-| ipv6_addresses | array<string> | Optional list of strings for the network's ipv6_addresses. A single network<br />can have multiple addresses (local, global, temporary etc.). This is only<br />intended to be used for display and is not meant to be parsed. |
+| ipv6_addresses | array&lt;string&gt; | Optional list of strings for the network's ipv6_addresses. A single network<br />can have multiple addresses (local, global, temporary etc.). This is only<br />intended to be used for display and is not meant to be parsed. |
 | portal_state | PortalState | An enum of the network's captive portal state. This information is<br />supplementary to the NetworkState. |
 | signal_strength_stats | SignalStrengthStats? | The statistics of the signal strength for wireless networks over a 15<br />minute period. See SignalStrengthStats for more details. |
 
 #####  NetworkHealthState
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| networks | [array<Network>](#Network) | This is a list of networking devices and any associated connections.<br />Only networking technologies that are present on the device are included.<br />Networks will be sorted with active connections listed first. |
+| networks | [array&lt;Network&gt;](#Network) | This is a list of networking devices and any associated connections.<br />Only networking technologies that are present on the device are included.<br />Networks will be sorted with active connections listed first. |
 
 ####  Interface
 
@@ -572,6 +679,12 @@ could be checked via `cros-health-tool telem --help`.
 #####  NonRemovableBlockDeviceInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
+| bytes_read_since_last_boot | uint64 | Bytes read since last boot. |
+| bytes_written_since_last_boot | uint64 | Bytes written since last boot. |
+| read_time_seconds_since_last_boot | uint64 | Time spent reading since last boot. |
+| write_time_seconds_since_last_boot | uint64 | Time spent writing since last boot. |
+| io_time_seconds_since_last_boot | uint64 | Time spent doing I/O since last boot. Counts the time the disk and queue<br />were busy, so unlike the fields above, parallel requests are not counted<br />multiple times. |
+| discard_time_seconds_since_last_boot | uint64? | Time spent discarding since last boot. Discarding is writing to clear<br />blocks which are no longer in use. Supported on kernels 4.18+. |
 | vendor_id | BlockDeviceVendor | Device vendor identification. |
 | product_id | BlockDeviceProduct | Device product identification. |
 | revision | BlockDeviceRevision | Device revision. |
@@ -580,6 +693,9 @@ could be checked via `cros-health-tool telem --help`.
 | firmware_version | BlockDeviceFirmware | Firmware version. |
 | type | string | Storage type, could be MMC / NVMe / ATA, based on udev subsystem. |
 | purpose | StorageDevicePurpose | Purpose of the device e.g. "boot", "swap". |
+| path | string | The path of this storage on the system. It is useful if caller needs to<br />correlate with other information. |
+| manufacturer_id | uint8 | Manufacturer ID, 8 bits. |
+| serial | uint32 | PSN: Product serial number, 32 bits |
 
 ####  Device (SMART)
 
@@ -600,16 +716,6 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 |  |  | (planned) Idle time |
 
-#####  NonRemovableBlockDeviceInfo
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| bytes_read_since_last_boot | uint64 | Bytes read since last boot. |
-| bytes_written_since_last_boot | uint64 | Bytes written since last boot. |
-| read_time_seconds_since_last_boot | uint64 | Time spent reading since last boot. |
-| write_time_seconds_since_last_boot | uint64 | Time spent writing since last boot. |
-| io_time_seconds_since_last_boot | uint64 | Time spent doing I/O since last boot. Counts the time the disk and queue<br />were busy, so unlike the fields above, parallel requests are not counted<br />multiple times. |
-| discard_time_seconds_since_last_boot | uint64? | Time spent discarding since last boot. Discarding is writing to clear<br />blocks which are no longer in use. Supported on kernels 4.18+. |
-
 ####  Logical Drive
 
 | Field | Type | Description |
@@ -624,13 +730,6 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 |  |  | (planned) ePPID (Dell exclusive data) |
-
-#####  NonRemovableBlockDeviceInfo
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| path | string | The path of this storage on the system. It is useful if caller needs to<br />correlate with other information. |
-| manufacturer_id | uint8 | Manufacturer ID, 8 bits. |
-| serial | uint32 | PSN: Product serial number, 32 bits |
 
 ####  Partition
 
@@ -710,6 +809,7 @@ could be checked via `cros-health-tool telem --help`.
 | marketing_name | string? | Contents of CrosConfig in /arc/build-properties/marketing-name. |
 | os_version | [OsVersion](#OsVersion) | The OS version of the system. |
 | boot_mode | BootMode | The boot flow used by the current boot. |
+| oem_name | string? | Contents of CrosConfig in /branding/oem-name. |
 
 #####  OsVersion
 | Field | Type | Description |
