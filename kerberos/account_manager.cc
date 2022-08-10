@@ -302,18 +302,20 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
   if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  // Validate configuration before setting it to make sure it doesn't contain
-  // invalid options.
-  ConfigErrorInfo error_info;
-  ErrorType error = krb5_->ValidateConfig(krb5conf, &error_info);
+  // Saving the krb5 configuration is done even if the syntax is invalid.
+  ErrorType error;
+  error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
+
   if (error != ERROR_NONE)
     return error;
 
-  error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
-
   // Triggering the signal is only necessary if the credential cache exists.
-  if (error == ERROR_NONE && base::PathExists(GetKrb5CCPath(principal_name)))
+  if (base::PathExists(GetKrb5CCPath(principal_name)))
     TriggerKerberosFilesChanged(principal_name);
+
+  // Validate configuration to make sure it doesn't contain invalid options.
+  ConfigErrorInfo error_info;
+  error = krb5_->ValidateConfig(krb5conf, &error_info);
   return error;
 }
 
