@@ -11,7 +11,10 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_util.h>
+
 #include "cros-camera/common.h"
+#include "cros-camera/constants.h"
 
 namespace cros {
 
@@ -48,7 +51,31 @@ FeatureProfile::FeatureProfile(std::optional<base::Value> feature_config,
 }
 
 bool FeatureProfile::IsEnabled(FeatureType feature) const {
-  return feature_settings_.find(feature) != feature_settings_.end();
+  switch (feature) {
+    case FeatureType::kHdrnet:
+    case FeatureType::kGcamAe:
+      if (base::PathExists(
+              base::FilePath(constants::kForceDisableHdrNetPath))) {
+        return false;
+      }
+      if (base::PathExists(base::FilePath(constants::kForceEnableHdrNetPath))) {
+        return true;
+      }
+      break;
+    case FeatureType::kAutoFraming:
+      if (base::PathExists(
+              base::FilePath(constants::kForceDisableAutoFramingPath))) {
+        return false;
+      }
+      if (base::PathExists(
+              base::FilePath(constants::kForceEnableAutoFramingPath))) {
+        return true;
+      }
+      break;
+    default:
+      break;
+  }
+  return feature_settings_.contains(feature);
 }
 
 base::FilePath FeatureProfile::GetConfigFilePath(FeatureType feature) const {

@@ -181,17 +181,9 @@ void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
 
 void CameraHalServerImpl::IPCBridge::GetAutoFramingSupported(
     mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) {
-  if (base::PathExists(
-          base::FilePath(constants::kForceDisableAutoFramingPath))) {
-    std::move(callback).Run(false);
-    return;
-  }
   FeatureProfile feature_profile;
-  if (base::PathExists(
-          base::FilePath(constants::kForceEnableAutoFramingPath)) ||
-      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
-    std::move(callback).Run(true);
-  }
+  std::move(callback).Run(
+      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming));
 }
 
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(

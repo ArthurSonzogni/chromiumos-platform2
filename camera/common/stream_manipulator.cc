@@ -36,74 +36,58 @@ namespace cros {
 namespace {
 
 void MaybeEnableHdrNetStreamManipulator(
+    const FeatureProfile& feature_profile,
     const StreamManipulator::Options& options,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_HDRNET
-  FeatureProfile feature_profile;
-
-  if (base::PathExists(base::FilePath(constants::kForceDisableHdrNetPath))) {
-    // HDRnet is forcibly disabled.
+  if (!feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)) {
     return;
   }
-
-  if (base::PathExists(base::FilePath(constants::kForceEnableHdrNetPath)) ||
-      feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)) {
-    // HDRnet is enabled forcibly or by the device setting.
-
-    constexpr const char kIntelIpu6CameraModuleName[] =
-        "Intel IPU6 Camera HAL Module";
-    if (options.camera_module_name == kIntelIpu6CameraModuleName) {
-      // The pipeline looks like:
-      //        ____       ________       _________
-      //   --> |    | --> |        | --> |         | -->
-      //       | FD |     | HDRnet |     | Gcam AE |
-      //   <== |____| <== |________| <== |_________| <==
-      //
-      //   --> capture request flow
-      //   ==> capture result flow
-      //
-      // Why the pipeline is organized this way:
-      // * FaceDetection (if present) is placed before HDRnet because we want to
-      //   run face detection on result frames rendered by HDRnet so we can
-      //   better detect the underexposed faces.
-      // * Gcam AE is placed after HDRnet because it needs raw result frames as
-      //   input to get accurate AE metering, and because Gcam AE produces the
-      //   HDR ratio needed by HDRnet to render the output frame.
-      std::unique_ptr<JpegCompressor> jpeg_compressor =
-          JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+  constexpr const char kIntelIpu6CameraModuleName[] =
+      "Intel IPU6 Camera HAL Module";
+  if (options.camera_module_name == kIntelIpu6CameraModuleName) {
+    // The pipeline looks like:
+    //        ____       ________       _________
+    //   --> |    | --> |        | --> |         | -->
+    //       | FD |     | HDRnet |     | Gcam AE |
+    //   <== |____| <== |________| <== |_________| <==
+    //
+    //   --> capture request flow
+    //   ==> capture result flow
+    //
+    // Why the pipeline is organized this way:
+    // * FaceDetection (if present) is placed before HDRnet because we want to
+    //   run face detection on result frames rendered by HDRnet so we can
+    //   better detect the underexposed faces.
+    // * Gcam AE is placed after HDRnet because it needs raw result frames as
+    //   input to get accurate AE metering, and because Gcam AE produces the
+    //   HDR ratio needed by HDRnet to render the output frame.
+    std::unique_ptr<JpegCompressor> jpeg_compressor =
+        JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+    out_stream_manipulators->emplace_back(
+        std::make_unique<HdrNetStreamManipulator>(
+            feature_profile.GetConfigFilePath(
+                FeatureProfile::FeatureType::kHdrnet),
+            std::make_unique<StillCaptureProcessorImpl>(
+                std::move(jpeg_compressor))));
+    LOGF(INFO) << "HdrNetStreamManipulator enabled";
+    if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kGcamAe)) {
       out_stream_manipulators->emplace_back(
-          std::make_unique<HdrNetStreamManipulator>(
+          std::make_unique<GcamAeStreamManipulator>(
               feature_profile.GetConfigFilePath(
-                  FeatureProfile::FeatureType::kHdrnet),
-              std::make_unique<StillCaptureProcessorImpl>(
-                  std::move(jpeg_compressor))));
-      LOGF(INFO) << "HdrNetStreamManipulator enabled";
-      if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kGcamAe)) {
-        out_stream_manipulators->emplace_back(
-            std::make_unique<GcamAeStreamManipulator>(
-                feature_profile.GetConfigFilePath(
-                    FeatureProfile::FeatureType::kGcamAe)));
-        LOGF(INFO) << "GcamAeStreamManipulator enabled";
-      }
+                  FeatureProfile::FeatureType::kGcamAe)));
+      LOGF(INFO) << "GcamAeStreamManipulator enabled";
     }
   }
 #endif
 }
 
 void MaybeEnableAutoFramingStreamManipulator(
+    const FeatureProfile& feature_profile,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators,
     StreamManipulator::RuntimeOptions* runtime_options) {
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
-  if (base::PathExists(
-          base::FilePath(constants::kForceDisableAutoFramingPath))) {
-    // Auto-framing is forcibly disabled.
-    return;
-  }
-  FeatureProfile feature_profile;
-  if (base::PathExists(
-          base::FilePath(constants::kForceEnableAutoFramingPath)) ||
-      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
-    // Auto-framing is forcibly enabled, or enabled by feature profile.
+  if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>(
             runtime_options, AutoFramingStreamManipulator::Options{},
@@ -125,7 +109,7 @@ StreamManipulator::GetEnabledStreamManipulators(
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
 
-  MaybeEnableAutoFramingStreamManipulator(&stream_manipulators,
+  MaybeEnableAutoFramingStreamManipulator(feature_profile, &stream_manipulators,
                                           runtime_options);
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
@@ -138,7 +122,8 @@ StreamManipulator::GetEnabledStreamManipulators(
   }
 #endif
 
-  MaybeEnableHdrNetStreamManipulator(options, &stream_manipulators);
+  MaybeEnableHdrNetStreamManipulator(feature_profile, options,
+                                     &stream_manipulators);
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   if (options.enable_cros_zsl) {
