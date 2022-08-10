@@ -2102,7 +2102,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
       int32_t minw = window->min_width;
       int32_t minh = window->min_height;
 
-      sl_transform_guest_to_host(window->ctx, &minw, &minh);
+      sl_transform_guest_to_host(window->ctx, window->paired_surface, &minw,
+                                 &minh);
       xdg_toplevel_set_min_size(window->xdg_toplevel, minw, minh);
     } else {
       xdg_toplevel_set_min_size(window->xdg_toplevel, 0, 0);
@@ -2112,7 +2113,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
       int32_t maxw = window->max_width;
       int32_t maxh = window->max_height;
 
-      sl_transform_guest_to_host(window->ctx, &maxw, &maxh);
+      sl_transform_guest_to_host(window->ctx, window->paired_surface, &maxw,
+                                 &maxh);
       xdg_toplevel_set_max_size(window->xdg_toplevel, maxw, maxh);
     } else {
       xdg_toplevel_set_max_size(window->xdg_toplevel, 0, 0);

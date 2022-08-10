@@ -25,6 +25,7 @@ struct sl_host_data_device {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_data_device* proxy;
+  struct sl_host_surface* focus_surface;
 };
 MAP_STRUCTS(wl_data_device, sl_host_data_device);
 
@@ -394,7 +395,9 @@ static void sl_data_device_enter(void* data,
       static_cast<sl_host_data_offer*>(wl_data_offer_get_user_data(data_offer));
   wl_fixed_t ix = x, iy = y;
 
-  sl_transform_host_to_guest_fixed(host->ctx, &ix, &iy);
+  sl_transform_host_to_guest_fixed(host->ctx, host_surface, &ix, &iy);
+
+  host->focus_surface = host_surface;
 
   wl_data_device_send_enter(host->resource, serial, host_surface->resource, ix,
                             iy, host_data_offer->resource);
@@ -405,6 +408,7 @@ static void sl_data_device_leave(void* data,
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
 
+  host->focus_surface = NULL;
   wl_data_device_send_leave(host->resource);
 }
 
@@ -417,7 +421,7 @@ static void sl_data_device_motion(void* data,
       wl_data_device_get_user_data(data_device));
   wl_fixed_t ix = x, iy = y;
 
-  sl_transform_host_to_guest_fixed(host->ctx, &ix, &iy);
+  sl_transform_host_to_guest_fixed(host->ctx, host->focus_surface, &ix, &iy);
 
   wl_data_device_send_motion(host->resource, time, ix, iy);
 }
@@ -427,6 +431,7 @@ static void sl_data_device_drop(void* data,
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
 
+  host->focus_surface = NULL;
   wl_data_device_send_drop(host->resource);
 }
 
@@ -498,6 +503,7 @@ static void sl_data_device_manager_get_data_device(
   assert(host_data_device);
 
   host_data_device->ctx = host->ctx;
+  host_data_device->focus_surface = NULL;
   host_data_device->resource = wl_resource_create(
       client, &wl_data_device_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_data_device->resource,

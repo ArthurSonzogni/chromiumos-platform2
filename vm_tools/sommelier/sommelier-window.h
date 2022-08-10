@@ -28,6 +28,8 @@ struct sl_config {
   uint32_t states[3];
 };
 
+struct sl_host_surface;
+
 struct sl_window {
   sl_window(struct sl_context* ctx,
             xcb_window_t id,
@@ -78,6 +80,7 @@ struct sl_window {
   struct xdg_toplevel* xdg_toplevel = nullptr;
   struct xdg_popup* xdg_popup = nullptr;
   struct zaura_surface* aura_surface = nullptr;
+  struct sl_host_surface* paired_surface = nullptr;
   struct wl_list link = {};
 };
 

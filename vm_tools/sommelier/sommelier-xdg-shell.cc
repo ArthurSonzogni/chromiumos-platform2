@@ -22,6 +22,7 @@ struct sl_host_xdg_surface {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_surface* proxy;
+  struct sl_host_surface* originator;
 };
 MAP_STRUCTS(xdg_surface, sl_host_xdg_surface);
 
@@ -29,6 +30,7 @@ struct sl_host_xdg_toplevel {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_toplevel* proxy;
+  struct sl_host_xdg_surface* originator;
 };
 MAP_STRUCTS(xdg_toplevel, sl_host_xdg_toplevel);
 
@@ -36,6 +38,7 @@ struct sl_host_xdg_popup {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct xdg_popup* proxy;
+  struct sl_host_xdg_surface* originator;
 };
 MAP_STRUCTS(xdg_popup, sl_host_xdg_popup);
 
@@ -61,7 +64,7 @@ static void sl_xdg_positioner_set_size(struct wl_client* client,
   int32_t iwidth = width;
   int32_t iheight = height;
 
-  sl_transform_guest_to_host(host->ctx, &iwidth, &iheight);
+  sl_transform_guest_to_host(host->ctx, nullptr, &iwidth, &iheight);
   xdg_positioner_set_size(host->proxy, iwidth, iheight);
 }
 
@@ -78,8 +81,8 @@ static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
   int32_t x2 = x + width;
   int32_t y2 = y + height;
 
-  sl_transform_guest_to_host(host->ctx, &x1, &y1);
-  sl_transform_guest_to_host(host->ctx, &x2, &y2);
+  sl_transform_guest_to_host(host->ctx, nullptr, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, nullptr, &x2, &y2);
 
   xdg_positioner_set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -92,7 +95,7 @@ static void sl_xdg_positioner_set_offset(struct wl_client* client,
       static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
   int32_t ix = x, iy = y;
 
-  sl_transform_guest_to_host(host->ctx, &ix, &iy);
+  sl_transform_guest_to_host(host->ctx, nullptr, &ix, &iy);
   xdg_positioner_set_offset(host->proxy, ix, iy);
 }
 
@@ -122,6 +125,17 @@ static void sl_xdg_popup_destroy(struct wl_client* client,
 static const struct xdg_popup_interface sl_xdg_popup_implementation = {
     sl_xdg_popup_destroy, ForwardRequest<xdg_popup_grab>};
 
+static struct sl_host_surface* get_host_surface(
+    struct sl_host_xdg_surface* xdg) {
+  // For xdg_popup/xdg_toplevel they will point to the
+  // originating xdg_surface. The originating surface
+  // will point to the source sl_host_surface
+  if (xdg && xdg->originator)
+    return xdg->originator;
+  else
+    return nullptr;
+}
+
 static void sl_xdg_popup_configure(void* data,
                                    struct xdg_popup* xdg_popup,
                                    int32_t x,
@@ -135,8 +149,10 @@ static void sl_xdg_popup_configure(void* data,
   int32_t x2 = x + width;
   int32_t y2 = y + height;
 
-  sl_transform_host_to_guest(host->ctx, &x1, &y1);
-  sl_transform_host_to_guest(host->ctx, &x2, &y2);
+  sl_transform_host_to_guest(host->ctx, get_host_surface(host->originator), &x1,
+                             &y1);
+  sl_transform_host_to_guest(host->ctx, get_host_surface(host->originator), &x2,
+                             &y2);
 
   xdg_popup_send_configure(host->resource, x1, y1, x2 - x1, y2 - y1);
 }
@@ -212,7 +228,8 @@ static void sl_xdg_toplevel_configure(void* data,
   int32_t iwidth = width;
   int32_t iheight = height;
 
-  sl_transform_host_to_guest(host->ctx, &iwidth, &iheight);
+  sl_transform_host_to_guest(host->ctx, get_host_surface(host->originator),
+                             &iwidth, &iheight);
 
   xdg_toplevel_send_configure(host->resource, iwidth, iheight, states);
 }
@@ -258,6 +275,8 @@ static void sl_xdg_surface_get_toplevel(struct wl_client* client,
       host_xdg_toplevel->resource, &sl_xdg_toplevel_implementation,
       host_xdg_toplevel, sl_destroy_host_xdg_toplevel);
   host_xdg_toplevel->proxy = xdg_surface_get_toplevel(host->proxy);
+  host_xdg_toplevel->originator = host;
+
   xdg_toplevel_set_user_data(host_xdg_toplevel->proxy, host_xdg_toplevel);
   xdg_toplevel_add_listener(host_xdg_toplevel->proxy, &sl_xdg_toplevel_listener,
                             host_xdg_toplevel);
@@ -290,6 +309,8 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
   host_xdg_popup->proxy = xdg_surface_get_popup(
       host->proxy, host_parent ? host_parent->proxy : NULL,
       host_positioner->proxy);
+  host_xdg_popup->originator = host_parent;
+
   xdg_popup_set_user_data(host_xdg_popup->proxy, host_xdg_popup);
   xdg_popup_add_listener(host_xdg_popup->proxy, &sl_xdg_popup_listener,
                          host_xdg_popup);
@@ -308,8 +329,8 @@ static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
   int32_t x2 = x + width;
   int32_t y2 = y + height;
 
-  sl_transform_guest_to_host(host->ctx, &x1, &y1);
-  sl_transform_guest_to_host(host->ctx, &x2, &y2);
+  sl_transform_guest_to_host(host->ctx, host->originator, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, host->originator, &x2, &y2);
 
   xdg_surface_set_window_geometry(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -385,6 +406,8 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
                                  host_xdg_surface, sl_destroy_host_xdg_surface);
   host_xdg_surface->proxy =
       xdg_wm_base_get_xdg_surface(host->proxy, host_surface->proxy);
+  host_xdg_surface->originator = host_surface;
+
   xdg_surface_set_user_data(host_xdg_surface->proxy, host_xdg_surface);
   xdg_surface_add_listener(host_xdg_surface->proxy, &sl_xdg_surface_listener,
                            host_xdg_surface);

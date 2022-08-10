@@ -232,8 +232,8 @@ static void sl_internal_xdg_toplevel_configure(
     int32_t height_in_pixels = height;
     int i = 0;
 
-    sl_transform_host_to_guest(window->ctx, &width_in_pixels,
-                               &height_in_pixels);
+    sl_transform_host_to_guest(window->ctx, window->paired_surface,
+                               &width_in_pixels, &height_in_pixels);
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
                                XCB_CONFIG_WINDOW_HEIGHT |
                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
@@ -356,6 +356,7 @@ void sl_window_update(struct sl_window* window) {
     wl_list_remove(&window->link);
     wl_list_insert(&ctx->unpaired_windows, &window->link);
     window->unpaired = 1;
+    window->paired_surface = NULL;
   }
 
   if (!host_resource) {
@@ -383,6 +384,9 @@ void sl_window_update(struct sl_window* window) {
       static_cast<sl_host_surface*>(wl_resource_get_user_data(host_resource));
   assert(host_surface);
   assert(!host_surface->has_role);
+
+  if (!window->unpaired)
+    window->paired_surface = host_surface;
 
   assert(ctx->xdg_shell);
   assert(ctx->xdg_shell->internal);
@@ -500,14 +504,16 @@ void sl_window_update(struct sl_window* window) {
       int32_t minw = window->min_width;
       int32_t minh = window->min_height;
 
-      sl_transform_guest_to_host(window->ctx, &minw, &minh);
+      sl_transform_guest_to_host(window->ctx, window->paired_surface, &minw,
+                                 &minh);
       xdg_toplevel_set_min_size(window->xdg_toplevel, minw, minh);
     }
     if (window->size_flags & P_MAX_SIZE) {
       int32_t maxw = window->max_width;
       int32_t maxh = window->max_height;
 
-      sl_transform_guest_to_host(window->ctx, &maxw, &maxh);
+      sl_transform_guest_to_host(window->ctx, window->paired_surface, &maxw,
+                                 &maxh);
       xdg_toplevel_set_max_size(window->xdg_toplevel, maxw, maxh);
     }
     if (window->maximized) {
@@ -524,7 +530,8 @@ void sl_window_update(struct sl_window* window) {
     positioner = xdg_wm_base_create_positioner(ctx->xdg_shell->internal);
     assert(positioner);
 
-    sl_transform_guest_to_host(window->ctx, &diffx, &diffy);
+    sl_transform_guest_to_host(window->ctx, window->paired_surface, &diffx,
+                               &diffy);
     xdg_positioner_set_anchor(positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     xdg_positioner_set_anchor_rect(positioner, diffx, diffy, 1, 1);
@@ -543,7 +550,8 @@ void sl_window_update(struct sl_window* window) {
     int32_t diffx = window->x - parent->x;
     int32_t diffy = window->y - parent->y;
 
-    sl_transform_guest_to_host(window->ctx, &diffx, &diffy);
+    sl_transform_guest_to_host(window->ctx, window->paired_surface, &diffx,
+                               &diffy);
     zaura_surface_set_parent(window->aura_surface, parent->aura_surface, diffx,
                              diffy);
   }

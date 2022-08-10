@@ -38,6 +38,7 @@ struct sl_host_touch {
   struct wl_resource* resource;
   struct wl_touch* proxy;
   struct wl_resource* focus_resource;
+  struct sl_host_surface* focus_surface;
   struct wl_listener focus_resource_listener;
 };
 
@@ -62,7 +63,7 @@ static void sl_host_pointer_set_cursor(struct wl_client* client,
       wl_surface_commit(host_surface->proxy);
   }
 
-  sl_transform_guest_to_host(host->seat->ctx, &hsx, &hsy);
+  sl_transform_guest_to_host(host->seat->ctx, nullptr, &hsx, &hsy);
 
   wl_pointer_set_cursor(host->proxy, serial,
                         host_surface ? host_surface->proxy : NULL, hsx, hsy);
@@ -104,6 +105,7 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
   wl_list_init(&host->focus_resource_listener.link);
   host->focus_resource = surface_resource;
   host->focus_serial = serial;
+  host->focus_surface = host_surface;
 
   if (surface_resource) {
     if (host->seat->ctx->xwayland) {
@@ -115,7 +117,7 @@ static void sl_pointer_set_focus(struct sl_host_pointer* host,
     wl_resource_add_destroy_listener(surface_resource,
                                      &host->focus_resource_listener);
 
-    sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
+    sl_transform_host_to_guest_fixed(host->seat->ctx, host_surface, &ix, &iy);
     wl_pointer_send_enter(host->resource, serial, surface_resource, ix, iy);
   }
 }
@@ -163,7 +165,8 @@ static void sl_pointer_motion(void* data,
   wl_fixed_t mx = x;
   wl_fixed_t my = y;
 
-  sl_transform_host_to_guest_fixed(host->seat->ctx, &mx, &my);
+  sl_transform_host_to_guest_fixed(host->seat->ctx, host->focus_surface, &mx,
+                                   &my);
   wl_pointer_send_motion(host->resource, time, mx, my);
 }
 
@@ -192,7 +195,7 @@ static void sl_pointer_axis(void* data,
       static_cast<sl_host_pointer*>(wl_pointer_get_user_data(pointer));
   wl_fixed_t svalue = value;
 
-  sl_transform_host_to_guest_fixed(host->seat->ctx, &svalue, axis);
+  sl_transform_host_to_guest_fixed(host->seat->ctx, nullptr, &svalue, axis);
 
   host->time = time;
   host->axis_delta[axis] += svalue;
@@ -554,6 +557,7 @@ static void sl_host_touch_down(void* data,
     wl_list_remove(&host->focus_resource_listener.link);
     wl_list_init(&host->focus_resource_listener.link);
     host->focus_resource = host_surface->resource;
+    host->focus_surface = host_surface;
     wl_resource_add_destroy_listener(host_surface->resource,
                                      &host->focus_resource_listener);
   }
@@ -565,7 +569,7 @@ static void sl_host_touch_down(void* data,
     sl_roundtrip(host->seat->ctx);
   }
 
-  sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
+  sl_transform_host_to_guest_fixed(host->seat->ctx, host_surface, &ix, &iy);
   wl_touch_send_down(host->resource, serial, time, host_surface->resource, id,
                      ix, iy);
 
@@ -585,6 +589,7 @@ static void sl_host_touch_up(void* data,
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
   host->focus_resource = NULL;
+  host->focus_surface = NULL;
 
   wl_touch_send_up(host->resource, serial, time, id);
 
@@ -604,7 +609,8 @@ static void sl_host_touch_motion(void* data,
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
-  sl_transform_host_to_guest_fixed(host->seat->ctx, &ix, &iy);
+  sl_transform_host_to_guest_fixed(host->seat->ctx, host->focus_surface, &ix,
+                                   &iy);
   wl_touch_send_motion(host->resource, time, id, ix, iy);
 }
 
@@ -671,6 +677,7 @@ static void sl_host_seat_get_host_pointer(struct wl_client* client,
   host_pointer->focus_resource_listener.notify =
       sl_pointer_focus_resource_destroyed;
   host_pointer->focus_resource = NULL;
+  host_pointer->focus_surface = NULL;
   host_pointer->focus_serial = 0;
   host_pointer->time = 0;
   host_pointer->axis_delta[0] = wl_fixed_from_int(0);
@@ -777,6 +784,7 @@ static void sl_touch_focus_resource_destroyed(struct wl_listener* listener,
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
   host->focus_resource = NULL;
+  host->focus_surface = NULL;
 }
 
 static void sl_host_seat_get_host_touch(struct wl_client* client,
@@ -800,6 +808,7 @@ static void sl_host_seat_get_host_touch(struct wl_client* client,
   host_touch->focus_resource_listener.notify =
       sl_touch_focus_resource_destroyed;
   host_touch->focus_resource = NULL;
+  host_touch->focus_surface = NULL;
 }
 
 static const struct wl_seat_interface sl_seat_implementation = {

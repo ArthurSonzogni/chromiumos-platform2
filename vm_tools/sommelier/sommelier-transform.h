@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_SOMMELIER_SOMMELIER_TRANSFORM_H_
 #define VM_TOOLS_SOMMELIER_SOMMELIER_TRANSFORM_H_
 
+#include "sommelier.h"      // NOLINT(build/include_directory)
 #include "sommelier-ctx.h"  // NOLINT(build/include_directory)
 
 // Direct Scaling Mode Explained:
@@ -91,11 +92,13 @@
 // This is a potential optimization as it removes one step
 // from the guest->host surface_attach cycle.
 bool sl_transform_viewport_scale(struct sl_context* ctx,
+                                 struct sl_host_surface* surface,
                                  double contents_scale,
                                  int32_t* width,
                                  int32_t* height);
 
 void sl_transform_damage_coord(struct sl_context* ctx,
+                               const struct sl_host_surface* surface,
                                double scalex,
                                double scaley,
                                int64_t* x1,
@@ -114,24 +117,34 @@ void sl_transform_damage_coord(struct sl_context* ctx,
 // 0 = vertical axis (Y)
 // 1 = horizontal axis (X)
 
-void sl_transform_host_to_guest(struct sl_context* ctx, int32_t* x, int32_t* y);
+void sl_transform_host_to_guest(struct sl_context* ctx,
+                                struct sl_host_surface* surface,
+                                int32_t* x,
+                                int32_t* y);
 
 void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
+                                      struct sl_host_surface* surface,
                                       wl_fixed_t* x,
                                       wl_fixed_t* y);
 
 void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
+                                      struct sl_host_surface* surface,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
 
 // Opposite Direction
-void sl_transform_guest_to_host(struct sl_context* ctx, int32_t* x, int32_t* y);
+void sl_transform_guest_to_host(struct sl_context* ctx,
+                                struct sl_host_surface* surface,
+                                int32_t* x,
+                                int32_t* y);
 
 void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
+                                      struct sl_host_surface* surface,
                                       wl_fixed_t* x,
                                       wl_fixed_t* y);
 
 void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
+                                      struct sl_host_surface* surface,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
 

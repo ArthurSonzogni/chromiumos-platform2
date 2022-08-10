@@ -36,7 +36,7 @@ static void sl_subsurface_set_position(struct wl_client* client,
   int32_t ix = x;
   int32_t iy = y;
 
-  sl_transform_guest_to_host(host->ctx, &ix, &iy);
+  sl_transform_guest_to_host(host->ctx, nullptr, &ix, &iy);
   wl_subsurface_set_position(host->proxy, ix, iy);
 }
 

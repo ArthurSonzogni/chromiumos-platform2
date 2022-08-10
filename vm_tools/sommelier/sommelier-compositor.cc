@@ -288,7 +288,7 @@ static void sl_host_surface_attach(struct wl_client* client,
     }
   }
 
-  sl_transform_guest_to_host(host->ctx, &x, &y);
+  sl_transform_guest_to_host(host->ctx, host, &x, &y);
 
   if (host_buffer && host_buffer->sync_point) {
     TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
@@ -414,7 +414,7 @@ static void sl_host_surface_damage(struct wl_client* client,
   x2 = x1 + width;
   y2 = y1 + height;
 
-  sl_transform_damage_coord(host->ctx, 1.0, 1.0, &x1, &y1, &x2, &y2);
+  sl_transform_damage_coord(host->ctx, host, 1.0, 1.0, &x1, &y1, &x2, &y2);
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
@@ -457,7 +457,8 @@ static void sl_host_surface_damage_buffer(struct wl_client* client,
   int64_t x2 = x1 + width;
   int64_t y2 = y1 + height;
 
-  sl_transform_damage_coord(host->ctx, scale_x, scale_y, &x1, &y1, &x2, &y2);
+  sl_transform_damage_coord(host->ctx, host, scale_x, scale_y, &x1, &y1, &x2,
+                            &y2);
   wl_surface_damage(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
@@ -657,7 +658,7 @@ static void sl_host_surface_commit(struct wl_client* client,
 
       // Consult with the transform function to see if the
       // viewport destination set is necessary
-      if (sl_transform_viewport_scale(host->ctx, host->contents_scale,
+      if (sl_transform_viewport_scale(host->ctx, host, host->contents_scale,
                                       &vp_width, &vp_height)) {
         wp_viewport_set_destination(host->viewport, vp_width, vp_height);
       }
@@ -827,8 +828,16 @@ static void sl_region_add(struct wl_client* client,
   int32_t x2 = x + width;
   int32_t y2 = y + height;
 
-  sl_transform_guest_to_host(host->ctx, &x1, &y1);
-  sl_transform_guest_to_host(host->ctx, &x2, &y2);
+  // A region object isn't attached to a surface, so
+  // we will not use any surface specific scaling factors here
+  //
+  // TODO(mrisaacb): See if the effect of applying surface specific
+  // scaling values to region objects is noticeable. Interjecting
+  // here would require caching the object within Sommelier and
+  // transferring the modified coordinates over when referenced.
+
+  sl_transform_guest_to_host(host->ctx, nullptr, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, nullptr, &x2, &y2);
 
   wl_region_add(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -846,8 +855,8 @@ static void sl_region_subtract(struct wl_client* client,
   int32_t x2 = x + width;
   int32_t y2 = y + height;
 
-  sl_transform_guest_to_host(host->ctx, &x1, &y1);
-  sl_transform_guest_to_host(host->ctx, &x2, &y2);
+  sl_transform_guest_to_host(host->ctx, nullptr, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, nullptr, &x2, &y2);
 
   wl_region_subtract(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
@@ -883,6 +892,9 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->contents_shm_mmap = NULL;
   host_surface->has_role = 0;
   host_surface->has_output = 0;
+  host_surface->has_own_scale = 0;
+  host_surface->xdg_scale_x = 0;
+  host_surface->xdg_scale_y = 0;
   host_surface->last_event_serial = 0;
   host_surface->current_buffer = NULL;
   wl_list_init(&host_surface->released_buffers);
