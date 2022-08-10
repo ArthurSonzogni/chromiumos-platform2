@@ -16,7 +16,7 @@ import "diagnostics/mojom/public/nullable_primitives.mojom";
 // An enumeration of CPU architectures.
 //
 // NextMinVersion: 1, NextIndex: 4
-[Extensible]
+[Stable, Extensible]
 enum CpuArchitectureEnum {
   [Default] kUnknown = 0,
   kX86_64 = 1,
@@ -347,6 +347,7 @@ struct NonRemovableBlockDeviceInfo {
 
 // CPU probe result. Can either be populated with the CpuInfo or an error
 // retrieving the information.
+[Stable]
 union CpuResult {
   // Valid CpuInfo.
   CpuInfo cpu_info;
@@ -357,6 +358,7 @@ union CpuResult {
 // Information about the device's CPUs.
 //
 // NextMinVersion: 2, NextIndex: 7
+[Stable]
 struct CpuInfo {
   // Number of total threads available.
   uint32 num_total_threads@0;
@@ -380,10 +382,11 @@ struct CpuInfo {
 // Information related to virtualization.
 //
 // NextMinVersion: 1, NextIndex: 3
+[Stable]
 struct VirtualizationInfo {
   // The possible states of Simultaneous multithreading(SMT) control.
-  [Extensible]
-  enum SMTControl{
+  [Stable, Extensible]
+  enum SMTControl {
     // This is required for backwards compatibility, should not be used.
     [Default] kUnmappedEnumField,
     // SMT is enabled.
@@ -411,10 +414,11 @@ struct VirtualizationInfo {
 // Information related to CPU Vulnerabilities.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct VulnerabilityInfo {
   // The status of the vulnerability.
-  [Extensible]
-  enum Status{
+  [Stable, Extensible]
+  enum Status {
     // This is required for backwards compatibility, should not be used.
     [Default] kUnmappedEnumField,
     // Not affected by this vulnerability.
@@ -437,6 +441,7 @@ struct VulnerabilityInfo {
 // Information related to Keylocker.
 //
 // NextMinVersion: 1, NextIndex: 1
+[Stable]
 struct KeylockerInfo {
   // Has Keylocker been configured or not.
   bool keylocker_configured@0;
@@ -445,6 +450,7 @@ struct KeylockerInfo {
 // Information related to a particular physical CPU.
 //
 // NextMinVersion: 2, NextIndex: 4
+[Stable]
 struct PhysicalCpuInfo {
   // The CPU model name, if available.
   // For Arm devices, we will return SoC model instead.
@@ -461,10 +467,11 @@ struct PhysicalCpuInfo {
 // Information related to virtualization status of a cpu.
 //
 // NextMinVersion: 1, NextIndex: 3
+[Stable]
 struct CpuVirtualizationInfo {
   // The type of cpu hardware virtualization.
-  [Extensible]
-  enum Type{
+  [Stable, Extensible]
+  enum Type {
     // This is required for backwards compatibility, should not be used.
     [Default] kUnmappedEnumField,
     // The cpu supports Intel virtualization (VT-x).
@@ -485,6 +492,7 @@ struct CpuVirtualizationInfo {
 // Information related to a particular logical CPU.
 //
 // NextMinVersion: 1, NextIndex: 7
+[Stable]
 struct LogicalCpuInfo {
   // The max CPU clock speed in kHz.
   uint32 max_clock_speed_khz@0;
@@ -508,6 +516,7 @@ struct LogicalCpuInfo {
 // Information about a CPU's C-states.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct CpuCStateInfo {
   // Name of the state.
   string name@0;
@@ -518,6 +527,7 @@ struct CpuCStateInfo {
 // Information about a single CPU temperature channel.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct CpuTemperatureChannel {
   // Temperature channel label, if found on the device.
   string? label@0;
