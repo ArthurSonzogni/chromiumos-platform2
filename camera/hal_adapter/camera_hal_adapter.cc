@@ -20,6 +20,7 @@
 #include <base/check_op.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
@@ -93,6 +94,13 @@ CameraHalAdapter::~CameraHalAdapter() {
       FROM_HERE,
       base::BindOnce(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
                      base::Unretained(this), kIdAll));
+  // We need to destroy the CameraDeviceAdapters on the same thread they were
+  // created on to avoid race condition.
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce([](std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>>
+                            device_adapters) {},
+                     std::move(device_adapters_)));
   camera_module_thread_.Stop();
   camera_module_callbacks_thread_.Stop();
   set_camera_metadata_vendor_ops(nullptr);
