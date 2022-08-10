@@ -39,6 +39,8 @@ generate_dbus_adaptors("fusebox-adaptors") {
 
 static_library("libfusebox") {
   sources = [
+    "built_in.cc",
+    "built_in.h",
     "file_system.cc",
     "file_system.h",
     "file_system_fake.cc",

@@ -20,6 +20,14 @@
 
 namespace fusebox {
 
+enum {
+  // Skip FUSE_ROOT_ID = 1.
+  INO_BUILT_IN = 2,
+  INO_BUILT_IN_FUSE_STATUS = 3,
+  // This final number is arbitrary, other than being larger than the above.
+  FIRST_UNRESERVED_INO = 100,
+};
+
 struct Node {
   dev_t device;       // Device number
   ino_t parent;       // Parent ino
@@ -28,7 +36,13 @@ struct Node {
   uint64_t refcount;  // Ref count
 };
 
-struct Device;
+struct Device {
+  std::string name;  // Device name
+  std::string path;  // Path prefix
+  std::string mode;  // Device mode
+  dev_t device = 0;  // Device number
+  ino_t ino = 0;     // Inode ino
+};
 
 class InodeTable {
  public:
@@ -39,7 +53,10 @@ class InodeTable {
 
   // Creates a new child node |name| of |parent| ino, and inserts it into the
   // node table. Returns the new node or null on failure.
-  Node* Create(ino_t parent, const char* name);
+  //
+  // The new node will have the given |ino|, or an automatically incremented
+  // global counter if |ino| is zero.
+  Node* Create(ino_t parent, const char* name, ino_t ino = 0);
 
   // Lookup the node table by |ino| and return its node. The node refcount is
   // increased by |ref|. Returns null on failure.
@@ -51,7 +68,10 @@ class InodeTable {
 
   // Lookup(parent, name, ref) that creates the |parent| child node |name| if
   // it does not exist. Returns null on failure.
-  Node* Ensure(ino_t parent, const char* name, uint64_t ref = 0);
+  //
+  // The new node will have the given |ino|, or an automatically incremented
+  // global counter if |ino| is zero.
+  Node* Ensure(ino_t parent, const char* name, uint64_t ref = 0, ino_t ino = 0);
 
   // Move a table |node| to be the child node |name| of |parent| ino. Returns
   // the node or null on failure.
@@ -74,7 +94,10 @@ class InodeTable {
 
   // Attach |device| to the node table as a child of the |parent| node, named
   // |device.name|. Returns the new node or null on failure.
-  Node* AttachDevice(ino_t parent, Device& device);
+  //
+  // The new node will have the given |ino|, or an automatically incremented
+  // global counter if |ino| is zero.
+  Node* AttachDevice(ino_t parent, Device& device, ino_t ino = 0);
 
   // Detach and remove device |ino| and its child nodes from the node table.
   // Returns true on success.
@@ -119,7 +142,7 @@ class InodeTable {
 
  private:
   // ino number creator.
-  fuse_ino_t ino_ = 0;
+  fuse_ino_t ino_ = FIRST_UNRESERVED_INO;
 
   // dev_t number creator.
   dev_t dev_ = 0;
@@ -138,14 +161,6 @@ class InodeTable {
 
   // Root node.
   Node* root_node_ = nullptr;
-};
-
-struct Device {
-  std::string name;  // Device name
-  std::string path;  // Path prefix
-  std::string mode;  // Device mode
-  dev_t device = 0;  // Device number
-  ino_t ino = 0;     // Inode ino
 };
 
 }  // namespace fusebox

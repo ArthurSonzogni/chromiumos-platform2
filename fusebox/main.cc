@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
 
+#include "fusebox/built_in.h"
 #include "fusebox/dbus_adaptors/org.chromium.FuseBoxReverseService.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
@@ -109,6 +110,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     root_stat = MakeStat(root->ino, root_stat);
     GetInodeTable().SetStat(root->ino, root_stat);
 
+    CHECK_EQ(0, AttachStorage("built_in", INO_BUILT_IN));
+    BuiltInEnsureNodes(GetInodeTable());
     CHECK_EQ(0, AttachStorage(kMonikerAttachStorageArg));
 
     if (!fuse_->name.empty())
@@ -135,6 +138,11 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       CHECK(GetInodeTable().GetStat(node->ino, &stat));
       request->ReplyAttr(stat, kStatTimeoutSeconds);
       return;
+    } else if (node->parent == INO_BUILT_IN) {
+      struct stat stat;
+      BuiltInGetStat(node->ino, &stat);
+      request->ReplyAttr(stat, kStatTimeoutSeconds);
+      return;
     }
 
     dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
@@ -148,8 +156,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
                        std::move(request), node->ino);
     CallFuseBoxServerMethod(&method, std::move(stat_response));
   }
-
-  const double kStatTimeoutSeconds = 5.0;
 
   void StatResponse(std::unique_ptr<AttrRequest> request,
                     ino_t ino,
@@ -194,8 +200,11 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    if (parent == FUSE_ROOT_ID) {
-      LookupLocal(std::move(request), FUSE_ROOT_ID, name);
+    if (parent <= FUSE_ROOT_ID) {
+      RootLookup(std::move(request), name);
+      return;
+    } else if (parent == INO_BUILT_IN) {
+      BuiltInLookup(std::move(request), name);
       return;
     }
 
@@ -211,12 +220,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     CallFuseBoxServerMethod(&method, std::move(lookup_response));
   }
 
-  const double kEntryTimeoutSeconds = 5.0;
-
-  void LookupLocal(std::unique_ptr<EntryRequest> request,
-                   ino_t parent,
-                   std::string name) {
-    VLOG(1) << "lookup-local " << parent << "/" << name;
+  void RootLookup(std::unique_ptr<EntryRequest> request, std::string name) {
+    VLOG(1) << "root-lookup" << FUSE_ROOT_ID << "/" << name;
 
     auto it = device_dir_entry_.find(name);
     if (it == device_dir_entry_.end()) {
@@ -280,6 +285,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
+      PLOG(ERROR) << "setattr";
+      return;
+    } else if (node->ino < FIRST_UNRESERVED_INO) {
+      errno = request->ReplyError(errno ? errno : EPERM);
       PLOG(ERROR) << "setattr";
       return;
     }
@@ -399,8 +408,11 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     buffer.reset(new DirEntryResponse(node->ino, handle));
     buffer->Append(std::move(request));
 
-    if (node->ino == FUSE_ROOT_ID) {
-      ReadDirLocal(FUSE_ROOT_ID, off, buffer.get());
+    if (node->ino <= FUSE_ROOT_ID) {
+      RootReadDir(off, buffer.get());
+      return;
+    } else if (node->ino == INO_BUILT_IN) {
+      BuiltInReadDir(off, buffer.get());
       return;
     }
 
@@ -417,8 +429,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     CallFuseBoxServerMethod(&method, std::move(readdir_started));
   }
 
-  void ReadDirLocal(ino_t ino, off_t off, DirEntryResponse* response) {
-    VLOG(1) << "readdir-local fh " << response->handle() << " off " << off;
+  void RootReadDir(off_t off, DirEntryResponse* response) {
+    VLOG(1) << "root-readdir fh " << response->handle() << " off " << off;
 
     std::vector<DirEntry> entries;
     for (const auto& item : device_dir_entry_)
@@ -521,7 +533,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     Node* parent_node = GetInodeTable().Lookup(parent);
-    if (!parent_node || parent <= FUSE_ROOT_ID) {
+    if (!parent_node || (parent < FIRST_UNRESERVED_INO)) {
       errno = request->ReplyError(errno ? errno : EPERM);
       PLOG(ERROR) << "mkdir";
       return;
@@ -590,6 +602,10 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
+      PLOG(ERROR) << "open";
+      return;
+    } else if (node->parent <= FUSE_ROOT_ID) {
+      errno = request->ReplyError(errno ? errno : EPERM);
       PLOG(ERROR) << "open";
       return;
     }
@@ -681,6 +697,11 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     if (size > SSIZE_MAX) {
       errno = request->ReplyError(EINVAL);
       PLOG(ERROR) << "read";
+      return;
+    }
+
+    if (ino < FIRST_UNRESERVED_INO) {
+      BuiltInRead(std::move(request), ino, size, off);
       return;
     }
 
@@ -778,6 +799,12 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
+    if (ino < FIRST_UNRESERVED_INO) {
+      errno = request->ReplyError(errno ? errno : EPERM);
+      PLOG(ERROR) << "write";
+      return;
+    }
+
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "write";
@@ -823,7 +850,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "read-resp";
+      PLOG(ERROR) << "write-resp";
       return;
     }
 
@@ -927,7 +954,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     Node* parent_node = GetInodeTable().Lookup(parent);
-    if (!parent_node || parent <= FUSE_ROOT_ID) {
+    if (!parent_node || parent < FIRST_UNRESERVED_INO) {
       errno = request->ReplyError(errno ? errno : EPERM);
       PLOG(ERROR) << "create";
       return;
@@ -989,10 +1016,14 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   }
 
   int32_t AttachStorage(const std::string& name) override {
+    return AttachStorage(name, 0);
+  }
+
+  int32_t AttachStorage(const std::string& name, ino_t ino) {
     VLOG(1) << "attach-storage " << name;
 
     Device device = GetInodeTable().MakeFromName(name);
-    Node* node = GetInodeTable().AttachDevice(FUSE_ROOT_ID, device);
+    Node* node = GetInodeTable().AttachDevice(FUSE_ROOT_ID, device, ino);
     if (!node)
       return errno;
 

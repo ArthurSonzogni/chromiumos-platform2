@@ -52,19 +52,19 @@ inline Node* NodeError(int error) {
 namespace fusebox {
 
 InodeTable::InodeTable() : stat_cache_(1024) {
-  root_node_ = InsertNode(CreateNode(0, "/", CreateIno()));
+  root_node_ = InsertNode(CreateNode(0, "/", FUSE_ROOT_ID));
 }
 
 static_assert(sizeof(fuse_ino_t) <= sizeof(ino_t),
               "fuse_ino_t size should not exceed the system ino_t size");
 
 ino_t InodeTable::CreateIno() {
-  fuse_ino_t ino = ++ino_;
+  fuse_ino_t ino = ino_++;
   CHECK(ino) << "inodes wrapped";
   return ino;
 }
 
-Node* InodeTable::Create(ino_t parent, const char* name) {
+Node* InodeTable::Create(ino_t parent, const char* name, ino_t ino) {
   std::string child = GetChildNodeName(name);
   if (child.empty() || !parent)
     return NodeError(EINVAL);
@@ -77,7 +77,7 @@ Node* InodeTable::Create(ino_t parent, const char* name) {
   if (p != parent_map_.end())
     return NodeError(EEXIST);
 
-  Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
+  Node* node = InsertNode(CreateNode(parent, child, ino ? ino : CreateIno()));
   node->device = parent_it->second->device;
   return node;
 }
@@ -106,7 +106,10 @@ Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
   return node;
 }
 
-Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
+Node* InodeTable::Ensure(ino_t parent,
+                         const char* name,
+                         uint64_t ref,
+                         ino_t ino) {
   std::string child = GetChildNodeName(name);
   if (child.empty() || !parent)
     return NodeError(EINVAL);
@@ -121,7 +124,7 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
     return p->second;
   }
 
-  Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
+  Node* node = InsertNode(CreateNode(parent, child, ino ? ino : CreateIno()));
   node->device = parent_it->second->device;
   node->refcount += ref;
   return node;
@@ -274,11 +277,11 @@ dev_t InodeTable::CreateDev() {
   return dev;
 }
 
-Node* InodeTable::AttachDevice(ino_t parent, struct Device& device) {
+Node* InodeTable::AttachDevice(ino_t parent, struct Device& device, ino_t ino) {
   Node* node = nullptr;
 
   if (parent == root_node_->ino) {
-    node = Create(root_node_->ino, device.name.c_str());
+    node = Create(root_node_->ino, device.name.c_str(), ino);
   } else if (!parent) {
     node = root_node_;
   } else {  // Device node must attach to the root node.

@@ -22,6 +22,10 @@ constexpr uid_t kChronosUID = 1000;
 // File system entry GID: group chronos-access.
 constexpr uid_t kChronosAccessGID = 1001;
 
+// FUSE response timeouts.
+constexpr double kStatTimeoutSeconds = 5.0;
+constexpr double kEntryTimeoutSeconds = 5.0;
+
 // Returns true if |mode| type is allowed.
 bool IsAllowedStatMode(mode_t mode, mode_t allowed = S_IFREG | S_IFDIR);
 

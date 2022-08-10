@@ -176,7 +176,6 @@ void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
   stat.st_size = it->second.GetSize();
   GetInodeTable().SetStat(node->ino, stat);
 
-  const double kEntryTimeoutSeconds = 5.0;
   fuse_entry_param entry = {0};
   entry.ino = static_cast<fuse_ino_t>(node->ino);
   entry.attr = stat;
@@ -326,7 +325,6 @@ void FileSystemFake::MkDir(std::unique_ptr<EntryRequest> request,
   GetInodeTable().SetStat(node->ino, stat);
   files_.insert(FakeFileEntry::Create(node, stat.st_mode));
 
-  const double kEntryTimeoutSeconds = 5.0;
   fuse_entry_param entry = {0};
   entry.ino = static_cast<fuse_ino_t>(node->ino);
   entry.attr = stat;
@@ -703,7 +701,6 @@ void FileSystemFake::Create(std::unique_ptr<CreateRequest> request,
   GetInodeTable().SetStat(node->ino, stat);
   files_.insert(FakeFileEntry::Create(node, stat.st_mode));
 
-  const double kEntryTimeoutSeconds = 5.0;
   fuse_entry_param entry = {0};
   entry.ino = static_cast<fuse_ino_t>(node->ino);
   entry.attr = stat;
