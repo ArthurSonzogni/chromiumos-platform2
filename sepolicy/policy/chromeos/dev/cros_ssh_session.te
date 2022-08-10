@@ -20,3 +20,8 @@ auditallow cros_ssh_session cros_audit_basic_test_file:file create;
 # that test SELinux violation handling, it is important that we not create
 # spurious audit log entries.
 rw_dir_file(cros_ssh_session, cros_run_crash_reporter);
+
+# Allow tast test to read feedback.SysInfoPII data file, which locates in
+# cros_dev_image_files dir. This is to make sure we don't create audit log
+# entries that contain PII.
+r_dir_file(cros_ssh_session, cros_dev_image_files);
