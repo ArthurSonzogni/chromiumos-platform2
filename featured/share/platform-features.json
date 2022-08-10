@@ -4,27 +4,27 @@
         "commands": [
                      {
                         "name": "Mkdir",
-                        "path": "/sys/kernel/debug/tracing/instances/schedtrace/"
+                        "path": "/sys/kernel/tracing/instances/schedtrace/"
                      },
                      {
                         "name": "WriteFile",
-                        "path": "/sys/kernel/debug/tracing/instances/schedtrace/events/sched/sched_switch/enable",
+                        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_switch/enable",
                         "value": "1"
                      },
                      {
                         "name": "WriteFile",
-                        "path": "/sys/kernel/debug/tracing/instances/schedtrace/events/sched/sched_waking/enable",
+                        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_waking/enable",
                         "value": "1"
                      },
                      {
                         "name": "WriteFile",
-                        "path": "/sys/kernel/debug/tracing/instances/schedtrace/events/sched/sched_migrate_task/enable",
+                        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_migrate_task/enable",
                         "value": "1"
                      }
 		    ],
         "support_check_commands": [{
                         "name": "FileExists",
-                        "path": "/sys/kernel/debug/tracing/instances/"
+                        "path": "/sys/kernel/tracing/instances/"
 		      }]
    }
 ]

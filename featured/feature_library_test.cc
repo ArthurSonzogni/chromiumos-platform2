@@ -852,9 +852,8 @@ class FeatureLibraryCmdTest : public testing::Test {
 };
 
 TEST_F(FeatureLibraryCmdTest, MkdirTest) {
-  if (base::PathExists(
-          base::FilePath("/sys/kernel/debug/tracing/instances/"))) {
-    const std::string sys_path = "/sys/kernel/debug/tracing/instances/unittest";
+  if (base::PathExists(base::FilePath("/sys/kernel/tracing/instances/"))) {
+    const std::string sys_path = "/sys/kernel/tracing/instances/unittest";
     EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
     EXPECT_TRUE(featured::MkdirCommand(sys_path).Execute());
     EXPECT_TRUE(base::PathExists(base::FilePath(sys_path)));
