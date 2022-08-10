@@ -83,7 +83,7 @@ if [ -w "${DRM_TRACE_MASK}" ]; then
   # 0x106 corresponds to (DRM_UT_DRIVER | DRM_UT_KMS | DRM_UT_DP).
   echo 0x106 > "${DRM_TRACE_MASK}"
 fi
-DRM_TRACEFS_INSTANCE="/sys/kernel/debug/tracing/instances/drm"
+DRM_TRACEFS_INSTANCE="/sys/kernel/tracing/instances/drm"
 DRM_TRACEFS_BUF_SIZE="${DRM_TRACEFS_INSTANCE}/buffer_size_kb"
 if [ -w "${DRM_TRACEFS_BUF_SIZE}" ]; then
   # 64kB per-cpu of drm logs.
