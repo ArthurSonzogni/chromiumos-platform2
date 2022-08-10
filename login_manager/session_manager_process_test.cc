@@ -437,10 +437,10 @@ TEST_F(SessionManagerProcessTest, SetBrowserDataMigrationArgsForUser) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
 
   const std::string userhash = "1234abcd";
-  const bool is_move = true;
-  EXPECT_CALL(*job, SetBrowserDataMigrationArgsForUser(userhash, is_move))
+  const std::string mode = "move";
+  EXPECT_CALL(*job, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
-  manager_->SetBrowserDataMigrationArgsForUser(userhash, is_move);
+  manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
 }
 
 TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
@@ -449,8 +449,8 @@ TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
   // args were set, ensuring that migration is attempted only once.
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
   const std::string userhash = "1234abcd";
-  const bool is_move = true;
-  manager_->SetBrowserDataMigrationArgsForUser(userhash, is_move);
+  const std::string mode = "move";
+  manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
 
   EXPECT_CALL(*job, ClearBrowserDataMigrationArgs());
 

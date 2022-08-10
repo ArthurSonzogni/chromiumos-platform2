@@ -3584,7 +3584,7 @@ TEST_F(SessionManagerImplTest, QueryAdbSideload) {
   impl_->QueryAdbSideload(capturer.CreateMethodResponse<bool>());
 }
 
-// TODO(crbug.com/1328643): Remove this test once backward compatibility is no
+// TODO(b/242003477): Remove this test once backward compatibility is no
 // longer a concern and there is no need to handle DBus raw message directly.
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationCopyByDefault) {
   const uint32_t kSerial = 123;
@@ -3601,14 +3601,13 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationCopyByDefault) {
       base::BindOnce([](std::unique_ptr<dbus::Response>) {});
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_,
-              SetBrowserDataMigrationArgsForUser(userhash, false /* is_move */))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
       .Times(1);
 
   impl_->StartBrowserDataMigration(&method_call, std::move(sender));
 }
 
-// TODO(crbug.com/1328643): Remove this test once backward compatibility is no
+// TODO(b/242003477): Remove this test once backward compatibility is no
 // longer a concern and there is no need to handle DBus raw message directly.
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationNoUserHashProvided) {
   const uint32_t kSerial = 123;
@@ -3626,14 +3625,13 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationNoUserHashProvided) {
       });
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_,
-              SetBrowserDataMigrationArgsForUser(userhash, false /* is_move */))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
       .Times(0);
 
   impl_->StartBrowserDataMigration(&method_call, std::move(sender));
 }
 
-// TODO(crbug.com/1328643): Remove this test once backward compatibility is no
+// TODO(b/242003477): Remove this test once backward compatibility is no
 // longer a concern and there is no need to handle DBus raw message directly.
 TEST_F(SessionManagerImplTest,
        StartBrowserDataMigrationInvalidSecondArgProvided) {
@@ -3646,7 +3644,7 @@ TEST_F(SessionManagerImplTest,
   method_call.SetSerial(kSerial);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kSaneEmail);
-  writer.AppendString("invaid_second_arg");
+  writer.AppendUint16(123);
 
   dbus::ExportedObject::ResponseSender sender =
       base::BindOnce([](std::unique_ptr<dbus::Response> response) {
@@ -3655,14 +3653,13 @@ TEST_F(SessionManagerImplTest,
       });
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_,
-              SetBrowserDataMigrationArgsForUser(userhash, false /* is_move */))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
       .Times(0);
 
   impl_->StartBrowserDataMigration(&method_call, std::move(sender));
 }
 
-// TODO(crbug.com/1328643): Remove this test once backward compatibility is no
+// TODO(b/242003477): Remove this test once backward compatibility is no
 // longer a concern and there is no need to handle DBus raw message directly.
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
   const uint32_t kSerial = 123;
@@ -3681,37 +3678,146 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
       });
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_,
-              SetBrowserDataMigrationArgsForUser(userhash, false /* is_move */))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
       .Times(0);
+
+  impl_->StartBrowserDataMigration(&method_call, std::move(sender));
+}
+
+// TODO(b/242003477): Remove this test once backward compatibility is no
+// longer a concern and there is no need to handle DBus raw message directly.
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationBoolCopy) {
+  const uint32_t kSerial = 123;
+  ExpectAndRunStartSession(kSaneEmail);
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerStartBrowserDataMigration);
+  method_call.SetSerial(kSerial);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kSaneEmail);
+  writer.AppendBool(false);
+
+  dbus::ExportedObject::ResponseSender sender =
+      base::BindOnce([](std::unique_ptr<dbus::Response>) {});
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
+      .Times(1);
+
+  impl_->StartBrowserDataMigration(&method_call, std::move(sender));
+}
+
+// TODO(b/242003477): Remove this test once backward compatibility is no
+// longer a concern and there is no need to handle DBus raw message directly.
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationBoolMove) {
+  const uint32_t kSerial = 123;
+  ExpectAndRunStartSession(kSaneEmail);
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerStartBrowserDataMigration);
+  method_call.SetSerial(kSerial);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kSaneEmail);
+  writer.AppendBool(true);
+
+  dbus::ExportedObject::ResponseSender sender =
+      base::BindOnce([](std::unique_ptr<dbus::Response>) {});
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "move"))
+      .Times(1);
+
+  impl_->StartBrowserDataMigration(&method_call, std::move(sender));
+}
+
+// TODO(b/242003477): Remove this test once backward compatibility is no
+// longer a concern and there is no need to handle DBus raw message directly.
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationModeCopy) {
+  const uint32_t kSerial = 123;
+  ExpectAndRunStartSession(kSaneEmail);
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerStartBrowserDataMigration);
+  method_call.SetSerial(kSerial);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kSaneEmail);
+  writer.AppendString("copy");
+
+  dbus::ExportedObject::ResponseSender sender =
+      base::BindOnce([](std::unique_ptr<dbus::Response>) {});
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "copy"))
+      .Times(1);
+
+  impl_->StartBrowserDataMigration(&method_call, std::move(sender));
+}
+
+// TODO(b/242003477): Remove this test once backward compatibility is no
+// longer a concern and there is no need to handle DBus raw message directly.
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationModeMove) {
+  const uint32_t kSerial = 123;
+  ExpectAndRunStartSession(kSaneEmail);
+
+  dbus::MethodCall method_call(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerStartBrowserDataMigration);
+  method_call.SetSerial(kSerial);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kSaneEmail);
+  writer.AppendString("move");
+
+  dbus::ExportedObject::ResponseSender sender =
+      base::BindOnce([](std::unique_ptr<dbus::Response>) {});
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, "move"))
+      .Times(1);
 
   impl_->StartBrowserDataMigration(&method_call, std::move(sender));
 }
 
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationInternalCopy) {
   ExpectAndRunStartSession(kSaneEmail);
-  const bool is_move = false;
+  const std::string mode = "copy";
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, is_move))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(
-      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, is_move));
+      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, mode));
 }
 
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationMove) {
   ExpectAndRunStartSession(kSaneEmail);
-  const bool is_move = true;
+  const std::string mode = "move";
 
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, is_move))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(
-      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, is_move));
+      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, mode));
+}
+
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationAny) {
+  ExpectAndRunStartSession(kSaneEmail);
+  // Only Chrome needs to understand the values.
+  const std::string mode = "any";
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
+      .Times(1);
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(
+      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, mode));
 }
 
 TEST_F(SessionManagerImplTest,
@@ -3719,31 +3825,31 @@ TEST_F(SessionManagerImplTest,
   // If session has not been started for user,
   // |SetBrowserDataMigrationArgsForUser()| does not get called.
   const std::string userhash = SanitizeUserName(kSaneEmail);
-  const bool is_move = false;
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, is_move))
+  const std::string mode = "copy";
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(0);
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(
-      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, is_move));
+      impl_->StartBrowserDataMigrationInternal(&error, kSaneEmail, mode));
   EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
 }
 
 TEST_F(SessionManagerImplTest,
        StartBrowserDataMigrationInternalForNonPrimaryUser) {
   const std::string second_user_email = "seconduser@gmail.com";
-  const bool is_move = false;
+  const std::string mode = "copy";
   ExpectAndRunStartSession(kSaneEmail);
   ExpectAndRunStartSession(second_user_email);
 
   // Migration should only happen for primary user.
   const std::string userhash = SanitizeUserName(second_user_email);
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, is_move))
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(0);
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartBrowserDataMigrationInternal(
-      &error, second_user_email, is_move));
+      &error, second_user_email, mode));
   EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
 }
 

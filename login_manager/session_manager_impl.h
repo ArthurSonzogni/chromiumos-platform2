@@ -370,13 +370,13 @@ class SessionManagerImpl
     password_provider_ = std::move(password_provider);
   }
 
-  // TODO(crbug.com/1328643): Once backward compatibility is no longer a
+  // TODO(b/242003477): Once backward compatibility is no longer a
   // concern, stop manual handling of raw DBus message and replace
   // |StartBrowserDataMigration()| with this method. Called by
   // |StartBrowserDataMigration()|. Exponsed for testing.
   bool StartBrowserDataMigrationInternal(brillo::ErrorPtr* error,
                                          const std::string& in_account_id,
-                                         const bool is_move);
+                                         const std::string& mode);
 
  private:
   class DBusService;

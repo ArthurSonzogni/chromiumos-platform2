@@ -97,10 +97,10 @@ class BrowserJobInterface : public ChildJobInterface {
 
   // Sets |kBrowserDataMigrationFlag| and |kLoginManagerFlag| to chrome launch
   // flags. |userhash| is passed as the value of |kBrowserDataMigrationFlag| to
-  // let chrome know which user data directory to do migration on. If |is_move|
-  // is true, it also sets |kBrowserDataMigrationModeFlag|.
+  // let chrome know which user data directory to do migration on.
+  // |mode| is set as the value of |kBrowserDataMigrationModeFlag|.
   virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                                  const bool is_move) = 0;
+                                                  const std::string& mode) = 0;
 
   // Clears values set by |SetBrowserDataMigrationArgsForUser()|.
   virtual void ClearBrowserDataMigrationArgs() = 0;
@@ -125,10 +125,15 @@ class BrowserJobInterface : public ChildJobInterface {
   // the specified user hash.
   static const char kBrowserDataMigrationForUserFlag[];
 
+  // TODO(b/242003477): Remove this flag.
   // The flag to pass to Chrome to tell to run move
   // migration. It is used together with |kBrowserDataMigrationForUserFlag|.
   // Without this flag, copy migration is run.
   static const char kBrowserDataMigrationMoveModeFlag[];
+
+  // The flag to pass to Chrome to tell which migration to run.
+  // It is used together with |kBrowserDataMigrationForUserFlag|.
+  static const char kBrowserDataMigrationModeFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -176,7 +181,7 @@ class BrowserJob : public BrowserJobInterface {
       const std::vector<std::string>& feature_flags,
       const std::map<std::string, std::string>& origin_list_flags) override;
   void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                          const bool is_move) override;
+                                          const std::string& mode) override;
   void ClearBrowserDataMigrationArgs() override;
   void SetTestArguments(const std::vector<std::string>& arguments) override;
   void SetAdditionalEnvironmentVariables(

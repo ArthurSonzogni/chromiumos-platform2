@@ -367,8 +367,8 @@ void SessionManagerService::SetFeatureFlagsForUser(
 }
 
 void SessionManagerService::SetBrowserDataMigrationArgsForUser(
-    const std::string& userhash, bool is_move) {
-  browser_->SetBrowserDataMigrationArgsForUser(userhash, is_move);
+    const std::string& userhash, const std::string& mode) {
+  browser_->SetBrowserDataMigrationArgsForUser(userhash, mode);
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {

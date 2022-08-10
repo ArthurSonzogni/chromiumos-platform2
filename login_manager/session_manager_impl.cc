@@ -1023,7 +1023,7 @@ void SessionManagerImpl::HandleLockScreenShown() {
   adaptor_.SendScreenIsLockedSignal();
 }
 
-// TODO(crbug.com/1328643): Taking raw |MethodCall| to make the second argument
+// TODO(b/242003477): Taking raw |MethodCall| to make the second argument
 // optional. Once Ash Chrome side change is landed and backward compatibility is
 // no longer needed, replace this method with
 // |StartBrowserDataMigrationInternal|.
@@ -1044,20 +1044,30 @@ void SessionManagerImpl::StartBrowserDataMigration(
 
   // We run copy migration if the second argument for the
   // DBus call is not provided.
-  bool in_is_move = false;
+  std::string in_mode = "copy";
+
   if (reader.HasMoreData()) {
-    if (!reader.PopBool(&in_is_move)) {
+    bool in_is_mode = false;
+    // If the second argument is a bool, use it to chose between a move or a
+    // copy.
+    if (reader.PopBool(&in_is_mode)) {
+      // From chrome/browser/ash/crosapi/browser_util.h:
+      // kCopy = 0; kMove = 1.
+      in_mode = in_is_mode ? "move" : "copy";
+      // Otherwise use the mode directly.
+    } else if (!reader.PopString(&in_mode)) {
       std::unique_ptr<dbus::ErrorResponse> error_response =
           dbus::ErrorResponse::FromMethodCall(
               method_call, dbus_error::kInvalidArgs,
-              "Optional second argument was provided but was not type bool.");
+              "Optional second argument was provided but was not type bool or "
+              "string.");
       std::move(sender).Run(std::move(error_response));
       return;
     }
   }
 
   brillo::ErrorPtr error;
-  if (!StartBrowserDataMigrationInternal(&error, in_account_id, in_is_move)) {
+  if (!StartBrowserDataMigrationInternal(&error, in_account_id, in_mode)) {
     DCHECK(error);
     std::unique_ptr<dbus::Response> response =
         brillo::dbus_utils::GetDBusError(method_call, error.get());
@@ -1073,7 +1083,7 @@ void SessionManagerImpl::StartBrowserDataMigration(
 bool SessionManagerImpl::StartBrowserDataMigrationInternal(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
-    const bool in_is_move) {
+    const std::string& mode) {
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
     DCHECK(*error);
@@ -1096,8 +1106,7 @@ bool SessionManagerImpl::StartBrowserDataMigrationInternal(
     return false;
   }
 
-  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash,
-                                               in_is_move);
+  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash, mode);
   return true;
 }
 
