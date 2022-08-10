@@ -1,0 +1,22 @@
+# Copyright 2022 The ChromiumOS Authors.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":libcamera_hal" ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libcros_camera",
+    "libcros_camera_android_deps",
+  ]
+  configs = [ "//camera/build:cros_camera_common" ]
+}
+
+shared_library("libcamera_hal") {
+  sources = [ "camera_hal.cc" ]
+  configs += [ ":target_defaults" ]
+}
