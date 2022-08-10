@@ -1321,6 +1321,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   bool GetWEPSupport() { return wifi_->SupportsWEP(); }
 
+  void SetWEPSupport(bool supported) {
+    if (supported) {
+      wifi_->supported_cipher_suites_.insert(WiFi::kWEP40CipherCode);
+      wifi_->supported_cipher_suites_.insert(WiFi::kWEP104CipherCode);
+      return;
+    }
+    wifi_->supported_cipher_suites_.erase(WiFi::kWEP40CipherCode);
+    wifi_->supported_cipher_suites_.erase(WiFi::kWEP104CipherCode);
+  }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -1494,6 +1504,11 @@ class WiFiMainTest : public WiFiObjectTest {
   void ExpectConnecting() {
     EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
     EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_));
+  }
+
+  void ExpectNotConnecting() {
+    EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_)).Times(0);
+    EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_)).Times(0);
   }
 
   void ExpectConnected() {
@@ -2894,6 +2909,26 @@ TEST_F(WiFiMainTest, ScanAllowRoam) {
   event_dispatcher_->DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, WEPSupported) {
+  // Connection attempt to service with WEP security should succeed when WEP is
+  // supported.
+  StartWiFi();
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWep);
+  SetWEPSupport(true);
+  ExpectConnecting();
+  InitiateConnect(service);
+}
+
+TEST_F(WiFiMainTest, WEPUnsupported) {
+  // Connection attempt to service with WEP security should fail when WEP is
+  // unsupported.
+  StartWiFi();
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWep);
+  SetWEPSupport(false);
+  ExpectNotConnecting();
+  InitiateConnect(service);
+}
+
 TEST_F(WiFiMainTest, InitialSupplicantState) {
   EXPECT_EQ(WiFi::kInterfaceStateUnknown, GetSupplicantState());
 }
@@ -3764,6 +3799,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWep);
+
+  SetWEPSupport(true);
   ExpectConnecting();
   InitiateConnect(service);
   SetCurrentService(service);

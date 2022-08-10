@@ -728,6 +728,17 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     return;
   }
 
+  // Reject the connection attempt if the service uses WEP security and WEP is
+  // not supported by the WiFi device.
+  if (service->IsSecurityMatch(kSecurityWep) && !SupportsWEP()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kWepNotSupported,
+        base::StringPrintf(
+            "%s: cannot connect to %s, WEP is not supported on this device",
+            link_name().c_str(), service->log_name().c_str()));
+    return;
+  }
+
   // TODO(quiche): Handle cases where already connected.
   if (pending_service_ && pending_service_ == service) {
     Error::PopulateAndLog(

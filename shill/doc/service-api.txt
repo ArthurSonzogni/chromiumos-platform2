@@ -96,6 +96,7 @@ Methods		dict GetProperties()
 					 [service].Error.OperationAborted
 					 [service].Error.InvalidService
 					 [service].Error.OperationFailed
+					 [service].Error.WepNotSupported
 
 		void Disconnect()
 
