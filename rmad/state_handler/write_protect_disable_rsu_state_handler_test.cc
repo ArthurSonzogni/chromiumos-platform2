@@ -18,7 +18,6 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
-#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 
@@ -77,18 +76,21 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
         .WillByDefault(
             DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
 
-    // Mock |PowerManagerClient|.
-    auto mock_power_manager_client =
-        std::make_unique<NiceMock<MockPowerManagerClient>>();
-    if (reboot_called) {
-      ON_CALL(*mock_power_manager_client, Restart())
-          .WillByDefault(DoAll(Assign(reboot_called, true), Return(true)));
-    }
+    // Register reboot EC callback.
+    daemon_callback_->SetExecuteRebootEcCallback(
+        base::BindRepeating(&WriteProtectDisableRsuStateHandlerTest::RebootEc,
+                            base::Unretained(this), reboot_called));
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
-        std::move(mock_power_manager_client));
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils));
+  }
+
+  void RebootEc(bool* reboot_called, base::OnceCallback<void(bool)> callback) {
+    if (reboot_called) {
+      *reboot_called = true;
+    }
+    std::move(callback).Run(true);
   }
 
  protected:

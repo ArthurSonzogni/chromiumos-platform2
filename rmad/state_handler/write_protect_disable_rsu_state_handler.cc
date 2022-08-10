@@ -4,13 +4,17 @@
 
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 
+#include <fcntl.h>
+
 #include <cstdio>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <libec/reboot_command.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
@@ -18,8 +22,6 @@
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-
-#include <base/logging.h>
 
 namespace {
 
@@ -40,8 +42,6 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
       reboot_scheduled_(false) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
@@ -49,13 +49,11 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
-    std::unique_ptr<PowerManagerClient> power_manager_client)
+    std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      power_manager_client_(std::move(power_manager_client)),
       reboot_scheduled_(false) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
@@ -123,11 +121,21 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Schedule a reboot after |kRebootDelay| seconds and return.
+  // Inject rma-mode powerwash if it is not disabled.
+  if (!IsPowerwashDisabled(working_dir_path_) &&
+      !RequestPowerwash(working_dir_path_)) {
+    LOG(ERROR) << "Failed to request powerwash";
+    return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
+  }
+
+  // Sync state file before doing EC reboot.
+  json_store_->Sync();
+  // Schedule an EC reboot after |kRebootDelay| seconds and return.
   timer_.Start(FROM_HERE, kRebootDelay,
-               base::BindOnce(&WriteProtectDisableRsuStateHandler::Reboot,
+               base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEc,
                               base::Unretained(this),
                               !IsPowerwashDisabled(working_dir_path_)));
+
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                               RMAD_ADDITIONAL_ACTIVITY_REBOOT);
@@ -146,14 +154,22 @@ bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   return factory_mode_enabled && (hwwp_status == 0);
 }
 
-void WriteProtectDisableRsuStateHandler::Reboot(bool powerwash_required) {
+void WriteProtectDisableRsuStateHandler::RebootEc(bool powerwash_required) {
   // Inject rma-mode powerwash if required.
   if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
     LOG(ERROR) << "Failed to request powerwash";
   }
-  LOG(INFO) << "Rebooting after RSU";
-  if (!power_manager_client_->Restart()) {
-    LOG(ERROR) << "Failed to reboot";
+  LOG(INFO) << "Rebooting EC after RSU";
+  daemon_callback_->GetExecuteRebootEcCallback().Run(
+      base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEcCallback,
+                     base::Unretained(this)));
+}
+
+void WriteProtectDisableRsuStateHandler::RebootEcCallback(bool success) {
+  // Just an informative callback.
+  // TODO(chenghan): Send an error to Chrome when the reboot fails.
+  if (!success) {
+    LOG(ERROR) << "Failed to reboot EC";
   }
 }
 

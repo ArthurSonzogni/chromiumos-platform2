@@ -27,8 +27,6 @@ WriteProtectDisablePhysicalStateHandler::
       working_dir_path_(kDefaultWorkingDirPath) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
 
 WriteProtectDisablePhysicalStateHandler::
@@ -37,13 +35,11 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<DaemonCallback> daemon_callback,
         const base::FilePath& working_dir_path,
         std::unique_ptr<Cr50Utils> cr50_utils,
-        std::unique_ptr<CrosSystemUtils> crossystem_utils,
-        std::unique_ptr<PowerManagerClient> power_manager_client)
+        std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
-      power_manager_client_(std::move(power_manager_client)) {}
+      crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_disable_physical()) {
@@ -134,8 +130,7 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 }
 
 void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
-  // Sync state file.
-  // TODO(chenghan): Do we still need this after we can trigger the reboot?
+  // Sync state file before doing EC reboot.
   json_store_->Sync();
 
   bool powerwash_required = false;
@@ -149,24 +144,37 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
       powerwash_required = true;
     }
   }
+
   // Chrome picks up the signal and shows the "Preparing to reboot" message.
   daemon_callback_->GetWriteProtectSignalCallback().Run(false);
   // Reboot even when we don't enable factory mode to keep the user flow
   // consistent.
   reboot_timer_.Start(
       FROM_HERE, kRebootDelay,
-      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::Reboot,
+      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEc,
                      base::Unretained(this), powerwash_required));
 }
 
-void WriteProtectDisablePhysicalStateHandler::Reboot(bool powerwash_required) {
+void WriteProtectDisablePhysicalStateHandler::RebootEc(
+    bool powerwash_required) {
   // Inject rma-mode powerwash if required.
+  // TODO(chenghan): The current powerwash request implementation doesn't work
+  //                 with EC reboot.
   if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
     LOG(ERROR) << "Failed to request powerwash";
   }
-  LOG(INFO) << "Rebooting after physically removing WP";
-  if (!power_manager_client_->Restart()) {
-    LOG(ERROR) << "Failed to reboot";
+  // Reboot EC.
+  LOG(INFO) << "Rebooting EC after physically removing WP";
+  daemon_callback_->GetExecuteRebootEcCallback().Run(
+      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,
+                     base::Unretained(this)));
+}
+
+void WriteProtectDisablePhysicalStateHandler::RebootEcCallback(bool success) {
+  // Just an informative callback.
+  // TODO(chenghan): Send an error to Chrome when the reboot fails.
+  if (!success) {
+    LOG(ERROR) << "Failed to reboot EC";
   }
 }
 

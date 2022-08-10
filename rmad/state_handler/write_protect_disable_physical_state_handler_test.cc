@@ -18,7 +18,6 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
-#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 
@@ -79,23 +78,25 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
                                Return(enable_factory_mode_success)));
     }
 
-    // Mock |PowerManagerClient|.
-    auto mock_power_manager_client =
-        std::make_unique<NiceMock<MockPowerManagerClient>>();
-    if (reboot_toggled) {
-      ON_CALL(*mock_power_manager_client, Restart())
-          .WillByDefault(DoAll(Assign(reboot_toggled, true), Return(true)));
-    }
-
     // Register signal callback.
     daemon_callback_->SetWriteProtectSignalCallback(
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
                             base::Unretained(&signal_sender_)));
+    // Register reboot EC callback.
+    daemon_callback_->SetExecuteRebootEcCallback(base::BindRepeating(
+        &WriteProtectDisablePhysicalStateHandlerTest::RebootEc,
+        base::Unretained(this), reboot_toggled));
 
     return base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
-        std::move(mock_power_manager_client));
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils));
+  }
+
+  void RebootEc(bool* reboot_toggled, base::OnceCallback<void(bool)> callback) {
+    if (reboot_toggled) {
+      *reboot_toggled = true;
+    }
+    std::move(callback).Run(true);
   }
 
  protected:

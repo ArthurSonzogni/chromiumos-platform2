@@ -12,16 +12,11 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
-#include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
-
-class Cr50Utils;
-class CrosSystemUtils;
-class PowerManagerClient;
 
 class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
  public:
@@ -33,15 +28,13 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
-  // |power_manager_client_| for testing.
+  // Used to inject mock |cr50_utils_| and |crossystem_utils_| for testing.
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       std::unique_ptr<Cr50Utils> cr50_utils,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils,
-      std::unique_ptr<PowerManagerClient> power_manager_client);
+      std::unique_ptr<CrosSystemUtils> crossystem_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableRsu);
   SET_REPEATABLE;
@@ -66,13 +59,13 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
 
  private:
   bool IsFactoryModeEnabled() const;
-  void Reboot(bool powerwash_required);
+  void RebootEc(bool powerwash_required);
+  void RebootEcCallback(bool success);
 
   base::FilePath working_dir_path_;
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
-  std::unique_ptr<PowerManagerClient> power_manager_client_;
 
   bool reboot_scheduled_;
   base::OneShotTimer timer_;
