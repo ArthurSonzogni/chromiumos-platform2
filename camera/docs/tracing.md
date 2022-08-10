@@ -10,12 +10,23 @@ camera.
 
 **Step 1**:
 
-Run the perfetto command line to collect camera traces from components.
+You can use the [trace tool](../tools/tracing/trace.py) to automate trace
+recording on a remote DUT and sync the trace output to the host. For example,
+to record a 20 seconds trace on a remote DUT:
 
-You can specify how long you want to record by `duration_ms` field. Example:
-
+```shell
+(host) $ tools/tracing/trace.py record -r <DUT> -t 20 -o /tmp/perfetto-trace
 ```
-perfetto -c - --txt -o /tmp/perfetto-trace \
+
+The output trace file will be stored in `/tmp/perfetto-trace` on the host. You
+can omit `-t` and the tool will record until you stop the tracing with `Ctrl+C`.
+
+You can also run the `perfetto` command on the DUT directly. You can specify how
+long you want to record with the `duration_ms` field. For example, to record a
+20 seconds camera trace:
+
+```shell
+(dut) $ perfetto -c - --txt -o /tmp/perfetto-trace \
 <<EOF
 
 # Buffer 0
@@ -30,12 +41,6 @@ buffers: {
     fill_policy: DISCARD
 }
 
-# Buffer 2
-buffers: {
-    size_kb: 63488
-    fill_policy: DISCARD
-}
-
 # Events from cros-camera. Enable more categories as you see fit.
 
 data_sources: {
@@ -43,7 +48,8 @@ data_sources: {
         name: "track_event"
         target_buffer: 0
         track_event_config {
-            enabled_categories: "hal_adapter"
+            enabled_categories: "camera.*"
+            disabled_categories: "*"
         }
     }
 }
@@ -53,7 +59,7 @@ data_sources: {
 data_sources: {
     config {
         name: "org.chromium.trace_event"
-        target_buffer: 1
+        target_buffer: 0
         chrome_config {
             trace_config: "{\"record_mode\":\"record-until-full\",\"included_categories\":[\"camera\"],\"memory_dump_config\":{}}"
         }
@@ -68,7 +74,7 @@ data_sources: {
 data_sources: {
     config {
         name: "linux.ftrace"
-        target_buffer: 2
+        target_buffer: 0
         ftrace_config {
             ftrace_events: "power/cpu_frequency"
             ftrace_events: "power/cpu_idle"
@@ -87,7 +93,7 @@ data_sources: {
 data_sources: {
     config {
         name: "linux.sys_stats"
-        target_buffer: 2
+        target_buffer: 1
         sys_stats_config {
             cpufreq_period_ms: 500
         }
@@ -99,7 +105,7 @@ data_sources: {
 data_sources {
     config {
         name: "linux.system_info"
-        target_buffer: 2
+        target_buffer: 1
     }
 }
 
@@ -108,7 +114,7 @@ data_sources {
 data_sources: {
     config {
         name: "linux.process_stats"
-        target_buffer: 2
+        target_buffer: 1
     }
 }
 
@@ -120,12 +126,13 @@ EOF
 **Step 2**:
 
 While perfetto command is recording, open up a camera application and manipulate
-the flow you are interested in. (e.g. Taking a picture or recording a video)
+the flow you are interested in. (e.g. Taking a picture or recording a video).
+Wait until perfetto flushes all the trace events when the tracing ends.
 
 **Step 3**:
 
-Go to Perfetto UI (https://ui.perfetto.dev/), click "Open trace file" and
-provide the result file (in our example is `/tmp/perfetto-trace`).
+Go to [Perfetto UI](https://ui.perfetto.dev/), click "Open trace file" and
+select the trace output file (in our example it's `/tmp/perfetto-trace`).
 
 The details of the tracing results should be shown on the UI.
 
