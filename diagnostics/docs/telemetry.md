@@ -1,13 +1,13 @@
 # Telemetry
 
 On-device telemetry API serves the clients on both Chromium and
-platform. The [data sources listed table](#Type-Definitions) could be
+platform. The [data sources listed table](#Telemetry-categories) could be
 scattered around different services and it is our vision to hide those tedious
 details away from our clients. In addition, single source will help the data
 utilization easier to process on the server side if it is our client's final
 destination.
 
-We also support a [proactive event subscription](#TODO) API make clients could
+We also support a [proactive event subscription](#Events) API make clients could
 subscript the particular event and got real-time notified when the event
 occurs.
 
@@ -33,8 +33,6 @@ to be able to return partial data. As `ProbeTelemetryInfo()` might not be
 returned under certain critical situation. (e.g. `cros_healthd` got killed or
 crash, a common cases is the seccomp vialation).
 
-TODO(b/214343538): proactive event subscription API
-
 ### CLI tool
 
 `cros-health-tool` is a convenience tools **for testing**, it is not for production used.
@@ -44,8 +42,7 @@ For telemetry, we can initiate a request via `cros-health-tool telem
 --category=<xx>` where `<xx>` is the category name. The list of category names
 could be checked via `cros-health-tool telem --help`.
 
-## Type Definitions
-
+## Telemetry categories
 
 ###  Audio
 
@@ -61,7 +58,7 @@ could be checked via `cros-health-tool telem --help`.
 | underruns | uint32 | Numbers of underruns. |
 | severe_underruns | uint32 | Numbers of severe underruns. |
 
-##### AudioHardwareInfo
+### AudioHardwareInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | audio_cards | [array&lt;AudioCard&gt;](#AudioCard) | Audio cards information. |
@@ -87,7 +84,6 @@ could be checked via `cros-health-tool telem --help`.
 | path | string | Path to this backlight on the system. Useful if the caller needs to<br />correlate with other information. |
 | max_brightness | uint32 | Maximum brightness for the backlight. |
 | brightness | uint32 | Current brightness of the backlight, between 0 and max_brightness. |
-
 
 ###  Battery
 
@@ -166,13 +162,22 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 | address | string | The MAC address of the device. |
 | name | string? | The name of the device. |
-| type | BluetoothDeviceType | The carriers supported by this remote device ("BR/EDR", "LE", or "DUAL"). |
+| type | [BluetoothDeviceType](#BluetoothDeviceType) | The carriers supported by this remote device ("BR/EDR", "LE", or "DUAL"). |
 | appearance | uint16? | The external appearance of the device. |
 | modalias | string? | Remote Device ID information. |
 | rssi | uint16? | Received Signal Strength Indicator. |
 | mtu | uint16? | The Maximum Transmission Unit used in ATT communication. |
 | uuids | array&lt;string&gt;? | The list of the available remote services. |
 | battery_percentage | uint8? | The battery percentage of the device. |
+
+##### BluetoothDeviceType
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
+| kUnfound | Unfound type. |
+| kBrEdr | BR/EDR. |
+| kLe | LE. |
+| kDual | DUAL. |
 
 ##### SupportedCapabilities
 | Field | Type | Description |
@@ -189,8 +194,20 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 | vendor_name | string | The vendor / product name of the device. These are extracted from the<br />databases on the system and should only be used for showing / logging.<br />Don't use these to identify the devices. |
 | product_name | string | The class of the device. |
-| device_class | BusDeviceClass | The info related to specific bus type. |
+| device_class | [BusDeviceClass](#BusDeviceClass) | The info related to specific bus type. |
 | bus_info | [BusInfo](#BusInfo) | These fields can be used to classify / identify the pci devices. See the<br />pci.ids database for the values. (https://github.com/gentoo/hwids) |
+
+##### BusDeviceClass
+| Enum | Description |
+| ---- | ----------- |
+| kOthers | Others. |
+| kDisplayController | Display controller. |
+| kEthernetController | Ethernet Controller. |
+| kWirelessController | Wireless Controller. |
+| kBluetoothAdapter | Bluetooth Adapter. |
+| kThunderboltController | Thunderbolt Controller. |
+| kAudioCard | Audio Card. |
+
 
 #####  BusInfo
 | Field | Type | Description |
@@ -216,8 +233,18 @@ could be checked via `cros-health-tool telem --help`.
 #####  ThunderboltBusInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| security_level | ThunderboltSecurityLevel | Security level none, user, secure, dponly. |
+| security_level | [ThunderboltSecurityLevel](#ThunderboltSecurityLevel) | Security level none, user, secure, dponly. |
 | thunderbolt_interfaces | [array&lt;ThunderboltBusInterfaceInfo&gt;](#ThunderboltBusInterfaceInfo) | Info of devices attached to the controller. |
+
+##### ThunderboltSecurityLevel
+| Enum | Description |
+| ---- | ----------- |
+| kNone | None. |
+| kUserLevel | User level. |
+| kSecureLevel | Secure level. |
+| kDpOnlyLevel | DP only level. |
+| kUsbOnlyLevel | USB only level. |
+| kNoPcieLevel | No PCIe level. |
 
 #####  ThunderboltBusInterfaceInfo
 | Field | Type | Description |
@@ -248,7 +275,25 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | version | string | The string form of the firmware version. |
-| version_format | FwupdVersionFormat | The format for parsing the version string. |
+| version_format | [FwupdVersionFormat](#FwupdVersionFormat) | The format for parsing the version string. |
+
+##### FwupdVersionFormat
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
+| kUnknown | Unknown version format. |
+| kPlain | An unidentified format text string. |
+| kNumber | A single integer version number. |
+| kPair | Two AABB.CCDD version numbers. |
+| kTriplet | Microsoft-style AA.BB.CCDD version numbers. |
+| kQuad | UEFI-style AA.BB.CC.DD version numbers. |
+| kBcd | Binary coded decimal notation. |
+| kIntelMe | Intel ME-style bitshifted notation. |
+| kIntelMe2 | Intel ME-style A.B.CC.DDDD notation. |
+| kSurfaceLegacy | Legacy Microsoft Surface 10b.12b.10b. |
+| kSurface | Microsoft Surface 8b.16b.8b. |
+| kDellBios | Dell BIOS BB.CC.DD style. |
+| kHex | Hexadecimal 0xAABCCDD style. |
 
 #####  UsbBusInterfaceInfo
 | Field | Type | Description |
@@ -265,12 +310,20 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | num_total_threads | uint32 | Number of total threads available. |
-| architecture | CpuArchitectureEnum | The CPU architecture - it's assumed all of a device's CPUs share an<br />architecture. |
+| architecture | [CpuArchitectureEnum](#CpuArchitectureEnum) | The CPU architecture - it's assumed all of a device's CPUs share an<br />architecture. |
 | physical_cpus | [array&lt;PhysicalCpuInfo&gt;](#PhysicalCpuInfo) | Information about the device's physical CPUs. |
 | temperature_channels | [array&lt;CpuTemperatureChannel&gt;](#CpuTemperatureChannel) | Information about the CPU temperature channels. |
 | keylocker_info | [KeylockerInfo?](#KeylockerInfo) | Information about keylocker. |
 | virtualization | [VirtualizationInfo?](#VirtualizationInfo) | The general virtualization info. Guaranteed to be not null unless the version doesn't match. |
 | vulnerabilities | [map&lt;string, VulnerabilityInfo&gt;?](#VulnerabilityInfo) | The cpu vulnerability info. The key is the name of the vulnerability. Guaranteed to be not null unless the version doesn't match. |
+
+##### CpuArchitectureEnum
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kX86_64 | x86_64. |
+| kAArch64 | Arch64. |
+| kArmv7l | Armv7l. |
 
 #### Virtualization
 
@@ -279,15 +332,35 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 | has_kvm_device | bool | Whether the /dev/kvm device exists. |
 | is_smt_active | bool | Whether SMT is active. This will always be false if SMT detection is not supported by the kernel of this device. |
-| smt_control | SMTControl | The state of SMT control. |
+| smt_control | [SMTControl](#SMTControl) | The state of SMT control. |
+
+##### SMTControl
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | This is required for backwards compatibility, should not be used. |
+| kOn | SMT is enabled. |
+| kOff | SMT is disabled. |
+| kForceOff | SMT is force disabled. Cannot be changed. |
+| kNotSupported | SMT is not supported by the CPU. |
+| kNotImplemented | SMT runtime toggling is not implemented for the architecture, or the kernel version doesn't support SMT detection yet. |
 
 #### Vulnerability
 
 ##### VulnerabilityInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| status | Status | The status of the vulnerability. |
+| status | [Status](#Status) | The status of the vulnerability. |
 | message | string | The description of the vulnerability. |
+
+##### Status
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | This is required for backwards compatibility, should not be used. |
+| kNotAffected | Not affected by this vulnerability. |
+| kVulnerable | Vulnerable by this vulnerability. |
+| kMitigation | Vulnerability is mitigated. |
+| kUnknown | Vulnerability is unknown. |
+| kUnrecognized | Vulnerability is unrecognized by parser. |
 
 ####  KeyLocker
 
@@ -309,9 +382,16 @@ could be checked via `cros-health-tool telem --help`.
 ##### CpuVirtualizationInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| type | Type | The type of cpu hardware virtualization. |
+| type | [Type](#Type) | The type of cpu hardware virtualization. |
 | is_enabled | bool | Whether virtualization is enabled. |
 | is_locked | bool | Whether the virtualization configuration is locked and cannot be modified. This is usually set by the BIOS to prevent the OS changing the setting after booting into the OS. |
+
+##### Type
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | This is required for backwards compatibility, should not be used. |
+| kVMX | The cpu supports Intel virtualization (VT-x). |
+| kSVM | The cpu supports AMD virtualization (AMD-V). |
 
 ####  Logical Core
 
@@ -417,16 +497,19 @@ could be checked via `cros-health-tool telem --help`.
 | manufacture_week | uint8? | Week of manufacture. |
 | manufacture_year | uint16? | Year of manufacture. |
 | edid_version | string? | EDID version. |
-| input_type | DisplayInputType | Digital or analog input. |
+| input_type | [DisplayInputType](#DisplayInputType) | Digital or analog input. |
 | display_name | string? | Name of display product. |
+
+##### DisplayInputType
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
+| kDigital | Digital input. |
+| kAnalog | Analog input. |
 
 ####  ExternalDisplay
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-|  |  | (planned) Number of Monitor |
-|  |  | (planned) Monitor Type |
-|  |  | (planned) Model Name |
-|  |  | (planned) Serial |
 |  |  | (planned) Vendor Specific Data |
 
 #####  ExternalDisplayInfo
@@ -443,7 +526,7 @@ could be checked via `cros-health-tool telem --help`.
 | manufacture_week | uint8? | Week of manufacture. |
 | manufacture_year | uint16? | Year of manufacture. |
 | edid_version | string? | EDID version. |
-| input_type | DisplayInputType | Digital or analog input. |
+| input_type | [DisplayInputType](#DisplayInputType) | Digital or analog input. |
 | display_name | string? | Name of display product. |
 
 ###  Fan
@@ -520,10 +603,18 @@ could be checked via `cros-health-tool telem --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | name | string | Name of the device. |
-| connection_type | ConnectionType | The connection type of the input device. |
+| connection_type | [ConnectionType](#ConnectionType) | The connection type of the input device. |
 | physical_location | string | The physical location(port) associated with the input device. This is (supposed to be) stable between reboots and hotplugs. However this may not always be set and will change when the device is connected via a different port. |
 | is_enabled | bool | If the device is enabled, and whether events should be dispatched to UI. |
 
+##### ConnectionType
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | For mojo backward compatibility. |
+| kInternal | Internally connected input device. |
+| kUSB | Known externally connected usb input device. |
+| kBluetooth | Known externally connected bluetooth input device. |
+| kUnknown | Device that may or may not be an external device. |
 
 ###  Lid
 
@@ -559,11 +650,25 @@ could be checked via `cros-health-tool telem --help`.
 #####  MemoryEncryptionInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| encryption_state | EncryptionState | Memory encryption state. |
+| encryption_state | [EncryptionState](#EncryptionState) | Memory encryption state. |
 | max_key_number | uint32 | Encryption key length. |
 | key_length | uint32 | Encryption key length. |
-| active_algorithm | CryptoAlgorithm | Crypto algorithm currently used. |
+| active_algorithm | [CryptoAlgorithm](#CryptoAlgorithm) | Crypto algorithm currently used. |
 
+##### EncryptionState
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kEncryptionDisabled | Encryption is disabled. |
+| kTmeEnabled | Tme is enabled. |
+| kMktmeEnabled | Multi-key Tme is enabled. |
+
+##### CryptoAlgorithm
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kAesXts128 | AesXts128. |
+| kAesXts256 | AesXts256. |
 
 ###  Misc
 
@@ -580,16 +685,57 @@ could be checked via `cros-health-tool telem --help`.
 #####  Network
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| type | NetworkType | The network interface type. |
-| state | NetworkState | The current status of this network. e.g. Online, Disconnected. |
+| type | [NetworkType](#NetworkType) | The network interface type. |
+| state | [NetworkState](#NetworkState) | The current status of this network. e.g. Online, Disconnected. |
 | guid | string? | The unique identifier for the network when a network service exists. |
 | name | string? | The user facing name of the network if available. |
 | mac_address | string? | Optional string for the network's mac_address. |
 | signal_strength | uint32? | Signal strength of the network provided only for wireless networks. Values<br />are normalized between 0 to 100 inclusive. Values less than 30 are<br />considered potentially problematic for the connection. See<br />src/platform2/shill/doc/service-api.txt for more details. |
 | ipv4_address | string? | Optional string for the network's ipv4_address. This is only intended to be<br />used for display and is not meant to be parsed. |
 | ipv6_addresses | array&lt;string&gt; | Optional list of strings for the network's ipv6_addresses. A single network<br />can have multiple addresses (local, global, temporary etc.). This is only<br />intended to be used for display and is not meant to be parsed. |
-| portal_state | PortalState | An enum of the network's captive portal state. This information is<br />supplementary to the NetworkState. |
-| signal_strength_stats | SignalStrengthStats? | The statistics of the signal strength for wireless networks over a 15<br />minute period. See SignalStrengthStats for more details. |
+| portal_state | [PortalState](#PortalState) | An enum of the network's captive portal state. This information is<br />supplementary to the NetworkState. |
+| signal_strength_stats | [SignalStrengthStats?](#SignalStrengthStats) | The statistics of the signal strength for wireless networks over a 15<br />minute period. See SignalStrengthStats for more details. |
+
+##### NetworkType
+| Enum | Description |
+| ---- | ----------- |
+| kAll | All. |
+| kCellular | Cellular. |
+| kEthernet | Ethernet. |
+| kMobile | Mobile includes Cellular, and Tether. |
+| kTether | Tether. |
+| kVPN | VPN. |
+| kWireless | Wireles includes Cellular, Tether, and WiFi. |
+| kWiFi | WiFi. |
+
+##### NetworkState
+| Enum | Description |
+| ---- | ----------- |
+| kUninitialized | The network type is available but not yet initialized. |
+| kDisabled | The network type is available but disabled or disabling. |
+| kProhibited | The network type is prohibited by policy. |
+| kNotConnected | The network type is available and enabled or enabling, but no network connection has been established. |
+| kConnecting | The network type is available and enabled, and a network connection is in progress. |
+| kPortal | The network is in a portal state. |
+| kConnected | The network is in a connected state, but connectivity is limited. |
+| kOnline | The network is connected and online. |
+
+##### PortalState
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | The network is not connected or the portal state is not available. |
+| kOnline | The network is connected and no portal is detected. |
+| kPortalSuspected | A portal is suspected but no redirect was provided. |
+| kPortal | The network is in a portal state with a redirect URL. |
+| kProxyAuthRequired | A proxy requiring authentication is detected. |
+| kNoInternet | The network is connected but no internet is available and no proxy was detected. |
+
+##### SignalStrengthStats
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| average | float | A value representing the average recent signal strength. |
+| deviation | float | A value representing the recent deviation of the signal strength. |
+| samples | array&lt;uint8&gt; | The samples of the signal strength over the polled period. This value is only for debugging and diagnostics purposes. The other indicators in this struct are the canonical stats for the signal strength. Max Size: (12 * 15) = 180 samples. |
 
 #####  NetworkHealthState
 | Field | Type | Description |
@@ -635,7 +781,7 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 | interface_name | string | Interface name. |
 | power_management_on | bool | Is power management enabled for wifi or not. |
-| wireless_link_info | WirelessLinkInfo? | Link info only available when device is connected to an access point. |
+| wireless_link_info | [WirelessLinkInfo?](#WirelessLinkInfo?) | Link info only available when device is connected to an access point. |
 | access_point_address_str | string | Access point address. |
 | tx_bit_rate_mbps | uint32 | Tx bit rate measured in Mbps. |
 | rx_bit_rate_mbps | uint32 | Rx bit rate measured in Mbps. |
@@ -644,6 +790,16 @@ could be checked via `cros-health-tool telem --help`.
 | link_quality | uint32 | Wifi link quality. |
 | signal_level_dBm | int32 | Wifi signal level in dBm. |
 
+##### WirelessLinkInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| access_point_address_str | string | Access point address. |
+| tx_bit_rate_mbps | uint32 | Tx bit rate measured in Mbps. |
+| rx_bit_rate_mbps | uint32 | Rx bit rate measured in Mbps. |
+| tx_power_dBm | int32 | Transmission power measured in dBm. |
+| encyption_on | bool | Is wifi encryption key on or not. |
+| link_quality | uint32 | Wifi link quality. |
+| signal_level_dBm | int32 | Wifi signal level in dBm. |
 
 ###  OS
 
@@ -692,10 +848,17 @@ could be checked via `cros-health-tool telem --help`.
 | size | uint64 | Device size in bytes. |
 | firmware_version | BlockDeviceFirmware | Firmware version. |
 | type | string | Storage type, could be MMC / NVMe / ATA, based on udev subsystem. |
-| purpose | StorageDevicePurpose | Purpose of the device e.g. "boot", "swap". |
+| purpose | [StorageDevicePurpose](#StorageDevicePurpose) | Purpose of the device e.g. "boot", "swap". |
 | path | string | The path of this storage on the system. It is useful if caller needs to<br />correlate with other information. |
 | manufacturer_id | uint8 | Manufacturer ID, 8 bits. |
 | serial | uint32 | PSN: Product serial number, 32 bits |
+
+##### StorageDevicePurpose
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kBootDevice | Boot device. |
+| kSwapDevice | Swap device. |
 
 ####  Device (SMART)
 
@@ -808,8 +971,17 @@ could be checked via `cros-health-tool telem --help`.
 | code_name | string | Google code name for the given model. While it is OK to use this string for<br />human-display purposes (such as in a debug log or help dialog), or for a<br />searchable-key in metrics collection, it is not recommended to use this<br />property for creating model-specific behaviors. |
 | marketing_name | string? | Contents of CrosConfig in /arc/build-properties/marketing-name. |
 | os_version | [OsVersion](#OsVersion) | The OS version of the system. |
-| boot_mode | BootMode | The boot flow used by the current boot. |
+| boot_mode | [BootMode](#BootMode) | The boot flow used by the current boot. |
 | oem_name | string? | Contents of CrosConfig in /branding/oem-name. |
+
+##### BootMode
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kCrosSecure | Boot with ChromeOS firmware. |
+| kCrosEfi | Boot with EFI. |
+| kCrosLegacy | Boot with Legacy BIOS. |
+| kCrosEfiSecure | Boot with EFI security boot. |
 
 #####  OsVersion
 | Field | Type | Description |
@@ -901,7 +1073,7 @@ could be checked via `cros-health-tool telem --help`.
 #####  TpmVersion
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| gsc_version | TpmGSCVersion | GSC version. |
+| gsc_version | [TpmGSCVersion](#TpmGSCVersion) | GSC version. |
 | family | uint32 | TPM family. We use the TPM 2.0 style encoding, e.g.:<br /> * TPM 1.2: "1.2" -> 0x312e3200<br /> * TPM 2.0: "2.0" -> 0x322e3000 |
 | spec_level | uint64 | TPM spec level. |
 | manufacturer | uint32 | Manufacturer code. |
@@ -909,6 +1081,12 @@ could be checked via `cros-health-tool telem --help`.
 | firmware_version | uint64 | Firmware version. |
 | vendor_specific | string? | Vendor specific information. |
 
+##### TpmGSCVersion
+| Enum | Description |
+| ---- | ----------- |
+| kNotGSC | For the devices which cannot be classified. |
+| kCr50 | Devices with Cr50 firmware. |
+| kTi50 | Devices with Ti50 firmware. |
 
 ###  Video
 
@@ -916,3 +1094,7 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 |  |  | (planned) Video Controller name |
 |  |  | (planned) Video RAM (Bytes) |
+
+## Events
+
+TODO(b/214343538): proactive event subscription API
