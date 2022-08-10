@@ -426,10 +426,6 @@ class Service : public base::RefCounted<Service> {
   mockable void ClearEAPCertification();
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  // Returns true if this service contains a IP address in its static IP
-  // parameters, false otherwise.
-  mockable bool HasStaticIPAddress() const;
-
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
   // |time_resume_to_ready_milliseconds| holds the elapsed time from when

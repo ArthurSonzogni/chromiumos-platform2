@@ -421,13 +421,6 @@ void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   }
 }
 
-bool Device::IsUsingStaticIP() const {
-  if (!selected_service_) {
-    return false;
-  }
-  return selected_service_->HasStaticIPAddress();
-}
-
 void Device::UpdateBlackholeUserTraffic() {
   SLOG(this, 2) << __func__;
   if (ipconfig()) {

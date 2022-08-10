@@ -299,14 +299,9 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   auto* store = service_->mutable_store();
   SetStaticProperties();
 
-  EXPECT_TRUE(service_->HasStaticIPAddress());
   EXPECT_TRUE(store->Contains("StaticIPConfig"));
   auto current_args = GetStaticArgs();
   current_args.Remove("Address");
-  store->SetKeyValueStoreProperty("StaticIPConfig", current_args,
-                                  &unused_error);
-  EXPECT_FALSE(service_->HasStaticIPAddress());
-  current_args = GetStaticArgs();
   current_args.Remove("Mtu");
   store->SetKeyValueStoreProperty("StaticIPConfig", current_args,
                                   &unused_error);

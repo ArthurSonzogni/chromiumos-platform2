@@ -1191,10 +1191,6 @@ std::string Service::GetEapPassphrase(Error* error) {
   return std::string();
 }
 
-bool Service::HasStaticIPAddress() const {
-  return static_ip_parameters_.config().ipv4_address_cidr.has_value();
-}
-
 void Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
     return;

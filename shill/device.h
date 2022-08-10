@@ -465,9 +465,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  // Indicates if the selected service is configured with a static IP address.
-  bool IsUsingStaticIP() const;
-
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.

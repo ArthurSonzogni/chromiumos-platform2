@@ -88,8 +88,12 @@ void Network::Start(const Network::StartOptions& opts) {
   // of Network has been started.
   bool dhcp_started = false;
   if (opts.dhcp) {
+    auto dhcp_opts = *opts.dhcp;
+    if (static_network_config_.ipv4_address_cidr) {
+      dhcp_opts.use_arp_gateway = false;
+    }
     set_dhcp_controller(dhcp_provider_->CreateController(
-        interface_name_, opts.dhcp.value(), technology_));
+        interface_name_, dhcp_opts, technology_));
     dhcp_controller_->RegisterCallbacks(
         base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
         base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));

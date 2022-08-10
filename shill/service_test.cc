@@ -732,25 +732,6 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->has_ever_connected_);
 }
 
-// Tests that static IP configs are set, stored and unloaded correctly.
-TEST_F(ServiceTest, StaticIPConfigs) {
-  constexpr char kTestIpAddress[] = "1.2.3.4";
-  constexpr int32_t kTestPrefixlen = 5;
-  EXPECT_FALSE(service_->HasStaticIPAddress());
-  KeyValueStore static_ip_configs;
-  static_ip_configs.Set(kAddressProperty, std::string(kTestIpAddress));
-  static_ip_configs.Set(kPrefixlenProperty, kTestPrefixlen);
-  service_->mutable_store()->SetKeyValueStoreProperty(
-      kStaticIPConfigProperty, static_ip_configs, /*error=*/nullptr);
-  EXPECT_TRUE(service_->HasStaticIPAddress());
-  FakeStore storage;
-  ASSERT_TRUE(service_->Save(&storage));
-  service_->Unload();
-  EXPECT_FALSE(service_->HasStaticIPAddress());
-  ASSERT_TRUE(service_->Load(&storage));
-  EXPECT_TRUE(service_->HasStaticIPAddress());
-}
-
 // Tests that callback is invoked properly when static IP configs changed.
 TEST_F(ServiceTest, StaticIPConfigsChanged) {
   constexpr char kTestIpAddress1[] = "1.2.3.4";

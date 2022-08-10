@@ -1655,7 +1655,6 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   InitiateConnect(service);
 
   // Selected service that does not have a static IP address.
-  EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(false));
   EXPECT_CALL(
       dhcp_provider_,
       CreateController(kDeviceName, IsDHCPProviderOptionUseARPGateway(true), _))
@@ -1670,8 +1669,11 @@ TEST_F(WiFiMainTest, StartNetworkNoArpGateway) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
 
+  // TODO(b/232177767): Move this test to Network.
   // Selected service that has a static IP address.
-  EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
+  NetworkConfig config;
+  config.ipv4_address_cidr = "1.2.3.4/16";
+  wifi()->network()->OnStaticIPConfigChanged(config);
   EXPECT_CALL(dhcp_provider_,
               CreateController(kDeviceName,
                                IsDHCPProviderOptionUseARPGateway(false), _))

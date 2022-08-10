@@ -2547,9 +2547,6 @@ void WiFi::StateChanged(const std::string& new_state) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else {
       auto dhcp_opts = DHCPProvider::Options::Create(*manager());
-      if (IsUsingStaticIP()) {
-        dhcp_opts.use_arp_gateway = false;
-      }
       dhcp_opts.lease_name = GetServiceLeaseName(*affected_service);
       Network::StartOptions opts = {
           .dhcp = dhcp_opts,
