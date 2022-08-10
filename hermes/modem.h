@@ -27,10 +27,10 @@ constexpr auto kSimRefreshDelay = base::Seconds(3);
 constexpr auto kInitRetryDelay = base::Seconds(10);
 constexpr uint8_t kInvalidChannel = 0;
 
-// Schedule an uninhibit 2 seconds after an eSIM operation succeeds. If another
-// eSIM operation makes an inhibit call during these 2 seconds, the scheduled
+// Schedule an uninhibit 4 seconds after an eSIM operation succeeds. If another
+// eSIM operation makes an inhibit call during these 4 seconds, the scheduled
 // uninhibit is cancelled.
-constexpr auto kUninhibitDelay = base::Seconds(2);
+constexpr auto kUninhibitDelay = base::Seconds(4);
 
 constexpr int kModemSuccess = 0;
 
