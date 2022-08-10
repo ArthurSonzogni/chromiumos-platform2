@@ -48,6 +48,7 @@ class Error {
     kPinBlocked,
     kPinRequired,
     kTechnologyNotAvailable,
+    kWepNotSupported,
     kWrongState,
     kNumErrors,
   };

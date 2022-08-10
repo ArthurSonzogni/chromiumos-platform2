@@ -126,6 +126,8 @@ TEST(ErrorTest, GetDBusResult) {
             Error::GetDBusResult(Error::kPermissionDenied));
   EXPECT_EQ(kErrorResultPinBlocked, Error::GetDBusResult(Error::kPinBlocked));
   EXPECT_EQ(kErrorResultPinRequired, Error::GetDBusResult(Error::kPinRequired));
+  EXPECT_EQ(kErrorResultWepNotSupported,
+            Error::GetDBusResult(Error::kWepNotSupported));
   EXPECT_EQ(kErrorResultWrongState, Error::GetDBusResult(Error::kWrongState));
 }
 

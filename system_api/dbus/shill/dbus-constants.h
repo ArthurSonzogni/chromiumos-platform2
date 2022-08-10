@@ -740,6 +740,8 @@ const char kErrorResultPinRequired[] =
     "org.chromium.flimflam.Error.PinRequired";
 const char kErrorResultTechnologyNotAvailable[] =
     "org.chromium.flimflam.Error.TechnologyNotAvailable";
+const char kErrorResultWepNotSupported[] =
+    "org.chromium.flimflam.Error.WepNotSupported";
 const char kErrorResultWrongState[] = "org.chromium.flimflam.Error.WrongState";
 
 const char kUnknownString[] = "UNKNOWN";
