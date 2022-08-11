@@ -131,6 +131,9 @@ message VmInfo {
 
   // What type of VM this is.
   VmType vm_type = 6;
+
+  // Whether the VM is using storage ballooning.
+  bool storage_ballooning = 7;
 }
 
 // Optional fields for network configuration.
@@ -232,6 +235,9 @@ message StartVmRequest {
 
   // If true, connects the virtio-tpm device to the vtpm daemon.
   bool vtpm_proxy = 22;
+
+  // Whether the VM should use storage ballooning.
+  bool storage_ballooning = 23;
 
   reserved 13, 14, 6;
 }

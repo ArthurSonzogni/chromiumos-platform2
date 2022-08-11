@@ -67,6 +67,9 @@ class VmInterface {
 
     // Type of the VM.
     VmInfo::VmType type;
+
+    // Whether the VM is using storage ballooning.
+    bool storage_ballooning;
   };
 
   // Classes that implement this interface *MUST* exit as quickly as possible

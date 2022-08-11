@@ -1596,6 +1596,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(classification);
 
+  vm_info->set_storage_ballooning(request.storage_ballooning());
+
   std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
       bios_fd;
   for (const auto& fdType : request.fds()) {
@@ -2493,6 +2495,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
   vm_info->set_permission_token(vm.permission_token);
   vm_info->set_vm_type(vm.type);
+  vm_info->set_storage_ballooning(vm.storage_ballooning);
 
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
@@ -4064,6 +4067,7 @@ std::unique_ptr<dbus::Response> Service::ListVms(
     proto_info->set_cid(info.cid);
     proto_info->set_seneschal_server_handle(info.seneschal_server_handle);
     proto_info->set_vm_type(info.type);
+    proto_info->set_storage_ballooning(info.storage_ballooning);
     // The vms_ member only contains VMs with running crosvm instances. So the
     // STOPPED case below should not be possible.
     switch (info.status) {
