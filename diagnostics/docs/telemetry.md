@@ -23,11 +23,21 @@ reality.
 
 ### Mojo interface
 
-`ProbeTelemetryInfo(categories)` in `CrosHealthdProbeService` interface can
-grab the data from selected `categories` from a single IPC call. And
-`ProbeProcessInfo(process_id)` can retrieve the [process
-information](#ProcessInfo) for a specific process_id. See the Mojo interface
-comment for the detail.
+- `CrosHealthdProbeService` interface
+    - `ProbeTelemetryInfo(categories)` can grab the data from selected
+      `categories` from a single IPC call.
+    - `ProbeProcessInfo(process_id)` can retrieve the
+      [process information](#ProcessInfo) for a specific process_id.
+- `CrosHealthdEventService` interface
+    - `AddBluetoothObserver(observer)` for bluetooth events.
+    - `AddLidObserver(observer)` for lid events.
+    - `AddPowerObserver(observer)` for power events.
+    - `AddNetworkObserver(observer)` for network events.
+    - `AddAudioObserver(observer)` for audio events.
+    - `AddThunderboltObserver(observer)` for thunderbolt events.
+    - `AddUsbObserver(observer)` for USB events.
+
+See the Mojo interface comment for the detail.
 
 Note that, __Strongly recommend__ to split your request into multiple and fetch
 a subset of interesting categories in each call, and setup disconnect handler
@@ -46,6 +56,10 @@ could be checked via `cros-health-tool telem --help`.
 
 For process, we can initiate a request via `cros-health-tool telem
 --process=<process_id>` to retrieve the process information.
+
+For event, `cros-health-tool event --category=<xx>` where `<xx>` is the event
+category name. The list of category names could be checked via `cros-health-tool
+event --help`.
 
 ## Telemetry categories
 
@@ -687,7 +701,7 @@ For process, we can initiate a request via `cros-health-tool telem
 
 ####  Health
 
-#####  Network
+#####  Network {#network-health-struct}
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | type | [NetworkType](#NetworkType) | The network interface type. |
@@ -745,7 +759,7 @@ For process, we can initiate a request via `cros-health-tool telem
 #####  NetworkHealthState
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| networks | [array&lt;Network&gt;](#Network) | This is a list of networking devices and any associated connections.<br />Only networking technologies that are present on the device are included.<br />Networks will be sorted with active connections listed first. |
+| networks | [array&lt;Network&gt;](#network-health-struct) | This is a list of networking devices and any associated connections.<br />Only networking technologies that are present on the device are included.<br />Networks will be sorted with active connections listed first. |
 
 ####  Interface
 
@@ -1141,4 +1155,61 @@ For process, we can initiate a request via `cros-health-tool telem
 
 ## Events
 
-TODO(b/214343538): proactive event subscription API
+### Audio
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnUnderrun | - | Fired when the audio underrun happens. |
+| OnSevereUnderrun | - | Fired when the audio severe underrun happens. |
+
+### Bluetooth
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnAdapterAdded | - | Fired when a Bluetooth adapter is added. |
+| OnAdapterRemoved | - | Fired when a Bluetooth adapter is removed. |
+| OnAdapterPropertyChanged | - | Fired when a property of a Bluetooth adapter is changed. |
+| OnDeviceAdded | - | Fired when a Bluetooth device is added. |
+| OnDeviceRemoved | - | Fired when a Bluetooth device is removed. |
+| OnDevicePropertyChanged | - | Fired when a property of a Bluetooth device is changed. |
+
+### Lid
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnLidClosed | - | Fired when the device's lid is closed. |
+| OnLidOpened | - | Fired when the device's lid is opened. |
+
+### Network
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnConnectionStateChanged | string guid <br />[NetworkState](#NetworkState) state | Fired when a network’s connection state changes. |
+| OnSignalStrengthChanged | string guid <br />uint32 signal_strength | Fired when a wireless network’s signal strength changes by ten or more percent. See the definition of &#124;signal_strength&#124; in [Network](#network-health-struct). |
+
+### Power
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnAcInserted | - | Fired when the device begins consuming from an external power source. |
+| OnAcRemoved | - | Fired when the device stops consuming from an external power source. |
+| OnOsSuspend | -  | Fired when the system receives a suspend request. |
+| OnOsResume | - | Fired when the system completes a suspend request. |
+
+### Thunderbolt
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnAdd | - | Fired when the Thunderbolt plug in. |
+| OnRemove | - | Fired when the Thunderbolt plug out. |
+| OnAuthorized | - | Fired when the Thunderbolt device is authorized. |
+| OnUnAuthorized | - | Fired when the Thunderbolt device is unauthorized. |
+
+### USB
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnAdd | [UsbEventInfo](#UsbEventInfo) info | Fired when the USB plug in. |
+| OnRemove | [UsbEventInfo](#UsbEventInfo) info | Fired when the USB plug out. |
+
+##### UsbEventInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| vendor | string | Vendor name. |
+| name | string | Name, model name, product name. |
+| vid | uint16 | Vendor ID. |
+| pid | uint16 | Product ID. |
+| categories | array&lt;string&gt; | USB device categories. https://www.usb.org/defined-class-codes. |
