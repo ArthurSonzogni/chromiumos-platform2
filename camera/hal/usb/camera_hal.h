@@ -48,7 +48,6 @@ class CameraHal : public UdevWatcher::Observer {
   CameraMojoChannelManagerToken* GetMojoManagerToken();
 
   // Implementations for camera_module_t.
-  int OpenDevice(int id, const hw_module_t* module, hw_device_t** hw_device);
   int GetNumberOfCameras() const;
   int GetCameraInfo(int id, camera_info* info);
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
