@@ -85,4 +85,10 @@ void TpmManagerMetrics::ReportTimeToTakeOwnership(
       kTimeToTakeOwnershipMax.InMilliseconds(), kTimeToTakeOwnershipNumBuckets);
 }
 
+void TpmManagerMetrics::ReportPowerWashResult(TPMPowerWashResult result) {
+  constexpr auto max_value = static_cast<int>(TPMPowerWashResult::kMaxValue);
+  metrics_library_->SendEnumToUMA(kTPMPowerWashResult, static_cast<int>(result),
+                                  max_value + 1);
+}
+
 }  // namespace tpm_manager

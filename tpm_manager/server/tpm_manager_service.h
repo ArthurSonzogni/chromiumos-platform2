@@ -312,6 +312,9 @@ class TpmManagerService : public TpmNvramInterface,
   // Shutdown to be run on the worker thread.
   void ShutdownTask();
 
+  // Check if TPM is cleared after power wash and report the status to UMA
+  void CheckPowerWashResult(const TpmStatus::TpmOwnershipStatus status);
+
   LocalDataStore* local_data_store_;
 
   std::unique_ptr<PinWeaverProvision> pinweaver_provision_;

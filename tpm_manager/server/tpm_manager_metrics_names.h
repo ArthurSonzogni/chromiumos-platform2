@@ -16,6 +16,7 @@ inline constexpr char kTPMVersionFingerprint[] =
 inline constexpr char kTPMTimeToTakeOwnership[] =
     "Platform.TPM.TimeToTakeOwnership";
 inline constexpr char kTPMAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
+inline constexpr char kTPMPowerWashResult[] = "Platform.TPM.PowerWashResult";
 
 // The secret status records the presence of each secret in the bit fields along
 // with the TPM version information. Currently only the least significant byte

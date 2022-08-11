@@ -15,6 +15,8 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/process/launch.h>
@@ -26,6 +28,7 @@
 
 #include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist_impl.h"
+#include "tpm_manager/server/tpm_manager_metrics.h"
 
 namespace {
 
@@ -34,6 +37,10 @@ constexpr base::TimeDelta kUploadAlertsPeriod = base::Hours(6);
 
 constexpr char kIsRunningFromInstaller[] = "is_running_from_installer";
 constexpr char kInstallerYes[] = "yes\n";
+constexpr char kPowerWashCompletedFile[] =
+    "/mnt/stateful_partition/unencrypted/.powerwash_completed";
+constexpr char kPowerWashReportedFile[] =
+    "/var/lib/tpm_manager/.powerwash_reported";
 
 #if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
@@ -338,6 +345,8 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     reply->set_status(STATUS_SUCCESS);
     return reply;
   }
+
+  CheckPowerWashResult(ownership_status);
 
   // The precondition of DA reset is not satisfied; resets the timer so it
   // doesn't get triggered immediately.
@@ -1252,6 +1261,30 @@ void TpmManagerService::ShutdownTask() {
   });
   OTHER_TPM_SECTION();
   TPM_SELECT_END;
+}
+
+// Report power wash result if this is the first boot after power wash.
+void TpmManagerService::CheckPowerWashResult(
+    const TpmStatus::TpmOwnershipStatus status) {
+  // .powerwash_completed is created by clobber-state no matter power wash
+  // success or not.
+  base::FilePath complete_file = base::FilePath(kPowerWashCompletedFile);
+  base::FilePath report_file = base::FilePath(kPowerWashReportedFile);
+  bool complete_file_exist = base::PathExists(complete_file);
+  bool report_file_exist = base::PathExists(report_file);
+
+  if (complete_file_exist && !report_file_exist) {
+    if (base::WriteFile(report_file, "", 0) < 0) {
+      LOG(WARNING) << "Unable to create " << report_file.value();
+    }
+    tpm_manager_metrics_->ReportPowerWashResult(
+        TpmStatus::kTpmUnowned == status ? TPMPowerWashResult::kTPMClearSuccess
+                                         : TPMPowerWashResult::kTPMClearFailed);
+  } else if (!complete_file_exist && report_file_exist) {
+    if (!base::DeleteFile(report_file)) {
+      LOG(WARNING) << "Unable to delete " << report_file.value();
+    }
+  }
 }
 
 template <typename ReplyProtobufType,

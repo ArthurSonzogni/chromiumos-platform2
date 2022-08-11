@@ -112,4 +112,19 @@ TEST_F(TpmManagerMetricsTest, ReportTimeToTakeOwnership) {
   tpm_manager_metrics_.ReportTimeToTakeOwnership(elapsed_time);
 }
 
+TEST_F(TpmManagerMetricsTest, ReportPowerWashResult) {
+  const TPMPowerWashResult results[]{
+      TPMPowerWashResult::kTPMClearSuccess,
+      TPMPowerWashResult::kTPMClearFailed,
+  };
+  constexpr auto max_value = static_cast<int>(TPMPowerWashResult::kMaxValue);
+  for (auto result : results) {
+    EXPECT_CALL(mock_metrics_library_,
+                SendEnumToUMA(kTPMPowerWashResult, static_cast<int>(result),
+                              max_value + 1))
+        .WillOnce(Return(true));
+    tpm_manager_metrics_.ReportPowerWashResult(result);
+  }
+}
+
 }  // namespace tpm_manager

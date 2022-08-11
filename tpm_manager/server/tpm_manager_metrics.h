@@ -21,6 +21,13 @@ struct SecretStatus {
   bool has_reset_lock_permissions = false;
 };
 
+// The TPM Power wash result
+enum class TPMPowerWashResult {
+  kTPMClearSuccess = 0,
+  kTPMClearFailed = 1,
+  kMaxValue = kTPMClearFailed,
+};
+
 // This class provides wrapping functions for callers to report DA-related
 // metrics without bothering to know all the constant declarations.
 class TpmManagerMetrics : private MetricsLibrary {
@@ -45,6 +52,8 @@ class TpmManagerMetrics : private MetricsLibrary {
   virtual void ReportTimeToTakeOwnership(base::TimeDelta elapsed_time);
 
   virtual void ReportAlertsData(const TpmStatus::AlertsData& alerts);
+
+  virtual void ReportPowerWashResult(TPMPowerWashResult result);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {
