@@ -17,6 +17,7 @@ constexpr char kCrosHealthdDiagnostics[] = "CrosHealthdDiagnostics";
 constexpr char kCrosHealthdEvent[] = "CrosHealthdEvent";
 constexpr char kCrosHealthdProbe[] = "CrosHealthdProbe";
 constexpr char kCrosHealthdSystem[] = "CrosHealthdSystem";
+constexpr char kIioSensor[] = "IioSensor";
 
 };  // namespace chromeos::mojo_services
 
