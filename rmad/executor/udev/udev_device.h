@@ -18,14 +18,25 @@ namespace rmad {
 
 class UdevDevice {
  public:
-  explicit UdevDevice(std::unique_ptr<brillo::UdevDevice> dev);
-  virtual ~UdevDevice();
+  UdevDevice() = default;
+  virtual ~UdevDevice() = default;
 
-  bool IsRemovable() const;
-  std::string GetSysPath() const;
-  std::string GetDeviceNode() const;
-  // Not a const method because it updates |blkid_cache_|.
-  std::string GetFileSystemType();
+  virtual bool IsRemovable() const = 0;
+  virtual std::string GetSysPath() const = 0;
+  virtual std::string GetDeviceNode() const = 0;
+  // Not a const method because the implementation updates |blkid_cache_|.
+  virtual std::string GetFileSystemType() = 0;
+};
+
+class UdevDeviceImpl : public UdevDevice {
+ public:
+  explicit UdevDeviceImpl(std::unique_ptr<brillo::UdevDevice> dev);
+  virtual ~UdevDeviceImpl();
+
+  bool IsRemovable() const override;
+  std::string GetSysPath() const override;
+  std::string GetDeviceNode() const override;
+  std::string GetFileSystemType() override;
 
  private:
   std::unique_ptr<brillo::UdevDevice> dev_;

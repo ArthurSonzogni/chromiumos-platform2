@@ -19,21 +19,27 @@ class UdevDevice;
 
 class UdevUtils {
  public:
-  explicit UdevUtils(std::unique_ptr<brillo::Udev> udev);
-  virtual ~UdevUtils();
+  UdevUtils() = default;
+  virtual ~UdevUtils() = default;
 
-  std::vector<std::unique_ptr<UdevDevice>> EnumerateBlockDevices();
-  bool GetBlockDeviceFromDevicePath(const std::string& device_path,
-                                    std::unique_ptr<UdevDevice>* dev);
-
- private:
-  std::unique_ptr<brillo::Udev> udev_;
+  virtual std::vector<std::unique_ptr<UdevDevice>> EnumerateBlockDevices() = 0;
+  virtual bool GetBlockDeviceFromDevicePath(
+      const std::string& device_path, std::unique_ptr<UdevDevice>* dev) = 0;
 };
 
 class UdevUtilsImpl : public UdevUtils {
  public:
   UdevUtilsImpl();
+  // Used to inject mocked |udev| for testing.
+  explicit UdevUtilsImpl(std::unique_ptr<brillo::Udev> udev);
   ~UdevUtilsImpl() override;
+
+  std::vector<std::unique_ptr<UdevDevice>> EnumerateBlockDevices() override;
+  bool GetBlockDeviceFromDevicePath(const std::string& device_path,
+                                    std::unique_ptr<UdevDevice>* dev) override;
+
+ private:
+  std::unique_ptr<brillo::Udev> udev_;
 };
 
 }  // namespace rmad

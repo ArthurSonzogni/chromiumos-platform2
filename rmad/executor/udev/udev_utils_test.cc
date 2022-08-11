@@ -61,7 +61,7 @@ TEST_F(UdevUtilsTest, EnumerateBlockDevices) {
         return device;
       }));
 
-  auto udev_utils = std::make_unique<UdevUtils>(std::move(udev));
+  auto udev_utils = std::make_unique<UdevUtilsImpl>(std::move(udev));
   std::vector<std::unique_ptr<UdevDevice>> devices =
       udev_utils->EnumerateBlockDevices();
   EXPECT_EQ(2, devices.size());
@@ -99,7 +99,7 @@ TEST_F(UdevUtilsTest, GetBlockDeviceFromDevicePath) {
         return device;
       }));
 
-  auto udev_utils = std::make_unique<UdevUtils>(std::move(udev));
+  auto udev_utils = std::make_unique<UdevUtilsImpl>(std::move(udev));
   std::unique_ptr<UdevDevice> device;
   EXPECT_TRUE(
       udev_utils->GetBlockDeviceFromDevicePath("/sys/test/path2", &device));

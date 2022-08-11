@@ -24,17 +24,17 @@ bool ContainsRemovableAttribute(const brillo::UdevDevice& device) {
 
 namespace rmad {
 
-UdevDevice::UdevDevice(std::unique_ptr<brillo::UdevDevice> dev)
+UdevDeviceImpl::UdevDeviceImpl(std::unique_ptr<brillo::UdevDevice> dev)
     : dev_(std::move(dev)), blkid_cache_(nullptr) {}
 
-UdevDevice::~UdevDevice() {
+UdevDeviceImpl::~UdevDeviceImpl() {
   // Deallocate the blkid cache.
   if (blkid_cache_) {
     blkid_put_cache(blkid_cache_);
   }
 }
 
-bool UdevDevice::IsRemovable() const {
+bool UdevDeviceImpl::IsRemovable() const {
   if (ContainsRemovableAttribute(*dev_)) {
     return true;
   }
@@ -47,15 +47,15 @@ bool UdevDevice::IsRemovable() const {
   return false;
 }
 
-std::string UdevDevice::GetSysPath() const {
+std::string UdevDeviceImpl::GetSysPath() const {
   return std::string(dev_->GetSysPath());
 }
 
-std::string UdevDevice::GetDeviceNode() const {
+std::string UdevDeviceImpl::GetDeviceNode() const {
   return std::string(dev_->GetDeviceNode());
 }
 
-std::string UdevDevice::GetFileSystemType() {
+std::string UdevDeviceImpl::GetFileSystemType() {
   const char* device_file = dev_->GetDeviceNode();
   std::string ret;
   if (blkid_cache_ || blkid_get_cache(&blkid_cache_, "/dev/null") == 0) {

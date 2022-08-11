@@ -29,7 +29,7 @@ TEST_F(UdevDeviceTest, IsRemovable) {
   EXPECT_CALL(*dev, GetSysAttributeValue(Eq("removable")))
       .WillOnce(Return("1"));
 
-  auto udev_device = std::make_unique<UdevDevice>(std::move(dev));
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
   EXPECT_TRUE(udev_device->IsRemovable());
 }
 
@@ -39,7 +39,7 @@ TEST_F(UdevDeviceTest, IsNotRemovable) {
       .WillOnce(Return("0"));
   EXPECT_CALL(*dev, GetParent()).WillOnce(Return(ByMove(nullptr)));
 
-  auto udev_device = std::make_unique<UdevDevice>(std::move(dev));
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
   EXPECT_FALSE(udev_device->IsRemovable());
 }
 
@@ -54,7 +54,7 @@ TEST_F(UdevDeviceTest, IsRemovable_MultiLayer) {
   EXPECT_CALL(*dev, GetParent())
       .WillOnce(Return(ByMove(std::move(parent_dev))));
 
-  auto udev_device = std::make_unique<UdevDevice>(std::move(dev));
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
   EXPECT_TRUE(udev_device->IsRemovable());
 }
 
@@ -62,7 +62,7 @@ TEST_F(UdevDeviceTest, GetSysPath) {
   auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
   EXPECT_CALL(*dev, GetSysPath()).WillOnce(Return("/sys/path"));
 
-  auto udev_device = std::make_unique<UdevDevice>(std::move(dev));
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
   EXPECT_EQ("/sys/path", udev_device->GetSysPath());
 }
 
@@ -70,7 +70,7 @@ TEST_F(UdevDeviceTest, GetDeviceNode) {
   auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
   EXPECT_CALL(*dev, GetDeviceNode()).WillOnce(Return("/dev/path"));
 
-  auto udev_device = std::make_unique<UdevDevice>(std::move(dev));
+  auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
   EXPECT_EQ("/dev/path", udev_device->GetDeviceNode());
 }
 
