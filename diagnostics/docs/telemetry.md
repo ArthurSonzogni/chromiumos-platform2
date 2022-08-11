@@ -24,8 +24,10 @@ reality.
 ### Mojo interface
 
 `ProbeTelemetryInfo(categories)` in `CrosHealthdProbeService` interface can
-grab the data from selected `categories` from a single IPC call. See the Mojo
-interface comment for the detail.
+grab the data from selected `categories` from a single IPC call. And
+`ProbeProcessInfo(process_id)` can retrieve the [process
+information](#ProcessInfo) for a specific process_id. See the Mojo interface
+comment for the detail.
 
 Note that, __Strongly recommend__ to split your request into multiple and fetch
 a subset of interesting categories in each call, and setup disconnect handler
@@ -41,6 +43,9 @@ We recommended to [reach us][team-contact] before using this in your project.
 For telemetry, we can initiate a request via `cros-health-tool telem
 --category=<xx>` where `<xx>` is the category name. The list of category names
 could be checked via `cros-health-tool telem --help`.
+
+For process, we can initiate a request via `cros-health-tool telem
+--process=<process_id>` to retrieve the process information.
 
 ## Telemetry categories
 
@@ -1094,6 +1099,45 @@ could be checked via `cros-health-tool telem --help`.
 | ----- | ---- | ----------- |
 |  |  | (planned) Video Controller name |
 |  |  | (planned) Video RAM (Bytes) |
+
+## Process
+
+##### ProcessInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| command | string | Command which started the process. |
+| user_id | uint32 | User the process is running as. |
+| priority | int8 | If the process is running a real-time scheduling policy, this field is the negated scheduling priority, minus one. Real-time priorities range from 1 to 99, so this will range from -2 to -100. If the process is not running a real-time scheduling priority, this field will be the raw nice value, where 0 corresponds to the user-visible high priority nice value of -20, and 39 corresponds to the user-visible low priority nice value of 19. |
+| nice | int8 | User-visible nice value of the process, from a low priority of 19 to a high priority of -20. |
+| uptime_ticks | uint64 | Uptime of the process, in clock ticks. |
+| state | [ProcessState](#ProcessState) | State of the process. |
+| total_memory_kib | uint32 | Total memory allocated to the process, in KiB. |
+| resident_memory_kib | uint32 | Amount of resident memory currently used by the process, in KiB. |
+| free_memory_kib | uint32 | Unused memory available to the process, in KiB. This will always be &#124;total_memory_kib&#124; - &#124;resident_memory_kib&#124;. |
+| bytes_read | uint64 | The sum of bytes passed to system read calls. This includes terminal I/O and is independent of whether the physical disk is accessed. |
+| bytes_written | uint64 | The sum of bytes passed to system write calls. This includes terminal I/O and is independent of whether the physical disk is accessed. |
+| read_system_calls | uint64 | Attempted count of read syscalls. |
+| write_system_calls | uint64 | Attempted count of write syscalls. |
+| physical_bytes_read | uint64 | Attempt to count the number of bytes which this process really did cause to be fetched from the storage layer. |
+| physical_bytes_written | uint64 | Attempt to count the number of bytes which this process caused to be sent to the storage layer. |
+| cancelled_bytes_written | uint64 | Number of bytes which this process caused to not happen, by truncating pagecache. |
+| name | string? | Filename of the executable. |
+| parent_process_id | uint32 | PID of the parent of this process. |
+| process_group_id | uint32 | Process group ID of the group. |
+| threads | uint32 | Number of threads in this process. |
+
+##### ProcessState
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown. |
+| kRunning | The process is running. |
+| kSleeping | The process is sleeping in an interruptible wait. |
+| kWaiting | The process is waiting in an uninterruptible disk sleep. |
+| kZombie | The process is a zombie. |
+| kStopped | The process is stopped on a signal. |
+| kTracingStop | The process is stopped by tracing. |
+| kDead | The process is dead. |
+| kIdle | The process is idle. |
 
 ## Events
 
