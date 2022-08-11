@@ -12373,6 +12373,7 @@ mno {
         apn : "firstnet-broadband"
         is_attach_apn : true
       }
+      mtu : 1342
     }
   }
 }
