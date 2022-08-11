@@ -145,13 +145,8 @@ event --help`.
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-|  |  | (planned) Radio Connected (Desired) |
-| name |  | (planned) Name of connected client |
-| address |  | (planned) MAC of connected client |
 |  |  | (planned) TX Bytes (total so far) |
 |  |  | (planned) RX Bytets (total so far) |
-|  |  | (planned) Radio On (Desired) |
-|  |  | (planned) Radio Connected (Desired) |
 
 ####  Host
 
@@ -159,7 +154,6 @@ event --help`.
 | ----- | ---- | ----------- |
 |  |  | (planned) TX Bytes (total so far) |
 |  |  | (planned) RX Bytets (total so far) |
-|  |  | (planned) Radio On (Desired) |
 
 #####  BluetoothAdapterInfo
 | Field | Type | Description |
@@ -346,6 +340,12 @@ event --help`.
 
 #### Virtualization
 
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| VMXLockedInBIOS |  | (planned) Is VMX locked by the device BIOS |
+| VMXEnabled |  | (planned) VMX - Intel Virtualisation is used to control certain features such as crostini. It is useful to know if it is enabled to allow us to gate or preempt issues with features like crostini. |
+| DevKVMExists |  | (planned) This allows us to verify if a processor supports virtualisation or not. |
+
 ##### VirtualizationInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
@@ -412,12 +412,6 @@ event --help`.
 | kVMX | The cpu supports Intel virtualization (VT-x). |
 | kSVM | The cpu supports AMD virtualization (AMD-V). |
 
-####  Logical Core
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-|  |  | (planned) CPU flags in /proc/cpuinfo |
-
 #####  LogicalCpuInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
@@ -448,17 +442,6 @@ event --help`.
 | ----- | ---- | ----------- |
 | label | string? | Temperature channel label, if found on the device. |
 | temperature_celsius | int32 | CPU temperature in Celsius. |
-
-####  Virtualization
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| VMXLockedInBIOS |  | (planned) Is VMX locked by the device BIOS |
-| VMXEnabled |  | (planned) VMX - Intel Virtualisation is used to control certain features such as crostini. It is useful to know if it is enabled to allow us to gate or preempt issues with features like crostini. |
-| SMTActive |  | (planned) SMT is the AMD version of Intel hyper threading, knowing its bios status is useful for assessing security vulnerabilities |
-| SMTControl |  | (planned) I believe this is used to assess is the OS can control SMT |
-| DevKVMExists |  | (planned) This allows us to verify if a processor supports virtualisation or not. |
-
 
 ###  Dell EC
 
@@ -1022,13 +1005,9 @@ event --help`.
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-|  |  | (planned) System Model |
 |  |  | (planned) Dell product name |
 |  |  | (planned) Asset Tag |
 |  |  | (planned) UUID |
-|  |  | (planned) Manufacture Date |
-|  |  | (planned) First Power Date |
-|  |  | (planned) SKU number |
 |  |  | (planned) System ID |
 
 #####  VpdInfo
