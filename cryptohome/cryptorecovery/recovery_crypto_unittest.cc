@@ -17,6 +17,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/fake_platform.h"
+#include "cryptohome/filesystem_layout.h"
 
 using brillo::SecureBlob;
 using hwsec_foundation::BigNumToSecureBlob;
@@ -30,6 +31,7 @@ namespace cryptorecovery {
 namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
+const char kCorruptedRecoveryIdContainer[] = "Corrupted RecoveryId container";
 const char kFakeDeviceId[] = "fake device id";
 const char kFakeGaiaAccessToken[] = "fake access token";
 const char kFakeGaiaId[] = "fake gaia id";
@@ -499,14 +501,41 @@ TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
   EXPECT_NE(recovery_id, new_recovery_id);
 }
 
-TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadata) {
+TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFailure) {
   OnboardingMetadata onboarding_metadata;
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
-  recovery_->GenerateOnboardingMetadata(account_id, kFakeGaiaId, kFakeDeviceId,
-                                        &onboarding_metadata);
+  // No RecoveryId - OnboardingMetadata generation fails.
+  EXPECT_FALSE(recovery_->GenerateOnboardingMetadata(
+      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
+}
+
+TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
+  OnboardingMetadata onboarding_metadata;
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
+      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
   EXPECT_EQ(onboarding_metadata.cryptohome_user, kFakeGaiaId);
   EXPECT_EQ(onboarding_metadata.device_user_id, kFakeDeviceId);
+  EXPECT_EQ(onboarding_metadata.recovery_id, recovery_id);
+}
+
+TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
+  OnboardingMetadata onboarding_metadata;
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_TRUE(platform_.WriteStringToFileAtomicDurable(
+      GetRecoveryIdPath(account_id), kCorruptedRecoveryIdContainer,
+      kKeyFilePermissions));
+  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
+      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
+  EXPECT_NE(onboarding_metadata.recovery_id, recovery_id);
 }
 
 }  // namespace cryptorecovery

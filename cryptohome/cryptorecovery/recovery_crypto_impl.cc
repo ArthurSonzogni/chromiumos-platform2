@@ -847,9 +847,12 @@ bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
     onboarding_metadata->form_factor = device_type;
   }
   onboarding_metadata->rlz_code = GetRlzCode();
+  // TODO(mslus): Return more granular error codes (not just an empty string)
+  // and try to re-generate a RecoveryId in case it existed before but is
+  // corrupted.
   std::string recovery_id = LoadStoredRecoveryId(account_id);
   if (recovery_id.empty()) {
-    LOG(ERROR) << "Unable to get the valid Recovery Id";
+    LOG(ERROR) << "Unable to get a valid Recovery Id";
     return false;
   }
   onboarding_metadata->recovery_id = recovery_id;
@@ -878,8 +881,6 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
                          recovery_id_pb.recovery_id().end()));
 }
 
-// TODO(mslus): Update the logic to generate a new CryptoRecoveryIdContainer
-// file if LoadPersistedRecoveryIdContainer fails.
 bool RecoveryCryptoImpl::GenerateRecoveryId(
     const AccountIdentifier& account_id) const {
   base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
@@ -888,14 +889,13 @@ bool RecoveryCryptoImpl::GenerateRecoveryId(
     return false;
   }
   CryptoRecoveryIdContainer recovery_id_pb;
-  if (IsRecoveryIdAvailable(recovery_id_path)) {
-    if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
-      return false;
-    }
-    if (!RotateRecoveryId(&recovery_id_pb)) {
-      return false;
-    }
-  } else {
+  if (!IsRecoveryIdAvailable(recovery_id_path) ||
+      !LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb) ||
+      !RotateRecoveryId(&recovery_id_pb)) {
+    // Persisted RecoveryIdContainer cannot be retrieved because it has been not
+    // created before or there was an error on storage access attempt so we are
+    // re-generating it.
+    recovery_id_pb.Clear();
     GenerateInitialRecoveryId(&recovery_id_pb);
   }
   if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb)) {
