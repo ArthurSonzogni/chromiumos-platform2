@@ -3,25 +3,115 @@
  * found in the LICENSE file.
  */
 
+#include "hal/fake/camera_hal.h"
+
+#include <base/no_destructor.h>
+
+#include "base/strings/string_number_conversions.h"
+#include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
 
 namespace cros {
+
+CameraHal::CameraHal() = default;
+
+CameraHal::~CameraHal() = default;
+
+CameraHal& CameraHal::GetInstance() {
+  static CameraHal camera_hal;
+  return camera_hal;
+}
+
+int CameraHal::GetNumberOfCameras() const {
+  return 0;
+}
+
+int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
+  return 0;
+}
+
+int CameraHal::Init() {
+  return 0;
+}
+
+void CameraHal::SetUp(CameraMojoChannelManagerToken* token) {}
+
+void CameraHal::TearDown() {}
+
+void CameraHal::SetPrivacySwitchCallback(
+    PrivacySwitchStateChangeCallback callback) {}
+
+int CameraHal::OpenDevice(int id,
+                          const hw_module_t* module,
+                          hw_device_t** hw_device,
+                          ClientType client_type) {
+  return -EINVAL;
+}
+
+int CameraHal::GetCameraInfo(int id,
+                             struct camera_info* info,
+                             ClientType client_type) {
+  return -EINVAL;
+}
+
+static int camera_device_open_ext(const hw_module_t* module,
+                                  const char* name,
+                                  hw_device_t** device,
+                                  ClientType client_type) {
+  // Make sure hal adapter loads the correct symbol.
+  if (module != &HAL_MODULE_INFO_SYM.common) {
+    LOGF(ERROR) << "Invalid module " << module << " expected "
+                << &HAL_MODULE_INFO_SYM.common;
+    return -EINVAL;
+  }
+
+  int id;
+  if (!base::StringToInt(name, &id)) {
+    LOGF(ERROR) << "Invalid camera name " << name;
+    return -EINVAL;
+  }
+  return CameraHal::GetInstance().OpenDevice(id, module, device, client_type);
+}
+
+static int get_camera_info_ext(int id,
+                               struct camera_info* info,
+                               ClientType client_type) {
+  return CameraHal::GetInstance().GetCameraInfo(id, info, client_type);
+}
+
 static int camera_device_open(const hw_module_t* module,
                               const char* name,
                               hw_device_t** device) {
-  return -ENODEV;
+  return camera_device_open_ext(module, name, device, ClientType::kChrome);
 }
 
 static int get_number_of_cameras() {
-  return 0;
+  return CameraHal::GetInstance().GetNumberOfCameras();
 }
 
 static int get_camera_info(int id, struct camera_info* info) {
-  return -ENODEV;
+  return get_camera_info_ext(id, info, ClientType::kChrome);
 }
 
 static int set_callbacks(const camera_module_callbacks_t* callbacks) {
-  return 0;
+  return CameraHal::GetInstance().SetCallbacks(callbacks);
+}
+
+static int init() {
+  return CameraHal::GetInstance().Init();
+}
+
+static void set_up(CameraMojoChannelManagerToken* token) {
+  CameraHal::GetInstance().SetUp(token);
+}
+
+static void tear_down() {
+  CameraHal::GetInstance().TearDown();
+}
+
+static void set_privacy_switch_callback(
+    PrivacySwitchStateChangeCallback callback) {
+  CameraHal::GetInstance().SetPrivacySwitchCallback(callback);
 }
 
 static void get_vendor_tag_ops(vendor_tag_ops_t* ops) {}
@@ -35,30 +125,6 @@ static int open_legacy(const struct hw_module_t* module,
 
 static int set_torch_mode(const char* camera_id, bool enabled) {
   return -ENOSYS;
-}
-
-static int init() {
-  return 0;
-}
-
-static void set_up(CameraMojoChannelManagerToken* token) {}
-
-static void tear_down() {}
-
-static void set_privacy_switch_callback(
-    PrivacySwitchStateChangeCallback callback) {}
-
-static int camera_device_open_ext(const hw_module_t* module,
-                                  const char* name,
-                                  hw_device_t** device,
-                                  ClientType client_type) {
-  return -EINVAL;
-}
-
-static int get_camera_info_ext(int id,
-                               struct camera_info* info,
-                               ClientType client_type) {
-  return -EINVAL;
 }
 }  // namespace cros
 
