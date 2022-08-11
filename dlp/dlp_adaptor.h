@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/containers/flat_map.h>
+#include <base/containers/flat_set.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <brillo/dbus/async_event_sequencer.h>
@@ -132,7 +132,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       base::OnceCallback<void(std::vector<std::string>, const std::string&)>;
   // Callback on IsFilesTransferRestricted D-Bus request.
   void OnIsFilesTransferRestricted(
-      base::flat_map<std::string, std::vector<std::string>> transferred_files,
+      base::flat_set<std::string> transferred_files,
       CheckFilesTransferCallback callback,
       const std::vector<uint8_t>& response_blob);
   void OnIsFilesTransferRestrictedError(CheckFilesTransferCallback callback,

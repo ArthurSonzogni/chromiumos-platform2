@@ -243,9 +243,10 @@ void DlpAdaptor::RequestFileAccess(
     return;
   }
 
-  std::vector<std::string> file_sources;
+  IsFilesTransferRestrictedRequest matching_request;
   std::vector<uint64_t> inodes;
-  for (uint64_t inode_n : request.inodes()) {
+  for (const auto& file_path : request.files_paths()) {
+    const ino_t inode_n = GetInodeValue(file_path);
     const std::string inode_s = base::NumberToString(inode_n);
     std::string serialized_proto;
     const leveldb::Status get_status =
@@ -256,8 +257,11 @@ void DlpAdaptor::RequestFileAccess(
     }
     FileEntry file_entry;
     file_entry.ParseFromString(serialized_proto);
-    file_sources.push_back(file_entry.source_url());
     inodes.push_back(inode_n);
+
+    FileMetadata* file_metadata = matching_request.add_transferred_files();
+    file_metadata->set_source_url(file_entry.source_url());
+    file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
   if (inodes.empty()) {
@@ -272,17 +276,15 @@ void DlpAdaptor::RequestFileAccess(
           &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
           std::move(response), std::move(remote_fd)));
 
-  IsFilesTransferRestrictedRequest matching_request;
-  for (const std::string& file_source : file_sources) {
-    matching_request.add_files_sources(file_source);
-  }
   matching_request.set_destination_url(request.destination_url());
+  matching_request.set_destination_component(request.destination_component());
+  matching_request.set_file_action(FileAction::TRANSFER);
 
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
-                     inodes, request.process_id(), std::move(local_fd),
-                     std::move(callbacks.first)),
+                     std::move(inodes), request.process_id(),
+                     std::move(local_fd), std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
                      base::Unretained(this), std::move(callbacks.second)));
 }
@@ -341,7 +343,7 @@ void DlpAdaptor::CheckFilesTransfer(
   }
 
   IsFilesTransferRestrictedRequest matching_request;
-  base::flat_map<std::string, std::vector<std::string>> transferred_files;
+  base::flat_set<std::string> transferred_files;
   for (const auto& file_path : request.files_paths()) {
     const ino_t file_inode = GetInodeValue(file_path);
     std::string serialized_proto;
@@ -353,7 +355,11 @@ void DlpAdaptor::CheckFilesTransfer(
 
     FileEntry file_entry;
     file_entry.ParseFromString(serialized_proto);
-    transferred_files[file_entry.source_url()].push_back(file_path);
+    transferred_files.insert(file_path);
+
+    FileMetadata* file_metadata = matching_request.add_transferred_files();
+    file_metadata->set_source_url(file_entry.source_url());
+    file_metadata->set_path(file_path);
   }
 
   if (transferred_files.empty()) {
@@ -361,10 +367,9 @@ void DlpAdaptor::CheckFilesTransfer(
     return;
   }
 
-  for (const auto& [source_url, file_paths] : transferred_files) {
-    matching_request.add_files_sources(source_url);
-  }
   matching_request.set_destination_url(request.destination_url());
+  matching_request.set_destination_component(request.destination_component());
+  matching_request.set_file_action(request.file_action());
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
@@ -505,13 +510,13 @@ void DlpAdaptor::OnRequestFileAccess(
     return;
   }
 
-  if (response.files_sources().empty()) {
+  if (response.restricted_files().empty()) {
     int lifeline_fd = AddLifelineFd(local_fd.get());
     approved_requests_.insert_or_assign(lifeline_fd,
                                         std::make_pair(std::move(inodes), pid));
   }
 
-  std::move(callback).Run(response.files_sources().empty(),
+  std::move(callback).Run(response.restricted_files().empty(),
                           /*error_message=*/std::string());
 }
 
@@ -536,7 +541,7 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
 }
 
 void DlpAdaptor::OnIsFilesTransferRestricted(
-    base::flat_map<std::string, std::vector<std::string>> transferred_files,
+    base::flat_set<std::string> transferred_files,
     CheckFilesTransferCallback callback,
     const std::vector<uint8_t>& response_blob) {
   IsFilesTransferRestrictedResponse response;
@@ -549,10 +554,9 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
   }
 
   std::vector<std::string> restricted_files;
-  for (const auto& file_source : *response.mutable_files_sources()) {
-    auto files_path = transferred_files[file_source];
-    restricted_files.insert(restricted_files.end(), files_path.begin(),
-                            files_path.end());
+  for (const auto& file : *response.mutable_restricted_files()) {
+    DCHECK(base::Contains(transferred_files, file.path()));
+    restricted_files.push_back(file.path());
   }
 
   std::move(callback).Run(std::move(restricted_files),

@@ -120,9 +120,11 @@ class DlpAdaptorTest : public ::testing::Test {
   }
 
   std::vector<uint8_t> CreateSerializedRequestFileAccessRequest(
-      std::vector<ino_t> inodes, int pid, const std::string& destination) {
+      std::vector<std::string> files_paths,
+      int pid,
+      const std::string& destination) {
     RequestFileAccessRequest request;
-    *request.mutable_inodes() = {inodes.begin(), inodes.end()};
+    *request.mutable_files_paths() = {files_paths.begin(), files_paths.end()};
     request.set_process_id(pid);
     request.set_destination_url(destination);
 
@@ -178,8 +180,8 @@ class DlpAdaptorTest : public ::testing::Test {
     dbus::MessageWriter writer(response.get());
 
     IsFilesTransferRestrictedResponse response_proto;
-    *response_proto.mutable_files_sources() = {restricted_files_srcs_.begin(),
-                                               restricted_files_srcs_.end()};
+    *response_proto.mutable_restricted_files() = {restricted_files_.begin(),
+                                                  restricted_files_.end()};
 
     writer.AppendProtoAsArrayOfBytes(response_proto);
     std::move(*response_callback).Run(response.get());
@@ -187,7 +189,7 @@ class DlpAdaptorTest : public ::testing::Test {
 
  protected:
   bool is_file_policy_restricted_;
-  std::vector<std::string> restricted_files_srcs_;
+  std::vector<FileMetadata> restricted_files_;
 
   DlpAdaptorTestHelper helper_;
 };
@@ -313,8 +315,9 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response), CreateSerializedRequestFileAccessRequest(
-                               {inode1, inode2}, kPid, "destination"));
+      std::move(response),
+      CreateSerializedRequestFileAccessRequest(
+          {file_path1.value(), file_path2.value()}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
@@ -382,8 +385,9 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response), CreateSerializedRequestFileAccessRequest(
-                               {inode1, inode2}, kPid, "destination"));
+      std::move(response),
+      CreateSerializedRequestFileAccessRequest(
+          {file_path1.value(), file_path2.value()}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
@@ -443,8 +447,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response),
-      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
 
@@ -474,7 +478,9 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
-  restricted_files_srcs_.emplace_back(file_path.value());
+  FileMetadata file_metadata;
+  file_metadata.set_path(file_path.value());
+  restricted_files_.push_back(std::move(file_metadata));
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
@@ -497,8 +503,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response),
-      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, "destination"));
 
   EXPECT_FALSE(allowed);
   EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
@@ -557,8 +563,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response),
-      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
@@ -589,7 +595,6 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Request access to the file.
   std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
@@ -608,8 +613,8 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response),
-      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {file_path.value()}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
 }
@@ -789,8 +794,10 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
       CreateSerializedAddFileRequest(file_path2.value(), source2, "referrer2"));
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
-  restricted_files_srcs_.clear();
-  restricted_files_srcs_.push_back(source1);
+  restricted_files_.clear();
+  FileMetadata file1_metadata;
+  file1_metadata.set_path(file_path1.value());
+  restricted_files_.push_back(std::move(file1_metadata));
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
