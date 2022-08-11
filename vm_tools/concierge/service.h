@@ -294,6 +294,12 @@ class Service final {
   void HandleSuspendImminent();
   void HandleSuspendDone();
 
+  // Send D-Bus message to check if a Feature is enabled.
+  // If there was an error with the dbus message (ex. Feature not present),
+  // |error_out| is set with the message.
+  std::optional<bool> IsFeatureEnabled(const std::string& feature_name,
+                                       std::string* error_out);
+
   // Initiate a disk resize request for the VM identified by |owner_id| and
   // |vm_name|.
   void ResizeDisk(const std::string& owner_id,
@@ -374,6 +380,10 @@ class Service final {
       bool is_termina,
       std::string* failure_reason);
 
+  // Get GPU cache path for the VM.
+  base::FilePath GetVmGpuCachePathInternal(const std::string& owner_id,
+                                           const std::string& vm_name);
+
   // Prepares the GPU shader disk cache directories and if necessary erases
   // old caches for all VMs. Returns the prepared paths.
   VMGpuCacheSpec PrepareVmGpuCachePaths(const std::string& owner_id,
@@ -438,6 +448,7 @@ class Service final {
   dbus::ObjectProxy* vm_permission_service_proxy_;     // Owned by |bus_|.
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
 
   // Used communicating with featured.
   std::unique_ptr<feature::PlatformFeatures> platform_features_;

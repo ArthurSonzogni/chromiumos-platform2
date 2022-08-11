@@ -67,6 +67,7 @@
 #include <blkid/blkid.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/files/safe_fd.h>
+#include <brillo/osrelease_reader.h>
 #include <brillo/process/process.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
@@ -209,6 +210,9 @@ constexpr const char kMDSFilePath[] =
 constexpr char kLocaltimePath[] = "/etc/localtime";
 // Path to zone info directory in host.
 constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
+
+// Feature name of per-boot-vm-shader-cache
+constexpr char kPerBootVmShaderCacheFeature[] = "VmPerBootShaderCache";
 
 constexpr gid_t kCrosvmUGid = 299;
 
@@ -574,26 +578,6 @@ std::string GetMd5HashForFilename(const std::string& str) {
   return result;
 }
 
-base::FilePath GetVmGpuCachePathInternal(const std::string& owner_id,
-                                         const std::string& vm_name) {
-  std::string vm_dir;
-  // Note, we can not have '=' symbols in this path or it will break crosvm's
-  // commandline argument parsing, so we use OMIT_PADDING.
-  base::Base64UrlEncode(vm_name, base::Base64UrlEncodePolicy::OMIT_PADDING,
-                        &vm_dir);
-
-  std::string bootid_dir;
-  CHECK(base::ReadFileToString(base::FilePath(kBootIdFile), &bootid_dir));
-  bootid_dir = GetMd5HashForFilename(bootid_dir);
-
-  return base::FilePath(kCryptohomeRoot)
-      .Append(kCrosvmDir)
-      .Append(owner_id)
-      .Append(kCrosvmGpuCacheDir)
-      .Append(bootid_dir)
-      .Append(vm_dir);
-}
-
 bool IsDevModeEnabled() {
   return VbGetSystemPropertyInt("cros_debug") == 1;
 }
@@ -751,6 +735,40 @@ VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
 }
 
 }  // namespace
+
+base::FilePath Service::GetVmGpuCachePathInternal(const std::string& owner_id,
+                                                  const std::string& vm_name) {
+  std::string vm_dir;
+  // Note, we can not have '=' symbols in this path or it will break crosvm's
+  // commandline argument parsing, so we use OMIT_PADDING.
+  base::Base64UrlEncode(vm_name, base::Base64UrlEncodePolicy::OMIT_PADDING,
+                        &vm_dir);
+
+  std::string cache_id;
+  std::string error;
+  std::optional<bool> per_boot_cache =
+      IsFeatureEnabled(kPerBootVmShaderCacheFeature, &error);
+  if (!per_boot_cache.has_value()) {
+    LOG(WARNING) << "Failed to check per-boot cache feature: " << error
+                 << ", failing back to per-boot cache";
+    per_boot_cache = true;
+  }
+
+  // if per-boot cache feature is enabled or we failed to read BUILD_ID from
+  // /etc/os-release, set |cache_id| as boot-id.
+  brillo::OsReleaseReader reader;
+  reader.Load();
+  if (per_boot_cache || !reader.GetString("BUILD_ID", &cache_id)) {
+    CHECK(base::ReadFileToString(base::FilePath(kBootIdFile), &cache_id));
+  }
+
+  return base::FilePath(kCryptohomeRoot)
+      .Append(kCrosvmDir)
+      .Append(owner_id)
+      .Append(kCrosvmGpuCacheDir)
+      .Append(GetMd5HashForFilename(cache_id))
+      .Append(vm_dir);
+}
 
 std::optional<int64_t> Service::GetAvailableMemory() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
@@ -949,6 +967,34 @@ void Service::RunBalloonPolicy() {
         ids, base::BindOnce(&Service::FinishBalloonPolicy,
                             weak_ptr_factory_.GetWeakPtr(), *memory_margins));
   }
+}
+
+std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
+                                              std::string* error_out) {
+  dbus::MethodCall method_call(
+      chromeos::kChromeFeaturesServiceInterface,
+      chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(feature_name);
+
+  dbus::ScopedDBusError error;
+  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+      bus_, chrome_features_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+  if (error.is_set()) {
+    *error_out = error.message();
+    return std::nullopt;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  bool result;
+  if (!reader.PopBool(&result)) {
+    *error_out = "Failed to read bool from D-Bus response";
+    return std::nullopt;
+  }
+
+  *error_out = "";
+  return result;
 }
 
 void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
@@ -1459,6 +1505,16 @@ bool Service::Init() {
   if (!resource_manager_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << resource_manager::kResourceManagerServiceName;
+    return false;
+  }
+
+  // Get the D-Bus proxy for communicating with Chrome Features Service.
+  chrome_features_service_proxy_ = bus_->GetObjectProxy(
+      chromeos::kChromeFeaturesServiceName,
+      dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
+  if (!chrome_features_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << chromeos::kChromeFeaturesServiceName;
     return false;
   }
 
@@ -4629,8 +4685,9 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     const std::string& vm_name,
     bool enable_render_server) {
   base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
-  base::FilePath bootid_path = cache_path.DirName();
-  base::FilePath base_path = bootid_path.DirName();
+  // Cache ID is either boot id or OS build hash
+  base::FilePath cache_id = cache_path.DirName();
+  base::FilePath base_path = cache_id.DirName();
 
   base::FilePath cache_device_path = cache_path.Append("device");
   base::FilePath cache_render_server_path =
@@ -4642,17 +4699,19 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
 
   base::AutoLock guard(cache_mutex_);
 
-  // In order to always provide an empty GPU shader cache on each boot, we hash
-  // the boot_id and erase the whole GPU cache if a directory matching the
-  // current boot_id is not found.
+  // In order to always provide an empty GPU shader cache on each boot or
+  // build id change, we hash the boot_id or build number, and erase the whole
+  // GPU cache if a directory matching the current boot id or build number hash
+  // is not found.
   // For example:
-  // VM cache dir: /run/daemon-store/crosvm/<uid>/gpucache/<bootid>/<vmid>/
-  // Boot dir: /run/daemon-store/crosvm/<uid>/gpucache/<bootid>/
+  // VM cache dir: /run/daemon-store/crosvm/<uid>/gpucache/<cacheid>/<vmid>/
+  // Cache ID dir: /run/daemon-store/crosvm/<uid>/gpucache/<cacheid>/
   // Base dir: /run/daemon-store/crosvm/<uid>/gpucache/
-  // If Boot dir exists we know another VM has already created a fresh base
-  // dir during this boot. Otherwise, we erase Base dir to wipe out any
-  // previous Boot dir.
-  if (!base::DirectoryExists(bootid_path)) {
+  // If Cache ID dir exists we know another VM has already created a fresh base
+  // dir during this boot or OS release. Otherwise, we erase Base dir to wipe
+  // out any previous Cache ID dir.
+  if (!base::DirectoryExists(cache_id)) {
+    LOG(INFO) << "GPU cache dir not found, deleting base directory";
     if (!base::DeletePathRecursively(base_path)) {
       LOG(ERROR) << "Failed to delete gpu cache directory: " << base_path
                  << " shader caching will be disabled.";
