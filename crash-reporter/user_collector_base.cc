@@ -11,9 +11,11 @@
 #include <optional>
 
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <re2/re2.h>
@@ -27,6 +29,7 @@ using base::StringPrintf;
 
 namespace {
 
+const char kRustPanicSigFileTarget[] = "/memfd:RUST_PANIC_SIG (deleted)";
 const char kStatePrefix[] = "State:\t";
 const char kUptimeField[] = "ptime";
 const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
@@ -213,6 +216,38 @@ bool UserCollectorBase::GetStateFromStatus(
   return true;
 }
 
+bool UserCollectorBase::GetRustSignature(pid_t pid, std::string* panic_sig) {
+  const FilePath proc_path = GetProcessPath(pid);
+
+  // Check for a memfd labeled RUST_PANIC_SIG. If it exists, it should be
+  // used as the crash signature.
+  FilePath process_fd_path = proc_path.Append("fd");
+  base::FileEnumerator files(
+      process_fd_path, /*recursive=*/false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (FilePath name = files.Next(); !name.empty(); name = files.Next()) {
+    FilePath target;
+    if (!ReadSymbolicLink(name, &target)) {
+      continue;
+    }
+
+    if (target.value() != kRustPanicSigFileTarget) {
+      continue;
+    }
+
+    std::string contents;
+    if (!base::ReadFileToString(name, &contents)) {
+      LOG(ERROR) << "Unable to recover Rust backtrace: " << name;
+      break;
+    }
+
+    base::TrimWhitespaceASCII(contents.substr(0, contents.find('\n')),
+                              base::TRIM_ALL, panic_sig);
+    return true;
+  }
+  return false;
+}
+
 bool UserCollectorBase::ClobberContainerDirectory(
     const base::FilePath& container_dir) {
   // Delete a pre-existing directory from crash reporter that may have
@@ -276,6 +311,11 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
 
   if (GetProcessTree(pid, proc_log_path)) {
     AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
+  }
+
+  std::string rust_panic_sig;
+  if (GetRustSignature(pid, &rust_panic_sig)) {
+    AddCrashMetaData("sig", rust_panic_sig);
   }
 
   ErrorType error_type =

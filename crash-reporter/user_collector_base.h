@@ -83,6 +83,10 @@ class UserCollectorBase : public CrashCollector {
   bool GetStateFromStatus(const std::vector<std::string>& status_lines,
                           std::string* state);
 
+  // Checks if Rust panic signature was left behind by the ChromeOS panic hook,
+  // and if so, returns true and sets |panic_sig|.
+  bool GetRustSignature(pid_t pid, std::string* panic_sig);
+
   bool ClobberContainerDirectory(const base::FilePath& container_dir);
 
   // Returns the command and arguments for process |pid|. Returns an empty list

@@ -82,6 +82,7 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, GetExecutableBaseNameFromPid);
   FRIEND_TEST(UserCollectorTest, GetFirstLineWithPrefix);
   FRIEND_TEST(UserCollectorTest, GetIdFromStatus);
+  FRIEND_TEST(UserCollectorTest, GetRustSignature);
   FRIEND_TEST(UserCollectorTest, GetStateFromStatus);
   FRIEND_TEST(UserCollectorTest, ParseCrashAttributes);
   FRIEND_TEST(UserCollectorTest, ShouldDumpFiltering);

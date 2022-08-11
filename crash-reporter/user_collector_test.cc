@@ -6,6 +6,7 @@
 
 #include <bits/wordsize.h>
 #include <elf.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <optional>
@@ -559,6 +560,23 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
     EXPECT_EQ(expectation.exists,
               base::PathExists(container_path.Append(expectation.name)));
   }
+}
+
+TEST_F(UserCollectorTest, GetRustSignature) {
+  // We want to use the real proc filesystem.
+  paths::SetPrefixForTesting(base::FilePath());
+
+  int fd = memfd_create("RUST_PANIC_SIG", MFD_CLOEXEC);
+  char dat[] = "Rust panic signature\nignored lines\n...";
+  int count = strlen(dat);
+  EXPECT_EQ(count, write(fd, dat, count));
+
+  std::string panic_sig;
+  bool success = collector_.GetRustSignature(pid_, &panic_sig);
+  EXPECT_EQ(0, close(fd));
+
+  ASSERT_TRUE(success);
+  EXPECT_EQ("Rust panic signature", panic_sig);
 }
 
 TEST_F(UserCollectorTest, ValidateProcFiles) {
