@@ -396,6 +396,8 @@ message SignEnterpriseChallengeRequest {
   optional DeviceTrustSignals device_trust_signals = 9 [deprecated = true];
   // Device Trust Signals
   optional string device_trust_signals_json = 10;
+  // Whether the challenge response should include the customer id.
+  optional bool include_customer_id = 11;
 }
 
 message SignEnterpriseChallengeReply {
