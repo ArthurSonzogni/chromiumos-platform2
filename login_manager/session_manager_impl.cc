@@ -1023,64 +1023,7 @@ void SessionManagerImpl::HandleLockScreenShown() {
   adaptor_.SendScreenIsLockedSignal();
 }
 
-// TODO(b/242003477): Taking raw |MethodCall| to make the second argument
-// optional. Once Ash Chrome side change is landed and backward compatibility is
-// no longer needed, replace this method with
-// |StartBrowserDataMigrationInternal|.
-void SessionManagerImpl::StartBrowserDataMigration(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender sender) {
-  dbus::MessageReader reader(method_call);
-
-  std::string in_account_id;
-  if (!reader.PopString(&in_account_id)) {
-    std::unique_ptr<dbus::ErrorResponse> error_response =
-        dbus::ErrorResponse::FromMethodCall(
-            method_call, dbus_error::kInvalidArgs,
-            "First argument is required and should be a string.");
-    std::move(sender).Run(std::move(error_response));
-    return;
-  }
-
-  // We run copy migration if the second argument for the
-  // DBus call is not provided.
-  std::string in_mode = "copy";
-
-  if (reader.HasMoreData()) {
-    bool in_is_mode = false;
-    // If the second argument is a bool, use it to chose between a move or a
-    // copy.
-    if (reader.PopBool(&in_is_mode)) {
-      // From chrome/browser/ash/crosapi/browser_util.h:
-      // kCopy = 0; kMove = 1.
-      in_mode = in_is_mode ? "move" : "copy";
-      // Otherwise use the mode directly.
-    } else if (!reader.PopString(&in_mode)) {
-      std::unique_ptr<dbus::ErrorResponse> error_response =
-          dbus::ErrorResponse::FromMethodCall(
-              method_call, dbus_error::kInvalidArgs,
-              "Optional second argument was provided but was not type bool or "
-              "string.");
-      std::move(sender).Run(std::move(error_response));
-      return;
-    }
-  }
-
-  brillo::ErrorPtr error;
-  if (!StartBrowserDataMigrationInternal(&error, in_account_id, in_mode)) {
-    DCHECK(error);
-    std::unique_ptr<dbus::Response> response =
-        brillo::dbus_utils::GetDBusError(method_call, error.get());
-    std::move(sender).Run(std::move(response));
-    return;
-  }
-
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  std::move(sender).Run(std::move(response));
-}
-
-bool SessionManagerImpl::StartBrowserDataMigrationInternal(
+bool SessionManagerImpl::StartBrowserDataMigration(
     brillo::ErrorPtr* error,
     const std::string& in_account_id,
     const std::string& mode) {

@@ -40,9 +40,6 @@ const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
 const char BrowserJobInterface::kBrowserDataMigrationForUserFlag[] =
     "--browser-data-migration-for-user=";
-// TODO(b/242003477): Remove this flag.
-const char BrowserJobInterface::kBrowserDataMigrationMoveModeFlag[] =
-    "--browser-data-migration-move-mode";
 const char BrowserJobInterface::kBrowserDataMigrationModeFlag[] =
     "--browser-data-migration-mode=";
 
@@ -531,13 +528,6 @@ void BrowserJob::SetBrowserDataMigrationArgsForUser(const std::string& userhash,
 
   browser_data_migration_arguments_.push_back(kBrowserDataMigrationModeFlag +
                                               mode);
-
-  // TODO(b/242003477): Remove this hack when done.
-  // Add previous flag for move to maintain compatibility.
-  if (mode == "move") {
-    browser_data_migration_arguments_.push_back(
-        kBrowserDataMigrationMoveModeFlag);
-  }
 
   browser_data_migration_arguments_.push_back(kLoginManagerFlag);
 }

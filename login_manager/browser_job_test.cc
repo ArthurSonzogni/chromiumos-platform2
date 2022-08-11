@@ -680,8 +680,6 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
                           BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
   ExpectArgsToContainFlag(job_args_1, BrowserJob::kBrowserDataMigrationModeFlag,
                           "copy");
-  ExpectArgsNotToContainFlag(job_args_1,
-                             BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
   ExpectArgsNotToContainFlag(job_args_1, BrowserJob::kLoginUserFlag, kUser);
   job_->ClearBrowserDataMigrationArgs();
 
@@ -691,8 +689,6 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
   ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
   ExpectArgsToContainFlag(job_args_2,
                           BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
-  ExpectArgsToContainFlag(job_args_2,
-                          BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
   ExpectArgsToContainFlag(job_args_2, BrowserJob::kBrowserDataMigrationModeFlag,
                           "move");
   ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
@@ -706,8 +702,6 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
                           BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
   ExpectArgsToContainFlag(job_args_3, BrowserJob::kBrowserDataMigrationModeFlag,
                           "any");
-  ExpectArgsNotToContainFlag(job_args_3,
-                             BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
   ExpectArgsNotToContainFlag(job_args_3, BrowserJob::kLoginUserFlag, kUser);
   job_->ClearBrowserDataMigrationArgs();
 
@@ -721,8 +715,6 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
       job_args_4, BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
   ExpectArgsNotToContainFlag(job_args_4,
                              BrowserJob::kBrowserDataMigrationModeFlag, "any");
-  ExpectArgsNotToContainFlag(job_args_4,
-                             BrowserJob::kBrowserDataMigrationMoveModeFlag, "");
 }
 
 }  // namespace login_manager

@@ -125,12 +125,6 @@ class BrowserJobInterface : public ChildJobInterface {
   // the specified user hash.
   static const char kBrowserDataMigrationForUserFlag[];
 
-  // TODO(b/242003477): Remove this flag.
-  // The flag to pass to Chrome to tell to run move
-  // migration. It is used together with |kBrowserDataMigrationForUserFlag|.
-  // Without this flag, copy migration is run.
-  static const char kBrowserDataMigrationMoveModeFlag[];
-
   // The flag to pass to Chrome to tell which migration to run.
   // It is used together with |kBrowserDataMigrationForUserFlag|.
   static const char kBrowserDataMigrationModeFlag[];
