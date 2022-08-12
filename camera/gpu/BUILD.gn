@@ -37,6 +37,9 @@ source_set("gpu") {
     "//camera/gpu/egl",
     "//camera/gpu/gles",
   ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
 }
 
 source_set("image_processor") {
@@ -45,6 +48,20 @@ source_set("image_processor") {
     ":embedded_gpu_shaders",
     ":gpu",
   ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+}
+
+source_set("gpu_resources") {
+  sources = [ "//camera/gpu/gpu_resources.cc" ]
+  public_deps = [
+    ":gpu",
+    ":image_processor",
+  ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
 }
 
 source_set("gpu_test_support") {

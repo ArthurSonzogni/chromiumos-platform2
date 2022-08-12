@@ -28,4 +28,7 @@ source_set("gles") {
     "//camera/build:cros_camera_common",
   ]
   deps = [ "//camera/gpu/egl" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
 }

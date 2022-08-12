@@ -23,4 +23,7 @@ source_set("egl") {
     ":egl_pkgconfig",
     "//camera/build:cros_camera_common",
   ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
 }

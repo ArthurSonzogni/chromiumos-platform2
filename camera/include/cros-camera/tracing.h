@@ -26,6 +26,7 @@ namespace cros {
 // The camera trace categories.
 constexpr char kCameraTraceCategoryCommon[] = "camera.common";
 constexpr char kCameraTraceCategoryGcamAe[] = "camera.gcam_ae";
+constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
 constexpr char kCameraTraceCategoryHalAdapter[] = "camera.hal_adapter";
 constexpr char kCameraTraceCategoryHdrnet[] = "camera.hdrnet";
 
@@ -69,6 +70,8 @@ PERFETTO_DEFINE_CATEGORIES(
         .SetDescription("Events from common CrOS Camera library"),
     perfetto::Category(cros::kCameraTraceCategoryGcamAe)
         .SetDescription("Events from CrOS Gcam AE pipeline"),
+    perfetto::Category(cros::kCameraTraceCategoryGpu)
+        .SetDescription("Events from CrOS Camera GPU operations"),
     perfetto::Category(cros::kCameraTraceCategoryHalAdapter)
         .SetDescription("Events from CrOS Camera HAL adapter"),
     perfetto::Category(cros::kCameraTraceCategoryHdrnet)

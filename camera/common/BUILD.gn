@@ -94,6 +94,7 @@ source_set("base") {
     ":pkg_config_base",
     ":target_defaults",
   ]
+  deps = [ "//camera/gpu:gpu_resources" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]

@@ -13,6 +13,7 @@
 #include "gpu/gles/texture_2d.h"
 
 #include "cros-camera/common_types.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -25,7 +26,7 @@ enum class FilterMode {
   kBicubic,
 };
 
-class GpuImageProcessor {
+class CROS_CAMERA_EXPORT GpuImageProcessor {
  public:
   GpuImageProcessor();
 

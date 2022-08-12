@@ -11,6 +11,7 @@
 
 #include <cutils/native_handle.h>
 
+#include "cros-camera/export.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/gles/texture_2d.h"
 
@@ -19,7 +20,7 @@ namespace cros {
 // SharedImage holds the different "handles" of a buffer object and is used to
 // shared the same buffer across different components (mainly between CPU and
 // GPU) without needing to explicitly copying the buffer content.
-class SharedImage {
+class CROS_CAMERA_EXPORT SharedImage {
  public:
   // Creates a SharedImage from the given buffer handle |buffer|.
   //
