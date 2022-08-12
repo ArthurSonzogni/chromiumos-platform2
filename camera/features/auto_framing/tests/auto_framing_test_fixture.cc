@@ -38,7 +38,7 @@ bool AreSameRects(const Rect<float>& r1,
 }
 
 bool IsFullCrop(const Rect<float>& rect) {
-  constexpr float kThreshold = 1e-5f;
+  constexpr float kThreshold = 1e-3f;
   return rect.width >= 1.0 - kThreshold || rect.height >= 1.0 - kThreshold;
 }
 

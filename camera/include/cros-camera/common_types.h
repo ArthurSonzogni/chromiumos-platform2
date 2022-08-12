@@ -32,8 +32,12 @@ struct Rect {
 
   Rect() : left(0), top(0), width(0), height(0) {}
   Rect(T l, T t, T w, T h) : left(l), top(t), width(w), height(h) {}
-  T right() const { return left + width; }
-  T bottom() const { return top + height; }
+  T right() const {
+    return left + width - (std::is_integral<T>::value ? 1 : 0);
+  }
+  T bottom() const {
+    return top + height - (std::is_integral<T>::value ? 1 : 0);
+  }
   bool is_valid() const { return width > 0 && height > 0; }
   bool operator==(const Rect& rhs) const {
     return left == rhs.left && top == rhs.top && width == rhs.width &&
