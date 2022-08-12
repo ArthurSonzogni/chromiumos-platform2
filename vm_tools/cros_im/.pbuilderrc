@@ -4,9 +4,7 @@
 
 set -e
 
-HOOKDIR="${HOME}/.pbuilder/hooks/"
-export DEPSBASE="${ARTIFACTS}"
-BINDMOUNTS="${HOME} ${DEPSBASE}"
+BINDMOUNTS="${HOME}"
 
 OS="debian"
 NAME="${OS}-${DIST}-${ARCH}"

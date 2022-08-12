@@ -23,7 +23,8 @@ END
 
 setup_deps() {
   apt-get update
-  apt-get install -y debian-archive-keyring pbuilder debootstrap devscripts
+  apt-get install -y debian-archive-keyring pbuilder debootstrap devscripts \
+    qemu-user-static
 
   cp .pbuilderrc /root/
 
@@ -80,8 +81,8 @@ main() {
   setup_deps
 
   local arch
-  for arch in ${arches_to_build}; do
-    for dist in ${RELEASES}; do
+  for dist in ${RELEASES}; do
+    for arch in ${arches_to_build}; do
 
       basetgz="/var/cache/pbuilder/base-${arch}.tgz"
       if [ ! -f "${basetgz}" ]; then
@@ -90,6 +91,9 @@ main() {
 
       build_package "${dist}" "${arch}" "${basetgz}"
     done
+    local deb_dir="${dist}_cros_im_debs"
+    mkdir -p "${deb_dir}"
+    mv "${ARTIFACTS}"/cros-im_*.deb "${deb_dir}"
   done
 
   cleanup

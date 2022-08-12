@@ -17,14 +17,15 @@ because LXC containers in Crostini are unprivileged and do not have permission
 to run the commands required.
 
 ```bash
-# For all architectures
-sudo ./build-packages
+git clone https://chromium.googlesource.com/chromiumos/platform2
+cd platform2/vm_tools/cros_im
 
-# Or for a specific architecture
-sudo ./build-packages <arch>
+# Build for a specific architecture
+ARCH=<architecture>
+sudo ./build-packages ${ARCH}
 
 # Install the resultant package for your device
-sudo apt install <path to .deb file>
+sudo apt install ./bullseye_cros_im_debs/*${ARCH}.deb
 ```
 
 ## Manual build instructions
