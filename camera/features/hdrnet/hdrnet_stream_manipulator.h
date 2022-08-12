@@ -36,14 +36,16 @@ class HdrNetStreamManipulator : public StreamManipulator {
   HdrNetStreamManipulator(
       base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback());
+      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback(),
+      HdrNetConfig::Options* options = nullptr);
 
   ~HdrNetStreamManipulator() override;
 
   // Implementations of StreamManipulator.  These methods are trampolines and
   // all the actual tasks are carried out and sequenced on the |gpu_thread_|
   // with the internal implementations below.
-  bool Initialize(const camera_metadata_t* static_info,
+  bool Initialize(GpuResources* gpu_resources,
+                  const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
@@ -86,10 +88,10 @@ class HdrNetStreamManipulator : public StreamManipulator {
     std::queue<UsableBufferInfo> usable_buffer_list;
 
     // The HDRnet processor instance for this stream.
-    std::unique_ptr<HdrNetProcessor> processor;
+    HdrNetProcessor* processor = nullptr;
 
     // Spatiotemporal denoiser resources.
-    std::unique_ptr<SpatiotemporalDenoiser> denoiser;
+    SpatiotemporalDenoiser* denoiser = nullptr;
     SharedImage denoiser_intermediate;
     bool should_reset_temporal_buffer = true;
 
@@ -207,13 +209,11 @@ class HdrNetStreamManipulator : public StreamManipulator {
   void OnOptionsUpdated(const base::Value& json_values);
   void UploadMetrics();
 
-  CameraThread gpu_thread_;
+  GpuResources* gpu_resources_;
   HdrNetProcessor::Factory hdrnet_processor_factory_;
   ReloadableConfigFile config_;
   HdrNetConfig::Options options_;
   android::CameraMetadata static_info_;
-
-  std::unique_ptr<EglContext> egl_context_;
 
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   CaptureResultCallback result_callback_;

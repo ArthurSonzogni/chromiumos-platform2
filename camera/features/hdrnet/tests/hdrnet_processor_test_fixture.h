@@ -14,7 +14,9 @@
 
 #include <base/test/task_environment.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "gpu/gpu_resources.h"
 #include "gpu/test_support/gl_test_fixture.h"
 
 namespace cros {
@@ -49,6 +51,8 @@ class HdrNetProcessorTestFixture {
   // Loads the HDRnet processing config from |hdrnet_config_path|.
   void LoadHdrnetConfig(base::FilePath hdrnet_config_path);
 
+  void ProcessResultMetadata(Camera3CaptureDescriptor* result);
+
   // Runs the HDRnet processing pipeline. Custom input image, metadata and
   // processing config must be loaded using the methods above before calling
   // Run() to have effect.
@@ -72,12 +76,24 @@ class HdrNetProcessorTestFixture {
   }
 
  protected:
+  void InitializeOnGpuThread(const Size& input_size,
+                             uint32_t input_hal_pixel_format,
+                             const std::vector<Size>& output_sizes,
+                             bool use_default_adapter);
+  void TearDownOnGpuThread();
+  base::ScopedFD RunOnGpuThread(int frame_number, HdrnetMetrics& metrics);
+  void DumpBuffersOnGpuThread(const char* file_prefix);
+
   base::test::SingleThreadTaskEnvironment task_environment_;
-  GlTestFixture gl_test_fixture_;
+  GpuResources gpu_resources_;
+
+  // Access to the |processor_| and the buffers need to sequence on the GPU task
+  // runner.
   std::unique_ptr<HdrNetProcessorImpl> processor_;
   ScopedBufferHandle input_buffer_;
   SharedImage input_image_;
   std::vector<ScopedBufferHandle> output_buffers_;
+
   HdrNetConfig::Options options_ = {
       .hdrnet_enable = true,
   };

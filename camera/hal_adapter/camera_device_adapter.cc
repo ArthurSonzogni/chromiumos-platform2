@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -217,6 +218,7 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
 }
 
 bool CameraDeviceAdapter::Start(
+    GpuResources* gpu_resources,
     HasReprocessEffectVendorTagCallback
         has_reprocess_effect_vendor_tag_callback,
     ReprocessEffectCallback reprocess_effect_callback) {
@@ -228,8 +230,9 @@ bool CameraDeviceAdapter::Start(
     LOGF(ERROR) << "Failed to start CameraCallbackOpsThread";
     return false;
   }
-  device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(
-      this, camera_device_ops_thread_.task_runner()));
+  gpu_resources_ = gpu_resources;
+  device_ops_delegate_ = std::make_unique<Camera3DeviceOpsDelegate>(
+      this, camera_device_ops_thread_.task_runner());
   partial_result_count_ = [&]() {
     camera_metadata_ro_entry entry;
     if (find_camera_metadata_ro_entry(
@@ -275,7 +278,8 @@ int32_t CameraDeviceAdapter::Initialize(
   auto result_callback = base::BindRepeating(
       &CameraDeviceAdapter::ReturnResultToClient, base::Unretained(this));
   for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->Initialize(static_info_, result_callback);
+    stream_manipulator->Initialize(gpu_resources_, static_info_,
+                                   result_callback);
   }
 
   base::AutoLock l(callback_ops_delegate_lock_);

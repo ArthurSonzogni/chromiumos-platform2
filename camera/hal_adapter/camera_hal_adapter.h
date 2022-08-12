@@ -71,7 +71,7 @@ class CameraHalAdapter {
 
   // Starts the camera HAL adapter.  This method must be called before calling
   // any other methods.
-  bool Start();
+  bool Start(GpuResources* gpu_resources);
 
   // Creates the CameraModule Mojo connection from |camera_module_receiver|.
   void OpenCameraHal(
@@ -293,6 +293,8 @@ class CameraHalAdapter {
 
   // TODO(pihsun): Should this be per CameraDeviceAdapter?
   StreamManipulator::RuntimeOptions stream_manipulator_runtime_options_;
+
+  GpuResources* gpu_resources_ = nullptr;
 };
 
 }  // namespace cros

@@ -46,10 +46,16 @@ HdrNetProcessorImpl::HdrNetProcessorImpl(
     : task_runner_(task_runner),
       processor_device_adapter_(std::move(processor_device_adapter)) {}
 
-bool HdrNetProcessorImpl::Initialize(Size input_size,
+bool HdrNetProcessorImpl::Initialize(GpuResources* gpu_resources,
+                                     Size input_size,
                                      const std::vector<Size>& output_sizes) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+
   TRACE_HDRNET();
+
+  gpu_resources_ = gpu_resources;
+  CHECK(gpu_resources_);
+  CHECK(gpu_resources_->image_processor());
 
   for (const auto& s : output_sizes) {
     if (s.width > input_size.width || s.height > input_size.height) {
@@ -58,12 +64,6 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
                   << input_size.ToString();
       return false;
     }
-  }
-
-  image_processor_ = std::make_unique<GpuImageProcessor>();
-  if (!image_processor_) {
-    LOGF(ERROR) << "Failed to create GpuImageProcessor";
-    return false;
   }
 
   if (!processor_device_adapter_->Initialize()) {
@@ -299,7 +299,7 @@ void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET();
 
-  bool result = image_processor_->YUVToYUV(
+  bool result = gpu_resources_->image_processor()->YUVToYUV(
       input_yuv.y_texture(), input_yuv.uv_texture(), output_nv12.y_texture(),
       output_nv12.uv_texture());
   if (!result) {
@@ -371,8 +371,8 @@ void HdrNetProcessorImpl::DumpGpuTextureSharedImage(
   }
   // Use the gamma correction shader with Gamma == 1.0 to copy the contents from
   // the GPU texture to the DMA-buf.
-  image_processor_->ApplyGammaCorrection(1.0f, image.texture(),
-                                         dump_image_.texture());
+  gpu_resources_->image_processor()->ApplyGammaCorrection(
+      1.0f, image.texture(), dump_image_.texture());
   glFinish();
   if (!WriteBufferIntoFile(*dump_buffer_, output_file_path)) {
     LOGF(ERROR) << "Failed to dump GPU texture";

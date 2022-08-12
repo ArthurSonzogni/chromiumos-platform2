@@ -9,6 +9,10 @@
 #include <benchmark/benchmark.h>
 #include <sync/sync.h>
 
+#include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/test/test_timeouts.h>
+
 namespace cros {
 
 void RunHdrnetProcessor(benchmark::State& state,
@@ -16,10 +20,8 @@ void RunHdrnetProcessor(benchmark::State& state,
   HdrnetMetrics metrics;
   for (auto _ : state) {
     auto result = fixture.ProduceFakeCaptureResult();
-    fixture.processor()->ProcessResultMetadata(&result);
-    base::ScopedFD fence = fixture.processor()->Run(
-        result.frame_number(), HdrNetConfig::Options(), fixture.input_image(),
-        base::ScopedFD(), fixture.output_buffers(), &metrics);
+    fixture.ProcessResultMetadata(&result);
+    base::ScopedFD fence = fixture.Run(result.frame_number(), metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     CHECK_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
   }
@@ -63,4 +65,17 @@ BENCHMARK(BM_HdrNetProcessorCoreProcessing)
 
 }  // namespace cros
 
-BENCHMARK_MAIN();
+// Use our own main function instead of BENCHMARK_MAIN() because we need to
+// initialize libchrome test supports.
+int main(int argc, char** argv) {
+  base::AtExitManager exit_manager;
+  base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
+  ::benchmark::Initialize(&argc, argv);
+  if (::benchmark::ReportUnrecognizedArguments(argc, argv)) {
+    return 1;
+  }
+  ::benchmark::RunSpecifiedBenchmarks();
+  ::benchmark::Shutdown();
+  return 0;
+}
