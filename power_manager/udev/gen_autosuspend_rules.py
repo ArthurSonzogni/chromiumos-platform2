@@ -328,6 +328,14 @@ PCI_IDS += [
     "17a0:9755",
 ]
 
+# Phison
+PCI_IDS += [
+    # E13 NVMe Controller (redrix)
+    '1987:5013',
+    # E18 PCIe4 NVMe Controller (vell)
+    '1987:5018',
+]
+
 # Do not edit below this line. #################################################
 
 UDEV_RULE = """\
