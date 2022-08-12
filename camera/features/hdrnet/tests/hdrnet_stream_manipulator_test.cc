@@ -30,7 +30,9 @@
 #include <hardware/camera3.h>
 
 #include "common/still_capture_processor.h"
+#include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_processor.h"
+#include "gpu/gpu_resources.h"
 
 using ::testing::Test;
 
@@ -121,7 +123,9 @@ class MockHdrNetProcessor : public HdrNetProcessor {
 
   MOCK_METHOD(bool,
               Initialize,
-              (Size input_size, const std::vector<Size>& output_sizes),
+              (GpuResources * gpu_resources,
+               Size input_size,
+               const std::vector<Size>& output_sizes),
               (override));
   MOCK_METHOD(void, TearDown, (), (override));
   MOCK_METHOD(void, SetOptions, (const Options& options), (override));
@@ -156,8 +160,8 @@ std::unique_ptr<HdrNetProcessor> CreateMockHdrNetProcessorInstance(
 
 class FakeStillCaptureProcessor : public StillCaptureProcessor {
  public:
-  FakeStillCaptureProcessor() {}
-  ~FakeStillCaptureProcessor() = default;
+  FakeStillCaptureProcessor() = default;
+  ~FakeStillCaptureProcessor() override = default;
 
   void Initialize(const camera3_stream_t* const still_capture_stream,
                   CaptureResultCallback result_callback) override {
@@ -226,12 +230,14 @@ class HdrNetStreamManipulatorTest : public Test {
                      kBlobStreamFormat,
                      kBlobStreamUsage) {}
 
-  void SetUp() {
+  void SetUp() override {
+    CHECK(gpu_resources_.Initialize());
+    HdrNetConfig::Options test_options = {.hdrnet_enable = true};
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
         base::FilePath(), std::make_unique<FakeStillCaptureProcessor>(),
-        base::BindRepeating(CreateMockHdrNetProcessorInstance));
+        base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(
-        nullptr,
+        &gpu_resources_, nullptr,
         base::BindRepeating(&HdrNetStreamManipulatorTest::ProcessCaptureResult,
                             base::Unretained(this)));
   }
@@ -324,6 +330,8 @@ class HdrNetStreamManipulatorTest : public Test {
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_;
+  GpuResources gpu_resources_;
+  StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<HdrNetStreamManipulator> stream_manipulator_;
   Camera3Stream impl_720p_stream_;
   Camera3Stream yuv_480p_stream_;

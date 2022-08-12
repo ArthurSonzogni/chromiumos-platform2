@@ -253,6 +253,7 @@ AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
 }
 
 bool AutoFramingStreamManipulator::Initialize(
+    GpuResources* gpu_resources_,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   bool ret;

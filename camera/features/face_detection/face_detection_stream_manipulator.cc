@@ -60,6 +60,7 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
 }
 
 bool FaceDetectionStreamManipulator::Initialize(
+    GpuResources* gpu_resources_,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(

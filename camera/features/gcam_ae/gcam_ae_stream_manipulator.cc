@@ -48,6 +48,7 @@ GcamAeStreamManipulator::GcamAeStreamManipulator(
 }
 
 bool GcamAeStreamManipulator::Initialize(
+    GpuResources* gpu_resources_,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   TRACE_GCAM_AE();

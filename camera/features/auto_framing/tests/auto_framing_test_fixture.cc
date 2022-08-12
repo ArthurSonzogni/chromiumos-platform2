@@ -165,7 +165,7 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
   if (!auto_framing_stream_manipulator_->Initialize(
-          locked_static_info, /*result_callback=*/base::DoNothing())) {
+          nullptr, locked_static_info, /*result_callback=*/base::DoNothing())) {
     LOGF(ERROR) << "Failed to initialize AutoFramingStreamManipulator";
     return false;
   }
