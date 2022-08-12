@@ -4,13 +4,17 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
-use std::io;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::io::{self};
 use std::os::unix::io::RawFd;
+use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
+use std::process::{self};
 
 use libc;
 use libc::pid_t;
@@ -197,6 +201,21 @@ impl Sandbox for VmSandbox {
         info!("crosvm args: {:?}", args);
 
         let mut cmd = Command::new(&self.config.crosvm_path);
+
+        // Sandboxing is only used from single-threaded processes, so we don't have to worry
+        // about the async-signal-safety concerns of forking. The closure also doesn't interact
+        // with any existing fds, so there aren't any safety concerns there, and it doesn't
+        // panic.
+        unsafe {
+            cmd.pre_exec(|| {
+                let mut cgroup_processes = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(Path::new("/sys/kernel/cgroup/cgroup.procs"))?;
+                cgroup_processes.write_all(process::id().to_string().as_bytes())?;
+                Ok(())
+            });
+        }
 
         for (in_fd, out_fd) in keep_fds {
             // dup is required because |Stdio| takes ownership and an fd should not be closed twice.
