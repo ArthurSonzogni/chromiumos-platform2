@@ -6,11 +6,8 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-mod memcg_watcher;
-
 use std::cell::RefCell;
-use std::cmp::Ordering;
-use std::cmp::{self};
+use std::cmp;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
@@ -63,9 +60,6 @@ use log::info;
 use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::memcg_watcher::monitor_memcg;
-use crate::memcg_watcher::MemcgController;
 
 const CROS_GUEST_ID: u32 = 0;
 const IDENT: &str = "manatee_memory_service";
@@ -363,11 +357,6 @@ struct CrosVmClient {
     client: Transport,
     mem_size: u64,
     balloon_size: u64,
-    // Track the balloon allocation which MMS is applying on top of the configuration
-    // the client provides, and use that to hide the allocation from the client.
-    // This makes the allocation look like generic allocated memory, and ensure the
-    // client sees the balloon behavior it expects.
-    internal_balloon_allocation: u64,
 }
 
 impl CrosVmClient {
@@ -535,7 +524,7 @@ impl CtrlHandler {
                     all_stats.push(TaggedBalloonStats {
                         id: *id,
                         stats,
-                        balloon_actual: balloon_actual - client.internal_balloon_allocation,
+                        balloon_actual,
                     });
                 }
                 Ok(resp) => error!("Unexpected response {:?}", resp),
@@ -721,7 +710,6 @@ impl CtrlHandler {
                         client,
                         mem_size: vm_state.mem_size,
                         balloon_size: 0,
-                        internal_balloon_allocation: 0,
                     };
                     if adjust_balloon(&mut client, balloon_size) != balloon_size {
                         error!("Failed to inflate new client balloon");
@@ -976,33 +964,15 @@ impl Debug for MmsBridge {
     }
 }
 
-impl MemcgController for RefCell<MmsState> {
-    fn on_allocation_change(&self, delta: i64) -> i64 {
-        let mut state = self.borrow_mut();
-        let crosvm_client = state.clients.get_mut(&CROS_GUEST_ID).unwrap();
-
-        let actual = adjust_balloon(crosvm_client, delta);
-
-        crosvm_client.internal_balloon_allocation = if actual < 0 {
-            crosvm_client.internal_balloon_allocation - (actual.abs() as u64)
-        } else {
-            crosvm_client.internal_balloon_allocation + (actual as u64)
-        };
-        actual
-    }
-}
-
 struct Args {
     cros_mem_bytes: u64,
     mms_bridge: UnixSeqpacket,
-    app_memcg_name: String,
-    app_memcg_init_bytes: u64,
 }
 
 fn parse_args() -> Result<Args> {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 5 {
+    if args.len() != 3 {
         bail!("incorrect number of arguments");
     }
 
@@ -1015,17 +985,9 @@ fn parse_args() -> Result<Args> {
     let mms_bridge = UnixSeqpacket::connect(PathBuf::from(&args[2]))
         .context("error connecting to MMS bridge")?;
 
-    let app_memcg_init_bytes = args[4]
-        .parse::<u64>()
-        .context("error parsing memcg size")?
-        .checked_mul(1024 * 1024)
-        .context("memcg size overflow")?;
-
     Ok(Args {
         cros_mem_bytes,
         mms_bridge,
-        app_memcg_name: args[3].clone(),
-        app_memcg_init_bytes,
     })
 }
 
@@ -1040,11 +1002,9 @@ fn main() {
         Ok(args) => args,
         Err(e) => {
             error!("Failed to parse args: {:#}", e);
-            error!("Usage: manatee_memory_service mem_size mms_bridge app_memcg app_memcg_size");
+            error!("Usage: manatee_memory_service mem_size mms_bridge");
             error!("  mem_size: CrOS guest memory size in MiB");
             error!("  mms_bridge: path of Trichechus's MMS bridge socket");
-            error!("  app_memcg: name of the TEE app memcg");
-            error!("  app_memcg_size: initial size of the TEE app memcg in MiB");
             return;
         }
     };
@@ -1064,21 +1024,15 @@ fn main() {
         }
     };
     cleanup_control_server(CROS_GUEST_ID, crosvm_server);
-
-    let mut cros_guest = CrosVmClient {
-        client: crosvm_client,
-        mem_size: args.cros_mem_bytes,
-        balloon_size: 0,
-        internal_balloon_allocation: args.app_memcg_init_bytes,
-    };
-    let actual = adjust_balloon(&mut cros_guest, args.app_memcg_init_bytes as i64);
-    if actual != args.app_memcg_init_bytes as i64 {
-        error!("Failed to set initial size of cros guest balloon");
-        return;
-    }
-
     let mut clients = BTreeMap::new();
-    clients.insert(CROS_GUEST_ID, cros_guest);
+    clients.insert(
+        CROS_GUEST_ID,
+        CrosVmClient {
+            client: crosvm_client,
+            mem_size: args.cros_mem_bytes,
+            balloon_size: 0,
+        },
+    );
 
     let state = Rc::new(RefCell::new(MmsState {
         cros_ctrl_connected: false,
@@ -1087,21 +1041,10 @@ fn main() {
         starting_vm_state: None,
         next_id: CROS_GUEST_ID + 1,
     }));
-    let mms_bridge = MmsBridge::new(args.mms_bridge, state.clone());
+    let mms_bridge = MmsBridge::new(args.mms_bridge, state);
 
     let mut ctx = EventMultiplexer::new().unwrap();
     ctx.add_event(Box::new(mms_bridge)).unwrap();
-
-    if let Err(e) = monitor_memcg(
-        &args.app_memcg_name,
-        &mut ctx,
-        state,
-        args.app_memcg_init_bytes,
-    ) {
-        error!("Failed to monitor trichechus group {:?}", e);
-        return;
-    }
-
     while !ctx.is_empty() {
         if let Err(e) = ctx.run_once() {
             error!("{}", e);
