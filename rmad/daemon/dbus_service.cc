@@ -70,6 +70,7 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
   writer->OpenStruct(&struct_writer);
   AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
   AppendValueToWriter(&struct_writer, value.progress());
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.error()));
   writer->CloseContainer(&struct_writer);
 }
 
@@ -79,6 +80,7 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
   writer->OpenStruct(&struct_writer);
   AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
   AppendValueToWriter(&struct_writer, value.progress());
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.error()));
   writer->CloseContainer(&struct_writer);
 }
 
@@ -132,12 +134,15 @@ bool PopValueFromReader(dbus::MessageReader* reader, ProvisionStatus* value) {
 
   int status;
   double progress;
+  int error;
   if (!PopValueFromReader(&struct_reader, &status) ||
-      !PopValueFromReader(&struct_reader, &progress)) {
+      !PopValueFromReader(&struct_reader, &progress) ||
+      !PopValueFromReader(&struct_reader, &error)) {
     return false;
   }
   value->set_status(static_cast<ProvisionStatus::Status>(status));
   value->set_progress(progress);
+  value->set_error(static_cast<ProvisionStatus::Error>(error));
   return true;
 }
 
@@ -149,12 +154,15 @@ bool PopValueFromReader(dbus::MessageReader* reader, FinalizeStatus* value) {
 
   int status;
   double progress;
+  int error;
   if (!PopValueFromReader(&struct_reader, &status) ||
-      !PopValueFromReader(&struct_reader, &progress)) {
+      !PopValueFromReader(&struct_reader, &progress) ||
+      !PopValueFromReader(&struct_reader, &error)) {
     return false;
   }
   value->set_status(static_cast<FinalizeStatus::Status>(status));
   value->set_progress(progress);
+  value->set_error(static_cast<FinalizeStatus::Error>(error));
   return true;
 }
 

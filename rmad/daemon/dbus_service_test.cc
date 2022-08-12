@@ -473,10 +473,13 @@ TEST_F(DBusServiceTest, SignalProvision) {
         EXPECT_EQ(status.status(),
                   ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
         EXPECT_EQ(status.progress(), 0.5);
+        EXPECT_EQ(status.error(),
+                  ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
       }));
   ProvisionStatus status;
   status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
   status.set_progress(0.5);
+  status.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
   SignalProvision(status);
 }
 
@@ -492,10 +495,12 @@ TEST_F(DBusServiceTest, SignalFinalize) {
         EXPECT_EQ(status.status(),
                   FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
         EXPECT_EQ(status.progress(), 0.5);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
       }));
   FinalizeStatus status;
   status.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
   status.set_progress(0.5);
+  status.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
   SignalFinalize(status);
 }
 
