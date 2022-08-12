@@ -21,8 +21,9 @@ epoll_wait: 1
 brk: 1
 
 # CDROM_GET_CAPABILITY = 0x5331
+# CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
 ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKSSZGET || \
-       arg1 == 0x5331
+       arg1 == 0x5331 || arg1 == 0xc014ec00
 getdents64: 1
 recvmsg: 1
 sendto: 1

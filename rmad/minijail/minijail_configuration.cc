@@ -116,6 +116,7 @@ void NewMountNamespace() {
   // Mount /sys and /dev to be able to inspect devices.
   minijail_mount_with_data(j.get(), "/dev", "/dev", "bind", MS_BIND | MS_REC,
                            nullptr);
+  minijail_bind(j.get(), "/dev/cros_ec", "/dev/cros_ec", 0);
   minijail_mount_with_data(j.get(), "/sys", "/sys", "bind", MS_BIND | MS_REC,
                            nullptr);
   // Mount /var to access rmad working directory.

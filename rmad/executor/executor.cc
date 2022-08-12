@@ -21,6 +21,7 @@
 
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/executor/mount.h"
+#include "rmad/utils/ec_utils_impl.h"
 
 namespace {
 
@@ -59,6 +60,7 @@ Executor::Executor(
   // Quit the executor when the communication disconnects.
   receiver_.set_disconnect_handler(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
+  ec_utils_ = std::make_unique<EcUtilsImpl>();
 }
 
 void Executor::MountAndWriteLog(uint8_t device_id,
@@ -129,8 +131,7 @@ void Executor::MountAndCopyFirmwareUpdater(
 }
 
 void Executor::RebootEc(RebootEcCallback callback) {
-  // TODO(chenghan): This is currently fake.
-  std::move(callback).Run(false);
+  std::move(callback).Run(ec_utils_->Reboot());
 }
 
 }  // namespace rmad

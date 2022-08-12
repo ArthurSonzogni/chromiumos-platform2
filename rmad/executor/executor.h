@@ -5,12 +5,14 @@
 #ifndef RMAD_EXECUTOR_EXECUTOR_H_
 #define RMAD_EXECUTOR_EXECUTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "rmad/executor/mojom/executor.mojom.h"
+#include "rmad/utils/ec_utils.h"
 
 namespace rmad {
 
@@ -36,6 +38,8 @@ class Executor final : public chromeos::rmad::mojom::Executor {
   // Provides a Mojo endpoint that rmad can call to access the executor's Mojo
   // methods.
   mojo::Receiver<chromeos::rmad::mojom::Executor> receiver_;
+
+  std::unique_ptr<EcUtils> ec_utils_;
 };
 
 }  // namespace rmad
