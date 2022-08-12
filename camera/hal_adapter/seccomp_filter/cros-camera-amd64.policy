@@ -102,6 +102,7 @@ set_tid_address: 1
 setitimer: 1
 setpriority: 1
 setsockopt: 1
+shutdown: 1
 sigaltstack: 1
 signalfd4: 1
 # Allow AF_UNIX for syslog and mojo IPC.

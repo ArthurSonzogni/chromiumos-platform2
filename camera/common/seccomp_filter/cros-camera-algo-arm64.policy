@@ -9,6 +9,7 @@ accept: 1
 bind: 1
 brk: 1
 clock_gettime: 1
+clock_nanosleep: 1
 clone: 1
 close: 1
 epoll_create1: 1
