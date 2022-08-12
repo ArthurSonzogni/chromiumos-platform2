@@ -360,6 +360,10 @@ class Platform2Test(object):
         """
         if self.user is None:
             self.SetupUser()
+        else:
+            # Force the C library to load any modules it might use to access
+            # user databases.  For example, glibc will dlopen nss modules.
+            pwd.getpwall()
 
         if self.framework == "qemu":
             self.qemu.Install()
