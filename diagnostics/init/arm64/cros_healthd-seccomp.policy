@@ -10,6 +10,7 @@ brk: 1
 capget: 1
 chdir: 1
 chroot: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clone: 1
 close: 1
@@ -116,6 +117,7 @@ rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
+sched_getattr: 1
 sched_setaffinity: 1
 sched_yield: 1
 sendmsg: 1
