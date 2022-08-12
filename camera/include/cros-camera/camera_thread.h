@@ -84,7 +84,7 @@ class CROS_CAMERA_EXPORT CameraThread {
       return -EIO;
     }
     base::OnceClosure closure =
-        base::BindOnce(&CameraThread::ProcessASyncTaskOnThread<T>,
+        base::BindOnce(&CameraThread::ProcessAsyncTaskOnThread<T>,
                        base::Unretained(this), std::move(task));
 
     if (!thread_.task_runner()->PostTask(from_here, std::move(closure))) {
@@ -129,7 +129,7 @@ class CROS_CAMERA_EXPORT CameraThread {
   }
 
   template <typename T>
-  void ProcessASyncTaskOnThread(base::OnceCallback<T()> task) {
+  void ProcessAsyncTaskOnThread(base::OnceCallback<T()> task) {
     VLOGF_ENTER();
     std::move(task).Run();
   }
