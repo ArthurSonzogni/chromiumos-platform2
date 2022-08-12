@@ -9,7 +9,6 @@
 
 #include "common/stream_manipulator.h"
 
-#include <cinttypes>
 #include <memory>
 #include <vector>
 
@@ -18,7 +17,7 @@
 #include <skia/core/SkCanvas.h>
 
 #include "cros-camera/camera_thread.h"
-#include "cros-camera/face_detector_client_cros_wrapper.h"
+#include "features/frame_annotator/frame_annotator.h"
 #include "gpu/egl/egl_context.h"
 
 namespace cros {
@@ -28,7 +27,8 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   FrameAnnotatorStreamManipulator();
   ~FrameAnnotatorStreamManipulator() override;
   // Implementations of StreamManipulator.
-  bool Initialize(const camera_metadata_t* static_info,
+  bool Initialize(GpuResources* gpu_resources,
+                  const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
@@ -40,24 +40,18 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  using SkCanvasDrawFn = base::RepeatingCallback<void(SkCanvas*)>;
-
   bool SetUpContextsOnGpuThread();
   bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
-  std::vector<SkCanvasDrawFn> GetPlotters();
-  bool PlotOnGpuThread(camera3_stream_buffer_t* buffer,
-                       const std::vector<SkCanvasDrawFn>& plotters);
+  bool PlotOnGpuThread(camera3_stream_buffer_t* buffer);
   void FlushSkSurfaceToBuffer(SkSurface* surface, buffer_handle_t yuv_buf);
 
   Size active_array_dimension_;
-  Size full_frame_size_;
-  Rect<uint32_t> full_frame_crop_;
   const camera3_stream_t* yuv_stream_ = nullptr;
   std::unique_ptr<EglContext> egl_context_;
   sk_sp<GrDirectContext> gr_context_;
   CameraThread gpu_thread_;
 
-  std::vector<human_sensing::CrosFace> cached_faces_;
+  std::vector<std::unique_ptr<FrameAnnotator>> frame_annotators_;
 };
 
 }  // namespace cros

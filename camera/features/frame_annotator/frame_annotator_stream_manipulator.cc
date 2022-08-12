@@ -21,6 +21,7 @@
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "features/frame_annotator/face_rectangles_frame_annotator.h"
 #include "gpu/gles/texture_2d.h"
 #include "gpu/shared_image.h"
 
@@ -60,6 +61,8 @@ GrYUVABackendTextures ConvertToGrTextures(const SharedImage& image) {
 FrameAnnotatorStreamManipulator::FrameAnnotatorStreamManipulator()
     : gpu_thread_("FrameAnnotatorThread") {
   CHECK(gpu_thread_.Start());
+  frame_annotators_.emplace_back(
+      std::make_unique<FaceRectanglesFrameAnnotator>());
 }
 
 FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
@@ -67,12 +70,22 @@ FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
 }
 
 bool FrameAnnotatorStreamManipulator::Initialize(
+    GpuResources* gpu_resources,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
+
+  for (const auto& frame_annotator : frame_annotators_) {
+    bool res = frame_annotator->Initialize(static_info);
+    if (!res) {
+      LOGF(ERROR)
+          << "Failed to initialize one of the enabled frame annotators.";
+      return false;
+    }
+  }
 
   bool ret;
   gpu_thread_.PostTaskSync(
@@ -115,9 +128,6 @@ bool FrameAnnotatorStreamManipulator::ConfigureStreams(
     LOGF(WARNING)
         << "No YUV stream suitable for CrOS Frame Annotator processing";
   }
-
-  full_frame_crop_ = GetCenteringFullCrop(
-      active_array_dimension_, yuv_stream_->width, yuv_stream_->height);
   return true;
 }
 
@@ -159,8 +169,14 @@ bool FrameAnnotatorStreamManipulator::Flush() {
 bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_thread_.IsCurrentThread());
-  if (auto faces = result->feature_metadata().faces) {
-    cached_faces_ = std::move(*faces);
+
+  for (const auto& frame_annotator : frame_annotators_) {
+    bool res = frame_annotator->ProcessCaptureResult(result);
+    if (!res) {
+      LOGF(ERROR) << "One of the enabled frame annotators failed to process "
+                     "capture result.";
+      return false;
+    }
   }
 
   std::vector<camera3_stream_buffer_t> output_buffers;
@@ -173,7 +189,7 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
     if (buffer.status == CAMERA3_BUFFER_STATUS_ERROR) {
       continue;
     }
-    bool res = PlotOnGpuThread(&buffer, GetPlotters());
+    bool res = PlotOnGpuThread(&buffer);
     if (!res) {
       return false;
     }
@@ -207,58 +223,9 @@ bool FrameAnnotatorStreamManipulator::SetUpContextsOnGpuThread() {
   return true;
 }
 
-std::vector<FrameAnnotatorStreamManipulator::SkCanvasDrawFn>
-FrameAnnotatorStreamManipulator::GetPlotters() {
-  std::vector<SkCanvasDrawFn> plotters;
-#if USE_CAMERA_FEATURE_FACE_DETECTION
-  if (!cached_faces_.empty()) {
-    plotters.emplace_back(base::BindRepeating(
-        [](FrameAnnotatorStreamManipulator* self, SkCanvas* canvas) {
-          const auto canvas_info = canvas->imageInfo();
-
-          // Annotate each faces with a white box.
-          SkPaint box_paint;
-          box_paint.setStyle(SkPaint::kStroke_Style);
-          box_paint.setAntiAlias(true);
-          box_paint.setStrokeWidth(1);
-          box_paint.setColor(0xffffffff);
-
-          for (const auto& face : self->cached_faces_) {
-            const auto& box = face.bounding_box;
-
-            // Assume the frame is center cropped and transform the bounding
-            // box to the canvas space.
-            // TODO(ototot): Check if the frame is not center cropped.
-            const auto adjusted_rect = NormalizeRect(
-                Rect<float>(
-                    box.x1 - static_cast<float>(self->full_frame_crop_.left),
-                    box.y1 - static_cast<float>(self->full_frame_crop_.top),
-                    box.x2 - box.x1, box.y2 - box.y1),
-                Size(self->full_frame_crop_.width,
-                     self->full_frame_crop_.height));
-            SkRect rect = SkRect::MakeXYWH(
-                adjusted_rect.left * static_cast<float>(canvas_info.width()),
-                adjusted_rect.top * static_cast<float>(canvas_info.height()),
-                adjusted_rect.width * static_cast<float>(canvas_info.width()),
-                adjusted_rect.height *
-                    static_cast<float>(canvas_info.height()));
-            canvas->drawRect(rect, box_paint);
-          }
-        },
-        this));
-  }
-#endif
-  return plotters;
-}
-
 bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
-    camera3_stream_buffer_t* buffer,
-    const std::vector<SkCanvasDrawFn>& plotters) {
+    camera3_stream_buffer_t* buffer) {
   DCHECK(gpu_thread_.IsCurrentThread());
-
-  if (plotters.empty()) {
-    return true;
-  }
 
   auto input_release_fence = base::ScopedFD(buffer->release_fence);
   if (input_release_fence.is_valid() &&
@@ -277,11 +244,17 @@ bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
   auto canvas = surface->getCanvas();
   canvas->drawImage(sk_image, 0, 0);
 
-  for (const auto& plotter : plotters) {
-    plotter.Run(canvas);
+  bool surface_need_flush = false;
+  for (auto& frame_annotator : frame_annotators_) {
+    if (frame_annotator->IsPlotNeeded()) {
+      frame_annotator->Plot(canvas);
+      surface_need_flush = true;
+    }
+  }
+  if (surface_need_flush) {
+    FlushSkSurfaceToBuffer(surface.get(), *buffer->buffer);
   }
 
-  FlushSkSurfaceToBuffer(surface.get(), *buffer->buffer);
   buffer->acquire_fence = -1;
   buffer->release_fence = -1;
   buffer->status = CAMERA3_BUFFER_STATUS_OK;

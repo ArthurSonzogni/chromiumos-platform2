@@ -222,6 +222,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   uint32_t partial_result() const { return partial_result_; }
 
   FeatureMetadata& feature_metadata() { return feature_metadata_; }
+  const FeatureMetadata& feature_metadata() const { return feature_metadata_; }
 
  protected:
   void Invalidate();
