@@ -25,9 +25,9 @@
 #include "rmad/utils/mock_flashrom_utils.h"
 
 using testing::_;
-using testing::ByMove;
 using testing::DoAll;
 using testing::Eq;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
@@ -41,10 +41,10 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified,
                                   ro_verified);
     // Mock |UdevUtils|.
-    auto mock_udev_utils = std::make_unique<MockUdevUtils>();
+    auto mock_udev_utils = std::make_unique<NiceMock<MockUdevUtils>>();
     ON_CALL(*mock_udev_utils, EnumerateBlockDevices())
-        .WillByDefault(
-            Return(ByMove(std::vector<std::unique_ptr<UdevDevice>>())));
+        .WillByDefault(Invoke(
+            []() { return std::vector<std::unique_ptr<UdevDevice>>(); }));
 
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();

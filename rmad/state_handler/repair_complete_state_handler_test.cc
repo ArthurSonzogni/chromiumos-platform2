@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -14,6 +15,8 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/executor/udev/mock_udev_utils.h"
+#include "rmad/executor/udev/udev_device.h"
 #include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -25,6 +28,7 @@ using testing::_;
 using testing::Assign;
 using testing::DoAll;
 using testing::Eq;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
@@ -70,6 +74,12 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(true));
     }
 
+    // Mock |UdevUtils|.
+    auto mock_udev_utils = std::make_unique<NiceMock<MockUdevUtils>>();
+    ON_CALL(*mock_udev_utils, EnumerateBlockDevices())
+        .WillByDefault(Invoke(
+            []() { return std::vector<std::unique_ptr<UdevDevice>>(); }));
+
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
@@ -103,8 +113,9 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), GetTempDirPath(),
-        std::move(mock_power_manager_client), std::move(mock_crossystem_utils),
-        std::move(mock_sys_utils), std::move(mock_metrics_utils));
+        std::move(mock_power_manager_client), std::move(mock_udev_utils),
+        std::move(mock_crossystem_utils), std::move(mock_sys_utils),
+        std::move(mock_metrics_utils));
   }
 
   base::FilePath GetPowerwashCountFilePath() const {
@@ -152,13 +163,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   // Override signal sender mock.
   EXPECT_CALL(signal_sender_, SendPowerCableSignal(_))
       .WillOnce([](bool is_connected) { EXPECT_TRUE(is_connected); });
-  task_environment_.FastForwardBy(
-      RepairCompleteStateHandler::kReportPowerCableInterval);
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kSignalInterval);
 
   // Should not send signal after cleanup.
   handler->CleanUpState();
-  task_environment_.FastForwardBy(
-      RepairCompleteStateHandler::kReportPowerCableInterval);
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kSignalInterval);
 }
 
 TEST_F(RepairCompleteStateHandlerTest,

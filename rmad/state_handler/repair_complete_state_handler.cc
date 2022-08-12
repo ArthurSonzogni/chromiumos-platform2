@@ -6,11 +6,14 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/executor/udev/udev_device.h"
+#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -28,6 +31,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       locked_error_(RMAD_ERROR_NOT_SET) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  udev_utils_ = std::make_unique<UdevUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   sys_utils_ = std::make_unique<SysUtilsImpl>();
   metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
@@ -39,6 +43,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     const base::FilePath& working_dir_path,
     const base::FilePath& unencrypted_preserve_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<SysUtils> sys_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
@@ -46,6 +51,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       working_dir_path_(working_dir_path),
       unencrypted_preserve_path_(unencrypted_preserve_path),
       power_manager_client_(std::move(power_manager_client)),
+      udev_utils_(std::move(udev_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       sys_utils_(std::move(sys_utils)),
       metrics_utils_(std::move(metrics_utils)),
@@ -70,13 +76,12 @@ RmadErrorCode RepairCompleteStateHandler::InitializeState() {
 }
 
 void RepairCompleteStateHandler::RunState() {
-  power_cable_timer_.Start(
-      FROM_HERE, kReportPowerCableInterval, this,
-      &RepairCompleteStateHandler::SendPowerCableStateSignal);
+  signal_timer_.Start(FROM_HERE, kSignalInterval, this,
+                      &RepairCompleteStateHandler::SendSignals);
 }
 
 void RepairCompleteStateHandler::CleanUpState() {
-  power_cable_timer_.Stop();
+  signal_timer_.Stop();
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -182,9 +187,22 @@ void RepairCompleteStateHandler::Cutoff() {
   }
 }
 
-void RepairCompleteStateHandler::SendPowerCableStateSignal() {
+bool RepairCompleteStateHandler::IsExternalDiskDetected() {
+  std::vector<std::unique_ptr<UdevDevice>> devices =
+      udev_utils_->EnumerateBlockDevices();
+  for (const auto& device : devices) {
+    if (device->IsRemovable()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void RepairCompleteStateHandler::SendSignals() {
   daemon_callback_->GetPowerCableSignalCallback().Run(
       sys_utils_->IsPowerSourcePresent());
+  daemon_callback_->GetExternalDiskSignalCallback().Run(
+      IsExternalDiskDetected());
 }
 
 }  // namespace rmad
