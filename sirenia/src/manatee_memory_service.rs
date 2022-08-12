@@ -8,6 +8,7 @@
 
 use std::cell::RefCell;
 use std::cmp;
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
@@ -1079,7 +1080,6 @@ mod test {
                         ),
                         mem_size: *size,
                         balloon_size: 0,
-                        internal_balloon_allocation: 0,
                     },
                 )
             })
