@@ -17,11 +17,14 @@ exit: 1
 exit_group: 1
 fcntl64: 1
 fstatat64: 1
+fstatfs64: 1
 fstatfs: 1
 fsync: 1
+futex: 1
 getcwd: 1
 getdents64: 1
 getpid: 1
+getrandom: 1
 gettimeofday: 1
 ioctl: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

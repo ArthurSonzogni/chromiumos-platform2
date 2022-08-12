@@ -36,6 +36,7 @@ getdents: 1
 geteuid32: 1
 getgid32: 1
 getpid: 1
+getrandom: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
@@ -49,6 +50,7 @@ mremap: 1
 munmap: 1
 nanosleep: 1
 openat: 1
+pipe2: 1
 pipe: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
