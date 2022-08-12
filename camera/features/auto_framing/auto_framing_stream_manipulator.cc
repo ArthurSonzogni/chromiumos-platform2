@@ -581,6 +581,17 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
   if (!ctx->timestamp.has_value()) {
     ctx->timestamp = TryGetSensorTimestamp(result);
+    // Handle out-of-order timestamps by adding an offset.
+    if (ctx->timestamp.has_value()) {
+      if (*ctx->timestamp + timestamp_offset_ <= last_timestamp_) {
+        timestamp_offset_ = last_timestamp_ + 1 - *ctx->timestamp;
+        LOGF(WARNING) << "Found out-of-order timestamp; compensate by "
+                         "increasing offset to "
+                      << timestamp_offset_;
+      }
+      *ctx->timestamp += timestamp_offset_;
+      last_timestamp_ = *ctx->timestamp;
+    }
   }
 
   camera3_stream_buffer_t full_frame_buffer = {};
@@ -886,6 +897,8 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   target_output_stream_ = nullptr;
   capture_contexts_.clear();
   full_frame_buffer_pool_.reset();
+  last_timestamp_ = 0;
+  timestamp_offset_ = 0;
 
   faces_.clear();
   region_of_interest_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);

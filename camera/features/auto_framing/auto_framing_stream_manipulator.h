@@ -172,6 +172,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   const camera3_stream_t* target_output_stream_ = nullptr;
   bool override_crop_window_ = false;
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
+  int64_t last_timestamp_ = 0;
+  int64_t timestamp_offset_ = 0;
 
   AutoFramingClient auto_framing_client_;
   std::unique_ptr<FaceTracker> face_tracker_;

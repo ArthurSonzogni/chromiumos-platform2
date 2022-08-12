@@ -333,6 +333,37 @@ TEST_P(AutoFramingTest, ContinuousFramingInMovingScene) {
                           /*expected_crop_full_intervals=*/{});
 }
 
+TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
+  const base::TimeDelta frame_duration = base::Seconds(1.0f / g_frame_rate);
+  const Size full_size(1280, 720);
+  const Size stream_size(320, 240);
+  const TestStreamConfig test_stream_config = {
+      .duration = g_duration,
+      .face_rect =
+          ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.4f, 0.12f, 0.2f)),
+  };
+  const AutoFramingStreamManipulator::Options options = {
+      .detection_rate = g_frame_rate,
+  };
+
+  AutoFramingTestFixture fixture;
+  ASSERT_TRUE(fixture.LoadTestImage(g_test_image_path));
+  ASSERT_TRUE(fixture.SetUp(full_size, stream_size, g_frame_rate,
+                            {test_stream_config}, options));
+
+  base::ElapsedTimer timer;
+  int frame_count = 0;
+  int64_t timestamp = 0;
+  const int64_t step = frame_duration.InNanoseconds();
+  while (timer.Elapsed() <= test_stream_config.duration) {
+    ++frame_count;
+    timestamp += frame_count % 10 == 0 ? -step : step;
+    ASSERT_TRUE(fixture.ProcessFrame(timestamp, /*is_enabled=*/true,
+                                     /*framing_result=*/nullptr));
+    base::PlatformThread::Sleep(frame_duration);
+  }
+}
+
 }  // namespace cros::tests
 
 int main(int argc, char** argv) {
