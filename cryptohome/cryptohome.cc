@@ -13,8 +13,10 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <iostream>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,6 +24,7 @@
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -59,7 +62,6 @@
 // The dbus_adaptor and proxy include must happen after the protobuf include
 
 using base::FilePath;
-using base::StringPrintf;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 using hwsec_foundation::BlobToHex;
@@ -92,121 +94,202 @@ std::string BrilloErrorToString(brillo::Error* err) {
   return result;
 }
 
+// Defines the output format to use for display.
+enum class OutputFormat {
+  // The default format used, geared towards human readability. This will use
+  // the proto_print generated libraries for formatting any protobuf output, and
+  // will also include informational text. It is not reliably machine-parsable.
+  kDefault,
+  // Binary protobuf format. The result of the underlying dbus request will be
+  // written to standard output, in serialized binary format. Any other
+  // informational output will be written to standard error.
+  kBinaryProtobuf,
+};
+
+class Printer {
+ public:
+  explicit Printer(OutputFormat output_format)
+      : output_format_(output_format) {}
+  ~Printer() = default;
+
+  // No copying. Share the printer by pointer or reference.
+  Printer(Printer&) = delete;
+  Printer& operator=(Printer&) = delete;
+  Printer(Printer&&) = delete;
+  Printer& operator=(Printer&&) = delete;
+
+  // Print the reply protobuf from a command request.
+  template <typename T>
+  void PrintReplyProtobuf(const T& protobuf) {
+    switch (output_format_) {
+      case OutputFormat::kDefault:
+        std::cout << GetProtoDebugString(protobuf);
+        return;
+      case OutputFormat::kBinaryProtobuf:
+        protobuf.SerializeToOstream(&std::cout);
+        return;
+    }
+  }
+  // Print a human-oriented text string to output.
+  void PrintHumanOutput(const std::string& str) {
+    switch (output_format_) {
+      case OutputFormat::kDefault:
+        std::cout << str;
+        return;
+      case OutputFormat::kBinaryProtobuf:
+        std::cerr << str;
+        return;
+    }
+  }
+  // A version of PrintHumanOutput that uses printf-style formatting.
+  void PrintFormattedHumanOutput(const char* format, ...) PRINTF_FORMAT(2, 3) {
+    va_list ap;
+    va_start(ap, format);
+    std::string output;
+    base::StringAppendV(&output, format, ap);
+    va_end(ap);
+    PrintHumanOutput(output);
+  }
+
+  // Force a write of any of the buffers in the underlying streams.
+  void Flush() {
+    switch (output_format_) {
+      case OutputFormat::kDefault:
+        std::cout.flush();
+        return;
+      case OutputFormat::kBinaryProtobuf:
+        std::cout.flush();
+        std::cerr.flush();
+        return;
+    }
+  }
+
+ private:
+  const OutputFormat output_format_;
+};
+
 }  // namespace
 
 namespace switches {
-static const char kSyslogSwitch[] = "syslog";
-static const char kAttestationServerSwitch[] = "attestation-server";
-static struct {
+namespace {
+constexpr char kSyslogSwitch[] = "syslog";
+constexpr char kAttestationServerSwitch[] = "attestation-server";
+constexpr struct {
   const char* name;
   const attestation::ACAType aca_type;
 } kAttestationServers[] = {{"default", attestation::DEFAULT_ACA},
                            {"test", attestation::TEST_ACA}};
-static const char kVaServerSwitch[] = "va-server";
-static struct {
+constexpr char kVaServerSwitch[] = "va-server";
+constexpr struct {
   const char* name;
   const attestation::VAType va_type;
 } kVaServers[] = {{"default", attestation::DEFAULT_VA},
                   {"test", attestation::TEST_VA}};
-static const char kWaitOwnershipTimeoutSwitch[] = "wait-ownership-timeout";
-static const char kActionSwitch[] = "action";
-static const char* kActions[] = {"mount_ex",
-                                 "mount_guest_ex",
-                                 "unmount",
-                                 "is_mounted",
-                                 "check_key_ex",
-                                 "remove_key_ex",
-                                 "get_key_data_ex",
-                                 "list_keys_ex",
-                                 "migrate_key_ex",
-                                 "add_key_ex",
-                                 "mass_remove_keys",
-                                 "update_key_ex",
-                                 "remove",
-                                 "obfuscate_user",
-                                 "get_system_salt",
-                                 "dump_keyset",
-                                 "dump_last_activity",
-                                 "status",
-                                 "set_current_user_old",
-                                 "tpm_take_ownership",
-                                 "tpm_clear_stored_password",
-                                 "tpm_wait_ownership",
-                                 "install_attributes_set",
-                                 "install_attributes_get",
-                                 "install_attributes_finalize",
-                                 "install_attributes_count",
-                                 "install_attributes_get_status",
-                                 "install_attributes_is_ready",
-                                 "install_attributes_is_secure",
-                                 "install_attributes_is_invalid",
-                                 "install_attributes_is_first_install",
-                                 "pkcs11_get_user_token_info",
-                                 "pkcs11_get_system_token_info",
-                                 "pkcs11_is_user_token_ok",
-                                 "pkcs11_terminate",
-                                 "pkcs11_restore_tpm_tokens",
-                                 "tpm_verify_attestation",
-                                 "tpm_verify_ek",
-                                 "tpm_attestation_status",
-                                 "tpm_attestation_more_status",
-                                 "tpm_attestation_start_enroll",
-                                 "tpm_attestation_finish_enroll",
-                                 "tpm_attestation_enroll",
-                                 "tpm_attestation_start_cert_request",
-                                 "tpm_attestation_finish_cert_request",
-                                 "tpm_attestation_get_certificate",
-                                 "tpm_attestation_key_status",
-                                 "tpm_attestation_register_key",
-                                 "tpm_attestation_enterprise_challenge",
-                                 "tpm_attestation_simple_challenge",
-                                 "tpm_attestation_get_key_payload",
-                                 "tpm_attestation_set_key_payload",
-                                 "tpm_attestation_delete_keys",
-                                 "tpm_attestation_delete_key",
-                                 "tpm_attestation_get_ek",
-                                 "tpm_attestation_reset_identity",
-                                 "tpm_attestation_reset_identity_result",
-                                 "sign_lockbox",
-                                 "verify_lockbox",
-                                 "finalize_lockbox",
-                                 "get_boot_attribute",
-                                 "set_boot_attribute",
-                                 "flush_and_sign_boot_attributes",
-                                 "get_login_status",
-                                 "initialize_cast_key",
-                                 "get_firmware_management_parameters",
-                                 "set_firmware_management_parameters",
-                                 "remove_firmware_management_parameters",
-                                 "migrate_to_dircrypto",
-                                 "needs_dircrypto_migration",
-                                 "get_enrollment_id",
-                                 "get_supported_key_policies",
-                                 "get_account_disk_usage",
-                                 "lock_to_single_user_mount_until_reboot",
-                                 "get_rsu_device_id",
-                                 "check_health",
-                                 "start_fingerprint_auth_session",
-                                 "end_fingerprint_auth_session",
-                                 "start_auth_session",
-                                 "add_credentials",
-                                 "update_credential",
-                                 "authenticate_auth_session",
-                                 "invalidate_auth_session",
-                                 "extend_auth_session",
-                                 "create_persistent_user",
-                                 "prepare_guest_vault",
-                                 "prepare_ephemeral_vault",
-                                 "prepare_persistent_vault",
-                                 "prepare_vault_for_migration",
-                                 "add_auth_factor",
-                                 "authenticate_auth_factor",
-                                 "update_auth_factor",
-                                 "remove_auth_factor",
-                                 "list_auth_factors",
-                                 "get_auth_session_status",
-                                 "get_recovery_request",
-                                 NULL};
+constexpr char kWaitOwnershipTimeoutSwitch[] = "wait-ownership-timeout";
+constexpr struct {
+  const char* name;
+  const OutputFormat format;
+} kOutputFormats[] = {{"default", OutputFormat::kDefault},
+                      {"binary-protobuf", OutputFormat::kBinaryProtobuf}};
+constexpr char kOutputFormatSwitch[] = "output-format";
+constexpr char kActionSwitch[] = "action";
+constexpr const char* kActions[] = {"mount_ex",
+                                    "mount_guest_ex",
+                                    "unmount",
+                                    "is_mounted",
+                                    "check_key_ex",
+                                    "remove_key_ex",
+                                    "get_key_data_ex",
+                                    "list_keys_ex",
+                                    "migrate_key_ex",
+                                    "add_key_ex",
+                                    "mass_remove_keys",
+                                    "update_key_ex",
+                                    "remove",
+                                    "obfuscate_user",
+                                    "get_system_salt",
+                                    "dump_keyset",
+                                    "dump_last_activity",
+                                    "status",
+                                    "set_current_user_old",
+                                    "tpm_take_ownership",
+                                    "tpm_clear_stored_password",
+                                    "tpm_wait_ownership",
+                                    "install_attributes_set",
+                                    "install_attributes_get",
+                                    "install_attributes_finalize",
+                                    "install_attributes_count",
+                                    "install_attributes_get_status",
+                                    "install_attributes_is_ready",
+                                    "install_attributes_is_secure",
+                                    "install_attributes_is_invalid",
+                                    "install_attributes_is_first_install",
+                                    "pkcs11_get_user_token_info",
+                                    "pkcs11_get_system_token_info",
+                                    "pkcs11_is_user_token_ok",
+                                    "pkcs11_terminate",
+                                    "pkcs11_restore_tpm_tokens",
+                                    "tpm_verify_attestation",
+                                    "tpm_verify_ek",
+                                    "tpm_attestation_status",
+                                    "tpm_attestation_more_status",
+                                    "tpm_attestation_start_enroll",
+                                    "tpm_attestation_finish_enroll",
+                                    "tpm_attestation_enroll",
+                                    "tpm_attestation_start_cert_request",
+                                    "tpm_attestation_finish_cert_request",
+                                    "tpm_attestation_get_certificate",
+                                    "tpm_attestation_key_status",
+                                    "tpm_attestation_register_key",
+                                    "tpm_attestation_enterprise_challenge",
+                                    "tpm_attestation_simple_challenge",
+                                    "tpm_attestation_get_key_payload",
+                                    "tpm_attestation_set_key_payload",
+                                    "tpm_attestation_delete_keys",
+                                    "tpm_attestation_delete_key",
+                                    "tpm_attestation_get_ek",
+                                    "tpm_attestation_reset_identity",
+                                    "tpm_attestation_reset_identity_result",
+                                    "sign_lockbox",
+                                    "verify_lockbox",
+                                    "finalize_lockbox",
+                                    "get_boot_attribute",
+                                    "set_boot_attribute",
+                                    "flush_and_sign_boot_attributes",
+                                    "get_login_status",
+                                    "initialize_cast_key",
+                                    "get_firmware_management_parameters",
+                                    "set_firmware_management_parameters",
+                                    "remove_firmware_management_parameters",
+                                    "migrate_to_dircrypto",
+                                    "needs_dircrypto_migration",
+                                    "get_enrollment_id",
+                                    "get_supported_key_policies",
+                                    "get_account_disk_usage",
+                                    "lock_to_single_user_mount_until_reboot",
+                                    "get_rsu_device_id",
+                                    "check_health",
+                                    "start_fingerprint_auth_session",
+                                    "end_fingerprint_auth_session",
+                                    "start_auth_session",
+                                    "add_credentials",
+                                    "update_credential",
+                                    "authenticate_auth_session",
+                                    "invalidate_auth_session",
+                                    "extend_auth_session",
+                                    "create_persistent_user",
+                                    "prepare_guest_vault",
+                                    "prepare_ephemeral_vault",
+                                    "prepare_persistent_vault",
+                                    "prepare_vault_for_migration",
+                                    "add_auth_factor",
+                                    "authenticate_auth_factor",
+                                    "update_auth_factor",
+                                    "remove_auth_factor",
+                                    "list_auth_factors",
+                                    "get_auth_session_status",
+                                    "get_recovery_request",
+                                    nullptr};
 enum ActionEnum {
   ACTION_MOUNT_EX,
   ACTION_MOUNT_GUEST_EX,
@@ -305,51 +388,53 @@ enum ActionEnum {
   ACTION_GET_AUTH_SESSION_STATUS,
   ACTION_GET_RECOVERY_REQUEST
 };
-static const char kUserSwitch[] = "user";
-static const char kPasswordSwitch[] = "password";
-static const char kFingerprintSwitch[] = "fingerprint";
-static const char kKeyLabelSwitch[] = "key_label";
-static const char kNewKeyLabelSwitch[] = "new_key_label";
-static const char kRemoveKeyLabelSwitch[] = "remove_key_label";
-static const char kOldPasswordSwitch[] = "old_password";
-static const char kNewPasswordSwitch[] = "new_password";
-static const char kForceSwitch[] = "force";
-static const char kCreateSwitch[] = "create";
-static const char kCreateEmptyLabelSwitch[] = "create_empty_label";
-static const char kAttrNameSwitch[] = "name";
-static const char kAttrPrefixSwitch[] = "prefix";
-static const char kAttrValueSwitch[] = "value";
-static const char kFileSwitch[] = "file";
-static const char kInputFileSwitch[] = "input";
-static const char kOutputFileSwitch[] = "output";
-static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
-static const char kCrosCoreSwitch[] = "cros_core";
-static const char kFlagsSwitch[] = "flags";
-static const char kDevKeyHashSwitch[] = "developer_key_hash";
-static const char kEcryptfsSwitch[] = "ecryptfs";
-static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
-static const char kMinimalMigration[] = "minimal_migration";
-static const char kPublicMount[] = "public_mount";
-static const char kKeyPolicySwitch[] = "key_policy";
-static const char kKeyPolicyLECredential[] = "le";
-static const char kProfileSwitch[] = "profile";
-static const char kIgnoreCache[] = "ignore_cache";
-static const char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
-static const char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
-static const char kUseDBus[] = "use_dbus";
-static const char kAuthSessionId[] = "auth_session_id";
-static const char kChallengeAlgorithm[] = "challenge_alg";
-static const char kChallengeSPKI[] = "challenge_spki";
-static const char kKeyDelegateName[] = "key_delegate_name";
-static const char kKeyDelegatePath[] = "key_delegate_path";
-static const char kExtensionDuration[] = "extension_duration";
-static const char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
-static const char kPinSwitch[] = "pin";
-static const char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
-static const char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
-static const char kRecoveryResponseSwitch[] = "recovery_response";
+constexpr char kUserSwitch[] = "user";
+constexpr char kPasswordSwitch[] = "password";
+constexpr char kFingerprintSwitch[] = "fingerprint";
+constexpr char kKeyLabelSwitch[] = "key_label";
+constexpr char kNewKeyLabelSwitch[] = "new_key_label";
+constexpr char kRemoveKeyLabelSwitch[] = "remove_key_label";
+constexpr char kOldPasswordSwitch[] = "old_password";
+constexpr char kNewPasswordSwitch[] = "new_password";
+constexpr char kForceSwitch[] = "force";
+constexpr char kCreateSwitch[] = "create";
+constexpr char kCreateEmptyLabelSwitch[] = "create_empty_label";
+constexpr char kAttrNameSwitch[] = "name";
+constexpr char kAttrPrefixSwitch[] = "prefix";
+constexpr char kAttrValueSwitch[] = "value";
+constexpr char kFileSwitch[] = "file";
+constexpr char kInputFileSwitch[] = "input";
+constexpr char kOutputFileSwitch[] = "output";
+constexpr char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
+constexpr char kCrosCoreSwitch[] = "cros_core";
+constexpr char kFlagsSwitch[] = "flags";
+constexpr char kDevKeyHashSwitch[] = "developer_key_hash";
+constexpr char kEcryptfsSwitch[] = "ecryptfs";
+constexpr char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
+constexpr char kMinimalMigration[] = "minimal_migration";
+constexpr char kPublicMount[] = "public_mount";
+constexpr char kKeyPolicySwitch[] = "key_policy";
+constexpr char kKeyPolicyLECredential[] = "le";
+constexpr char kProfileSwitch[] = "profile";
+constexpr char kIgnoreCache[] = "ignore_cache";
+constexpr char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
+constexpr char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
+constexpr char kUseDBus[] = "use_dbus";
+constexpr char kAuthSessionId[] = "auth_session_id";
+constexpr char kChallengeAlgorithm[] = "challenge_alg";
+constexpr char kChallengeSPKI[] = "challenge_spki";
+constexpr char kKeyDelegateName[] = "key_delegate_name";
+constexpr char kKeyDelegatePath[] = "key_delegate_path";
+constexpr char kExtensionDuration[] = "extension_duration";
+constexpr char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
+constexpr char kPinSwitch[] = "pin";
+constexpr char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
+constexpr char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
+constexpr char kRecoveryResponseSwitch[] = "recovery_response";
+}  // namespace
 }  // namespace switches
 
+namespace {
 brillo::SecureBlob GetSystemSalt(
     org::chromium::CryptohomeMiscInterfaceProxy* proxy) {
   user_data_auth::GetSystemSaltRequest req;
@@ -363,49 +448,59 @@ brillo::SecureBlob GetSystemSalt(
   return system_salt;
 }
 
-bool GetAttrName(const base::CommandLine* cl, std::string* name_out) {
+bool GetAttrName(Printer& printer,
+                 const base::CommandLine* cl,
+                 std::string* name_out) {
   *name_out = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
 
   if (name_out->length() == 0) {
-    printf("No install attribute name specified (--name=<name>)\n");
+    printer.PrintHumanOutput(
+        "No install attribute name specified (--name=<name>)\n");
     return false;
   }
   return true;
 }
 
-bool GetAttrValue(const base::CommandLine* cl, std::string* value_out) {
+bool GetAttrValue(Printer& printer,
+                  const base::CommandLine* cl,
+                  std::string* value_out) {
   *value_out = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
 
   if (value_out->length() == 0) {
-    printf("No install attribute value specified (--value=<value>)\n");
+    printer.PrintHumanOutput(
+        "No install attribute value specified (--value=<value>)\n");
     return false;
   }
   return true;
 }
 
-bool GetAccountId(const base::CommandLine* cl, std::string* user_out) {
+bool GetAccountId(Printer& printer,
+                  const base::CommandLine* cl,
+                  std::string* user_out) {
   *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
 
   if (user_out->length() == 0) {
-    printf("No user specified (--user=<account_id>)\n");
+    printer.PrintHumanOutput("No user specified (--user=<account_id>)\n");
     return false;
   }
   return true;
 }
 
-bool GetAuthSessionId(const base::CommandLine* cl,
+bool GetAuthSessionId(Printer& printer,
+                      const base::CommandLine* cl,
                       std::string* session_id_out) {
   *session_id_out = cl->GetSwitchValueASCII(switches::kAuthSessionId);
 
   if (session_id_out->length() == 0) {
-    printf(
+    printer.PrintHumanOutput(
         "No auth_session_id specified (--auth_session_id=<auth_session_id>)\n");
     return false;
   }
   return true;
 }
 
-bool GetSecret(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
+bool GetSecret(Printer& printer,
+               org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                const base::CommandLine* cl,
                const std::string& cl_switch,
                const std::string& prompt,
@@ -420,11 +515,11 @@ bool GetSecret(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
     memcpy(&new_attr, &original_attr, sizeof(new_attr));
     new_attr.c_lflag &= ~(ECHO);
     tcsetattr(0, TCSANOW, &new_attr);
-    printf("%s: ", prompt.c_str());
-    fflush(stdout);
+    printer.PrintFormattedHumanOutput("%s: ", prompt.c_str());
+    printer.Flush();
     if (fgets(buffer, std::size(buffer), stdin))
       secret = buffer;
-    printf("\n");
+    printer.PrintHumanOutput("\n");
     tcsetattr(0, TCSANOW, &original_attr);
   }
 
@@ -469,7 +564,8 @@ FilePath GetOutputFile(const base::CommandLine* cl) {
   return file_path;
 }
 
-bool GetProfile(const base::CommandLine* cl,
+bool GetProfile(Printer& printer,
+                const base::CommandLine* cl,
                 attestation::CertificateProfile* profile) {
   const std::string profile_str =
       cl->GetSwitchValueASCII(switches::kProfileSwitch);
@@ -499,46 +595,52 @@ bool GetProfile(const base::CommandLine* cl,
   } else if (profile_str == "soft_bind") {
     *profile = attestation::CertificateProfile::SOFT_BIND_CERTIFICATE;
   } else {
-    printf("Unknown certificate profile: %s.\n", profile_str.c_str());
+    printer.PrintFormattedHumanOutput("Unknown certificate profile: %s.\n",
+                                      profile_str.c_str());
     return false;
   }
   return true;
 }
 
-bool ConfirmRemove(const std::string& user) {
-  printf("!!! Are you sure you want to remove the user's cryptohome?\n");
-  printf("!!!\n");
-  printf("!!! Re-enter the username at the prompt to remove the\n");
-  printf("!!! cryptohome for the user.\n");
-  printf("Enter the username <%s>: ", user.c_str());
-  fflush(stdout);
+bool ConfirmRemove(Printer& printer, const std::string& user) {
+  printer.PrintHumanOutput(
+      "!!! Are you sure you want to remove the user's cryptohome?\n");
+  printer.PrintHumanOutput("!!!\n");
+  printer.PrintHumanOutput(
+      "!!! Re-enter the username at the prompt to remove the\n");
+  printer.PrintHumanOutput("!!! cryptohome for the user.\n");
+  printer.PrintFormattedHumanOutput("Enter the username <%s>: ", user.c_str());
+  printer.Flush();
 
   char buffer[256];
   if (!fgets(buffer, std::size(buffer), stdin)) {
-    printf("Error while reading username.\n");
+    printer.PrintHumanOutput("Error while reading username.\n");
     return false;
   }
   std::string verification = buffer;
   // fgets will append the newline character, remove it.
   base::TrimWhitespaceASCII(verification, base::TRIM_ALL, &verification);
   if (user != verification) {
-    printf("Usernames do not match.\n");
+    printer.PrintHumanOutput("Usernames do not match.\n");
     return false;
   }
   return true;
 }
 
-bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier* id) {
+bool BuildAccountId(Printer& printer,
+                    base::CommandLine* cl,
+                    cryptohome::AccountIdentifier* id) {
   std::string account_id;
-  if (!GetAccountId(cl, &account_id)) {
-    printf("No account_id specified.\n");
+  if (!GetAccountId(printer, cl, &account_id)) {
+    printer.PrintHumanOutput("No account_id specified.\n");
     return false;
   }
   id->set_account_id(account_id);
   return true;
 }
 
-bool SetLeCredentialPolicyIfNeeded(const base::CommandLine& cl,
+bool SetLeCredentialPolicyIfNeeded(Printer& printer,
+                                   const base::CommandLine& cl,
                                    cryptohome::Key* key) {
   if (!cl.HasSwitch(switches::kKeyPolicySwitch)) {
     return true;
@@ -546,7 +648,7 @@ bool SetLeCredentialPolicyIfNeeded(const base::CommandLine& cl,
 
   if (cl.GetSwitchValueASCII(switches::kKeyPolicySwitch) !=
       switches::kKeyPolicyLECredential) {
-    printf("Unknown key policy.\n");
+    printer.PrintHumanOutput("Unknown key policy.\n");
     return false;
   }
 
@@ -555,7 +657,8 @@ bool SetLeCredentialPolicyIfNeeded(const base::CommandLine& cl,
   return true;
 }
 
-bool BuildAuthorization(base::CommandLine* cl,
+bool BuildAuthorization(Printer& printer,
+                        base::CommandLine* cl,
                         org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                         bool need_credential,
                         cryptohome::AuthorizationRequest* auth) {
@@ -582,7 +685,7 @@ bool BuildAuthorization(base::CommandLine* cl,
             cl->HasSwitch(switches::kChallengeSPKI) &&
             cl->HasSwitch(switches::kKeyDelegateName) &&
             cl->HasSwitch(switches::kKeyDelegatePath))) {
-        printf(
+        printer.PrintHumanOutput(
             "One or more of the switches for challenge response auth is "
             "missing.\n");
         return false;
@@ -601,8 +704,9 @@ bool BuildAuthorization(base::CommandLine* cl,
       for (const auto& algo_string : algo_strings) {
         cryptohome::ChallengeSignatureAlgorithm challenge_alg;
         if (!ChallengeSignatureAlgorithm_Parse(algo_string, &challenge_alg)) {
-          printf("Invalid challenge response algorithm \"%s\".\n",
-                 algo_string.c_str());
+          printer.PrintFormattedHumanOutput(
+              "Invalid challenge response algorithm \"%s\".\n",
+              algo_string.c_str());
           return false;
         }
         challenge_response_key->add_signature_algorithm(challenge_alg);
@@ -612,7 +716,8 @@ bool BuildAuthorization(base::CommandLine* cl,
       if (!base::HexStringToString(
               cl->GetSwitchValueASCII(switches::kChallengeSPKI),
               &challenge_spki)) {
-        printf("Challenge SPKI Public Key DER is not hex encoded.\n");
+        printer.PrintHumanOutput(
+            "Challenge SPKI Public Key DER is not hex encoded.\n");
         return false;
       }
       challenge_response_key->set_public_key_spki_der(challenge_spki);
@@ -626,15 +731,15 @@ bool BuildAuthorization(base::CommandLine* cl,
       brillo::SecureBlob raw_byte(
           cl->GetSwitchValueASCII(switches::kRestoreKeyInHexSwitch));
       if (raw_byte.to_string().length() == 0) {
-        printf("No hex string specified\n");
+        printer.PrintHumanOutput("No hex string specified\n");
         return false;
       }
       SecureBlob::HexStringToSecureBlob(raw_byte.to_string(), &raw_byte);
       auth->mutable_key()->set_secret(raw_byte.to_string());
     } else {
       std::string password;
-      GetSecret(proxy, cl, switches::kPasswordSwitch, "Enter the password",
-                &password);
+      GetSecret(printer, proxy, cl, switches::kPasswordSwitch,
+                "Enter the password", &password);
 
       auth->mutable_key()->set_secret(password);
     }
@@ -651,11 +756,12 @@ bool BuildAuthorization(base::CommandLine* cl,
   return true;
 }
 
-bool BuildAuthFactor(base::CommandLine* cl,
+bool BuildAuthFactor(Printer& printer,
+                     base::CommandLine* cl,
                      user_data_auth::AuthFactor* auth_factor) {
   std::string label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
   if (label.empty()) {
-    printf("No auth factor label specified\n");
+    printer.PrintHumanOutput("No auth factor label specified\n");
     return false;
   }
   auth_factor->set_label(label);
@@ -676,25 +782,27 @@ bool BuildAuthFactor(base::CommandLine* cl,
     auth_factor->mutable_cryptohome_recovery_metadata();
     return true;
   }
-  printf("No auth factor specified\n");
+  printer.PrintHumanOutput("No auth factor specified\n");
   return false;
 }
 
-bool BuildAuthInput(base::CommandLine* cl,
+bool BuildAuthInput(Printer& printer,
+                    base::CommandLine* cl,
                     org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                     user_data_auth::AuthInput* auth_input) {
   // TODO(b/208357699): Support other auth factor types.
   std::string password;
   if (cl->HasSwitch(switches::kPasswordSwitch)) {
     std::string password;
-    if (GetSecret(proxy, cl, switches::kPasswordSwitch, "Enter the password",
-                  &password)) {
+    if (GetSecret(printer, proxy, cl, switches::kPasswordSwitch,
+                  "Enter the password", &password)) {
       auth_input->mutable_password_input()->set_secret(password);
       return true;
     }
   } else if (cl->HasSwitch(switches::kPinSwitch)) {
     std::string pin;
-    if (GetSecret(proxy, cl, switches::kPinSwitch, "Enter the pin", &pin)) {
+    if (GetSecret(printer, proxy, cl, switches::kPinSwitch, "Enter the pin",
+                  &pin)) {
       auth_input->mutable_pin_input()->set_secret(pin);
       return true;
     }
@@ -704,7 +812,8 @@ bool BuildAuthInput(base::CommandLine* cl,
     std::string mediator_pub_key;
     if (!base::HexStringToString(mediator_pub_key_hex.c_str(),
                                  &mediator_pub_key)) {
-      printf("Couldn't convert mediator_pub_key_hex to string\n");
+      printer.PrintHumanOutput(
+          "Couldn't convert mediator_pub_key_hex to string\n");
       return false;
     }
     auth_input->mutable_cryptohome_recovery_input()->set_mediator_pub_key(
@@ -716,22 +825,24 @@ bool BuildAuthInput(base::CommandLine* cl,
     std::string recovery_response;
     if (!base::HexStringToString(recovery_response_hex.c_str(),
                                  &recovery_response)) {
-      printf("Couldn't convert recovery_response_hex to string\n");
+      printer.PrintHumanOutput(
+          "Couldn't convert recovery_response_hex to string\n");
       return false;
     }
     auth_input->mutable_cryptohome_recovery_input()->set_recovery_response(
         recovery_response);
 
     if (!cl->HasSwitch(switches::kRecoveryEpochResponseSwitch)) {
-      printf("No %s switch specified\n",
-             switches::kRecoveryEpochResponseSwitch);
+      printer.PrintFormattedHumanOutput("No %s switch specified\n",
+                                        switches::kRecoveryEpochResponseSwitch);
       return false;
     }
     std::string epoch_response_hex =
         cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch);
     std::string epoch_response;
     if (!base::HexStringToString(epoch_response_hex.c_str(), &epoch_response)) {
-      printf("Couldn't convert epoch_response_hex to string\n");
+      printer.PrintHumanOutput(
+          "Couldn't convert epoch_response_hex to string\n");
       return false;
     }
     auth_input->mutable_cryptohome_recovery_input()->set_epoch_response(
@@ -739,7 +850,7 @@ bool BuildAuthInput(base::CommandLine* cl,
 
     return true;
   }
-  printf("No auth input specified\n");
+  printer.PrintHumanOutput("No auth input specified\n");
   return false;
 }
 
@@ -756,6 +867,7 @@ std::string GetPCAName(int pca_type) {
     }
   }
 }
+}  // namespace
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
@@ -764,6 +876,30 @@ int main(int argc, char** argv) {
     brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   else
     brillo::InitLog(brillo::kLogToStderr);
+
+  // Use output format to construct a printer. We process this argument first so
+  // that we can use the resulting printer for outputting errors when processing
+  // any of the other arguments.
+  OutputFormat output_format = OutputFormat::kDefault;
+  if (cl->HasSwitch(switches::kOutputFormatSwitch)) {
+    std::string output_format_str =
+        cl->GetSwitchValueASCII(switches::kOutputFormatSwitch);
+    std::optional<OutputFormat> found_output_format;
+    for (const auto& value : switches::kOutputFormats) {
+      if (output_format_str == value.name) {
+        found_output_format = value.format;
+        break;
+      }
+    }
+    if (found_output_format) {
+      output_format = *found_output_format;
+    } else {
+      // Do manual output here because we don't have a working printer.
+      std::cerr << "Invalid output format: " << output_format_str << std::endl;
+      return 1;
+    }
+  }
+  Printer printer(output_format);
 
   attestation::ACAType pca_type = attestation::DEFAULT_ACA;
   if (cl->HasSwitch(switches::kAttestationServerSwitch)) {
@@ -778,7 +914,8 @@ int main(int argc, char** argv) {
       }
     }
     if (!aca_valid) {
-      printf("Invalid attestation server: %s\n", server.c_str());
+      printer.PrintFormattedHumanOutput("Invalid attestation server: %s\n",
+                                        server.c_str());
       return 1;
     }
   }
@@ -798,15 +935,17 @@ int main(int argc, char** argv) {
       }
     }
     if (!va_valid) {
-      printf("Invalid Verified Access server: %s\n", va_server.c_str());
+      printer.PrintFormattedHumanOutput("Invalid Verified Access server: %s\n",
+                                        va_server.c_str());
       return 1;
     }
   }
 
   if (IsMixingOldAndNewFileSwitches(cl)) {
-    printf("Use either --%s and --%s together, or --%s only.\n",
-           switches::kInputFileSwitch, switches::kOutputFileSwitch,
-           switches::kFileSwitch);
+    printer.PrintFormattedHumanOutput(
+        "Use either --%s and --%s together, or --%s only.\n",
+        switches::kInputFileSwitch, switches::kOutputFileSwitch,
+        switches::kFileSwitch);
     return 1;
   }
 
@@ -834,14 +973,14 @@ int main(int argc, char** argv) {
 
     if (cl->HasSwitch(switches::kAuthSessionId)) {
       std::string auth_session_id_hex, auth_session_id;
-      if (GetAuthSessionId(cl, &auth_session_id_hex)) {
+      if (GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
         base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
         req.set_auth_session_id(auth_session_id);
       }
     } else {
-      if (!BuildAccountId(cl, req.mutable_account()))
+      if (!BuildAccountId(printer, cl, req.mutable_account()))
         return 1;
-      if (!BuildAuthorization(cl, &misc_proxy, !is_public_mount,
+      if (!BuildAuthorization(printer, cl, &misc_proxy, !is_public_mount,
                               req.mutable_authorization()))
         return 1;
     }
@@ -874,17 +1013,17 @@ int main(int argc, char** argv) {
     user_data_auth::MountReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.Mount(req, &reply, &error, timeout_ms) || error) {
-      printf("MountEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "MountEx call failed: %s", BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Mount failed.\n");
+      printer.PrintHumanOutput("Mount failed.\n");
       return reply.error();
     }
-    printf("Mount succeeded.\n");
+    printer.PrintHumanOutput("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST_EX],
                      action.c_str())) {
     user_data_auth::MountReply reply;
@@ -893,27 +1032,29 @@ int main(int argc, char** argv) {
 
     // This is for information. Do not fail if mount namespace is not ready.
     if (!cryptohome::UserSessionMountNamespaceExists()) {
-      printf("User session mount namespace at %s has not been created yet.\n",
-             cryptohome::kUserSessionMountNamespacePath);
+      printer.PrintFormattedHumanOutput(
+          "User session mount namespace at %s has not been created yet.\n",
+          cryptohome::kUserSessionMountNamespacePath);
     }
 
     req.set_guest_mount(true);
     if (!userdataauth_proxy.Mount(req, &reply, &error, timeout_ms) || error) {
-      printf("Mount call failed: %s", BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Mount call failed: %s", BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Mount failed.\n");
+      printer.PrintHumanOutput("Mount failed.\n");
       return reply.error();
     }
-    printf("Mount succeeded.\n");
+    printer.PrintHumanOutput("Mount succeeded.\n");
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_START_FINGERPRINT_AUTH_SESSION],
                      action.c_str())) {
     user_data_auth::StartFingerprintAuthSessionRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
 
     user_data_auth::StartFingerprintAuthSessionReply reply;
@@ -921,14 +1062,15 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.StartFingerprintAuthSession(req, &reply, &error,
                                                         timeout_ms) ||
         error) {
-      printf("StartFingerprintAuthSession call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "StartFingerprintAuthSession call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Fingerprint auth session failed to start.\n");
+      printer.PrintHumanOutput("Fingerprint auth session failed to start.\n");
       return reply.error();
     }
   } else if (!strcmp(switches::kActions
@@ -940,17 +1082,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.EndFingerprintAuthSession(req, &reply, &error,
                                                       timeout_ms) ||
         error) {
-      printf("EndFingerprintAuthSession call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "EndFingerprintAuthSession call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     // EndFingerprintAuthSession always succeeds.
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_KEY_EX],
                      action.c_str())) {
     user_data_auth::RemoveKeyRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
+    if (!BuildAuthorization(printer, cl, &misc_proxy,
+                            true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -961,22 +1105,23 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.RemoveKey(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("RemoveKeyEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "RemoveKeyEx call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Key removal failed.\n");
+      printer.PrintHumanOutput("Key removal failed.\n");
       return reply.error();
     }
-    printf("Key removed.\n");
+    printer.PrintHumanOutput("Key removed.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_KEY_DATA_EX],
                      action.c_str())) {
     user_data_auth::GetKeyDataRequest req;
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, req.mutable_account_id())) {
+    if (!BuildAccountId(printer, cl, req.mutable_account_id())) {
       return 1;
     }
     // Make sure has_authorization_request() returns true.
@@ -984,7 +1129,7 @@ int main(int argc, char** argv) {
     const std::string label =
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
     if (label.empty()) {
-      printf("No key_label specified.\n");
+      printer.PrintHumanOutput("No key_label specified.\n");
       return 1;
     }
     req.mutable_key()->mutable_data()->set_label(label);
@@ -993,50 +1138,53 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.GetKeyData(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("GetKeyDataEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetKeyDataEx call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Key retrieval failed.\n");
+      printer.PrintHumanOutput("Key retrieval failed.\n");
       return reply.error();
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
                      action.c_str())) {
     user_data_auth::ListKeysRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
 
     user_data_auth::ListKeysReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.ListKeys(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("ListKeysEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "ListKeysEx call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to list keys.\n");
+      printer.PrintHumanOutput("Failed to list keys.\n");
       return reply.error();
     }
     for (int i = 0; i < reply.labels_size(); ++i) {
-      printf("Label: %s\n", reply.labels(i).c_str());
+      printer.PrintFormattedHumanOutput("Label: %s\n", reply.labels(i).c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                      action.c_str())) {
     user_data_auth::CheckKeyRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
     if (cl->HasSwitch(switches::kFingerprintSwitch)) {
       req.mutable_authorization_request()
           ->mutable_key()
           ->mutable_data()
           ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
-    } else if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
+    } else if (!BuildAuthorization(printer, cl, &misc_proxy,
+                                   true /* need_credential */,
                                    req.mutable_authorization_request())) {
       return 1;
     }
@@ -1050,23 +1198,25 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.CheckKey(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("CheckKeyEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "CheckKeyEx call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Key authentication failed.\n");
+      printer.PrintHumanOutput("Key authentication failed.\n");
       return reply.error();
     }
-    printf("Key authenticated.\n");
+    printer.PrintHumanOutput("Key authenticated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MASS_REMOVE_KEYS],
                      action.c_str())) {
     user_data_auth::MassRemoveKeysRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
+    if (!BuildAuthorization(printer, cl, &misc_proxy,
+                            true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1085,32 +1235,34 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.MassRemoveKeys(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("MassRemoveKeys call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "MassRemoveKeys call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("MassRemoveKeys failed.\n");
+      printer.PrintHumanOutput("MassRemoveKeys failed.\n");
       return reply.error();
     }
-    printf("MassRemoveKeys succeeded.\n");
+    printer.PrintHumanOutput("MassRemoveKeys succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY_EX],
                      action.c_str())) {
     std::string account_id, password, old_password;
 
-    if (!GetAccountId(cl, &account_id)) {
+    if (!GetAccountId(printer, cl, &account_id)) {
       return 1;
     }
 
-    GetSecret(&misc_proxy, cl, switches::kPasswordSwitch,
-              StringPrintf("Enter the password for <%s>", account_id.c_str()),
-              &password);
     GetSecret(
-        &misc_proxy, cl, switches::kOldPasswordSwitch,
-        StringPrintf("Enter the old password for <%s>", account_id.c_str()),
-        &old_password);
+        printer, &misc_proxy, cl, switches::kPasswordSwitch,
+        base::StringPrintf("Enter the password for <%s>", account_id.c_str()),
+        &password);
+    GetSecret(printer, &misc_proxy, cl, switches::kOldPasswordSwitch,
+              base::StringPrintf("Enter the old password for <%s>",
+                                 account_id.c_str()),
+              &old_password);
 
     user_data_auth::MigrateKeyRequest req;
     req.mutable_account_id()->set_account_id(account_id);
@@ -1122,27 +1274,29 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.MigrateKey(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("MigrateKeyEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "MigrateKeyEx call failed: %s",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Key migration failed.\n");
+      printer.PrintHumanOutput("Key migration failed.\n");
       return reply.error();
     }
-    printf("Key migration succeeded.\n");
+    printer.PrintHumanOutput("Key migration succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                      action.c_str())) {
     std::string new_password;
-    GetSecret(&misc_proxy, cl, switches::kNewPasswordSwitch,
+    GetSecret(printer, &misc_proxy, cl, switches::kNewPasswordSwitch,
               "Enter the new password", &new_password);
 
     user_data_auth::AddKeyRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
+    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
+    if (!BuildAuthorization(printer, cl, &misc_proxy,
+                            true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -1152,43 +1306,44 @@ int main(int argc, char** argv) {
     key->set_secret(new_password);
     cryptohome::KeyData* data = key->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
-    if (!SetLeCredentialPolicyIfNeeded(*cl, key)) {
-      printf("Setting LECredential Policy failed.");
+    if (!SetLeCredentialPolicyIfNeeded(printer, *cl, key)) {
+      printer.PrintHumanOutput("Setting LECredential Policy failed.");
       return 1;
     }
 
     user_data_auth::AddKeyReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.AddKey(req, &reply, &error, timeout_ms) || error) {
-      printf("AddKeyEx call failed: %s",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AddKeyEx call failed: %s", BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Key addition failed.\n");
+      printer.PrintHumanOutput("Key addition failed.\n");
       return reply.error();
     }
-    printf("Key added.\n");
+    printer.PrintHumanOutput("Key added.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     user_data_auth::RemoveRequest req;
     std::string account_id;
 
-    if (!GetAccountId(cl, &account_id)) {
+    if (!GetAccountId(printer, cl, &account_id)) {
       return 1;
     }
 
     if (cl->HasSwitch(switches::kAuthSessionId)) {
       std::string auth_session_id_hex, auth_session_id;
-      if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
         return 1;
       base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
       req.set_auth_session_id(auth_session_id);
     }
 
-    if (!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(account_id)) {
+    if (!cl->HasSwitch(switches::kForceSwitch) &&
+        !ConfirmRemove(printer, account_id)) {
       return 1;
     }
 
@@ -1197,17 +1352,18 @@ int main(int argc, char** argv) {
     user_data_auth::RemoveReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.Remove(req, &reply, &error, timeout_ms) || error) {
-      printf("Remove call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Remove call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Remove failed.\n");
+      printer.PrintHumanOutput("Remove failed.\n");
       return 1;
     }
-    printf("Remove succeeded.\n");
+    printer.PrintHumanOutput("Remove succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
     user_data_auth::UnmountRequest req;
@@ -1215,17 +1371,18 @@ int main(int argc, char** argv) {
     user_data_auth::UnmountReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.Unmount(req, &reply, &error, timeout_ms) || error) {
-      printf("Unmount call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Unmount call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Unmount failed.\n");
+      printer.PrintHumanOutput("Unmount failed.\n");
       return 1;
     }
-    printf("Unmount succeeded.\n");
+    printer.PrintHumanOutput("Unmount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
     user_data_auth::IsMountedRequest req;
@@ -1239,21 +1396,22 @@ int main(int argc, char** argv) {
     bool is_mounted = false;
     if (!userdataauth_proxy.IsMounted(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("IsMounted call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "IsMounted call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else {
       is_mounted = reply.is_mounted();
     }
     if (is_mounted) {
-      printf("true\n");
+      printer.PrintHumanOutput("true\n");
     } else {
-      printf("false\n");
+      printer.PrintHumanOutput("false\n");
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_OBFUSCATE_USER],
                      action.c_str())) {
     std::string account_id;
 
-    if (!GetAccountId(cl, &account_id)) {
+    if (!GetAccountId(printer, cl, &account_id)) {
       return 1;
     }
 
@@ -1265,21 +1423,24 @@ int main(int argc, char** argv) {
       brillo::ErrorPtr error;
       if (!misc_proxy.GetSanitizedUsername(req, &reply, &error, timeout_ms) ||
           error) {
-        printf("GetSanitizedUserName call failed: %s.\n",
-               BrilloErrorToString(error.get()).c_str());
+        printer.PrintFormattedHumanOutput(
+            "GetSanitizedUserName call failed: %s.\n",
+            BrilloErrorToString(error.get()).c_str());
         return 1;
       }
-      printf("%s\n", reply.sanitized_username().c_str());
+      printer.PrintFormattedHumanOutput("%s\n",
+                                        reply.sanitized_username().c_str());
     } else {
       // Use libbrillo directly instead of going through dbus/cryptohome.
       if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
-        printf("Failed to load system salt\n");
+        printer.PrintHumanOutput("Failed to load system salt\n");
         return 1;
       }
 
       std::string* salt_ptr = brillo::cryptohome::home::GetSystemSalt();
       brillo::SecureBlob system_salt = SecureBlob(*salt_ptr);
-      printf("%s\n", SanitizeUserNameWithSalt(account_id, system_salt).c_str());
+      printer.PrintFormattedHumanOutput(
+          "%s\n", SanitizeUserNameWithSalt(account_id, system_salt).c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_SYSTEM_SALT],
                      action.c_str())) {
@@ -1287,12 +1448,12 @@ int main(int argc, char** argv) {
     if (cl->HasSwitch(switches::kUseDBus)) {
       system_salt = GetSystemSalt(&misc_proxy);
       if (system_salt.empty()) {
-        printf("Failed to retrieve system salt\n");
+        printer.PrintHumanOutput("Failed to retrieve system salt\n");
       }
     } else {
       // Use libbrillo directly instead of going through dbus/cryptohome.
       if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
-        printf("Failed to load system salt\n");
+        printer.PrintHumanOutput("Failed to load system salt\n");
         return 1;
       }
 
@@ -1305,12 +1466,12 @@ int main(int argc, char** argv) {
     // GetSanitizedUsername().
     std::transform(hex_salt.begin(), hex_salt.end(), hex_salt.begin(),
                    ::tolower);
-    printf("%s\n", hex_salt.c_str());
+    printer.PrintFormattedHumanOutput("%s\n", hex_salt.c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
                      action.c_str())) {
     std::string account_id;
 
-    if (!GetAccountId(cl, &account_id)) {
+    if (!GetAccountId(printer, cl, &account_id)) {
       return 1;
     }
 
@@ -1321,63 +1482,72 @@ int main(int argc, char** argv) {
             .Append(std::string(cryptohome::kKeyFile).append(".0"));
     brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
-      printf("Couldn't load keyset contents: %s.\n",
-             vault_path.value().c_str());
+      printer.PrintFormattedHumanOutput("Couldn't load keyset contents: %s.\n",
+                                        vault_path.value().c_str());
       return 1;
     }
     cryptohome::SerializedVaultKeyset serialized;
     if (!serialized.ParseFromArray(contents.data(), contents.size())) {
-      printf("Couldn't parse keyset contents: %s.\n",
-             vault_path.value().c_str());
+      printer.PrintFormattedHumanOutput("Couldn't parse keyset contents: %s.\n",
+                                        vault_path.value().c_str());
       return 1;
     }
-    printf("For keyset: %s\n", vault_path.value().c_str());
-    printf("  Flags:\n");
+    printer.PrintFormattedHumanOutput("For keyset: %s\n",
+                                      vault_path.value().c_str());
+    printer.PrintHumanOutput("  Flags:\n");
     if ((serialized.flags() & cryptohome::SerializedVaultKeyset::TPM_WRAPPED) &&
         serialized.has_tpm_key()) {
-      printf("    TPM_WRAPPED\n");
+      printer.PrintHumanOutput("    TPM_WRAPPED\n");
     }
     if ((serialized.flags() & cryptohome::SerializedVaultKeyset::PCR_BOUND) &&
         serialized.has_tpm_key() && serialized.has_extended_tpm_key()) {
-      printf("    PCR_BOUND\n");
+      printer.PrintHumanOutput("    PCR_BOUND\n");
     }
     if (serialized.flags() &
         cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) {
-      printf("    SCRYPT_WRAPPED\n");
+      printer.PrintHumanOutput("    SCRYPT_WRAPPED\n");
     }
     SecureBlob blob(serialized.salt().length());
     serialized.salt().copy(blob.char_data(), serialized.salt().length(), 0);
-    printf("  Salt:\n");
-    printf("    %s\n", SecureBlobToHex(blob).c_str());
+    printer.PrintHumanOutput("  Salt:\n");
+    printer.PrintFormattedHumanOutput("    %s\n",
+                                      SecureBlobToHex(blob).c_str());
     blob.resize(serialized.wrapped_keyset().length());
     serialized.wrapped_keyset().copy(blob.char_data(),
                                      serialized.wrapped_keyset().length(), 0);
-    printf("  Wrapped (Encrypted) Keyset:\n");
-    printf("    %s\n", SecureBlobToHex(blob).c_str());
+    printer.PrintHumanOutput("  Wrapped (Encrypted) Keyset:\n");
+    printer.PrintFormattedHumanOutput("    %s\n",
+                                      SecureBlobToHex(blob).c_str());
     if (serialized.has_tpm_key()) {
       blob.resize(serialized.tpm_key().length());
       serialized.tpm_key().copy(blob.char_data(), serialized.tpm_key().length(),
                                 0);
-      printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
-      printf("    %s\n", SecureBlobToHex(blob).c_str());
+      printer.PrintHumanOutput(
+          "  TPM-Bound (Encrypted) Vault Encryption Key:\n");
+      printer.PrintFormattedHumanOutput("    %s\n",
+                                        SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_extended_tpm_key()) {
       blob.resize(serialized.extended_tpm_key().length());
       serialized.extended_tpm_key().copy(
           blob.char_data(), serialized.extended_tpm_key().length(), 0);
-      printf("  TPM-Bound (Encrypted) Vault Encryption Key, PCR extended:\n");
-      printf("    %s\n", SecureBlobToHex(blob).c_str());
+      printer.PrintHumanOutput(
+          "  TPM-Bound (Encrypted) Vault Encryption Key, PCR extended:\n");
+      printer.PrintFormattedHumanOutput("    %s\n",
+                                        SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {
       blob.resize(serialized.tpm_public_key_hash().length());
       serialized.tpm_public_key_hash().copy(blob.char_data(),
                                             serialized.tpm_key().length(), 0);
-      printf("  TPM Public Key Hash:\n");
-      printf("    %s\n", SecureBlobToHex(blob).c_str());
+      printer.PrintHumanOutput("  TPM Public Key Hash:\n");
+      printer.PrintFormattedHumanOutput("    %s\n",
+                                        SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_password_rounds()) {
-      printf("  Password rounds:\n");
-      printf("    %d\n", serialized.password_rounds());
+      printer.PrintHumanOutput("  Password rounds:\n");
+      printer.PrintFormattedHumanOutput("    %d\n",
+                                        serialized.password_rounds());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_LAST_ACTIVITY],
                      action.c_str())) {
@@ -1399,18 +1569,21 @@ int main(int argc, char** argv) {
       if (platform.ReadFile(timestamp_path, &tcontents)) {
         cryptohome::Timestamp timestamp;
         if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-          printf("Couldn't parse timestamp contents: %s.\n",
-                 timestamp_path.value().c_str());
+          printer.PrintFormattedHumanOutput(
+              "Couldn't parse timestamp contents: %s.\n",
+              timestamp_path.value().c_str());
         }
         last_activity = base::Time::FromDeltaSinceWindowsEpoch(
             base::Seconds(timestamp.timestamp()));
       } else {
-        printf("Couldn't load timestamp contents: %s.\n",
-               timestamp_path.value().c_str());
+        printer.PrintFormattedHumanOutput(
+            "Couldn't load timestamp contents: %s.\n",
+            timestamp_path.value().c_str());
       }
       if (last_activity > base::Time::UnixEpoch()) {
-        printf("%s %3d\n", dir_name.c_str(),
-               (base::Time::Now() - last_activity).InDays());
+        printer.PrintFormattedHumanOutput(
+            "%s %3d\n", dir_name.c_str(),
+            (base::Time::Now() - last_activity).InDays());
       }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
@@ -1419,10 +1592,11 @@ int main(int argc, char** argv) {
     user_data_auth::GetStatusStringReply reply;
     brillo::ErrorPtr error;
     if (!misc_proxy.GetStatusString(req, &reply, &error, timeout_ms) || error) {
-      printf("GetStatusString call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetStatusString call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else {
-      printf("%s\n", reply.status().c_str());
+      printer.PrintFormattedHumanOutput("%s\n", reply.status().c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {
@@ -1433,10 +1607,11 @@ int main(int argc, char** argv) {
     if (!misc_proxy.UpdateCurrentUserActivityTimestamp(req, &reply, &error,
                                                        timeout_ms) ||
         error) {
-      printf("UpdateCurrentUserActivityTimestamp call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "UpdateCurrentUserActivityTimestamp call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else {
-      printf(
+      printer.PrintHumanOutput(
           "Timestamp successfully updated. You may verify it with "
           "--action=dump_keyset --user=...\n");
     }
@@ -1448,8 +1623,9 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!tpm_ownership_proxy.TakeOwnership(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmCanAttemptOwnership call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmCanAttemptOwnership call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
@@ -1461,15 +1637,16 @@ int main(int argc, char** argv) {
     if (!tpm_ownership_proxy.ClearStoredOwnerPassword(req, &reply, &error,
                                                       timeout_ms) ||
         error) {
-      printf("TpmClearStoredPassword call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmClearStoredPassword call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_GET],
                  action.c_str())) {
     std::string name;
-    if (!GetAttrName(cl, &name)) {
-      printf("No attribute name specified.\n");
+    if (!GetAttrName(printer, cl, &name)) {
+      printer.PrintHumanOutput("No attribute name specified.\n");
       return 1;
     }
 
@@ -1480,15 +1657,16 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             status_req, &status_reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (status_reply.state() ==
             user_data_auth::InstallAttributesState::UNKNOWN ||
         status_reply.state() ==
             user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printf("InstallAttributes() is not ready.\n");
+      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
       return 1;
     }
 
@@ -1499,13 +1677,14 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGet(req, &reply, &error,
                                                        timeout_ms) ||
         error) {
-      printf("InstallAttributesGet call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGet call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() ==
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("%s\n", reply.value().c_str());
+      printer.PrintFormattedHumanOutput("%s\n", reply.value().c_str());
     } else {
       return 1;
     }
@@ -1513,13 +1692,13 @@ int main(int argc, char** argv) {
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_SET],
                  action.c_str())) {
     std::string name;
-    if (!GetAttrName(cl, &name)) {
-      printf("No attribute name specified.\n");
+    if (!GetAttrName(printer, cl, &name)) {
+      printer.PrintHumanOutput("No attribute name specified.\n");
       return 1;
     }
     std::string value;
-    if (!GetAttrValue(cl, &value)) {
-      printf("No attribute value specified.\n");
+    if (!GetAttrValue(printer, cl, &value)) {
+      printer.PrintHumanOutput("No attribute value specified.\n");
       return 1;
     }
 
@@ -1530,15 +1709,16 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             status_req, &status_reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (status_reply.state() ==
             user_data_auth::InstallAttributesState::UNKNOWN ||
         status_reply.state() ==
             user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printf("InstallAttributes() is not ready.\n");
+      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
       return 1;
     }
 
@@ -1552,13 +1732,14 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesSet(req, &reply, &error,
                                                        timeout_ms) ||
         error) {
-      printf("InstallAttributesSet call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesSet call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesSet() failed.\n");
+      printer.PrintHumanOutput("Call to InstallAttributesSet() failed.\n");
       return 1;
     }
   } else if (!strcmp(switches::kActions
@@ -1571,15 +1752,16 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             status_req, &status_reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (status_reply.state() ==
             user_data_auth::InstallAttributesState::UNKNOWN ||
         status_reply.state() ==
             user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printf("InstallAttributes() is not ready.\n");
+      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
       return 1;
     }
 
@@ -1589,13 +1771,15 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesFinalize(req, &reply, &error,
                                                             timeout_ms) ||
         error) {
-      printf("InstallAttributesFinalize() failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesFinalize() failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     bool result = reply.error() ==
                   user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
-    printf("InstallAttributesFinalize(): %d\n", static_cast<int>(result));
+    printer.PrintFormattedHumanOutput("InstallAttributesFinalize(): %d\n",
+                                      static_cast<int>(result));
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_COUNT],
                  action.c_str())) {
@@ -1605,16 +1789,19 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
-    printf("InstallAttributesCount(): %d\n", reply.count());
+    printer.PrintFormattedHumanOutput("InstallAttributesCount(): %d\n",
+                                      reply.count());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_GET_STATUS],
                      action.c_str())) {
@@ -1624,16 +1811,19 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
-    printf("%s\n", InstallAttributesState_Name(reply.state()).c_str());
+    printer.PrintFormattedHumanOutput(
+        "%s\n", InstallAttributesState_Name(reply.state()).c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_READY],
                      action.c_str())) {
@@ -1643,13 +1833,15 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
 
@@ -1657,7 +1849,8 @@ int main(int argc, char** argv) {
         (reply.state() != user_data_auth::InstallAttributesState::UNKNOWN &&
          reply.state() !=
              user_data_auth::InstallAttributesState::TPM_NOT_OWNED);
-    printf("InstallAttributesIsReady(): %d\n", static_cast<int>(result));
+    printer.PrintFormattedHumanOutput("InstallAttributesIsReady(): %d\n",
+                                      static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_SECURE],
                      action.c_str())) {
@@ -1667,18 +1860,21 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
 
     bool result = reply.is_secure();
-    printf("InstallAttributesIsSecure(): %d\n", static_cast<int>(result));
+    printer.PrintFormattedHumanOutput("InstallAttributesIsSecure(): %d\n",
+                                      static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_INVALID],
                      action.c_str())) {
@@ -1688,19 +1884,22 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
 
     bool result =
         (reply.state() == user_data_auth::InstallAttributesState::INVALID);
-    printf("InstallAttributesIsInvalid(): %d\n", static_cast<int>(result));
+    printer.PrintFormattedHumanOutput("InstallAttributesIsInvalid(): %d\n",
+                                      static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_IS_FIRST_INSTALL],
                      action.c_str())) {
@@ -1710,19 +1909,22 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.InstallAttributesGetStatus(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("InstallAttributesGetStatus() call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InstallAttributesGetStatus() call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Call to InstallAttributesGetStatus() failed.\n");
+      printer.PrintHumanOutput(
+          "Call to InstallAttributesGetStatus() failed.\n");
       return 1;
     }
     bool result = (reply.state() ==
                    user_data_auth::InstallAttributesState::FIRST_INSTALL);
 
-    printf("InstallAttributesIsFirstInstall(): %d\n", static_cast<int>(result));
+    printer.PrintFormattedHumanOutput("InstallAttributesIsFirstInstall(): %d\n",
+                                      static_cast<int>(result));
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
                      action.c_str())) {
     // Note that this is a rather hackish implementation that will be replaced
@@ -1746,16 +1948,17 @@ int main(int argc, char** argv) {
       brillo::ErrorPtr error;
       if (!tpm_ownership_proxy.GetTpmStatus(req, &reply, &error, timeout_ms) ||
           error) {
-        printf("TpmIsOwned call failed: %s.\n",
-               BrilloErrorToString(error.get()).c_str());
+        printer.PrintFormattedHumanOutput(
+            "TpmIsOwned call failed: %s.\n",
+            BrilloErrorToString(error.get()).c_str());
       }
       if (reply.owned()) {
         // This is the condition we are waiting for.
-        printf("TPM is now owned.\n");
+        printer.PrintHumanOutput("TPM is now owned.\n");
         return 0;
       }
     }
-    printf("Fail to own TPM.\n");
+    printer.PrintHumanOutput("Fail to own TPM.\n");
     return 1;
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_PKCS11_GET_USER_TOKEN_INFO],
@@ -1770,16 +1973,21 @@ int main(int argc, char** argv) {
       if (!pkcs11_proxy.Pkcs11GetTpmTokenInfo(req, &reply, &error,
                                               timeout_ms) ||
           error) {
-        printf("PKCS #11 info call failed: %s.\n",
-               BrilloErrorToString(error.get()).c_str());
+        printer.PrintFormattedHumanOutput(
+            "PKCS #11 info call failed: %s.\n",
+            BrilloErrorToString(error.get()).c_str());
       } else {
-        printf("Token properties for %s:\n", account_id.c_str());
-        printf("Label = %s\n", reply.token_info().label().c_str());
-        printf("Pin = %s\n", reply.token_info().user_pin().c_str());
-        printf("Slot = %d\n", reply.token_info().slot());
+        printer.PrintFormattedHumanOutput("Token properties for %s:\n",
+                                          account_id.c_str());
+        printer.PrintFormattedHumanOutput("Label = %s\n",
+                                          reply.token_info().label().c_str());
+        printer.PrintFormattedHumanOutput(
+            "Pin = %s\n", reply.token_info().user_pin().c_str());
+        printer.PrintFormattedHumanOutput("Slot = %d\n",
+                                          reply.token_info().slot());
       }
     } else {
-      printf("Account ID/Username not specified.\n");
+      printer.PrintHumanOutput("Account ID/Username not specified.\n");
       return 1;
     }
   } else if (!strcmp(switches::kActions
@@ -1790,23 +1998,27 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!pkcs11_proxy.Pkcs11GetTpmTokenInfo(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("PKCS #11 info call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PKCS #11 info call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else {
-      printf("System token properties:\n");
-      printf("Label = %s\n", reply.token_info().label().c_str());
-      printf("Pin = %s\n", reply.token_info().user_pin().c_str());
-      printf("Slot = %d\n", reply.token_info().slot());
+      printer.PrintHumanOutput("System token properties:\n");
+      printer.PrintFormattedHumanOutput("Label = %s\n",
+                                        reply.token_info().label().c_str());
+      printer.PrintFormattedHumanOutput("Pin = %s\n",
+                                        reply.token_info().user_pin().c_str());
+      printer.PrintFormattedHumanOutput("Slot = %d\n",
+                                        reply.token_info().slot());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PKCS11_IS_USER_TOKEN_OK],
                  action.c_str())) {
     cryptohome::Pkcs11Init init;
     if (!init.IsUserTokenOK()) {
-      printf("User token looks broken!\n");
+      printer.PrintHumanOutput("User token looks broken!\n");
       return 1;
     }
-    printf("User token looks OK!\n");
+    printer.PrintHumanOutput("User token looks OK!\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
     user_data_auth::Pkcs11TerminateRequest req;
@@ -1814,7 +2026,7 @@ int main(int argc, char** argv) {
 
     if (cl->HasSwitch(switches::kUserSwitch)) {
       std::string account_id;
-      if (!GetAccountId(cl, &account_id)) {
+      if (!GetAccountId(printer, cl, &account_id)) {
         return 1;
       }
       req.set_username(account_id);
@@ -1823,8 +2035,9 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!pkcs11_proxy.Pkcs11Terminate(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("PKCS #11 terminate call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PKCS #11 terminate call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PKCS11_RESTORE_TPM_TOKENS],
@@ -1834,8 +2047,9 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!pkcs11_proxy.Pkcs11RestoreTpmTokens(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("PKCS #11 restore TPM tokens call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PKCS #11 restore TPM tokens call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
@@ -1849,17 +2063,20 @@ int main(int argc, char** argv) {
     attestation::VerifyReply reply;
     brillo::ErrorPtr error;
     if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
-      printf("TpmVerifyAttestationData call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmVerifyAttestationData call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmVerifyAttestationData call failed: status %d.\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmVerifyAttestationData call failed: status %d.\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
     if (reply.verified()) {
-      printf("TPM attestation data is not valid or is not available.\n");
+      printer.PrintHumanOutput(
+          "TPM attestation data is not valid or is not available.\n");
       return 1;
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
@@ -1873,17 +2090,19 @@ int main(int argc, char** argv) {
     attestation::VerifyReply reply;
     brillo::ErrorPtr error;
     if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
-      printf("TpmVerifyEK call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmVerifyEK call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmVerifyEK call failed: status %d.\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput("TpmVerifyEK call failed: status %d.\n",
+                                        static_cast<int>(reply.status()));
       return 1;
     }
     if (reply.verified()) {
-      printf("TPM endorsement key is not valid or is not available.\n");
+      printer.PrintHumanOutput(
+          "TPM endorsement key is not valid or is not available.\n");
       return 1;
     }
   } else if (!strcmp(
@@ -1895,8 +2114,9 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.GetEnrollmentPreparations(
             prepare_req, &prepare_reply, &error, timeout_ms) ||
         error) {
-      printf("TpmIsAttestationPrepared call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmIsAttestationPrepared call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else {
       bool result = false;
       for (const auto& preparation : prepare_reply.enrollment_preparations()) {
@@ -1905,7 +2125,8 @@ int main(int argc, char** argv) {
           break;
         }
       }
-      printf("Attestation Prepared: %s\n", (result ? "true" : "false"));
+      printer.PrintFormattedHumanOutput("Attestation Prepared: %s\n",
+                                        (result ? "true" : "false"));
     }
 
     attestation::GetStatusRequest req;
@@ -1914,15 +2135,17 @@ int main(int argc, char** argv) {
     error.reset();
     if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmIsAttestationEnrolled call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmIsAttestationEnrolled call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else if (reply.status() !=
                attestation::AttestationStatus::STATUS_SUCCESS) {
-      printf("TpmIsAttestationEnrolled call failed: status %d.\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmIsAttestationEnrolled call failed: status %d.\n",
+          static_cast<int>(reply.status()));
     } else {
-      printf("Attestation Enrolled: %s\n",
-             (reply.enrolled() ? "true" : "false"));
+      printer.PrintFormattedHumanOutput("Attestation Enrolled: %s\n",
+                                        (reply.enrolled() ? "true" : "false"));
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_MORE_STATUS],
@@ -1933,10 +2156,11 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.GetEnrollmentPreparations(
             prepare_req, &prepare_reply, &error, timeout_ms) ||
         error) {
-      printf("TpmAttestationGetEnrollmentPreparationsEx call failed: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationGetEnrollmentPreparationsEx call failed: %s\n",
+          BrilloErrorToString(error.get()).c_str());
     } else if (prepare_reply.status() != attestation::STATUS_SUCCESS) {
-      printf(
+      printer.PrintFormattedHumanOutput(
           "TpmAttestationGetEnrollmentPreparationsEx call failed: status %d\n",
           static_cast<int>(prepare_reply.status()));
     } else {
@@ -1945,10 +2169,12 @@ int main(int argc, char** argv) {
       for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
         prepared |= it->second;
       }
-      printf("Attestation Prepared: %s\n", prepared ? "true" : "false");
+      printer.PrintFormattedHumanOutput("Attestation Prepared: %s\n",
+                                        prepared ? "true" : "false");
       for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
-        printf("    Prepared for %s: %s\n", GetPCAName(it->first).c_str(),
-               (it->second ? "true" : "false"));
+        printer.PrintFormattedHumanOutput("    Prepared for %s: %s\n",
+                                          GetPCAName(it->first).c_str(),
+                                          (it->second ? "true" : "false"));
       }
     }
 
@@ -1960,15 +2186,17 @@ int main(int argc, char** argv) {
     error.reset();
     if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmIsAttestationEnrolled call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmIsAttestationEnrolled call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
     } else if (reply.status() !=
                attestation::AttestationStatus::STATUS_SUCCESS) {
-      printf("TpmIsAttestationEnrolled call failed: status %d.\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmIsAttestationEnrolled call failed: status %d.\n",
+          static_cast<int>(reply.status()));
     } else {
-      printf("Attestation Enrolled: %s\n",
-             (reply.enrolled() ? "true" : "false"));
+      printer.PrintFormattedHumanOutput("Attestation Enrolled: %s\n",
+                                        (reply.enrolled() ? "true" : "false"));
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_START_ENROLL],
@@ -1981,12 +2209,14 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.CreateEnrollRequest(req, &reply, &error,
                                                timeout_ms) ||
         error) {
-      printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationCreateEnrollRequest call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationCreateEnrollRequest call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationCreateEnrollRequest call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -1998,7 +2228,7 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     std::string contents;
     if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printf("Failed to read input file.\n");
+      printer.PrintHumanOutput("Failed to read input file.\n");
       return 1;
     }
 
@@ -2010,12 +2240,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.FinishEnroll(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmAttestationEnroll call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationEnroll call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationEnroll call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationEnroll call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(
@@ -2026,7 +2258,7 @@ int main(int argc, char** argv) {
                          [switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
                      action.c_str())) {
     attestation::CertificateProfile profile;
-    if (!GetProfile(cl, &profile)) {
+    if (!GetProfile(printer, cl, &profile)) {
       return 1;
     }
 
@@ -2041,12 +2273,14 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.CreateCertificateRequest(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("TpmAttestationCreateCertRequest call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationCreateCertRequest call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationCreateCertRequest call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationCreateCertRequest call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -2059,13 +2293,13 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
     std::string contents;
     if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printf("Failed to read input file.\n");
+      printer.PrintHumanOutput("Failed to read input file.\n");
       return 1;
     }
 
@@ -2081,12 +2315,14 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.FinishCertificateRequest(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("TpmAttestationFinishCertRequest call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationFinishCertRequest call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationFinishCertRequest call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationFinishCertRequest call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -2102,8 +2338,8 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
 
@@ -2117,31 +2353,33 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmAttestationGetCertificate call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationGetCertificate call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() == attestation::STATUS_INVALID_PARAMETER) {
-      printf("Key does not exist.\n");
+      printer.PrintFormattedHumanOutput("Key does not exist.\n");
       return 0;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationGetCertificate call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationGetCertificate call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
     const std::string& cert_pem = reply.certificate();
     const std::string public_key_hex =
         base::HexEncode(reply.public_key().data(), reply.public_key().size());
-    printf("Public Key:\n%s\n\nCertificate:\n%s\n", public_key_hex.c_str(),
-           cert_pem.c_str());
+    printer.PrintFormattedHumanOutput("Public Key:\n%s\n\nCertificate:\n%s\n",
+                                      public_key_hex.c_str(), cert_pem.c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
                      action.c_str())) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
 
@@ -2156,16 +2394,18 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.RegisterKeyWithChapsToken(req, &reply, &error,
                                                      timeout_ms) ||
         error) {
-      printf("TpmAttestationRegisterKey call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationRegisterKey call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationRegisterKey call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationRegisterKey call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
-    printf("Result: Success\n");
+    printer.PrintHumanOutput("Result: Success\n");
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
@@ -2173,14 +2413,14 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
     std::string contents;
     if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printf("Failed to read input file: %s\n",
-             GetInputFile(cl).value().c_str());
+      printer.PrintFormattedHumanOutput("Failed to read input file: %s\n",
+                                        GetInputFile(cl).value().c_str());
       return 1;
     }
     const std::string device_id_str = "fake_device_id";
@@ -2201,11 +2441,12 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.SignEnterpriseChallenge(req, &reply, &error,
                                                    timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationSignEnterpriseVaChallenge call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationSignEnterpriseVaChallenge call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf(
+      printer.PrintFormattedHumanOutput(
           "AsyncTpmAttestationSignEnterpriseVaChallenge call failed: status "
           "%d\n",
           static_cast<int>(reply.status()));
@@ -2219,8 +2460,8 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
     std::string contents = "challenge";
@@ -2237,12 +2478,14 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.SignSimpleChallenge(req, &reply, &error,
                                                timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationSignSimpleChallenge call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationSignSimpleChallenge call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("AsyncTpmAttestationSignSimpleChallenge call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationSignSimpleChallenge call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -2253,8 +2496,8 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
 
@@ -2268,12 +2511,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationGetKetPayload call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationGetKetPayload call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("AsyncTpmAttestationGetKetPayload call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationGetKetPayload call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -2287,13 +2532,14 @@ int main(int argc, char** argv) {
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     std::string value = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
     if (value.length() == 0) {
-      printf("No payload specified (--%s=<payload>)\n",
-             switches::kAttrValueSwitch);
+      printer.PrintFormattedHumanOutput(
+          "No payload specified (--%s=<payload>)\n",
+          switches::kAttrValueSwitch);
       return 1;
     }
 
@@ -2308,12 +2554,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.SetKeyPayload(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationSetKetPayload call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationSetKetPayload call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("AsyncTpmAttestationSetKetPayload call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationSetKetPayload call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(switches::kActions
@@ -2323,8 +2571,9 @@ int main(int argc, char** argv) {
     std::string key_prefix =
         cl->GetSwitchValueASCII(switches::kAttrPrefixSwitch);
     if (key_prefix.empty()) {
-      printf("No key prefix specified (--%s=<prefix>)\n",
-             switches::kAttrPrefixSwitch);
+      printer.PrintFormattedHumanOutput(
+          "No key prefix specified (--%s=<prefix>)\n",
+          switches::kAttrPrefixSwitch);
       return 1;
     }
 
@@ -2340,12 +2589,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationDeleteKeys call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationDeleteKeys call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(switches::kActions
@@ -2354,8 +2605,8 @@ int main(int argc, char** argv) {
     std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.empty()) {
-      printf("No key name specified (--%s=<name>)\n",
-             switches::kAttrNameSwitch);
+      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
+                                        switches::kAttrNameSwitch);
       return 1;
     }
 
@@ -2371,12 +2622,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationDeleteKeys call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("AsyncTpmAttestationDeleteKeys call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "AsyncTpmAttestationDeleteKeys call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
   } else if (!strcmp(
@@ -2389,17 +2642,19 @@ int main(int argc, char** argv) {
     if (!attestation_proxy.GetEndorsementInfo(req, &reply, &error,
                                               timeout_ms) ||
         error) {
-      printf("GetEndorsementInfo call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetEndorsementInfo call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("GetEndorsementInfo call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "GetEndorsementInfo call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
-    printf("%s\n", reply.ek_info().c_str());
+    printer.PrintFormattedHumanOutput("%s\n", reply.ek_info().c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
                      action.c_str())) {
@@ -2412,12 +2667,14 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.ResetIdentity(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("TpmAttestationResetIdentity call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationResetIdentity call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("TpmAttestationResetIdentity call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "TpmAttestationResetIdentity call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
@@ -2429,35 +2686,38 @@ int main(int argc, char** argv) {
                  action.c_str())) {
     std::string contents;
     if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printf("Failed to read input file: %s\n",
-             GetInputFile(cl).value().c_str());
+      printer.PrintFormattedHumanOutput("Failed to read input file: %s\n",
+                                        GetInputFile(cl).value().c_str());
       return 1;
     }
     cryptohome::AttestationResetResponse response;
     if (!response.ParseFromString(contents)) {
-      printf("Failed to parse response.\n");
+      printer.PrintHumanOutput("Failed to parse response.\n");
       return 1;
     }
     switch (response.status()) {
       case cryptohome::OK:
-        printf("Identity reset successful.\n");
+        printer.PrintHumanOutput("Identity reset successful.\n");
         break;
       case cryptohome::SERVER_ERROR:
-        printf("Identity reset server error: %s\n", response.detail().c_str());
+        printer.PrintFormattedHumanOutput("Identity reset server error: %s\n",
+                                          response.detail().c_str());
         break;
       case cryptohome::BAD_REQUEST:
-        printf("Identity reset data error: %s\n", response.detail().c_str());
+        printer.PrintFormattedHumanOutput("Identity reset data error: %s\n",
+                                          response.detail().c_str());
         break;
       case cryptohome::REJECT:
-        printf("Identity reset request denied: %s\n",
-               response.detail().c_str());
+        printer.PrintFormattedHumanOutput("Identity reset request denied: %s\n",
+                                          response.detail().c_str());
         break;
       case cryptohome::QUOTA_LIMIT_EXCEEDED:
-        printf("Identity reset quota exceeded: %s\n",
-               response.detail().c_str());
+        printer.PrintFormattedHumanOutput("Identity reset quota exceeded: %s\n",
+                                          response.detail().c_str());
         break;
       default:
-        printf("Identity reset unknown error: %s\n", response.detail().c_str());
+        printer.PrintFormattedHumanOutput("Identity reset unknown error: %s\n",
+                                          response.detail().c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
                      action.c_str())) {
@@ -2485,28 +2745,30 @@ int main(int argc, char** argv) {
 
     brillo::ErrorPtr error;
     if (!misc_proxy.GetLoginStatus(req, &reply, &error, timeout_ms) || error) {
-      printf("Failed to call GetLoginStatus: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Failed to call GetLoginStatus: %s\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
 
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to call GetLoginStatus: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "Failed to call GetLoginStatus: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
     // TODO(b/189388158): because PrintDebugString won't print a field if it's
     // default value in proto3. We use a workaround to print it manually here.
     if (!reply.owner_user_exists()) {
-      printf("owner_user_exists: false\n");
+      printer.PrintHumanOutput("owner_user_exists: false\n");
     }
     if (!reply.is_locked_to_single_user()) {
-      printf("is_locked_to_single_user: false\n");
+      printer.PrintHumanOutput("is_locked_to_single_user: false\n");
     }
 
-    printf("GetLoginStatus success.\n");
+    printer.PrintHumanOutput("GetLoginStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
                      action.c_str())) {
     CHECK(false) << "Not implemented.";
@@ -2520,24 +2782,26 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.GetFirmwareManagementParameters(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("Failed to call GetFirmwareManagementParameters: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Failed to call GetFirmwareManagementParameters: %s\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      puts(GetProtoDebugString(reply).c_str());
+      printer.PrintReplyProtobuf(reply);
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printf("Failed to call GetFirmwareManagementParameters: status %d\n",
-               static_cast<int>(reply.error()));
+        printer.PrintFormattedHumanOutput(
+            "Failed to call GetFirmwareManagementParameters: status %d\n",
+            static_cast<int>(reply.error()));
         return 1;
       }
     }
 
-    printf("flags=0x%08x\n", reply.fwmp().flags());
+    printer.PrintFormattedHumanOutput("flags=0x%08x\n", reply.fwmp().flags());
     brillo::Blob hash =
         brillo::BlobFromString(reply.fwmp().developer_key_hash());
-    printf("hash=%s\n", BlobToHex(hash).c_str());
-    printf("GetFirmwareManagementParameters success.\n");
+    printer.PrintFormattedHumanOutput("hash=%s\n", BlobToHex(hash).c_str());
+    printer.PrintHumanOutput("GetFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS],
                      action.c_str())) {
@@ -2549,12 +2813,13 @@ int main(int argc, char** argv) {
       char* end = NULL;
       int32_t flags = strtol(flags_str.c_str(), &end, 0);
       if (end && *end != '\0') {
-        printf("Bad flags value.\n");
+        printer.PrintHumanOutput("Bad flags value.\n");
         return 1;
       }
       req.mutable_fwmp()->set_flags(flags);
     } else {
-      printf("Use --flags (and optionally --developer_key_hash).\n");
+      printer.PrintHumanOutput(
+          "Use --flags (and optionally --developer_key_hash).\n");
       return 1;
     }
 
@@ -2563,11 +2828,11 @@ int main(int argc, char** argv) {
           cl->GetSwitchValueASCII(switches::kDevKeyHashSwitch);
       brillo::Blob hash;
       if (!base::HexStringToBytes(hash_str, &hash)) {
-        printf("Bad hash value.\n");
+        printer.PrintHumanOutput("Bad hash value.\n");
         return 1;
       }
       if (hash.size() != SHA256_DIGEST_LENGTH) {
-        printf("Bad hash size.\n");
+        printer.PrintHumanOutput("Bad hash size.\n");
         return 1;
       }
 
@@ -2578,20 +2843,22 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.SetFirmwareManagementParameters(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("Failed to call SetFirmwareManagementParameters: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Failed to call SetFirmwareManagementParameters: %s\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      puts(GetProtoDebugString(reply).c_str());
+      printer.PrintReplyProtobuf(reply);
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printf("Failed to call SetFirmwareManagementParameters: status %d\n",
-               static_cast<int>(reply.error()));
+        printer.PrintFormattedHumanOutput(
+            "Failed to call SetFirmwareManagementParameters: status %d\n",
+            static_cast<int>(reply.error()));
         return 1;
       }
     }
 
-    printf("SetFirmwareManagementParameters success.\n");
+    printer.PrintHumanOutput("SetFirmwareManagementParameters success.\n");
   } else if (!strcmp(
                  switches::kActions
                      [switches::ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS],
@@ -2603,24 +2870,26 @@ int main(int argc, char** argv) {
     if (!install_attributes_proxy.RemoveFirmwareManagementParameters(
             req, &reply, &error, timeout_ms) ||
         error) {
-      printf("Failed to call RemoveFirmwareManagementParameters: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "Failed to call RemoveFirmwareManagementParameters: %s\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else {
-      puts(GetProtoDebugString(reply).c_str());
+      printer.PrintReplyProtobuf(reply);
       if (reply.error() !=
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printf("Failed to call RemoveFirmwareManagementParameters: status %d\n",
-               static_cast<int>(reply.error()));
+        printer.PrintFormattedHumanOutput(
+            "Failed to call RemoveFirmwareManagementParameters: status %d\n",
+            static_cast<int>(reply.error()));
         return 1;
       }
     }
 
-    printf("RemoveFirmwareManagementParameters success.\n");
+    printer.PrintHumanOutput("RemoveFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    if (!BuildAccountId(printer, cl, &id))
       return 1;
 
     user_data_auth::StartMigrateToDircryptoRequest req;
@@ -2632,23 +2901,25 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.StartMigrateToDircrypto(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("MigrateToDircrypto call failed: %s\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "MigrateToDircrypto call failed: %s\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.error() !=
                user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("MigrateToDircrypto call failed: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "MigrateToDircrypto call failed: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
 
-    printf("MigrateToDircrypto call succeeded.\n");
+    printer.PrintHumanOutput("MigrateToDircrypto call succeeded.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_NEEDS_DIRCRYPTO_MIGRATION],
                  action.c_str())) {
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id)) {
-      printf("No account_id specified.\n");
+    if (!BuildAccountId(printer, cl, &id)) {
+      printer.PrintHumanOutput("No account_id specified.\n");
       return 1;
     }
 
@@ -2660,20 +2931,22 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.NeedsDircryptoMigration(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("NeedsDirCryptoMigration call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "NeedsDirCryptoMigration call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.error() !=
                user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("NeedsDirCryptoMigration call failed: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "NeedsDirCryptoMigration call failed: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
 
     if (reply.needs_dircrypto_migration())
-      printf("Yes\n");
+      printer.PrintHumanOutput("Yes\n");
     else
-      printf("No\n");
+      printer.PrintHumanOutput("No\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_ENROLLMENT_ID],
                      action.c_str())) {
     attestation::GetEnrollmentIdRequest req;
@@ -2683,18 +2956,20 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!attestation_proxy.GetEnrollmentId(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("GetEnrollmentId call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetEnrollmentId call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printf("GetEnrollmentId call failed: status %d\n",
-             static_cast<int>(reply.status()));
+      printer.PrintFormattedHumanOutput(
+          "GetEnrollmentId call failed: status %d\n",
+          static_cast<int>(reply.status()));
       return 1;
     }
 
     std::string eid_str = base::ToLowerASCII(base::HexEncode(
         reply.enrollment_id().data(), reply.enrollment_id().size()));
-    printf("%s\n", eid_str.c_str());
+    printer.PrintFormattedHumanOutput("%s\n", eid_str.c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
                      action.c_str())) {
@@ -2705,13 +2980,14 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.GetSupportedKeyPolicies(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("GetSupportedKeyPolicies call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetSupportedKeyPolicies call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
 
-    printf("GetSupportedKeyPolicies success.\n");
+    printer.PrintHumanOutput("GetSupportedKeyPolicies success.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_GET_ACCOUNT_DISK_USAGE],
                  action.c_str())) {
@@ -2719,7 +2995,7 @@ int main(int argc, char** argv) {
     user_data_auth::GetAccountDiskUsageReply reply;
 
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    if (!BuildAccountId(printer, cl, &id))
       return 1;
 
     *req.mutable_identifier() = id;
@@ -2728,20 +3004,23 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.GetAccountDiskUsage(req, &reply, &error,
                                                 timeout_ms) ||
         error) {
-      printf("GetAccountDiskUsage call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetAccountDiskUsage call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
 
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("GetAccountDiskUsage call failed: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "GetAccountDiskUsage call failed: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
 
-    printf("Account Disk Usage in bytes: %" PRId64 "\n", reply.size());
+    printer.PrintFormattedHumanOutput(
+        "Account Disk Usage in bytes: %" PRId64 "\n", reply.size());
     return 0;
   } else if (!strcmp(
                  switches::kActions
@@ -2751,7 +3030,7 @@ int main(int argc, char** argv) {
     user_data_auth::LockToSingleUserMountUntilRebootReply reply;
 
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    if (!BuildAccountId(printer, cl, &id))
       return 1;
     *req.mutable_account_id() = id;
 
@@ -2759,20 +3038,22 @@ int main(int argc, char** argv) {
     if (!misc_proxy.LockToSingleUserMountUntilReboot(req, &reply, &error,
                                                      timeout_ms) ||
         error) {
-      printf("LockToSingleUserMountUntilReboot call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "LockToSingleUserMountUntilReboot call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
 
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("LockToSingleUserMountUntilReboot call failed: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "LockToSingleUserMountUntilReboot call failed: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
 
-    printf("Login disabled.\n");
+    printer.PrintHumanOutput("Login disabled.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_RSU_DEVICE_ID],
                      action.c_str())) {
     user_data_auth::GetRsuDeviceIdRequest req;
@@ -2780,16 +3061,18 @@ int main(int argc, char** argv) {
 
     brillo::ErrorPtr error;
     if (!misc_proxy.GetRsuDeviceId(req, &reply, &error, timeout_ms) || error) {
-      printf("GetRsuDeviceId call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetRsuDeviceId call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
 
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("GetRsuDeviceId call failed: status %d\n",
-             static_cast<int>(reply.error()));
+      printer.PrintFormattedHumanOutput(
+          "GetRsuDeviceId call failed: status %d\n",
+          static_cast<int>(reply.error()));
       return 1;
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_HEALTH],
@@ -2799,16 +3082,17 @@ int main(int argc, char** argv) {
 
     brillo::ErrorPtr error;
     if (!misc_proxy.CheckHealth(req, &reply, &error, timeout_ms) || error) {
-      printf("CheckHealth call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "CheckHealth call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
 
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(cl, &id))
+    if (!BuildAccountId(printer, cl, &id))
       return 1;
 
     user_data_auth::StartAuthSessionRequest req;
@@ -2823,70 +3107,72 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.StartAuthSession(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("StartAuthSession call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "StartAuthSession call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to start.\n");
+      printer.PrintHumanOutput("Auth session failed to start.\n");
       return static_cast<int>(reply.error());
     }
 
-    puts(GetProtoDebugString(reply).c_str());
-    printf("Auth session start succeeded.\n");
+    printer.PrintReplyProtobuf(reply);
+    printer.PrintHumanOutput("Auth session start succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_CREDENTIALS],
                      action.c_str())) {
     user_data_auth::AddCredentialsRequest req;
     user_data_auth::AddCredentialsReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
-            cl, &misc_proxy,
+            printer, cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
             req.mutable_authorization())) {
       return 1;
     }
 
     if (!SetLeCredentialPolicyIfNeeded(
-            *cl, req.mutable_authorization()->mutable_key())) {
-      printf("Setting LECredential Policy failed.");
+            printer, *cl, req.mutable_authorization()->mutable_key())) {
+      printer.PrintHumanOutput("Setting LECredential Policy failed.");
       return 1;
     }
 
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.AddCredentials(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AddCredentials call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AddCredentials call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to add credentials.\n");
+      printer.PrintHumanOutput("Auth session failed to add credentials.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Auth session added credentials successfully.\n");
+    printer.PrintHumanOutput("Auth session added credentials successfully.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_CREDENTIAL],
                      action.c_str())) {
     user_data_auth::UpdateCredentialRequest req;
     user_data_auth::UpdateCredentialReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
-            cl, &misc_proxy,
+            printer, cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
             req.mutable_authorization())) {
       return 1;
@@ -2894,8 +3180,8 @@ int main(int argc, char** argv) {
     // For update credential, LeCredentials needs to be supplied if those are
     // the ones being updated.
     if (!SetLeCredentialPolicyIfNeeded(
-            *cl, req.mutable_authorization()->mutable_key())) {
-      printf("Setting LECredential Policy failed.");
+            printer, *cl, req.mutable_authorization()->mutable_key())) {
+      printer.PrintHumanOutput("Setting LECredential Policy failed.");
       return 1;
     }
 
@@ -2903,7 +3189,7 @@ int main(int argc, char** argv) {
       req.set_old_credential_label(
           cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
     } else {
-      printf(
+      printer.PrintHumanOutput(
           "No old credential label specified --key_label=<old credential "
           "label>");
       return 1;
@@ -2912,18 +3198,20 @@ int main(int argc, char** argv) {
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.UpdateCredential(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("UpdateCredential call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "UpdateCredential call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to update credentials.\n");
+      printer.PrintHumanOutput("Auth session failed to update credentials.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Auth session updated credentials successfully.\n");
+    printer.PrintHumanOutput(
+        "Auth session updated credentials successfully.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {
@@ -2931,14 +3219,14 @@ int main(int argc, char** argv) {
     user_data_auth::AuthenticateAuthSessionReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     req.set_auth_session_id(auth_session_id);
 
     if (!BuildAuthorization(
-            cl, &misc_proxy,
+            printer, cl, &misc_proxy,
             !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
             req.mutable_authorization()))
       return 1;
@@ -2947,18 +3235,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.AuthenticateAuthSession(req, &reply, &error,
                                                     timeout_ms) ||
         error) {
-      printf("AuthenticateAuthSession call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AuthenticateAuthSession call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to authenticate.\n");
+      printer.PrintHumanOutput("Auth session failed to authenticate.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Auth session authentication succeeded.\n");
+    printer.PrintHumanOutput("Auth session authentication succeeded.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INVALIDATE_AUTH_SESSION],
                  action.c_str())) {
@@ -2967,7 +3256,7 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
@@ -2977,18 +3266,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.InvalidateAuthSession(req, &reply, &error,
                                                   timeout_ms) ||
         error) {
-      printf("InvalidateAuthSession call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "InvalidateAuthSession call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to invalidate.\n");
+      printer.PrintHumanOutput("Auth session failed to invalidate.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Auth session invalidated.\n");
+    printer.PrintHumanOutput("Auth session invalidated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_EXTEND_AUTH_SESSION],
                      action.c_str())) {
     user_data_auth::ExtendAuthSessionRequest req;
@@ -2996,7 +3286,7 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
@@ -3007,16 +3297,17 @@ int main(int argc, char** argv) {
     // Default value to extend is 60 seconds, if not specified.
     int extension_duration = 60;
     if (extension_duration_str.empty()) {
-      printf("Extension duration not specified, using default of 60 seconds\n");
+      printer.PrintHumanOutput(
+          "Extension duration not specified, using default of 60 seconds\n");
     } else if (!base::StringToInt(extension_duration_str,
                                   &extension_duration)) {
-      printf(
+      printer.PrintFormattedHumanOutput(
           "Extension duration specified is not a valid duration"
           "(--%s=<extension_duration>)\n",
           switches::kExtensionDuration);
       return 1;
     } else if (extension_duration < 0) {
-      printf(
+      printer.PrintFormattedHumanOutput(
           "Extension duration specified is a negative value"
           "(--%s=<extension_duration>)\n",
           switches::kExtensionDuration);
@@ -3029,18 +3320,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.ExtendAuthSession(req, &reply, &error,
                                               timeout_ms) ||
         error) {
-      printf("ExtendAuthSession call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "ExtendAuthSession call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Auth session failed to extend.\n");
+      printer.PrintHumanOutput("Auth session failed to extend.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Auth session extended.\n");
+    printer.PrintHumanOutput("Auth session extended.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_CREATE_PERSISTENT_USER],
                  action.c_str())) {
@@ -3048,7 +3340,7 @@ int main(int argc, char** argv) {
     user_data_auth::CreatePersistentUserReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
@@ -3058,18 +3350,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.CreatePersistentUser(req, &reply, &error,
                                                  timeout_ms) ||
         error) {
-      printf("CreatePersistentUser call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "CreatePersistentUser call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to create persistent user.\n");
+      printer.PrintHumanOutput("Failed to create persistent user.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Created persistent user.\n");
+    printer.PrintHumanOutput("Created persistent user.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_PREPARE_GUEST_VAULT],
                      action.c_str())) {
     user_data_auth::PrepareGuestVaultRequest req;
@@ -3079,18 +3372,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.PrepareGuestVault(req, &reply, &error,
                                               timeout_ms) ||
         error) {
-      printf("PrepareGuestVault call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PrepareGuestVault call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to prepare guest vault.\n");
+      printer.PrintHumanOutput("Failed to prepare guest vault.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Prepared guest vault.\n");
+    printer.PrintHumanOutput("Prepared guest vault.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PREPARE_EPHEMERAL_VAULT],
                  action.c_str())) {
@@ -3098,7 +3392,7 @@ int main(int argc, char** argv) {
     user_data_auth::PrepareEphemeralVaultReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
@@ -3108,18 +3402,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.PrepareEphemeralVault(req, &reply, &error,
                                                   timeout_ms) ||
         error) {
-      printf("PrepareEphemeralVault call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PrepareEphemeralVault call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to prepare ephemeral vault.\n");
+      printer.PrintHumanOutput("Failed to prepare ephemeral vault.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Prepared ephemeral vault.\n");
+    printer.PrintHumanOutput("Prepared ephemeral vault.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_PREPARE_PERSISTENT_VAULT],
                  action.c_str())) {
@@ -3127,7 +3422,7 @@ int main(int argc, char** argv) {
     user_data_auth::PreparePersistentVaultReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
@@ -3141,18 +3436,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.PreparePersistentVault(req, &reply, &error,
                                                    timeout_ms) ||
         error) {
-      printf("PreparePersistentVault call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PreparePersistentVault call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to prepare persistent vault.\n");
+      printer.PrintHumanOutput("Failed to prepare persistent vault.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Prepared persistent vault.\n");
+    printer.PrintHumanOutput("Prepared persistent vault.\n");
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_PREPARE_VAULT_FOR_MIGRATION],
                      action.c_str())) {
@@ -3160,7 +3456,7 @@ int main(int argc, char** argv) {
     user_data_auth::PrepareVaultForMigrationReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
@@ -3170,18 +3466,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.PrepareVaultForMigration(req, &reply, &error,
                                                      timeout_ms) ||
         error) {
-      printf("PrepareVaultForMigration call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "PrepareVaultForMigration call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to prepare vault for migration.\n");
+      printer.PrintHumanOutput("Failed to prepare vault for migration.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("Prepared vault for migration.\n");
+    printer.PrintHumanOutput("Prepared vault for migration.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::AddAuthFactorRequest req;
@@ -3189,12 +3486,12 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    if (!BuildAuthFactor(cl, req.mutable_auth_factor()) ||
-        !BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+    if (!BuildAuthFactor(printer, cl, req.mutable_auth_factor()) ||
+        !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
 
@@ -3202,18 +3499,19 @@ int main(int argc, char** argv) {
     VLOG(1) << "Attempting to add AuthFactor";
     if (!userdataauth_proxy.AddAuthFactor(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("AddAuthFactor call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AddAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to AddAuthFactor.\n");
+      printer.PrintHumanOutput("Failed to AddAuthFactor.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("AuthFactor added.\n");
+    printer.PrintHumanOutput("AuthFactor added.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_FACTOR],
                  action.c_str())) {
@@ -3222,17 +3520,17 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
-      printf("No auth factor label specified.\n");
+      printer.PrintHumanOutput("No auth factor label specified.\n");
       return 1;
     }
     req.set_auth_factor_label(
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-    if (!BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+    if (!BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
 
@@ -3241,18 +3539,19 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.AuthenticateAuthFactor(req, &reply, &error,
                                                    timeout_ms) ||
         error) {
-      printf("AuthenticateAuthFactor call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "AuthenticateAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to authenticate AuthFactor.\n");
+      printer.PrintHumanOutput("Failed to authenticate AuthFactor.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("AuthFactor authenticated.\n");
+    printer.PrintHumanOutput("AuthFactor authenticated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::UpdateAuthFactorRequest req;
@@ -3260,12 +3559,12 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    if (!BuildAuthFactor(cl, req.mutable_auth_factor()) ||
-        !BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+    if (!BuildAuthFactor(printer, cl, req.mutable_auth_factor()) ||
+        !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
     // By default, old and new labels are equal; if requested, the new label can
@@ -3280,18 +3579,19 @@ int main(int argc, char** argv) {
     VLOG(1) << "Attempting to Update AuthFactor";
     if (!userdataauth_proxy.UpdateAuthFactor(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("UpdateAuthFactor call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "UpdateAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to update AuthFactor.\n");
+      printer.PrintHumanOutput("Failed to update AuthFactor.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("AuthFactor updated.\n");
+    printer.PrintHumanOutput("AuthFactor updated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::RemoveAuthFactorRequest req;
@@ -3299,12 +3599,12 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
-      printf("No auth factor label specified.\n");
+      printer.PrintHumanOutput("No auth factor label specified.\n");
       return 1;
     }
     req.set_auth_factor_label(
@@ -3314,24 +3614,25 @@ int main(int argc, char** argv) {
     VLOG(1) << "Attempting to Remove AuthFactor";
     if (!userdataauth_proxy.RemoveAuthFactor(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("RemoveAuthFactor call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "RemoveAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to remove AuthFactor.\n");
+      printer.PrintHumanOutput("Failed to remove AuthFactor.\n");
       return static_cast<int>(reply.error());
     }
 
-    printf("AuthFactor removed.\n");
+    printer.PrintHumanOutput("AuthFactor removed.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_LIST_AUTH_FACTORS],
                      action.c_str())) {
     user_data_auth::ListAuthFactorsRequest req;
     user_data_auth::ListAuthFactorsReply reply;
 
-    if (!BuildAccountId(cl, req.mutable_account_id())) {
+    if (!BuildAccountId(printer, cl, req.mutable_account_id())) {
       return 1;
     }
 
@@ -3339,14 +3640,15 @@ int main(int argc, char** argv) {
     VLOG(1) << "Attempting to list AuthFactors";
     if (!userdataauth_proxy.ListAuthFactors(req, &reply, &error, timeout_ms) ||
         error) {
-      printf("ListAuthFactors call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "ListAuthFactors call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to list auth factors.\n");
+      printer.PrintHumanOutput("Failed to list auth factors.\n");
       return static_cast<int>(reply.error());
     }
   } else if (!strcmp(
@@ -3356,7 +3658,7 @@ int main(int argc, char** argv) {
     user_data_auth::GetAuthSessionStatusReply reply;
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex)) {
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
     }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
@@ -3367,14 +3669,15 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.GetAuthSessionStatus(req, &reply, &error,
                                                  timeout_ms) ||
         error) {
-      printf("GetAuthSessionStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetAuthSessionStatus call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to get auth session status.\n");
+      printer.PrintHumanOutput("Failed to get auth session status.\n");
       return static_cast<int>(reply.error());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_RECOVERY_REQUEST],
@@ -3383,20 +3686,20 @@ int main(int argc, char** argv) {
     user_data_auth::GetRecoveryRequestReply reply;
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(cl, &auth_session_id_hex)) {
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
     }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
-      printf("No auth factor label specified.\n");
+      printer.PrintHumanOutput("No auth factor label specified.\n");
       return 1;
     }
     req.set_auth_factor_label(
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
     if (cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch)
             .empty()) {
-      printf("No epoch response specified.\n");
+      printer.PrintHumanOutput("No epoch response specified.\n");
       return 1;
     }
     std::string epoch_response_hex, epoch_response;
@@ -3410,20 +3713,23 @@ int main(int argc, char** argv) {
     if (!userdataauth_proxy.GetRecoveryRequest(req, &reply, &error,
                                                timeout_ms) ||
         error) {
-      printf("GetRecoveryRequest call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
+      printer.PrintFormattedHumanOutput(
+          "GetRecoveryRequest call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    puts(GetProtoDebugString(reply).c_str());
+    printer.PrintReplyProtobuf(reply);
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Failed to get recovery request.\n");
+      printer.PrintHumanOutput("Failed to get recovery request.\n");
       return static_cast<int>(reply.error());
     }
   } else {
-    printf("Unknown action or no action given.  Available actions:\n");
+    printer.PrintHumanOutput(
+        "Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
-      printf("  --action=%s\n", switches::kActions[i]);
+      printer.PrintFormattedHumanOutput("  --action=%s\n",
+                                        switches::kActions[i]);
   }
   return 0;
 }  // NOLINT(readability/fn_size)
