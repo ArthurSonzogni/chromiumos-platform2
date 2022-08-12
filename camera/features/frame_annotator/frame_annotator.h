@@ -22,6 +22,16 @@ namespace cros {
 // information through the API.
 class FrameAnnotator {
  public:
+  // The default frame annotator config file. The file should contain a JSON map
+  // for the Options defined below.
+  static constexpr const char kFrameAnnotatorConfigFile[] =
+      "/etc/camera/frame_annotator_config.json";
+
+  struct Options {
+    bool face_rectangles_frame_annotator = false;
+    bool metadata_previewer_frame_annotator = false;
+  };
+
   virtual ~FrameAnnotator() = default;
 
   // A hook to the camera3_device_ops::initialize(). Will be called by

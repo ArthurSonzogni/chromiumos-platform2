@@ -16,6 +16,7 @@
 #include <skia/gpu/GrDirectContext.h>
 #include <skia/core/SkCanvas.h>
 
+#include "common/reloadable_config_file.h"
 #include "cros-camera/camera_thread.h"
 #include "features/frame_annotator/frame_annotator.h"
 #include "gpu/egl/egl_context.h"
@@ -26,6 +27,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
  public:
   FrameAnnotatorStreamManipulator();
   ~FrameAnnotatorStreamManipulator() override;
+
   // Implementations of StreamManipulator.
   bool Initialize(GpuResources* gpu_resources,
                   const camera_metadata_t* static_info,
@@ -44,6 +46,11 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
   bool PlotOnGpuThread(camera3_stream_buffer_t* buffer);
   void FlushSkSurfaceToBuffer(SkSurface* surface, buffer_handle_t yuv_buf);
+
+  void OnOptionsUpdated(const base::Value& json_values);
+
+  ReloadableConfigFile config_;
+  FrameAnnotator::Options options_;
 
   Size active_array_dimension_;
   const camera3_stream_t* yuv_stream_ = nullptr;

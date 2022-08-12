@@ -30,6 +30,12 @@ namespace cros {
 
 namespace {
 
+// Options for 'frame_annotator_config.json'
+constexpr char kFaceRectanglesFrameAnnotatorKey[] =
+    "face_rectangles_frame_annotator";
+constexpr char kMetadataPreviewerFrameAnnotatorKey[] =
+    "metadata_previewer_frame_annotator";
+
 constexpr int kSyncWaitTimeoutMs = 300;
 
 GrBackendTexture ConvertToGrBackendTexture(const Texture2D& texture) {
@@ -60,12 +66,26 @@ GrYUVABackendTextures ConvertToGrTextures(const SharedImage& image) {
 //
 
 FrameAnnotatorStreamManipulator::FrameAnnotatorStreamManipulator()
-    : gpu_thread_("FrameAnnotatorThread") {
+    : config_(ReloadableConfigFile::Options{
+          base::FilePath(FrameAnnotator::kFrameAnnotatorConfigFile),
+          base::FilePath(FrameAnnotator::kOverrideFrameAnnotatorConfigFile)}),
+      gpu_thread_("FrameAnnotatorThread") {
   CHECK(gpu_thread_.Start());
-  frame_annotators_.emplace_back(
-      std::make_unique<FaceRectanglesFrameAnnotator>());
-  frame_annotators_.emplace_back(
-      std::make_unique<MetadataPreviewerFrameAnnotator>());
+
+  config_.SetCallback(
+      base::BindRepeating(&FrameAnnotatorStreamManipulator::OnOptionsUpdated,
+                          base::Unretained(this)));
+
+  if (options_.face_rectangles_frame_annotator) {
+    frame_annotators_.emplace_back(
+        std::make_unique<FaceRectanglesFrameAnnotator>());
+    LOGF(INFO) << "FaceRectanglesFrameAnnotator enabled";
+  }
+  if (options_.metadata_previewer_frame_annotator) {
+    frame_annotators_.emplace_back(
+        std::make_unique<MetadataPreviewerFrameAnnotator>());
+    LOGF(INFO) << "MetadataPreviewerFrameAnnotator enabled";
+  }
 }
 
 FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
@@ -305,6 +325,17 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
   // the function. Therefore, it's safe to pass local variables here as the
   // lifetime is being guaranteed.
   surface->flushAndSubmit(/*syncCpu=*/true);
+}
+
+void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
+    const base::Value& json_values) {
+  auto update_bool_option = [&](bool& result, const char key_name[]) {
+    result = json_values.FindBoolKey(key_name).value_or(result);
+  };
+  update_bool_option(options_.face_rectangles_frame_annotator,
+                     kFaceRectanglesFrameAnnotatorKey);
+  update_bool_option(options_.metadata_previewer_frame_annotator,
+                     kMetadataPreviewerFrameAnnotatorKey);
 }
 
 }  // namespace cros
