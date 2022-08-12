@@ -1258,3 +1258,16 @@ message ListVmsResponse {
   // The list of VMs that concierge is managing.
   repeated ExtendedVmInfo vms = 3;
 }
+
+message GetVmGpuCachePathRequest {
+  // The name of the VM.
+  string name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+}
+
+message GetVmGpuCachePathResponse {
+  // Path to VM's GPU cache path.
+  string path = 1;
+}

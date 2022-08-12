@@ -72,6 +72,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crosvm/qcow_utils.h>
 #include <dbus/object_proxy.h>
+#include <dbus/vm_concierge/dbus-constants.h>
 #include <manatee/dbus-proxies.h>
 #include <vboot/crossystem.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
@@ -577,8 +578,8 @@ std::string GetMd5HashForFilename(const std::string& str) {
   return result;
 }
 
-base::FilePath GetVmGpuCachePath(const std::string& owner_id,
-                                 const std::string& vm_name) {
+base::FilePath GetVmGpuCachePathInternal(const std::string& owner_id,
+                                         const std::string& vm_name) {
   std::string vm_dir;
   // Note, we can not have '=' symbols in this path or it will break crosvm's
   // commandline argument parsing, so we use OMIT_PADDING.
@@ -1317,6 +1318,7 @@ bool Service::Init() {
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
+      {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -3193,7 +3195,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
     // Delete GPU shader disk cache.
     base::FilePath gpu_cache_path =
-        GetVmGpuCachePath(request.cryptohome_id(), request.vm_name());
+        GetVmGpuCachePathInternal(request.cryptohome_id(), request.vm_name());
     if (!base::DeletePathRecursively(gpu_cache_path)) {
       LOG(ERROR) << "Failed to remove GPU cache for VM: " << gpu_cache_path;
     }
@@ -4592,7 +4594,7 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     const std::string& owner_id,
     const std::string& vm_name,
     bool enable_render_server) {
-  base::FilePath cache_path = GetVmGpuCachePath(owner_id, vm_name);
+  base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
   base::FilePath bootid_path = cache_path.DirName();
   base::FilePath base_path = bootid_path.DirName();
 
@@ -4642,6 +4644,45 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
 
   return VMGpuCacheSpec{.device = std::move(cache_device_path),
                         .render_server = std::move(cache_render_server_path)};
+}
+
+// TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
+std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetVmGpuCachePathRequest request;
+  GetVmGpuCachePathResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Unable to parse GetGpuCachePathForVmRequest from message");
+  }
+
+  if (request.owner_id().empty() || request.name().empty()) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Both owner_id and name are required");
+  }
+
+  base::FilePath path =
+      GetVmGpuCachePathInternal(request.owner_id(), request.name());
+  if (!base::DirectoryExists(path)) {
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               "GPU cache path does not exist");
+  } else if (path.empty()) {
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               "GPU cache path is empty");
+  }
+
+  response.set_path(path.value());
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
 }
 
 int Service::GetCpuQuota() {

@@ -43,6 +43,7 @@ const char kMakeRtVcpuMethod[] = "MakeRtVcpu";
 const char kListVmsMethod[] = "ListVms";
 const char kArcVmCompleteBootMethod[] = "ArcVmCompleteBoot";
 const char kSetBalloonTimerMethod[] = "SetBalloonTimer";
+const char kGetVmGpuCachePathMethod[] = "GetVmGpuCachePath";
 
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";

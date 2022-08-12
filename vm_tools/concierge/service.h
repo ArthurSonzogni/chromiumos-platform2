@@ -233,6 +233,10 @@ class Service final {
   // Handles a request to list all the VMs.
   std::unique_ptr<dbus::Response> ListVms(dbus::MethodCall* method_call);
 
+  // Handles a request to get VM's GPU cache path.
+  std::unique_ptr<dbus::Response> GetVmGpuCachePath(
+      dbus::MethodCall* method_call);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
