@@ -28,6 +28,8 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  defines = [ "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}" ]
+
   # NOSORT
   pkg_deps = [
     "libchrome",
@@ -48,6 +50,9 @@ pkg_config("target_defaults") {
     pkg_deps += [ "protobuf" ]
   } else {
     pkg_deps += [ "protobuf-lite" ]
+  }
+  if (use.lvm_stateful_partition) {
+    pkg_deps += [ "liblvmd-client" ]
   }
 }
 
@@ -111,6 +116,13 @@ static_library("libdlcservice") {
     ":libdlcservice_utils",
     ":ref_count-proto",
   ]
+  if (use.lvm_stateful_partition) {
+    sources += [
+      "lvm/dlc_lvm.cc",
+      "lvm/lvm_utils.cc",
+      "lvm/lvmd_proxy_wrapper.cc",
+    ]
+  }
 }
 
 # For dlcservice:
@@ -147,6 +159,9 @@ if (use.test) {
       "libsession_manager-client-test",
       "libupdate_engine-client-test",
     ]
+    if (use.lvm_stateful_partition) {
+      pkg_deps += [ "liblvmd-client-test" ]
+    }
   }
 
   executable("dlcservice_tests") {
@@ -166,6 +181,9 @@ if (use.test) {
       "unique_queue_test.cc",
       "utils_test.cc",
     ]
+    if (use.lvm_stateful_partition) {
+      sources += [ "lvm/lvm_utils_test.cc" ]
+    }
     configs += [
       "//common-mk:test",
       ":dlcservice_tests_config",

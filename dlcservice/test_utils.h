@@ -17,16 +17,25 @@
 #include <dbus/mock_object_proxy.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#if USE_LVM_STATEFUL_PARTITION
+#include <lvmd/proto_bindings/lvmd.pb.h>
+// NOLINTNEXTLINE(build/include_alpha)
+#include <lvmd/dbus-proxy-mocks.h>
+#endif  // USE_LVM_STATEFUL_PARTITION
 #include <session_manager/dbus-proxy-mocks.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
+// NOLINTNEXTLINE(build/include_alpha)
 #include <update_engine/dbus-proxy-mocks.h>
 
-#include "dlcservice/boot/mock_boot_device.h"
+#include "dlcservice/boot/mock_boot_slot.h"
 #include "dlcservice/dlc.h"
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/mock_metrics.h"
 #include "dlcservice/mock_state_change_reporter.h"
 #include "dlcservice/mock_system_properties.h"
+#if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 namespace dlcservice {
 
@@ -90,6 +99,11 @@ class BaseTest : public testing::Test {
   base::FilePath verification_file_path_;
   base::FilePath mount_path_;
 
+#if USE_LVM_STATEFUL_PARTITION
+  std::unique_ptr<MockLvmdProxyWrapper> mock_lvmd_proxy_wrapper_;
+  MockLvmdProxyWrapper* mock_lvmd_proxy_wrapper_ptr_;
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   using ImageLoaderProxyMock = org::chromium::ImageLoaderInterfaceProxyMock;
   std::unique_ptr<ImageLoaderProxyMock> mock_image_loader_proxy_;
   ImageLoaderProxyMock* mock_image_loader_proxy_ptr_;
@@ -106,8 +120,8 @@ class BaseTest : public testing::Test {
   std::unique_ptr<SessionManagerProxyMock> mock_session_manager_proxy_;
   SessionManagerProxyMock* mock_session_manager_proxy_ptr_;
 
-  std::unique_ptr<MockBootDevice> mock_boot_device_;
-  MockBootDevice* mock_boot_device_ptr_;
+  std::unique_ptr<MockBootSlot> mock_boot_slot_;
+  MockBootSlot* mock_boot_slot_ptr_;
 
   MockMetrics* mock_metrics_;
   MockSystemProperties* mock_system_properties_;

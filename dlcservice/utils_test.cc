@@ -255,4 +255,61 @@ TEST(UtilsTest, GetDlcModuleImagePathB) {
             "/tmp/dlc/id/package/dlc_b/dlc.img");
 }
 
+TEST(UtilsTest, SplitAndJoinPartitionNameTest) {
+  std::string disk;
+  int part_num;
+
+  EXPECT_TRUE(SplitPartitionName("/dev/sda3", &disk, &part_num));
+  EXPECT_EQ("/dev/sda", disk);
+  EXPECT_EQ(3, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/sdp1234", &disk, &part_num));
+  EXPECT_EQ("/dev/sdp", disk);
+  EXPECT_EQ(1234, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/mmcblk0p3", &disk, &part_num));
+  EXPECT_EQ("/dev/mmcblk0", disk);
+  EXPECT_EQ(3, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/ubiblock3_2", &disk, &part_num));
+  EXPECT_EQ("/dev/ubiblock", disk);
+  EXPECT_EQ(3, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/loop10", &disk, &part_num));
+  EXPECT_EQ("/dev/loop", disk);
+  EXPECT_EQ(10, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/loop28p11", &disk, &part_num));
+  EXPECT_EQ("/dev/loop28", disk);
+  EXPECT_EQ(11, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/loop10_0", &disk, &part_num));
+  EXPECT_EQ("/dev/loop", disk);
+  EXPECT_EQ(10, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/loop28p11_0", &disk, &part_num));
+  EXPECT_EQ("/dev/loop28", disk);
+  EXPECT_EQ(11, part_num);
+
+  EXPECT_TRUE(SplitPartitionName("/dev/123", &disk, &part_num));
+  EXPECT_EQ("/dev/", disk);
+  EXPECT_EQ(123, part_num);
+
+  EXPECT_FALSE(SplitPartitionName("/dev/mmcblk0p", &disk, &part_num));
+  EXPECT_FALSE(SplitPartitionName("/dev/sda", &disk, &part_num));
+  EXPECT_FALSE(SplitPartitionName("/dev/foo/bar", &disk, &part_num));
+  EXPECT_FALSE(SplitPartitionName("/", &disk, &part_num));
+  EXPECT_FALSE(SplitPartitionName("", &disk, &part_num));
+  EXPECT_FALSE(SplitPartitionName("/dev/_100", &disk, &part_num));
+}
+
+TEST(UtilsTest, JoinPartitionNameTest) {
+  EXPECT_EQ("/dev/sda3", JoinPartitionName("/dev/sda", 3));
+  EXPECT_EQ("/dev/sdp1234", JoinPartitionName("/dev/sdp", 1234));
+  EXPECT_EQ("/dev/sdp0p1234", JoinPartitionName("/dev/sdp0", 1234));
+  EXPECT_EQ("/dev/mmcblk0p3", JoinPartitionName("/dev/mmcblk0", 3));
+  EXPECT_EQ("", JoinPartitionName("foobar", 123));
+  EXPECT_EQ("", JoinPartitionName("/dev/sda", 0));
+}
+
 }  // namespace dlcservice

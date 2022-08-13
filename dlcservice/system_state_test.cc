@@ -8,9 +8,19 @@
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 
+using testing::Return;
+
 namespace dlcservice {
 
-class SystemStateTest : public BaseTest {};
+class SystemStateTest : public BaseTest {
+  void SetUp() override {
+    ON_CALL(*mock_boot_slot_ptr_, GetSlot())
+        .WillByDefault(Return(BootSlotInterface::Slot::B));
+    ON_CALL(*mock_boot_slot_ptr_, IsDeviceRemovable())
+        .WillByDefault(Return(false));
+    BaseTest::SetUp();
+  }
+};
 
 TEST_F(SystemStateTest, GettersTest) {
   auto* system_state = SystemState::Get();
@@ -23,8 +33,8 @@ TEST_F(SystemStateTest, GettersTest) {
   EXPECT_EQ(system_state->prefs_dir(), temp_path.Append("var_lib_dlcservice"));
   EXPECT_EQ(system_state->dlc_prefs_dir(),
             temp_path.Append("var_lib_dlcservice").Append("dlc"));
-  EXPECT_EQ(system_state->active_boot_slot(), BootSlot::Slot::B);
-  EXPECT_EQ(system_state->inactive_boot_slot(), BootSlot::Slot::A);
+  EXPECT_EQ(system_state->active_boot_slot(), BootSlotInterface::Slot::B);
+  EXPECT_EQ(system_state->inactive_boot_slot(), BootSlotInterface::Slot::A);
   EXPECT_EQ(system_state->users_dir(), temp_path.Append("users"));
   EXPECT_FALSE(system_state->IsDeviceRemovable());
 

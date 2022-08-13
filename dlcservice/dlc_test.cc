@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "dlcservice/boot/mock_boot_device.h"
+#include "dlcservice/boot/mock_boot_slot.h"
 #include "dlcservice/metrics.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
@@ -31,6 +31,9 @@ class DlcBaseTest : public BaseTest {
  public:
   DlcBaseTest() = default;
 
+  DlcBaseTest(const DlcBaseTest&) = delete;
+  DlcBaseTest& operator=(const DlcBaseTest&) = delete;
+
   std::unique_ptr<DlcBase> Install(const DlcId& id) {
     auto dlc = std::make_unique<DlcBase>(id);
     dlc->Initialize();
@@ -48,24 +51,27 @@ class DlcBaseTest : public BaseTest {
     return dlc;
   }
 
- private:
-  DlcBaseTest(const DlcBaseTest&) = delete;
-  DlcBaseTest& operator=(const DlcBaseTest&) = delete;
+  void SetUp() override {
+    ON_CALL(*mock_boot_slot_ptr_, GetSlot())
+        .WillByDefault(Return(BootSlotInterface::Slot::A));
+    ON_CALL(*mock_boot_slot_ptr_, IsDeviceRemovable())
+        .WillByDefault(Return(false));
+    BaseTest::SetUp();
+  }
 };
 
 class DlcBaseTestRemovable : public DlcBaseTest {
  public:
   DlcBaseTestRemovable() = default;
 
-  void SetUp() override {
-    ON_CALL(*mock_boot_device_ptr_, IsRemovableDevice(_))
-        .WillByDefault(Return(true));
-    DlcBaseTest::SetUp();
-  }
-
- private:
   DlcBaseTestRemovable(const DlcBaseTestRemovable&) = delete;
   DlcBaseTestRemovable& operator=(const DlcBaseTestRemovable&) = delete;
+
+  void SetUp() override {
+    DlcBaseTest::SetUp();
+    ON_CALL(*mock_boot_slot_ptr_, IsDeviceRemovable())
+        .WillByDefault(Return(true));
+  }
 };
 
 TEST_F(DlcBaseTest, InitializationClearsMountFile) {

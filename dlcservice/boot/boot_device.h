@@ -9,6 +9,8 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include <base/files/file_path.h>
+
 namespace dlcservice {
 
 class BootDeviceInterface {
@@ -18,17 +20,24 @@ class BootDeviceInterface {
   // Returns true if the root |device| (e.g., "/dev/sdb") is known to be
   // removable, false otherwise.
   virtual bool IsRemovableDevice(const std::string& device) = 0;
+
   // Returns the currently booted rootfs partition. "/dev/sda3", for example.
-  virtual std::string GetBootDevice() = 0;
+  // Unless `strip_partition` is passed in, in which case it will return the
+  // currently booted device path without any partition.
+  virtual base::FilePath GetBootDevice() = 0;
 };
 
 class BootDevice : public BootDeviceInterface {
  public:
   BootDevice() = default;
   ~BootDevice() override = default;
+
+  BootDevice(const BootDevice&) = delete;
+  BootDevice& operator=(const BootDevice&) = delete;
+
   // BootDeviceInterface overrides:
   bool IsRemovableDevice(const std::string& device) override;
-  std::string GetBootDevice() override;
+  base::FilePath GetBootDevice() override;
 
  private:
   FRIEND_TEST(BootDeviceTest, SysfsBlockDeviceTest);
@@ -36,9 +45,6 @@ class BootDevice : public BootDeviceInterface {
   // SysfsBlockDevice("/dev/sda") returns "/sys/block/sda". Returns an empty
   // string if the input device is not of the "/dev/xyz" form.
   std::string SysfsBlockDevice(const std::string& device);
-
-  BootDevice(const BootDevice&) = delete;
-  BootDevice& operator=(const BootDevice&) = delete;
 };
 
 }  // namespace dlcservice

@@ -6,6 +6,7 @@
 
 #include <linux/limits.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <rootdev/rootdev.h>
@@ -29,21 +30,22 @@ bool BootDevice::IsRemovableDevice(const string& device) {
   return removable == "1";
 }
 
-string BootDevice::GetBootDevice() {
+base::FilePath BootDevice::GetBootDevice() {
   char boot_path[PATH_MAX] = "";
   // Resolve the boot device path fully, including dereferencing through
   // dm-verity.
   int ret = rootdev(boot_path, sizeof(boot_path), true, /*full resolution*/
                     false /*do not remove partition #*/);
+
   if (ret < 0) {
     LOG(ERROR) << "rootdev failed to find the root device";
-    return "";
+    return {};
   }
   LOG_IF(WARNING, ret > 0) << "rootdev found a device name with no device node";
 
   // This local variable is used to construct the return string and is not
   // passed around after use.
-  return boot_path;
+  return base::FilePath{boot_path};
 }
 
 string BootDevice::SysfsBlockDevice(const string& device) {

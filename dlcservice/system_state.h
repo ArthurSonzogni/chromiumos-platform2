@@ -6,6 +6,7 @@
 #define DLCSERVICE_SYSTEM_STATE_H_
 
 #include <memory>
+#include <string>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
@@ -18,6 +19,9 @@
 
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_manager.h"
+#if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/lvmd_proxy_wrapper.h"
+#endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/metrics.h"
 #include "dlcservice/state_change_reporter_interface.h"
 #include "dlcservice/system_properties.h"
@@ -33,6 +37,9 @@ class SystemState {
   // But if |for_test| is true, repeated calls can be made during testing to
   // reset |SystemState|. Note: Should only be used during tests.
   static void Initialize(
+#if USE_LVM_STATEFUL_PARTITION
+      std::unique_ptr<LvmdProxyWrapperInterface> lvmd_proxy_wrapper,
+#endif  // USE_LVM_STATEFUL_PARTITION
       std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -40,7 +47,7 @@ class SystemState {
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manage_proxy,
       StateChangeReporterInterface* state_change_reporter,
-      std::unique_ptr<BootSlot> boot_slot,
+      std::unique_ptr<BootSlotInterface> boot_slot,
       std::unique_ptr<Metrics> metrics,
       std::unique_ptr<SystemProperties> system_properties,
       const base::FilePath& manifest_dir,
@@ -60,9 +67,13 @@ class SystemState {
   void set_update_engine_service_available(bool available);
 
   // Getters for states that |SystemState| holds.
+#if USE_LVM_STATEFUL_PARTITION
+  LvmdProxyWrapperInterface* lvmd_wrapper() const;
+#endif  // USE_LVM_STATEFUL_PARTITION
   org::chromium::ImageLoaderInterfaceProxyInterface* image_loader() const;
   org::chromium::UpdateEngineInterfaceProxyInterface* update_engine() const;
   org::chromium::SessionManagerInterfaceProxyInterface* session_manager() const;
+  BootSlotInterface* boot_slot() const;
   Metrics* metrics() const;
   StateChangeReporterInterface* state_change_reporter() const;
   SystemProperties* system_properties() const;
@@ -76,8 +87,8 @@ class SystemState {
   const base::FilePath& verification_file() const;
 
   // Getting active and inactive boot slots easily.
-  BootSlot::Slot active_boot_slot() const;
-  BootSlot::Slot inactive_boot_slot() const;
+  BootSlotInterface::Slot active_boot_slot() const;
+  BootSlotInterface::Slot inactive_boot_slot() const;
 
   // Return true if the device is removable.
   bool IsDeviceRemovable() const;
@@ -91,6 +102,9 @@ class SystemState {
 
  protected:
   SystemState(
+#if USE_LVM_STATEFUL_PARTITION
+      std::unique_ptr<LvmdProxyWrapperInterface> lvmd_proxy_wrapper,
+#endif  // USE_LVM_STATEFUL_PARTITION
       std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -98,7 +112,7 @@ class SystemState {
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manager_proxy,
       StateChangeReporterInterface* state_change_reporter,
-      std::unique_ptr<BootSlot> boot_slot,
+      std::unique_ptr<BootSlotInterface> boot_slot,
       std::unique_ptr<Metrics> metrics,
       std::unique_ptr<SystemProperties> system_properties,
       const base::FilePath& manifest_dir,
@@ -113,6 +127,9 @@ class SystemState {
  private:
   void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
 
+#if USE_LVM_STATEFUL_PARTITION
+  std::unique_ptr<LvmdProxyWrapperInterface> lvmd_proxy_wrapper_;
+#endif  // USE_LVM_STATEFUL_PARTITION
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -122,6 +139,7 @@ class SystemState {
       session_manager_proxy_;
   StateChangeReporterInterface* state_change_reporter_;
 
+  std::unique_ptr<BootSlotInterface> boot_slot_;
   std::unique_ptr<Metrics> metrics_;
   std::unique_ptr<SystemProperties> system_properties_;
   base::FilePath manifest_dir_;
@@ -129,11 +147,9 @@ class SystemState {
   base::FilePath factory_install_dir_;
   base::FilePath content_dir_;
   base::FilePath prefs_dir_;
-  BootSlot::Slot active_boot_slot_;
   base::FilePath users_dir_;
   base::FilePath verification_file_;
   base::Clock* clock_;
-  bool is_device_removable_;
 
   // Keep the last status result we saw.
   update_engine::StatusResult last_update_engine_status_;

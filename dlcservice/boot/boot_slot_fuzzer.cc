@@ -22,7 +22,9 @@ class FakeBootDevice : public BootDeviceInterface {
   bool IsRemovableDevice(const std::string& device) override {
     return is_removable_device_;
   }
-  std::string GetBootDevice() override { return boot_device_; }
+  base::FilePath GetBootDevice() override {
+    return base::FilePath{boot_device_};
+  }
 
  private:
   std::string boot_device_;
@@ -50,8 +52,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   dlcservice::BootSlot boot_slot(std::make_unique<dlcservice::FakeBootDevice>(
       boot_device, is_removable_device));
 
-  std::string boot_disk_name;
-  dlcservice::BootSlot::Slot slot;
-  boot_slot.GetCurrentSlot(&boot_disk_name, &slot);
+  boot_slot.IsDeviceRemovable();
+  boot_slot.GetDeviceName();
+  boot_slot.GetSlot();
+  boot_slot.GetStatefulPartitionPath();
   return 0;
 }

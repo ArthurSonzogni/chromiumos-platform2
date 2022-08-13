@@ -9,18 +9,18 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
+
 namespace dlcservice {
 
 class MockBootDevice : public BootDeviceInterface {
  public:
   MockBootDevice() = default;
-
-  MOCK_METHOD(bool, IsRemovableDevice, (const std::string&), (override));
-  MOCK_METHOD(std::string, GetBootDevice, (), (override));
-
- private:
   MockBootDevice(const MockBootDevice&) = delete;
   MockBootDevice& operator=(const MockBootDevice&) = delete;
+
+  MOCK_METHOD(bool, IsRemovableDevice, (const std::string&), (override));
+  MOCK_METHOD(base::FilePath, GetBootDevice, (), (override));
 };
 
 }  // namespace dlcservice

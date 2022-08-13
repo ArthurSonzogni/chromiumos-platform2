@@ -43,6 +43,23 @@ base::FilePath JoinPaths(Arg&& path, Args&&... paths) {
   return base::FilePath(path).Append(JoinPaths(paths...));
 }
 
+// Splits the partition device name into the block device name and partition
+// number. For example, "/dev/sda3" will be split into {"/dev/sda", 3} and
+// "/dev/mmcblk0p2" into {"/dev/mmcblk0", 2}
+// Returns false when malformed device name is passed in.
+// If both output parameters are omitted (null), can be used
+// just to test the validity of the device name. Note that the function
+// simply checks if the device name looks like a valid device, no other
+// checks are performed (i.e. it doesn't check if the device actually exists).
+bool SplitPartitionName(std::string partition_name,
+                        std::string* disk_name_out,
+                        int* partition_num_out);
+
+// Inverse of `SplitPartitionName`, will join arguments to produce a valid
+// partition path.
+// TODO(kimjae): Support ubifs format.
+std::string JoinPartitionName(std::string device_name, int partition_num);
+
 // Writes |data| into file |path|. Returns true if all |size| of |data| are
 // written.
 bool WriteToFile(const base::FilePath& path, const std::string& data);

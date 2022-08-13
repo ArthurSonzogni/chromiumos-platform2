@@ -5,6 +5,7 @@
 #include "dlcservice/dlc_manager.h"
 
 #include <cinttypes>
+#include <memory>
 #include <utility>
 
 #include <base/check.h>
@@ -16,8 +17,12 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include "dlcservice/dlc.h"
+#if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/dlc_lvm.h"
+#endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/error.h"
 #include "dlcservice/system_state.h"
+#include "dlcservice/types.h"
 #include "dlcservice/utils.h"
 
 using brillo::ErrorPtr;
@@ -27,7 +32,7 @@ namespace dlcservice {
 
 namespace {
 DlcIdList ToDlcIdList(const DlcMap& dlcs,
-                      const std::function<bool(const DlcBase&)>& filter) {
+                      const std::function<bool(const DlcType&)>& filter) {
   DlcIdList list;
   for (const auto& pair : dlcs) {
     if (filter(pair.second))
@@ -49,8 +54,13 @@ void DlcManager::Initialize() {
 
   // Initialize supported DLC(s).
   for (const auto& id : ScanDirectory(SystemState::Get()->manifest_dir())) {
-    auto result = supported_.emplace(id, id);
-    if (!result.first->second.Initialize()) {
+    auto result =
+#if USE_LVM_STATEFUL_PARTITION
+        supported_.emplace(id, std::make_unique<DlcLvm>(id));
+#else
+        supported_.emplace(id, std::make_unique<DlcBase>(id));
+#endif  // USE_LVM_STATEFUL_PARTITION
+    if (!result.first->second->Initialize()) {
       LOG(ERROR) << "Failed to initialize DLC " << id;
       supported_.erase(id);
     }
@@ -103,12 +113,12 @@ void DlcManager::CleanupDanglingDlcs() {
   LOG(INFO) << "Going to clean up dangling DLCs.";
   for (auto& pair : supported_) {
     auto& dlc = pair.second;
-    if (dlc.ShouldPurge()) {
-      LOG(INFO) << "DLC=" << dlc.GetId() << " should be removed because it is "
+    if (dlc->ShouldPurge()) {
+      LOG(INFO) << "DLC=" << dlc->GetId() << " should be removed because it is "
                 << "dangling.";
       brillo::ErrorPtr error;
-      if (!dlc.Purge(&error)) {
-        LOG(ERROR) << "Failed to delete dangling DLC=" << dlc.GetId();
+      if (!dlc->Purge(&error)) {
+        LOG(ERROR) << "Failed to delete dangling DLC=" << dlc->GetId();
       }
     }
   }
@@ -134,28 +144,28 @@ DlcBase* DlcManager::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
         base::StringPrintf("Passed unsupported DLC=%s", id.c_str()));
     return nullptr;
   }
-  return &iter->second;
+  return iter->second.get();
 }
 
 DlcIdList DlcManager::GetInstalled() {
   // TODO(kimjae): Once update_engine repeatedly calls into |GetInstalled()| for
   // updating update, need to handle clearing differently.
   return ToDlcIdList(supported_,
-                     [](const DlcBase& dlc) { return dlc.IsInstalled(); });
+                     [](const DlcType& dlc) { return dlc->IsInstalled(); });
 }
 
 DlcIdList DlcManager::GetExistingDlcs() {
   return ToDlcIdList(supported_,
-                     [](const DlcBase& dlc) { return dlc.HasContent(); });
+                     [](const DlcType& dlc) { return dlc->HasContent(); });
 }
 
 DlcIdList DlcManager::GetDlcsToUpdate() {
   return ToDlcIdList(
-      supported_, [](const DlcBase& dlc) { return dlc.MakeReadyForUpdate(); });
+      supported_, [](const DlcType& dlc) { return dlc->MakeReadyForUpdate(); });
 }
 
 DlcIdList DlcManager::GetSupported() {
-  return ToDlcIdList(supported_, [](const DlcBase&) { return true; });
+  return ToDlcIdList(supported_, [](const DlcType&) { return true; });
 }
 
 bool DlcManager::InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) {
@@ -278,8 +288,8 @@ bool DlcManager::CancelInstall(const DlcId& id,
 void DlcManager::ChangeProgress(double progress) {
   for (auto& pr : supported_) {
     auto& dlc = pr.second;
-    if (dlc.IsInstalling()) {
-      dlc.ChangeProgress(progress);
+    if (dlc->IsInstalling()) {
+      dlc->ChangeProgress(progress);
     }
   }
 }

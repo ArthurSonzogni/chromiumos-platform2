@@ -13,10 +13,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/file_utils.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -73,6 +75,75 @@ char kRootDirectoryInsideDlcModule[] = "root";
 
 const int kDlcFilePerms = 0644;
 const int kDlcDirectoryPerms = 0755;
+
+bool SplitPartitionName(std::string partition_name,
+                        std::string* disk_name_out,
+                        int* partition_num_out) {
+  CHECK(disk_name_out);
+  CHECK(partition_num_out);
+  if (!base::StartsWith(partition_name, "/dev/",
+                        base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "Invalid partition device name: " << partition_name;
+    return false;
+  }
+
+  // Loop twice if we hit the '_' case to handle NAND block devices.
+  for (int i = 0; i <= 1; ++i) {
+    auto nondigit_pos = partition_name.find_last_not_of("0123456789");
+    if (!isdigit(partition_name.back()) || nondigit_pos == string::npos) {
+      LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
+      return false;
+    }
+
+    switch (partition_name[nondigit_pos]) {
+      // NAND block devices have weird naming which could be something like
+      // "/dev/ubiblock2_0". We discard "_0" in such a case.
+      case '_':
+        LOG(INFO) << "Shortening partition_name: " << partition_name;
+        partition_name = partition_name.substr(0, nondigit_pos);
+        break;
+      // Special case for MMC devices which have the following naming scheme:
+      //   mmcblk0p2
+      case 'p':
+        if (nondigit_pos != 0 && isdigit(partition_name[nondigit_pos - 1])) {
+          *disk_name_out = partition_name.substr(0, nondigit_pos);
+          base::StringToInt(partition_name.substr(nondigit_pos + 1),
+                            partition_num_out);
+          return true;
+        }
+        [[fallthrough]];
+      default:
+        *disk_name_out = partition_name.substr(0, nondigit_pos + 1);
+        base::StringToInt(partition_name.substr(nondigit_pos + 1),
+                          partition_num_out);
+        return true;
+    }
+  }
+  LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
+  return false;
+}
+
+std::string JoinPartitionName(std::string device_name, int partition_num) {
+  if (partition_num < 1) {
+    LOG(ERROR) << "Invalid partition number: " << partition_num;
+    return {};
+  }
+
+  if (!base::StartsWith(device_name, "/dev/", base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "Invalid device name: " << device_name;
+    return {};
+  }
+
+  if (isdigit(device_name.back())) {
+    // Special case for devices with names ending with a digit.
+    // Add "p" to separate the disk name from partition number,
+    // e.g. "/dev/loop0p2"
+    device_name += 'p';
+  }
+
+  device_name += std::to_string(partition_num);
+  return device_name;
+}
 
 bool WriteToFile(const FilePath& path, const string& data) {
   return WriteFile(path, data, /*truncate=*/true);

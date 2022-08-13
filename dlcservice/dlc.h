@@ -23,16 +23,17 @@
 
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/ref_count.h"
+#include "dlcservice/types.h"
 
 namespace dlcservice {
-
-// |DlcId| is the ID of the DLC.
-using DlcId = std::string;
 
 class DlcBase {
  public:
   explicit DlcBase(DlcId id) : id_(std::move(id)) {}
   virtual ~DlcBase() = default;
+
+  DlcBase(const DlcBase&) = delete;
+  DlcBase& operator=(const DlcBase&) = delete;
 
   // Returns the list of directories related to a DLC for deletion.
   static std::vector<base::FilePath> GetPathsToDelete(const DlcId& id);
@@ -93,7 +94,8 @@ class DlcBase {
   // Cancels the ongoing installation of this DLC. The state will be set to
   // uninstalled after this call if successful.
   // The |err_in| argument is the error that causes the install to be cancelled.
-  bool CancelInstall(const brillo::ErrorPtr& err_in, brillo::ErrorPtr* err);
+  virtual bool CancelInstall(const brillo::ErrorPtr& err_in,
+                             brillo::ErrorPtr* err);
 
   // Uninstalls the DLC.
   bool Uninstall(brillo::ErrorPtr* err);
@@ -123,7 +125,7 @@ class DlcBase {
   // Will return the value set, pass `nullptr` to use as getter.
   bool SetReserve(std::optional<bool> reserve);
 
- private:
+ protected:
   friend class DBusServiceTest;
   FRIEND_TEST(DlcBaseTest, InitializationReservedSpace);
   FRIEND_TEST(DlcBaseTest, InitializationReservedSpaceOmitted);
@@ -156,7 +158,7 @@ class DlcBase {
   // should be used as fall-through. We should call this even if we presumably
   // know the files are already there. This allows us to create any new DLC
   // files that didn't exist on a previous version of the DLC.
-  bool CreateDlc(brillo::ErrorPtr* err);
+  virtual bool CreateDlc(brillo::ErrorPtr* err);
 
   // Mark the current active DLC image as verified.
   bool MarkVerified();
@@ -184,7 +186,7 @@ class DlcBase {
   bool IsActiveImagePresent() const;
 
   // Deletes all directories related to this DLC.
-  bool DeleteInternal(brillo::ErrorPtr* err);
+  virtual bool DeleteInternal(brillo::ErrorPtr* err);
 
   // Changes the state of the current DLC. It also notifies the state change
   // reporter that a state change has been made.
@@ -220,13 +222,7 @@ class DlcBase {
   // The object that keeps track of ref counts. NOTE: Do NOT access this object
   // directly. Use |GetRefCount()| instead.
   std::unique_ptr<RefCountInterface> ref_count_;
-
-  DlcBase(const DlcBase&) = delete;
-  DlcBase& operator=(const DlcBase&) = delete;
 };
-
-using DlcMap = std::map<DlcId, DlcBase>;
-using DlcIdList = std::vector<DlcId>;
 
 }  // namespace dlcservice
 

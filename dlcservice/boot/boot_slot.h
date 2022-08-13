@@ -8,54 +8,63 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace dlcservice {
 
 class BootDeviceInterface;
 
-class BootSlot {
+class BootSlotInterface {
  public:
   enum class Slot : int {
     A = 0,
     B = 1,
   };
 
-  explicit BootSlot(std::unique_ptr<BootDeviceInterface> boot_device);
-  ~BootSlot();
+  virtual ~BootSlotInterface() = default;
 
-  // Gets the partition slot the system is currently booted from. Returns true
-  // if the operation returns valid results, otherwise returns false.
-  // |boot_disk_name_out| returns the device path of the disk the system is
-  // booted from. For example, "/dev/sda". |current_slot_out| returns the slot
-  // the system is currently booted from. |is_removable_out| returns whether the
-  // system is currently booted from a removable device or not.
-  bool GetCurrentSlot(std::string* boot_disk_name_out,
-                      BootSlot::Slot* current_slot_out,
-                      bool* is_removable_out = nullptr) const;
+  // Initialize boot slot state.
+  virtual bool Init() = 0;
+
+  // Returns true if boot device is removable.
+  virtual bool IsDeviceRemovable() = 0;
+
+  // Returns the boot device name.
+  virtual std::string GetDeviceName() = 0;
+
+  // Returns the boot slot.
+  virtual Slot GetSlot() = 0;
+
+  // Returns the device path to stateful partition.
+  virtual base::FilePath GetStatefulPartitionPath() = 0;
+};
+
+class BootSlot : public BootSlotInterface {
+ public:
+  explicit BootSlot(std::unique_ptr<BootDeviceInterface> boot_device);
+  ~BootSlot() override = default;
+
+  BootSlot(const BootSlot&) = delete;
+  BootSlot& operator=(const BootSlot&) = delete;
+
+  // `BootSlotInterface` overrides.
+  bool Init() override;
+  bool IsDeviceRemovable() override;
+  std::string GetDeviceName() override;
+  Slot GetSlot() override;
+  base::FilePath GetStatefulPartitionPath() override;
 
   // Returns the string representation of |Slot|.
   static std::string ToString(Slot slot);
 
  private:
-  FRIEND_TEST(BootSlotTest, SplitPartitionNameTest);
-
-  // Splits the partition device name into the block device name and partition
-  // number. For example, "/dev/sda3" will be split into {"/dev/sda", 3} and
-  // "/dev/mmcblk0p2" into {"/dev/mmcblk0", 2}
-  // Returns false when malformed device name is passed in.
-  // If both output parameters are omitted (null), can be used
-  // just to test the validity of the device name. Note that the function
-  // simply checks if the device name looks like a valid device, no other
-  // checks are performed (i.e. it doesn't check if the device actually exists).
-  bool SplitPartitionName(std::string partition_name,
-                          std::string* disk_name_out,
-                          int* partition_num_out) const;
-
   std::unique_ptr<BootDeviceInterface> boot_device_;
-
-  BootSlot(const BootSlot&) = delete;
-  BootSlot& operator=(const BootSlot&) = delete;
+  base::FilePath device_path_;
+  std::string device_name_;
+  int partition_num_ = 0;
+  Slot slot_;
+  bool is_removable_;
 };
 
 }  // namespace dlcservice

@@ -17,6 +17,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#if USE_LVM_STATEFUL_PARTITION
+#include <lvmd/proto_bindings/lvmd.pb.h>
+// NOLINTNEXTLINE(build/include_alpha)
+#include <lvmd/dbus-proxy-mocks.h>
+#endif  // USE_LVM_STATEFUL_PARTITION
 #include <metrics/metrics_library_mock.h>
 #include <update_engine/dbus-constants.h>
 #include <update_engine/dbus-proxy-mocks.h>
@@ -24,6 +29,9 @@
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc.h"
 #include "dlcservice/metrics.h"
+#if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
+#endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
 
@@ -45,6 +53,12 @@ const char kDefaultOmahaUrl[] = "http://foo-url";
 
 BaseTest::BaseTest() {
   // Create mocks with default behaviors.
+#if USE_LVM_STATEFUL_PARTITION
+  mock_lvmd_proxy_wrapper_ =
+      std::make_unique<StrictMock<MockLvmdProxyWrapper>>();
+  mock_lvmd_proxy_wrapper_ptr_ = mock_lvmd_proxy_wrapper_.get();
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   mock_image_loader_proxy_ =
       std::make_unique<StrictMock<ImageLoaderProxyMock>>();
   mock_image_loader_proxy_ptr_ = mock_image_loader_proxy_.get();
@@ -62,13 +76,8 @@ BaseTest::BaseTest() {
       std::make_unique<StrictMock<SessionManagerProxyMock>>();
   mock_session_manager_proxy_ptr_ = mock_session_manager_proxy_.get();
 
-  mock_boot_device_ = std::make_unique<MockBootDevice>();
-  mock_boot_device_ptr_ = mock_boot_device_.get();
-  EXPECT_CALL(*mock_boot_device_, GetBootDevice())
-      .WillOnce(Return("/dev/sdb5"));
-  ON_CALL(*mock_boot_device_, IsRemovableDevice(_))
-      .WillByDefault(Return(false));
-  EXPECT_CALL(*mock_boot_device_, IsRemovableDevice(_)).Times(1);
+  mock_boot_slot_ = std::make_unique<MockBootSlot>();
+  mock_boot_slot_ptr_ = mock_boot_slot_.get();
 }
 
 void BaseTest::SetUp() {
@@ -84,12 +93,15 @@ void BaseTest::SetUp() {
   mock_system_properties_ = mock_system_properties.get();
 
   SystemState::Initialize(
+#if USE_LVM_STATEFUL_PARTITION
+      std::move(mock_lvmd_proxy_wrapper_),
+#endif  // USE_LVM_STATEFUL_PARTITION
       std::move(mock_image_loader_proxy_), std::move(mock_update_engine_proxy_),
       std::move(mock_session_manager_proxy_), &mock_state_change_reporter_,
-      std::make_unique<BootSlot>(std::move(mock_boot_device_)),
-      std::move(mock_metrics), std::move(mock_system_properties),
-      manifest_path_, preloaded_content_path_, factory_install_path_,
-      content_path_, prefs_path_, users_path_, verification_file_path_, &clock_,
+      std::move(mock_boot_slot_), std::move(mock_metrics),
+      std::move(mock_system_properties), manifest_path_,
+      preloaded_content_path_, factory_install_path_, content_path_,
+      prefs_path_, users_path_, verification_file_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 }

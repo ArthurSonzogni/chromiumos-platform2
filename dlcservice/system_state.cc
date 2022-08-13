@@ -21,6 +21,9 @@ namespace dlcservice {
 std::unique_ptr<SystemState> SystemState::g_instance_ = nullptr;
 
 SystemState::SystemState(
+#if USE_LVM_STATEFUL_PARTITION
+    std::unique_ptr<LvmdProxyWrapperInterface> lvmd_proxy_wrapper,
+#endif  // USE_LVM_STATEFUL_PARTITION
     std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
         image_loader_proxy,
     std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -28,7 +31,7 @@ SystemState::SystemState(
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager_proxy,
     StateChangeReporterInterface* state_change_reporter,
-    std::unique_ptr<BootSlot> boot_slot,
+    std::unique_ptr<BootSlotInterface> boot_slot,
     std::unique_ptr<Metrics> metrics,
     std::unique_ptr<SystemProperties> system_properties,
     const base::FilePath& manifest_dir,
@@ -39,10 +42,15 @@ SystemState::SystemState(
     const base::FilePath& users_dir,
     const base::FilePath& verification_file,
     base::Clock* clock)
-    : image_loader_proxy_(std::move(image_loader_proxy)),
+    :
+#if USE_LVM_STATEFUL_PARTITION
+      lvmd_proxy_wrapper_(std::move(lvmd_proxy_wrapper)),
+#endif  // USE_LVM_STATEFUL_PARTITION
+      image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
       session_manager_proxy_(std::move(session_manager_proxy)),
       state_change_reporter_(state_change_reporter),
+      boot_slot_(std::move(boot_slot)),
       metrics_(std::move(metrics)),
       system_properties_(std::move(system_properties)),
       manifest_dir_(manifest_dir),
@@ -52,16 +60,14 @@ SystemState::SystemState(
       prefs_dir_(prefs_dir),
       users_dir_(users_dir),
       verification_file_(verification_file),
-      clock_(clock),
-      is_device_removable_(false) {
-  std::string boot_disk_name;
-  PCHECK(boot_slot->GetCurrentSlot(&boot_disk_name, &active_boot_slot_,
-                                   &is_device_removable_))
-      << "Can not get current boot slot.";
+      clock_(clock) {
 }
 
 // static
 void SystemState::Initialize(
+#if USE_LVM_STATEFUL_PARTITION
+    std::unique_ptr<LvmdProxyWrapperInterface> lvmd_proxy_wrapper,
+#endif  // USE_LVM_STATEFUL_PARTITION
     std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
         image_loader_proxy,
     std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -69,7 +75,7 @@ void SystemState::Initialize(
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager_proxy,
     StateChangeReporterInterface* state_change_reporter,
-    std::unique_ptr<BootSlot> boot_slot,
+    std::unique_ptr<BootSlotInterface> boot_slot,
     std::unique_ptr<Metrics> metrics,
     std::unique_ptr<SystemProperties> system_properties,
     const base::FilePath& manifest_dir,
@@ -84,6 +90,9 @@ void SystemState::Initialize(
   if (!for_test)
     CHECK(!g_instance_) << "SystemState::Initialize() called already.";
   g_instance_.reset(new SystemState(
+#if USE_LVM_STATEFUL_PARTITION
+      std::move(lvmd_proxy_wrapper),
+#endif  // USE_LVM_STATEFUL_PARTITION
       std::move(image_loader_proxy), std::move(update_engine_proxy),
       std::move(session_manager_proxy), state_change_reporter,
       std::move(boot_slot), std::move(metrics), std::move(system_properties),
@@ -104,6 +113,12 @@ bool SystemState::IsUpdateEngineServiceAvailable() const {
 void SystemState::set_update_engine_service_available(bool available) {
   update_engine_service_available_ = available;
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+LvmdProxyWrapperInterface* SystemState::lvmd_wrapper() const {
+  return lvmd_proxy_wrapper_.get();
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 org::chromium::ImageLoaderInterfaceProxyInterface* SystemState::image_loader()
     const {
@@ -132,17 +147,25 @@ StateChangeReporterInterface* SystemState::state_change_reporter() const {
   return state_change_reporter_;
 }
 
-BootSlot::Slot SystemState::active_boot_slot() const {
-  return active_boot_slot_;
+BootSlotInterface* SystemState::boot_slot() const {
+  return boot_slot_.get();
 }
 
-BootSlot::Slot SystemState::inactive_boot_slot() const {
-  return active_boot_slot_ == BootSlot::Slot::A ? BootSlot::Slot::B
-                                                : BootSlot::Slot::A;
+BootSlotInterface::Slot SystemState::active_boot_slot() const {
+  return boot_slot()->GetSlot();
+}
+
+BootSlotInterface::Slot SystemState::inactive_boot_slot() const {
+  switch (active_boot_slot()) {
+    case BootSlotInterface::Slot::A:
+      return BootSlotInterface::Slot::B;
+    case BootSlotInterface::Slot::B:
+      return BootSlotInterface::Slot::A;
+  }
 }
 
 bool SystemState::IsDeviceRemovable() const {
-  return is_device_removable_;
+  return boot_slot()->IsDeviceRemovable();
 }
 
 const base::FilePath& SystemState::manifest_dir() const {

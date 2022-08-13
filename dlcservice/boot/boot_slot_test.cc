@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -26,102 +27,69 @@ class BootSlotTest : public testing::Test {
   std::unique_ptr<BootSlot> boot_slot_;
 };
 
-TEST_F(BootSlotTest, SplitPartitionNameTest) {
-  std::string disk;
-  int part_num;
-
-  EXPECT_TRUE(boot_slot_->SplitPartitionName("/dev/sda3", &disk, &part_num));
-  EXPECT_EQ("/dev/sda", disk);
-  EXPECT_EQ(3, part_num);
-
-  EXPECT_TRUE(boot_slot_->SplitPartitionName("/dev/sdp1234", &disk, &part_num));
-  EXPECT_EQ("/dev/sdp", disk);
-  EXPECT_EQ(1234, part_num);
-
-  EXPECT_TRUE(
-      boot_slot_->SplitPartitionName("/dev/mmcblk0p3", &disk, &part_num));
-  EXPECT_EQ("/dev/mmcblk0", disk);
-  EXPECT_EQ(3, part_num);
-
-  EXPECT_TRUE(
-      boot_slot_->SplitPartitionName("/dev/ubiblock3_2", &disk, &part_num));
-  EXPECT_EQ("/dev/ubiblock", disk);
-  EXPECT_EQ(3, part_num);
-
-  EXPECT_TRUE(boot_slot_->SplitPartitionName("/dev/loop10", &disk, &part_num));
-  EXPECT_EQ("/dev/loop", disk);
-  EXPECT_EQ(10, part_num);
-
-  EXPECT_TRUE(
-      boot_slot_->SplitPartitionName("/dev/loop28p11", &disk, &part_num));
-  EXPECT_EQ("/dev/loop28", disk);
-  EXPECT_EQ(11, part_num);
-
-  EXPECT_TRUE(
-      boot_slot_->SplitPartitionName("/dev/loop10_0", &disk, &part_num));
-  EXPECT_EQ("/dev/loop", disk);
-  EXPECT_EQ(10, part_num);
-
-  EXPECT_TRUE(
-      boot_slot_->SplitPartitionName("/dev/loop28p11_0", &disk, &part_num));
-  EXPECT_EQ("/dev/loop28", disk);
-  EXPECT_EQ(11, part_num);
-
-  EXPECT_TRUE(boot_slot_->SplitPartitionName("/dev/123", &disk, &part_num));
-  EXPECT_EQ("/dev/", disk);
-  EXPECT_EQ(123, part_num);
-
-  EXPECT_FALSE(
-      boot_slot_->SplitPartitionName("/dev/mmcblk0p", &disk, &part_num));
-  EXPECT_FALSE(boot_slot_->SplitPartitionName("/dev/sda", &disk, &part_num));
-  EXPECT_FALSE(
-      boot_slot_->SplitPartitionName("/dev/foo/bar", &disk, &part_num));
-  EXPECT_FALSE(boot_slot_->SplitPartitionName("/", &disk, &part_num));
-  EXPECT_FALSE(boot_slot_->SplitPartitionName("", &disk, &part_num));
-  EXPECT_FALSE(boot_slot_->SplitPartitionName("/dev/_100", &disk, &part_num));
+TEST_F(BootSlotTest, NonRemovableDeviceSlotA) {
+  const std::string& kDeviceName("/dev/sda");
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return(base::FilePath{kDeviceName + "3"}));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
+      .WillOnce(testing::Return(false));
+  ASSERT_TRUE(boot_slot_->Init());
+  EXPECT_EQ(boot_slot_->GetSlot(), BootSlot::Slot::A);
+  EXPECT_EQ(boot_slot_->GetDeviceName(), kDeviceName);
+  EXPECT_FALSE(boot_slot_->IsDeviceRemovable());
 }
 
-TEST_F(BootSlotTest, GetCurrentSlotTest) {
-  std::string boot_disk_name;
-  BootSlot::Slot current_slot;
-
+TEST_F(BootSlotTest, NonRemovableDeviceSlotB) {
+  const std::string& kDeviceName("/dev/sda");
   EXPECT_CALL(*boot_device_, GetBootDevice())
-      .WillOnce(testing::Return("/dev/sda3"))
-      .WillOnce(testing::Return("/dev/sda5"))
-      .WillOnce(testing::Return("/dev/sdb3"))
-      .WillOnce(testing::Return("/dev/sda"))
-      .WillOnce(testing::Return("/dev/sda3"));
+      .WillOnce(testing::Return(base::FilePath{kDeviceName + "5"}));
   EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
-      .WillOnce(testing::Return(false))
-      .WillOnce(testing::Return(false))
-      .WillOnce(testing::Return(true))
+      .WillOnce(testing::Return(false));
+  ASSERT_TRUE(boot_slot_->Init());
+  EXPECT_EQ(boot_slot_->GetSlot(), BootSlot::Slot::B);
+  EXPECT_EQ(boot_slot_->GetDeviceName(), kDeviceName);
+  EXPECT_FALSE(boot_slot_->IsDeviceRemovable());
+}
+
+TEST_F(BootSlotTest, RemovableDeviceSlotA) {
+  const std::string& kDeviceName("/dev/sda");
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return(base::FilePath{kDeviceName + "3"}));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
       .WillOnce(testing::Return(true));
+  ASSERT_TRUE(boot_slot_->Init());
+  EXPECT_EQ(boot_slot_->GetSlot(), BootSlot::Slot::A);
+  EXPECT_EQ(boot_slot_->GetDeviceName(), kDeviceName);
+  EXPECT_TRUE(boot_slot_->IsDeviceRemovable());
+}
 
-  // Boot from A slot.
-  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
-  EXPECT_EQ(boot_disk_name, "/dev/sda");
-  EXPECT_EQ(current_slot, BootSlot::Slot::A);
+TEST_F(BootSlotTest, RemovableDeviceSlotB) {
+  const std::string& kDeviceName("/dev/sda");
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return(base::FilePath{kDeviceName + "5"}));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
+      .WillOnce(testing::Return(true));
+  ASSERT_TRUE(boot_slot_->Init());
+  EXPECT_EQ(boot_slot_->GetSlot(), BootSlot::Slot::B);
+  EXPECT_EQ(boot_slot_->GetDeviceName(), kDeviceName);
+  EXPECT_TRUE(boot_slot_->IsDeviceRemovable());
+}
 
-  // Boot from B slot.
-  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
-  EXPECT_EQ(boot_disk_name, "/dev/sda");
-  EXPECT_EQ(current_slot, BootSlot::Slot::B);
+TEST_F(BootSlotTest, InvalidPartitionNumber) {
+  const std::string& kDeviceName("/dev/sda");
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return(base::FilePath{kDeviceName + "777"}));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_))
+      .WillOnce(testing::Return(true));
+  ASSERT_FALSE(boot_slot_->Init());
+}
 
-  // Boot from removable device.
-  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
-  EXPECT_EQ(boot_disk_name, "/dev/sdb");
-  EXPECT_EQ(current_slot, BootSlot::Slot::A);
-
-  // Boot from an invalid device.
-  EXPECT_FALSE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot));
-
-  // Boot from removable device.
-  bool is_device_removable = false;
-  EXPECT_TRUE(boot_slot_->GetCurrentSlot(&boot_disk_name, &current_slot,
-                                         &is_device_removable));
-  EXPECT_EQ(boot_disk_name, "/dev/sda");
-  EXPECT_EQ(current_slot, BootSlot::Slot::A);
-  EXPECT_TRUE(is_device_removable);
+TEST_F(BootSlotTest, MissingPartitionNumber) {
+  const std::string& kDeviceName("/dev/sda");
+  EXPECT_CALL(*boot_device_, GetBootDevice())
+      .WillOnce(testing::Return(base::FilePath{kDeviceName}));
+  EXPECT_CALL(*boot_device_, IsRemovableDevice(testing::_)).Times(0);
+  EXPECT_FALSE(boot_slot_->Init());
 }
 
 }  // namespace dlcservice
