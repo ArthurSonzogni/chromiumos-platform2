@@ -86,8 +86,8 @@ class TlsStream::TlsStreamImpl {
 
   bool Init(StreamPtr socket,
             const std::string& host,
-            const base::Closure& success_callback,
-            const Stream::ErrorCallback& error_callback,
+            base::OnceClosure success_callback,
+            Stream::ErrorOnceCallback error_callback,
             ErrorPtr* error);
 
   bool ReadNonBlocking(void* buffer,
@@ -116,10 +116,10 @@ class TlsStream::TlsStreamImpl {
   bool ReportError(ErrorPtr* error,
                    const base::Location& location,
                    const std::string& message);
-  void DoHandshake(const base::Closure& success_callback,
-                   const Stream::ErrorCallback& error_callback);
-  void RetryHandshake(const base::Closure& success_callback,
-                      const Stream::ErrorCallback& error_callback,
+  void DoHandshake(base::OnceClosure success_callback,
+                   Stream::ErrorOnceCallback error_callback);
+  void RetryHandshake(base::OnceClosure success_callback,
+                      Stream::ErrorOnceCallback error_callback,
                       Stream::AccessMode mode);
 
   int OnCertVerifyResults(int ok, X509_STORE_CTX* ctx);
@@ -346,8 +346,8 @@ int TlsStream::TlsStreamImpl::OnCertVerifyResultsStatic(int ok,
 
 bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
                                     const std::string& host,
-                                    const base::Closure& success_callback,
-                                    const Stream::ErrorCallback& error_callback,
+                                    base::OnceClosure success_callback,
+                                    Stream::ErrorOnceCallback error_callback,
                                     ErrorPtr* error) {
   ctx_.reset(SSL_CTX_new(TLS_client_method()));
   if (!ctx_)
@@ -396,59 +396,62 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
   // We might have no message loop (e.g. we are in unit tests).
   if (MessageLoop::ThreadHasCurrent()) {
     MessageLoop::current()->PostTask(
-        FROM_HERE, base::BindOnce(&TlsStreamImpl::DoHandshake,
-                                  weak_ptr_factory_.GetWeakPtr(),
-                                  success_callback, error_callback));
+        FROM_HERE,
+        base::BindOnce(&TlsStreamImpl::DoHandshake,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       std::move(success_callback), std::move(error_callback)));
   } else {
-    DoHandshake(success_callback, error_callback);
+    DoHandshake(std::move(success_callback), std::move(error_callback));
   }
   return true;
 }
 
 void TlsStream::TlsStreamImpl::RetryHandshake(
-    const base::Closure& success_callback,
-    const Stream::ErrorCallback& error_callback,
+    base::OnceClosure success_callback,
+    Stream::ErrorOnceCallback error_callback,
     Stream::AccessMode /* mode */) {
   VLOG(1) << "Retrying TLS handshake";
-  DoHandshake(success_callback, error_callback);
+  DoHandshake(std::move(success_callback), std::move(error_callback));
 }
 
 void TlsStream::TlsStreamImpl::DoHandshake(
-    const base::Closure& success_callback,
-    const Stream::ErrorCallback& error_callback) {
+    base::OnceClosure success_callback,
+    Stream::ErrorOnceCallback error_callback) {
   VLOG(1) << "Begin TLS handshake";
   int res = SSL_do_handshake(ssl_.get());
   if (res == 1) {
     VLOG(1) << "Handshake successful";
-    success_callback.Run();
+    std::move(success_callback).Run();
     return;
   }
+  auto [error_cb_1, error_cb_2] =
+      base::SplitOnceCallback(std::move(error_callback));
   ErrorPtr error;
   int err = SSL_get_error(ssl_.get(), res);
   if (err == SSL_ERROR_WANT_READ) {
     VLOG(1) << "Waiting for read data...";
-    bool ok =
-        socket_->WaitForData(Stream::AccessMode::READ,
-                             base::BindOnce(&TlsStreamImpl::RetryHandshake,
-                                            weak_ptr_factory_.GetWeakPtr(),
-                                            success_callback, error_callback),
-                             &error);
+    bool ok = socket_->WaitForData(
+        Stream::AccessMode::READ,
+        base::BindOnce(&TlsStreamImpl::RetryHandshake,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       std::move(success_callback), std::move(error_cb_1)),
+        &error);
     if (ok)
       return;
   } else if (err == SSL_ERROR_WANT_WRITE) {
     VLOG(1) << "Waiting for write data...";
-    bool ok =
-        socket_->WaitForData(Stream::AccessMode::WRITE,
-                             base::BindOnce(&TlsStreamImpl::RetryHandshake,
-                                            weak_ptr_factory_.GetWeakPtr(),
-                                            success_callback, error_callback),
-                             &error);
+    bool ok = socket_->WaitForData(
+        Stream::AccessMode::WRITE,
+        base::BindOnce(&TlsStreamImpl::RetryHandshake,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       std::move(success_callback), std::move(error_cb_1)),
+        &error);
     if (ok)
       return;
   } else {
     ReportError(&error, FROM_HERE, "TLS handshake failed.");
   }
-  error_callback.Run(error.get());
+  std::move(error_cb_2).Run(error.get());
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -463,20 +466,23 @@ TlsStream::~TlsStream() {
 
 void TlsStream::Connect(StreamPtr socket,
                         const std::string& host,
-                        const base::Callback<void(StreamPtr)>& success_callback,
-                        const Stream::ErrorCallback& error_callback) {
+                        base::OnceCallback<void(StreamPtr)> success_callback,
+                        Stream::ErrorOnceCallback error_callback) {
   std::unique_ptr<TlsStreamImpl> impl{new TlsStreamImpl};
   std::unique_ptr<TlsStream> stream{new TlsStream{std::move(impl)}};
 
+  auto [error_cb_1, error_cb_2] =
+      base::SplitOnceCallback(std::move(error_callback));
+
   TlsStreamImpl* pimpl = stream->impl_.get();
   ErrorPtr error;
-  bool success =
-      pimpl->Init(std::move(socket), host,
-                  base::Bind(success_callback, base::Passed(std::move(stream))),
-                  error_callback, &error);
+  bool success = pimpl->Init(
+      std::move(socket), host,
+      base::BindOnce(std::move(success_callback), std::move(stream)),
+      std::move(error_cb_1), &error);
 
   if (!success)
-    error_callback.Run(error.get());
+    std::move(error_cb_2).Run(error.get());
 }
 
 bool TlsStream::IsOpen() const {
