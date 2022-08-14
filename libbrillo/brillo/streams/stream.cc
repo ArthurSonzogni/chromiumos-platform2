@@ -6,6 +6,7 @@
 #include <brillo/streams/stream.h>
 
 #include <algorithm>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/message_loops/message_loop.h>
@@ -178,18 +179,18 @@ bool Stream::WriteAllBlocking(const void* buffer,
 bool Stream::FlushAsync(const base::Closure& success_callback,
                         const ErrorCallback& error_callback,
                         ErrorPtr* /* error */) {
-  auto callback =
-      base::Bind(&Stream::FlushAsyncCallback, weak_ptr_factory_.GetWeakPtr(),
-                 success_callback, error_callback);
-  MessageLoop::current()->PostTask(FROM_HERE, callback);
+  MessageLoop::current()->PostTask(
+      FROM_HERE, base::BindOnce(&Stream::FlushAsyncCallback,
+                                weak_ptr_factory_.GetWeakPtr(),
+                                success_callback, error_callback));
   return true;
 }
 
 void Stream::IgnoreEOSCallback(
-    const base::Callback<void(size_t)>& success_callback,
+    base::OnceCallback<void(size_t)> success_callback,
     size_t bytes,
     bool /* eos */) {
-  success_callback.Run(bytes);
+  std::move(success_callback).Run(bytes);
 }
 
 bool Stream::ReadAsyncImpl(
@@ -232,11 +233,11 @@ bool Stream::ReadAsyncImpl(
 }
 
 void Stream::OnReadAsyncDone(
-    const base::Callback<void(size_t, bool)>& success_callback,
+    base::OnceCallback<void(size_t, bool)> success_callback,
     size_t bytes_read,
     bool eos) {
   is_async_read_pending_ = false;
-  success_callback.Run(bytes_read, eos);
+  std::move(success_callback).Run(bytes_read, eos);
 }
 
 void Stream::OnReadAvailable(
@@ -294,10 +295,10 @@ bool Stream::WriteAsyncImpl(
   return is_async_write_pending_;
 }
 
-void Stream::OnWriteAsyncDone(
-    const base::Callback<void(size_t)>& success_callback, size_t size_written) {
+void Stream::OnWriteAsyncDone(base::OnceCallback<void(size_t)> success_callback,
+                              size_t size_written) {
   is_async_write_pending_ = false;
-  success_callback.Run(size_written);
+  std::move(success_callback).Run(size_written);
 }
 
 void Stream::OnWriteAvailable(
@@ -373,13 +374,13 @@ void Stream::WriteAllAsyncCallback(const void* buffer,
   }
 }
 
-void Stream::FlushAsyncCallback(const base::Closure& success_callback,
-                                const ErrorCallback& error_callback) {
+void Stream::FlushAsyncCallback(base::OnceClosure success_callback,
+                                ErrorOnceCallback error_callback) {
   ErrorPtr error;
   if (FlushBlocking(&error)) {
-    success_callback.Run();
+    std::move(success_callback).Run();
   } else {
-    error_callback.Run(error.get());
+    std::move(error_callback).Run(error.get());
   }
 }
 
