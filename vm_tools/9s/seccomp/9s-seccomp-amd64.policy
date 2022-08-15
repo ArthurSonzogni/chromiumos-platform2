@@ -69,3 +69,4 @@ renameat: 1
 newfstatat: 1
 sendto: 1
 recvfrom: 1
+clock_gettime: 1
