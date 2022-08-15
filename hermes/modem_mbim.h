@@ -51,8 +51,10 @@ class ModemMbim : public Modem<MbimCmd> {
       base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
   void TransmitApdu(const std::vector<uint8_t>& apduCommand,
                     base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
-  static bool ParseEidApduResponseForTesting(const MbimMessage* response,
-                                             std::string* eid);
+  static bool ParseEidApduResponseForTesting(
+      const MbimMessage* response,
+      std::string* eid,
+      std::unique_ptr<LibmbimInterface> libmbim);
 
  private:
   struct SwitchSlotTxInfo : public TxInfo {
@@ -123,7 +125,8 @@ class ModemMbim : public Modem<MbimCmd> {
                                              ModemMbim* modem_mbim);
   static bool ParseEidApduResponse(const MbimMessage* response,
                                    std::string* eid,
-                                   ModemMbim* modem_mbim);
+                                   ModemMbim* modem_mbim,
+                                   LibmbimInterface* libmbim);
 
   static void UiccLowLevelAccessApduResponseParse(MbimDevice* device,
                                                   GAsyncResult* res,

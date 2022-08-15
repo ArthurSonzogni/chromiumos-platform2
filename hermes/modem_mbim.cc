@@ -707,7 +707,8 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
 /* static */
 bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
                                      std::string* eid,
-                                     ModemMbim* modem_mbim) {
+                                     ModemMbim* modem_mbim,
+                                     LibmbimInterface* libmbim) {
   g_autoptr(GError) error = NULL;
   guint32 status;
   guint32 response_size = 0;
@@ -715,7 +716,7 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
   if (!response)
     return false;
-  if (!modem_mbim->libmbim_->MbimMessageResponseGetResult(
+  if (!libmbim->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
     if (modem_mbim) {
@@ -753,7 +754,8 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
   std::string eid;
   g_autoptr(MbimMessage) response = NULL;
   response = modem_mbim->libmbim_->MbimDeviceCommandFinish(device, res, &error);
-  if (ParseEidApduResponse(response, &eid, modem_mbim)) {
+  if (ParseEidApduResponse(response, &eid, modem_mbim,
+                           modem_mbim->libmbim_.get())) {
     VLOG(2) << "EID for physical slot:"
             << modem_mbim->slot_info_.cached_active_slot_ << " is " << eid;
     modem_mbim->slot_info_.SetSlotStateActiveSlot(MBIM_UICC_SLOT_STATE_UNKNOWN);
@@ -1344,9 +1346,11 @@ void ModemMbim::TransmitApdu(
 }
 
 /* static */
-bool ModemMbim::ParseEidApduResponseForTesting(const MbimMessage* response,
-                                               std::string* eid) {
-  return ParseEidApduResponse(response, eid, nullptr);
+bool ModemMbim::ParseEidApduResponseForTesting(
+    const MbimMessage* response,
+    std::string* eid,
+    std::unique_ptr<LibmbimInterface> libmbim) {
+  return ParseEidApduResponse(response, eid, nullptr, libmbim.get());
 }
 
 template <typename Func, typename... Args>
