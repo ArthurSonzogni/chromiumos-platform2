@@ -239,7 +239,10 @@ executable("attestationd") {
     ":target_defaults",
   ]
   install_path = "sbin"
-  libs = [ "policy" ]
+  libs = [
+    "hwsec-profiling",
+    "policy",
+  ]
 
   # NOSORT
   pkg_deps = [
