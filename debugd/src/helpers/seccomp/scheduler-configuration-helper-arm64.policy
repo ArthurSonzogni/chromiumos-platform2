@@ -3,3 +3,4 @@
 # found in the LICENSE file.
 
 # Fill this in if the tool is ever supported on ARM64.
+newfstatat: 1
