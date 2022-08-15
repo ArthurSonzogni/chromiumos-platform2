@@ -121,7 +121,7 @@ class VPNService : public Service,
   // The current default physical service known from Manager.
   std::string last_default_physical_service_path_;
 
-  base::CancelableClosure driver_connect_timeout_callback_;
+  base::CancelableOnceClosure driver_connect_timeout_callback_;
 
   base::WeakPtrFactory<VPNService> weak_factory_{this};
 };

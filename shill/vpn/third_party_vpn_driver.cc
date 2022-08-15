@@ -511,8 +511,10 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
   }
   io_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       tun_fd_,
-      base::Bind(&ThirdPartyVpnDriver::OnInput, base::Unretained(this)),
-      base::Bind(&ThirdPartyVpnDriver::OnInputError, base::Unretained(this))));
+      base::BindRepeating(&ThirdPartyVpnDriver::OnInput,
+                          base::Unretained(this)),
+      base::BindRepeating(&ThirdPartyVpnDriver::OnInputError,
+                          base::Unretained(this))));
   active_client_ = this;
   parameters_expected_ = true;
   adaptor_interface_->EmitPlatformMessage(

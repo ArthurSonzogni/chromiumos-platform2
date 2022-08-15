@@ -89,7 +89,8 @@ bool OpenVPNManagementServer::Start(
   socket_ = socket;
   ready_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       socket, IOHandler::kModeInput,
-      base::Bind(&OpenVPNManagementServer::OnReady, base::Unretained(this))));
+      base::BindRepeating(&OpenVPNManagementServer::OnReady,
+                          base::Unretained(this))));
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
@@ -157,9 +158,10 @@ void OpenVPNManagementServer::OnReady(int fd) {
   ready_handler_.reset();
   input_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       connected_socket_,
-      base::Bind(&OpenVPNManagementServer::OnInput, base::Unretained(this)),
-      base::Bind(&OpenVPNManagementServer::OnInputError,
-                 base::Unretained(this))));
+      base::BindRepeating(&OpenVPNManagementServer::OnInput,
+                          base::Unretained(this)),
+      base::BindRepeating(&OpenVPNManagementServer::OnInputError,
+                          base::Unretained(this))));
   SendState("on");
 }
 
