@@ -42,6 +42,7 @@
 #include <chunneld/proto_bindings/chunneld_service.pb.h>
 #include <dbus/object_proxy.h>
 #include <chromeos/constants/vm_tools.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 
 using std::string;
 
@@ -1486,6 +1487,79 @@ void Service::ReportMetrics(
     }
   }
 
+  event->Signal();
+}
+
+void Service::InstallVmShaderCache(
+    const uint32_t cid,
+    const vm_tools::container::InstallShaderCacheRequest* request,
+    std::string* error_out,
+    base::WaitableEvent* event) {
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    *error_out =
+        base::StringPrintf("Could not get virtual machine for cid %du", cid);
+    event->Signal();
+    return;
+  }
+
+  if (!vm->GetContainerForToken(request->token())) {
+    *error_out = "Invalid container token: " + request->token();
+    event->Signal();
+    return;
+  }
+
+  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
+    *error_out = "Only Borealis VM supported";
+    event->Signal();
+    return;
+  }
+
+  LOG(INFO) << "Install shader request for app id: " << request->steam_app_id()
+            << ", vm name: " << vm_name << ", owner: " << owner_id;
+
+  // TOOD(b/239494222): Implement this method
+  *error_out = "Not implemented";
+  event->Signal();
+}
+
+void Service::UninstallVmShaderCache(
+    const uint32_t cid,
+    const vm_tools::container::UninstallShaderCacheRequest* request,
+    std::string* error_out,
+    base::WaitableEvent* event) {
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    *error_out =
+        base::StringPrintf("Could not get virtual machine for cid %du", cid);
+    event->Signal();
+    return;
+  }
+
+  if (!vm->GetContainerForToken(request->token())) {
+    *error_out = "Invalid container token: " + request->token();
+    event->Signal();
+    return;
+  }
+
+  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
+    *error_out = "Only Borealis VM supported";
+    event->Signal();
+    return;
+  }
+
+  LOG(INFO) << "Uninstall shader request for app id: "
+            << request->steam_app_id() << ", vm name: " << vm_name
+            << ", owner: " << owner_id;
+
+  // TOOD(b/239494222): Implement this method
+  *error_out = "Not implemented";
   event->Signal();
 }
 

@@ -30,6 +30,7 @@
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 #include <vm_sk_forwarding/proto_bindings/sk_forwarding.pb.h>
 #include <vm_disk_management/proto_bindings/disk_management.pb.h>
 #include <chromeos/dbus/service_constants.h>
@@ -451,6 +452,20 @@ class Service final {
                      const vm_tools::container::ReportMetricsRequest& request,
                      vm_tools::container::ReportMetricsResponse* result,
                      base::WaitableEvent* event);
+
+  // Install shader cache DLC and optionally mount for the VM specified.
+  void InstallVmShaderCache(
+      const uint32_t cid,
+      const vm_tools::container::InstallShaderCacheRequest* request,
+      std::string* error_out,
+      base::WaitableEvent* event);
+
+  // Uninstall shader cache, unmount the shader cache DLC for all VMs.
+  void UninstallVmShaderCache(
+      const uint32_t cid,
+      const vm_tools::container::UninstallShaderCacheRequest* request,
+      std::string* error_out,
+      base::WaitableEvent* event);
 
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.

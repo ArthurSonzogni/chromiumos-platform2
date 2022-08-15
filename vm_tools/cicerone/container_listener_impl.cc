@@ -690,20 +690,42 @@ grpc::Status ContainerListenerImpl::InstallShaderCache(
     grpc::ServerContext* ctx,
     const vm_tools::container::InstallShaderCacheRequest* request,
     vm_tools::EmptyMessage* response) {
-  LOG(INFO) << "Install shader request for app id: " << request->steam_app_id()
-            << ", token: " << request->token();
-  // TOOD(b/239494222): Implement this method
-  return grpc::Status(grpc::INTERNAL, "Not implemented");
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  std::string error = "";
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::InstallVmShaderCache,
+                     service_, cid, request, &error, &event));
+  event.Wait();
+
+  if (error.empty()) {
+    return grpc::Status::OK;
+  }
+  return grpc::Status(grpc::INTERNAL, error);
 }
 
 grpc::Status ContainerListenerImpl::UninstallShaderCache(
     grpc::ServerContext* ctx,
     const vm_tools::container::UninstallShaderCacheRequest* request,
     vm_tools::EmptyMessage* response) {
-  LOG(INFO) << "Uninstall shader request for app id: "
-            << request->steam_app_id() << ", token: " << request->token();
-  // TOOD(b/239494222): Implement this method
-  return grpc::Status(grpc::INTERNAL, "Not implemented");
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  std::string error = "";
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::UninstallVmShaderCache,
+                     service_, cid, request, &error, &event));
+  event.Wait();
+
+  if (error.empty()) {
+    return grpc::Status::OK;
+  }
+  return grpc::Status(grpc::INTERNAL, error);
 }
 
 }  // namespace cicerone
