@@ -102,8 +102,14 @@ static void sl_transform_direct_to_guest(struct sl_context* ctx,
 
   sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
 
-  double xwhole = trunc(scalex * static_cast<double>(*x));
-  double ywhole = trunc(scaley * static_cast<double>(*y));
+  double inputx = scalex * static_cast<double>(*x);
+  double inputy = scaley * static_cast<double>(*y);
+
+  double xwhole =
+      (surface && surface->scale_round_on_x) ? lround(inputx) : trunc(inputx);
+
+  double ywhole =
+      (surface && surface->scale_round_on_y) ? lround(inputy) : trunc(inputy);
 
   *x = static_cast<int32_t>(xwhole);
   *y = static_cast<int32_t>(ywhole);
@@ -137,6 +143,19 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
 
   if (ctx->use_direct_scale) {
     sl_transform_direct_to_host(ctx, surface, width, height);
+
+    // For very small windows (in pixels), the resulting logical dimensions
+    // could be 0, which will cause issues with the viewporter interface.
+    //
+    // In these cases, fix it up here by forcing the logical output
+    // to be at least 1 pixel
+
+    if (*width <= 0)
+      *width = 1;
+
+    if (*height <= 0)
+      *height = 1;
+
   } else {
     *width = ceil(*width / scale);
     *height = ceil(*height / scale);
@@ -147,8 +166,8 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
 
 void sl_transform_damage_coord(struct sl_context* ctx,
                                const struct sl_host_surface* surface,
-                               double damage_scalex,
-                               double damage_scaley,
+                               double buffer_scalex,
+                               double buffer_scaley,
                                int64_t* x1,
                                int64_t* y1,
                                int64_t* x2,
@@ -158,14 +177,14 @@ void sl_transform_damage_coord(struct sl_context* ctx,
 
     sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
 
-    scalex *= damage_scalex;
-    scaley *= damage_scaley;
+    scalex *= buffer_scalex;
+    scaley *= buffer_scaley;
 
     sl_transform_direct_to_host_damage(ctx, surface, x1, y1, scalex, scaley);
     sl_transform_direct_to_host_damage(ctx, surface, x2, y2, scalex, scaley);
   } else {
-    double sx = damage_scalex * ctx->scale;
-    double sy = damage_scaley * ctx->scale;
+    double sx = buffer_scalex * ctx->scale;
+    double sy = buffer_scaley * ctx->scale;
 
     // Enclosing rect after scaling and outset by one pixel to account for
     // potential filtering.
@@ -262,6 +281,75 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
     dx /= ctx->scale;
     *coord = wl_fixed_from_double(dx);
   }
+}
+
+void sl_transform_try_window_scale(struct sl_context* ctx,
+                                   struct sl_host_surface* surface,
+                                   int32_t width_in_pixels,
+                                   int32_t height_in_pixels) {
+  int32_t reverse_width = width_in_pixels;
+  int32_t reverse_height = height_in_pixels;
+  int32_t logical_width;
+  int32_t logical_height;
+
+  // This function should only have an effect in direct scale mode
+  if (!ctx->use_direct_scale)
+    return;
+
+  // Transform the window dimensions using the global scaling factors
+  sl_transform_guest_to_host(ctx, nullptr, &reverse_width, &reverse_height);
+
+  // Save the logical dimensions for later use
+  logical_width = reverse_width;
+  logical_height = reverse_height;
+
+  // Transform the logical dimensions back to the virtual pixel dimensions
+  sl_transform_host_to_guest(ctx, nullptr, &reverse_width, &reverse_height);
+
+  // If the computed logical width or height is zero, force the
+  // use of the global scaling factors
+
+  if ((reverse_width != width_in_pixels ||
+       reverse_height != height_in_pixels) &&
+      (logical_width > 0 && logical_height > 0)) {
+    // There is no match, let's override the scaling setting on our surface
+    surface->has_own_scale = 1;
+    surface->xdg_scale_x = static_cast<double>(width_in_pixels) /
+                           static_cast<double>(logical_width);
+    surface->xdg_scale_y = static_cast<double>(height_in_pixels) /
+                           static_cast<double>(logical_height);
+
+    surface->cached_logical_height = logical_height;
+    surface->cached_logical_width = logical_width;
+
+    // Try once more to do a full cycle (pixel -> logical -> pixel),
+    // if we aren't equal, we need to force a round up on the translation
+    // to the guest.
+
+    reverse_width = width_in_pixels;
+    reverse_height = height_in_pixels;
+
+    sl_transform_guest_to_host(ctx, surface, &reverse_width, &reverse_height);
+    sl_transform_host_to_guest(ctx, surface, &reverse_width, &reverse_height);
+
+    if (reverse_width != width_in_pixels)
+      surface->scale_round_on_x = true;
+
+    if (reverse_height != height_in_pixels)
+      surface->scale_round_on_y = true;
+
+  } else {
+    // We can do this with what we have now
+    // Reset the flags
+    sl_transform_reset_surface_scale(ctx, surface);
+  }
+}
+
+void sl_transform_reset_surface_scale(struct sl_context* ctx,
+                                      struct sl_host_surface* surface) {
+  surface->has_own_scale = 0;
+  surface->scale_round_on_x = surface->scale_round_on_y = false;
+  surface->xdg_scale_x = surface->xdg_scale_y = 0;
 }
 
 void sl_transform_output_dimensions(struct sl_context* ctx,

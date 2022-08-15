@@ -895,6 +895,8 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->has_own_scale = 0;
   host_surface->xdg_scale_x = 0;
   host_surface->xdg_scale_y = 0;
+  host_surface->scale_round_on_x = false;
+  host_surface->scale_round_on_y = false;
   host_surface->last_event_serial = 0;
   host_surface->current_buffer = NULL;
   wl_list_init(&host_surface->released_buffers);

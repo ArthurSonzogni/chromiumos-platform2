@@ -232,6 +232,22 @@ static void sl_internal_xdg_toplevel_configure(
     int32_t height_in_pixels = height;
     int i = 0;
 
+    // We are receiving a request to resize a window (in logical dimensions)
+    // If the request is equal to the cached values we used to make adjustments
+    // do not recalculate the values
+    // However, if the request is not equal to the cached values, try
+    // and keep the buffer same size as what was previously set
+    // by the application.
+    struct sl_host_surface* paired_surface = window->paired_surface;
+
+    if (paired_surface && paired_surface->has_own_scale) {
+      if (width != paired_surface->cached_logical_width ||
+          height != paired_surface->cached_logical_height) {
+        sl_transform_try_window_scale(window->ctx, paired_surface,
+                                      window->width, window->height);
+      }
+    }
+
     sl_transform_host_to_guest(window->ctx, window->paired_surface,
                                &width_in_pixels, &height_in_pixels);
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
@@ -385,8 +401,11 @@ void sl_window_update(struct sl_window* window) {
   assert(host_surface);
   assert(!host_surface->has_role);
 
-  if (!window->unpaired)
+  if (!window->unpaired) {
     window->paired_surface = host_surface;
+    sl_transform_try_window_scale(ctx, host_surface, window->width,
+                                  window->height);
+  }
 
   assert(ctx->xdg_shell);
   assert(ctx->xdg_shell->internal);

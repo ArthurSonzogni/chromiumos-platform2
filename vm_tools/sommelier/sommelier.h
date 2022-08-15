@@ -140,11 +140,15 @@ struct sl_host_surface {
   int32_t contents_scale;
   double xdg_scale_x;
   double xdg_scale_y;
+  bool scale_round_on_x;
+  bool scale_round_on_y;
   struct wl_list contents_viewport;
   struct sl_mmap* contents_shm_mmap;
   int has_role;
   int has_output;
   int has_own_scale;
+  int32_t cached_logical_width;
+  int32_t cached_logical_height;
   uint32_t last_event_serial;
   struct sl_output_buffer* current_buffer;
   struct zwp_linux_surface_synchronization_v1* surface_sync;

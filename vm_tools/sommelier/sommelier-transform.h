@@ -99,8 +99,8 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
 
 void sl_transform_damage_coord(struct sl_context* ctx,
                                const struct sl_host_surface* surface,
-                               double damage_scalex,
-                               double damage_scaley,
+                               double buffer_scalex,
+                               double buffer_scaley,
                                int64_t* x1,
                                int64_t* y1,
                                int64_t* x2,
@@ -147,6 +147,28 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
                                       struct sl_host_surface* surface,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
+
+// Given the desired window size in virtual pixels, this function
+// will see if it can be cleanly converted to logical coordinates and back.
+//
+// If the desired dimensions can be met with the default scaling factors,
+// no intervention will take place.
+//
+// If the desired dimensions CANNOT be met with the default scaling factors,
+// a set of scaling factors will be chosen to match the nearest logical
+// coordinates to the desired virtual pixel dimensions. These scaling factors
+// will then be used for all transformations being performed on this surface.
+//
+// This function is a no-op when not in direct scale mode.
+void sl_transform_try_window_scale(struct sl_context* ctx,
+                                   struct sl_host_surface* surface,
+                                   int32_t width_in_pixels,
+                                   int32_t height_in_pixels);
+
+// Removes any custom scaling factors that have been set on the surface
+// by try_window_scale
+void sl_transform_reset_surface_scale(struct sl_context* ctx,
+                                      struct sl_host_surface* surface);
 
 // This function performs the physical to virtual transformation
 // based on the scale factor provided by the command line/env.
