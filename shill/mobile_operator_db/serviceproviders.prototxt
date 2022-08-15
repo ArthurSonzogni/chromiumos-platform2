@@ -12246,24 +12246,6 @@ mno {
       ip_type: IPV4V6
       is_attach_apn : true
     }
-    mobile_apn {
-      apn : "wap.cingular"
-      localized_name {
-        name : "MEdia Net (phones)"
-      }
-    }
-    mobile_apn {
-      apn : "isp.cingular"
-      localized_name {
-        name : "Data Connect (old)"
-      }
-    }
-    mobile_apn {
-      apn : "pta"
-      localized_name {
-        name : "LTE"
-      }
-    }
     mtu : 1430
   }
   mvno {
