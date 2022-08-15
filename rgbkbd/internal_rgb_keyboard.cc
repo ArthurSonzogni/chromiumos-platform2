@@ -63,7 +63,8 @@ std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() {
 base::ScopedFD CreateFileDescriptorForEc() {
   auto raw_fd = open(kEcPath, O_RDWR | O_CLOEXEC);
   if (raw_fd == -1) {
-    LOG(ERROR) << "Failed to open FD for EC with errno=" << errno;
+    const int temp_errno = errno;
+    LOG(ERROR) << "Failed to open FD for EC with errno=" << temp_errno;
     return base::ScopedFD();
   }
 
