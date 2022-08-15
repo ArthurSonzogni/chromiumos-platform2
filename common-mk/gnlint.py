@@ -70,6 +70,7 @@ import subprocess
 import sys
 import typing
 
+
 # Find chromite!
 chromite_root = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "..", "..", ".."
@@ -79,6 +80,7 @@ sys.path.insert(0, chromite_root)
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
+
 
 # pylint: enable=wrong-import-position
 
@@ -650,8 +652,8 @@ def GnLintPkgConfigs(gndata):
                 Issue(
                     n.get("location"),
                     (
-                        'use pkg-config instead: delete "%s" from "libs" and add '
-                        '"%s" to either "pkg_deps", "public_pkg_deps", or '
+                        'use pkg-config instead: delete "%s" from "libs" and '
+                        'add "%s" to either "pkg_deps", "public_pkg_deps", or '
                         '"all_dependent_pkg_deps"'
                     )
                     % (lib, KNOWN_PC_FILES[lib]),
