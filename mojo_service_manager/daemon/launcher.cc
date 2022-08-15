@@ -23,8 +23,7 @@
 #include <base/logging.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
-
-#include "mojo_service_manager/daemon/constants.h"
+#include <chromeos/constants/mojo_service_manager.h>
 
 namespace {
 

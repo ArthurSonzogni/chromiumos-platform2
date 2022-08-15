@@ -23,9 +23,6 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
-// The pipe name used by mojo invitation.
-inline constexpr int kMojoInvitationPipeName = 0;
-
 // Exported for testing.
 std::string GetSEContextStringFromChar(const char* buf, size_t len);
 

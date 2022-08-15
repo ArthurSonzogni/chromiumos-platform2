@@ -9,11 +9,11 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/constants/mojo_service_manager.h>
 #include <mojo/core/embedder/embedder.h>
 #include <vboot/crossystem.h>
 
 #include "mojo_service_manager/daemon/configuration.h"
-#include "mojo_service_manager/daemon/constants.h"
 #include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 

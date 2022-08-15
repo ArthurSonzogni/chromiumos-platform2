@@ -20,6 +20,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <chromeos/constants/mojo_service_manager.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
 
