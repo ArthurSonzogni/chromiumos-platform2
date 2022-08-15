@@ -23,6 +23,7 @@ exit: 1
 fcntl64: 1
 flock: 1
 fstat64: 1
+fstatat64: 1
 fstatfs: 1
 fstatfs64: 1
 futex_time64: 1
@@ -44,6 +45,7 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 rt_sigtimedwait_time64: 1
 rt_sigtimedwait: 1
+sched_getaffinity: 1
 sched_yield: 1
 send: 1
 set_robust_list: 1
@@ -54,3 +56,4 @@ socket: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1
+rt_sigaction: 1
