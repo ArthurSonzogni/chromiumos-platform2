@@ -190,8 +190,13 @@ def CheckFormat(gnfile):
         ["cros", "format", "--check", gnfile], check=False
     )
 
-    if result.returncode:
+    if result.returncode == 1:
         AppendError(f"Needs reformatting. To fix, run: cros format {gnfile}")
+    elif result.returncode:
+        AppendError(
+            f"`cros format` failed by return code {result.returncode}."
+            " Please see the original error message from the command."
+        )
 
     return issues
 
