@@ -96,6 +96,7 @@ bool CameraMonitor::HasBeenKicked(MonitorType type) {
                             base::OnceCallback<void(bool)> cb) {
     if (!self->monitor_states_.contains(type)) {
       std::move(cb).Run(false);
+      return;
     }
     std::move(cb).Run(self->monitor_states_.at(type).is_kicked);
   };
