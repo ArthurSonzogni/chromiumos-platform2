@@ -20,16 +20,6 @@ namespace {
 // for b/235922792.
 constexpr char kBrowserSecurityContext[] = "u:r:cros_browser:s0";
 
-template <typename T>
-void ResetRemoteWithReason(mojo::PendingRemote<T> pending_remote,
-                           mojom::ErrorCode error,
-                           const std::string& message) {
-  // TODO(crbug/1310274): Currently |PendingRemote| doesn't support
-  // ResetWithReason.
-  mojo::Remote<T> remote(std::move(pending_remote));
-  remote.ResetWithReason(static_cast<uint32_t>(error), message);
-}
-
 }  // namespace
 
 ServiceManager::ServiceManager(Configuration configuration,
@@ -60,9 +50,9 @@ void ServiceManager::Register(
   auto it = service_map_.find(service_name);
   if (it == service_map_.end()) {
     if (!configuration_.is_permissive) {
-      ResetRemoteWithReason(std::move(service_provider),
-                            mojom::ErrorCode::kServiceNotFound,
-                            "Cannot find service: " + service_name);
+      service_provider.ResetWithReason(
+          static_cast<uint32_t>(mojom::ErrorCode::kServiceNotFound),
+          "Cannot find service: " + service_name);
       return;
     }
     // In permissive mode, users are allowed to register a service which is not
@@ -76,16 +66,15 @@ void ServiceManager::Register(
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
   if (!configuration_.is_permissive &&
       !service_state.policy.IsOwner(identity->security_context)) {
-    ResetRemoteWithReason(
-        std::move(service_provider), mojom::ErrorCode::kPermissionDenied,
+    service_provider.ResetWithReason(
+        static_cast<uint32_t>(mojom::ErrorCode::kPermissionDenied),
         "The security context: " + identity->security_context +
             " is not allowed to own the service: " + service_name);
     return;
   }
   if (service_state.service_provider.is_bound()) {
-    ResetRemoteWithReason(
-        std::move(service_provider),
-        mojom::ErrorCode::kServiceAlreadyRegistered,
+    service_provider.ResetWithReason(
+        static_cast<uint32_t>(mojom::ErrorCode::kServiceAlreadyRegistered),
         "The service: " + service_name + " has already been registered.");
     return;
   }
