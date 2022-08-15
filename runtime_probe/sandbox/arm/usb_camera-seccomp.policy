@@ -46,3 +46,6 @@ statx: 1
 ugetrlimit: 1
 uname: 1
 write: 1
+getpid: 1
+futex: 1
+futex_time64: 1

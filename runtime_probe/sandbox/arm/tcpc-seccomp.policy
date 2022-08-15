@@ -29,3 +29,6 @@ set_tid_address: 1
 statx: 1
 ugetrlimit: 1
 write: 1
+getpid: 1
+futex: 1
+futex_time64: 1

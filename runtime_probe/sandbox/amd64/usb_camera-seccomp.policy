@@ -42,3 +42,5 @@ socket: arg0 == AF_UNIX
 stat: 1
 write: 1
 fstatfs: 1
+getpid: 1
+futex: 1
