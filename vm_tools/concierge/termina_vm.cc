@@ -202,8 +202,13 @@ std::string TerminaVm::GetVmSocketPath() const {
 
 std::string TerminaVm::GetCrosVmSerial(std::string hardware,
                                        std::string console_type) const {
-  std::string common_params =
-      "hardware=" + hardware + ",num=1," + console_type + "=true";
+  std::string common_params = "hardware=" + hardware;
+  if (console_type != "") {
+    common_params += "," + console_type + "=true";
+  }
+  if (hardware != "debugcon") {
+    common_params += ",num=1";
+  }
   if (log_path_.empty()) {
     return common_params + ",type=syslog";
   }
@@ -250,6 +255,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       .SetMemory(std::to_string(mem_mib_))
       .AppendSerialDevice(GetCrosVmSerial("serial", "earlycon"))
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
+      .AppendSerialDevice(GetCrosVmSerial("debugcon", ""))
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));
 
   if (features_.gpu) {
