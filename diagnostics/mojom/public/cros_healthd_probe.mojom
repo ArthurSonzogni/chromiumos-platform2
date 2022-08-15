@@ -676,6 +676,7 @@ struct StatefulPartitionInfo {
 
 // Bluetooth probe result. Can either be populated with the BluetoothAdapterInfo
 // or an error retrieving the information.
+[Stable]
 union BluetoothResult {
   // Valid BluetoothAdapterInfo.
   array<BluetoothAdapterInfo> bluetooth_adapter_info;
@@ -686,6 +687,7 @@ union BluetoothResult {
 // Information related to one of a device's Bluetooth adapters.
 //
 // NextMinVersion: 3, NextIndex: 11
+[Stable]
 struct BluetoothAdapterInfo {
   // The name of the adapter.
   string name@0;
@@ -715,6 +717,7 @@ struct BluetoothAdapterInfo {
 // Information related to one of a adapter's Bluetooth connected devices.
 //
 // NextMinVersion: 2, NextIndex: 9
+[Stable]
 struct BluetoothDeviceInfo {
   // The MAC address of the device.
   string address@0;
@@ -738,8 +741,8 @@ struct BluetoothDeviceInfo {
 
 // An enumeration of type in Bluetooth device info.
 //
-// NextMinVersion: 1, NextIndex: 4
-[Extensible]
+// NextMinVersion: 1, NextIndex: 5
+[Stable, Extensible]
 enum BluetoothDeviceType {
   // An enum value not defined in this version of the enum definition.
   [Default] kUnmappedEnumField = 0,
@@ -756,6 +759,7 @@ enum BluetoothDeviceType {
 // Supported Capabilities related information.
 //
 // NextMinVersion: 1, NextIndex: 4
+[Stable]
 struct SupportedCapabilities {
   // Max advertising data length.
   uint8 max_adv_len@0;
@@ -1368,6 +1372,7 @@ struct EGLInfo {
 };
 
 // Display result.
+[Stable]
 union DisplayResult {
   // Valid DisplayInfo.
   DisplayInfo display_info;
@@ -1378,6 +1383,7 @@ union DisplayResult {
 // Display information.
 //
 // NextMinVersion: 2, NextIndex: 2
+[Stable]
 struct DisplayInfo {
   // Embedded display info.
   EmbeddedDisplayInfo edp_info@0;
@@ -1386,6 +1392,7 @@ struct DisplayInfo {
 };
 
 // NextMinVersion: 3, NextIndex: 15
+[Stable]
 struct EmbeddedDisplayInfo {
   // Privacy screen is supported or not.
   bool privacy_screen_supported@0;
@@ -1420,6 +1427,7 @@ struct EmbeddedDisplayInfo {
 };
 
 // NextMinVersion: 2, NextIndex: 13
+[Stable]
 struct ExternalDisplayInfo {
   // Display width in millimeters.
   NullableUint32? display_width@0;
@@ -1452,7 +1460,7 @@ struct ExternalDisplayInfo {
 // An enumeration of display input type.
 //
 // NextMinVersion: 1, NextIndex: 3
-[Extensible]
+[Stable, Extensible]
 enum DisplayInputType {
   // An enum value not defined in this version of the enum definition.
   [Default] kUnmappedEnumField = 0,
