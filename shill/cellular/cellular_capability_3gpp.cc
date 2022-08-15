@@ -399,7 +399,11 @@ void CellularCapability3gpp::EnableModemCompleted(
     GetProperties();
   }
 
-  if (error.IsFailure()) {
+  if (error.IsFailure() || error.type() == Error::kWrongState) {
+    Error set_power_state_error;
+    modem_proxy_->SetPowerState(MM_MODEM_POWER_STATE_LOW,
+                                &set_power_state_error, base::DoNothing(),
+                                kSetPowerStateTimeoutMilliseconds);
     callback.Run(error);
     return;
   }
