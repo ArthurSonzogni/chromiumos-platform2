@@ -19,7 +19,7 @@ class ServiceRequestQueueTest : public ::testing::Test {
  protected:
   MojoTaskEnvironment env_{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  ServiceRequestQueue queue_;
+  ServiceRequestQueue queue_{"FakeServiceName"};
 };
 
 TEST_F(ServiceRequestQueueTest, PushAndTake) {

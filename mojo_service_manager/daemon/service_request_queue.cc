@@ -4,6 +4,7 @@
 
 #include "mojo_service_manager/daemon/service_request_queue.h"
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -14,7 +15,8 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
-ServiceRequestQueue::ServiceRequestQueue() = default;
+ServiceRequestQueue::ServiceRequestQueue(const std::string& service_name)
+    : service_name_(service_name) {}
 
 ServiceRequestQueue::~ServiceRequestQueue() = default;
 
@@ -45,9 +47,12 @@ ServiceRequestQueue::TakeAllRequests() {
 
 void ServiceRequestQueue::PopAndRejectTimeoutRequest(
     std::list<ServiceRequest>::iterator it) {
+  LOG(ERROR) << "Failed to request service " + service_name_ +
+                    " after timeout exceeded.";
   ResetMojoReceiverPipeWithReason(std::move(it->receiver),
                                   mojom::ErrorCode::kTimeout,
-                                  "The service is not ready to be requested.");
+                                  "Failed to request service " + service_name_ +
+                                      " after timeout exceeded.");
   requests_.erase(it);
 }
 

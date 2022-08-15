@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"
 
@@ -22,6 +23,12 @@ constexpr char kBrowserSecurityContext[] = "u:r:cros_browser:s0";
 
 }  // namespace
 
+ServiceManager::ServiceState::ServiceState(const std::string& service_name,
+                                           ServicePolicy policy)
+    : policy(std::move(policy)), request_queue(service_name) {}
+
+ServiceManager::ServiceState::~ServiceState() = default;
+
 ServiceManager::ServiceManager(Configuration configuration,
                                ServicePolicyMap policy_map,
                                base::OnceClosure quit_closure)
@@ -29,7 +36,9 @@ ServiceManager::ServiceManager(Configuration configuration,
       quit_closure_(std::move(quit_closure)) {
   for (auto& item : policy_map) {
     auto& [service_name, policy] = item;
-    service_map_[service_name].policy = std::move(policy);
+    // The elements of ServiceState is not moveable. Use |try_emplace| to
+    // construct it in place.
+    service_map_.try_emplace(service_name, service_name, std::move(policy));
   }
 
   receiver_set_.set_disconnect_handler(base::BindRepeating(
@@ -50,14 +59,16 @@ void ServiceManager::Register(
   auto it = service_map_.find(service_name);
   if (it == service_map_.end()) {
     if (!configuration_.is_permissive) {
+      LOG(ERROR) << "Cannot find service " << service_name;
       service_provider.ResetWithReason(
           static_cast<uint32_t>(mojom::ErrorCode::kServiceNotFound),
-          "Cannot find service: " + service_name);
+          "Cannot find service " + service_name);
       return;
     }
     // In permissive mode, users are allowed to register a service which is not
     // in the policy. In this case, a new ServiceState needs to be created.
-    auto [it_new, success] = service_map_.try_emplace(service_name);
+    auto [it_new, success] =
+        service_map_.try_emplace(service_name, service_name, ServicePolicy{});
     CHECK(success);
     it = it_new;
   }
@@ -66,16 +77,20 @@ void ServiceManager::Register(
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
   if (!configuration_.is_permissive &&
       !service_state.policy.IsOwner(identity->security_context)) {
+    LOG(ERROR) << "The security context " << identity->security_context
+               << " is not allowed to own the service " << service_name;
     service_provider.ResetWithReason(
         static_cast<uint32_t>(mojom::ErrorCode::kPermissionDenied),
-        "The security context: " + identity->security_context +
-            " is not allowed to own the service: " + service_name);
+        "The security context " + identity->security_context +
+            " is not allowed to own the service " + service_name);
     return;
   }
   if (service_state.service_provider.is_bound()) {
+    LOG(ERROR) << "The service " << service_name
+               << " has already been registered.";
     service_provider.ResetWithReason(
         static_cast<uint32_t>(mojom::ErrorCode::kServiceAlreadyRegistered),
-        "The service: " + service_name + " has already been registered.");
+        "The service " + service_name + " has already been registered.");
     return;
   }
   service_state.service_provider.Bind(std::move(service_provider));
@@ -107,14 +122,16 @@ void ServiceManager::Request(const std::string& service_name,
   auto it = service_map_.find(service_name);
   if (it == service_map_.end()) {
     if (!configuration_.is_permissive) {
+      LOG(ERROR) << "Cannot find service " << service_name;
       ResetMojoReceiverPipeWithReason(std::move(receiver),
                                       mojom::ErrorCode::kServiceNotFound,
-                                      "Cannot find service: " + service_name);
+                                      "Cannot find service " + service_name);
       return;
     }
     // In permissive mode, users are allowed to request a service which is not
     // in the policy. In this case, a new ServiceState needs to be created.
-    auto [it_new, success] = service_map_.try_emplace(service_name);
+    auto [it_new, success] =
+        service_map_.try_emplace(service_name, service_name, ServicePolicy{});
     CHECK(success);
     it = it_new;
   }
@@ -123,10 +140,12 @@ void ServiceManager::Request(const std::string& service_name,
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
   if (!configuration_.is_permissive &&
       !service_state.policy.IsRequester(identity->security_context)) {
+    LOG(ERROR) << "The security context " << identity->security_context
+               << " is not allowed to request the service " << service_name;
     ResetMojoReceiverPipeWithReason(
         std::move(receiver), mojom::ErrorCode::kPermissionDenied,
-        "The security context: " + identity->security_context +
-            " is not allowed to request the service: " + service_name);
+        "The security context " + identity->security_context +
+            " is not allowed to request the service " + service_name);
     return;
   }
   if (service_state.service_provider.is_bound()) {
@@ -144,7 +163,7 @@ void ServiceManager::Query(const std::string& service_name,
   if (it == service_map_.end()) {
     std::move(callback).Run(mojom::ErrorOrServiceState::NewError(
         mojom::Error::New(mojom::ErrorCode::kServiceNotFound,
-                          "Cannot find service: " + service_name)));
+                          "Cannot find service " + service_name)));
     return;
   }
 
@@ -155,8 +174,8 @@ void ServiceManager::Query(const std::string& service_name,
     std::move(callback).Run(
         mojom::ErrorOrServiceState::NewError(mojom::Error::New(
             mojom::ErrorCode::kPermissionDenied,
-            "The security context: " + identity->security_context +
-                " is not allowed to request the service: " + service_name)));
+            "The security context " + identity->security_context +
+                " is not allowed to query the service " + service_name)));
     return;
   }
   mojom::ServiceStatePtr state =

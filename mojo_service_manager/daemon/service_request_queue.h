@@ -7,6 +7,7 @@
 
 #include <list>
 #include <optional>
+#include <string>
 
 #include <base/memory/weak_ptr.h>
 
@@ -28,7 +29,7 @@ class ServiceRequestQueue {
     mojo::ScopedMessagePipeHandle receiver;
   };
 
-  ServiceRequestQueue();
+  explicit ServiceRequestQueue(const std::string& service_name);
   ServiceRequestQueue(const ServiceRequestQueue&) = delete;
   ServiceRequestQueue& operator=(const ServiceRequestQueue&) = delete;
   ~ServiceRequestQueue();
@@ -47,6 +48,8 @@ class ServiceRequestQueue {
   // Pops and rejects a timeouted service request from the queue.
   void PopAndRejectTimeoutRequest(std::list<ServiceRequest>::iterator it);
 
+  // The service name of this queue. For logging.
+  const std::string service_name_;
   // The storage to keep the requests. Use std::list so any element can be
   // removed in O(1).
   std::list<ServiceRequest> requests_;

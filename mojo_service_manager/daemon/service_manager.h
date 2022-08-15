@@ -40,6 +40,12 @@ class ServiceManager : public mojom::ServiceManager {
  private:
   // Keeps all the objects related to a mojo service.
   struct ServiceState {
+    explicit ServiceState(const std::string& service_name,
+                          ServicePolicy policy);
+    ServiceState(const ServiceState&) = delete;
+    ServiceState& operator=(const ServiceState&) = delete;
+    ~ServiceState();
+
     // The policy applied to this mojo service.
     ServicePolicy policy;
     // The identity of the current owner process.
