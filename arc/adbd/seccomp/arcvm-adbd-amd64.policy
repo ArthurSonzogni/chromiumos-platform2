@@ -60,6 +60,7 @@ clone: 1
 execve: 1
 wait4: 1
 set_robust_list: 1
+dup: 1
 dup2: 1
 getrlimit: 1
 getdents64: 1
@@ -84,3 +85,4 @@ connect: 1
 # For base::PlatformThread::Sleep()
 nanosleep: 1
 clock_nanosleep: 1
+sched_yield: 1

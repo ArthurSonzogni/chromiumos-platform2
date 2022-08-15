@@ -65,3 +65,5 @@ getpid: 1
 # For syslog /dev/log
 socket: arg0 == AF_UNIX
 connect: 1
+sched_yield: 1
+pread64: 1
