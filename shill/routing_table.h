@@ -150,6 +150,9 @@ class RoutingTable {
   // Frees routing table |id| that was obtained from RequestAdditionalTableId().
   virtual void FreeAdditionalTableId(uint32_t id);
 
+  // Returns the user traffic uids.
+  const std::vector<uint32_t>& GetUserTrafficUids();
+
  protected:
   RoutingTable();
   RoutingTable(const RoutingTable&) = delete;
@@ -210,6 +213,11 @@ class RoutingTable {
 
   // A list of unused routing table IDs.
   std::vector<uint32_t> available_table_ids_;
+
+  // "User traffic" refers to traffic from processes that run under one of the
+  // unix users enumered in |kUserTrafficUsernames| constant in
+  // shill/routing_table.cc.
+  std::vector<uint32_t> user_traffic_uids_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;

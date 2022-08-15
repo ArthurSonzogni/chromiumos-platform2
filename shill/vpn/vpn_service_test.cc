@@ -66,7 +66,6 @@ class VPNServiceTest : public testing::Test {
     manager_.set_mock_device_info(&device_info_);
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->manager_ = &manager_;
-    manager_.user_traffic_uids_.push_back(1000);
     manager_.UpdateProviderMapping();
   }
 

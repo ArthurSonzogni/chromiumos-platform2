@@ -517,9 +517,6 @@ class Manager {
   // Returns whether the swanctl-based driver should be used.
   bool GetUseSwanctlDriver(Error* error);
 
-  // Returns the user traffic uids.
-  const std::vector<uint32_t>& GetUserTrafficUids();
-
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
@@ -533,10 +530,6 @@ class Manager {
     patchpanel_client_ = std::move(patchpanel_client);
   }
   patchpanel::Client* patchpanel_client() { return patchpanel_client_.get(); }
-
-  // Returns a vector of all uids whose traffic is routed through VPN
-  // connections.
-  static std::vector<uint32_t> ComputeUserTrafficUids();
 
   // Assigns the IP address(es) of the dns-proxy service.
   bool SetDNSProxyAddresses(const std::vector<std::string>& addrs,
@@ -961,11 +954,10 @@ class Manager {
   uint32_t download_rate_kbits_;
   uint32_t upload_rate_kbits_;
 
-  // "User traffic" refers to traffic from processes that run under one of the
-  // unix users enumered in |kUserTrafficUsernames| constant in
-  // shill/manager.cc.
+  // Whether user traffic should be blocked on the interfaces managed by
+  // Manager. Also see kUserTrafficUsernames in routing_tables.cc for the
+  // definition of user traffic.
   bool should_blackhole_user_traffic_;
-  std::vector<uint32_t> user_traffic_uids_;
   // Map of active portal detectors for CreateConnectivityReport, indexed by
   // the Connection interface name.
   std::map<std::string, std::unique_ptr<PortalDetector>>

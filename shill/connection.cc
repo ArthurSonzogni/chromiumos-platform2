@@ -363,7 +363,7 @@ void Connection::UpdateRoutingPolicy() {
   // address selection algorithm that ignores iptables fwmark tagging rules, and
   // the actual routing of packets that have been tagged in iptables PREROUTING.
   if (technology_ == Technology::kVPN) {
-    for (const auto& uid : Manager::ComputeUserTrafficUids()) {
+    for (const auto& uid : routing_table_->GetUserTrafficUids()) {
       auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
                        .SetPriority(kVpnUidRulePriority)
                        .SetTable(table_id_)

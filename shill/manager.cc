@@ -31,7 +31,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -139,30 +138,6 @@ const Technology kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
 
 // Name of the default claimer.
 constexpr char kDefaultClaimerName[] = "";
-
-// For VPN drivers that only want to pass traffic for specific users,
-// these are the usernames that will be used to create the routing policy
-// rules. Also, when an AlwaysOnVpnPackage is set and a corresponding VPN
-// service is not active, traffic from these users will blackholed.
-// Currently the "user traffic" as defined by these usernames does not include
-// e.g. Android apps or system processes like the update engine.
-const char* const kUserTrafficUsernames[] = {
-    "chronos",         // Traffic originating from chrome and nacl applications
-    "debugd",          // crosh terminal
-    "cups",            // built-in printing using the cups daemon
-    "lpadmin",         // printer configuration utility used by cups
-    "kerberosd",       // Chrome OS Kerberos daemon
-    "kerberosd-exec",  // Kerberos third party untrusted code
-    // While tlsdate is not user traffic, time sync should be attempted over
-    // VPN. It is OK to send tlsdate traffic over VPN because it will also try
-    // to sync time immediately after boot on the sign-in screen when no VPN can
-    // be active.
-    // TODO(https://crbug.com/1065378): Find a way for tlsdate to try both with
-    // and without VPN explicitly.
-    "tlsdate",    // tlsdate daemon (secure time sync)
-    "pluginvm",   // plugin vm problem report utility (b/160916677)
-    "fuse-smbfs"  // smbfs SMB filesystem daemon
-};
 
 // Backoff time increment used to compute the delay before always-on VPN next
 // attempt after a connection failure.
@@ -2940,20 +2915,6 @@ void Manager::UpdateBlackholeUserTraffic() {
   }
 }
 
-// static
-std::vector<uint32_t> Manager::ComputeUserTrafficUids() {
-  std::vector<uint32_t> uids;
-  for (const auto& username : kUserTrafficUsernames) {
-    uid_t uid;
-    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr)) {
-      LOG(WARNING) << "Unable to look up UID for " << username;
-      continue;
-    }
-    uids.push_back(static_cast<uint32_t>(uid));
-  }
-  return uids;
-}
-
 void Manager::InitializePatchpanelClient() {
   DCHECK(!patchpanel_client_);
   init_patchpanel_client_task_.Cancel();
@@ -3290,13 +3251,6 @@ bool Manager::SetUseSwanctlDriver(const bool& use_swanctl_driver,
                                   Error* error) {
   props_.use_swanctl_driver = use_swanctl_driver;
   return true;
-}
-
-const std::vector<uint32_t>& Manager::GetUserTrafficUids() {
-  if (user_traffic_uids_.empty()) {
-    user_traffic_uids_ = ComputeUserTrafficUids();
-  }
-  return user_traffic_uids_;
 }
 
 void Manager::StartConnectivityTest(const DeviceRefPtr& device) {

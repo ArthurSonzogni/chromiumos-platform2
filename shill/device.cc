@@ -46,6 +46,7 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -426,7 +427,8 @@ void Device::UpdateBlackholeUserTraffic() {
   if (ipconfig()) {
     bool updated;
     if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-      updated = ipconfig()->SetBlackholedUids(manager_->GetUserTrafficUids());
+      updated = ipconfig()->SetBlackholedUids(
+          RoutingTable::GetInstance()->GetUserTrafficUids());
     } else {
       updated = ipconfig()->ClearBlackholedUids();
     }
@@ -544,7 +546,7 @@ void Device::OnNetworkStopped(bool is_failure) {
 
 std::vector<uint32_t> Device::GetBlackholedUids() {
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-    return manager_->GetUserTrafficUids();
+    return RoutingTable::GetInstance()->GetUserTrafficUids();
   }
   return {};
 }

@@ -30,6 +30,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/userdb_utils.h>
 
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
@@ -61,6 +62,30 @@ static_assert(
     kInterfaceTableIdIncrement > RT_TABLE_LOCAL,
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
+
+// For VPN drivers that only want to pass traffic for specific users,
+// these are the usernames that will be used to create the routing policy
+// rules. Also, when an AlwaysOnVpnPackage is set and a corresponding VPN
+// service is not active, traffic from these users will blackholed.
+// Currently the "user traffic" as defined by these usernames does not include
+// e.g. Android apps or system processes like the update engine.
+constexpr std::array<const char*, 9> kUserTrafficUsernames = {
+    "chronos",         // Traffic originating from chrome and nacl applications
+    "debugd",          // crosh terminal
+    "cups",            // built-in printing using the cups daemon
+    "lpadmin",         // printer configuration utility used by cups
+    "kerberosd",       // Chrome OS Kerberos daemon
+    "kerberosd-exec",  // Kerberos third party untrusted code
+    // While tlsdate is not user traffic, time sync should be attempted over
+    // VPN. It is OK to send tlsdate traffic over VPN because it will also try
+    // to sync time immediately after boot on the sign-in screen when no VPN can
+    // be active.
+    // TODO(https://crbug.com/1065378): Find a way for tlsdate to try both with
+    // and without VPN explicitly.
+    "tlsdate",    // tlsdate daemon (secure time sync)
+    "pluginvm",   // plugin vm problem report utility (b/160916677)
+    "fuse-smbfs"  // smbfs SMB filesystem daemon
+};
 
 bool ParseRoutingTableMessage(const RTNLMessage& message,
                               int* interface_index,
@@ -136,6 +161,19 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
   entry->type = route_status.type;
 
   return true;
+}
+
+std::vector<uint32_t> ComputeUserTrafficUids() {
+  std::vector<uint32_t> uids;
+  for (const auto& username : kUserTrafficUsernames) {
+    uid_t uid;
+    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr)) {
+      LOG(WARNING) << "Unable to look up UID for " << username;
+      continue;
+    }
+    uids.push_back(uint32_t{uid});
+  }
+  return uids;
 }
 
 }  // namespace
@@ -913,6 +951,13 @@ void RoutingTable::FreeAdditionalTableId(uint32_t id) {
   }
 
   available_table_ids_.push_back(id);
+}
+
+const std::vector<uint32_t>& RoutingTable::GetUserTrafficUids() {
+  if (user_traffic_uids_.empty()) {
+    user_traffic_uids_ = ComputeUserTrafficUids();
+  }
+  return user_traffic_uids_;
 }
 
 }  // namespace shill
