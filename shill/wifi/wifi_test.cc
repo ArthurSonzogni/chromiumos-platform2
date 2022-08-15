@@ -971,6 +971,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                         const char* mode,
                         const std::vector<uint8_t>& ies);
   void ReportGetDHCPLease() { wifi_->OnGetDHCPLease(); }
+  void ReportIPv4ConfiguredWithDHCPLease() {
+    wifi_->OnIPv4ConfiguredWithDHCPLease();
+  }
+  void ReportIPv6ConfiguredWithSLAACAddress() {
+    wifi_->OnIPv6ConfiguredWithSLAACAddress();
+  }
 
   // Calls the delayed version of the BSS methods.
   void BSSAdded(const RpcIdentifier& bss_path,
@@ -981,7 +987,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->BSSRemoved(bss_path);
   }
 
-  void ReportIPv6ConfigComplete() { wifi_->OnGetSLAACAddress(); }
   void ReportIPConfigFailure() { wifi_->OnIPConfigFailure(); }
   void ReportConnected() { wifi_->OnConnected(); }
   void ReportSelectedServiceChanged(const ServiceRefPtr& old_service) {
@@ -4818,13 +4823,13 @@ TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
-  ReportGetDHCPLease();
+  ReportIPv4ConfiguredWithDHCPLease();
 
   // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not
   // actually connected to a service.
   SetCurrentService(nullptr);
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_)).Times(0);
-  ReportIPv6ConfigComplete();
+  ReportIPv6ConfiguredWithSLAACAddress();
 
   // If we are actually connected to a service when our IPv6 configuration is
   // updated, we should call WakeOnWiFi::OnConnectedAndReachable.
@@ -4834,7 +4839,7 @@ TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
-  ReportIPv6ConfigComplete();
+  ReportIPv6ConfiguredWithSLAACAddress();
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);

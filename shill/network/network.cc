@@ -246,10 +246,17 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
-  ipconfig()->UpdateProperties(properties);
-  OnIPv4ConfigUpdated();
   if (new_lease_acquired) {
     event_handler_->OnGetDHCPLease();
+  }
+  ipconfig()->UpdateProperties(properties);
+  OnIPv4ConfigUpdated();
+  // TODO: OnIPv4ConfiguredWithDHCPLease() should be called inside
+  // Network::OnIPv4ConfigUpdated() and only if SetupConnection() happened as a
+  // result of the new lease. The current call pattern reproduces the same
+  // conditions as before crrev/c/3840983.
+  if (new_lease_acquired) {
+    event_handler_->OnIPv4ConfiguredWithDHCPLease();
   }
 }
 
@@ -431,9 +438,15 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
     properties.dns_servers = ipv6_static_properties_->dns_servers;
   }
   ip6config()->set_properties(properties);
+  event_handler_->OnGetSLAACAddress();
   event_handler_->OnIPConfigsPropertyUpdated();
   OnIPv6ConfigUpdated();
-  event_handler_->OnGetSLAACAddress();
+  // TODO: OnIPv6ConfiguredWithSLAACAddress() should be called inside
+  // Network::OnIPv6ConfigUpdated() and only if SetupConnection() happened as a
+  // result of the new address (ignoring IPv4 and assuming Network is fully
+  // dual-stack). The current call pattern reproduces the same conditions as
+  // before crrev/c/3840983.
+  event_handler_->OnIPv6ConfiguredWithSLAACAddress();
 }
 
 void Network::OnIPv6ConfigUpdated() {

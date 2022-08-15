@@ -4063,17 +4063,14 @@ void WiFi::RemoveSupplicantNetworks() {
 
 void WiFi::OnGetDHCPLease() {
   RetrieveLinkStatistics(NetworkEvent::kDHCPSuccess);
-  if (!wake_on_wifi_) {
-    return;
-  }
-  SLOG(this, 3) << __func__ << ": "
-                << "IPv4 DHCP lease obtained";
-  wake_on_wifi_->OnConnectedAndReachable(
-      network()->TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnGetDHCPFailure() {
   RetrieveLinkStatistics(NetworkEvent::kDHCPFailure);
+}
+
+void WiFi::OnGetSLAACAddress() {
+  RetrieveLinkStatistics(NetworkEvent::kSlaacFinished);
 }
 
 void WiFi::OnNetworkValidationStart() {
@@ -4088,11 +4085,20 @@ void WiFi::OnNetworkValidationFailure() {
   RetrieveLinkStatistics(NetworkEvent::kNetworkValidationFailure);
 }
 
-void WiFi::OnGetSLAACAddress() {
+void WiFi::OnIPv4ConfiguredWithDHCPLease() {
+  if (!wake_on_wifi_) {
+    return;
+  }
+  SLOG(this, 3) << __func__ << ": "
+                << "IPv4 DHCP lease obtained";
+  wake_on_wifi_->OnConnectedAndReachable(
+      network()->TimeToNextDHCPLeaseRenewal());
+}
+
+void WiFi::OnIPv6ConfiguredWithSLAACAddress() {
   if (!IsConnectedToCurrentService()) {
     return;
   }
-  RetrieveLinkStatistics(NetworkEvent::kSlaacFinished);
   if (!wake_on_wifi_) {
     return;
   }

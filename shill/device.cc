@@ -558,6 +558,8 @@ void Device::OnNetworkValidationStart() {}
 void Device::OnNetworkValidationStop() {}
 void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
+void Device::OnIPv4ConfiguredWithDHCPLease() {}
+void Device::OnIPv6ConfiguredWithSLAACAddress() {}
 
 void Device::OnIPConfigFailure() {
   if (selected_service_) {

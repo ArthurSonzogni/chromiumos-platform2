@@ -69,6 +69,8 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnGetDHCPLease, (), (override));
   MOCK_METHOD(void, OnGetDHCPFailure, (), (override));
   MOCK_METHOD(void, OnGetSLAACAddress, (), (override));
+  MOCK_METHOD(void, OnIPv4ConfiguredWithDHCPLease, (), (override));
+  MOCK_METHOD(void, OnIPv6ConfiguredWithSLAACAddress, (), (override));
   MOCK_METHOD(std::vector<uint32_t>, GetBlackholedUids, (), (override));
 };
 

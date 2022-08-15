@@ -59,14 +59,29 @@ class Network {
     // The IPConfig object lists held by this Network has changed.
     virtual void OnIPConfigsPropertyUpdated() = 0;
 
-    // Called when a new DHCPv4 lease is obtained for this device.
+    // Called when a new DHCPv4 lease is obtained for this device. This is
+    // called before OnConnectionUpdated() is called as a result of the lease
+    // acquisition.
     virtual void OnGetDHCPLease() = 0;
     // Called when DHCPv4 fails to acquire a lease.
     virtual void OnGetDHCPFailure() = 0;
     // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
     // by the kernel when the link is connected and is currently not monitored
-    // by shill.
+    // by shill. Derived class should implement this function to listen to this
+    // event. Base class does nothing. This is called before
+    // OnConnectionUpdated() is called and before captive portal detection is
+    // started if IPv4 is not configured.
     virtual void OnGetSLAACAddress() = 0;
+
+    // Called after IPv4 has been configured as a result of acquiring a new DHCP
+    // lease. This is called after OnGetDHCPLease, OnIPConfigsPropertyUpdated,
+    // and OnConnectionUpdated.
+    virtual void OnIPv4ConfiguredWithDHCPLease() = 0;
+    // Called after IPv6 has been configured as a result of acquiring an IPv6
+    // address from the kernel when SLAAC completes. This is called after
+    // OnGetSLAACAddress, OnIPConfigsPropertyUpdated, and OnConnectionUpdated
+    // (if IPv4 is not yet configured).
+    virtual void OnIPv6ConfiguredWithSLAACAddress() = 0;
 
     // TODO(b/232177767): Get the list of uids whose traffic should be blocked
     // on this connection. This is not a signal or callback. Put it here just to

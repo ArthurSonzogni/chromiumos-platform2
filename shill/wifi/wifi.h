@@ -716,13 +716,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
-  // In addition to calling the implementations of these functions in Device,
-  // calls WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
-  void OnGetDHCPLease() override;
-  void OnGetSLAACAddress() override;
+  // Call WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
+  void OnIPv4ConfiguredWithDHCPLease() override;
+  void OnIPv6ConfiguredWithSLAACAddress() override;
 
   // These Device functions are overridden for retrieving link statistics.
+  void OnGetDHCPLease() override;
   void OnGetDHCPFailure() override;
+  void OnGetSLAACAddress() override;
   void OnNetworkValidationStart() override;
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
