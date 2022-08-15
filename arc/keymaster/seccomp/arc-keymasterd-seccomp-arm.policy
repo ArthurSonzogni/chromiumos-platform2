@@ -69,3 +69,6 @@ eventfd2: 1
 fstatfs64: 1
 fstatfs: 1
 uname: 1
+clock_nanosleep: 1
+clock_nanosleep_time64: 1
+rt_sigaction: 1
