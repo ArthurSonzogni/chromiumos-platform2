@@ -26,8 +26,8 @@ class CellularBearer {
  public:
   // Constructs a cellular bearer for observing property changes of a
   // corresponding bearer object, at the DBus path |dbus_path| of DBus service
-  // |dbus_service|,  exposed by ModemManager. The ownership of |proxy_factory|
-  // is not transferred, and should outlive this object.
+  // |dbus_service|,  exposed by ModemManager. The ownership of
+  // |control_interface| is not transferred, and should outlive this object.
   //
   // TODO(benchan): Use a context object approach to pass objects like
   // ControlInterface through constructor.
