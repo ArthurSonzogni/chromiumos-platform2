@@ -6,8 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::install_logger;
 use log::{error, info};
 use os_install_service::disk::{self, Disk};
+use os_install_service::mount::Mount;
 use os_install_service::util;
 
 #[derive(Debug, thiserror::Error)]
@@ -136,6 +138,29 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
     Ok(())
 }
 
+/// Copy the install log onto the target system.
+///
+/// This makes it persistent and available for future QA on the
+/// installed system.
+///
+/// This only should occur if the target's stateful partition was
+/// created properly.
+fn save_install_log(dest: &Path) -> anyhow::Result<()> {
+    // Mount the installed stateful partition.
+    let stateful_partition_num = 1;
+    let dest_stateful_partition = disk::get_partition_device(dest, stateful_partition_num);
+    let stateful_partition_mount = Mount::mount_ext4(&dest_stateful_partition)?;
+    // Get the instance log and write it to the stateful partition.
+    let instance_log = install_logger::read_file_log();
+    let log_dst = stateful_partition_mount
+        .mount_point
+        .path()
+        .join("flex-install.log");
+    info!("writing install log to {}", log_dst.display());
+    fs::write(log_dst, instance_log)?;
+    Ok(())
+}
+
 fn install_to_device(dest: &Path) -> Result {
     let boot_mode = BootMode::from_kernel_cmdline();
 
@@ -174,6 +199,11 @@ pub fn install() -> Result {
         reformat(&dest);
 
         return Err(err);
+    }
+
+    // Save off the log on a successful install.
+    if let Err(err) = save_install_log(&dest) {
+        error!("failed to save install log: {:?}", err);
     }
 
     Ok(())
