@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 # This file lists out the seccomp policy for allowed syscalls for
-# SodaModel.
+# SodaModel on 64-bit ARM.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 brk: 1
 clock_gettime: 1
