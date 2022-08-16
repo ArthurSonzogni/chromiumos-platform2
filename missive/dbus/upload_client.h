@@ -1,40 +1,43 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The ChromiumOS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef MISSIVE_DBUS_UPLOAD_CLIENT_H_
 #define MISSIVE_DBUS_UPLOAD_CLIENT_H_
 
-#include <atomic>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
-#include <base/memory/ref_counted.h>
+#include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
-#include <dbus/object_proxy.h>
 
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
-#include "missive/util/disconnectable_client.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
+// Abstract base class for upload client implementation and use.
+// Derived from RefCountedDeleteOnSequence in order to allow weak pointers usage
+// with it (weak pointer factory needs to be deleted on the same thread the weak
+// pointers are dereferenced).
+class UploadClient : public base::RefCountedDeleteOnSequence<UploadClient> {
  public:
   // The requestor will receive a response to their UploadEncryptedRequest via
   // the HandleUploadResponseCallback.
   using HandleUploadResponseCallback =
       base::OnceCallback<void(StatusOr<UploadEncryptedRecordResponse>)>;
 
-  // Factory method for creating a UploadClient.
-  static scoped_refptr<UploadClient> Create();
+  // Factory method for asynchronously creating a UploadClient on
+  // bus->OriginThread.
+  static void Create(
+      scoped_refptr<dbus::Bus> bus,
+      base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> cb);
 
   // Utilizes DBus to send a list of encrypted records to Chrome. Caller can
   // expect a response via the |response_callback|.
@@ -43,54 +46,17 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
       bool need_encryption_keys,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
-      HandleUploadResponseCallback response_callback);
-
-  // Sets availability for testing only.
-  void SetAvailabilityForTest(bool is_available);
+      HandleUploadResponseCallback response_callback) = 0;
 
  protected:
-  // Factory method for creating a UploadClient with specified |bus| and
-  // |chrome_proxy|.
-  static scoped_refptr<UploadClient> Create(scoped_refptr<dbus::Bus> bus,
-                                            dbus::ObjectProxy* chrome_proxy);
-
-  UploadClient(scoped_refptr<dbus::Bus> bus, dbus::ObjectProxy* chrome_proxy);
-  virtual ~UploadClient();
-
-  void HandleUploadEncryptedRecordResponse(
-      const std::unique_ptr<dbus::MethodCall> call,  // owned thru response.
-      HandleUploadResponseCallback response_callback,
-      dbus::Response* response) const;
+  explicit UploadClient(scoped_refptr<base::SequencedTaskRunner> task_runner)
+      : base::RefCountedDeleteOnSequence<UploadClient>(task_runner) {}
+  virtual ~UploadClient() = default;
 
  private:
-  friend base::RefCountedThreadSafe<UploadClient>;
-
-  void MaybeMakeCall(std::vector<EncryptedRecord> records,
-                     const bool need_encryption_keys,
-                     uint64_t remaining_storage_capacity,
-                     std::optional<uint64_t> new_events_rate,
-                     HandleUploadResponseCallback response_callback);
-
-  // Returns disconnectable client, creating it if not created yet.
-  // Must be called on task runner.
-  DisconnectableClient* GetDisconnectableClient();
-
-  void OwnerChanged(const std::string& old_owner, const std::string& new_owner);
-
-  void ServerAvailable(bool service_is_available);
-
-  scoped_refptr<dbus::Bus> const bus_;
-  dbus::ObjectProxy* const chrome_proxy_;
-
-  SEQUENCE_CHECKER(sequence_checker_);
-
-  std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter> client_;
-
-  // Note: This should remain the last member so it'll be destroyed and
-  // invalidate its weak pointers before any other members are destroyed.
-  base::WeakPtrFactory<UploadClient> weak_ptr_factory_{this};
+  friend class base::RefCountedDeleteOnSequence<UploadClient>;
+  friend class base::DeleteHelper<UploadClient>;
 };
-
 }  // namespace reporting
 
 #endif  // MISSIVE_DBUS_UPLOAD_CLIENT_H_

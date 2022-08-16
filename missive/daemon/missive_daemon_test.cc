@@ -15,7 +15,6 @@
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
-#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -34,9 +33,11 @@ using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::StrictMock;
+using ::testing::WithArg;
 
 namespace reporting {
 namespace {
@@ -54,7 +55,11 @@ class MockMissive : public MissiveService {
  public:
   MockMissive() = default;
 
-  MOCK_METHOD(void, StartUp, (base::OnceCallback<void(Status)> cb), (override));
+  MOCK_METHOD(void,
+              StartUp,
+              (scoped_refptr<dbus::Bus> bus,
+               base::OnceCallback<void(Status)> cb),
+              (override));
   MOCK_METHOD(Status, ShutDown, (), (override));
   MOCK_METHOD(void, OnReady, (), (const override));
 
@@ -101,9 +106,6 @@ class MissiveDaemonTest : public ::testing::Test {
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     dbus::ObjectPath path(missive::kMissiveServicePath);
 
-    mock_object_proxy_ = base::MakeRefCounted<NiceMock<dbus::MockObjectProxy>>(
-        mock_bus_.get(), missive::kMissiveServicePath, path);
-
     mock_exported_object_ =
         base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
             mock_bus_.get(), path);
@@ -121,8 +123,8 @@ class MissiveDaemonTest : public ::testing::Test {
     auto missive = std::make_unique<StrictMock<MockMissive>>();
     mock_missive_ = missive.get();
     test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(*mock_missive_, StartUp(_))
-        .WillOnce(Invoke([&waiter](base::OnceCallback<void(Status)> cb) {
+    EXPECT_CALL(*mock_missive_, StartUp(NotNull(), _))
+        .WillOnce(WithArg<1>([&waiter](base::OnceCallback<void(Status)> cb) {
           std::move(cb).Run(Status::StatusOK());
           waiter.Signal();
         }));
@@ -149,7 +151,6 @@ class MissiveDaemonTest : public ::testing::Test {
       task_environment_.GetMainThreadTaskRunner().get()};
 
   scoped_refptr<dbus::MockBus> mock_bus_;
-  scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   StrictMock<MockMissive>* mock_missive_ = nullptr;
   std::unique_ptr<DBusAdaptor> missive_daemon_;

@@ -9,8 +9,12 @@
 #include <string>
 
 #include <brillo/dbus/dbus_method_response.h>
+#include <dbus/bus.h>
 
+#include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
+#include "missive/storage/storage_configuration.h"
+#include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 
@@ -22,7 +26,8 @@ class MissiveService {
   MissiveService& operator=(const MissiveService&) = delete;
   virtual ~MissiveService() = default;
 
-  virtual void StartUp(base::OnceCallback<void(Status)> cb) = 0;
+  virtual void StartUp(scoped_refptr<dbus::Bus> bus,
+                       base::OnceCallback<void(Status)> cb) = 0;
   virtual Status ShutDown() = 0;
   virtual void OnReady() const {}
 

@@ -62,7 +62,7 @@ class MockStorageModule : public StorageModuleInterface {
 
 class EnqueueJobTest : public ::testing::Test {
  public:
-  EnqueueJobTest() : method_call_("org.Test", "TestMethod") {}
+  EnqueueJobTest() = default;
 
  protected:
   void SetUp() override {
@@ -83,8 +83,6 @@ class EnqueueJobTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
-
-  dbus::MethodCall method_call_;
 
   std::unique_ptr<
       brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>

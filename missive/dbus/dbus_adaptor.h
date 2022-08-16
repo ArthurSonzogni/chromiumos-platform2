@@ -12,7 +12,7 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include <missive/missive/missive_service.h>
+#include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/util/status.h"
 

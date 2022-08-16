@@ -44,7 +44,7 @@ static_library("missive_impl") {
   deps = [
     ":missive_service",
     "//missive/analytics:libanalytics",
-    "//missive/dbus:upload_client",
+    "//missive/dbus:upload_client_impl",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/resources:resource_interface",

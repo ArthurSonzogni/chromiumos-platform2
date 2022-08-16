@@ -59,12 +59,33 @@ static_library("dbus_adaptor") {
 }
 
 static_library("upload_client") {
-  sources = [ "upload_client.cc" ]
+  sources = [ "upload_client.h" ]
   configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
+    "//missive/util:status",
+  ]
+}
+
+static_library("upload_client_impl") {
+  sources = [ "upload_client_impl.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":upload_client",
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:disconnectable_client",
+    "//missive/util:status",
+  ]
+}
+
+static_library("test_support") {
+  sources = [ "mock_upload_client.h" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":upload_client",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
   ]
 }

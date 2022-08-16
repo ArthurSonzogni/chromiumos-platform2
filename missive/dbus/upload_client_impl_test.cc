@@ -1,8 +1,8 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/dbus/upload_client.h"
+#include "missive/dbus/upload_client_impl.h"
 
 #include <limits>
 #include <optional>
@@ -28,6 +28,7 @@
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
+using ::testing::AtLeast;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
@@ -38,14 +39,6 @@ using ::testing::WithArgs;
 
 namespace reporting {
 namespace {
-
-class UploadClientProducer : public UploadClient {
- public:
-  static scoped_refptr<UploadClient> CreateForTests(
-      scoped_refptr<dbus::Bus> bus, dbus::ObjectProxy* chrome_proxy) {
-    return UploadClient::Create(bus, chrome_proxy);
-  }
-};
 
 class UploadClientTest : public ::testing::Test {
  protected:
@@ -65,6 +58,14 @@ class UploadClientTest : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, GetOriginTaskRunner())
         .WillRepeatedly(Return(dbus_task_runner_.get()));
 
+    EXPECT_CALL(*mock_bus_, Connect())
+        .Times(AtLeast(1))
+        .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(*mock_bus_, SetUpAsyncOperations())
+        .Times(AtLeast(1))
+        .WillRepeatedly(Return(true));
+
     // We actually want AssertOnOriginThread and AssertOnDBusThread to work
     // properly (actually assert they are on dbus_thread_). If the unit tests
     // end up creating calls on the wrong thread, the unit test will just hang
@@ -81,13 +82,19 @@ class UploadClientTest : public ::testing::Test {
             mock_bus_.get(), chromeos::kChromeReportingServiceName,
             dbus::ObjectPath(chromeos::kChromeReportingServicePath)));
 
-    upload_client_ = UploadClientProducer::CreateForTests(
-        mock_bus_, mock_chrome_proxy_.get());
+    test::TestEvent<StatusOr<scoped_refptr<UploadClientImpl>>> client_waiter;
+    UploadClientImpl::Create(mock_bus_, mock_chrome_proxy_.get(),
+                             client_waiter.cb());
+    auto client_result = client_waiter.result();
+    ASSERT_OK(client_result) << client_result.status();
+    upload_client_ = client_result.ValueOrDie();
 
     upload_client_->SetAvailabilityForTest(/*is_available=*/true);
   }
 
   void TearDown() override {
+    // Release client.
+    upload_client_.reset();
     // Let everything ongoing to finish.
     task_environment_.RunUntilIdle();
   }
@@ -110,7 +117,7 @@ class UploadClientTest : public ::testing::Test {
   scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
   scoped_refptr<NiceMock<dbus::MockBus>> mock_bus_;
   scoped_refptr<NiceMock<dbus::MockObjectProxy>> mock_chrome_proxy_;
-  scoped_refptr<UploadClient> upload_client_;
+  scoped_refptr<UploadClientImpl> upload_client_;
 };
 
 TEST_F(UploadClientTest, SuccessfulCall) {

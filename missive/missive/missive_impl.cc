@@ -42,13 +42,41 @@ constexpr size_t kCompressionThreshold = 512U;
 
 }  // namespace
 
-MissiveImpl::MissiveImpl(std::unique_ptr<MissiveArgs> args)
-    : args_(std::move(args)) {}
+MissiveImpl::MissiveImpl(
+    std::unique_ptr<MissiveArgs> args,
+    base::OnceCallback<
+        void(scoped_refptr<dbus::Bus> bus,
+             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
+                 callback)> upload_client_factory,
+    base::OnceCallback<
+        void(MissiveImpl* self,
+             StorageOptions storage_options,
+             base::OnceCallback<void(
+                 StatusOr<scoped_refptr<StorageModuleInterface>>)> callback)>
+        create_storage_factory)
+    : args_(std::move(args)),
+      upload_client_factory_(std::move(upload_client_factory)),
+      create_storage_factory_(std::move(create_storage_factory)) {}
 
 MissiveImpl::~MissiveImpl() = default;
 
-void MissiveImpl::StartUp(base::OnceCallback<void(Status)> cb) {
-  upload_client_ = UploadClient::Create();
+void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
+                          base::OnceCallback<void(Status)> cb) {
+  DCHECK(upload_client_factory_) << "May be called only once";
+  DCHECK(create_storage_factory_) << "May be called only once";
+  std::move(upload_client_factory_)
+      .Run(bus, base::BindOnce(&MissiveImpl::OnUploadClientCreated,
+                               base::Unretained(this), std::move(cb)));
+}
+
+void MissiveImpl::OnUploadClientCreated(
+    base::OnceCallback<void(Status)> cb,
+    StatusOr<scoped_refptr<UploadClient>> upload_client_result) {
+  if (!upload_client_result.ok()) {
+    std::move(cb).Run(upload_client_result.status());
+    return;
+  }
+  upload_client_ = std::move(upload_client_result.ValueOrDie());
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
       args_->enqueuing_record_tallier());
   const base::FilePath kReportingPath(kReportingDirectory);
@@ -64,23 +92,31 @@ void MissiveImpl::StartUp(base::OnceCallback<void(Status)> cb) {
           SignatureVerifier::VerificationKey());
   auto memory_resource = storage_options.memory_resource();
   disk_space_resource_ = storage_options.disk_space_resource();
+  analytics_registry_.Add(
+      "Memory",
+      std::make_unique<analytics::ResourceCollectorMemory>(
+          args_->memory_collector_interval(), std::move(memory_resource)));
+  std::move(create_storage_factory_)
+      .Run(this, std::move(storage_options),
+           base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
+                          base::Unretained(this), std::move(cb)));
+}
+
+Status MissiveImpl::ShutDown() {
+  return Status::StatusOK();
+}
+
+void MissiveImpl::CreateStorage(
+    StorageOptions storage_options,
+    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
+        callback) {
   StorageModule::Create(
       std::move(storage_options),
       base::BindRepeating(&MissiveImpl::AsyncStartUpload,
                           base::Unretained(this)),
       EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
-      base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
-                     base::Unretained(this), std::move(cb)));
-
-  analytics_registry_.Add(
-      "Memory",
-      std::make_unique<analytics::ResourceCollectorMemory>(
-          args_->memory_collector_interval(), std::move(memory_resource)));
-}
-
-Status MissiveImpl::ShutDown() {
-  return Status::StatusOK();
+      std::move(callback));
 }
 
 void MissiveImpl::OnStorageModuleConfigured(

@@ -1,6 +1,8 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include "missive/dbus/upload_client_impl.h"
 
 #include <memory>
 #include <optional>
@@ -12,14 +14,12 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include "base/run_loop.h"
-#include <base/sequence_checker.h>
 #include <base/task/bind_post_task.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/message.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
@@ -28,43 +28,78 @@
 
 namespace reporting {
 
-UploadClient::UploadClient(scoped_refptr<dbus::Bus> bus,
-                           dbus::ObjectProxy* chrome_proxy)
-    : bus_(bus),
+UploadClientImpl::UploadClientImpl(scoped_refptr<dbus::Bus> bus,
+                                   dbus::ObjectProxy* chrome_proxy)
+    : UploadClient(bus->GetOriginTaskRunner()),
+      bus_(bus),
       chrome_proxy_(chrome_proxy),
       client_(nullptr, base::OnTaskRunnerDeleter(bus_->GetOriginTaskRunner())) {
-  // Client is created outside of bus OriginThread.
-  DETACH_FROM_SEQUENCE(sequence_checker_);
+  bus->AssertOnOriginThread();
   chrome_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
-      &UploadClient::OwnerChanged, weak_ptr_factory_.GetWeakPtr()));
+      &UploadClientImpl::OwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
-      &UploadClient::ServerAvailable, weak_ptr_factory_.GetWeakPtr()));
+      &UploadClientImpl::ServerAvailable, weak_ptr_factory_.GetWeakPtr()));
 }
-UploadClient::~UploadClient() = default;
-
-// static
-scoped_refptr<UploadClient> UploadClient::Create() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-
-  // Despite being a base::RefCountedThreadSafe object, dbus::Bus doesn't follow
-  // the normal pattern of creation. The constructor is public and this is the
-  // standard usage.
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  CHECK(bus->Connect());
-  CHECK(bus->SetUpAsyncOperations());
-  dbus::ObjectProxy* chrome_proxy = bus->GetObjectProxy(
-      chromeos::kChromeReportingServiceName,
-      dbus::ObjectPath(chromeos::kChromeReportingServicePath));
-  CHECK(chrome_proxy);
-
-  return Create(bus, chrome_proxy);
+UploadClientImpl::~UploadClientImpl() {
+  bus_->GetOriginTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](scoped_refptr<dbus::Bus> bus) {
+            // Remove proxy if it was set. Ignore result.
+            bus->RemoveObjectProxy(
+                chromeos::kChromeReportingServiceName,
+                dbus::ObjectPath(chromeos::kChromeReportingServicePath),
+                base::BindOnce(
+                    []() { LOG(INFO) << "Upload client disconnected"; }));
+          },
+          bus_));
 }
 
 // static
-scoped_refptr<UploadClient> UploadClient::Create(
-    scoped_refptr<dbus::Bus> bus, dbus::ObjectProxy* chrome_proxy) {
-  return base::WrapRefCounted(new UploadClient(bus, chrome_proxy));
+void UploadClient::Create(
+    scoped_refptr<dbus::Bus> bus,
+    base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> cb) {
+  bus->GetOriginTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](scoped_refptr<dbus::Bus> bus,
+             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
+                 cb) {
+            dbus::ObjectProxy* chrome_proxy = bus->GetObjectProxy(
+                chromeos::kChromeReportingServiceName,
+                dbus::ObjectPath(chromeos::kChromeReportingServicePath));
+            CHECK(chrome_proxy);
+            // Callback needs conversion of the result from UploadCLientImpl to
+            // UplocalClient.
+            auto impl_cb = base::BindOnce(
+                [](base::OnceCallback<void(
+                       StatusOr<scoped_refptr<UploadClient>>)> cb,
+                   StatusOr<scoped_refptr<UploadClientImpl>> result) {
+                  std::move(cb).Run(std::move(result));
+                },
+                std::move(cb));
+            UploadClientImpl::Create(bus, chrome_proxy, std::move(impl_cb));
+          },
+          bus, std::move(cb)));
+}
+
+// static
+void UploadClientImpl::Create(
+    scoped_refptr<dbus::Bus> bus,
+    dbus::ObjectProxy* chrome_proxy,
+    base::OnceCallback<void(StatusOr<scoped_refptr<UploadClientImpl>>)> cb) {
+  bus->GetDBusTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](scoped_refptr<dbus::Bus> bus, dbus::ObjectProxy* chrome_proxy,
+             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClientImpl>>)>
+                 cb) {
+            CHECK(bus->Connect());
+            CHECK(bus->SetUpAsyncOperations());
+            std::move(cb).Run(
+                base::WrapRefCounted(new UploadClientImpl(bus, chrome_proxy)));
+          },
+          bus, base::Unretained(chrome_proxy), std::move(cb)));
 }
 
 // Class implements DisconnectableClient::Delegate specifically for dBus
@@ -83,6 +118,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       : bus_(bus),
         chrome_proxy_(chrome_proxy),
         response_callback_(std::move(response_callback)) {
+    bus_->AssertOnOriginThread();
     // Build the request.
     for (const auto& record : records) {
       request_.add_encrypted_record()->CheckTypeAndMergeFrom(record);
@@ -98,7 +134,6 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 
   // Implementation of DisconnectableClient::Delegate
   void DoCall(base::OnceClosure cb) final {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     bus_->AssertOnOriginThread();
     base::ScopedClosureRunner autorun(std::move(cb));
     dbus::MethodCall method_call(
@@ -125,7 +160,6 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 
   // Process dBus response, if status is OK, or error otherwise.
   void Respond(Status status) final {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     bus_->AssertOnOriginThread();
     if (!response_callback_) {
       return;
@@ -156,7 +190,6 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 
  private:
   void DoResponse(base::ScopedClosureRunner autorun, dbus::Response* response) {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     bus_->AssertOnOriginThread();
     if (!response) {
       Respond(Status(error::UNAVAILABLE, "Returned no response"));
@@ -172,19 +205,16 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   UploadEncryptedRecordRequest request_;
   UploadClient::HandleUploadResponseCallback response_callback_;
 
-  SEQUENCE_CHECKER(sequence_checker_);
-
   // Weak pointer factory - must be last member of the class.
   base::WeakPtrFactory<UploadEncryptedRecordDelegate> weak_ptr_factory_{this};
 };
 
-void UploadClient::MaybeMakeCall(
+void UploadClientImpl::MaybeMakeCall(
     std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
       std::move(records), need_encryption_keys, remaining_storage_capacity,
@@ -192,8 +222,7 @@ void UploadClient::MaybeMakeCall(
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
 }
 
-DisconnectableClient* UploadClient::GetDisconnectableClient() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+DisconnectableClient* UploadClientImpl::GetDisconnectableClient() {
   bus_->AssertOnOriginThread();
   if (!client_) {
     client_ = std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter>(
@@ -203,7 +232,7 @@ DisconnectableClient* UploadClient::GetDisconnectableClient() {
   return client_.get();
 }
 
-void UploadClient::SendEncryptedRecords(
+void UploadClientImpl::SendEncryptedRecords(
     std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
@@ -211,34 +240,31 @@ void UploadClient::SendEncryptedRecords(
     HandleUploadResponseCallback response_callback) {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&UploadClient::MaybeMakeCall,
+      base::BindOnce(&UploadClientImpl::MaybeMakeCall,
                      weak_ptr_factory_.GetWeakPtr(), std::move(records),
                      need_encryption_keys, remaining_storage_capacity,
                      new_events_rate, std::move(response_callback)));
 }
 
-void UploadClient::OwnerChanged(const std::string& old_owner,
-                                const std::string& new_owner) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+void UploadClientImpl::OwnerChanged(const std::string& old_owner,
+                                    const std::string& new_owner) {
   bus_->AssertOnOriginThread();
   GetDisconnectableClient()->SetAvailability(
       /*is_available=*/!new_owner.empty());
 }
 
-void UploadClient::ServerAvailable(bool service_is_available) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+void UploadClientImpl::ServerAvailable(bool service_is_available) {
   bus_->AssertOnOriginThread();
   GetDisconnectableClient()->SetAvailability(
       /*is_available=*/service_is_available);
 }
 
-void UploadClient::SetAvailabilityForTest(bool is_available) {
+void UploadClientImpl::SetAvailabilityForTest(bool is_available) {
   base::RunLoop run_loop;
   bus_->GetOriginTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(&UploadClient::ServerAvailable,
+      FROM_HERE, base::BindOnce(&UploadClientImpl::ServerAvailable,
                                 base::Unretained(this), is_available));
   bus_->GetOriginTaskRunner()->PostTask(FROM_HERE, run_loop.QuitClosure());
   run_loop.Run();
 }
-
 }  // namespace reporting

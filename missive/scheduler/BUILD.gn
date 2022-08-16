@@ -38,7 +38,7 @@ static_library("upload_job") {
   configs += [ ":target_defaults" ]
   deps = [
     ":scheduler",
-    "//missive/dbus:upload_client",
+    "//missive/dbus:upload_client_impl",
     "//missive/util:status",
   ]
 }

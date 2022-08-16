@@ -14,6 +14,7 @@
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
 
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
@@ -42,9 +43,9 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
       missive_(std::move(missive)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   missive_->StartUp(
-      base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
-                         base::BindOnce(&DBusAdaptor::StartupFinished,
-                                        weak_ptr_factory_.GetWeakPtr())));
+      bus, base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
+                              base::BindOnce(&DBusAdaptor::StartupFinished,
+                                             weak_ptr_factory_.GetWeakPtr())));
 }
 
 void DBusAdaptor::StartupFinished(Status status) {
