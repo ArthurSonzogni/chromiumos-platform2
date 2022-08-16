@@ -68,7 +68,10 @@ if (use.test) {
       ":target_test",
       "//common-mk:test",
     ]
-    deps = [ ":libmojo_service_manager_daemon" ]
+    deps = [
+      ":libmojo_service_manager_daemon",
+      "//mojo_service_manager/lib:libmojo_service_manager_source_set",
+    ]
   }
 
   generate_mojom_bindings("daemon_test_mojom") {

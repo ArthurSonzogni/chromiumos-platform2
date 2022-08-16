@@ -20,11 +20,20 @@ pkg_config("target_default") {
   ]
 }
 
-shared_library("libmojo_service_manager") {
+# Shared by shared_library and unit test targets.
+source_set("libmojo_service_manager_source_set") {
   sources = [ "connect.cc" ]
+  configs += [
+    ":target_default",
+    "//common-mk:pic",
+  ]
+  deps = [ "//mojo_service_manager/lib/mojom:libmojo_service_manager-mojom" ]
+}
+
+shared_library("libmojo_service_manager") {
   configs += [ ":target_default" ]
   install_path = "lib"
-  deps = [ "//mojo_service_manager/lib/mojom:libmojo_service_manager-mojom" ]
+  deps = [ ":libmojo_service_manager_source_set" ]
 }
 
 generate_pkg_config("mojo_service_manager") {
