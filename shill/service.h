@@ -645,6 +645,8 @@ class Service : public base::RefCounted<Service> {
     return traffic_counter_snapshot_;
   }
 
+  void increment_portal_detection_count() { portal_detection_count_++; }
+
   // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
   // in that order.
   static const size_t kTrafficCounterArraySize;
@@ -1082,6 +1084,10 @@ class Service : public base::RefCounted<Service> {
   TrafficCounterMap traffic_counter_snapshot_;
   // Represents when traffic counters were last reset.
   base::Time traffic_counter_reset_time_;
+
+  // Counts the total number of portal detection attempts for the current active
+  // connection.
+  int portal_detection_count_ = 0;
 };
 
 }  // namespace shill

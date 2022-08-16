@@ -1067,12 +1067,45 @@ class Metrics : public DefaultServiceObserver {
 
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
-  // and the final successful attempt.
+  // and the final successful attempt. TODO(b/236388757): Deprecate post M108.
   static constexpr HistogramMetric<NameByTechnology>
       kMetricPortalAttemptsToOnline = {
           .n = NameByTechnology{"PortalAttemptsToOnline"},
           .min = 1,
           .max = 100,
+          .num_buckets = 10,
+      };
+
+  // Called with the number of detection attempts when the PortalDetector
+  // completes and the result is 'online'.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorAttemptsToOnline = {
+          .n = {"PortalDetector.AttemptsToOnline",
+                TechnologyLocation::kAfterName},
+          .min = 1,
+          .max = 20,
+          .num_buckets = 20,
+      };
+
+  // Called with the number of detection attempts when the PortalDetector
+  // completes or is stopped and the result is a non connected state.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorAttemptsToDisconnect = {
+          .n = {"PortalDetector.AttemptsToDisconnect",
+                TechnologyLocation::kAfterName},
+          .min = 1,
+          .max = 20,
+          .num_buckets = 20,
+      };
+
+  // Called with the number of detection attempts when a Service first
+  // transitions to redirect-found.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorAttemptsToRedirectFound = {
+          .n = {"PortalDetector.AttemptsToRedirectFound",
+                TechnologyLocation::kAfterName},
+          .min = 1,
+          .max = 10,
           .num_buckets = 10,
       };
 

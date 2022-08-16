@@ -549,6 +549,35 @@ void Service::SetState(ConnectState state) {
     NoteFailureEvent();
   }
 
+  if (portal_detection_count_ > 0) {
+    switch (state) {
+      case kStateUnknown:        // FALLTHROUGH
+      case kStateIdle:           // FALLTHROUGH
+      case kStateAssociating:    // FALLTHROUGH
+      case kStateConfiguring:    // FALLTHROUGH
+      case kStateDisconnecting:  // FALLTHROUGH
+      case kStateFailure:
+        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToDisconnect,
+                             technology(), portal_detection_count_);
+        portal_detection_count_ = 0;
+        break;
+      case kStateRedirectFound:
+        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToRedirectFound,
+                             technology(), portal_detection_count_);
+        // Do not reset the counter, state might reach 'online'.
+        break;
+      case kStateOnline:
+        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
+                             technology(), portal_detection_count_);
+        portal_detection_count_ = 0;
+        break;
+      case kStateConnected:       // FALLTHROUGH
+      case kStateNoConnectivity:  // FALLTHROUGH
+      case kStatePortalSuspected:
+        break;
+    }
+  }
+
   previous_state_ = state_;
   state_ = state;
   if (state != kStateFailure) {

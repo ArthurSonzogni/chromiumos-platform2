@@ -768,6 +768,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     return;
   }
 
+  selected_service_->increment_portal_detection_count();
+
   if (!network_->HasConnectionObject()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection completed but there is no Connecttion";
