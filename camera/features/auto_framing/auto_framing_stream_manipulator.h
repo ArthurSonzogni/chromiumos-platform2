@@ -139,6 +139,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   CaptureContext* CreateCaptureContext(uint32_t frame_number);
   CaptureContext* GetCaptureContext(uint32_t frame_number) const;
+  void RemoveCaptureContext(uint32_t frame_number);
 
   // Crops |input_yuv| into |output_yuv| with the |crop_region|.
   base::ScopedFD CropBufferOnThread(buffer_handle_t input_yuv,

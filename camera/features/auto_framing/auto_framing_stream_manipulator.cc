@@ -559,6 +559,13 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   ctx->num_pending_buffers -= result->num_output_buffers();
   ctx->metadata_received |= result->partial_result() == partial_result_count_;
 
+  base::ScopedClosureRunner ctx_deleter;
+  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
+    ctx_deleter.ReplaceClosure(
+        base::BindOnce(&AutoFramingStreamManipulator::RemoveCaptureContext,
+                       base::Unretained(this), result->frame_number()));
+  }
+
   // Update state when the first result is received for each frame number.
   if (!ctx->state_transition) {
     ctx->state_transition = StateTransitionOnThread();
@@ -620,8 +627,9 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     // Using FPP detector.
     if (!ctx->timestamp.has_value()) {
       VLOGF(1) << "Sensor timestamp not found for result "
-               << result->frame_number();
-      return false;
+               << result->frame_number() << "; using last timestamp plus 1";
+      ctx->timestamp = last_timestamp_ + 1;
+      last_timestamp_ = *ctx->timestamp;
     }
 
     if (full_frame_buffer.release_fence != -1) {
@@ -711,10 +719,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     result_buffers.push_back(b);
   }
   result->SetOutputBuffers(result_buffers);
-
-  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
-    capture_contexts_.erase(result->frame_number());
-  }
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers to client:";
@@ -878,10 +882,6 @@ void AutoFramingStreamManipulator::HandleFramingErrorOnThread(
     result_buffers.push_back(b);
   }
   result->SetOutputBuffers(result_buffers);
-
-  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
-    capture_contexts_.erase(result->frame_number());
-  }
 }
 
 void AutoFramingStreamManipulator::ResetOnThread() {
@@ -1011,6 +1011,10 @@ AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
     return nullptr;
   }
   return it->second.get();
+}
+
+void AutoFramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
+  capture_contexts_.erase(frame_number);
 }
 
 base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
