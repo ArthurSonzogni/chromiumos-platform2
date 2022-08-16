@@ -1703,6 +1703,8 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
         return AndroidSdkVersion::ANDROID_S;
       case 32:
         return AndroidSdkVersion::ANDROID_S_V2;
+      case 33:
+        return AndroidSdkVersion::ANDROID_TIRAMISU;
     }
   }
 
