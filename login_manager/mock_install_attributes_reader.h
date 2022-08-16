@@ -26,6 +26,8 @@ class MockInstallAttributesReader : public InstallAttributesReader {
     attributes_ = attributes;
     initialized_ = true;
   }
+
+  void SetLocked(bool is_locked) { initialized_ = is_locked; }
 };
 
 #endif  // LOGIN_MANAGER_MOCK_INSTALL_ATTRIBUTES_READER_H_

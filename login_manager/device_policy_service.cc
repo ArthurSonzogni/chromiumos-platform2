@@ -556,10 +556,7 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
-  const std::string& mode = GetEnterpriseMode();
-  if (mode != InstallAttributesReader::kDeviceModeEnterprise &&
-      mode != InstallAttributesReader::kDeviceModeEnterpriseAD &&
-      mode != InstallAttributesReader::kDeviceModeConsumer) {
+  if (!install_attributes_reader_->IsLocked()) {
     // Probably the first sign in, install attributes file is not created yet.
     if (!completion.is_null())
       std::move(completion).Run(brillo::ErrorPtr());
@@ -567,11 +564,12 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
+  const std::string& mode = GetEnterpriseMode();
+
   // If the install attributes are finalized (OOBE completed) and the device is
   // not AD managed, try to delete the Chromad migration skip OOBE flag. This
   // insures that the file gets deleted when it's no longer needed.
-  if (!mode.empty() &&
-      mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+  if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
     system_->RemoveFile(base::FilePath(
         SessionManagerImpl::kChromadMigrationSkipOobePreservePath));
   }

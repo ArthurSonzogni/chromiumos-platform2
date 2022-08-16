@@ -146,6 +146,10 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
   }
 
+  void SetInstallAttributesMissing() {
+    install_attributes_reader_.SetLocked(false);
+  }
+
   void SetDataInInstallAttributes(const std::string& mode) {
     install_attributes_reader_.SetAttributes({{"enterprise.mode", mode}});
   }
@@ -927,7 +931,7 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  SetDataInInstallAttributes(std::string());
+  SetInstallAttributesMissing();
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
 
@@ -950,7 +954,7 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  SetDataInInstallAttributes("consumer");
+  SetDataInInstallAttributes(std::string());
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
 
