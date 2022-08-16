@@ -6,18 +6,19 @@
 #define IIOSERVICE_DAEMON_DAEMON_H_
 
 #include <memory>
+#include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo_service_manager/lib/connect.h>
 
-#include "iioservice/daemon/sensor_hal_server_impl.h"
-#include "iioservice/libiioservice_ipc/sensor_server_dbus.h"
+#include "iioservice/daemon/iio_sensor.h"
 
 namespace iioservice {
 
-class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
+class Daemon : public brillo::DBusDaemon {
  public:
   ~Daemon() override;
 
@@ -31,6 +32,11 @@ class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
   // be used.
   void InitDBus();
 
+  void ConnectToMojoServiceManager();
+
+  void ServiceManagerDisconnected(uint32_t custom_reason,
+                                  const std::string& description);
+
   // Method called when kMemsSetupDoneMethod is received from mems_setup.
   // Handles reporting of a device setup by mems_setup and ready to be used.
   void HandleMemsSetupDone(
@@ -42,17 +48,14 @@ class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
-  // SensorServerDbus overrides:
-  void OnServerReceived(
-      mojo::PendingReceiver<cros::mojom::SensorHalServer> server) override;
-
-  void OnMojoDisconnect();
-
   // IPC Support
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
-  SensorHalServerImpl::ScopedSensorHalServerImpl sensor_hal_server_ = {
-      nullptr, SensorHalServerImpl::SensorHalServerImplDeleter};
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_;
+
+  IioSensor::ScopedIioSensor iio_sensor_ = {nullptr,
+                                            IioSensor::IioSensorDeleter};
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

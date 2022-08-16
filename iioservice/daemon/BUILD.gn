@@ -9,6 +9,7 @@ group("all") {
     ":iioservice",
     ":install_dbus_conf",
     ":install_init_conf",
+    ":install_policy",
   ]
 
   if (use.seccomp) {
@@ -27,6 +28,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libmems",
     "libmetrics",
     "libmojo",
+    "mojo_service_manager",
   ]
 }
 
@@ -36,6 +38,7 @@ static_library("libiioservice") {
     "daemon.cc",
     "events_handler.cc",
     "fusion.cc",
+    "iio_sensor.cc",
     "samples_handler.cc",
     "samples_handler_base.cc",
     "samples_handler_fusion.cc",
@@ -43,7 +46,6 @@ static_library("libiioservice") {
     "sensor_device_fusion.cc",
     "sensor_device_fusion_gravity.cc",
     "sensor_device_impl.cc",
-    "sensor_hal_server_impl.cc",
     "sensor_metrics.cc",
     "sensor_service_impl.cc",
   ]
@@ -75,6 +77,11 @@ install_config("install_dbus_conf") {
   install_path = "/etc/dbus-1/system.d"
 }
 
+install_config("install_policy") {
+  sources = [ "mojo_policy/iioservice_mojo.json" ]
+  install_path = "/etc/mojo/service_manager/policy"
+}
+
 if (use.seccomp) {
   install_config("install_seccomp_policy") {
     sources = [ "seccomp/iioservice-" + getenv("ARCH") + ".policy" ]
@@ -95,12 +102,12 @@ if (use.test) {
   executable("iioservice_testrunner") {
     sources = [
       "events_handler_test.cc",
+      "iio_sensor_test.cc",
       "samples_handler_fusion_test.cc",
       "samples_handler_test.cc",
       "sensor_device_fusion_gravity_test.cc",
       "sensor_device_fusion_test.cc",
       "sensor_device_impl_test.cc",
-      "sensor_hal_server_impl_test.cc",
       "sensor_metrics_mock.cc",
       "sensor_service_impl_test.cc",
       "test_fakes.cc",

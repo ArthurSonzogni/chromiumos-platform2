@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/run_loop.h>
@@ -14,7 +15,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "iioservice/daemon/sensor_hal_server_impl.h"
+#include "iioservice/daemon/iio_sensor.h"
 #include "iioservice/mojo/cros_sensor_service.mojom.h"
 
 namespace iioservice {
@@ -49,21 +50,19 @@ class FakeSensorServiceImpl final : public SensorServiceImpl {
   mojo::Receiver<cros::mojom::SensorService> receiver_{this};
 };
 
-class FakeSensorHalServerImpl final : public SensorHalServerImpl {
+class FakeIioSensor final : public IioSensor {
  public:
-  using ScopedFakeSensorHalServerImpl =
-      std::unique_ptr<FakeSensorHalServerImpl,
-                      decltype(&SensorHalServerImplDeleter)>;
+  using ScopedFakeIioSensor =
+      std::unique_ptr<FakeIioSensor, decltype(&IioSensorDeleter)>;
 
-  static ScopedFakeSensorHalServerImpl Create(
+  static ScopedFakeIioSensor Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-      mojo::PendingReceiver<cros::mojom::SensorHalServer> server_receiver,
-      MojoOnFailureCallback mojo_on_failure_callback) {
-    ScopedFakeSensorHalServerImpl server(
-        new FakeSensorHalServerImpl(std::move(ipc_task_runner),
-                                    std::move(server_receiver),
-                                    std::move(mojo_on_failure_callback)),
-        SensorHalServerImplDeleter);
+      mojo::PendingReceiver<
+          chromeos::mojo_service_manager::mojom::ServiceProvider>
+          server_receiver) {
+    ScopedFakeIioSensor server(new FakeIioSensor(std::move(ipc_task_runner),
+                                                 std::move(server_receiver)),
+                               IioSensorDeleter);
 
     server->SetSensorService();
 
@@ -71,7 +70,7 @@ class FakeSensorHalServerImpl final : public SensorHalServerImpl {
   }
 
  protected:
-  // SensorHalServerImpl overrides:
+  // IioSensor overrides:
   void SetSensorService() override {
     std::unique_ptr<FakeSensorServiceImpl,
                     decltype(&SensorServiceImpl::SensorServiceImplDeleter)>
@@ -83,16 +82,14 @@ class FakeSensorHalServerImpl final : public SensorHalServerImpl {
   }
 
  private:
-  FakeSensorHalServerImpl(
-      scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-      mojo::PendingReceiver<cros::mojom::SensorHalServer> server_receiver,
-      MojoOnFailureCallback mojo_on_failure_callback)
-      : SensorHalServerImpl(std::move(ipc_task_runner),
-                            std::move(server_receiver),
-                            std::move(mojo_on_failure_callback)) {}
+  FakeIioSensor(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
+                mojo::PendingReceiver<
+                    chromeos::mojo_service_manager::mojom::ServiceProvider>
+                    server_receiver)
+      : IioSensor(std::move(ipc_task_runner), std::move(server_receiver)) {}
 };
 
-class SensorHalServerImplTest : public ::testing::Test {
+class IioSensorTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
@@ -105,23 +102,32 @@ class SensorHalServerImplTest : public ::testing::Test {
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
-  FakeSensorHalServerImpl::ScopedFakeSensorHalServerImpl server_ = {
-      nullptr, SensorHalServerImpl::SensorHalServerImplDeleter};
+  FakeIioSensor::ScopedFakeIioSensor server_ = {nullptr,
+                                                IioSensor::IioSensorDeleter};
 };
 
-TEST_F(SensorHalServerImplTest, CreateChannelAndDisconnect) {
-  base::RunLoop loop;
-
-  mojo::Remote<cros::mojom::SensorHalServer> remote;
-  server_ = FakeSensorHalServerImpl::Create(
-      task_environment_.GetMainThreadTaskRunner(),
-      remote.BindNewPipeAndPassReceiver(), loop.QuitClosure());
+TEST_F(IioSensorTest, Request) {
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceProvider> remote;
+  server_ = FakeIioSensor::Create(task_environment_.GetMainThreadTaskRunner(),
+                                  remote.BindNewPipeAndPassReceiver());
 
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote;
-  remote->CreateChannel(sensor_service_remote.BindNewPipeAndPassReceiver());
-  remote.reset();
+  remote->Request(
+      chromeos::mojo_service_manager::mojom::ProcessIdentity::New(),
+      sensor_service_remote.BindNewPipeAndPassReceiver().PassPipe());
 
-  // Run until the remote is disconnected;
+  // Test if |sensor_service_remote| is actually connected to the
+  // |FakeSensorServiceImpl|.
+  base::RunLoop loop;
+  sensor_service_remote->GetAllDeviceIds(base::BindOnce(
+      [](base::OnceClosure closure,
+         const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
+             iio_device_ids_types) {
+        EXPECT_EQ(iio_device_ids_types.size(), 0);
+        std::move(closure).Run();
+      },
+      loop.QuitClosure()));
+  // Wait until the callback is done.
   loop.Run();
 }
 

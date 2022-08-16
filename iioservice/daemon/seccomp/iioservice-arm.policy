@@ -5,6 +5,7 @@
 rseq: 1
 
 access: 1
+ARM_set_tls: 1
 brk: 1
 clock_getres: 1
 clock_getres_time64: 1
