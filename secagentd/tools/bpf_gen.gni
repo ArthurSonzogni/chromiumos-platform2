@@ -1,0 +1,53 @@
+# Copyright 2022 The ChromiumOS Authors.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This template compiles a C program to target the Linux BPF VM and then
+# generates C code to load and interact with the BPF application.
+
+template("generate_vmlinux") {
+  forward_variables_from(invoker, [ "vmlinux_out_dir" ])
+  out_header = "${root_gen_dir}/${vmlinux_out_dir}/vmlinux.h"
+  action(target_name) {
+    outputs = [ out_header ]
+    script = "//secagentd/tools/generate-ebpf.py"
+    args = [
+      "gen_vmlinux",
+      "--sysroot=${sysroot}",
+      "--out=${out_header}",
+    ]
+  }
+}
+
+template("generate_ebpf_skeletons") {
+  forward_variables_from(invoker,
+                         [
+                           "bpf_skeleton_out_dir",
+                           "deps",
+                         ])
+  h_dir = "${root_gen_dir}/${bpf_skeleton_out_dir}"
+
+  # TODO(b/243425981): create a new clang wrapper for BPF targets.
+  # For now BUILD_CC must be used since CC will try to specify target
+  # a second time.
+  clang_compiler = getenv("BUILD_CC")
+  arch = getenv("ARCH")
+
+  action_foreach(target_name) {
+    out_header = "${h_dir}/skeleton_{{source_name_part}}.h"
+    sources = invoker.sources
+    outputs = [ out_header ]
+    script = "//secagentd/tools/generate-ebpf.py"
+    args = [
+      "gen_skel",
+      "--out=${out_header}",
+      "--source={{source}}",
+      "--clang=${clang_compiler}",
+      "--arch=${arch}",
+      "--include",
+      "${platform2_root}",
+      "${root_gen_dir}",
+      "--sysroot=${sysroot}",
+    ]
+  }
+}

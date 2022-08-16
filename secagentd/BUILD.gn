@@ -1,0 +1,36 @@
+# Copyright 2022 The ChromiumOS Authors.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//secagentd/tools/bpf_gen.gni")
+
+group("all") {
+  deps = [ ":secagentd" ]
+}
+
+generate_vmlinux("vmlinux_h") {
+  vmlinux_out_dir = "include/secagentd/vmlinux"
+}
+
+generate_ebpf_skeletons("bpf_process") {
+  sources = [ "bpf/process_bpf.c" ]
+  bpf_skeleton_out_dir = "include/secagentd/bpf_skeletons"
+  deps = [ ":vmlinux_h" ]
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [
+    "libbpf",
+    "libbrillo",
+    "libchrome",
+    "libmissiveclient",
+  ]
+}
+
+executable("secagentd") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":bpf_process" ]
+}
