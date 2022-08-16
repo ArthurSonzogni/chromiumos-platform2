@@ -20,7 +20,7 @@ class MissiveArgs {
   static constexpr base::TimeDelta kCpuCollectorIntervalDefault =
       base::Minutes(10);
   static constexpr base::TimeDelta kStorageCollectorIntervalDefault =
-      base::Minutes(10);
+      base::Hours(1);
   static constexpr base::TimeDelta kMemoryCollectorIntervalDefault =
       base::Minutes(10);
 
