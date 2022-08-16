@@ -25,11 +25,17 @@ base::FilePath GetControlPathFromDeviceInfo(
       base::FilePath(info.wakeup_device_path)
           .Append(BluetoothController::kAutosuspendSysattr);
 
-  if (base::PathExists(control_path)) {
-    return control_path;
-  } else {
+  if (!base::PathExists(control_path)) {
     return base::FilePath();
   }
+
+  if (!base::PathIsReadable(control_path) ||
+      !base::PathIsWritable(control_path)) {
+    LOG(ERROR) << "Bluetooth device power-control is not accessible to powerd: "
+               << control_path << ", syspath=" << info.syspath;
+  }
+
+  return control_path;
 }
 }  // namespace
 

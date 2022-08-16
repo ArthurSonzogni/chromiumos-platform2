@@ -48,8 +48,7 @@ for FILE in \
     $(find /sys/devices/ -name "dark_resume_active" -o \
                          -name "dark_resume_source" -o \
                          -name "wakeup_type" -o \
-                         -path "*/power/wakeup" -o \
-                         -path "*/power/control"); do
+                         -path "*/power/wakeup"); do
   # Test for existence to skip over wildcards that didn't match anything.
   if [ -e "${FILE}" ]; then
     chown power:power "${FILE}" || true
