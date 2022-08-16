@@ -40,6 +40,18 @@ enum UpdateUrgency {
   CRITICAL = 1;
 }
 
+enum UpdateDoneAction {
+  REBOOT = 0;
+  SHUTDOWN = 1;
+}
+
+// This is the message transferred from other processes to update_engine for
+// configuring the behavior of applying the deferred update.
+message ApplyUpdateConfig {
+  // The action to take after applying the deferred update.
+  UpdateDoneAction done_action = 1;
+}
+
 message Feature {
   // The name of the feature.
   string name = 1;
