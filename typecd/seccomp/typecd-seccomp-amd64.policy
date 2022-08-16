@@ -61,3 +61,5 @@ getresgid: 1
 munmap: 1
 flock: 1
 fstatfs: 1
+clock_gettime: 1
+gettimeofday: 1

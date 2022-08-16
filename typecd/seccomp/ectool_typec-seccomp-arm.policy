@@ -23,6 +23,7 @@ mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 statx: 1
 mprotect: arg2 in ~PROT_EXEC
 fstatfs: 1
+fstatfs64: 1
 close: 1
 read: 1
 # ioctl:
@@ -54,3 +55,6 @@ exit: 1
 rt_sigreturn: 1
 connect: 1
 lseek: 1
+clock_gettime: 1
+clock_gettime64: 1
+gettimeofday: 1

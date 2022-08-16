@@ -6,6 +6,7 @@
 rseq: 1
 
 nanosleep: 1
+clock_nanosleep: 1
 clock_nanosleep_time64: 1
 gettid: 1
 read: 1
@@ -57,10 +58,15 @@ mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fcntl64: 1
 mprotect: arg2 in ~PROT_EXEC
 futex: 1
+futex_time64: 1
+clock_getres: 1
 clock_getres_time64: 1
 getresuid32: 1
 getresgid32: 1
 munmap: 1
 flock: 1
 fstatfs: 1
+fstatfs64: 1
+clock_gettime: 1
 clock_gettime64: 1
+gettimeofday: 1
