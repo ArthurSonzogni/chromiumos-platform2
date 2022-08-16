@@ -114,7 +114,10 @@ shared_library("libhwsec_test") {
     "pinweaver",
   ]
   install_path = "lib"
-  deps = [ ":hardware_abstraction_internal_library" ]
+  deps = [
+    ":hardware_abstraction_internal_library",
+    ":libhwsec",
+  ]
 }
 
 config("libhwsec_tpm1_config") {
