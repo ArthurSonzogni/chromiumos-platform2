@@ -10,6 +10,8 @@
 #include <utility>
 #include <variant>
 
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
+
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -83,6 +85,41 @@ std::optional<user_data_auth::AuthFactor> ToKioskProto(
   return proto;
 }
 }  // namespace
+
+user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
+  switch (type) {
+    case AuthFactorType::kPassword:
+      return user_data_auth::AUTH_FACTOR_TYPE_PASSWORD;
+    case AuthFactorType::kPin:
+      return user_data_auth::AUTH_FACTOR_TYPE_PIN;
+    case AuthFactorType::kCryptohomeRecovery:
+      return user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY;
+    case AuthFactorType::kKiosk:
+      return user_data_auth::AUTH_FACTOR_TYPE_KIOSK;
+    case AuthFactorType::kUnspecified:
+      return user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED;
+  }
+}
+
+std::optional<AuthFactorType> AuthFactorTypeFromProto(
+    user_data_auth::AuthFactorType type) {
+  switch (type) {
+    case user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED:
+      return AuthFactorType::kUnspecified;
+    case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
+      return AuthFactorType::kPassword;
+    case user_data_auth::AUTH_FACTOR_TYPE_PIN:
+      return AuthFactorType::kPin;
+    case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
+      return AuthFactorType::kCryptohomeRecovery;
+    case user_data_auth::AUTH_FACTOR_TYPE_KIOSK:
+      return AuthFactorType::kKiosk;
+    case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
+      return AuthFactorType::kUnspecified;
+    default:
+      return std::nullopt;
+  }
+}
 
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
 // includes the metadata struct and type.

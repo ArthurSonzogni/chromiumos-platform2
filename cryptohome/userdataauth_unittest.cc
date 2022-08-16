@@ -19,6 +19,8 @@
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
@@ -30,7 +32,6 @@
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
-#include "UserDataAuth.pb.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
@@ -112,6 +113,7 @@ using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
+using ::testing::UnorderedElementsAre;
 using ::testing::WithArgs;
 
 namespace cryptohome {
@@ -4474,8 +4476,16 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsButHasNoFactors) {
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
+      .WillOnce(Return(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -4494,12 +4504,103 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsButHasNoFactors) {
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
+      .WillOnce(Return(true));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                                   user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+}
+
+TEST_F(UserDataAuthExTest,
+       ListAuthFactorsUserExistsWithNoFactorsButUssEnabled) {
+  SetUserSecretStashExperimentForTesting(true);
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
+                                    AuthFactorStorageType::kUserSecretStash, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
+      .WillOnce(Return(true));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+  SetUserSecretStashExperimentForTesting(std::nullopt);
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   static constexpr char kUser[] = "foo@example.com";
   const std::string kObfuscatedUser = SanitizeUserName(kUser);
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillOnce(Return(true));
 
   // Set up mocks for a few of VKs. We deliberately have the second not work to
   // test that the listing correctly skips it.
@@ -4554,6 +4655,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   EXPECT_EQ(list_reply.configured_auth_factors(1).label(),
             "password-scrypt-label");
   EXPECT_TRUE(list_reply.configured_auth_factors(1).has_password_metadata());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
@@ -4562,6 +4665,18 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
+                                    AuthFactorStorageType::kUserSecretStash, _))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4582,6 +4697,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   }
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
 
   // Add auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -4627,6 +4745,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
   EXPECT_EQ(list_reply.configured_auth_factors(1).label(), "pin-label");
   EXPECT_TRUE(list_reply.configured_auth_factors(1).has_pin_metadata());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(
+                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                  user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                  user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
 
   // Remove an auth factor, we should still be able to list the remaining one.
   ASSERT_THAT(manager.RemoveAuthFactor(kObfuscatedUser, *pin_factor,
@@ -4643,6 +4766,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   ASSERT_EQ(list_reply.configured_auth_factors_size(), 1);
   EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
   EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(
+                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                  user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                  user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {

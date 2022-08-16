@@ -18,6 +18,16 @@
 
 namespace cryptohome {
 
+// Functions to convert an auth factor type to and from the protobuf type enum.
+//
+// Conversion from a proto enum will only fail and return null if given a value
+// that does not correspond to any enum value that was known at build time. For
+// values which are known, but which can't be mapped onto any AuthFactorType
+// value, the kUnspecified value will be returned.
+user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
+std::optional<AuthFactorType> AuthFactorTypeFromProto(
+    user_data_auth::AuthFactorType type);
+
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
 // includes the metadata struct, type and label.
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,

@@ -27,6 +27,7 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -4737,6 +4738,7 @@ void UserDataAuth::ListAuthFactors(
   // Populate the response with all of the auth factors we can find. For
   // compatibility we assume that if the user somehow has both USS and vault
   // keysets, that the VKs should take priority.
+  AuthFactorStorageType storage_type = AuthFactorStorageType::kVaultKeyset;
   AuthFactorVaultKeysetConverter converter(keyset_management_);
   std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
   converter.VaultKeysetsToAuthFactors(username, auth_factor_map);
@@ -4751,6 +4753,39 @@ void UserDataAuth::ListAuthFactors(
   if (auth_factor_map.empty()) {
     LoadUserAuthFactorProtos(auth_factor_manager_, obfuscated_username,
                              reply.mutable_configured_auth_factors());
+    // We assume USS is available either if there are already auth factors in
+    // USS, or if there are no auth factors but the experiment is enabled.
+    if (!reply.configured_auth_factors().empty() ||
+        IsUserSecretStashExperimentEnabled()) {
+      storage_type = AuthFactorStorageType::kUserSecretStash;
+    }
+  }
+
+  // Turn the list of configured types into a set that we can use for computing
+  // the list of supported factors.
+  std::set<AuthFactorType> configured_types;
+  for (const auto& configured_factor : reply.configured_auth_factors()) {
+    if (auto type = AuthFactorTypeFromProto(configured_factor.type())) {
+      configured_types.insert(*type);
+    }
+  }
+
+  // Determine what auth factors are supported by going through the entire set
+  // of auth factor types and checking each one.
+  for (int raw_type = user_data_auth::AuthFactorType_MIN;
+       raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
+    if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
+      continue;
+    }
+    auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
+    std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
+    if (!type) {
+      continue;
+    }
+    if (auth_block_utility_->IsAuthFactorSupported(*type, storage_type,
+                                                   configured_types)) {
+      reply.add_supported_auth_factors(proto_type);
+    }
   }
 
   // Successfully completed, send the response with OK.

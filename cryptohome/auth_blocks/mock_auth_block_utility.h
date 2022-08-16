@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -29,6 +30,12 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   ~MockAuthBlockUtility() = default;
 
   MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
+  MOCK_METHOD(bool,
+              IsAuthFactorSupported,
+              (AuthFactorType,
+               AuthFactorStorageType,
+               const std::set<AuthFactorType>&),
+              (const, override));
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 
 #include <brillo/secure_blob.h>
@@ -46,6 +47,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   ~AuthBlockUtilityImpl() override;
 
   bool GetLockedToSingleUser() const override;
+
+  bool IsAuthFactorSupported(
+      AuthFactorType auth_factor_type,
+      AuthFactorStorageType auth_factor_storage_type,
+      const std::set<AuthFactorType>& configured_factors) const override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,

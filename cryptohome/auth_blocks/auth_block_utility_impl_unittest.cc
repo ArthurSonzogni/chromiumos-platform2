@@ -84,7 +84,6 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
                 &recovery_crypto_fake_tpm_backend_) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
-  virtual ~AuthBlockUtilityImplTest() {}
 
   void SetUp() override {
     // Setup salt for brillo functions.
@@ -113,6 +112,79 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
 };
+
+TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
+  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+      keyset_management_.get(), &crypto_, &platform_);
+
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPassword, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPassword, AuthFactorStorageType::kUserSecretStash, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPassword, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kPassword}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPassword, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kKiosk}));
+
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash, {}));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash, {}));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kPin}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kKiosk}));
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kCryptohomeRecovery, AuthFactorStorageType::kVaultKeyset,
+      {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kCryptohomeRecovery,
+      AuthFactorStorageType::kUserSecretStash, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kCryptohomeRecovery,
+      AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kCryptohomeRecovery}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kCryptohomeRecovery,
+      AuthFactorStorageType::kUserSecretStash, {AuthFactorType::kKiosk}));
+
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kUserSecretStash, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kVaultKeyset,
+      {AuthFactorType::kKiosk}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kKiosk}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kVaultKeyset,
+      {AuthFactorType::kPassword}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kKiosk, AuthFactorStorageType::kUserSecretStash,
+      {AuthFactorType::kPassword}));
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kUnspecified, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kUnspecified, AuthFactorStorageType::kUserSecretStash,
+      {}));
+}
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs
 // with PinWeaverAuthBlock when the AuthBlock type is low entropy credential.
