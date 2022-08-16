@@ -373,10 +373,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
                              local_mac);
         char eui64_addr_str[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, &eui64_ip, eui64_addr_str, INET6_ADDRSTRLEN);
-        char target_ifname[IFNAMSIZ];
-        if_indextoname(target_if, target_ifname);
-        router_discovery_handler_.Run(std::string(target_ifname),
-                                      std::string(eui64_addr_str));
+        router_discovery_handler_.Run(target_if, std::string(eui64_addr_str));
       }
     }
   }
@@ -672,8 +669,7 @@ void NDProxy::RegisterOnGuestIpDiscoveryHandler(
 }
 
 void NDProxy::RegisterOnRouterDiscoveryHandler(
-    base::RepeatingCallback<void(const std::string&, const std::string&)>
-        handler) {
+    base::RepeatingCallback<void(int, const std::string&)> handler) {
   router_discovery_handler_ = std::move(handler);
 }
 
@@ -840,6 +836,14 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::STOP_PROXY: {
       proxy_.StopProxy(msg.if_id_primary(), msg.if_id_secondary());
+      for (const auto& if_id : {msg.if_id_primary(), msg.if_id_secondary()}) {
+        if (guest_if_addrs_.find(if_id) != guest_if_addrs_.end()) {
+          char ifname[IFNAMSIZ];
+          if_indextoname(if_id, ifname);
+          SendMessage(NDProxyMessage::DEL_ADDR, ifname, guest_if_addrs_[if_id]);
+          guest_if_addrs_.erase(if_id);
+        }
+      }
       break;
     }
     case NDProxyControlMessage::UNKNOWN:
@@ -853,16 +857,17 @@ void NDProxyDaemon::OnGuestIpDiscovery(const std::string& ifname,
   SendMessage(NDProxyMessage::ADD_ROUTE, ifname, ip6addr);
 }
 
-void NDProxyDaemon::OnRouterDiscovery(const std::string& ifname,
-                                      const std::string& ip6addr) {
-  std::string current_addr = guest_if_addrs_[ifname];
+void NDProxyDaemon::OnRouterDiscovery(int if_id, const std::string& ip6addr) {
+  char ifname[IFNAMSIZ];
+  if_indextoname(if_id, ifname);
+  std::string current_addr = guest_if_addrs_[if_id];
   if (current_addr == ip6addr)
     return;
   if (!current_addr.empty()) {
     SendMessage(NDProxyMessage::DEL_ADDR, ifname, current_addr);
   }
   SendMessage(NDProxyMessage::ADD_ADDR, ifname, ip6addr);
-  guest_if_addrs_[ifname] = ip6addr;
+  guest_if_addrs_[if_id] = ip6addr;
 }
 
 void NDProxyDaemon::SendMessage(NDProxyMessage::NDProxyEventType type,

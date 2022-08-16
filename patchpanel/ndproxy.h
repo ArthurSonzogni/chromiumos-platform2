@@ -106,8 +106,7 @@ class NDProxy {
 
   // Callback upon receiving prefix information from RA frame.
   void RegisterOnRouterDiscoveryHandler(
-      base::RepeatingCallback<void(const std::string&, const std::string&)>
-          handler);
+      base::RepeatingCallback<void(int, const std::string&)> handler);
 
   // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
   // other way around. If |modify_router_address| is true we modify source
@@ -172,7 +171,7 @@ class NDProxy {
 
   base::RepeatingCallback<void(const std::string&, const std::string&)>
       guest_discovery_handler_;
-  base::RepeatingCallback<void(const std::string&, const std::string&)>
+  base::RepeatingCallback<void(int, const std::string&)>
       router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
@@ -204,14 +203,14 @@ class NDProxyDaemon : public brillo::Daemon {
                           const std::string& ip6addr);
 
   // Callback from NDProxy core when receive prefix info from router
-  void OnRouterDiscovery(const std::string& ifname, const std::string& ip6addr);
+  void OnRouterDiscovery(int if_id, const std::string& ip6addr);
 
   void SendMessage(NDProxyMessage::NDProxyEventType type,
                    const std::string& ifname,
                    const std::string& ip6addr);
 
-  // Map from guest-facing ifname to eui address we assigned
-  std::map<std::string, std::string> guest_if_addrs_;
+  // Map from guest-facing if_index to eui address we assigned
+  std::map<int, std::string> guest_if_addrs_;
 
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;
