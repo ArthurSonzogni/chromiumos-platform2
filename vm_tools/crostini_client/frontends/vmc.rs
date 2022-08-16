@@ -6,7 +6,7 @@ use std::error::Error;
 use std::path::Path;
 use std::{fmt, fs};
 
-use std::io::{stdout, Write};
+use std::io::{stdin, stdout, BufRead, Write};
 
 use getopts::Options;
 
@@ -43,6 +43,7 @@ enum VmcError {
     MissingActiveSession,
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
+    UserCancelled,
 }
 
 use self::VmcError::*;
@@ -150,6 +151,7 @@ impl fmt::Display for VmcError {
                 write!(f, "Expected <true/false> after the privileged flag")
             }
             UnknownSubcommand(s) => write!(f, "no such subcommand: `{}`", s),
+            UserCancelled => write!(f, "cancelled by user"),
         }
     }
 }
@@ -435,12 +437,35 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn destroy(&mut self) -> VmcResult {
-        if self.args.len() != 1 {
+        let mut opts = Options::new();
+        opts.optflag("y", "yes", "destroy without prompting");
+
+        let matches = opts.parse(self.args)?;
+        if matches.free.len() != 1 {
             return Err(ExpectedName.into());
         }
 
-        let vm_name = self.args[0];
+        let vm_name = &matches.free[0];
         let user_id_hash = get_user_hash(self.environ)?;
+        let skip_prompt =
+            matches.opt_present("yes") || !self.environ.get("VMC_NONINTERACTIVE").is_none();
+
+        if !skip_prompt {
+            println!(
+                "WARNING: this will delete all data stored in VM '{}'",
+                vm_name
+            );
+            print!("Continue? (y/N) ");
+            stdout().flush()?;
+
+            let mut line = String::new();
+            stdin().lock().read_line(&mut line).unwrap();
+            line = line.trim_end().to_string();
+
+            if !(line == "y" || line == "yes") {
+                return Err(UserCancelled.into());
+            }
+        }
 
         match self.methods.disk_destroy(vm_name, &user_id_hash) {
             Ok(()) => Ok(()),
@@ -912,7 +937,7 @@ const USAGE: &str = r#"
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
      adjust <name> <operation> [additional parameters] |
-     destroy <name> |
+     destroy [-y] <name> |
      disk-op-status <command UUID> |
      export [-d] [-f] <vm name> <file name> [<removable storage name>] |
      import [-p] <vm name> <file name> [<removable storage name>] |
@@ -1181,6 +1206,7 @@ mod tests {
             &["vmc", "adjust", "termina", "op"],
             &["vmc", "adjust", "termina", "op", "param"],
             &["vmc", "destroy", "termina"],
+            &["vmc", "destroy", "-y", "termina"],
             &["vmc", "disk-op-status", "12345"],
             &["vmc", "export", "termina", "file name"],
             &["vmc", "export", "-d", "termina", "file name"],
@@ -1321,9 +1347,12 @@ mod tests {
 
         let mut methods = mocked_methods();
 
-        let environ = vec![("CROS_USER_ID_HASH", "fake_hash")]
-            .into_iter()
-            .collect();
+        let environ = vec![
+            ("CROS_USER_ID_HASH", "fake_hash"),
+            ("VMC_NONINTERACTIVE", "1"),
+        ]
+        .into_iter()
+        .collect();
         for args in DUMMY_SUCCESS_ARGS {
             if let Err(e) = Vmc.run(&mut methods, args, &environ) {
                 panic!("test args failed: {:?}: {}", args, e)
