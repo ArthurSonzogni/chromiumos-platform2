@@ -7,12 +7,11 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <chromeos/dbus/service_constants.h>
-
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/errors/error.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace feature {
 
@@ -293,90 +292,6 @@ bool PlatformFeatures::CheckFeatureIdentity(const VariationsFeature& feature) {
 }
 
 void PlatformFeatures::ShutdownBus() {
-  bus_->ShutdownAndBlock();
-}
-
-// FakePlatformFeatures
-void FakePlatformFeatures::IsEnabled(const VariationsFeature& feature,
-                                     IsEnabledCallback callback) {
-  base::AutoLock auto_lock(enabled_lock_);
-  bus_->AssertOnOriginThread();
-  auto it = enabled_.find(feature.name);
-  bool enabled = feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
-  if (it != enabled_.end()) {
-    enabled = it->second;
-  }
-  bus_->GetOriginTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), enabled));
-}
-
-bool FakePlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
-  base::AutoLock auto_lock(enabled_lock_);
-  auto it = enabled_.find(feature.name);
-  if (it != enabled_.end()) {
-    return it->second;
-  }
-  return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
-}
-
-void FakePlatformFeatures::GetParamsAndEnabled(
-    const std::vector<const VariationsFeature* const>& features,
-    GetParamsCallback callback) {
-  bus_->AssertOnOriginThread();
-
-  bus_->GetOriginTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback),
-                                GetParamsAndEnabledBlocking(features)));
-}
-
-PlatformFeaturesInterface::ParamsResult
-FakePlatformFeatures::GetParamsAndEnabledBlocking(
-    const std::vector<const VariationsFeature* const>& features) {
-  base::AutoLock auto_lock(enabled_lock_);
-  std::map<std::string, ParamsResultEntry> out;
-  for (const auto& feature : features) {
-    ParamsResultEntry cur;
-
-    auto enabled_it = enabled_.find(feature->name);
-    cur.enabled = enabled_it != enabled_.end() && enabled_it->second;
-    if (cur.enabled) {
-      // only enabled features have params.
-      auto params_it = params_.find(feature->name);
-      if (params_it != params_.end()) {
-        cur.params = params_it->second;
-      }
-    }
-
-    out[feature->name] = cur;
-  }
-
-  return out;
-}
-
-void FakePlatformFeatures::SetEnabled(const std::string& feature,
-                                      bool enabled) {
-  base::AutoLock auto_lock(enabled_lock_);
-  enabled_[feature] = enabled;
-}
-
-void FakePlatformFeatures::ClearEnabled(const std::string& feature) {
-  base::AutoLock auto_lock(enabled_lock_);
-  enabled_.erase(feature);
-}
-
-void FakePlatformFeatures::SetParam(const std::string& feature,
-                                    const std::string& key,
-                                    const std::string& value) {
-  base::AutoLock auto_lock(enabled_lock_);
-  params_[feature][key] = value;
-}
-
-void FakePlatformFeatures::ClearParams(const std::string& feature) {
-  base::AutoLock auto_lock(enabled_lock_);
-  params_.erase(feature);
-}
-
-void FakePlatformFeatures::ShutdownBus() {
   bus_->ShutdownAndBlock();
 }
 }  // namespace feature

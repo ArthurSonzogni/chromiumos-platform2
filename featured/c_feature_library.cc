@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 #include "featured/c_feature_library.h"
 
+#include <stdlib.h>
+#include <strings.h>
+
 #include <vector>
 
 #include <dbus/bus.h>
-#include <stdlib.h>
-#include <strings.h>
 
 #include "featured/feature_library.h"
 
@@ -118,44 +119,4 @@ extern "C" void CFeatureLibraryFreeEntries(
     entries[i].params = nullptr;
   }
   bzero(entries, num_features * sizeof(*entries));
-}
-
-extern "C" CFeatureLibrary FakeCFeatureLibraryNew() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-
-  return reinterpret_cast<CFeatureLibrary>(
-      new feature::FakePlatformFeatures(bus));
-}
-
-extern "C" void FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
-                                              const char* const feature,
-                                              int enabled) {
-  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
-      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
-  library->SetEnabled(feature, enabled);
-}
-
-extern "C" void FakeCFeatureLibraryClearEnabled(CFeatureLibrary handle,
-                                                const char* const feature) {
-  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
-      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
-  library->ClearEnabled(feature);
-}
-
-extern "C" void FakeCFeatureLibrarySetParam(CFeatureLibrary handle,
-                                            const char* const feature,
-                                            const char* const key,
-                                            const char* const value) {
-  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
-      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
-  library->SetParam(feature, key, value);
-}
-
-extern "C" void FakeCFeatureLibraryClearParams(CFeatureLibrary handle,
-                                               const char* const feature) {
-  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
-      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
-  library->ClearParams(feature);
 }

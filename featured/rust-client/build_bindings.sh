@@ -23,7 +23,7 @@ bindgen_generate() {
         --allowlist-type='.*Feature.*' \
         --allowlist-function='.*Feature.*' \
         --allowlist-var='.*Feature.*' \
-        "../c_feature_library.h"
+        "../c_fake_feature_library.h"
 }
 
 bindgen_generate | rustfmt > src/bindings.rs

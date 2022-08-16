@@ -101,28 +101,6 @@ void FEATURE_EXPORT CFeatureLibraryFreeEntries(
     struct VariationsFeatureGetParamsResponseEntry* entries,
     size_t num_features);
 
-// C wrapper for `new FakePlatformFeatures()`
-CFeatureLibrary FEATURE_EXPORT FakeCFeatureLibraryNew();
-
-// C wrapper for FakePlatformFeatures::SetEnabled()
-void FEATURE_EXPORT FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
-                                                  const char* const feature,
-                                                  int enabled);
-
-// C wrapper for FakePlatformFeatures::ClearEnabled()
-void FEATURE_EXPORT FakeCFeatureLibraryClearEnabled(CFeatureLibrary handle,
-                                                    const char* const feature);
-
-// C wrapper for FakePlatformFeatures::SetParam()
-void FEATURE_EXPORT FakeCFeatureLibrarySetParam(CFeatureLibrary handle,
-                                                const char* const feature,
-                                                const char* const key,
-                                                const char* const value);
-
-// C wrapper for FakePlatformFeatures::ClearParams()
-void FEATURE_EXPORT FakeCFeatureLibraryClearParams(CFeatureLibrary handle,
-                                                   const char* const feature);
-
 #if defined(__cplusplus)
 }  // extern "C"
 #endif

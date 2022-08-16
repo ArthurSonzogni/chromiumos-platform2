@@ -1,9 +1,11 @@
 // Copyright 2022 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "featured/c_fake_feature_library.h"
+
 #include <stdio.h>
 
-#include "c_feature_library.h"
+#include "featured/c_feature_library.h"
 
 const struct VariationsFeature kCrOSLateBootMyAwesomeFeature = {
     .name = "CrOSLateBootMyAwesomeFeature",

@@ -1,12 +1,11 @@
 // Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 #ifndef FEATURED_FEATURE_LIBRARY_H_
 #define FEATURED_FEATURE_LIBRARY_H_
 
-#include "featured/feature_export.h"
 #include "featured/c_feature_library.h"  // for enums
+#include "featured/feature_export.h"
 
 #include <map>
 #include <memory>
@@ -203,45 +202,6 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
       GUARDED_BY(lock_);
 
   base::WeakPtrFactory<PlatformFeatures> weak_ptr_factory_{this};
-};
-
-// Fake class for testing, which returns a specified value for each feature.
-class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
- public:
-  explicit FakePlatformFeatures(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
-
-  FakePlatformFeatures(const FakePlatformFeatures&) = delete;
-  FakePlatformFeatures& operator=(const FakePlatformFeatures&) = delete;
-
-  void IsEnabled(const VariationsFeature& feature,
-                 IsEnabledCallback callback) override;
-
-  bool IsEnabledBlocking(const VariationsFeature& feature) override;
-
-  void GetParamsAndEnabled(
-      const std::vector<const VariationsFeature* const>& features,
-      GetParamsCallback callback) override;
-
-  ParamsResult GetParamsAndEnabledBlocking(
-      const std::vector<const VariationsFeature* const>& features) override;
-
-  void SetEnabled(const std::string& feature, bool enabled);
-
-  void ClearEnabled(const std::string& feature);
-
-  void SetParam(const std::string& feature,
-                const std::string& key,
-                const std::string& value);
-  void ClearParams(const std::string& feature);
-
-  void ShutdownBus() override;
-
- private:
-  scoped_refptr<dbus::Bus> bus_;
-
-  base::Lock enabled_lock_;
-  std::map<std::string, bool> enabled_;
-  std::map<std::string, std::map<std::string, std::string>> params_;
 };
 }  // namespace feature
 
