@@ -68,7 +68,9 @@ ModemMbim::~ModemMbim() {
 void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
                            ResultCallback cb) {
   LOG(INFO) << __func__;
-  CHECK(current_state_ == State::kMbimUninitialized);
+  if (current_state_ != State::kMbimUninitialized) {
+    Shutdown();
+  }
   retry_initialization_callback_.Reset();
   euicc_manager_ = euicc_manager;
   InitializationStep(State::kMbimUninitialized, std::move(cb));
