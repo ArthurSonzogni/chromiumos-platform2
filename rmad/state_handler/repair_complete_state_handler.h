@@ -22,8 +22,8 @@ namespace rmad {
 
 class RepairCompleteStateHandler : public BaseStateHandler {
  public:
-  // Wait for 1 second before reboot/shutdown/cutoff.
-  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(1);
+  // Wait for 3 seconds before reboot/shutdown/cutoff.
+  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(3);
   // Report power cable state every second.
   static constexpr base::TimeDelta kReportPowerCableInterval = base::Seconds(1);
 

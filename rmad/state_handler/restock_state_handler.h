@@ -18,8 +18,8 @@ namespace rmad {
 
 class RestockStateHandler : public BaseStateHandler {
  public:
-  // Wait for 1 second before shutting down.
-  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(1);
+  // Wait for 3 seconds before shutting down.
+  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(3);
 
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store,
                                scoped_refptr<DaemonCallback> daemon_callback);

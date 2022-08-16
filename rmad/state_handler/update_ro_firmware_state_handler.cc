@@ -130,7 +130,7 @@ void UpdateRoFirmwareStateHandler::CleanUpState() {
 void UpdateRoFirmwareStateHandler::StartSignalTimer() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   status_signal_timer_.Start(
-      FROM_HERE, kPollInterval, this,
+      FROM_HERE, kSignalInterval, this,
       &UpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
 }
 
@@ -143,7 +143,7 @@ void UpdateRoFirmwareStateHandler::StopSignalTimer() {
 
 void UpdateRoFirmwareStateHandler::StartPollingTimer() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
+  check_usb_timer_.Start(FROM_HERE, kPollInterval, this,
                          &UpdateRoFirmwareStateHandler::WaitUsb);
 }
 
@@ -406,7 +406,7 @@ RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
 
 void FakeUpdateRoFirmwareStateHandler::RunState() {
   status_signal_timer_.Start(
-      FROM_HERE, kPollInterval, this,
+      FROM_HERE, kSignalInterval, this,
       &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
 }
 

@@ -36,8 +36,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Report status every second.
   static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
-  // Wait for 1 second before rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
+  // Wait for 3 seconds before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(3);
 
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,

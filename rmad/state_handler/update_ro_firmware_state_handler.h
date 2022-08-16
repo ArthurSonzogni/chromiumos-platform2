@@ -29,9 +29,14 @@ namespace rmad {
 
 class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
-  static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
-  static constexpr base::TimeDelta kTaskInterval = base::Seconds(2);
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(1);
+  // Report firmware update status every second.
+  static constexpr base::TimeDelta kSignalInterval = base::Seconds(1);
+
+  // Check USB status every 2 seconds.
+  static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
+
+  // Wait for 3 second before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(3);
 
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
@@ -116,7 +121,7 @@ namespace fake {
 // quite different from the normal one, so we write it from scratch.
 class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
-  static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
+  static constexpr base::TimeDelta kSignalInterval = base::Seconds(1);
 
   explicit FakeUpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
