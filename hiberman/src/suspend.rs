@@ -68,11 +68,11 @@ impl SuspendConductor {
     /// hibernation.
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
+        let start = Instant::now();
+        create_hibernate_dir()?;
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
-        let start = Instant::now();
-        create_hibernate_dir()?;
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
         let should_zero = is_lvm && !files_exist;
