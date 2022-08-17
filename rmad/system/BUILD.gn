@@ -23,7 +23,6 @@ pkg_config("target_defaults") {
 
 source_set("libsystem") {
   sources = [
-    "cros_disks_client_impl.cc",
     "cryptohome_client_impl.cc",
     "hardware_verifier_client_impl.cc",
     "power_manager_client_impl.cc",
@@ -46,7 +45,6 @@ if (use.test) {
 
   source_set("libsystem_test") {
     sources = [
-      "cros_disks_client_test.cc",
       "cryptohome_client_test.cc",
       "hardware_verifier_client_test.cc",
       "power_manager_client_test.cc",

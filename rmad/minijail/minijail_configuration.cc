@@ -43,11 +43,6 @@ void EnterMinijail(bool set_admin_caps) {
   minijail_bind(j.get(), "/dev/", "/dev", 0);
   minijail_bind(j.get(), "/proc", "/proc", 0);
 
-  // TODO(b/241859099): Not needed after we use the executor to copy the
-  // firmware updater and remove cros-disks dependency.
-  minijail_remount_mode(j.get(), MS_SLAVE);
-  minijail_mount(j.get(), "/media", "/media", "none", MS_BIND | MS_REC);
-
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
   // Required to read cros_config.
   minijail_bind(j.get(), "/run/chromeos-config/v1", "/run/chromeos-config/v1",
