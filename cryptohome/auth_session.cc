@@ -1062,6 +1062,17 @@ void AuthSession::RemoveAuthFactor(
     base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
         on_done) {
   user_data_auth::RemoveAuthFactorReply reply;
+
+  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInRemoveAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+
   if (user_secret_stash_) {
     // TODO(b/236869367): Wrap the error when it is not a OKStatus.
     ReplyWithError(
@@ -1069,6 +1080,7 @@ void AuthSession::RemoveAuthFactor(
         RemoveAuthFactorViaUserSecretStash(request.auth_factor_label()));
     return;
   }
+
   // TODO(b/236869367): Implement for VaultKeyset users.
   ReplyWithError(
       std::move(on_done), reply,

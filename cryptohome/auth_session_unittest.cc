@@ -2859,6 +2859,33 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
 }
 
+TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  // Test.
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  user_data_auth::RemoveAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  auth_session.RemoveAuthFactor(
+      request, base::BindOnce(
+                   [](user_data_auth::CryptohomeErrorCode& error,
+                      const user_data_auth::RemoveAuthFactorReply& reply) {
+                     error = reply.error();
+                   },
+                   std::ref(error)));
+  EXPECT_EQ(error,
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+}
+
 TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
   // Setup.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
