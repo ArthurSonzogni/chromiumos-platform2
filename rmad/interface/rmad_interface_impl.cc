@@ -21,9 +21,10 @@
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
+#include "rmad/executor/udev/udev_device.h"
+#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/system/cros_disks_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
@@ -72,7 +73,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client,
     std::unique_ptr<PowerManagerClient> power_manager_client,
-    std::unique_ptr<CrosDisksClient> cros_disks_client,
+    std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : RmadInterface(),
@@ -82,7 +83,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       power_manager_client_(std::move(power_manager_client)),
-      cros_disks_client_(std::move(cros_disks_client)),
+      udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       metrics_utils_(std::move(metrics_utils)),
       external_utils_initialized_(true),
@@ -108,7 +109,7 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
-  cros_disks_client_ = std::make_unique<CrosDisksClientImpl>(GetSystemBus());
+  udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }
 
@@ -528,26 +529,28 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
 }
 
 void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
-  if (std::vector<std::string> sysfs_paths;
-      cros_disks_client_->EnumerateDevices(&sysfs_paths)) {
-    auto devices = std::make_unique<std::list<std::string>>();
-    for (const std::string& sysfs_path : sysfs_paths) {
-      if (DeviceProperties device_properties;
-          cros_disks_client_->GetDeviceProperties(sysfs_path,
-                                                  &device_properties)) {
-        devices->push_back(device_properties.device_file);
-      }
-    }
-    if (std::string log_string; GetLogString(&log_string)) {
-      SaveLogToFirstMountableDevice(std::move(devices), log_string,
-                                    std::move(callback));
-      return;
-    }
+  std::string log_string;
+  if (!GetLogString(&log_string)) {
+    // Failed to generate logs.
+    SaveLogReply reply;
+    reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
+    ReplyCallback(std::move(callback), reply);
+    return;
   }
-  // No detected external storage.
-  SaveLogReply reply;
-  reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
-  ReplyCallback(std::move(callback), reply);
+
+  std::vector<std::string> device_paths = GetRemovableBlockDevicePaths();
+  auto device_list = std::make_unique<std::list<std::string>>(
+      device_paths.begin(), device_paths.end());
+  if (device_list->empty()) {
+    // No detected external storage.
+    SaveLogReply reply;
+    reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
+    ReplyCallback(std::move(callback), reply);
+    return;
+  }
+
+  SaveLogToFirstMountableDevice(std::move(device_list), log_string,
+                                std::move(callback));
 }
 
 void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
@@ -643,6 +646,17 @@ bool RmadInterfaceImpl::CanGoBack() const {
             prev_state_handler->IsRepeatable());
   }
   return false;
+}
+
+std::vector<std::string> RmadInterfaceImpl::GetRemovableBlockDevicePaths()
+    const {
+  std::vector<std::string> device_paths;
+  for (const auto& device : udev_utils_->EnumerateBlockDevices()) {
+    if (device->IsRemovable()) {
+      device_paths.push_back(device->GetDeviceNode());
+    }
+  }
+  return device_paths;
 }
 
 }  // namespace rmad

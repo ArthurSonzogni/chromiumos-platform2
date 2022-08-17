@@ -18,6 +18,7 @@ source_set("libinterface") {
   sources = [ "rmad_interface_impl.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//rmad/executor/udev:libudev",
     "//rmad/metrics:libmetrics",
     "//rmad/state_handler:libstate_handler",
     "//rmad/system:libsystem",
