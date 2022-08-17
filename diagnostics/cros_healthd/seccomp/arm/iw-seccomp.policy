@@ -18,6 +18,7 @@ socket: arg0 == AF_NETLINK || arg0 == AF_UNIX
 setsockopt: 1
 ioctl: arg1 == SIOCGIFNAME || arg1 == SIOCGIFINDEX
 fstatfs: 1
+fstatfs64: 1
 read: 1
 brk: 1
 access: 1

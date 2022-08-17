@@ -12,6 +12,7 @@ close: 1
 exit: 1
 exit_group: 1
 fstatfs: 1
+fstatfs64: 1
 # ioctl: arg1 == 0x5401 /* TCGETS */ ||
 #        arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */
 ioctl: arg1 == 0x5401 || arg1 == 0xc014ec00
