@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
+#include <re2/re2.h>
 
 #include "usb_bouncer/util.h"
 
@@ -187,14 +188,16 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
                                UMAEventTiming::kLocked);
           if (IsExternalDevice(devpath)) {
             UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
-                                         UMAEventTiming::kLocked);
+                                         UMAEventTiming::kLocked,
+                                         GetPortType(devpath));
           }
         } else {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLoggedIn);
           if (IsExternalDevice(devpath)) {
             UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
-                                         UMAEventTiming::kLoggedIn);
+                                         UMAEventTiming::kLoggedIn,
+                                         GetPortType(devpath));
           }
           (*user_db_.Get().mutable_entries())[user_key] = entry;
         }
@@ -256,8 +259,9 @@ bool EntryManager::HandleUserLogin() {
                              UMAEventTiming::kLoggedOut);
         if (devpaths.find(global_key) != devpaths.end() &&
             IsExternalDevice(devpaths.find(global_key)->second)) {
-          UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
-                                       UMAEventTiming::kLoggedOut);
+          UMALogExternalDeviceAttached(
+              &metrics_, rule, new_entry, UMAEventTiming::kLoggedOut,
+              GetPortType(devpaths.find(global_key)->second));
         }
       }
       (*user_entries)[user_key] = entry.second;
@@ -327,6 +331,21 @@ bool EntryManager::IsExternalDevice(const std::string& devpath) {
   }
   base::TrimWhitespaceASCII(panel, base::TRIM_TRAILING, &panel);
   return (panel != "unknown");
+}
+
+UMAPortType EntryManager::GetPortType(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+  std::string connector_uevent;
+  std::string devtype;
+  if (base::ReadFileToString(normalized_devpath.Append("port/connector/uevent"),
+                             &connector_uevent) &&
+      RE2::PartialMatch(connector_uevent, R"(DEVTYPE=(\w+))", &devtype) &&
+      devtype == "typec_port") {
+    return UMAPortType::kTypeC;
+  }
+
+  return UMAPortType::kTypeA;
 }
 
 }  // namespace usb_bouncer

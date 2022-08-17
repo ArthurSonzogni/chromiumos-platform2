@@ -18,30 +18,33 @@
 namespace usb_bouncer {
 
 enum class UMADeviceClass {
-  kApp,
-  kAudio,
-  kAV,
-  kCard,
-  kComm,
-  kHealth,
-  kHID,
-  kHub,
-  kImage,
-  kMisc,
-  kOther,
-  kPhys,
-  kPrint,
-  kSec,
-  kStorage,
-  kVendor,
-  kVideo,
-  kWireless,
+  kApp = 0,
+  kAudio = 1,
+  kAV = 2,
+  kCard = 3,
+  kComm = 4,
+  kHealth = 5,
+  kHID = 6,
+  kHub = 7,
+  kImage = 8,
+  kMisc = 9,
+  kOther = 10,
+  kPhys = 11,
+  kPrint = 12,
+  kSec = 13,
+  kStorage = 14,
+  kVendor = 15,
+  kVideo = 16,
+  kWireless = 17,
+  kMaxValue = kWireless,
 };
 
 const std::string to_string(UMADeviceClass device_class);
 const std::string to_string(UMADeviceRecognized recognized);
+const std::string to_string(UMAPortType port);
 std::ostream& operator<<(std::ostream& out, UMADeviceClass device_class);
 std::ostream& operator<<(std::ostream& out, UMADeviceRecognized recognized);
+std::ostream& operator<<(std::ostream& out, UMAPortType port);
 
 // libusbguard uses exceptions, so this converts the exception case to a return
 // value that tests as bool false.

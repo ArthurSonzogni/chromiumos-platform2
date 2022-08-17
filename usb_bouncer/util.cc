@@ -482,7 +482,8 @@ void UMALogDeviceAttached(MetricsLibrary* metrics,
 void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   const std::string& rule,
                                   UMADeviceRecognized recognized,
-                                  UMAEventTiming timing) {
+                                  UMAEventTiming timing,
+                                  UMAPortType port) {
   usbguard::Rule parsed_rule = GetRuleFromString(rule);
   if (!parsed_rule) {
     return;
@@ -493,6 +494,15 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                          to_string(recognized).c_str(),
                          to_string(GetClassFromRule(parsed_rule)).c_str()),
       static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
+
+  // Another metrics on device class categorized by port type.
+  // Report this separately since port type is not related to
+  // Recongnized/Unrecognized and Event Timing.
+  metrics->SendEnumToUMA(base::StringPrintf("%s.%s.DeviceClass",
+                                            kUmaExternalDeviceAttachedHistogram,
+                                            to_string(port).c_str()),
+                         static_cast<int>(GetClassFromRule(parsed_rule)),
+                         static_cast<int>(UMADeviceClass::kMaxValue));
 }
 
 base::FilePath GetUserDBDir() {
@@ -735,6 +745,17 @@ const std::string to_string(UMADeviceRecognized recognized) {
 }
 #undef TO_STRING_HELPER
 
+#define TO_STRING_HELPER(x) \
+  case UMAPortType::k##x:   \
+    return #x
+const std::string to_string(UMAPortType port) {
+  switch (port) {
+    TO_STRING_HELPER(TypeC);
+    TO_STRING_HELPER(TypeA);
+  }
+}
+#undef TO_STRING_HELPER
+
 std::ostream& operator<<(std::ostream& out, UMADeviceClass device_class) {
   out << to_string(device_class);
   return out;
@@ -742,6 +763,11 @@ std::ostream& operator<<(std::ostream& out, UMADeviceClass device_class) {
 
 std::ostream& operator<<(std::ostream& out, UMADeviceRecognized recognized) {
   out << to_string(recognized);
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, UMAPortType port) {
+  out << to_string(port);
   return out;
 }
 

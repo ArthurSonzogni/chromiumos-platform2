@@ -59,6 +59,11 @@ enum class UMAEventTiming {
   kMaxValue = kLocked,
 };
 
+enum class UMAPortType {
+  kTypeA,
+  kTypeC,
+};
+
 // Returns true if the process has CAP_CHOWN.
 bool CanChown();
 
@@ -95,7 +100,8 @@ void UMALogDeviceAttached(MetricsLibrary* metrics,
 void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   const std::string& rule,
                                   UMADeviceRecognized recognized,
-                                  UMAEventTiming timing);
+                                  UMAEventTiming timing,
+                                  UMAPortType port);
 
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the

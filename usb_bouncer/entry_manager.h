@@ -18,6 +18,7 @@
 
 #include "usb_bouncer/rule_db_storage.h"
 #include "usb_bouncer/usb_bouncer.pb.h"
+#include "usb_bouncer/util.h"
 
 namespace usb_bouncer {
 
@@ -92,6 +93,8 @@ class EntryManager {
   bool PersistChanges();
 
   bool IsExternalDevice(const std::string& devpath);
+
+  UMAPortType GetPortType(const std::string& devpath);
 
   // Represents whether the lock screen is being shown.
   bool user_db_read_only_;

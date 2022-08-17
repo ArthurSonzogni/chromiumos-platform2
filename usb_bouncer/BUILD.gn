@@ -26,6 +26,7 @@ pkg_config("target_defaults") {
     "libsession_manager-client",
     "libusbguard",
     "protobuf",
+    "re2",
   ]
 
   # Needed to catch rule parsing errors reported by libusbguard.
