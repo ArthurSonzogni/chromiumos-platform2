@@ -26,6 +26,10 @@ class MockStateHandler : public BaseStateHandler {
               GetNextStateCase,
               (const RmadState&),
               (override));
+  MOCK_METHOD(BaseStateHandler::GetNextStateCaseReply,
+              TryGetNextStateCaseAtBoot,
+              (),
+              (override));
 
  protected:
   ~MockStateHandler() override = default;

@@ -31,10 +31,12 @@
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
+using testing::InSequence;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SetArgPointee;
+using testing::StrictMock;
 
 namespace rmad {
 
@@ -118,6 +120,36 @@ constexpr char kExpectedLog[] = R"({
 
 ====================
 
+test_log)";
+
+constexpr char kExpectedLog2[] = R"({
+   "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
+   "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
+   "replaced_component_names": [  ],
+   "ro_firmware_verified": true,
+   "running_time": 333.333,
+   "state_metrics": {
+      "00_Welcome": {
+         "state_case": 1,
+         "state_get_log_count": 3,
+         "state_is_aborted": false,
+         "state_overall_time": 123.456,
+         "state_save_log_count": 4,
+         "state_transition_count": 2
+      },
+      "01_ComponentsRepair": {
+         "state_case": 2,
+         "state_get_log_count": 1,
+         "state_is_aborted": true,
+         "state_overall_time": 332.544,
+         "state_save_log_count": 0,
+         "state_transition_count": 1
+      }
+   }
+}
+
+====================
+
 fake_log)";
 
 constexpr base::TimeDelta kTestTransitionInterval = base::Seconds(1);
@@ -145,6 +177,7 @@ class RmadInterfaceImplTest : public testing::Test {
       const RmadState& state,
       bool is_repeatable,
       RmadErrorCode initialize_error,
+      RmadErrorCode get_next_state_case_error,
       RmadState::StateCase next_state) {
     auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
     auto mock_handler = base::MakeRefCounted<NiceMock<MockStateHandler>>(
@@ -157,7 +190,10 @@ class RmadInterfaceImplTest : public testing::Test {
         .WillByDefault(Return(initialize_error));
     ON_CALL(*mock_handler, GetNextStateCase(_))
         .WillByDefault(Return(BaseStateHandler::GetNextStateCaseReply{
-            .error = RMAD_ERROR_OK, .state_case = next_state}));
+            .error = get_next_state_case_error, .state_case = next_state}));
+    ON_CALL(*mock_handler, TryGetNextStateCaseAtBoot())
+        .WillByDefault(Return(BaseStateHandler::GetNextStateCaseReply{
+            .error = get_next_state_case_error, .state_case = next_state}));
     return mock_handler;
   }
 
@@ -166,8 +202,6 @@ class RmadInterfaceImplTest : public testing::Test {
       std::vector<scoped_refptr<BaseStateHandler>> mock_handlers) {
     auto state_handler_manager =
         std::make_unique<StateHandlerManager>(json_store);
-    // TODO(gavindodd): Work out how to create RmadState objects and have them
-    // scoped to the test.
     for (auto mock_handler : mock_handlers) {
       state_handler_manager->RegisterStateHandler(mock_handler);
     }
@@ -176,28 +210,34 @@ class RmadInterfaceImplTest : public testing::Test {
 
   std::unique_ptr<StateHandlerManager> CreateStateHandlerManager(
       scoped_refptr<JsonStore> json_store) {
-    // TODO(gavindodd): Work out how to create RmadState objects and have them
-    // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
-                                              RMAD_ERROR_OK,
+                                              RMAD_ERROR_OK, RMAD_ERROR_OK,
                                               RmadState::kComponentsRepair));
-    mock_handlers.push_back(
-        CreateMockHandler(json_store, components_repair_proto_, true,
-                          RMAD_ERROR_OK, RmadState::kDeviceDestination));
-    mock_handlers.push_back(
-        CreateMockHandler(json_store, device_destination_proto_, false,
-                          RMAD_ERROR_OK, RmadState::kWpDisableMethod));
+    mock_handlers.push_back(CreateMockHandler(
+        json_store, components_repair_proto_, true, RMAD_ERROR_OK,
+        RMAD_ERROR_OK, RmadState::kDeviceDestination));
+    mock_handlers.push_back(CreateMockHandler(
+        json_store, device_destination_proto_, false, RMAD_ERROR_OK,
+        RMAD_ERROR_OK, RmadState::kWpDisableMethod));
+    return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
+  }
+
+  std::unique_ptr<StateHandlerManager>
+  CreateStateHandlerManagerGetNextStateCaseFail(
+      scoped_refptr<JsonStore> json_store) {
+    std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
+    mock_handlers.push_back(CreateMockHandler(
+        json_store, welcome_proto_, true, RMAD_ERROR_OK,
+        RMAD_ERROR_REQUEST_ARGS_MISSING, RmadState::kWelcome));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
   std::unique_ptr<StateHandlerManager> CreateStateHandlerManagerMissingHandler(
       scoped_refptr<JsonStore> json_store) {
-    // TODO(gavindodd): Work out how to create RmadState objects and have them
-    // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
-                                              RMAD_ERROR_OK,
+                                              RMAD_ERROR_OK, RMAD_ERROR_OK,
                                               RmadState::kComponentsRepair));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
@@ -206,15 +246,16 @@ class RmadInterfaceImplTest : public testing::Test {
   CreateStateHandlerManagerInitializeStateFail(
       scoped_refptr<JsonStore> json_store) {
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
-    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
-                                              RMAD_ERROR_MISSING_COMPONENT,
-                                              RmadState::kComponentsRepair));
-    mock_handlers.push_back(
-        CreateMockHandler(json_store, components_repair_proto_, true,
-                          RMAD_ERROR_OK, RmadState::kDeviceDestination));
     mock_handlers.push_back(CreateMockHandler(
-        json_store, device_destination_proto_, false,
-        RMAD_ERROR_DEVICE_INFO_INVALID, RmadState::kWpDisableMethod));
+        json_store, welcome_proto_, true, RMAD_ERROR_MISSING_COMPONENT,
+        RMAD_ERROR_OK, RmadState::kComponentsRepair));
+    mock_handlers.push_back(CreateMockHandler(
+        json_store, components_repair_proto_, true, RMAD_ERROR_OK,
+        RMAD_ERROR_OK, RmadState::kDeviceDestination));
+    mock_handlers.push_back(
+        CreateMockHandler(json_store, device_destination_proto_, false,
+                          RMAD_ERROR_DEVICE_INFO_INVALID, RMAD_ERROR_OK,
+                          RmadState::kWpDisableMethod));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
@@ -257,18 +298,41 @@ class RmadInterfaceImplTest : public testing::Test {
     return std::make_unique<NiceMock<MockPowerManagerClient>>();
   }
 
-  std::unique_ptr<CmdUtils> CreateCmdUtils() {
-    auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
-    ON_CALL(*mock_cmd_utils,
-            GetOutput(std::vector<std::string>(
-                          {"/usr/sbin/croslog", "--identifier=rmad"}),
-                      _))
-        .WillByDefault(DoAll(SetArgPointee<1>("fake_log"), Return(true)));
-    ON_CALL(*mock_cmd_utils,
+  std::unique_ptr<CmdUtils> CreateCmdUtils(
+      const std::vector<std::string>& statuses = {},
+      const std::vector<std::string>& logs = {}) {
+    auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+    {
+      InSequence seq;
+      for (std::string status : statuses) {
+        EXPECT_CALL(
+            *mock_cmd_utils,
             GetOutput(std::vector<std::string>(
                           {"/sbin/initctl", "status", "system-services"}),
                       _))
-        .WillByDefault(DoAll(SetArgPointee<1>("running"), Return(true)));
+            .WillOnce(DoAll(SetArgPointee<1>(status), Return(true)));
+      }
+      EXPECT_CALL(*mock_cmd_utils,
+                  GetOutput(std::vector<std::string>(
+                                {"/sbin/initctl", "status", "system-services"}),
+                            _))
+          .WillRepeatedly(DoAll(SetArgPointee<1>("running"), Return(true)));
+    }
+    {
+      InSequence seq;
+      for (std::string log : logs) {
+        EXPECT_CALL(*mock_cmd_utils,
+                    GetOutput(std::vector<std::string>(
+                                  {"/usr/sbin/croslog", "--identifier=rmad"}),
+                              _))
+            .WillOnce(DoAll(SetArgPointee<1>(log), Return(true)));
+      }
+      EXPECT_CALL(*mock_cmd_utils,
+                  GetOutput(std::vector<std::string>(
+                                {"/usr/sbin/croslog", "--identifier=rmad"}),
+                            _))
+          .WillRepeatedly(DoAll(SetArgPointee<1>("fake_log"), Return(true)));
+    }
     return mock_cmd_utils;
   }
 
@@ -289,6 +353,41 @@ class RmadInterfaceImplTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
+TEST_F(RmadInterfaceImplTest, Setup) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  bool cellular_disabled = false;
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateCmdUtils({"waiting"}),
+      CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  EXPECT_TRUE(cellular_disabled);
+}
+
+TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  bool cellular_disabled = false;
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(),
+      CreateCmdUtils(std::vector<std::string>(10, "waiting")),
+      CreateMetricsUtils(true));
+  EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
+}
+
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
@@ -301,14 +400,15 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   EXPECT_TRUE(cellular_disabled);
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -326,14 +426,15 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   EXPECT_FALSE(cellular_disabled);
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -351,6 +452,7 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 
   EXPECT_FALSE(cellular_disabled);
 
@@ -372,12 +474,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
       CreateTpmManagerClient(RoVerificationStatus::PASS),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -394,12 +497,13 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -417,6 +521,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
@@ -429,12 +534,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -451,12 +557,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -473,12 +580,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
-    EXPECT_EQ(true, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -495,12 +603,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
-    EXPECT_EQ(true, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   // TODO(gavindodd): Use mock log to check for expected error.
@@ -518,12 +627,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -539,12 +649,13 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -561,10 +672,11 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
-    EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+    EXPECT_FALSE(reply.has_state());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetCurrentState(base::BindOnce(callback));
@@ -584,43 +696,82 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
-  EXPECT_EQ(true, rmad_interface.CanAbort());
+  EXPECT_TRUE(rmad_interface.CanAbort());
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+  auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.GetCurrentState(base::BindOnce(callback1));
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
 
   TransitionNextStateRequest request;
-  auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
+  auto callback2 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
-    EXPECT_EQ(true, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
-  EXPECT_EQ(true, rmad_interface.CanAbort());
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback2));
+  EXPECT_TRUE(rmad_interface.CanAbort());
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
       state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
       kTestTransitionInterval.InSecondsF());
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
 
-  auto callback2 = [](const GetStateReply& reply, bool quit_daemon) {
+  auto callback3 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kDeviceDestination, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(false, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_FALSE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.TransitionNextState(request, base::BindOnce(callback2));
-  EXPECT_EQ(false, rmad_interface.CanAbort());
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback3));
+  EXPECT_EQ(RmadState::kDeviceDestination,
+            rmad_interface.GetCurrentStateCase());
+  EXPECT_FALSE(rmad_interface.CanAbort());
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
+  EXPECT_EQ(RmadState::kDeviceDestination,
+            rmad_interface.GetCurrentStateCase());
+}
+
+TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
+      base::Time::Now().ToDoubleT()));
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_TRUE(rmad_interface.CanAbort());
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+  rmad_interface.TryTransitionNextStateFromCurrentState();
+  EXPECT_TRUE(rmad_interface.CanAbort());
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
+  rmad_interface.TryTransitionNextStateFromCurrentState();
+  EXPECT_FALSE(rmad_interface.CanAbort());
+  EXPECT_EQ(RmadState::kDeviceDestination,
+            rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
@@ -634,6 +785,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
@@ -655,13 +807,43 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_DEVICE_INFO_INVALID, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
-    EXPECT_EQ(true, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
+}
+
+TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
+      base::Time::Now().ToDoubleT()));
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManagerGetNextStateCaseFail(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_TRUE(rmad_interface.CanAbort());
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  TransitionNextStateRequest request;
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_REQUEST_ARGS_MISSING, reply.error());
+    EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionNextState(request, base::BindOnce(callback));
@@ -694,14 +876,15 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
@@ -710,6 +893,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
@@ -723,15 +907,17 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
@@ -745,15 +931,17 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
-    EXPECT_EQ(false, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_FALSE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest,
@@ -768,15 +956,17 @@ TEST_F(RmadInterfaceImplTest,
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
-    EXPECT_EQ(true, reply.can_go_back());
-    EXPECT_EQ(true, reply.can_abort());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.TransitionPreviousState(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma) {
@@ -790,6 +980,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -799,6 +990,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
     EXPECT_TRUE(quit_daemon);
   };
   rmad_interface.AbortRma(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
@@ -815,6 +1007,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -824,6 +1017,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
     EXPECT_TRUE(quit_daemon);
   };
   rmad_interface.AbortRma(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::STATE_NOT_SET, rmad_interface.GetCurrentStateCase());
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
@@ -840,6 +1034,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kDeviceDestination,
+            rmad_interface.GetCurrentStateCase());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -849,6 +1045,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.AbortRma(base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kDeviceDestination,
+            rmad_interface.GetCurrentStateCase());
 
   // Check the the state file still exists.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -863,14 +1061,16 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
-      CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
+      CreatePowerManagerClient(), CreateCmdUtils({}, {"test_log"}),
+      CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
-  auto callback = [](const GetLogReply& reply, bool quit_daemon) {
+  auto callback1 = [](const GetLogReply& reply, bool quit_daemon) {
     EXPECT_EQ(kExpectedLog, reply.log());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.GetLog(base::BindOnce(callback));
+  rmad_interface.GetLog(base::BindOnce(callback1));
 
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
@@ -879,6 +1079,18 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
       state_metrics.find(static_cast<int>(RmadState::kComponentsRepair));
   EXPECT_NE(state_it, state_metrics.end());
   EXPECT_EQ(state_it->second.get_log_count, 1);
+
+  auto callback2 = [](const GetLogReply& reply, bool quit_daemon) {
+    EXPECT_EQ(kExpectedLog2, reply.log());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.GetLog(base::BindOnce(callback2));
+
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  state_it = state_metrics.find(static_cast<int>(RmadState::kComponentsRepair));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.get_log_count, 2);
 }
 
 TEST_F(RmadInterfaceImplTest, SaveLog) {
@@ -891,6 +1103,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -917,6 +1130,7 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   auto callback = [](const RecordBrowserActionMetricReply& reply,
                      bool quit_daemon) {
