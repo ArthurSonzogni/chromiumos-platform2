@@ -229,6 +229,9 @@ class BusFetcherTest : public BaseFileTest {
         case mojom::BusInfo::Tag::kThunderboltBusInfo:
           SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
           break;
+        case mojom::BusInfo::Tag::kUnmappedField:
+          NOTREACHED();
+          break;
       }
     }
   }

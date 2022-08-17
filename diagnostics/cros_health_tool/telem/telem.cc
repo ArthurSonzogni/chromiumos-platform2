@@ -1151,6 +1151,10 @@ base::Value GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       }
       break;
     }
+    case mojom::BusInfo::Tag::kUnmappedField: {
+      NOTREACHED();
+      break;
+    }
   }
   return out_device;
 }

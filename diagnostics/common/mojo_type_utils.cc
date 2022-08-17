@@ -23,6 +23,8 @@ bool operator<(const BusInfo& a, const BusInfo& b) {
       return a.get_usb_bus_info() < b.get_usb_bus_info();
     case BusInfo::Tag::kThunderboltBusInfo:
       return a.get_thunderbolt_bus_info() < b.get_thunderbolt_bus_info();
+    case BusInfo::Tag::kUnmappedField:
+      return a.get_unmapped_field() < b.get_unmapped_field();
   }
 }
 }  // namespace mojom

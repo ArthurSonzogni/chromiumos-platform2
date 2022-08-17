@@ -1064,6 +1064,7 @@ struct BootPerformanceInfo {
 
 // Bus probe result. Can either be populated with the BusDevice or an error
 // retrieving the information.
+[Stable]
 union BusResult {
   // Valid BusDevice.
   array<BusDevice> bus_devices;
@@ -1075,7 +1076,7 @@ union BusResult {
 // use.
 //
 // NextMinVersion: 1, NextIndex: 7
-[Extensible]
+[Stable, Extensible]
 enum BusDeviceClass {
   // For the devices which cannot be classified.
   [Default] kOthers = 0,
@@ -1090,6 +1091,7 @@ enum BusDeviceClass {
 // The bus device info.
 //
 // NextMinVersion: 1, NextIndex: 4
+[Stable]
 struct BusDevice {
   // The vendor / product name of the device. These are extracted from the
   // databases on the system and should only be used for showing / logging.
@@ -1103,6 +1105,9 @@ struct BusDevice {
 };
 
 // The info related to specific bus type.
+//
+// NextMinVersion: 2
+[Stable, Extensible]
 union BusInfo {
   // The info related to pci.
   PciBusInfo pci_bus_info;
@@ -1110,11 +1115,15 @@ union BusInfo {
   UsbBusInfo usb_bus_info;
   // The info related to thunderbolt.
   ThunderboltBusInfo thunderbolt_bus_info;
+  // The required field for backwards compatibility. The unrecognized Mojo
+  // field will deserialize to this field. It should not be used.
+  [MinVersion=1, Default] bool unmapped_field;
 };
 
 // The info related to pci.
 //
 // NextMinVersion: 1, NextIndex: 6
+[Stable]
 struct PciBusInfo {
   // These fields can be used to classify / identify the pci devices. See the
   // pci.ids database for the values. (https://github.com/gentoo/hwids)
@@ -1132,6 +1141,7 @@ struct PciBusInfo {
 // The info related to usb.
 //
 // NextMinVersion: 2, NextIndex: 7
+[Stable]
 struct UsbBusInfo {
   // These fields can be used to classify / identify the usb devices. See the
   // usb.ids database for the values. (https://github.com/gentoo/hwids)
@@ -1152,6 +1162,7 @@ struct UsbBusInfo {
 // The info related to firmware version obtained from fwupd.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct FwupdFirmwareVersionInfo {
   // The string form of the firmware version.
   string version@0;
@@ -1163,7 +1174,7 @@ struct FwupdFirmwareVersionInfo {
 // repo for the values. (https://github.com/fwupd/fwupd)
 //
 // NextMinVersion: 1, NextIndex: 14
-[Extensible]
+[Stable, Extensible]
 enum FwupdVersionFormat {
   // An enum value not defined in this version of the enum definition.
   [Default] kUnmappedEnumField = 0,
@@ -1198,6 +1209,7 @@ enum FwupdVersionFormat {
 // The info related to usb interfaces.
 //
 // NextMinVersion: 1, NextIndex: 5
+[Stable]
 struct UsbBusInterfaceInfo {
   // The zero-based number (index) of the interface.
   uint8 interface_number@0;
@@ -1473,6 +1485,7 @@ enum DisplayInputType {
 // Information related to a Thunderbolt device.
 //
 // NextMinVersion: 1, NextIndex: 8
+[Stable]
 struct ThunderboltBusInterfaceInfo {
   // Vendor name of connected device interface.
   string vendor_name@0;
@@ -1493,7 +1506,7 @@ struct ThunderboltBusInterfaceInfo {
 };
 
 // NextMinVersion: 1, NextIndex: 6
-[Extensible]
+[Stable, Extensible]
 enum ThunderboltSecurityLevel {
   [Default] kNone = 0,
   kUserLevel = 1,
@@ -1504,6 +1517,7 @@ enum ThunderboltSecurityLevel {
 };
 
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct ThunderboltBusInfo {
   // Security level none, user, secure, dponly.
   ThunderboltSecurityLevel security_level@0;
