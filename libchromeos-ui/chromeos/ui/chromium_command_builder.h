@@ -14,13 +14,14 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
+#include <brillo/brillo_export.h>
 
 namespace chromeos {
 namespace ui {
 
 // ChromiumCommandBuilder facilitates building a command line for running a
 // Chromium-derived binary and performing related setup.
-class ChromiumCommandBuilder {
+class BRILLO_EXPORT ChromiumCommandBuilder {
  public:
   typedef std::map<std::string, std::string> StringMap;
   typedef std::vector<std::string> StringVector;
