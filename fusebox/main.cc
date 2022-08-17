@@ -454,7 +454,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     DirEntryResponse* response = it->second.get();
     if (error) {
-      errno = response->Append(ResponseErrorToErrno(error));
+      errno = response->Append(error);
       PLOG(ERROR) << "reply-to-readdir";
       return;
     }

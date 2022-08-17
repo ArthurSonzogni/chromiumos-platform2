@@ -14,12 +14,6 @@ int GetResponseErrno(dbus::MessageReader* reader,
                      dbus::Response* response,
                      const char* operation = nullptr);
 
-// Returns errno for POSIX or base::File::Error |error| code.
-int ResponseErrorToErrno(int error);
-
-// Returns errno for a base::File::Error |error| code.
-int FileErrorToErrno(int error);
-
 // Returns fuse open flags string: eg., "O_RDWR|O_CREAT|O_TRUNC".
 std::string OpenFlagsToString(int flags);
 

@@ -8,7 +8,6 @@
 #include <fuse_lowlevel.h>
 #include <memory>
 
-#include <base/files/file.h>
 #include <brillo/dbus/data_serialization.h>
 #include <gtest/gtest.h>
 
@@ -27,9 +26,7 @@ TEST(UtilTest, GetResponseErrnoBusyError) {
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
 
   dbus::MessageWriter writer(response.get());
-  int busy_error = static_cast<int>(base::File::Error::FILE_ERROR_IN_USE);
-  AppendValueToWriter(&writer, busy_error);
-  ASSERT_NE(busy_error, 0);
+  AppendValueToWriter(&writer, EBUSY);
 
   dbus::MessageReader reader(response.get());
   EXPECT_EQ(EBUSY, GetResponseErrno(&reader, response.get()));
@@ -39,52 +36,10 @@ TEST(UtilTest, GetResponseErrnoNoError) {
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
 
   dbus::MessageWriter writer(response.get());
-  int no_error = static_cast<int>(base::File::Error::FILE_OK);
-  AppendValueToWriter(&writer, no_error);
-  ASSERT_EQ(no_error, 0);
+  AppendValueToWriter(&writer, 0);
 
   dbus::MessageReader reader(response.get());
   EXPECT_EQ(0, GetResponseErrno(&reader, response.get()));
-}
-
-TEST(UtilTest, GetResponseErrnoPosixErrno) {
-  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
-
-  dbus::MessageWriter writer(response.get());
-  int posix_io_error = EIO;
-  AppendValueToWriter(&writer, posix_io_error);
-  ASSERT_GT(posix_io_error, 0);
-
-  dbus::MessageReader reader(response.get());
-  EXPECT_EQ(EIO, GetResponseErrno(&reader, response.get()));
-}
-
-TEST(UtilTest, FileErrorToErrno) {
-  int ok = static_cast<int>(base::File::Error::FILE_OK);
-  EXPECT_EQ(0, FileErrorToErrno(ok));
-
-  int not_found = static_cast<int>(base::File::Error::FILE_ERROR_NOT_FOUND);
-  EXPECT_EQ(ENOENT, FileErrorToErrno(not_found));
-
-  int security = static_cast<int>(base::File::Error::FILE_ERROR_SECURITY);
-  EXPECT_EQ(EACCES, FileErrorToErrno(security));
-
-  int io = static_cast<int>(base::File::Error::FILE_ERROR_IO);
-  EXPECT_EQ(EIO, FileErrorToErrno(io));
-}
-
-TEST(UtilTest, ResponseErrorToErrno) {
-  int posix_ok = 0;
-  EXPECT_EQ(0, ResponseErrorToErrno(posix_ok));
-
-  int file_ok = static_cast<int>(base::File::Error::FILE_OK);
-  EXPECT_EQ(0, ResponseErrorToErrno(file_ok));
-
-  int posix_error = ENOMEM;
-  EXPECT_EQ(ENOMEM, ResponseErrorToErrno(posix_error));
-
-  int file_error = static_cast<int>(base::File::Error::FILE_ERROR_IO);
-  EXPECT_EQ(EIO, ResponseErrorToErrno(file_error));
 }
 
 TEST(UtilTest, OpenFlagsToString) {

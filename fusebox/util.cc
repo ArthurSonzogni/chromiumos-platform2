@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/files/file.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
@@ -24,10 +23,10 @@ int GetResponseErrno(dbus::MessageReader* reader,
     return EHOSTUNREACH;
   }
 
-  int32_t response_error;
-  CHECK(reader->PopInt32(&response_error));
+  int32_t error;
+  CHECK(reader->PopInt32(&error));
 
-  if (int error = ResponseErrorToErrno(response_error)) {
+  if (error) {
     std::string cause;
     if (operation)
       cause.append("server ").append(operation).append(": ");
@@ -36,56 +35,6 @@ int GetResponseErrno(dbus::MessageReader* reader,
   }
 
   return 0;
-}
-
-int ResponseErrorToErrno(int error) {
-  // base::File::Errors are negative, POSIX errors are positive.
-  if (error < 0)
-    return FileErrorToErrno(error);
-  return error;
-}
-
-int FileErrorToErrno(int error) {
-  DCHECK_LE(error, 0);
-
-  switch (static_cast<base::File::Error>(error)) {
-    case base::File::Error::FILE_OK:
-      return 0;
-    case base::File::Error::FILE_ERROR_FAILED:
-      return EFAULT;
-    case base::File::Error::FILE_ERROR_IN_USE:
-      return EBUSY;
-    case base::File::Error::FILE_ERROR_EXISTS:
-      return EEXIST;
-    case base::File::Error::FILE_ERROR_NOT_FOUND:
-      return ENOENT;
-    case base::File::Error::FILE_ERROR_ACCESS_DENIED:
-      return EACCES;
-    case base::File::Error::FILE_ERROR_TOO_MANY_OPENED:
-      return EMFILE;
-    case base::File::Error::FILE_ERROR_NO_MEMORY:
-      return ENOMEM;
-    case base::File::Error::FILE_ERROR_NO_SPACE:
-      return ENOSPC;
-    case base::File::Error::FILE_ERROR_NOT_A_DIRECTORY:
-      return ENOTDIR;
-    case base::File::Error::FILE_ERROR_INVALID_OPERATION:
-      return ENOTSUP;
-    case base::File::Error::FILE_ERROR_SECURITY:
-      return EACCES;
-    case base::File::Error::FILE_ERROR_ABORT:
-      return ENOTSUP;
-    case base::File::Error::FILE_ERROR_NOT_A_FILE:
-      return EINVAL;
-    case base::File::Error::FILE_ERROR_NOT_EMPTY:
-      return ENOTEMPTY;
-    case base::File::Error::FILE_ERROR_INVALID_URL:
-      return EINVAL;
-    case base::File::Error::FILE_ERROR_IO:
-      return EIO;
-    default:
-      return EFAULT;
-  }
 }
 
 namespace {
