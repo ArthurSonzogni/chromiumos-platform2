@@ -20,8 +20,11 @@ class MetadataPreviewerFrameAnnotator : public FrameAnnotator {
   bool ProcessCaptureResult(const Camera3CaptureDescriptor* result) override;
   bool IsPlotNeeded() const override;
   bool Plot(SkCanvas* canvas) override;
+  void UpdateOptions(const FrameAnnotator::Options& options) override;
 
  private:
+  FrameAnnotator::Options options_;
+
   camera_metadata_enum_android_lens_facing_t facing_;
 
   static constexpr size_t kFpsMeasureFrames = 100;

@@ -26,8 +26,27 @@ class FrameAnnotator {
   // for the Options defined below.
   static constexpr const char kFrameAnnotatorConfigFile[] =
       "/etc/camera/frame_annotator_config.json";
+  // The frame annotator config file that overrides the default one. The file
+  // should contain a JSON map for the Options defined below.
+  static constexpr const char kOverrideFrameAnnotatorConfigFile[] =
+      "/run/camera/frame_annotator_config.json";
+
+  enum class FlipType {
+    // kHorizontal for front-facing camera, kNone for back-facing camera.
+    kDefault,
+    kNone,
+    kHorizontal,
+    kVertical,
+    kRotate180,
+  };
 
   struct Options {
+    // Option for selecting the flip type of current camera. Can be overridden
+    // by the override config file.
+    FlipType flip_type = FlipType::kDefault;
+
+    // Options for selecting which frame annotators to be enabled. This will not
+    // be overridden when the override config file change.
     bool face_rectangles_frame_annotator = false;
     bool metadata_previewer_frame_annotator = false;
   };
@@ -54,6 +73,10 @@ class FrameAnnotator {
   // A function to plot the frame with Skia's canvas API. Will be called once by
   // FrameAnnotatorStreamManipulator for ecahc yuv frame.
   virtual bool Plot(SkCanvas* canvas) = 0;
+
+  // A callback function for updating frame annotator options. Will be called
+  // when any kFrameAnnotatorOverrideOptionsFile content update occurred.
+  virtual void UpdateOptions(const Options& options) = 0;
 };
 
 }  // namespace cros

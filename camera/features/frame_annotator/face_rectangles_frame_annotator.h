@@ -23,6 +23,7 @@ class FaceRectanglesFrameAnnotator : public FrameAnnotator {
   bool ProcessCaptureResult(const Camera3CaptureDescriptor* result) override;
   bool IsPlotNeeded() const override;
   bool Plot(SkCanvas* canvas) override;
+  void UpdateOptions(const FrameAnnotator::Options& options) override;
 
  private:
   Size active_array_dimension_;

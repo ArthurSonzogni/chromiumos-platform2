@@ -130,9 +130,19 @@ bool MetadataPreviewerFrameAnnotator::Plot(SkCanvas* canvas) {
   const auto canvas_info = canvas->imageInfo();
   canvas->save();
 
-  if (facing_ == ANDROID_LENS_FACING_FRONT) {
+  if (options_.flip_type == FrameAnnotator::FlipType::kHorizontal ||
+      options_.flip_type == FrameAnnotator::FlipType::kRotate180 ||
+      (options_.flip_type == FrameAnnotator::FlipType::kDefault &&
+       facing_ == ANDROID_LENS_FACING_FRONT)) {
+    // Flip horizontally.
     canvas->scale(-1, 1);
     canvas->translate(-static_cast<float>(canvas_info.width()), 0);
+  }
+  if (options_.flip_type == FrameAnnotator::FlipType::kVertical ||
+      options_.flip_type == FrameAnnotator::FlipType::kRotate180) {
+    // Flip vertically.
+    canvas->scale(1, -1);
+    canvas->translate(0, -static_cast<float>(canvas_info.height()));
   }
 
   const auto scale_ratio = static_cast<float>(canvas_info.height()) / 480;
@@ -244,6 +254,11 @@ bool MetadataPreviewerFrameAnnotator::Plot(SkCanvas* canvas) {
   canvas->restore();
 
   return true;
+}
+
+void MetadataPreviewerFrameAnnotator::UpdateOptions(
+    const FrameAnnotator::Options& options) {
+  options_ = options;
 }
 
 }  // namespace cros

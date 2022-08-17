@@ -73,4 +73,7 @@ bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
   return true;
 }
 
+void FaceRectanglesFrameAnnotator::UpdateOptions(
+    const FrameAnnotator::Options& options) {}
+
 }  // namespace cros

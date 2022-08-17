@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/strings/string_piece.h>
 #include <libyuv.h>
 #include <skia/core/SkCanvas.h>
 #include <skia/core/SkColorSpace.h>
@@ -31,6 +32,7 @@ namespace cros {
 namespace {
 
 // Options for 'frame_annotator_config.json'
+constexpr char kFlipTypeKey[] = "flip_type";
 constexpr char kFaceRectanglesFrameAnnotatorKey[] =
     "face_rectangles_frame_annotator";
 constexpr char kMetadataPreviewerFrameAnnotatorKey[] =
@@ -329,6 +331,23 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
 
 void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
     const base::Value& json_values) {
+  if (auto flip_type = json_values.FindStringKey(kFlipTypeKey)) {
+    base::StringPiece name = *flip_type;
+    if (name == "default") {
+      options_.flip_type = FrameAnnotator::FlipType::kDefault;
+    } else if (name == "none") {
+      options_.flip_type = FrameAnnotator::FlipType::kNone;
+    } else if (name == "horizontal") {
+      options_.flip_type = FrameAnnotator::FlipType::kHorizontal;
+    } else if (name == "vertical") {
+      options_.flip_type = FrameAnnotator::FlipType::kVertical;
+    } else if (name == "rotate180") {
+      options_.flip_type = FrameAnnotator::FlipType::kRotate180;
+    } else {
+      LOGF(WARNING) << "Invalid flip_type value: " << name;
+    }
+  }
+
   auto update_bool_option = [&](bool& result, const char key_name[]) {
     result = json_values.FindBoolKey(key_name).value_or(result);
   };
@@ -336,6 +355,9 @@ void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
                      kFaceRectanglesFrameAnnotatorKey);
   update_bool_option(options_.metadata_previewer_frame_annotator,
                      kMetadataPreviewerFrameAnnotatorKey);
-}
 
+  for (auto& frame_annotator : frame_annotators_) {
+    frame_annotator->UpdateOptions(options_);
+  }
+}
 }  // namespace cros
