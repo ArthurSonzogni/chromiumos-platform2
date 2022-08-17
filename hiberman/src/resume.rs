@@ -72,8 +72,6 @@ impl ResumeConductor {
         // Ensure the persistent version of the stateful block device is available.
         let _rw_volume_group = activate_physical_vg()?;
         self.options = options;
-        let metrics_file = open_metrics_file(MetricsFile::Resume)?;
-        self.metrics_logger.file = Some(metrics_file);
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
@@ -132,6 +130,9 @@ impl ResumeConductor {
             meta_file.rewind()?;
             metadata.write_to_disk(&mut meta_file)?;
         }
+
+        let metrics_file = open_metrics_file(MetricsFile::Resume)?;
+        self.metrics_logger.file = Some(metrics_file);
 
         debug!("Opening hiberfile");
         let hiber_file = open_hiberfile()?;
