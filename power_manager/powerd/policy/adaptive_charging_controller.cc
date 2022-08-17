@@ -922,7 +922,12 @@ void AdaptiveChargingController::OnPredictionResponse(
   // model not having enough confidence in the prediction to delay charging.
   if (result[hour] < min_probability_) {
     StopAdaptiveCharging();
-    target_full_charge_time_ = base::TimeTicks::Now();
+    // If charging was delayed already, treat this as an unplug prediction for
+    // `kFinishChargingDelay` time from now.
+    if (hold_percent_start_time_ != base::TimeTicks())
+      target_full_charge_time_ = base::TimeTicks::Now() + kFinishChargingDelay;
+    else
+      target_full_charge_time_ = base::TimeTicks::Now();
     return;
   }
 
@@ -931,7 +936,11 @@ void AdaptiveChargingController::OnPredictionResponse(
   base::TimeDelta target_delay = base::Hours(hour);
   if (target_delay <= kFinishChargingDelay) {
     StopAdaptiveCharging();
-    target_full_charge_time_ = base::TimeTicks::Now() + target_delay;
+    if (hold_percent_start_time_ != base::TimeTicks())
+      target_full_charge_time_ = base::TimeTicks::Now() + kFinishChargingDelay;
+    else
+      target_full_charge_time_ = base::TimeTicks::Now() + target_delay;
+
     return;
   }
 
