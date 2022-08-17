@@ -186,15 +186,15 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLocked);
           if (IsExternalDevice(devpath)) {
-            UMALogDeviceAttached(&metrics_, rule, new_entry,
-                                 UMAEventTiming::kLocked, true);
+            UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
+                                         UMAEventTiming::kLocked);
           }
         } else {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLoggedIn);
           if (IsExternalDevice(devpath)) {
-            UMALogDeviceAttached(&metrics_, rule, new_entry,
-                                 UMAEventTiming::kLoggedIn, true);
+            UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
+                                         UMAEventTiming::kLoggedIn);
           }
           (*user_db_.Get().mutable_entries())[user_key] = entry;
         }
@@ -256,8 +256,8 @@ bool EntryManager::HandleUserLogin() {
                              UMAEventTiming::kLoggedOut);
         if (devpaths.find(global_key) != devpaths.end() &&
             IsExternalDevice(devpaths.find(global_key)->second)) {
-          UMALogDeviceAttached(&metrics_, rule, new_entry,
-                               UMAEventTiming::kLoggedOut, true);
+          UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
+                                       UMAEventTiming::kLoggedOut);
         }
       }
       (*user_entries)[user_key] = entry.second;

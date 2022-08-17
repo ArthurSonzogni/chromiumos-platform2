@@ -463,8 +463,7 @@ bool ValidateRule(const std::string& rule) {
 void UMALogDeviceAttached(MetricsLibrary* metrics,
                           const std::string& rule,
                           UMADeviceRecognized recognized,
-                          UMAEventTiming timing,
-                          bool isExternal) {
+                          UMAEventTiming timing) {
   usbguard::Rule parsed_rule = GetRuleFromString(rule);
   if (!parsed_rule) {
     return;
@@ -478,14 +477,22 @@ void UMALogDeviceAttached(MetricsLibrary* metrics,
                          to_string(recognized).c_str(),
                          to_string(GetClassFromRule(parsed_rule)).c_str()),
       static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
+}
 
-  if (isExternal) {
-    metrics->SendEnumToUMA(
-        base::StringPrintf("%s.%s.%s", kUmaExternalDeviceAttachedHistogram,
-                           to_string(recognized).c_str(),
-                           to_string(GetClassFromRule(parsed_rule)).c_str()),
-        static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
+void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
+                                  const std::string& rule,
+                                  UMADeviceRecognized recognized,
+                                  UMAEventTiming timing) {
+  usbguard::Rule parsed_rule = GetRuleFromString(rule);
+  if (!parsed_rule) {
+    return;
   }
+
+  metrics->SendEnumToUMA(
+      base::StringPrintf("%s.%s.%s", kUmaExternalDeviceAttachedHistogram,
+                         to_string(recognized).c_str(),
+                         to_string(GetClassFromRule(parsed_rule)).c_str()),
+      static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
 }
 
 base::FilePath GetUserDBDir() {
