@@ -3301,9 +3301,6 @@ int real_main(int argc, char** argv) {
     }
     if (strstr(arg, "--parent") == arg) {
       parent = 1;
-    } else if (strstr(arg, "--master") == arg) {
-      // TODO(b/172846445): deprecate the --master option.
-      parent = 1;
     } else if (strstr(arg, "--socket") == arg) {
       socket_name = sl_arg_value(arg);
     } else if (strstr(arg, "--display") == arg) {
