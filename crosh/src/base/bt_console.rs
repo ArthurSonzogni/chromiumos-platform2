@@ -50,7 +50,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn is_floss_enabled() -> Result<bool, Error> {
-    let connection = Connection::new_system().map_err(|err| Error::DbusConnection(err))?;
+    let connection = Connection::new_system().map_err(Error::DbusConnection)?;
 
     let proxy = connection.with_proxy(
         "org.chromium.bluetooth.Manager",

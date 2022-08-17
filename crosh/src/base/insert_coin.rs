@@ -103,7 +103,7 @@ fn parse_arguments(args: &[String]) -> Result<(String, bool), dispatcher::Error>
 // insert_coin takes a token and sends it to org.chromium.VmLaunchService.ProvideVmToken.
 // This token is stored, and checked when an attempt is made to launch Borealis.
 fn execute_insert_coin(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
-    let (token, launch) = parse_arguments(&args.get_tokens()[1..]).map_err(|e| e)?;
+    let (token, launch) = parse_arguments(&args.get_tokens()[1..])?;
 
     let connection = Connection::new_system().map_err(|err| {
         eprintln!("ERROR: Failed to get D-Bus connection: {}", err);

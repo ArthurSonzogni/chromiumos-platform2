@@ -5,6 +5,7 @@
 //! Provides the command "packet_capture" for crosh which can capture packets and store them in .pcap file.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fs::{metadata, remove_file, File};
 use std::io::{copy, stdout, Write};
 use std::os::unix::io::IntoRawFd;
@@ -78,7 +79,7 @@ fn packet_capture_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
 fn create_help_string() -> String {
     let mut help = "Usage: packet_capture [options]\n".to_string();
     for flag in FLAGS.iter() {
-        help.push_str(&format!("\t--{} \t{}\n", flag.0, flag.1));
+        let _ = writeln!(help, "\t--{} \t{}", flag.0, flag.1);
     }
     help.push_str(HELP);
     help

@@ -619,7 +619,7 @@ mod tests {
     fn test_handle_command_empty() {
         let dispatcher = default_dispatcher(default_parent_command(default_child_command()));
 
-        assert!(!dispatcher.handle_command(Vec::new()).is_ok());
+        assert!(dispatcher.handle_command(Vec::new()).is_err());
     }
 
     #[test]
@@ -666,7 +666,7 @@ mod tests {
             CHILD_COMMAND_NAME.to_string(),
         ];
 
-        assert!(!dispatcher.handle_command(tokens).is_ok());
+        assert!(dispatcher.handle_command(tokens).is_err());
     }
 
     #[test]

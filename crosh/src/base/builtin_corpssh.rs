@@ -58,7 +58,7 @@ fn execute_builtin_corpssh(_cmd: &Command, args: &Arguments) -> Result<(), dispa
         dispatcher::Error::CommandReturnedError
     })?;
 
-    let mut flags: Vec<&str> = flags.split(",").collect();
+    let mut flags: Vec<&str> = flags.split(',').collect();
     flags.retain(|&flag| flag != CORP_PROTOCOL);
     if enabled {
         flags.push(CORP_PROTOCOL);

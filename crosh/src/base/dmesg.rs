@@ -5,6 +5,7 @@
 // Provides the command "dmesg" for crosh through debugd.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::io::Write;
 
 use dbus::arg::{self, Variant};
@@ -60,7 +61,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
 fn dmesg_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
     let mut help = "Usage: dmesg [options]\n".to_string();
     for flag in FLAGS.iter() {
-        help.push_str(&format!("\t-{}, --{}\n\t\t{}\n", flag.0, flag.1, flag.2));
+        let _ = write!(help, "\t-{}, --{}\n\t\t{}\n", flag.0, flag.1, flag.2);
     }
     w.write_all(help.as_bytes()).unwrap();
     w.flush().unwrap();
