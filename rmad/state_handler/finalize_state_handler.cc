@@ -12,16 +12,12 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 
 #include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/fake_cr50_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
-#include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
 
 namespace {
@@ -34,22 +30,6 @@ constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";  // customlabel_pvt.
 }  // namespace
 
 namespace rmad {
-
-namespace fake {
-
-FakeFinalizeStateHandler::FakeFinalizeStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : FinalizeStateHandler(
-          json_store,
-          daemon_callback,
-          working_dir_path,
-          std::make_unique<FakeCr50Utils>(working_dir_path),
-          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
-          std::make_unique<FakeFlashromUtils>()) {}
-
-}  // namespace fake
 
 FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,

@@ -14,21 +14,9 @@
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeWriteProtectDisableCompleteStateHandler::
-    FakeWriteProtectDisableCompleteStateHandler(
-        scoped_refptr<JsonStore> json_store,
-        scoped_refptr<DaemonCallback> daemon_callback)
-    : WriteProtectDisableCompleteStateHandler(
-          json_store, daemon_callback, std::make_unique<FakeFlashromUtils>()) {}
-
-}  // namespace fake
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(

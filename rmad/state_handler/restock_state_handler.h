@@ -47,21 +47,6 @@ class RestockStateHandler : public BaseStateHandler {
   base::OneShotTimer timer_;
 };
 
-namespace fake {
-
-class FakeRestockStateHandler : public RestockStateHandler {
- public:
-  explicit FakeRestockStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeRestockStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_RESTOCK_STATE_HANDLER_H_

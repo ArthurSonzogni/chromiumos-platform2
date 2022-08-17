@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/utils/cbi_utils_impl.h"
-#include "rmad/utils/fake_cbi_utils.h"
 
 #include <memory>
 #include <string>
@@ -137,56 +136,5 @@ TEST_F(CbiUtilsTest, SetDramPartNum_Fail) {
 
   EXPECT_FALSE(cbi_utils->SetDramPartNum("part_num"));
 }
-
-namespace fake {
-
-class FakeCbiUtilsTest : public testing::Test {
- public:
-  FakeCbiUtilsTest() = default;
-  ~FakeCbiUtilsTest() override = default;
-
- protected:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    fake_cbi_utils_ = std::make_unique<FakeCbiUtils>(temp_dir_.GetPath());
-  }
-
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<FakeCbiUtils> fake_cbi_utils_;
-};
-
-TEST_F(FakeCbiUtilsTest, SetSku_Success_GetSku_Success) {
-  EXPECT_TRUE(fake_cbi_utils_->SetSku(1));
-  uint64_t sku;
-  EXPECT_TRUE(fake_cbi_utils_->GetSku(&sku));
-  EXPECT_EQ(sku, 1);
-}
-
-TEST_F(FakeCbiUtilsTest, GetSku_Fail) {
-  uint64_t sku;
-  EXPECT_FALSE(fake_cbi_utils_->GetSku(&sku));
-}
-
-TEST_F(FakeCbiUtilsTest, GetSku_Nullptr) {
-  EXPECT_DEATH(fake_cbi_utils_->GetSku(nullptr), "");
-}
-
-TEST_F(FakeCbiUtilsTest, SetDramPartNum_Success_GetDramPartNum_Success) {
-  EXPECT_TRUE(fake_cbi_utils_->SetDramPartNum("fake_dram_part_num"));
-  std::string dram_part_num;
-  EXPECT_TRUE(fake_cbi_utils_->GetDramPartNum(&dram_part_num));
-  EXPECT_EQ(dram_part_num, "fake_dram_part_num");
-}
-
-TEST_F(FakeCbiUtilsTest, GetDramPartNum_Fail) {
-  std::string dram_part_num;
-  EXPECT_FALSE(fake_cbi_utils_->GetDramPartNum(&dram_part_num));
-}
-
-TEST_F(FakeCbiUtilsTest, GetDramPartNum_Nullptr) {
-  EXPECT_DEATH(fake_cbi_utils_->GetDramPartNum(nullptr), "");
-}
-
-}  // namespace fake
 
 }  // namespace rmad

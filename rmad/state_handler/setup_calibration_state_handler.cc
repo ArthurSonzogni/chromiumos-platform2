@@ -4,22 +4,11 @@
 
 #include "rmad/state_handler/setup_calibration_state_handler.h"
 
-#include <set>
-
 #include <base/logging.h>
 
 #include "rmad/utils/calibration_utils.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeSetupCalibrationStateHandler::FakeSetupCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback)
-    : SetupCalibrationStateHandler(json_store, daemon_callback) {}
-
-}  // namespace fake
 
 SetupCalibrationStateHandler::SetupCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,

@@ -27,8 +27,6 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/fake_cros_config_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace brillo {
 namespace dbus_utils {

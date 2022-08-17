@@ -23,7 +23,6 @@ class StateHandlerManager {
 
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
   void RegisterStateHandlers(scoped_refptr<DaemonCallback> daemon_callback);
-  void RegisterFakeStateHandlers(scoped_refptr<DaemonCallback> daemon_callback);
 
   scoped_refptr<BaseStateHandler> GetStateHandler(
       RmadState::StateCase state) const;

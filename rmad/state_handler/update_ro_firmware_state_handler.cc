@@ -387,45 +387,4 @@ void UpdateRoFirmwareStateHandler::Reboot() {
   }
 }
 
-namespace fake {
-
-FakeUpdateRoFirmwareStateHandler::FakeUpdateRoFirmwareStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {}
-
-RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
-  if (!state_.has_update_ro_firmware()) {
-    auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
-    update_ro_firmware->set_optional(true);
-    state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
-  }
-
-  return RMAD_ERROR_OK;
-}
-
-void FakeUpdateRoFirmwareStateHandler::RunState() {
-  status_signal_timer_.Start(
-      FROM_HERE, kSignalInterval, this,
-      &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal);
-}
-
-void FakeUpdateRoFirmwareStateHandler::CleanUpState() {
-  if (status_signal_timer_.IsRunning()) {
-    status_signal_timer_.Stop();
-  }
-}
-
-BaseStateHandler::GetNextStateCaseReply
-FakeUpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
-  return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
-}
-
-void FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateSignal() {
-  daemon_callback_->GetUpdateRoFirmwareSignalCallback().Run(
-      RMAD_UPDATE_RO_FIRMWARE_COMPLETE);
-}
-
-}  // namespace fake
-
 }  // namespace rmad

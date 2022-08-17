@@ -45,21 +45,6 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 };
 
-namespace fake {
-
-class FakeDeviceDestinationStateHandler : public DeviceDestinationStateHandler {
- public:
-  explicit FakeDeviceDestinationStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeDeviceDestinationStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_DEVICE_DESTINATION_STATE_HANDLER_H_

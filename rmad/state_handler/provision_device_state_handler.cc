@@ -34,14 +34,6 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/fake_cbi_utils.h"
-#include "rmad/utils/fake_cmd_utils.h"
-#include "rmad/utils/fake_cr50_utils.h"
-#include "rmad/utils/fake_cros_config_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
-#include "rmad/utils/fake_iio_sensor_probe_utils.h"
-#include "rmad/utils/fake_ssfc_utils.h"
-#include "rmad/utils/fake_vpd_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/ssfc_utils_impl.h"
@@ -75,27 +67,6 @@ const std::vector<std::string> kResetGbbFlagsArgv = {
 }  // namespace
 
 namespace rmad {
-
-namespace fake {
-
-FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : ProvisionDeviceStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<fake::FakePowerManagerClient>(working_dir_path),
-          std::make_unique<fake::FakeCbiUtils>(working_dir_path),
-          std::make_unique<fake::FakeCmdUtils>(),
-          std::make_unique<fake::FakeCr50Utils>(working_dir_path),
-          std::make_unique<fake::FakeCrosConfigUtils>(),
-          std::make_unique<fake::FakeCrosSystemUtils>(working_dir_path),
-          std::make_unique<fake::FakeIioSensorProbeUtils>(),
-          std::make_unique<fake::FakeSsfcUtils>(),
-          std::make_unique<fake::FakeVpdUtils>(working_dir_path)) {}
-
-}  // namespace fake
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,

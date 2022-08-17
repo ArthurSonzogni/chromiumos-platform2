@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/utils/flashrom_utils_impl.h"
-#include "rmad/utils/fake_flashrom_utils.h"
 
 #include <memory>
 #include <utility>
@@ -156,30 +155,5 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableFail) {
 
   EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
 }
-
-namespace fake {
-
-class FakeFlashromUtilsTest : public testing::Test {
- public:
-  FakeFlashromUtilsTest() = default;
-  ~FakeFlashromUtilsTest() override = default;
-
- protected:
-  void SetUp() override {
-    fake_flashrom_utils_ = std::make_unique<FakeFlashromUtils>();
-  }
-
-  std::unique_ptr<FakeFlashromUtils> fake_flashrom_utils_;
-};
-
-TEST_F(FakeFlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
-  EXPECT_TRUE(fake_flashrom_utils_->EnableSoftwareWriteProtection());
-}
-
-TEST_F(FakeFlashromUtilsTest, DisableSoftwareWriteProtection_Success) {
-  EXPECT_TRUE(fake_flashrom_utils_->DisableSoftwareWriteProtection());
-}
-
-}  // namespace fake
 
 }  // namespace rmad

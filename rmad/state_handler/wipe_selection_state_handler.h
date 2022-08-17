@@ -47,22 +47,6 @@ class WipeSelectionStateHandler : public BaseStateHandler {
   bool ccd_blocked_;
 };
 
-namespace fake {
-
-// Nothing needs to be faked.
-class FakeWipeSelectionStateHandler : public WipeSelectionStateHandler {
- public:
-  explicit FakeWipeSelectionStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeWipeSelectionStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WIPE_SELECTION_STATE_HANDLER_H_

@@ -37,21 +37,6 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
   std::unique_ptr<FlashromUtils> flashrom_utils_;
 };
 
-namespace fake {
-
-class FakeWriteProtectDisableCompleteStateHandler
-    : public WriteProtectDisableCompleteStateHandler {
- public:
-  explicit FakeWriteProtectDisableCompleteStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback);
-
- protected:
-  ~FakeWriteProtectDisableCompleteStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_COMPLETE_STATE_HANDLER_H_

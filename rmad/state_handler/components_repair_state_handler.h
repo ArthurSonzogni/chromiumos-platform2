@@ -57,21 +57,6 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 };
 
-namespace fake {
-
-class FakeComponentsRepairStateHandler : public ComponentsRepairStateHandler {
- public:
-  explicit FakeComponentsRepairStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeComponentsRepairStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_COMPONENTS_REPAIR_STATE_HANDLER_H_

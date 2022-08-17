@@ -55,22 +55,6 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   std::unique_ptr<FlashromUtils> flashrom_utils_;
 };
 
-namespace fake {
-
-class FakeWriteProtectEnablePhysicalStateHandler
-    : public WriteProtectEnablePhysicalStateHandler {
- public:
-  explicit FakeWriteProtectEnablePhysicalStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeWriteProtectEnablePhysicalStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_ENABLE_PHYSICAL_STATE_HANDLER_H_

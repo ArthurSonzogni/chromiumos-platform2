@@ -45,21 +45,6 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
 };
 
-namespace fake {
-
-class FakeWelcomeScreenStateHandler : public WelcomeScreenStateHandler {
- public:
-  explicit FakeWelcomeScreenStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeWelcomeScreenStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WELCOME_SCREEN_STATE_HANDLER_H_

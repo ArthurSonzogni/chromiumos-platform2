@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/utils/sys_utils_impl.h"
-#include "rmad/utils/fake_sys_utils.h"
 
 #include <memory>
 
@@ -68,37 +67,5 @@ TEST_F(SysUtilsTest, IsPowerSourcePresent_NotOnline) {
 
   EXPECT_FALSE(sys_utils_->IsPowerSourcePresent());
 }
-
-namespace fake {
-
-class FakeSysUtilsTest : public testing::Test {
- public:
-  FakeSysUtilsTest() = default;
-  ~FakeSysUtilsTest() override = default;
-
-  base::FilePath GetPowerSourcePresentFilePath() const {
-    return temp_dir_.GetPath().AppendASCII(kPowerSourcePresentFilePath);
-  }
-
- protected:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    fake_sys_utils_ = std::make_unique<FakeSysUtils>(temp_dir_.GetPath());
-  }
-
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<FakeSysUtils> fake_sys_utils_;
-};
-
-TEST_F(FakeSysUtilsTest, IsPowerSourcePresent_Present) {
-  brillo::TouchFile(GetPowerSourcePresentFilePath());
-  ASSERT_TRUE(fake_sys_utils_->IsPowerSourcePresent());
-}
-
-TEST_F(FakeSysUtilsTest, IsPowerSourcePresent_NotPresent) {
-  ASSERT_FALSE(fake_sys_utils_->IsPowerSourcePresent());
-}
-
-}  // namespace fake
 
 }  // namespace rmad

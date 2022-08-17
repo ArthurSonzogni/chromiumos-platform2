@@ -41,23 +41,6 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
   std::unique_ptr<Cr50Utils> cr50_utils_;
 };
 
-namespace fake {
-
-// Nothing needs to be faked.
-class FakeWriteProtectDisableMethodStateHandler
-    : public WriteProtectDisableMethodStateHandler {
- public:
-  explicit FakeWriteProtectDisableMethodStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeWriteProtectDisableMethodStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_METHOD_STATE_HANDLER_H_

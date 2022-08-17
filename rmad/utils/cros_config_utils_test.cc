@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/fake_cros_config_utils.h"
 
 #include <memory>
 #include <string>
@@ -217,81 +216,5 @@ TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_False) {
 
   EXPECT_FALSE(cros_config_utils->IsCustomLabel());
 }
-
-namespace fake {
-
-class FakeCrosConfigUtilsTest : public testing::Test {
- public:
-  FakeCrosConfigUtilsTest() = default;
-  ~FakeCrosConfigUtilsTest() override = default;
-
- protected:
-  void SetUp() override {
-    fake_cros_config_utils_ = std::make_unique<FakeCrosConfigUtils>();
-  }
-
-  std::unique_ptr<FakeCrosConfigUtils> fake_cros_config_utils_;
-};
-
-TEST_F(FakeCrosConfigUtilsTest, GetModelName_Success) {
-  std::string model_name;
-  EXPECT_TRUE(fake_cros_config_utils_->GetModelName(&model_name));
-  EXPECT_EQ(model_name, "fake_model");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetModelName_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetModelName(nullptr), "");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentSkuId_Success) {
-  int sku_id;
-  EXPECT_TRUE(fake_cros_config_utils_->GetCurrentSkuId(&sku_id));
-  EXPECT_EQ(sku_id, 1);
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentSkuId_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentSkuId(nullptr), "");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentCustomLabelTag_Success) {
-  std::string custom_label_tag;
-  EXPECT_TRUE(
-      fake_cros_config_utils_->GetCurrentCustomLabelTag(&custom_label_tag));
-  EXPECT_EQ(custom_label_tag, "fake_custom_label_1");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCurrentCustomLabelTag_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentCustomLabelTag(nullptr), "");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Success) {
-  std::vector<int> sku_id_list;
-  const std::vector<int> expected_sku_id_list = {1, 2, 3, 4};
-  EXPECT_TRUE(fake_cros_config_utils_->GetSkuIdList(&sku_id_list));
-  EXPECT_EQ(sku_id_list, expected_sku_id_list);
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetSkuIdList(nullptr), "");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Success) {
-  std::vector<std::string> custom_label_tag_list;
-  const std::vector<std::string> expected_custom_label_tag_list = {
-      "fake_custom_label_1", "fake_custom_label_2"};
-  EXPECT_TRUE(
-      fake_cros_config_utils_->GetCustomLabelTagList(&custom_label_tag_list));
-  EXPECT_EQ(custom_label_tag_list, expected_custom_label_tag_list);
-}
-
-TEST_F(FakeCrosConfigUtilsTest, GetCustomLabelTagList_Nullptr) {
-  EXPECT_DEATH(fake_cros_config_utils_->GetCustomLabelTagList(nullptr), "");
-}
-
-TEST_F(FakeCrosConfigUtilsTest, IsCustomLabelTag_Success) {
-  EXPECT_TRUE(fake_cros_config_utils_->IsCustomLabel());
-}
-
-}  // namespace fake
 
 }  // namespace rmad

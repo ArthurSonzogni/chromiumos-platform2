@@ -5,9 +5,7 @@
 #include "rmad/state_handler/check_calibration_state_handler.h"
 
 #include <memory>
-#include <set>
 #include <string>
-#include <utility>
 
 #include <base/logging.h>
 
@@ -51,15 +49,6 @@ RmadState ConvertDictionaryToState(
 }
 
 }  // namespace
-
-namespace fake {
-
-FakeCheckCalibrationStateHandler::FakeCheckCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback)
-    : CheckCalibrationStateHandler(json_store, daemon_callback) {}
-
-}  // namespace fake
 
 CheckCalibrationStateHandler::CheckCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,

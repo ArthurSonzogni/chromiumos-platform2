@@ -91,9 +91,4 @@ TEST_F(StateHandlerManagerTest, RegisterStateHandlers) {
   state_handler_manager_->RegisterStateHandlers(daemon_callback_);
 }
 
-TEST_F(StateHandlerManagerTest, RegisterFakeStateHandlers) {
-  base::test::SingleThreadTaskEnvironment task_environment;
-  state_handler_manager_->RegisterFakeStateHandlers(daemon_callback_);
-}
-
 }  // namespace rmad

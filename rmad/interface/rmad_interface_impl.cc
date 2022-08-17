@@ -20,16 +20,12 @@
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/system/fake_runtime_probe_client.h"
-#include "rmad/system/fake_shill_client.h"
-#include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/fake_cmd_utils.h"
 
 namespace rmad {
 

@@ -91,64 +91,6 @@ void StateHandlerManager::RegisterStateHandlers(
       json_store_, daemon_callback));
 }
 
-void StateHandlerManager::RegisterFakeStateHandlers(
-    scoped_refptr<DaemonCallback> daemon_callback) {
-  const base::FilePath test_dir_path =
-      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWelcomeScreenStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeComponentsRepairStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeDeviceDestinationStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWriteProtectDisableMethodStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWriteProtectDisableRsuStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWriteProtectDisablePhysicalStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWriteProtectDisableCompleteStateHandler>(
-          json_store_, daemon_callback));
-  RegisterStateHandler(base::MakeRefCounted<fake::FakeRestockStateHandler>(
-      json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeUpdateRoFirmwareStateHandler>(
-          json_store_, daemon_callback));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeUpdateDeviceInfoStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeProvisionDeviceStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeCheckCalibrationStateHandler>(
-          json_store_, daemon_callback));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeSetupCalibrationStateHandler>(
-          json_store_, daemon_callback));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeRunCalibrationStateHandler>(
-          json_store_, daemon_callback));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWriteProtectEnablePhysicalStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(base::MakeRefCounted<fake::FakeFinalizeStateHandler>(
-      json_store_, daemon_callback, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeRepairCompleteStateHandler>(
-          json_store_, daemon_callback, test_dir_path));
-}
-
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
     RmadState::StateCase state) const {
   auto it = state_handler_map_.find(state);

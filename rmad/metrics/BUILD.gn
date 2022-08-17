@@ -14,7 +14,6 @@ pkg_config("target_defaults") {
 
 source_set("libmetrics") {
   sources = [
-    "fake_metrics_utils.cc",
     "metrics_utils.cc",
     "metrics_utils_impl.cc",
   ]

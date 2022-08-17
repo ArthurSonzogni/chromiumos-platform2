@@ -53,21 +53,6 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   std::unique_ptr<VpdUtils> vpd_utils_;
 };
 
-namespace fake {
-
-class FakeUpdateDeviceInfoStateHandler : public UpdateDeviceInfoStateHandler {
- public:
-  explicit FakeUpdateDeviceInfoStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeUpdateDeviceInfoStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_UPDATE_DEVICE_INFO_STATE_HANDLER_H_

@@ -5,42 +5,19 @@
 #include "rmad/state_handler/repair_complete_state_handler.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "rmad/constants.h"
-#include "rmad/metrics/fake_metrics_utils.h"
 #include "rmad/metrics/metrics_utils_impl.h"
-#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
-#include "rmad/utils/fake_sys_utils.h"
 #include "rmad/utils/sys_utils_impl.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : RepairCompleteStateHandler(
-          json_store,
-          daemon_callback,
-          working_dir_path,
-          working_dir_path,
-          std::make_unique<FakePowerManagerClient>(working_dir_path),
-          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
-          std::make_unique<FakeSysUtils>(working_dir_path),
-          std::make_unique<FakeMetricsUtils>(working_dir_path)) {}
-
-}  // namespace fake
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,

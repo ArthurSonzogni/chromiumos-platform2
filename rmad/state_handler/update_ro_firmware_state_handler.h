@@ -115,38 +115,6 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   scoped_refptr<base::TaskRunner> updater_task_runner_;
 };
 
-namespace fake {
-
-// This fake state handler always says that firmware update is done. This is
-// quite different from the normal one, so we write it from scratch.
-class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
- public:
-  static constexpr base::TimeDelta kSignalInterval = base::Seconds(1);
-
-  explicit FakeUpdateRoFirmwareStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback);
-
-  ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
-  SET_REPEATABLE;
-
-  RmadErrorCode InitializeState() override;
-  void RunState() override;
-  void CleanUpState() override;
-  GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-
- protected:
-  ~FakeUpdateRoFirmwareStateHandler() override = default;
-
- private:
-  void SendFirmwareUpdateSignal();
-
-  // Timer for sending status signals.
-  base::RepeatingTimer status_signal_timer_;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_UPDATE_RO_FIRMWARE_STATE_HANDLER_H_

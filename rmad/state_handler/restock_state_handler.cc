@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 
@@ -16,19 +15,6 @@
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeRestockStateHandler::FakeRestockStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : RestockStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
-
-}  // namespace fake
 
 RestockStateHandler::RestockStateHandler(
     scoped_refptr<JsonStore> json_store,

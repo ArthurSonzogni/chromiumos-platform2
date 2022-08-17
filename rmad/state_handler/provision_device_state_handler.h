@@ -115,21 +115,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool sensor_integrity_;
 };
 
-namespace fake {
-
-class FakeProvisionDeviceStateHandler : public ProvisionDeviceStateHandler {
- public:
-  explicit FakeProvisionDeviceStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeProvisionDeviceStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_PROVISION_DEVICE_STATE_HANDLER_H_

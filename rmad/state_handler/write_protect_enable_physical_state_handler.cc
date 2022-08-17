@@ -10,28 +10,11 @@
 #include <base/files/file_path.h>
 
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/fake_crossystem_utils.h"
-#include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
 
 #include <base/logging.h>
 
 namespace rmad {
-
-namespace fake {
-
-FakeWriteProtectEnablePhysicalStateHandler::
-    FakeWriteProtectEnablePhysicalStateHandler(
-        scoped_refptr<JsonStore> json_store,
-        scoped_refptr<DaemonCallback> daemon_callback,
-        const base::FilePath& working_dir_path)
-    : WriteProtectEnablePhysicalStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
-          std::make_unique<FakeFlashromUtils>()) {}
-
-}  // namespace fake
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,

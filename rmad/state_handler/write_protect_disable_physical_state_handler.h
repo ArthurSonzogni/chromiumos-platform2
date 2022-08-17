@@ -81,22 +81,6 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   std::unique_ptr<PowerManagerClient> power_manager_client_;
 };
 
-namespace fake {
-
-class FakeWriteProtectDisablePhysicalStateHandler
-    : public WriteProtectDisablePhysicalStateHandler {
- public:
-  explicit FakeWriteProtectDisablePhysicalStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeWriteProtectDisablePhysicalStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_PHYSICAL_STATE_HANDLER_H_

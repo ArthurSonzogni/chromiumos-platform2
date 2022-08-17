@@ -68,21 +68,6 @@ class FinalizeStateHandler : public BaseStateHandler {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
-namespace fake {
-
-class FakeFinalizeStateHandler : public FinalizeStateHandler {
- public:
-  explicit FakeFinalizeStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      scoped_refptr<DaemonCallback> daemon_callback,
-      const base::FilePath& working_dir_path);
-
- protected:
-  ~FakeFinalizeStateHandler() override = default;
-};
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_FINALIZE_STATE_HANDLER_H_

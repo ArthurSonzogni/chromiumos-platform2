@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/utils/fake_ssfc_utils.h"
 #include "rmad/utils/ssfc_utils_impl.h"
 
 #include <memory>
@@ -105,25 +104,5 @@ TEST_F(SsfcUtilsImplTest, GetSSFC_InvalidScriptOutputFailed) {
   EXPECT_FALSE(need_to_update);
   EXPECT_EQ(ssfc, 0);
 }
-
-namespace fake {
-
-class FakeSsfcUtilsImplTest : public testing::Test {
- public:
-  FakeSsfcUtilsImplTest() = default;
-  ~FakeSsfcUtilsImplTest() override = default;
-};
-
-TEST_F(FakeSsfcUtilsImplTest, GetSSFC_Failed) {
-  auto fake_ssfc_utils = std::make_unique<FakeSsfcUtils>();
-
-  bool need_to_update = false;
-  uint32_t ssfc = 0;
-  EXPECT_TRUE(fake_ssfc_utils->GetSSFC(kTestModelName, &need_to_update, &ssfc));
-  EXPECT_FALSE(need_to_update);
-  EXPECT_EQ(ssfc, 0);
-}
-
-}  // namespace fake
 
 }  // namespace rmad

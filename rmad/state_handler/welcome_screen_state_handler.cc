@@ -18,20 +18,6 @@
 
 namespace rmad {
 
-namespace fake {
-
-FakeWelcomeScreenStateHandler::FakeWelcomeScreenStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : WelcomeScreenStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<fake::FakeHardwareVerifierClient>(
-              working_dir_path)) {}
-
-}  // namespace fake
-
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)

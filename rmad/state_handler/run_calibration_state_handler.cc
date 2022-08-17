@@ -14,25 +14,9 @@
 
 #include "rmad/utils/accelerometer_calibration_utils_impl.h"
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/fake_sensor_calibration_utils.h"
 #include "rmad/utils/gyroscope_calibration_utils_impl.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeRunCalibrationStateHandler::FakeRunCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback)
-    : RunCalibrationStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<FakeSensorCalibrationUtils>(),
-          std::make_unique<FakeSensorCalibrationUtils>(),
-          std::make_unique<FakeSensorCalibrationUtils>(),
-          std::make_unique<FakeSensorCalibrationUtils>()) {}
-
-}  // namespace fake
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,

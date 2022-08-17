@@ -14,24 +14,8 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/fake_cr50_utils.h"
-#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace rmad {
-
-namespace fake {
-
-FakeWipeSelectionStateHandler::FakeWipeSelectionStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    scoped_refptr<DaemonCallback> daemon_callback,
-    const base::FilePath& working_dir_path)
-    : WipeSelectionStateHandler(
-          json_store,
-          daemon_callback,
-          std::make_unique<FakeCr50Utils>(working_dir_path),
-          std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {}
-
-}  // namespace fake
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
