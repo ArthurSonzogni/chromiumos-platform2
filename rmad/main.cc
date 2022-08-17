@@ -96,8 +96,6 @@ void EnterMinijail() {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  DEFINE_bool(test_mode, false, "Run in the mode to use fake state handlers");
   brillo::FlagHelper::Init(argc, argv, "Chrome OS RMA Daemon");
 
   VLOG(1) << "Starting Chrome OS RMA Daemon.";
@@ -108,11 +106,6 @@ int main(int argc, char* argv[]) {
 
   rmad::RmadInterfaceImpl rmad_interface;
   rmad::DBusService dbus_service(&rmad_interface);
-  if (FLAGS_test_mode) {
-    LOG(INFO) << "Running in test mode";
-    dbus_service.SetTestMode();
-    rmad_interface.SetTestMode();
-  }
 
   return dbus_service.Run();
 }

@@ -51,8 +51,7 @@ constexpr char kMetricsSummaryDivider[] = "\n====================\n\n";
 RmadInterfaceImpl::RmadInterfaceImpl()
     : RmadInterface(),
       external_utils_initialized_(false),
-      current_state_case_(RmadState::STATE_NOT_SET),
-      test_mode_(false) {}
+      current_state_case_(RmadState::STATE_NOT_SET) {}
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
@@ -73,8 +72,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       cmd_utils_(std::move(cmd_utils)),
       metrics_utils_(std::move(metrics_utils)),
       external_utils_initialized_(true),
-      current_state_case_(RmadState::STATE_NOT_SET),
-      test_mode_(false) {}
+      current_state_case_(RmadState::STATE_NOT_SET) {}
 
 bool RmadInterfaceImpl::StoreStateHistory() {
   std::vector<int> state_history;
@@ -89,35 +87,17 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   json_store_ = base::MakeRefCounted<JsonStore>(
       base::FilePath(kDefaultJsonStoreFilePath));
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
-  if (test_mode_) {
-    state_handler_manager_->RegisterFakeStateHandlers(daemon_callback);
-    const base::FilePath test_dir_path =
-        base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
-    runtime_probe_client_ = std::make_unique<fake::FakeRuntimeProbeClient>();
-    shill_client_ = std::make_unique<fake::FakeShillClient>();
-    tpm_manager_client_ =
-        std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
-    // Still use the real power_manager.
-    power_manager_client_ =
-        std::make_unique<PowerManagerClientImpl>(GetSystemBus());
-    cmd_utils_ = std::make_unique<fake::FakeCmdUtils>();
-  } else {
-    state_handler_manager_->RegisterStateHandlers(daemon_callback);
-    runtime_probe_client_ =
-        std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
-    shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
-    tpm_manager_client_ =
-        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
-    power_manager_client_ =
-        std::make_unique<PowerManagerClientImpl>(GetSystemBus());
-    cmd_utils_ = std::make_unique<CmdUtilsImpl>();
-  }
+  state_handler_manager_->RegisterStateHandlers(daemon_callback);
+  runtime_probe_client_ =
+      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
+  shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+  power_manager_client_ =
+      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }
 
 bool RmadInterfaceImpl::WaitForServices() {
-  if (test_mode_) {
-    return true;
-  }
   CHECK(external_utils_initialized_);
   std::string output;
   for (int i = 0; i < kWaitServicesRetries; ++i) {
@@ -250,11 +230,6 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
         components.size() > 0) {
       LOG(INFO) << "Disabling cellular network";
       CHECK(shill_client_->DisableCellular());
-    }
-    if (test_mode_) {
-      ClearTestRequests();
-      test_mode_monitor_timer_.Start(FROM_HERE, kTestModeMonitorInterval, this,
-                                     &RmadInterfaceImpl::MonitorTestRequests);
     }
   }
 
@@ -582,47 +557,6 @@ bool RmadInterfaceImpl::CanGoBack() const {
             prev_state_handler->IsRepeatable());
   }
   return false;
-}
-
-void RmadInterfaceImpl::ClearTestRequests() {
-  // Check if powerwash or cutoff is requested in test mode. The files are
-  // created in the test directory so they are not picked up by the init script
-  // rmad.conf.
-  const base::FilePath test_dir_path =
-      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
-  // Check if powerwash is requested.
-  const base::FilePath powerwash_request_file_path =
-      test_dir_path.AppendASCII(kPowerwashRequestFilePath);
-  if (base::PathExists(powerwash_request_file_path)) {
-    base::DeleteFile(powerwash_request_file_path);
-    LOG(INFO) << "Powerwash requested and ignored";
-  }
-  // Check if cutoff is requested.
-  const base::FilePath cutoff_request_file_path =
-      test_dir_path.AppendASCII(kCutoffRequestFilePath);
-  if (base::PathExists(cutoff_request_file_path)) {
-    base::DeleteFile(cutoff_request_file_path);
-    LOG(INFO) << "Cutoff requested and ignored";
-  }
-}
-
-void RmadInterfaceImpl::MonitorTestRequests() {
-  const base::FilePath test_dir_path =
-      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
-  // Check if reboot is requested.
-  const base::FilePath reboot_request_file_path =
-      test_dir_path.AppendASCII(fake::kRebootRequestFilePath);
-  if (base::PathExists(reboot_request_file_path)) {
-    base::DeleteFile(reboot_request_file_path);
-    power_manager_client_->Restart();
-  }
-  // Check if shutdown is requested.
-  const base::FilePath shutdown_request_file_path =
-      test_dir_path.AppendASCII(fake::kShutdownRequestFilePath);
-  if (base::PathExists(shutdown_request_file_path)) {
-    base::DeleteFile(shutdown_request_file_path);
-    power_manager_client_->Shutdown();
-  }
 }
 
 }  // namespace rmad

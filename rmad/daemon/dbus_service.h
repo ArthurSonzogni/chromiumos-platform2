@@ -77,8 +77,6 @@ class DBusService : public brillo::DBusServiceDaemon {
   void SendPowerCableStateSignal(bool plugged_in);
   void SendExternalDiskSignal(bool detected);
 
-  void SetTestMode() { test_mode_ = true; }
-
  protected:
   // brillo::DBusServiceDaemon overrides.
   int OnEventLoopStarted() override;
@@ -207,9 +205,6 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool is_interface_set_up_;
   // Whether the device should trigger shimless RMA.
   bool is_rma_required_;
-
-  // Test mode daemon.
-  bool test_mode_;
 
   base::WeakPtrFactory<DBusService> weak_ptr_factory_{this};
 };

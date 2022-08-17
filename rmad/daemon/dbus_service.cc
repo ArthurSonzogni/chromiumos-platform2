@@ -300,8 +300,7 @@ DBusService::DBusService(RmadInterface* rmad_interface)
       rmad_interface_(rmad_interface),
       state_file_path_(kDefaultJsonStoreFilePath),
       is_external_utils_initialized_(false),
-      is_interface_set_up_(false),
-      test_mode_(false) {}
+      is_interface_set_up_(false) {}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          RmadInterface* rmad_interface,
@@ -316,8 +315,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       is_external_utils_initialized_(true),
-      is_interface_set_up_(false),
-      test_mode_(false) {
+      is_interface_set_up_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
 }
@@ -329,20 +327,10 @@ int DBusService::OnEventLoopStarted() {
   }
 
   if (!is_external_utils_initialized_) {
-    if (test_mode_) {
-      const base::FilePath test_dir_path =
-          base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
-      tpm_manager_client_ =
-          std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
-      cros_config_utils_ = std::make_unique<fake::FakeCrosConfigUtils>();
-      crossystem_utils_ =
-          std::make_unique<fake::FakeCrosSystemUtils>(test_dir_path);
-    } else {
-      tpm_manager_client_ =
-          std::make_unique<TpmManagerClientImpl>(GetSystemBus());
-      cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
-      crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-    }
+    tpm_manager_client_ =
+        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+    crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
     is_external_utils_initialized_ = true;
   }
   is_rma_required_ = CheckRmaCriteria();

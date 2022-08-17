@@ -70,8 +70,6 @@ class RmadInterfaceImpl final : public RmadInterface {
       RecordBrowserActionMetricCallback callback) override;
   bool CanAbort() const override { return can_abort_; }
 
-  void SetTestMode() { test_mode_ = true; }
-
  private:
   void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
   bool WaitForServices();
@@ -111,10 +109,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   // Check if it's allowed to go back to the previous state.
   bool CanGoBack() const;
 
-  // Monitor files created by fake state handlers in test mode.
-  void ClearTestRequests();
-  void MonitorTestRequests();
-
   // External utilities.
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
@@ -130,10 +124,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;
-
-  // Test mode. Use fake state handlers.
-  bool test_mode_;
-  base::RepeatingTimer test_mode_monitor_timer_;
 };
 
 }  // namespace rmad
