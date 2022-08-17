@@ -23,9 +23,11 @@ namespace {
 
 int GetControlValue(int device_fd, int32_t* value) {
   v4l2_control current = {.id = static_cast<__u32>(V4L2_CID_PRIVACY)};
-  if (HANDLE_EINTR(ioctl(device_fd, VIDIOC_G_CTRL, &current)) < 0) {
+  int ret = HANDLE_EINTR(ioctl(device_fd, VIDIOC_G_CTRL, &current));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "Failed to get privacy control value";
-    return -errno;
+    return ret;
   }
   *value = current.value;
   return 0;

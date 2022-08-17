@@ -255,8 +255,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   // symbolic link to access device.
   device_fd_.reset(RetryDeviceOpen(device_path, O_RDWR));
   if (!device_fd_.is_valid()) {
+    const int ret = ERRNO_OR_RET(-EINVAL);
     PLOGF(ERROR) << "Failed to open " << device_path;
-    return -errno;
+    return ret;
   }
 
   if (!IsCameraDevice(device_path)) {
@@ -275,14 +276,16 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_FMT, &fmt));
   if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "Unable to G_FMT";
-    return -errno;
+    return ret;
   }
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
-    LOGF(WARNING) << "Unable to S_FMT: " << base::safe_strerror(errno)
-                  << ", maybe camera is being used by another app.";
-    return -errno;
+    ret = ERRNO_OR_RET(ret);
+    PLOGF(WARNING)
+        << "Unable to S_FMT: maybe camera is being used by another app.";
+    return ret;
   }
 
   ret = SetPowerLineFrequency();
@@ -456,8 +459,9 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   fmt.fmt.pix.pixelformat = pixel_format;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "Unable to S_FMT";
-    return -errno;
+    return ret;
   }
   VLOGF(1) << "Actual width: " << fmt.fmt.pix.width
            << ", height: " << fmt.fmt.pix.height
@@ -492,10 +496,12 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   req_buffers.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   req_buffers.memory = V4L2_MEMORY_MMAP;
   req_buffers.count = kNumVideoBuffers;
-  if (TEMP_FAILURE_RETRY(
-          ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
+  ret =
+      TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "REQBUFS fails";
-    return -errno;
+    return ret;
   }
   VLOGF(1) << "Requested buffer number: " << req_buffers.count;
 
@@ -506,10 +512,11 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     memset(&expbuf, 0, sizeof(expbuf));
     expbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     expbuf.index = i;
-    if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_EXPBUF, &expbuf)) <
-        0) {
+    ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_EXPBUF, &expbuf));
+    if (ret < 0) {
+      ret = ERRNO_OR_RET(ret);
       PLOGF(ERROR) << "EXPBUF (" << i << ") fails";
-      return -errno;
+      return ret;
     }
     VLOGF(1) << "Exported frame buffer fd: " << expbuf.fd;
     temp_fds.push_back(base::ScopedFD(expbuf.fd));
@@ -520,19 +527,22 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     buffer.index = i;
     buffer.memory = V4L2_MEMORY_MMAP;
 
-    if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
+    ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer));
+    if (ret < 0) {
+      ret = ERRNO_OR_RET(ret);
       PLOGF(ERROR) << "QBUF (" << i << ") fails";
-      return -errno;
+      return ret;
     }
 
     buffer_sizes->push_back(buffer.length);
   }
 
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (TEMP_FAILURE_RETRY(
-          ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type)) < 0) {
+  ret = ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type);
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "STREAMON fails";
-    return -errno;
+    return ret;
   }
 
   for (size_t i = 0; i < temp_fds.size(); i++) {
@@ -558,20 +568,24 @@ int V4L2CameraDevice::StreamOff() {
   }
 
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (TEMP_FAILURE_RETRY(
-          ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type)) < 0) {
+  int ret = TEMP_FAILURE_RETRY(
+      ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "STREAMOFF fails";
-    return -errno;
+    return ret;
   }
   v4l2_requestbuffers req_buffers;
   memset(&req_buffers, 0, sizeof(req_buffers));
   req_buffers.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   req_buffers.memory = V4L2_MEMORY_MMAP;
   req_buffers.count = 0;
-  if (TEMP_FAILURE_RETRY(
-          ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
+  ret =
+      TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "REQBUFS fails";
-    return -errno;
+    return ret;
   }
   buffers_at_client_.clear();
   stream_on_ = false;
@@ -598,12 +612,12 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
     device_pfd.events = POLLIN;
 
     constexpr int kCaptureTimeoutMs = 1000;
-    const int result =
-        TEMP_FAILURE_RETRY(poll(&device_pfd, 1, kCaptureTimeoutMs));
+    int result = TEMP_FAILURE_RETRY(poll(&device_pfd, 1, kCaptureTimeoutMs));
 
     if (result < 0) {
+      result = ERRNO_OR_RET(result);
       PLOGF(ERROR) << "Polling fails";
-      return -errno;
+      return result;
     } else if (result == 0) {
       LOGF(ERROR) << "Timed out waiting for captured frame";
       return -ETIMEDOUT;
@@ -619,9 +633,11 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   memset(&buffer, 0, sizeof(buffer));
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
-  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer)) < 0) {
+  int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF_THROTTLED(ERROR, 60) << "DQBUF fails";
-    return -errno;
+    return ret;
   }
   VLOGF(1) << "DQBUF returns index " << buffer.index << " length "
            << buffer.length;
@@ -639,9 +655,11 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   *v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
 
   struct timespec ts;
-  if (clock_gettime(GetUvcClock(), &ts) < 0) {
+  ret = clock_gettime(GetUvcClock(), &ts);
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     LOGF(ERROR) << "Get clock time fails";
-    return -errno;
+    return ret;
   }
 
   *user_ts = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
@@ -673,9 +691,11 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   buffer.index = buffer_id;
-  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
+  int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(ERROR) << "QBUF fails";
-    return -errno;
+    return ret;
   }
   buffers_at_client_[buffer.index] = false;
   return 0;
@@ -770,10 +790,12 @@ int V4L2CameraDevice::SetFrameRate(float frame_rate) {
     streamparm.parm.capture.timeperframe.denominator =
         (frame_rate * kFrameRatePrecision);
 
-    if (TEMP_FAILURE_RETRY(
-            ioctl(device_fd_.get(), VIDIOC_S_PARM, &streamparm)) < 0) {
+    int ret =
+        TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_PARM, &streamparm));
+    if (ret < 0) {
+      ret = ERRNO_OR_RET(ret);
       LOGF(ERROR) << "Failed to set camera framerate";
-      return -errno;
+      return ret;
     }
     VLOGF(1) << "Actual camera driver framerate: "
              << streamparm.parm.capture.timeperframe.denominator << "/"
@@ -909,10 +931,12 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
           },
   };
 
-  if (HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_SELECTION, &current)) < 0) {
+  int ret = HANDLE_EINTR(ioctl(device_fd_.get(), VIDIOC_S_SELECTION, &current));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(WARNING) << "Failed to set selection(" << rectangle.left << ","
                    << rectangle.top << "," << width << "," << height << ")";
-    return -errno;
+    return ret;
   }
 
   return 0;
@@ -1002,9 +1026,11 @@ int V4L2CameraDevice::QueryControl(int fd,
   int control_id = ControlTypeToCid(type);
   v4l2_queryctrl query_ctrl = {.id = static_cast<__u32>(control_id)};
 
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_QUERYCTRL, &query_ctrl)) < 0) {
+  int ret = HANDLE_EINTR(ioctl(fd, VIDIOC_QUERYCTRL, &query_ctrl));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     VLOGF(1) << "Unsupported control:" << CidToString(control_id);
-    return -errno;
+    return ret;
   }
 
   if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
@@ -1100,10 +1126,12 @@ int V4L2CameraDevice::SetControlValue(int fd, ControlType type, int32_t value) {
   VLOGF(1) << "Set " << CidToString(control_id) << ", value:" << value;
 
   v4l2_control current = {.id = static_cast<__u32>(control_id), .value = value};
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_S_CTRL, &current)) < 0) {
+  int ret = HANDLE_EINTR(ioctl(fd, VIDIOC_S_CTRL, &current));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(WARNING) << "Failed to set " << CidToString(control_id) << " to "
                    << value;
-    return -errno;
+    return ret;
   }
 
   return 0;
@@ -1118,9 +1146,11 @@ int V4L2CameraDevice::GetControlValue(int fd,
   int control_id = ControlTypeToCid(type);
   v4l2_control current = {.id = static_cast<__u32>(control_id)};
 
-  if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_CTRL, &current)) < 0) {
+  int ret = HANDLE_EINTR(ioctl(fd, VIDIOC_G_CTRL, &current));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
     PLOGF(WARNING) << "Failed to get " << CidToString(control_id);
-    return -errno;
+    return ret;
   }
   *value = current.value;
 
@@ -1320,8 +1350,9 @@ int V4L2CameraDevice::QueryControl(const std::string& device_path,
                                    ControlInfo* info) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
   if (!fd.is_valid()) {
+    const int ret = ERRNO_OR_RET(-EINVAL);
     PLOGF(ERROR) << "Failed to open " << device_path;
-    return -errno;
+    return ret;
   }
 
   int ret = QueryControl(fd.get(), type, info);
@@ -1349,8 +1380,9 @@ int V4L2CameraDevice::GetControlValue(const std::string& device_path,
                                       int32_t* value) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
   if (!fd.is_valid()) {
+    const int ret = ERRNO_OR_RET(-EINVAL);
     PLOGF(ERROR) << "Failed to open " << device_path;
-    return -errno;
+    return ret;
   }
 
   return GetControlValue(fd.get(), type, value);
@@ -1362,8 +1394,9 @@ int V4L2CameraDevice::SetControlValue(const std::string& device_path,
                                       int32_t value) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
   if (!fd.is_valid()) {
+    const int ret = ERRNO_OR_RET(-EINVAL);
     PLOGF(ERROR) << "Failed to open " << device_path;
-    return -errno;
+    return ret;
   }
 
   return SetControlValue(fd.get(), type, value);

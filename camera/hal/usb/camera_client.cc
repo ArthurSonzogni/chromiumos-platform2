@@ -852,7 +852,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
         format->fourcc);
     ret = frame->Map();
     if (ret) {
-      return -errno;
+      return ret;
     }
     VLOGFID(1, device_id_) << "Buffer " << i << ", fd: " << frame->GetFd()
                            << " address: " << std::hex

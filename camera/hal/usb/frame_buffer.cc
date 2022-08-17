@@ -204,8 +204,9 @@ int V4L2FrameBuffer::Map() {
   //   2. Support non-zero offset
   void* addr = mmap(NULL, buffer_size_, PROT_READ, MAP_SHARED, fd_.get(), 0);
   if (addr == MAP_FAILED) {
+    const int ret = ERRNO_OR_RET(-EINVAL);
     PLOGF(ERROR) << "mmap() failed";
-    return -EINVAL;
+    return ret;
   }
   data_[0] = static_cast<uint8_t*>(addr);
   is_mapped_ = true;
