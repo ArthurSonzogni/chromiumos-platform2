@@ -64,6 +64,18 @@ enum class UMAPortType {
   kTypeC,
 };
 
+enum class UMADeviceSpeed {
+  kOther = 0,
+  k1_5 = 1,          // 1.5 Mbps (USB 1.1)
+  k12 = 2,           // 12 Mbps (USB 1.1)
+  k480 = 3,          // 480 Mbps (USB 2.0)
+  k480Fallback = 4,  // SuperSpeed device operating in 480 Mbps (USB 2.0)
+  k5000 = 5,         // 5000 Mbps (USB 3.2 Gen 1)
+  k10000 = 6,        // 10000 Mbps (USB 3.2 Gen 2)
+  k20000 = 7,        // 20000 Mbps (USB 3.2 Gen 2x2)
+  kMaxValue = k20000,
+};
+
 // Returns true if the process has CAP_CHOWN.
 bool CanChown();
 
@@ -101,7 +113,8 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   const std::string& rule,
                                   UMADeviceRecognized recognized,
                                   UMAEventTiming timing,
-                                  UMAPortType port);
+                                  UMAPortType port,
+                                  UMADeviceSpeed speed);
 
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the

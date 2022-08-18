@@ -96,6 +96,8 @@ class EntryManager {
 
   UMAPortType GetPortType(const std::string& devpath);
 
+  UMADeviceSpeed GetDeviceSpeed(const std::string& devpath);
+
   // Represents whether the lock screen is being shown.
   bool user_db_read_only_;
 

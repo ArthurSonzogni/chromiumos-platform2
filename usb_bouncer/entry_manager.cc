@@ -187,17 +187,17 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLocked);
           if (IsExternalDevice(devpath)) {
-            UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
-                                         UMAEventTiming::kLocked,
-                                         GetPortType(devpath));
+            UMALogExternalDeviceAttached(
+                &metrics_, rule, new_entry, UMAEventTiming::kLocked,
+                GetPortType(devpath), GetDeviceSpeed(devpath));
           }
         } else {
           UMALogDeviceAttached(&metrics_, rule, new_entry,
                                UMAEventTiming::kLoggedIn);
           if (IsExternalDevice(devpath)) {
-            UMALogExternalDeviceAttached(&metrics_, rule, new_entry,
-                                         UMAEventTiming::kLoggedIn,
-                                         GetPortType(devpath));
+            UMALogExternalDeviceAttached(
+                &metrics_, rule, new_entry, UMAEventTiming::kLoggedIn,
+                GetPortType(devpath), GetDeviceSpeed(devpath));
           }
           (*user_db_.Get().mutable_entries())[user_key] = entry;
         }
@@ -259,9 +259,10 @@ bool EntryManager::HandleUserLogin() {
                              UMAEventTiming::kLoggedOut);
         if (devpaths.find(global_key) != devpaths.end() &&
             IsExternalDevice(devpaths.find(global_key)->second)) {
+          const std::string& devpath = devpaths.find(global_key)->second;
           UMALogExternalDeviceAttached(
               &metrics_, rule, new_entry, UMAEventTiming::kLoggedOut,
-              GetPortType(devpaths.find(global_key)->second));
+              GetPortType(devpath), GetDeviceSpeed(devpath));
         }
       }
       (*user_entries)[user_key] = entry.second;
@@ -346,6 +347,39 @@ UMAPortType EntryManager::GetPortType(const std::string& devpath) {
   }
 
   return UMAPortType::kTypeA;
+}
+
+UMADeviceSpeed EntryManager::GetDeviceSpeed(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+  std::string speed;
+  if (base::ReadFileToString(normalized_devpath.Append("speed"), &speed)) {
+    base::TrimWhitespaceASCII(speed, base::TRIM_ALL, &speed);
+  }
+  std::string version;
+  if (base::ReadFileToString(normalized_devpath.Append("version"), &version)) {
+    base::TrimWhitespaceASCII(version, base::TRIM_ALL, &version);
+  }
+
+  if (speed == "20000") {
+    return UMADeviceSpeed::k20000;
+  } else if (speed == "10000") {
+    return UMADeviceSpeed::k10000;
+  } else if (speed == "5000") {
+    return UMADeviceSpeed::k5000;
+  } else if (speed == "480") {
+    if (version == "2.10") {
+      return UMADeviceSpeed::k480Fallback;
+    } else {
+      return UMADeviceSpeed::k480;
+    }
+  } else if (speed == "12") {
+    return UMADeviceSpeed::k12;
+  } else if (speed == "1.5") {
+    return UMADeviceSpeed::k1_5;
+  } else {
+    return UMADeviceSpeed::kOther;
+  }
 }
 
 }  // namespace usb_bouncer

@@ -483,7 +483,8 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   const std::string& rule,
                                   UMADeviceRecognized recognized,
                                   UMAEventTiming timing,
-                                  UMAPortType port) {
+                                  UMAPortType port,
+                                  UMADeviceSpeed speed) {
   usbguard::Rule parsed_rule = GetRuleFromString(rule);
   if (!parsed_rule) {
     return;
@@ -503,6 +504,12 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                             to_string(port).c_str()),
                          static_cast<int>(GetClassFromRule(parsed_rule)),
                          static_cast<int>(UMADeviceClass::kMaxValue));
+
+  metrics->SendEnumToUMA(base::StringPrintf("%s.%s.DeviceSpeed",
+                                            kUmaExternalDeviceAttachedHistogram,
+                                            to_string(port).c_str()),
+                         static_cast<int>(speed),
+                         static_cast<int>(UMADeviceSpeed::kMaxValue));
 }
 
 base::FilePath GetUserDBDir() {
