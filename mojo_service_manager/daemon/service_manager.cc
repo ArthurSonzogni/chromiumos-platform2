@@ -20,6 +20,9 @@ namespace {
 // The security context to identify the browser process. This is a workaround
 // for b/235922792.
 constexpr char kBrowserSecurityContext[] = "u:r:cros_browser:s0";
+// Workaround for b/242961867. The security context of browser could be this one
+// instead of the above one. Treat this as the identity of browser.
+constexpr char kSessionManagerSecurityContext[] = "u:r:cros_session_manager:s0";
 
 }  // namespace
 
@@ -232,11 +235,16 @@ void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
 
 void ServiceManager::HandleDisconnect() {
   if (receiver_set_.current_context()->security_context ==
-      kBrowserSecurityContext) {
+          kBrowserSecurityContext ||
+      // TODO(b/242961867): Remove the below security context.
+      receiver_set_.current_context()->security_context ==
+          kSessionManagerSecurityContext) {
     // TODO(b/235922792): Remove this restart logic after we have migrated
     // services which don't restart themselvies. Refer to the
     // //daemon/launcher.cc for details.
-    LOG(INFO) << "Disconnected from browser, quit and wait for respawn.";
+    LOG(INFO) << "Disconnected from browser("
+              << receiver_set_.current_context()->security_context
+              << "), quit and wait for respawn.";
     std::move(quit_closure_).Run();
     return;
   }
