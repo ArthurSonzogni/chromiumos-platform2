@@ -99,13 +99,6 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
   bool IsIioSarSensor(const UdevDeviceInfo& dev, std::string* devlink_out);
   bool IsIioActivitySensor(const UdevDeviceInfo& dev, std::string* devlink_out);
 
-  // Sets proximity IIO attributes for rising, falling, or either direction
-  bool SetIioRisingFallingValue(const std::string& syspath,
-                                const std::string& config_path,
-                                const std::string& config_name,
-                                const std::string& path_prefix,
-                                const std::string& postfix);
-
   // Configures the SAR sensor for usage based on values read from cros_config
   bool ConfigureSarSensor(SensorInfo* sensor);
 

@@ -296,52 +296,7 @@ uint32_t UserProximityWatcher::GetUsableSensorRoles(const SensorType type,
   return responsibility;
 }
 
-bool UserProximityWatcher::SetIioRisingFallingValue(
-    const std::string& syspath,
-    const std::string& config_path,
-    const std::string& config_name,
-    const std::string& path_prefix,
-    const std::string& postfix) {
-  std::string rising_value, falling_value;
-  std::string rising_config = "thresh-rising" + config_name;
-  std::string falling_config = "thresh-falling" + config_name;
-  bool set_rising =
-      config_->GetString(config_path, rising_config, &rising_value);
-  bool set_falling =
-      config_->GetString(config_path, falling_config, &falling_value);
-
-  if (!set_rising && !set_falling)
-    return true;
-
-  std::string prefix = path_prefix + "thresh_";
-  std::string falling_path = prefix + "falling" + postfix;
-  std::string rising_path = prefix + "rising" + postfix;
-  std::string either_path = prefix + "either" + postfix;
-  bool try_either = falling_value == rising_value;
-
-  if (!try_either || !udev_->SetSysattr(syspath, either_path, rising_value)) {
-    if (set_rising && !udev_->SetSysattr(syspath, rising_path, rising_value)) {
-      LOG(ERROR) << "Could not set proximity sensor " << rising_path << " to "
-                 << rising_value;
-      return false;
-    }
-    if (set_falling &&
-        !udev_->SetSysattr(syspath, falling_path, falling_value)) {
-      LOG(ERROR) << "Could not set proximity sensor " << falling_path << " to "
-                 << falling_value;
-      return false;
-    }
-  } else if (!try_either) {
-    LOG(ERROR) << "Could not set proximity sensor " << either_path << " to "
-               << rising_value;
-    return false;
-  }
-
-  return true;
-}
-
 bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
-  const std::string& syspath = sensor->syspath;
   uint32_t role = sensor->role;
   if (!config_) {
     /* Ignore on non-unibuild boards */
@@ -372,41 +327,6 @@ bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
   }
 
   sensor->channel = channel;
-
-  std::string sampling_frequency;
-  if (config_->GetString(config_path, "sampling-frequency",
-                         &sampling_frequency)) {
-    if (!udev_->SetSysattr(syspath, "sampling_frequency", sampling_frequency)) {
-      LOG(ERROR) << "Could not set proximity sensor sampling frequency";
-      return false;
-    }
-  }
-
-  std::string gain;
-  if (config_->GetString(config_path, "hardwaregain", &gain)) {
-    std::string gain_path = "in_proximity" + channel + "_hardwaregain";
-    if (!udev_->SetSysattr(syspath, gain_path, gain)) {
-      LOG(ERROR) << "Could not set proximity sensor hardware gain";
-      return false;
-    }
-  }
-
-  if (!SetIioRisingFallingValue(syspath, config_path, "",
-                                "events/in_proximity" + channel + "_",
-                                "_value")) {
-    return false;
-  }
-
-  if (!SetIioRisingFallingValue(syspath, config_path, "-hysteresis",
-                                "events/in_proximity" + channel + "_",
-                                "_hysteresis")) {
-    return false;
-  }
-
-  if (!SetIioRisingFallingValue(syspath, config_path, "-period", "events/",
-                                "_period")) {
-    return false;
-  }
 
   return true;
 }
