@@ -585,6 +585,10 @@ int GetSuspendFailureWeight() {
   return 50;
 }
 
+int GetShillFailureWeight() {
+  return 10;
+}
+
 int GetKernelWarningWeight(const std::string& flag) {
   // Sample kernel wifi warnings at a higher weight, since they're heavily
   // environmentally influenced.

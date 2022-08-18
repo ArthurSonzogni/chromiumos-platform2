@@ -18,6 +18,7 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/anomaly_detector_test_utils.h"
+#include "crash-reporter/util.h"
 
 namespace {
 
@@ -33,6 +34,7 @@ using ::anomaly::ParserRun;
 using ::anomaly::ParserTest;
 using ::anomaly::SELinuxParser;
 using ::anomaly::ServiceParser;
+using ::anomaly::ShillParser;
 using ::anomaly::SuspendParser;
 using ::anomaly::TcsdParser;
 using ::anomaly::TerminaParser;
@@ -630,4 +632,14 @@ TEST(AnomalyDetectorTest, TcsdAuthFailureBlocklist) {
   ParserRun tcsd_auth_failure = {.expected_size = 0};
   ParserTest<TcsdParser>("TEST_TCSD_AUTH_FAILURE_BLOCKLIST",
                          {tcsd_auth_failure});
+}
+
+TEST(AnomalyDetectorTest, CellularFailure) {
+  ParserRun modem_failure = {
+      .expected_text = "Core.Failed",
+      .expected_flags = {
+          {"--modem_failure",
+           base::StringPrintf("--weight=%d", util::GetShillFailureWeight())}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_FAILURE", {modem_failure}, &parser);
 }

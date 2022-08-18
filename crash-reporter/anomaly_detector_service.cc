@@ -85,6 +85,7 @@ Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
       std::make_unique<MetricsLibrary>(), testonly_send_all);
   parsers_["cryptohomed"] = std::make_unique<anomaly::CryptohomeParser>();
   parsers_["tcsd"] = std::make_unique<anomaly::TcsdParser>();
+  parsers_["shill"] = std::make_unique<anomaly::ShillParser>(testonly_send_all);
 
   // If any log file is missing, the LogReader will try to reopen the file on
   // GetNextEntry method call. After multiple attempts however LogReader will

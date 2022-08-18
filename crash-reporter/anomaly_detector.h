@@ -163,6 +163,15 @@ class TcsdParser : public Parser {
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
 };
 
+class ShillParser : public Parser {
+ public:
+  explicit ShillParser(bool testonly_send_all);
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+
+ private:
+  const bool testonly_send_all_;
+};
+
 }  // namespace anomaly
 
 #endif  // CRASH_REPORTER_ANOMALY_DETECTOR_H_

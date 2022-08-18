@@ -369,6 +369,11 @@ generate a report along with failed tpm commands.
 
 TODO(chingkang): Expand on this section
 
+### modem failures
+
+When the modem rejects a user request to perform an operation on the modem, we
+generate a report (For e.g. Failure to connect to a network)
+
 ## kernel_warning_collector
 
 Collects WARN() messages from anywhere in the depths of the kernel.

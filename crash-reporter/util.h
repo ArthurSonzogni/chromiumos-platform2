@@ -160,6 +160,10 @@ int GetServiceFailureWeight();
 // 1.0/GetSuspendFailureWeight() of the failures.
 int GetSuspendFailureWeight();
 
+// Return the weight for shill failures. We'll only collect
+// 1.0/GetShillFailureWeight() of the failures.
+int GetShillFailureWeight();
+
 // Return the weight for kernel warnings with the specified command-line flag.
 // We'll only collect 1.0/GetKernelWarningWeight(flag) of the failures.
 int GetKernelWarningWeight(const std::string& flag);

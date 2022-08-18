@@ -576,4 +576,40 @@ MaybeCrashReport TcsdParser::ParseLogEntry(const std::string& line) {
   return CrashReport(std::move(text), {std::move("--auth_failure")});
 }
 
+ShillParser::ShillParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+
+constexpr LazyRE2 mm_failure = {
+    R"(dbus.*org.freedesktop.ModemManager1.Error.(\S+), (.*))"};
+
+MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
+  std::string error_code;
+  std::string error_message;
+  if (!RE2::PartialMatch(line, *mm_failure, &error_code, &error_message)) {
+    return std::nullopt;
+  }
+
+  // TODO(pholla): b/243522072 Figure out a way to write an integration test
+  // that excites an org.freedesktop.ModemManager1.Error DBus error via Shill.
+  // Most of these errors require injection of a cellular network error, so
+  // writing an integration test is not trivial.
+
+  if (!testonly_send_all_ &&
+      base::RandGenerator(util::GetShillFailureWeight()) != 0) {
+    return std::nullopt;
+  }
+
+  uint32_t hash = StringHash(error_message.c_str());
+  if (WasAlreadySeen(hash)) {
+    return std::nullopt;
+  }
+
+  std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
+  const std::string kFlag = "--modem_failure";
+  return CrashReport(
+      std::move(text),
+      {std::move("--modem_failure"),
+       base::StringPrintf("--weight=%d", util::GetShillFailureWeight())});
+}
+
 }  // namespace anomaly

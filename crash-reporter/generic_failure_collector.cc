@@ -27,6 +27,7 @@ const char* const GenericFailureCollector::kSuspendFailure = "suspend-failure";
 const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
     "arc-service-failure";
+const char* const GenericFailureCollector::kModemFailure = "ModemManager";
 
 GenericFailureCollector::GenericFailureCollector()
     : CrashCollector("generic_failure"), failure_report_path_("/dev/stdin") {}
@@ -88,6 +89,7 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
 CollectorInfo GenericFailureCollector::GetHandlerInfo(
     bool suspend_failure,
     bool auth_failure,
+    bool modem_failure,
     const std::string& arc_service_failure,
     const std::string& service_failure) {
   auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
@@ -105,6 +107,13 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
                        .cb = base::BindRepeating(
                            &GenericFailureCollector::Collect,
                            generic_failure_collector, kAuthFailure),
+                   },
+                   {
+                       .should_handle = modem_failure,
+                       .cb = base::BindRepeating(
+                           &GenericFailureCollector::CollectWithWeight,
+                           generic_failure_collector, kModemFailure,
+                           util::GetShillFailureWeight()),
                    },
                    {
                        .should_handle = !arc_service_failure.empty(),
