@@ -179,6 +179,20 @@ bool Network::HasConnectionObject() const {
   return connection_ != nullptr;
 }
 
+void Network::InvalidateIPv6Config() {
+  SLOG(this, 2) << interface_name_ << ": " << __func__;
+  if (!ip6config_) {
+    return;
+  }
+
+  SLOG(this, 2) << interface_name_ << "Waiting for new IPv6 configuration";
+  // Invalidate the old IPv6 configuration, will receive notifications
+  // from kernel for new IPv6 configuration if there is one.
+  StopIPv6DNSServerTimer();
+  set_ip6config(nullptr);
+  event_handler_->OnIPConfigsPropertyUpdated();
+}
+
 void Network::OnIPv4ConfigUpdated() {
   if (!ipconfig()) {
     return;
@@ -312,6 +326,8 @@ bool Network::RenewDHCPLease() {
   if (!dhcp_controller_) {
     return false;
   }
+  SLOG(this, 2) << interface_name_ << ": renewing DHCP lease";
+  // If RenewIP() fails, DHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP();
 }
 

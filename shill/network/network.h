@@ -167,6 +167,9 @@ class Network {
   void StopIPv6();
   void StartIPv6();
   void EnableIPv6Privacy();
+  // Invalidate the IPv6 config kept in shill and wait for the new config from
+  // the kernel.
+  void InvalidateIPv6Config();
   // Timer function for monitoring IPv6 DNS server's lifetime.
   void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
   void StopIPv6DNSServerTimer();

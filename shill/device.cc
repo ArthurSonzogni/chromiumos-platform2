@@ -371,7 +371,7 @@ void Device::OnBeforeSuspend(const ResultCallback& callback) {
 }
 
 void Device::OnAfterResume() {
-  RenewDHCPLease(false, nullptr);
+  ForceIPConfigUpdate();
 }
 
 void Device::OnDarkResume(const ResultCallback& callback) {
@@ -406,20 +406,10 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
   return;
 }
 
-void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
+void Device::ForceIPConfigUpdate() {
   LOG(INFO) << LoggingTag() << ": " << __func__;
-
-  if (network()->RenewDHCPLease()) {
-    SLOG(this, 3) << "Renewing IPv4 Address";
-  }
-  if (ip6config() && !from_dbus) {
-    SLOG(this, 3) << "Waiting for new IPv6 configuration";
-    // Invalidate the old IPv6 configuration, will receive notifications
-    // from kernel for new IPv6 configuration if there is one.
-    network_->StopIPv6DNSServerTimer();
-    set_ip6config(nullptr);
-    OnIPConfigsPropertyUpdated();
-  }
+  network()->RenewDHCPLease();
+  network()->InvalidateIPv6Config();
 }
 
 void Device::UpdateBlackholeUserTraffic() {

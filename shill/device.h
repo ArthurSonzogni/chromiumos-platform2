@@ -266,8 +266,8 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
                                               Error* error,
                                               const ResultCallback& callback);
 
-  // Initiate renewal of existing DHCP lease.
-  void RenewDHCPLease(bool from_dbus, Error* error);
+  // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.
+  void ForceIPConfigUpdate();
 
   // Creates a byte vector from a colon-separated hardware address string.
   static std::vector<uint8_t> MakeHardwareAddressFromString(

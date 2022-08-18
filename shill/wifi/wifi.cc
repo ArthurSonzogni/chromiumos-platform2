@@ -2835,8 +2835,8 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      base::Bind(&Device::RenewDHCPLease,
-                 weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
+      base::Bind(&Device::ForceIPConfigUpdate,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
       base::Bind(&WiFi::RemoveSupplicantNetworks,
                  weak_ptr_factory_while_started_.GetWeakPtr()),
       network()->TimeToNextDHCPLeaseRenewal());
@@ -2857,8 +2857,8 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      base::Bind(&Device::RenewDHCPLease,
-                 weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
+      base::Bind(&Device::ForceIPConfigUpdate,
+                 weak_ptr_factory_while_started_.GetWeakPtr()),
       base::Bind(&WiFi::InitiateScanInDarkResume,
                  weak_ptr_factory_while_started_.GetWeakPtr()),
       base::Bind(&WiFi::RemoveSupplicantNetworks,
