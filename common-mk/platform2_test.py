@@ -162,8 +162,13 @@ class Platform2Test(object):
                 self.framework = "ldso"
             else:
                 self.framework = "qemu"
-
+        elif self.framework == "qemu":
+            qemu_arch = qemu.Qemu.DetectArch(self.bin, self.sysroot)
         if self.framework == "qemu":
+            assert qemu_arch, (
+                "failed to detect qemu arch: "
+                "confirm that qemu is supported on your system"
+            )
             self.qemu = qemu.Qemu(self.sysroot, arch=qemu_arch)
 
     @classmethod
