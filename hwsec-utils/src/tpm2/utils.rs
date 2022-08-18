@@ -152,14 +152,14 @@ pub fn read_board_id(ctx: &mut impl Context) -> Result<data_types::BoardID, Hwse
 }
 
 #[cfg(test)]
-fn split_into_hex_strtok(hex_code: &str) -> Vec<&str> {
-    // e.g. "12345678" -> ["12", "34", "56", "78"]
-    hex_code.split(' ').collect::<Vec<&str>>()
-}
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::context::mock::MockContext;
+
+    fn split_into_hex_strtok(hex_code: &str) -> Vec<&str> {
+        // e.g. "12 34 56 78" -> ["12", "34", "56", "78"]
+        hex_code.split(' ').collect::<Vec<&str>>()
+    }
 
     #[test]
     fn test_nv_read_successful() {
