@@ -166,31 +166,20 @@ class Network {
   // Functions for IPv6.
   void StopIPv6();
   void StartIPv6();
-  void EnableIPv6Privacy();
   // Invalidate the IPv6 config kept in shill and wait for the new config from
   // the kernel.
   void InvalidateIPv6Config();
-  // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
-  void StopIPv6DNSServerTimer();
-  // Called when the lifetime for IPv6 DNS server expires.
-  void IPv6DNSServerExpired();
-  const std::optional<IPConfig::Properties>& ipv6_static_properties() {
-    return ipv6_static_properties_;
-  }
   void set_ipv6_static_properties(const IPConfig::Properties& props) {
     ipv6_static_properties_ = props;
   }
-  // Configures static IP address received from cellular bearer.
-  void ConfigureStaticIPv6Address();
+  // Called by DeviceInfo.
+  void EnableIPv6Privacy();
   // Called by DeviceInfo when the kernel adds or removes a globally-scoped
   // IPv6 address from this interface.
   mockable void OnIPv6AddressChanged(const IPAddress* address);
   // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
-  // Called when IPv6 configuration changes.
-  void OnIPv6ConfigUpdated();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
@@ -264,6 +253,17 @@ class Network {
                                  bool new_lease_acquired);
   // Callback invoked on DHCP failures.
   void OnDHCPFailure();
+
+  // Functions for IPv6.
+  // Timer function for monitoring IPv6 DNS server's lifetime.
+  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
+  void StopIPv6DNSServerTimer();
+  // Called when the lifetime for IPv6 DNS server expires.
+  void IPv6DNSServerExpired();
+  // Configures static IP address received from cellular bearer.
+  void ConfigureStaticIPv6Address();
+  // Called when IPv6 configuration changes.
+  void OnIPv6ConfigUpdated();
 
   const int interface_index_;
   const std::string interface_name_;
