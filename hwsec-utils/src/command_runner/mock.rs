@@ -110,3 +110,9 @@ impl CommandRunner for MockCommandRunner {
         out.result
     }
 }
+
+impl Drop for MockCommandRunner {
+    fn drop(&mut self) {
+        assert!(self.expectations.is_empty());
+    }
+}
