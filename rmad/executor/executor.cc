@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/file_utils.h>
 
@@ -36,6 +37,17 @@ constexpr char kTargetFirmwareUpdaterAbsPath[] =
 constexpr int kWriteLogPartitionIndex = 1;
 // Partition for rootfs A in a ChromeOS image. We don't check rootfs B.
 constexpr int kRootfsPartitionIndex = 3;
+
+// Log file format.
+constexpr char kLogFilenameFormat[] = "rma-%s.log";
+
+std::string FormatTime(const base::Time& time) {
+  base::Time::Exploded e;
+  time.UTCExplode(&e);
+  // ISO 8601 format.
+  return base::StringPrintf("%04d%02d%02dT%02d%02d%02dZ", e.year, e.month,
+                            e.day_of_month, e.hour, e.minute, e.second);
+}
 
 }  // namespace
 
@@ -69,11 +81,14 @@ void Executor::MountAndWriteLog(uint8_t device_id,
   const base::FilePath mount_point = temp_dir.GetPath();
   const Mount mount(device_path, mount_point, "vfat", false);
   if (mount.IsValid()) {
-    // TODO(chenghan): Append timestamp to the log filename.
-    const base::FilePath log_path = mount_point.Append("rma.log");
+    const std::string filename = base::StringPrintf(
+        kLogFilenameFormat, FormatTime(base::Time::Now()).c_str());
+    const base::FilePath log_path = mount_point.Append(filename);
     if (base::WriteFile(log_path, log_string.c_str())) {
       brillo::SyncFileOrDirectory(log_path, false, true);
-      std::move(callback).Run(log_path.value());
+      // The full log path is not useful because the mount point is a temporary
+      // directory. Returning the filename is enough.
+      std::move(callback).Run(filename);
       return;
     }
   }
