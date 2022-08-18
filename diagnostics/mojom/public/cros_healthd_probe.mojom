@@ -107,17 +107,12 @@ enum ProcessState {
 
 // Process probe result. Can either be populated with the ProcessInfo or an
 // error retrieving the information.
-//
-// NextMinVersion: 2, NextIndex: 3
-[Extensible]
+[Stable]
 union ProcessResult {
-  // The required field for backwards compatibility. The unrecognized Mojo
-  // field will deserialize to this field. It should not be used.
-  [MinVersion=1, Default] bool unmapped_field@2;
   // Valid ProcessInfo.
-  ProcessInfo process_info@0;
+  ProcessInfo process_info;
   // The error that occurred attempting to retrieve the ProcessInfo.
-  ProbeError error@1;
+  ProbeError error;
 };
 
 // Information related to a particular process.
@@ -993,21 +988,18 @@ struct AudioInfo {
 };
 
 // Audio hardware probe result.
-//
-// NextMinVersion: 1, NextIndex: 3
+[Stable]
 union AudioHardwareResult {
-  // The required field for backwards compatibility. The unrecognized Mojo
-  // field will deserialize to this field. It should not be used.
-  [Default] bool unmapped_field0;
   // Valid AudioHardwareInfo.
-  AudioHardwareInfo audio_hardware_info@1;
+  AudioHardwareInfo audio_hardware_info;
   // The error that occurred.
-  ProbeError error@2;
+  ProbeError error;
 };
 
 // Audio hardware information.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct AudioHardwareInfo {
   // Audio cards information.
   array<AudioCard> audio_cards@0;
@@ -1016,6 +1008,7 @@ struct AudioHardwareInfo {
 // Audio card information.
 //
 // NextMinVersion: 1, NextIndex: 3
+[Stable]
 struct AudioCard {
   // The id used by ALSA(Advanced Linux Sound Architecture).
   string alsa_id@0;
@@ -1029,6 +1022,7 @@ struct AudioCard {
 // HD-Audio codec information.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct HDAudioCodec {
   // The name. E.g. "ATI R6xx HDMI".
   string name@0;
