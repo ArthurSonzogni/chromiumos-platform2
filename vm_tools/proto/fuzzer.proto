@@ -20,7 +20,7 @@ import "vm_crash.proto";
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
-  // Next id: 64
+  // Next id: 66
   // Skip [100-110]
   oneof input {
     // Calls to the ContainerListener service.
@@ -44,6 +44,8 @@ message ContainerListenerFuzzerSingleAction {
     ReportMetricsRequest report_metrics_request = 57;
     InstallShaderCacheRequest install_shader_cache_request = 62;
     UninstallShaderCacheRequest uninstall_shader_cache_request = 63;
+    InhibitScreensaverInfo inhibit_screensaver_info = 64;
+    UninhibitScreensaverInfo uninhibit_screensaver_info = 65;
 
     // Calls to the CrashListener service.
     EmptyMessage metrics_consent_request = 33;

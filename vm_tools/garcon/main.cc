@@ -54,6 +54,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include "vm_tools/common/spawn_util.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
+#include "vm_tools/garcon/screensaver_dbus_service.h"
 #include "vm_tools/garcon/service_impl.h"
 
 namespace {
@@ -228,6 +229,16 @@ void CreatePackageKitProxy(
   BlockSigterm();
 
   *proxy_ptr = vm_tools::garcon::PackageKitProxy::Create(host_notifier);
+  event->Signal();
+}
+
+void CreateScreenSaverDBusService(
+    base::WaitableEvent* event,
+    std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService>* proxy_ptr) {
+  // We don't want to receive SIGTERM on this thread.
+  BlockSigterm();
+
+  *proxy_ptr = vm_tools::garcon::ScreenSaverDBusService::Create();
   event->Signal();
 }
 
@@ -605,6 +616,24 @@ int main(int argc, char** argv) {
   if (!pk_proxy) {
     LOG(ERROR) << "Failed in creating the PackageKit proxy";
     return -1;
+  }
+  event.Reset();
+
+  // This needs to be created on the D-Bus thread.
+  std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService> screensaver;
+  ret = dbus_thread.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CreateScreenSaverDBusService, &event, &screensaver));
+  if (!ret) {
+    LOG(ERROR)
+        << "Failed to post Screensaver D-Bus server creation to D-Bus thread";
+    return -1;
+  }
+  // Wait for the creation to complete.
+  event.Wait();
+  if (!screensaver) {
+    // Not returning -1 on failure as it is not essential for the VM to start.
+    LOG(ERROR) << "Failed in creating the Screensaver D-Bus server";
   }
   event.Reset();
 

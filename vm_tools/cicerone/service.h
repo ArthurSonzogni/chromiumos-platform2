@@ -467,6 +467,20 @@ class Service final {
       std::string* error_out,
       base::WaitableEvent* event);
 
+  // Sends a D-Bus message to request that sleep be inhibited.
+  void InhibitScreensaver(const std::string& container_token,
+                          const uint32_t cid,
+                          InhibitScreensaverSignal* signal,
+                          bool* result,
+                          base::WaitableEvent* event);
+
+  // Sends a D-Bus message to request that sleep be Uninhibited.
+  void UninhibitScreensaver(const std::string& container_token,
+                            const uint32_t cid,
+                            UninhibitScreensaverSignal* signal,
+                            bool* result,
+                            base::WaitableEvent* event);
+
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
   // It will use |cid| to lookup VM and owner, and set these fields on

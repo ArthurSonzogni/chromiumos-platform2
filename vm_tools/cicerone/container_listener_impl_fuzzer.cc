@@ -411,6 +411,18 @@ DEFINE_PROTO_FUZZER(
                                           &report_metrics_response);
         break;
 
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kInhibitScreensaverInfo:
+        container_listener->InhibitScreensaver(
+            &context, &action.inhibit_screensaver_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kUninhibitScreensaverInfo:
+        container_listener->UninhibitScreensaver(
+            &context, &action.uninhibit_screensaver_info(), &response);
+        break;
+
       default:
         NOTREACHED();
     }

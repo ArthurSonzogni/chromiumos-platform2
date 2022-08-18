@@ -389,6 +389,27 @@ message UninstallShaderCacheRequest {
   uint64 steam_app_id = 2;
 }
 
+// Response from ReportMetrics.
+// Notifying host that sleep should be inhibited
+message InhibitScreensaverInfo {
+  // The security token the container was given.
+  string token = 1;
+  // Identifier for the request, same cookie will be used to uninhibit
+  int32 cookie = 2;
+  // The client which sent this request
+  string client = 3;
+  // The reason for inhibiting
+  string reason = 4;
+}
+
+// Notifying host that sleep should be uninhibited
+message UninhibitScreensaverInfo {
+  // The security token the container was given.
+  string token = 1;
+  // Identifier for the request, corresponding inhibit should have been sent
+  int32 cookie = 2;
+}
+
 // Service that is notified of events from a container.
 service ContainerListener {
   // Called by each container when it starts up to indicate that it is ready to
@@ -464,6 +485,12 @@ service ContainerListener {
 
   // Called by the VM to trigger Shader DLC uninstall.
   rpc UninstallShaderCache(UninstallShaderCacheRequest) returns (EmptyMessage);
+
+  // Called by VM to inhibit sleep.
+  rpc InhibitScreensaver(InhibitScreensaverInfo) returns (EmptyMessage);
+
+  // Called by VM to uninhibit sleep.
+  rpc UninhibitScreensaver(UninhibitScreensaverInfo) returns (EmptyMessage);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.

@@ -380,6 +380,52 @@ bool HostNotifier::ReportMetrics(
   return true;
 }
 
+bool HostNotifier::InhibitScreensaver(
+    vm_tools::container::InhibitScreensaverInfo info) {
+  std::string token = GetSecurityToken();
+  if (token.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  info.set_token(token);
+  vm_tools::EmptyMessage empty;
+  grpc::Status status = stub->InhibitScreensaver(&ctx, info, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to inhibit screensaver: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
+bool HostNotifier::UninhibitScreensaver(
+    vm_tools::container::UninhibitScreensaverInfo info) {
+  std::string token = GetSecurityToken();
+  if (token.empty()) {
+    return false;
+  }
+  vm_tools::EmptyMessage empty;
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  info.set_token(token);
+  grpc::Status status = stub->UninhibitScreensaver(&ctx, info, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to uninhibit screensaver: "
+                 << status.error_message();
+    return false;
+  }
+  return true;
+}
 HostNotifier::HostNotifier(base::OnceClosure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),

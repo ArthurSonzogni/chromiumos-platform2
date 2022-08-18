@@ -76,6 +76,7 @@ static_library("libgarcon") {
     "../garcon/ini_parse_util.cc",
     "../garcon/mime_types_parser.cc",
     "../garcon/package_kit_proxy.cc",
+    "../garcon/screensaver_dbus_service.cc",
     "../garcon/service_impl.cc",
     "../garcon/xdg_util.cc",
   ]

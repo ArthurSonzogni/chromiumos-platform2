@@ -1563,6 +1563,25 @@ void Service::UninstallVmShaderCache(
   event->Signal();
 }
 
+void Service::InhibitScreensaver(const std::string& container_token,
+                                 const uint32_t cid,
+                                 InhibitScreensaverSignal* signal,
+                                 bool* result,
+                                 base::WaitableEvent* event) {
+  *result = SendSignal(kInhibitScreensaverSignal, container_token, cid, signal);
+  event->Signal();
+}
+
+void Service::UninhibitScreensaver(const std::string& container_token,
+                                   const uint32_t cid,
+                                   UninhibitScreensaverSignal* signal,
+                                   bool* result,
+                                   base::WaitableEvent* event) {
+  *result =
+      SendSignal(kUninhibitScreensaverSignal, container_token, cid, signal);
+  event->Signal();
+}
+
 bool Service::CheckReportMetricsRateLimit(const std::string& vm_name) {
   RateLimitState& state = metric_rate_limit_state_[vm_name];
   base::TimeTicks now = base::TimeTicks::Now();

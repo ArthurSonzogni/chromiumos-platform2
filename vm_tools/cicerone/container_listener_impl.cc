@@ -651,6 +651,70 @@ grpc::Status ContainerListenerImpl::ReportMetrics(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::InhibitScreensaver(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::InhibitScreensaverInfo* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+
+  InhibitScreensaverSignal signal;
+  signal.set_cookie(request->cookie());
+  signal.set_client(request->client());
+  signal.set_reason(request->reason());
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::InhibitScreensaver, service_,
+                     request->token(), cid, &signal, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure notifying InhibitScreensaver from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in InhibitScreensaver");
+  }
+
+  return grpc::Status::OK;
+}
+
+grpc::Status ContainerListenerImpl::UninhibitScreensaver(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UninhibitScreensaverInfo* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+
+  UninhibitScreensaverSignal signal;
+  signal.set_cookie(request->cookie());
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::UninhibitScreensaver,
+                     service_, request->token(), cid, &signal, &result,
+                     &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR)
+        << "Failure notifying UninhibitScreensaver from ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in UninhibitScreensaver");
+  }
+
+  return grpc::Status::OK;
+}
+
 uint32_t ContainerListenerImpl::ExtractCidFromPeerAddress(
     grpc::ServerContext* ctx) {
   uint32_t cid = 0;

@@ -77,6 +77,8 @@ const char kUpgradeContainerProgressSignal[] = "UpgradeContainerProgress";
 const char kStartLxdProgressSignal[] = "StartLxdProgress";
 const char kFileWatchTriggeredSignal[] = "FileWatchTriggered";
 const char kLowDiskSpaceTriggeredSignal[] = "LowDiskSpaceTriggered";
+const char kInhibitScreensaverSignal[] = "InhibitScreensaver";
+const char kUninhibitScreensaverSignal[] = "UninhibitScreensaver";
 
 }  // namespace cicerone
 }  // namespace vm_tools
