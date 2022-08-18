@@ -28,9 +28,9 @@ class SELinuxViolationCollector : public CrashCollector {
   ~SELinuxViolationCollector() override;
 
   // Collects warning.
-  bool Collect();
+  bool Collect(int32_t weight);
 
-  static CollectorInfo GetHandlerInfo(bool selinux_violation);
+  static CollectorInfo GetHandlerInfo(bool selinux_violation, int32_t weight);
 
  protected:
   void set_violation_report_path_for_testing(const base::FilePath& file_path) {

@@ -111,15 +111,22 @@ class SELinuxViolationCollectorTest : public ::testing::Test {
 TEST_F(SELinuxViolationCollectorTest, CollectOK) {
   // Collector produces a violation report.
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+  FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation.*.meta", nullptr));
-  FilePath file_path;
+      test_crash_directory_, "selinux_violation.*.meta", &meta_path));
+
+  // Meta file contains proper weight.
+  std::string meta_content;
+  base::ReadFileToString(meta_path, &meta_content);
+  EXPECT_THAT(meta_content, testing::HasSubstr("upload_var_weight=100\n"));
+
+  FilePath log_file_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation.*.log", &file_path));
+      test_crash_directory_, "selinux_violation.*.log", &log_file_path));
   std::string content;
-  base::ReadFileToString(file_path, &content);
+  base::ReadFileToString(log_file_path, &content);
   EXPECT_STREQ(content.c_str(), TestSELinuxViolationMessageContent);
 }
 
@@ -127,7 +134,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithComm) {
   // Collector produces a violation report named using the "comm" key.
   ASSERT_TRUE(
       test_util::CreateFile(test_path_, TestSELinuxViolationMessageWithComm));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation_init.*.meta", nullptr));
@@ -144,7 +151,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithPid) {
   // Collector produces a violation report named using the "pid" key.
   ASSERT_TRUE(
       test_util::CreateFile(test_path_, TestSELinuxViolationMessageWithPid));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation.*.1234.meta", nullptr));
@@ -161,7 +168,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithPidAndComm) {
   // Collector produces a violation report named using "pid" and "comm" keys.
   ASSERT_TRUE(test_util::CreateFile(test_path_,
                                     TestSELinuxViolationMessageWithPidAndComm));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation_init.*.1234.meta", nullptr));
@@ -179,7 +186,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithInvalidComm) {
   // Collector properly sanitizes an invalid "comm" key
   ASSERT_TRUE(test_util::CreateFile(
       test_path_, TestSELinuxViolationMessageWithInvalidComm));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation____etc_passwd____.*.meta",
@@ -194,7 +201,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithLongComm) {
   // Collector properly shortens a long "comm" key
   ASSERT_TRUE(test_util::CreateFile(test_path_,
                                     TestSELinuxViolationMessageWithLongComm));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   std::string as =
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -210,7 +217,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithNonTerminatedComm) {
   // Collector properly shortens a long "comm" key
   ASSERT_TRUE(test_util::CreateFile(
       test_path_, TestSELinuxViolationMessageWithNonTerminatedComm));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
 
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -225,7 +232,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithNonTerminatedComm) {
 TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   // Collector produces a violation report.
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation.*.meta", nullptr));
@@ -239,7 +246,7 @@ TEST_F(SELinuxViolationCollectorTest, CollectSample) {
 
 TEST_F(SELinuxViolationCollectorTest, FailureReportDoesNotExist) {
   // SELinux violation report file doesn't exist.
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
@@ -247,6 +254,6 @@ TEST_F(SELinuxViolationCollectorTest, EmptyFailureReport) {
   // SELinux violation report file exists, but doesn't have the expected
   // contents.
   ASSERT_TRUE(test_util::CreateFile(test_path_, ""));
-  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(collector_.Collect(100));
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }

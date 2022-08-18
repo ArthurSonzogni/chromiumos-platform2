@@ -143,6 +143,15 @@ bool ReadMemfdToString(int mem_fd, std::string* contents);
 // 1.0/GetSelinuxWeight() of the failures.
 int GetSelinuxWeight();
 
+// Return the weight to use for selinux failures when reporting to crash.
+// Historically, the SELinux weight was 1000, but we did not report this to
+// crash as weighted at all. So, the actual number of selinux reports has always
+// been 1000x too low.
+// For consistency, and to avoid a sudden change in the apparent number of
+// selinux violations, adjust the actual weight reported by GetSelinuxWeight
+// to be in line with historical levels.
+int GetSelinuxWeightForCrash();
+
 // Return the weight for service failures. We'll only collect
 // 1.0/GetServiceFailureWeight() of the failures.
 int GetServiceFailureWeight();

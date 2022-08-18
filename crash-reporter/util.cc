@@ -567,7 +567,14 @@ bool ReadMemfdToString(int mem_fd, std::string* contents) {
 }
 
 int GetSelinuxWeight() {
-  return 1000;
+  return 100'000;
+}
+
+int GetSelinuxWeightForCrash() {
+  // For consistency, and to avoid a sudden change in the apparent number of
+  // selinux violations, weight them to be 1000x fewer when reporting to crash
+  // (see util.h).
+  return GetSelinuxWeight() / 1000;
 }
 
 int GetServiceFailureWeight() {

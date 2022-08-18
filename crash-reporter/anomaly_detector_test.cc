@@ -480,7 +480,7 @@ TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
       .expected_text =
           "-selinux-u:r:cros_init:s0-u:r:kernel:s0-module_request-init-",
-      .expected_flags = {{"--selinux_violation"}}};
+      .expected_flags = {{"--selinux_violation", "--weight=100"}}};
   SELinuxParser parser(true);
   ParserTest("TEST_SELINUX", {selinux_violation}, &parser);
 }

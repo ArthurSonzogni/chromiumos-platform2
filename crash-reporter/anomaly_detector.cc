@@ -153,7 +153,7 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
     return std::nullopt;
   }
 
-  // We only want to report 0.1% of selinux violations due to noise.
+  // We only want to report a limited number of selinux violations due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetSelinuxWeight()) != 0) {
     return std::nullopt;
@@ -206,7 +206,10 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
   text += "\n";
   text += line;
 
-  return CrashReport(std::move(text), {"--selinux_violation"});
+  return CrashReport(
+      std::move(text),
+      {"--selinux_violation",
+       base::StringPrintf("--weight=%d", util::GetSelinuxWeightForCrash())});
 }
 
 std::string DetermineFlag(const std::string& info) {

@@ -566,8 +566,8 @@ int main(int argc, char* argv[]) {
       FLAGS_suspend_failure, FLAGS_auth_failure, FLAGS_arc_service_failure,
       FLAGS_service_failure));
 
-  collectors.push_back(
-      SELinuxViolationCollector::GetHandlerInfo(FLAGS_selinux_violation));
+  collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
+      FLAGS_selinux_violation, FLAGS_weight));
 
   collectors.push_back(CrashReporterFailureCollector::GetHandlerInfo(
       FLAGS_crash_reporter_crashed));

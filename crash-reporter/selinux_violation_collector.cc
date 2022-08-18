@@ -95,8 +95,12 @@ bool GetValueFromLog(const std::string& log,
   return false;
 }
 
-bool SELinuxViolationCollector::Collect() {
+bool SELinuxViolationCollector::Collect(int32_t weight) {
   LOG(INFO) << "Processing selinux violation";
+
+  if (weight != 1) {
+    AddCrashMetaUploadData("weight", StringPrintf("%d", weight));
+  }
 
   std::string violation_signature;
   std::string content;
@@ -148,14 +152,14 @@ bool SELinuxViolationCollector::Collect() {
 }
 
 // static
-CollectorInfo SELinuxViolationCollector::GetHandlerInfo(
-    bool selinux_violation) {
+CollectorInfo SELinuxViolationCollector::GetHandlerInfo(bool selinux_violation,
+                                                        int32_t weight) {
   auto selinux_violation_collector =
       std::make_shared<SELinuxViolationCollector>();
   return {.collector = selinux_violation_collector,
           .handlers = {{
               .should_handle = selinux_violation,
               .cb = base::BindRepeating(&SELinuxViolationCollector::Collect,
-                                        selinux_violation_collector),
+                                        selinux_violation_collector, weight),
           }}};
 }
