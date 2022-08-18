@@ -52,6 +52,7 @@ allow cros_chromeos_install cros_usr_dirs:dir create_dir_perms;
 allow cros_chromeos_install device:{blk_file lnk_file} rw_file_perms;
 allow cros_chromeos_install labeledfs:filesystem unmount;
 allow cros_chromeos_install proc_cmdline:file r_file_perms;
+allow cros_chromeos_install proc_filesystems:file r_file_perms;
 allow cros_chromeos_install tmpfs:dir mounton;
 allow cros_chromeos_install tmpfs:file create_file_perms;
 
