@@ -323,6 +323,14 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     policy->mutable_device_run_automatic_cleanup_on_login()->set_value(
         value.value());
   }
+
+  if (std::optional<std::vector<std::string>> values = EncodeStringList(
+          key::kDeviceLoginScreenContextAwareAccessSignalsAllowlist)) {
+    *policy
+         ->mutable_device_login_screen_context_aware_access_signals_allowlist()
+         ->mutable_value()
+         ->mutable_entries() = {values.value().begin(), values.value().end()};
+  }
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(

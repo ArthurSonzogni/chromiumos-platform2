@@ -157,6 +157,19 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceLoginScreenWebUILazyLoading, kBool);
   EXPECT_EQ(kBool, policy.login_web_ui_lazy_loading().enabled());
 
+  EncodeBoolean(&policy, key::kDeviceRunAutomaticCleanupOnLogin, kBool);
+  EXPECT_EQ(kBool, policy.device_run_automatic_cleanup_on_login().value());
+
+  EncodeStringList(&policy,
+                   key::kDeviceLoginScreenContextAwareAccessSignalsAllowlist,
+                   kStringList);
+  EXPECT_EQ(
+      kStringList,
+      ToVector(
+          policy.device_login_screen_context_aware_access_signals_allowlist()
+              .value()
+              .entries()));
+
   //
   // Network policies.
   //
@@ -761,8 +774,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kBool);
   EXPECT_EQ(kBool, policy.keylocker_for_storage_encryption_enabled().enabled());
 
-  EncodeBoolean(&policy, key::kDeviceRunAutomaticCleanupOnLogin, kBool);
-  EXPECT_EQ(kBool, policy.device_run_automatic_cleanup_on_login().value());
   //
   // Check whether all device policies have been handled.
   //
