@@ -70,7 +70,12 @@ Network::Network(int interface_index,
 
 void Network::Start(const Network::StartOptions& opts) {
   // TODO(b/232177767): Log the StartOptions and other parameters.
-  Stop();
+  if (has_started_) {
+    LOG(INFO) << interface_name_
+              << ": Network has been started, stop it before starting with the "
+                 "new options";
+    StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
+  }
 
   // If the execution of this function fails, StopInternal() will be called and
   // turn this variable to false.
@@ -122,9 +127,10 @@ void Network::Start(const Network::StartOptions& opts) {
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   } else if (!dhcp_started && !ipv6_started) {
     // Neither v4 nor v6 is running, trigger the failure callback directly.
-    dispatcher_->PostTask(FROM_HERE,
-                          base::BindOnce(&Network::StopInternal, AsWeakPtr(),
-                                         /*is_failure*/ true));
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Network::StopInternal, AsWeakPtr(),
+                       /*is_failure=*/true, /*trigger_callback=*/true));
   }
 }
 
@@ -149,11 +155,11 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 }
 
 void Network::Stop() {
-  StopInternal(/*is_failure=*/false);
+  StopInternal(/*is_failure=*/false, /*trigger_callback=*/true);
 }
 
-void Network::StopInternal(bool is_failure) {
-  const bool should_trigger_callback = has_started_;
+void Network::StopInternal(bool is_failure, bool trigger_callback) {
+  const bool should_trigger_callback = has_started_ && trigger_callback;
   has_started_ = false;
   StopIPv6();
   bool ipconfig_changed = false;
@@ -327,7 +333,7 @@ void Network::OnDHCPFailure() {
     return;
   }
 
-  StopInternal(/*is_failure=*/true);
+  StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
 }
 
 bool Network::RenewDHCPLease() {
@@ -583,11 +589,6 @@ bool Network::IsDefault() const {
 void Network::SetUseDNS(bool enable) {
   CHECK(connection_) << __func__ << " called but no connection exists";
   connection_->SetUseDNS(enable);
-}
-
-void Network::UpdateDNSServers(const std::vector<std::string>& dns_servers) {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  connection_->UpdateDNSServers(dns_servers);
 }
 
 void Network::UpdateRoutingPolicy() {

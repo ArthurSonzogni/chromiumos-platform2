@@ -203,7 +203,6 @@ class Network {
   mockable void SetPriority(uint32_t priority, bool is_primary_physical);
   mockable bool IsDefault() const;
   mockable void SetUseDNS(bool enable);
-  void UpdateDNSServers(const std::vector<std::string>& dns_servers);
   void UpdateRoutingPolicy();
   mockable std::string GetSubnetName() const;
   bool IsIPv6() const;
@@ -243,7 +242,10 @@ class Network {
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
   friend class DeviceTest;
 
-  void StopInternal(bool is_failure);
+  // Shuts down and clears all the running state of this network. If
+  // |trigger_callback| is true and the Network is started, OnNetworkStopped()
+  // will be invoked with |is_failure|.
+  void StopInternal(bool is_failure, bool trigger_callback);
 
   // Functions for IPv4.
   // Triggers a reconfiguration on connection for an IPv4 config change.

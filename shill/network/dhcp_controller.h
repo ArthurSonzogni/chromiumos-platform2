@@ -78,8 +78,8 @@ class DHCPController {
   virtual ~DHCPController();
 
   // Registers callbacks for DHCP events.
-  void RegisterCallbacks(UpdateCallback update_callback,
-                         FailureCallback failure_callback);
+  mockable void RegisterCallbacks(UpdateCallback update_callback,
+                                  FailureCallback failure_callback);
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a

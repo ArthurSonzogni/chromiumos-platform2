@@ -24,6 +24,9 @@ class MockDHCPController : public DHCPController {
 
   ~MockDHCPController() override;
 
+  void RegisterCallbacks(UpdateCallback update_callback,
+                         FailureCallback failure_callback) override;
+  void TriggerFailureCallback();
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override;
 
@@ -34,6 +37,10 @@ class MockDHCPController : public DHCPController {
               TimeToLeaseExpiry,
               (),
               (override));
+
+ private:
+  UpdateCallback update_callback_;
+  FailureCallback failure_callback_;
 };
 
 }  // namespace shill

@@ -22,6 +22,16 @@ MockDHCPController::MockDHCPController(ControlInterface* control_interface,
 
 MockDHCPController::~MockDHCPController() = default;
 
+void MockDHCPController::RegisterCallbacks(UpdateCallback update_callback,
+                                           FailureCallback failure_callback) {
+  update_callback_ = update_callback;
+  failure_callback_ = failure_callback;
+}
+
+void MockDHCPController::TriggerFailureCallback() {
+  failure_callback_.Run();
+}
+
 void MockDHCPController::ProcessEventSignal(
     const std::string& reason, const KeyValueStore& configuration) {}
 }  // namespace shill
