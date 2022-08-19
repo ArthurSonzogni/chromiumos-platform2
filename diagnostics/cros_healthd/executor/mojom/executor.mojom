@@ -89,4 +89,11 @@ interface Executor {
 
   // Get UEFI Secure Boot variable file content
   GetUEFISecureBootContent() => (string contents);
+
+  // Obtains lid angle by running ectool and returns the result.
+  //
+  // The response:
+  // * |result| - contains the angle between lid and base received from running
+  //              the tool.
+  GetLidAngle() => (ExecutedProcessResult result);
 };

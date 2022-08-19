@@ -56,6 +56,7 @@ class Executor final : public mojom::Executor {
                ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(
       GetUEFISecureBootContentCallback callback) override;
+  void GetLidAngle(GetLidAngleCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If

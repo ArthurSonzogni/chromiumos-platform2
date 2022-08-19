@@ -73,6 +73,7 @@ install_seccomp_policy("diagnostics_seccomp") {
   _arch = getenv("ARCH")
   sources = [
     "cros_healthd/seccomp/${_arch}/ectool_i2cread-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/ectool_motionsense_lid_angle-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/iw-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/memtester-seccomp.policy",

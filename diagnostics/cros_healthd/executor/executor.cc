@@ -38,6 +38,7 @@ constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 
 // All SECCOMP policies should live in this directory.
 constexpr char kSandboxDirPath[] = "/usr/share/policy/";
+
 // SECCOMP policy for ectool pwmgetfanrpm:
 constexpr char kFanSpeedSeccompPolicyPath[] =
     "ectool_pwmgetfanrpm-seccomp.policy";
@@ -46,7 +47,14 @@ constexpr char kEctoolBinary[] = "/usr/sbin/ectool";
 // The ectool command used to collect fan speed in RPM.
 constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
 
-// The iw command used to collect diffrent wireless data.
+// SECCOMP policy for ectool motionsense lid_angle:
+constexpr char kLidAngleSeccompPolicyPath[] =
+    "ectool_motionsense_lid_angle-seccomp.policy";
+// The ectool commands used to collect lid angle.
+constexpr char kMotionSenseCommand[] = "motionsense";
+constexpr char kLidAngleCommand[] = "lid_angle";
+
+// The iw command used to collect different wireless data.
 constexpr char kIwSeccompPolicyPath[] = "iw-seccomp.policy";
 // constexpr char kIwUserAndGroup[] = "healthd_iw";
 constexpr char kIwBinary[] = "/usr/sbin/iw";
@@ -371,6 +379,30 @@ void Executor::GetUEFISecureBootContent(
   }
 
   std::move(callback).Run(content);
+}
+
+void Executor::GetLidAngle(GetLidAngleCallback callback) {
+  mojom::ExecutedProcessResult result;
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kLidAngleSeccompPolicyPath);
+
+  // Minijail setup for ectool.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+  sandboxing_args.push_back("-b");
+  sandboxing_args.push_back("/dev/cros_ec");
+
+  std::vector<std::string> binary_args = {kMotionSenseCommand,
+                                          kLidAngleCommand};
+  base::FilePath binary_path = base::FilePath(kEctoolBinary);
+
+  base::OnceClosure closure = base::BindOnce(
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, kEctoolUserAndGroup, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
 void Executor::RunUntrackedBinary(
