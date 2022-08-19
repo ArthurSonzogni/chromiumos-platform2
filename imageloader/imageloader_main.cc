@@ -197,9 +197,8 @@ int main(int argc, char** argv) {
     // Run with minimal privilege.
     imageloader::ImageLoader::EnterSandbox();
 
-    if (FLAGS_mount_point.empty() || FLAGS_mount_component.empty()) {
-      LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
-                    "with --mount";
+    if (FLAGS_mount_component.empty()) {
+      LOG(ERROR) << "--mount_component=name must be set with --mount";
       return 1;
     }
     // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
@@ -214,8 +213,16 @@ int main(int argc, char** argv) {
     if (component_version.empty())
       return 0;
 
-    if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
-                              helper_process_proxy.get())) {
+    if (FLAGS_mount_point.empty()) {
+      if (loader
+              .LoadComponent(FLAGS_mount_component, helper_process_proxy.get())
+              .empty()) {
+        LOG(ERROR) << "Failed to verify and mount component: "
+                   << FLAGS_mount_component;
+        return 1;
+      }
+    } else if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
+                                     helper_process_proxy.get())) {
       LOG(ERROR) << "Failed to verify and mount component: "
                  << FLAGS_mount_component << " at " << FLAGS_mount_point;
       return 1;
