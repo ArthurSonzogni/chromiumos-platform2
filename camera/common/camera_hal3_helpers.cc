@@ -189,6 +189,8 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
 Camera3CaptureDescriptor& Camera3CaptureDescriptor::operator=(
     Camera3CaptureDescriptor&& other) {
   if (this != &other) {
+    Invalidate();
+
     type_ = other.type_;
     frame_number_ = other.frame_number_;
     if (!other.metadata_.isEmpty()) {
@@ -449,8 +451,10 @@ void Camera3CaptureDescriptor::Invalidate() {
   input_buffer_ = nullptr;
   output_buffers_.clear();
   partial_result_ = 0;
+  num_physcam_metadata_ = 0;
   physcam_ids_ = nullptr;
   physcam_metadata_ = nullptr;
+  feature_metadata_ = {};
   raw_descriptor_.reset();
 }
 

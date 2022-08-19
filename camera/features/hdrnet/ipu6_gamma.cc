@@ -3041,7 +3041,7 @@ Texture2D CreateInverseGammaLutTexture() {
         (static_cast<float>(ipu6_gamma_lut[i * kDownsampleFactor]) / kScale) *
         lut_size;
     const float y1 = static_cast<float>(i) / (lut_size - 1);
-    for (; lut_index <= x1; ++lut_index) {
+    for (; lut_index <= x1 && lut_index < lut_size; ++lut_index) {
       lut_buffer[lut_index] = interpolate(lut_index, x0, y0, x1, y1);
       VLOGF(1) << base::StringPrintf("(%5d, %1.10f)", lut_index,
                                      lut_buffer[lut_index]);
