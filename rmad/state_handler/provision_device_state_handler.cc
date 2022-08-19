@@ -16,6 +16,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
@@ -25,7 +26,6 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
-#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
@@ -72,6 +72,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(kDefaultWorkingDirPath),
       should_calibrate_(false),
       sensor_integrity_(false) {
   power_manager_client_ =
@@ -92,6 +93,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
@@ -102,6 +104,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(working_dir_path),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cmd_utils_(std::move(cmd_utils)),
@@ -484,10 +487,14 @@ void ProvisionDeviceStateHandler::RunProvision() {
     // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
     //                 it.
     LOG(ERROR) << "Cr50 board ID type cannot be ZZCR in RMA";
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
-    return;
+    if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+      LOG(INFO) << "Cr50 board ID check bypassed";
+    } else {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+      return;
+    }
   }
 
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,

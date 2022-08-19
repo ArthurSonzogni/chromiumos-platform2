@@ -42,12 +42,13 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cbi_utils_|, |cmd_utils_|, |cr50_utils_|,
-  // |cros_config_utils_|, |power_manager_client_|, |ssfc_utils_|, and
-  // |vpd_utils_| for testing.
+  // Used to inject |working_dir_path_|, mock |cbi_utils_|, |cmd_utils_|,
+  // |cr50_utils_|, |cros_config_utils_|, |power_manager_client_|, |ssfc_utils_|
+  // and |vpd_utils_| for testing.
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CmdUtils> cmd_utils,
@@ -97,7 +98,9 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void Reboot();
   bool IsHwwpDisabled() const;
 
+  base::FilePath working_dir_path_;
   ProvisionStatus status_;
+
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;

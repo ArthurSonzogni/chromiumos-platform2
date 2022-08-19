@@ -4,16 +4,18 @@
 
 #include "rmad/state_handler/provision_device_state_handler.h"
 
-#include <base/memory/scoped_refptr.h>
-#include <base/test/task_environment.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <base/memory/scoped_refptr.h>
+#include <base/run_loop.h>
+#include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -178,10 +180,10 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
                             base::Unretained(&signal_sender_)));
 
     return base::MakeRefCounted<ProvisionDeviceStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_power_manager_client),
-        std::move(mock_cbi_utils), std::move(mock_cmd_utils),
-        std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
-        std::move(mock_crossystem_utils),
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_power_manager_client), std::move(mock_cbi_utils),
+        std::move(mock_cmd_utils), std::move(mock_cr50_utils),
+        std::move(mock_cros_config_utils), std::move(mock_crossystem_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_ssfc_utils),
         std::move(mock_vpd_utils));
   }
@@ -955,6 +957,26 @@ TEST_F(ProvisionDeviceStateHandlerTest,
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
   EXPECT_EQ(status_history_.back().error(),
             ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_InvalidBoardIdTypeBlocking_Bypass) {
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, true, kInvalidBoardIdType);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Bypass board ID check.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
+
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   RunHandlerTaskRunner(handler);
 }
