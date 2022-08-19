@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     if (i != 0) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
     }
-    int ifid_guest = if_nametoindex(args[1].c_str());
+    ifid_guest = if_nametoindex(args[1].c_str());
     if (ifid_guest == 0) {
       // Guest bridge doesn't exist yet, try again later.
       continue;
