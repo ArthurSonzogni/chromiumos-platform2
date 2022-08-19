@@ -240,6 +240,16 @@ bool CryptohomeVault::Teardown() {
   return ret;
 }
 
+bool CryptohomeVault::ResetApplicationContainer(const std::string& app) {
+  auto it = application_containers_.find(app);
+  if (it == application_containers_.end()) {
+    LOG(ERROR) << "Failed to find a valid application container for " << app;
+    return false;
+  }
+
+  return it->second->Reset();
+}
+
 bool CryptohomeVault::Purge() {
   bool ret = true;
   if (container_->Exists() && !container_->Purge()) {

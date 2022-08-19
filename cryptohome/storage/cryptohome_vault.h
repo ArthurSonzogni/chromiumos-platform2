@@ -83,6 +83,8 @@ class CryptohomeVault {
                             : EncryptedContainerType::kUnknown;
   }
 
+  bool ResetApplicationContainer(const std::string& app);
+
   bool PurgeCacheContainer();
 
  private:

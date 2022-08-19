@@ -32,6 +32,8 @@ class EphemeralContainer final : public EncryptedContainer {
 
   bool Setup(const FileSystemKey& encryption_key) override;
 
+  bool Reset() override;
+
   bool Teardown() override;
 
   EncryptedContainerType GetType() const override {

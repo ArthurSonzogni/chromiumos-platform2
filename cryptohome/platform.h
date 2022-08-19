@@ -882,6 +882,12 @@ class Platform {
   //   device - Path to the loop device to be detached.
   virtual bool DetachLoop(const base::FilePath& device_path);
 
+  // Discard device; call blkdiscard on the entire device.
+  //
+  // Parameters
+  //   device - Device to call blkdiscard on.
+  virtual bool DiscardDevice(const base::FilePath& device);
+
   // DEPRECATED: do not use. Use LoopDeviceManager instead.
   // Returns list of attached loop devices.
   virtual std::vector<LoopDevice> GetAttachedLoopDevices();

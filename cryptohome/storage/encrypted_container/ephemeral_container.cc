@@ -92,6 +92,12 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
+bool EphemeralContainer::Reset() {
+  // Reset should never be called for ephemeral containers.
+  LOG(ERROR) << "Reset not supported on ephemeral containers";
+  return false;
+}
+
 bool EphemeralContainer::Teardown() {
   // Try purging backing device even if teardown failed.
   std::ignore = backing_device_->Teardown();

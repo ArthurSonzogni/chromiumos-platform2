@@ -43,6 +43,12 @@ bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key) {
                           &key_reference_);
 }
 
+bool EcryptfsContainer::Reset() {
+  // Reset should never be called for eCryptFs containers.
+  LOG(ERROR) << "Reset not supported on eCryptFs containers";
+  return false;
+}
+
 bool EcryptfsContainer::Teardown() {
   return keyring_->RemoveKey(Keyring::KeyType::kEcryptfsKey, key_reference_);
 }

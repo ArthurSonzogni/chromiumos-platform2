@@ -188,6 +188,26 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
+bool DmcryptContainer::Reset() {
+  // Only allow resets for raw devices; discard will otherwise remove the
+  // filesystem as well.
+  if (!is_raw_device_) {
+    LOG(ERROR) << "Attempted to reset a container with a filesystem";
+    return false;
+  }
+
+  base::FilePath dmcrypt_device_path =
+      base::FilePath("/dev/mapper").Append(dmcrypt_device_name_);
+
+  // Discard the entire device.
+  if (!platform_->DiscardDevice(dmcrypt_device_path)) {
+    LOG(ERROR) << "Failed to discard device";
+    return false;
+  }
+
+  return true;
+}
+
 bool DmcryptContainer::SetLazyTeardownWhenUnused() {
   if (!device_mapper_->Remove(dmcrypt_device_name_, true /* deferred */)) {
     LOG(ERROR) << "Failed to mark the device mapper target for deferred remove";

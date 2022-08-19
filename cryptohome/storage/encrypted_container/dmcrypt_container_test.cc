@@ -50,6 +50,8 @@ class DmcryptContainerTest : public ::testing::Test {
   }
   ~DmcryptContainerTest() override = default;
 
+  void SetIsRawDevice(bool value) { config_.is_raw_device = value; }
+
   void GenerateContainer() {
     container_ = std::make_unique<DmcryptContainer>(
         config_, std::move(backing_device_), key_reference_, &platform_,
@@ -172,6 +174,45 @@ TEST_F(DmcryptContainerTest, TeardownCheck) {
   // Check that the device mapper target doesn't exist.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlob());
+}
+
+// Tests that the dmcrypt container cannot be reset if it is set up with a
+// filesystem.
+TEST_F(DmcryptContainerTest, ResetFileSystemContainerTest) {
+  EXPECT_CALL(platform_, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
+
+  backing_device_->Create();
+  GenerateContainer();
+
+  EXPECT_TRUE(container_->Setup(key_));
+  // Attempt a reset of the device.
+  EXPECT_FALSE(container_->Reset());
+
+  EXPECT_TRUE(container_->Teardown());
+}
+
+// Tests that the dmcrypt container can be reset if the container only sets
+// up a raw device.
+TEST_F(DmcryptContainerTest, ResetRawDeviceContainerTest) {
+  EXPECT_CALL(platform_, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+
+  SetIsRawDevice(true);
+  backing_device_->Create();
+  GenerateContainer();
+
+  EXPECT_CALL(platform_,
+              DiscardDevice(base::FilePath("/dev/mapper/crypt_device")))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(container_->Setup(key_));
+  // Attempt a reset of the device.
+  EXPECT_TRUE(container_->Reset());
+  EXPECT_TRUE(container_->Teardown());
 }
 
 }  // namespace cryptohome

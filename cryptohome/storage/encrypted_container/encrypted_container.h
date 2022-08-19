@@ -66,6 +66,10 @@ class EncryptedContainer {
   virtual bool Exists() = 0;
   // Gets the type of the encrypted container.
   virtual EncryptedContainerType GetType() const = 0;
+  // Resets the backing storage of the container. While Purge removes the
+  // entire container, Reset() set the container back to a pristine condition
+  // doesn't require the backing storage to be set up again.
+  virtual bool Reset() = 0;
   // Marks the container for lazy teardown; once the last reference to the
   // container is dropped, the constructs of the container are automatically
   // torn down and the container can be safely purged afterwards.

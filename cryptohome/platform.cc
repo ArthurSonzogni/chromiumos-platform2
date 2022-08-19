@@ -51,6 +51,7 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
@@ -1315,6 +1316,31 @@ bool Platform::DetachLoop(const base::FilePath& device_path) {
   }
   // Not found the device
   return false;
+}
+
+bool Platform::DiscardDevice(const base::FilePath& device) {
+  uint64_t size;
+  if (!GetBlkSize(device, &size)) {
+    LOG(ERROR) << "Failed to get device size";
+    return false;
+  }
+
+  uint64_t range[2] = {0, size};
+
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(device.value().c_str(), O_RDWR | O_CLOEXEC)));
+
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open device " << device;
+    return false;
+  }
+
+  if (ioctl(fd.get(), BLKDISCARD, &range)) {
+    LOG(ERROR) << "Failed to discard device " << device;
+    return false;
+  }
+
+  return true;
 }
 
 std::vector<Platform::LoopDevice> Platform::GetAttachedLoopDevices() {

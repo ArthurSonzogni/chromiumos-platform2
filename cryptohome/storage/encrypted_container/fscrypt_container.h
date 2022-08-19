@@ -29,6 +29,7 @@ class FscryptContainer : public EncryptedContainer {
   bool Setup(const FileSystemKey& encryption_key) override;
   bool Teardown() override;
   bool Exists() override;
+  bool Reset() override;
   bool Purge() override;
   EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kFscrypt;

@@ -29,6 +29,7 @@ class EcryptfsContainer : public EncryptedContainer {
   bool Teardown() override;
   bool Exists() override;
   bool Purge() override;
+  bool Reset() override;
   EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kEcryptfs;
   }

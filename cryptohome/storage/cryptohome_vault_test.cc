@@ -160,6 +160,22 @@ class CryptohomeVaultTest
     }
   }
 
+  void ExpectApplicationContainerReset(EncryptedContainerType type) {
+    switch (type) {
+      case EncryptedContainerType::kDmcrypt:
+        EXPECT_CALL(platform_,
+                    DiscardDevice(base::FilePath("/dev/mapper/dmcrypt-arcvm")))
+            .WillOnce(Return(true));
+        EXPECT_CALL(
+            platform_,
+            DiscardDevice(base::FilePath("/dev/mapper/dmcrypt-crostini")))
+            .WillOnce(Return(true));
+        break;
+      default:
+        break;
+    }
+  }
+
   void CreateExistingContainer(EncryptedContainerType type) {
     switch (type) {
       case EncryptedContainerType::kEcryptfs:
@@ -252,6 +268,12 @@ class CryptohomeVaultTest
         obfuscated_username_, std::move(container),
         std::move(migrating_container), std::move(cache_container),
         std::move(application_containers), &platform_);
+  }
+
+  bool ResetApplicationContainer(const std::string& app) {
+    if (ContainerType() != EncryptedContainerType::kDmcrypt)
+      return true;
+    return vault_->ResetApplicationContainer(app);
   }
 
  protected:
@@ -424,6 +446,27 @@ TEST_P(CryptohomeVaultTest, ExistingApplicationContainers) {
   ExpectApplicationContainerSetup(ContainerType());
 
   EXPECT_THAT(vault_->Setup(key_), IsOk());
+
+  CheckContainersExist();
+}
+
+// Tests the reset path for application containers in a cryptohome vault.
+TEST_P(CryptohomeVaultTest, ResetApplicationContainer) {
+  GenerateVault(/*create_container=*/true, /*create_migrating_container=*/false,
+                /*create_cache_container=*/false,
+                /*create_app_container=*/true);
+
+  ExpectVaultSetup();
+  ExpectContainerSetup(ContainerType());
+  ExpectContainerSetup(MigratingContainerType());
+  ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
+
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
+
+  ExpectApplicationContainerReset(ContainerType());
+  EXPECT_TRUE(ResetApplicationContainer("arcvm"));
+  EXPECT_TRUE(ResetApplicationContainer("crostini"));
 
   CheckContainersExist();
 }

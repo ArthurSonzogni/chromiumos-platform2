@@ -63,6 +63,12 @@ bool FscryptContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
+bool FscryptContainer::Reset() {
+  // Reset should never be called for fscrypt containers.
+  LOG(ERROR) << "Reset not supported on fscrypt containers";
+  return false;
+}
+
 bool FscryptContainer::Teardown() {
   auto key_type = UseV2() ? Keyring::KeyType::kFscryptV2Key
                           : Keyring::KeyType::kFscryptV1Key;
