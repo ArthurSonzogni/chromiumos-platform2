@@ -21,7 +21,10 @@ struct SecretStatus {
   bool has_reset_lock_permissions = false;
 };
 
-// The TPM Power wash result
+// The TPM Power wash result. These values are persisted to logs. Entries should
+// not be renumbered and numeric values should never be reused. Please keep in
+// sync with "TPMPowerWashResult" in tools/metrics/histograms/enums.xml in the
+// Chromium repo.
 enum class TPMPowerWashResult {
   kTPMClearSuccess = 0,
   kTPMClearFailed = 1,
