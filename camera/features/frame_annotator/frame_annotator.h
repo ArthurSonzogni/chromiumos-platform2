@@ -49,6 +49,12 @@ class FrameAnnotator {
     // be overridden when the override config file change.
     bool face_rectangles_frame_annotator = false;
     bool metadata_previewer_frame_annotator = false;
+
+    // Options for selecting which face features to be displayed. These are used
+    // by FaceRectanglesFreameAnnotator. Can be overridden by the override
+    // config file.
+    bool face_rectangles = true;
+    bool face_landmarks = true;
   };
 
   virtual ~FrameAnnotator() = default;

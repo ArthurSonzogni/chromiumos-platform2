@@ -6,11 +6,29 @@
 
 #include "features/frame_annotator/face_rectangles_frame_annotator.h"
 
+#include <algorithm>
 #include <utility>
+
+#include <skia/core/SkPath.h>
 
 #include "cros-camera/camera_metadata_utils.h"
 
 namespace cros {
+
+namespace {
+
+constexpr SkScalar kLandmarkBoxLimit = 160;
+
+SkPath BoxToTriangle(SkRect rect) {
+  SkPath path;
+  path.moveTo(rect.centerX(), rect.top());
+  path.lineTo(rect.left(), rect.bottom());
+  path.lineTo(rect.right(), rect.bottom());
+  path.lineTo(rect.centerX(), rect.top());
+  return path;
+}
+
+}  // namespace
 
 //
 // FaceRectanglesFrameAnnotator implementations.
@@ -35,45 +53,108 @@ bool FaceRectanglesFrameAnnotator::ProcessCaptureResult(
 }
 
 bool FaceRectanglesFrameAnnotator::IsPlotNeeded() const {
-  return !cached_faces_.empty();
+  return !cached_faces_.empty() &&
+         (options_.face_rectangles || options_.face_landmarks);
 }
 
 bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
   const auto canvas_info = canvas->imageInfo();
+  const SkScalar canvas_width = static_cast<float>(canvas_info.width());
+  const SkScalar canvas_height = static_cast<float>(canvas_info.height());
+
+  const float scale_ratio = canvas_height / 480;
 
   Rect<uint32_t> full_frame_crop = GetCenteringFullCrop(
       active_array_dimension_, canvas_info.width(), canvas_info.height());
 
   // Annotate each faces with a white box.
-  SkPaint box_paint;
-  box_paint.setStyle(SkPaint::kStroke_Style);
-  box_paint.setAntiAlias(true);
-  box_paint.setStrokeWidth(1);
-  box_paint.setColor(0xffffffff);
+  SkPaint paint;
+  paint.setStyle(SkPaint::kStroke_Style);
+  paint.setAntiAlias(true);
+  paint.setStrokeWidth(1);
+  paint.setColor(0xffffffff);
 
   for (const auto& face : cached_faces_) {
-    const auto& box = face.bounding_box;
-
     // Assume the frame is center cropped and transform the bounding box
     // to the canvas space.
     // TODO(ototot): Check if the frame is not center cropped.
-    const auto adjusted_rect = NormalizeRect(
-        Rect<float>(box.x1 - static_cast<float>(full_frame_crop.left),
-                    box.y1 - static_cast<float>(full_frame_crop.top),
-                    box.x2 - box.x1, box.y2 - box.y1),
-        Size(full_frame_crop.width, full_frame_crop.height));
-    SkRect rect = SkRect::MakeXYWH(
-        adjusted_rect.left * static_cast<float>(canvas_info.width()),
-        adjusted_rect.top * static_cast<float>(canvas_info.height()),
-        adjusted_rect.width * static_cast<float>(canvas_info.width()),
-        adjusted_rect.height * static_cast<float>(canvas_info.height()));
-    canvas->drawRect(rect, box_paint);
+    auto bounding_box_to_skrect = [&](const human_sensing::BoundingBox& box) {
+      const auto adjusted_rect = NormalizeRect(
+          Rect<float>(box.x1 - static_cast<float>(full_frame_crop.left),
+                      box.y1 - static_cast<float>(full_frame_crop.top),
+                      box.x2 - box.x1, box.y2 - box.y1),
+          Size(full_frame_crop.width, full_frame_crop.height));
+      return SkRect::MakeXYWH(adjusted_rect.left * canvas_width,
+                              adjusted_rect.top * canvas_height,
+                              adjusted_rect.width * canvas_width,
+                              adjusted_rect.height * canvas_height);
+    };
+
+    auto face_rect = bounding_box_to_skrect(face.bounding_box);
+    if (options_.face_rectangles) {
+      canvas->drawRect(face_rect, paint);
+    }
+    if (options_.face_landmarks) {
+      for (auto& landmark : face.landmarks) {
+        const float box_size = 10 * scale_ratio;
+        auto landmark_box =
+            human_sensing::BoundingBox{.x1 = landmark.x - box_size,
+                                       .y1 = landmark.y - box_size,
+                                       .x2 = landmark.x + box_size,
+                                       .y2 = landmark.y + box_size};
+        auto landmark_rect = bounding_box_to_skrect(landmark_box);
+        // If the face rectangle is too small, we will only annotate
+        // landmarks with a dot. Otherwise, we will annotate eyes with
+        // circles, nose with triangles, ears with ovals, and mouth with a
+        // rectangle. This should help identifying which landmark is for
+        // which part of body.
+        if (std::min(face_rect.width(), face_rect.height()) <=
+            kLandmarkBoxLimit) {
+          auto saved_style = paint.getStyle();
+          paint.setStyle(SkPaint::kFill_Style);
+          canvas->drawCircle(landmark_rect.center(), 4 * scale_ratio, paint);
+          paint.setStyle(saved_style);
+        } else {
+          switch (landmark.type) {
+            case human_sensing::Landmark::Type::kLeftEye:
+            case human_sensing::Landmark::Type::kRightEye:
+              canvas->drawOval(landmark_rect, paint);
+              break;
+            case human_sensing::Landmark::Type::kNoseTip:
+              canvas->drawPath(BoxToTriangle(landmark_rect), paint);
+              break;
+            case human_sensing::Landmark::Type::kMouthCenter:
+              canvas->drawRect(landmark_rect, paint);
+              break;
+            case human_sensing::Landmark::Type::kLeftEarTragion:
+            case human_sensing::Landmark::Type::kRightEarTragion: {
+              const float box_width = 8 * scale_ratio;
+              const float box_height = 15 * scale_ratio;
+              landmark_box =
+                  human_sensing::BoundingBox{.x1 = landmark.x - box_width,
+                                             .y1 = landmark.y - box_height,
+                                             .x2 = landmark.x + box_width,
+                                             .y2 = landmark.y + box_height};
+              landmark_rect = bounding_box_to_skrect(landmark_box);
+              canvas->drawOval(landmark_rect, paint);
+              break;
+            }
+            case human_sensing::Landmark::Type::kLandmarkUnknown:
+              LOGF(WARNING) << "Unknown landmark type at (" << landmark.x
+                            << ", " << landmark.y << ")";
+              break;
+          }
+        }
+      }
+    }
   }
 
   return true;
 }
 
 void FaceRectanglesFrameAnnotator::UpdateOptions(
-    const FrameAnnotator::Options& options) {}
+    const FrameAnnotator::Options& options) {
+  options_ = options;
+}
 
 }  // namespace cros

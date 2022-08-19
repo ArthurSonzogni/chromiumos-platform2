@@ -37,6 +37,8 @@ constexpr char kFaceRectanglesFrameAnnotatorKey[] =
     "face_rectangles_frame_annotator";
 constexpr char kMetadataPreviewerFrameAnnotatorKey[] =
     "metadata_previewer_frame_annotator";
+constexpr char kFaceRectanglesKey[] = "face_rectangles";
+constexpr char kFaceLandmarksKey[] = "face_landmarks";
 
 constexpr int kSyncWaitTimeoutMs = 300;
 
@@ -355,9 +357,12 @@ void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
                      kFaceRectanglesFrameAnnotatorKey);
   update_bool_option(options_.metadata_previewer_frame_annotator,
                      kMetadataPreviewerFrameAnnotatorKey);
+  update_bool_option(options_.face_rectangles, kFaceRectanglesKey);
+  update_bool_option(options_.face_landmarks, kFaceLandmarksKey);
 
   for (auto& frame_annotator : frame_annotators_) {
     frame_annotator->UpdateOptions(options_);
   }
 }
+
 }  // namespace cros
