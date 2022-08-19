@@ -66,9 +66,15 @@ dev_check_block_dev_mode() {
 }
 
 # Updates stateful partition if pending update is available.
+# shellcheck disable=SC2120
 dev_update_stateful_partition() {
+  local stateful_update_args
   local stateful_update_file="${STATEFUL_PARTITION}/.update_available"
-  if [ ! -f "${stateful_update_file}" ]; then
+  if [ $# -gt 0 ]; then
+    stateful_update_args="$*"
+  elif [ -f "${stateful_update_file}" ]; then
+    stateful_update_args="$(cat "${stateful_update_file}")"
+  else
     return
   fi
 
@@ -80,9 +86,6 @@ dev_update_stateful_partition() {
   local var_target="${var_target}_overlay"
   local developer_target="${STATEFUL_PARTITION}/dev_image"
   local developer_new="${developer_target}_new"
-  local stateful_update_args
-
-  stateful_update_args="$(cat "${stateful_update_file}")"
 
   # Only replace the developer and var_overlay directories if new replacements
   # are available.

@@ -139,6 +139,7 @@ dev_gather_logs() { true; }
 dev_mount_packages() { true; }
 dev_is_debug_build() { false; }
 dev_pop_paths_to_preserve() { true; }
+dev_update_stateful_partition() { true; }
 
 # do_* are wrapper functions that may be redefined in developer mode or test
 # images. Find more implementation in {dev,test,factory}_utils.sh.
@@ -407,10 +408,9 @@ if [ -L "${RESET_FILE}" ] || [ -e "${RESET_FILE}" ]; then
   else
     CLOBBER_ARGS="$(cat "${RESET_FILE}")"
   fi
-elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
+elif [ -z "${STATE_DEV}" ]; then
   # No physical stateful partition available, usually due to initramfs
-  # (recovery image, factory install shim or netboot), or running from a
-  # debug build image. Do not wipe.
+  # (recovery image, factory install shim or netboot). Do not wipe.
   :
 elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
   if [ -O "${DEV_MODE_FILE}" ] || needs_clobber_without_devmode_file; then
@@ -424,6 +424,14 @@ elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     else
       clobber-log -- "Leave developer mode, no dev_mode file"
     fi
+
+    # Only fast clobber the non-protected paths in debug build to preserve the
+    # testing tools.
+    if dev_is_debug_build; then
+      dev_update_stateful_partition clobber
+      reboot
+      exit 0
+    fi
   fi
 elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
   if [ ! -O "${DEV_MODE_FILE}" ]; then
@@ -431,6 +439,15 @@ elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
     chromeos-boot-alert enter_dev
     CLOBBER_ARGS='keepimg'
     clobber-log -- "Enter developer mode"
+
+    # Only fast clobber the non-protected paths in debug build to preserve the
+    # testing tools.
+    if dev_is_debug_build; then
+      dev_update_stateful_partition clobber
+      touch "${DEV_MODE_FILE}"
+      reboot
+      exit 0
+    fi
   fi
 fi
 
