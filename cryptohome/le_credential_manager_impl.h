@@ -147,9 +147,14 @@ class LECredentialManagerImpl : public LECredentialManager {
   // |label| denotes which credential label to perform the operation on.
   // |log_root| is what the root hash should be after this operation is
   // completed. It should directly be used from the log entry.
+  // |is_full_replay| is whether the log_replay is done with successfully
+  // locating the current root hash in the log entries, or done with replaying
+  // using all entries.
   //
   // Returns true on success, false on failure.
-  bool ReplayCheck(uint64_t label, const brillo::Blob& log_root);
+  bool ReplayCheck(uint64_t label,
+                   const brillo::Blob& log_root,
+                   bool is_full_replay);
 
   // Resets the HashTree.
   bool ReplayResetTree();

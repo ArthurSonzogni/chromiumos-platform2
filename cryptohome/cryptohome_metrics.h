@@ -459,12 +459,32 @@ inline constexpr char kLEOpReset[] = ".Reset";
 inline constexpr char kLEOpRemove[] = ".Remove";
 inline constexpr char kLEOpSync[] = ".Sync";
 inline constexpr char kLEOpGetDelayInSeconds[] = ".GetDelayInSeconds";
+inline constexpr char kLEOpReplay[] = ".Replay";
+inline constexpr char kLEOpReplayResetTree[] = ".ReplayResetTree";
+inline constexpr char kLEOpReplayInsert[] = ".ReplayInsert";
+inline constexpr char kLEOpReplayCheck[] = ".ReplayCheck";
+inline constexpr char kLEOpReplayRemove[] = ".ReplayRemove";
 inline constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
 inline constexpr char kLEActionBackend[] = ".Backend";
 inline constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
 inline constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
 inline constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
+inline constexpr char kLEActionBackendReplayLogForFullReplay[] =
+    ".BackendReplayLogForFullReplay";
 inline constexpr char kLEActionBackendRecoverInsert[] = ".BackendRecoverInsert";
+inline constexpr char kLEReplayTypeNormal[] = ".Normal";
+inline constexpr char kLEReplayTypeFull[] = ".Full";
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class LEReplayError {
+  kSuccess = 0,
+  kInvalidLogEntry = 1,
+  kOperationError = 2,
+  kHashMismatch = 3,
+  kRemoveInsertedCredentialsError = 4,
+  kMaxValue,
+};
 
 // Attestation-related operations. Those are suffixes of the histogram
 // kAttestationStatusHistogramPrefix defined in the .cc file.
@@ -703,6 +723,14 @@ void ReportLESyncOutcome(LECredError result);
 // operation. This count is one-based, zero is used as a sentinel value for "all
 // entries", reported when none of the log entries matches the root hash.
 void ReportLELogReplayEntryCount(size_t entry_count);
+
+// Reports the log entries replay result. We didn't reuse the LECredError here
+// because the error possibilities are quite different. We separate the
+// results between a normal replay and a full replay because the error
+// distribution in a full replay might be very different (since we're just doing
+// a best-effort attempt hoping that we are only 1 entry behind the first log
+// entry).
+void ReportLEReplayResult(bool is_full_replay, LEReplayError result);
 
 // Reports the free space in MB when the migration fails and what the free space
 // was initially when the migration was started.

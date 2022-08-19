@@ -552,7 +552,6 @@ bool LECredentialManagerImpl::Sync() {
   }
 
   LOG(WARNING) << "LE HashCache is stale; reconstructing.";
-  // TODO(crbug.com/809749): Add UMA logging for this event.
   hash_tree_->GenerateAndStoreHashCache();
   disk_root_hash.clear();
   hash_tree_->GetRootHash(&disk_root_hash);
@@ -582,7 +581,6 @@ bool LECredentialManagerImpl::Sync() {
   if (!ReplayLogEntries(log, disk_root_hash)) {
     ReportLESyncOutcome(LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "Failed to Synchronize LE disk state after log replay.";
-    // TODO(crbug.com/809749): Add UMA logging for this event.
     is_locked_ = true;
     return false;
   }
@@ -601,20 +599,21 @@ bool LECredentialManagerImpl::ReplayInsert(uint64_t label,
   GetSecureRandom(cred_metadata.data(), cred_metadata.size());
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->StoreLabel(label_obj, mac, cred_metadata, true)) {
-    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+    ReportLEResult(kLEOpReplayInsert, kLEActionSaveToDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "InsertCredentialReplay disk update "
                   "failed, label: "
                << label_obj.value();
-    // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
-  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+  ReportLEResult(kLEOpReplayInsert, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   return true;
 }
 
 bool LECredentialManagerImpl::ReplayCheck(uint64_t label,
-                                          const brillo::Blob& log_root) {
+                                          const brillo::Blob& log_root,
+                                          bool is_full_replay) {
   LOG(INFO) << "Replaying check for label " << label;
 
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
@@ -624,37 +623,46 @@ bool LECredentialManagerImpl::ReplayCheck(uint64_t label,
   if (!RetrieveLabelInfo(label_obj, &orig_cred, &orig_mac, &h_aux,
                          &metadata_lost)
            .ok()) {
-    ReportLEResult(kLEOpSync, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
+    ReportLEResult(kLEOpReplayCheck, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     return false;
   }
 
-  ReportLEResult(kLEOpSync, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
+  ReportLEResult(kLEOpReplayCheck, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
 
+  // We separate the results between a normal replay and a full replay because
+  // the error distribution in a full replay might be very different (since
+  // we're just doing a best-effort attempt hoping that we are only 1 entry
+  // behind the first log entry). Only the replay_log action of ReplayCheck
+  // needs this separation because other individual actions aren't affected by
+  // whether the assumed root hash is correct.
+  const char* replay_log_action = is_full_replay
+                                      ? kLEActionBackendReplayLogForFullReplay
+                                      : kLEActionBackendReplayLog;
   hwsec::StatusOr<ReplayLogOperationResult> result =
       pinweaver_->ReplayLogOperation(log_root, h_aux, orig_cred);
   if (!result.ok()) {
-    ReportLEResult(kLEOpSync, kLEActionBackendReplayLog,
+    ReportLEResult(kLEOpReplayCheck, replay_log_action,
                    LE_CRED_ERROR_UNCLASSIFIED);
     LOG(ERROR) << "Auth replay failed on LE Backend, label: " << label << ": "
                << std::move(result).status();
-    // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
 
-  ReportLEResult(kLEOpSync, kLEActionBackendReplayLog, LE_CRED_SUCCESS);
+  ReportLEResult(kLEOpReplayCheck, replay_log_action, LE_CRED_SUCCESS);
 
   // Store the new credential metadata and MAC.
   if (!result->new_cred_metadata.empty() && !result->new_mac.empty()) {
     if (!hash_tree_->StoreLabel(label_obj, result->new_mac,
                                 result->new_cred_metadata, false)) {
-      ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+      ReportLEResult(kLEOpReplayCheck, kLEActionSaveToDisk,
+                     LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR) << "Error in LE auth replay disk hash tree update, label: "
                  << label;
-      // TODO(crbug.com/809749): Report failure to UMA.
       return false;
     }
 
-    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+    ReportLEResult(kLEOpReplayCheck, kLEActionSaveToDisk, LE_CRED_SUCCESS);
   }
 
   return true;
@@ -666,15 +674,18 @@ bool LECredentialManagerImpl::ReplayResetTree() {
   hash_tree_.reset();
   if (!base::DeletePathRecursively(basedir_)) {
     PLOG(ERROR) << "Failed to delete disk hash tree during replay.";
-    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+    ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     return false;
   }
 
-  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+  ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   auto new_hash_tree =
       std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
   if (!new_hash_tree->IsValid()) {
+    ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     return false;
   }
   hash_tree_ = std::move(new_hash_tree);
@@ -687,12 +698,12 @@ bool LECredentialManagerImpl::ReplayRemove(uint64_t label) {
 
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->RemoveLabel(label_obj)) {
-    ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+    ReportLEResult(kLEOpReplayRemove, kLEActionSaveToDisk,
+                   LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "RemoveLabel LE Replay failed for label: " << label;
-    // TODO(crbug.com/809749): Report failure to UMA.
     return false;
   }
-  ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+  ReportLEResult(kLEOpReplayRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
   return true;
 }
 
@@ -721,9 +732,11 @@ bool LECredentialManagerImpl::ReplayLogEntries(
 
   ReportLELogReplayEntryCount(replay_count);
 
+  bool is_full_replay = false;
   if (it == log.rend()) {
     LOG(WARNING) << "No matching root hash, starting replay at oldest entry";
     it = log.rbegin();
+    is_full_replay = true;
   }
 
   brillo::Blob cur_root_hash = disk_root_hash;
@@ -742,23 +755,26 @@ bool LECredentialManagerImpl::ReplayLogEntries(
         ret = ReplayRemove(log_entry.label);
         break;
       case GetLogResult::LogEntryType::kCheck:
-        ret = ReplayCheck(log_entry.label, log_entry.root);
+        ret = ReplayCheck(log_entry.label, log_entry.root, is_full_replay);
         break;
       case GetLogResult::LogEntryType::kReset:
         ret = ReplayResetTree();
         break;
       case GetLogResult::LogEntryType::kInvalid:
         LOG(ERROR) << "Invalid log entry.";
+        ReportLEReplayResult(is_full_replay, LEReplayError::kInvalidLogEntry);
         return false;
     }
     if (!ret) {
       LOG(ERROR) << "Failure to replay LE Cred log entries.";
+      ReportLEReplayResult(is_full_replay, LEReplayError::kOperationError);
       return false;
     }
     cur_root_hash.clear();
     hash_tree_->GetRootHash(&cur_root_hash);
     if (cur_root_hash != log_entry.root) {
       LOG(ERROR) << "Root hash doesn't match log root after replaying entry.";
+      ReportLEReplayResult(is_full_replay, LEReplayError::kHashMismatch);
       return false;
     }
   }
@@ -767,9 +783,12 @@ bool LECredentialManagerImpl::ReplayLogEntries(
   for (const auto& label : inserted_leaves) {
     if (!RemoveCredential(label).ok()) {
       LOG(ERROR) << "Failed to remove re-inserted label: " << label;
+      ReportLEReplayResult(is_full_replay,
+                           LEReplayError::kRemoveInsertedCredentialsError);
       return false;
     }
   }
+  ReportLEReplayResult(is_full_replay, LEReplayError::kSuccess);
 
   return true;
 }

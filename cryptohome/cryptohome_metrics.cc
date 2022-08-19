@@ -665,6 +665,22 @@ void ReportLELogReplayEntryCount(size_t entry_count) {
                        static_cast<int>(entry_count), kMin, kMax, kNumBuckets);
 }
 
+void ReportLEReplayResult(bool is_full_replay, LEReplayError result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  const char* replay_type =
+      is_full_replay ? kLEReplayTypeNormal : kLEReplayTypeFull;
+
+  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
+                             .append(kLEOpReplay)
+                             .append(replay_type);
+
+  g_metrics->SendEnumToUMA(hist_str, static_cast<int>(result),
+                           static_cast<int>(LEReplayError::kMaxValue));
+}
+
 void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
                                            int failure_free_space_mb) {
   if (!g_metrics) {
