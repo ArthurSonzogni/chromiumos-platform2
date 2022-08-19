@@ -180,6 +180,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kSensor: {
+        FetchSensorInfo(context_,
+                        CreateFetchCallback(&barrier, &info->sensor_result));
         break;
       }
     }

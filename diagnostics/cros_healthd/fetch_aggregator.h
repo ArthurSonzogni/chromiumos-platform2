@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
