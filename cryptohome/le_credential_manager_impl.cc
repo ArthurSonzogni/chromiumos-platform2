@@ -374,7 +374,6 @@ int LECredentialManagerImpl::GetWrongAuthAttempts(uint64_t label) {
 LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
     uint64_t label) {
   if (!hash_tree_->IsValid()) {
-    // TODO(crbug.com/809749): Report failure to UMA.
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetDelayInSeconds),
         ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
@@ -389,16 +388,29 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
   LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
                                           &h_aux, &metadata_lost);
   if (!status.ok()) {
-    // TODO(crbug.com/809749): Report failure to UMA.
+    ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
+                   status->local_lecred_error());
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManRetrieveLabelFailedInGetDelayInSeconds))
         .Wrap(std::move(status));
   }
 
+  if (metadata_lost) {
+    LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_INVALID_METADATA);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInGetDelayInSeconds),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_METADATA);
+  }
+
+  ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
+                 LE_CRED_SUCCESS);
+
   hwsec::StatusOr<uint32_t> result = pinweaver_->GetDelayInSeconds(orig_cred);
   if (!result.ok()) {
-    // TODO(crbug.com/809749): Report failure to UMA.
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInGetDelayInSeconds),

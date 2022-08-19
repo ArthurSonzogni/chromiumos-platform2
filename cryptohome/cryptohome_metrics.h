@@ -458,6 +458,7 @@ inline constexpr char kLEOpCheck[] = ".Check";
 inline constexpr char kLEOpReset[] = ".Reset";
 inline constexpr char kLEOpRemove[] = ".Remove";
 inline constexpr char kLEOpSync[] = ".Sync";
+inline constexpr char kLEOpGetDelayInSeconds[] = ".GetDelayInSeconds";
 inline constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
 inline constexpr char kLEActionBackend[] = ".Backend";
 inline constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";

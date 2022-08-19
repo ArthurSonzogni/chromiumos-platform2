@@ -169,7 +169,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInCreate = 171,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate = 172,
-  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  /* =Obsolete= */
   kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInCreate = 173,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockCborConvFailedInCreate = 174,
@@ -183,7 +183,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive = 178,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive = 179,
-  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  /* =Obsolete= */
   kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInDerive = 180,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockRevocationDeriveFailedInDerive = 181,
@@ -1127,6 +1127,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoInputWithUssInAddAuthFactor = 650,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidMetadataInGetDelayInSeconds = 652,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
