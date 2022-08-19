@@ -64,6 +64,7 @@ constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
         {"display", mojom::ProbeCategoryEnum::kDisplay},
         {"input", mojom::ProbeCategoryEnum::kInput},
         {"audio_hardware", mojom::ProbeCategoryEnum::kAudioHardware},
+        {"sensor", mojom::ProbeCategoryEnum::kSensor},
 };
 
 std::string EnumToString(mojom::ProcessState state) {
@@ -1338,6 +1339,21 @@ void DisplayAudioHardwareInfo(const mojom::AudioHardwareResultPtr& result) {
   OutputJson(output);
 }
 
+void DisplaySensorInfo(const mojom::SensorResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
+    return;
+  }
+
+  base::Value output{base::Value::Type::DICTIONARY};
+  const auto& info = result->get_sensor_info();
+  CHECK(!info.is_null());
+
+  SET_DICT(lid_angle, info, &output);
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -1419,6 +1435,10 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& audio_hardware_result = info->audio_hardware_result;
   if (audio_hardware_result)
     DisplayAudioHardwareInfo(audio_hardware_result);
+
+  const auto& sensor_result = info->sensor_result;
+  if (sensor_result)
+    DisplaySensorInfo(sensor_result);
 }
 
 // Create a stringified list of the category names for use in help.
