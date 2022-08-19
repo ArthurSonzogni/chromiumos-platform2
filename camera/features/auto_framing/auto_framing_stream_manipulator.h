@@ -37,6 +37,10 @@ class AutoFramingStreamManipulator : public StreamManipulator {
       "/run/camera/auto_framing_config.json";
 
   struct Options {
+    // Max video stream size that output frames are cropped/scaled from.
+    std::optional<uint32_t> max_video_width;
+    std::optional<uint32_t> max_video_height;
+
     // The filtering algorithm to scale the cropped region into output frames.
     FilterMode output_filter_mode = FilterMode::kBicubic;
 
@@ -61,9 +65,10 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     bool debug = false;
   };
 
-  explicit AutoFramingStreamManipulator(RuntimeOptions* runtime_options,
-                                        const Options& options,
-                                        base::FilePath config_file_path);
+  AutoFramingStreamManipulator(
+      RuntimeOptions* runtime_options,
+      base::FilePath config_file_path,
+      std::optional<Options> options_override_for_testing = std::nullopt);
   ~AutoFramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.

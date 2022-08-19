@@ -36,6 +36,8 @@ constexpr char kMetadataDumpPath[] =
 
 constexpr char kEnableKey[] = "enable";
 constexpr char kDebugKey[] = "debug";
+constexpr char kMaxFullWidthKey[] = "max_video_width";
+constexpr char kMaxFullHeightKey[] = "max_video_height";
 constexpr char kOutputFilterModeKey[] = "output_filter_mode";
 constexpr char kDetectionRateKey[] = "detection_rate";
 constexpr char kEnableDelayKey[] = "enable_delay";
@@ -50,7 +52,9 @@ constexpr int kSyncWaitTimeoutMs = 300;
 // Find the largest stream resolution with full FOV and sufficient frame rate to
 // run auto-framing on.
 Size GetFullFrameResolution(const camera_metadata_t* static_info,
-                            const Size& active_array_size) {
+                            const Size& active_array_size,
+                            std::optional<uint32_t> max_width,
+                            std::optional<uint32_t> max_height) {
   auto stream_configs = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
   if (stream_configs.empty() || stream_configs.size() % 4 != 0) {
@@ -105,6 +109,12 @@ Size GetFullFrameResolution(const camera_metadata_t* static_info,
     int32_t direction = stream_configs[i + 3];
     Size size(base::checked_cast<uint32_t>(width),
               base::checked_cast<uint32_t>(height));
+    if (max_width.has_value() && size.width > *max_width) {
+      continue;
+    }
+    if (max_height.has_value() && size.height > *max_height) {
+      continue;
+    }
     if ((format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
          format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
         direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT &&
@@ -222,25 +232,29 @@ struct AutoFramingStreamManipulator::CaptureContext {
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
     RuntimeOptions* runtime_options,
-    const Options& options,
-    base::FilePath config_file_path)
+    base::FilePath config_file_path,
+    std::optional<Options> options_override_for_testing)
     : config_(ReloadableConfigFile::Options{
           .default_config_file_path = std::move(config_file_path),
           .override_config_file_path =
               base::FilePath(kOverrideAutoFramingConfigFile)}),
-      options_(options),
       runtime_options_(runtime_options),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
       thread_("AutoFramingThread") {
   DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
 
-  if (!config_.IsValid()) {
-    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
-    options_.enable = false;
+  if (options_override_for_testing) {
+    options_ = *options_override_for_testing;
+  } else {
+    if (!config_.IsValid()) {
+      LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+      options_.enable = false;
+    }
+    config_.SetCallback(
+        base::BindRepeating(&AutoFramingStreamManipulator::OnOptionsUpdated,
+                            base::Unretained(this)));
   }
-  config_.SetCallback(base::BindRepeating(
-      &AutoFramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
 
 AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
@@ -345,8 +359,9 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     return false;
   }
 
-  full_frame_size_ =
-      GetFullFrameResolution(static_info, active_array_dimension_);
+  full_frame_size_ = GetFullFrameResolution(
+      static_info, active_array_dimension_, options_.max_video_width,
+      options_.max_video_height);
   if (!full_frame_size_.is_valid()) {
     LOGF(ERROR) << "Cannot find a resolution to run auto-framing on";
     return false;
@@ -854,8 +869,14 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
     const base::Value& json_values) {
   DCHECK(thread_.IsCurrentThread());
 
-  int filter_mode;
+  int filter_mode, max_video_width, max_video_height;
   float detection_rate, enable_delay, disable_delay;
+  if (LoadIfExist(json_values, kMaxFullWidthKey, &max_video_width)) {
+    options_.max_video_width = base::checked_cast<uint32_t>(max_video_width);
+  }
+  if (LoadIfExist(json_values, kMaxFullHeightKey, &max_video_height)) {
+    options_.max_video_height = base::checked_cast<uint32_t>(max_video_height);
+  }
   if (LoadIfExist(json_values, kOutputFilterModeKey, &filter_mode)) {
     options_.output_filter_mode = static_cast<FilterMode>(filter_mode);
   }
@@ -872,6 +893,14 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   VLOGF(1) << "AutoFramingStreamManipulator options:"
+           << " max_video_width="
+           << (options_.max_video_width.has_value()
+                   ? base::NumberToString(*options_.max_video_width)
+                   : "(not set)")
+           << " max_video_height="
+           << (options_.max_video_height.has_value()
+                   ? base::NumberToString(*options_.max_video_height)
+                   : "(not set)")
            << " output_filter_mode="
            << static_cast<int>(options_.output_filter_mode)
            << " detection_rate=" << options_.detection_rate

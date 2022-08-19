@@ -11,7 +11,6 @@
 #include <utility>
 
 #include "features/auto_framing/auto_framing_stream_manipulator.h"
-#include "features/feature_profile.h"
 
 namespace cros::tests {
 
@@ -152,12 +151,9 @@ bool AutoFramingTestFixture::SetUp(
   runtime_options_ = StreamManipulator::RuntimeOptions{
       .auto_framing_state = mojom::CameraAutoFramingState::OFF,
   };
-  FeatureProfile feature_profile;
   auto_framing_stream_manipulator_ =
-      std::make_unique<AutoFramingStreamManipulator>(
-          &runtime_options_, options,
-          feature_profile.GetConfigFilePath(
-              FeatureProfile::FeatureType::kAutoFraming));
+      std::make_unique<AutoFramingStreamManipulator>(&runtime_options_,
+                                                     base::FilePath(), options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   if (!locked_static_info) {

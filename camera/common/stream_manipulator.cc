@@ -90,9 +90,8 @@ void MaybeEnableAutoFramingStreamManipulator(
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>(
-            runtime_options, AutoFramingStreamManipulator::Options{},
-            feature_profile.GetConfigFilePath(
-                FeatureProfile::FeatureType::kAutoFraming)));
+            runtime_options, feature_profile.GetConfigFilePath(
+                                 FeatureProfile::FeatureType::kAutoFraming)));
     LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif
