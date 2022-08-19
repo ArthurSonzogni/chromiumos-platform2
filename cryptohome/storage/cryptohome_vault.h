@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include <unordered_map>
 
 #include <dbus/cryptohome/dbus-constants.h>
 
@@ -44,7 +44,8 @@ class CryptohomeVault {
       std::unique_ptr<EncryptedContainer> container,
       std::unique_ptr<EncryptedContainer> migrating_container,
       std::unique_ptr<EncryptedContainer> cache_container,
-      std::vector<std::unique_ptr<EncryptedContainer>> application_containers,
+      std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+          application_containers,
       Platform* platform);
   ~CryptohomeVault();
 
@@ -98,7 +99,8 @@ class CryptohomeVault {
   // serves as the backing store for temporary data.
   std::unique_ptr<EncryptedContainer> cache_container_;
   // Containers that store application info.
-  std::vector<std::unique_ptr<EncryptedContainer>> application_containers_;
+  std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+      application_containers_;
 
   Platform* platform_;
 };

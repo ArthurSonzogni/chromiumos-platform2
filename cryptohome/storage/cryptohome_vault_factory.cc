@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -185,7 +186,8 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   std::unique_ptr<EncryptedContainer> cache_container;
-  std::vector<std::unique_ptr<EncryptedContainer>> application_containers;
+  std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+      application_containers;
   if (container_type == EncryptedContainerType::kDmcrypt ||
       container_type == EncryptedContainerType::kEcryptfsToDmcrypt ||
       container_type == EncryptedContainerType::kFscryptToDmcrypt) {
@@ -205,7 +207,7 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
           LOG(ERROR) << "Could not create vault container for app: " << app;
           return nullptr;
         }
-        application_containers.emplace_back(std::move(tmp_container));
+        application_containers[app] = std::move(tmp_container);
       }
     }
   }

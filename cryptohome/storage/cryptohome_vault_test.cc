@@ -5,8 +5,8 @@
 #include <cryptohome/storage/cryptohome_vault.h>
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
-#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -76,7 +76,8 @@ class CryptohomeVaultTest
   }
 
   EncryptedContainerConfig ConfigFromType(EncryptedContainerType type,
-                                          const std::string& name) {
+                                          const std::string& name,
+                                          bool is_raw_device) {
     EncryptedContainerConfig config;
     config.type = type;
     switch (type) {
@@ -101,6 +102,7 @@ class CryptohomeVaultTest
                               "thinpool", "vg", nullptr)}},
                 .dmcrypt_device_name = "dmcrypt-" + name,
                 .dmcrypt_cipher = "aes-xts-plain64",
+                .is_raw_device = is_raw_device,
                 .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
                               "discard,assume_storage_prezeroed=1"},
                 .tune2fs_opts = {"-O", "verity,quota", "-Q",
@@ -114,21 +116,23 @@ class CryptohomeVaultTest
     return config;
   }
 
-  void ExpectDmcryptSetup(const std::string& name) {
+  void ExpectDmcryptSetup(const std::string& name, bool is_raw_device) {
     base::FilePath backing_device_path = base::FilePath("/dev").Append(name);
     base::FilePath dmcrypt_device("/dev/mapper/dmcrypt-" + name);
     EXPECT_CALL(platform_, GetBlkSize(backing_device_path, _))
         .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(dmcrypt_device, _))
         .WillOnce(Return(true));
-    EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device, _)).WillOnce(Return(true));
+    if (!is_raw_device) {
+      EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillRepeatedly(Return(true));
+      EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device, _)).WillOnce(Return(true));
+    }
   }
 
   void ExpectContainerSetup(EncryptedContainerType type) {
     switch (type) {
       case EncryptedContainerType::kDmcrypt:
-        ExpectDmcryptSetup("data");
+        ExpectDmcryptSetup("data", /*is_raw_device=*/false);
         break;
       default:
         break;
@@ -138,7 +142,18 @@ class CryptohomeVaultTest
   void ExpectCacheContainerSetup(EncryptedContainerType type) {
     switch (type) {
       case EncryptedContainerType::kDmcrypt:
-        ExpectDmcryptSetup("cache");
+        ExpectDmcryptSetup("cache", /*is_raw_device=*/false);
+        break;
+      default:
+        break;
+    }
+  }
+
+  void ExpectApplicationContainerSetup(EncryptedContainerType type) {
+    switch (type) {
+      case EncryptedContainerType::kDmcrypt:
+        ExpectDmcryptSetup("arcvm", /*is_raw_device=*/true);
+        ExpectDmcryptSetup("crostini", /*is_raw_device=*/true);
         break;
       default:
         break;
@@ -176,6 +191,12 @@ class CryptohomeVaultTest
     if (vault_->cache_container_) {
       EXPECT_TRUE(vault_->cache_container_->Exists());
     }
+
+    if (vault_->container_->GetType() == EncryptedContainerType::kDmcrypt) {
+      for (auto& [_, container] : vault_->application_containers_) {
+        EXPECT_TRUE(container->Exists());
+      }
+    }
   }
 
   void ExpectVaultSetup() {
@@ -185,29 +206,47 @@ class CryptohomeVaultTest
 
   void GenerateVault(bool create_container,
                      bool create_migrating_container,
-                     bool create_cache_container) {
+                     bool create_cache_container,
+                     bool create_app_container) {
     std::unique_ptr<EncryptedContainer> container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(ContainerType(), "data"), key_reference_,
-            create_container);
+            ConfigFromType(ContainerType(), "data", /*is_raw_device=*/false),
+            key_reference_, create_container);
     if (create_container)
       CreateExistingContainer(ContainerType());
 
     std::unique_ptr<EncryptedContainer> migrating_container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(MigratingContainerType(), "data"), key_reference_,
-            create_migrating_container);
+            ConfigFromType(MigratingContainerType(), "data",
+                           /*is_raw_device=*/false),
+            key_reference_, create_migrating_container);
     if (create_migrating_container)
       CreateExistingContainer(MigratingContainerType());
 
     std::unique_ptr<EncryptedContainer> cache_container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(CacheContainerType(), "cache"), key_reference_,
-            create_cache_container);
+            ConfigFromType(CacheContainerType(), "cache",
+                           /*is_raw_device=*/false),
+            key_reference_, create_cache_container);
     if (create_cache_container)
       CreateExistingContainer(CacheContainerType());
 
-    std::vector<std::unique_ptr<EncryptedContainer>> application_containers;
+    std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+        application_containers;
+
+    if (ContainerType() == EncryptedContainerType::kDmcrypt) {
+      application_containers["arcvm"] = encrypted_container_factory_.Generate(
+          ConfigFromType(CacheContainerType(), "arcvm", /*is_raw_device=*/
+                         true),
+          key_reference_, create_app_container);
+
+      application_containers["crostini"] =
+          encrypted_container_factory_.Generate(
+              ConfigFromType(CacheContainerType(),
+                             "crostini", /*is_raw_device=*/
+                             true),
+              key_reference_, create_app_container);
+    }
 
     vault_ = std::make_unique<CryptohomeVault>(
         obfuscated_username_, std::move(container),
@@ -259,7 +298,8 @@ INSTANTIATE_TEST_SUITE_P(WithDmcrypt,
 TEST_P(CryptohomeVaultTest, FailedProcessKeyringSetup) {
   GenerateVault(/*create_container=*/false,
                 /*create_migrating_container=*/false,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   EXPECT_CALL(platform_, SetupProcessKeyring()).WillOnce(Return(false));
   EXPECT_THAT(vault_->Setup(key_),
               IsError(MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED));
@@ -269,7 +309,8 @@ TEST_P(CryptohomeVaultTest, FailedProcessKeyringSetup) {
 TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
   GenerateVault(/*create_container=*/false,
                 /*create_migrating_container=*/false,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   keyring_->SetShouldFail(true);
   EXPECT_THAT(vault_->Setup(key_), IsError(MOUNT_ERROR_KEYRING_FAILED));
@@ -279,15 +320,17 @@ TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
 TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
   GenerateVault(/*create_container=*/false,
                 /*create_migrating_container=*/false,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   ExpectContainerSetup(ContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
 
   // In absence of a migrating container, the vault setup should succeed.
   int good_key_calls = 1;
   if (ContainerType() == EncryptedContainerType::kDmcrypt) {
-    good_key_calls = 4;
+    good_key_calls = 8;
   } else if (CacheContainerType() != EncryptedContainerType::kUnknown) {
     good_key_calls = 2;
   }
@@ -304,11 +347,13 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
 TEST_P(CryptohomeVaultTest, CreateVault) {
   GenerateVault(/*create_container=*/false,
                 /*create_migrating_container=*/false,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   ExpectContainerSetup(ContainerType());
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
 
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
@@ -320,11 +365,13 @@ TEST_P(CryptohomeVaultTest, CreateVault) {
 TEST_P(CryptohomeVaultTest, ExistingVaultNoMigratingVault) {
   GenerateVault(/*create_container=*/true,
                 /*create_migrating_container=*/false,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   ExpectContainerSetup(ContainerType());
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
 
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
@@ -335,26 +382,46 @@ TEST_P(CryptohomeVaultTest, ExistingVaultNoMigratingVault) {
 // container (incomplete migration).
 TEST_P(CryptohomeVaultTest, ExistingMigratingVault) {
   GenerateVault(/*create_container=*/true, /*create_migrating_container=*/true,
-                /*create_cache_container=*/false);
+                /*create_cache_container=*/false,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   ExpectContainerSetup(ContainerType());
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
 
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   CheckContainersExist();
 }
 
-// Tests the setup path for an existing vault with an existing cache container
-// (incomplete migration).
+// Tests the setup path for an existing vault with an existing cache container.
 TEST_P(CryptohomeVaultTest, ExistingCacheContainer) {
   GenerateVault(/*create_container=*/true, /*create_migrating_container=*/false,
-                /*create_cache_container=*/true);
+                /*create_cache_container=*/true,
+                /*create_app_container=*/false);
   ExpectVaultSetup();
   ExpectContainerSetup(ContainerType());
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
+
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
+
+  CheckContainersExist();
+}
+
+// Tests the setup path for an existing vault with an existing application
+// containers.
+TEST_P(CryptohomeVaultTest, ExistingApplicationContainers) {
+  GenerateVault(/*create_container=*/true, /*create_migrating_container=*/false,
+                /*create_cache_container=*/false,
+                /*create_app_container=*/true);
+  ExpectVaultSetup();
+  ExpectContainerSetup(ContainerType());
+  ExpectContainerSetup(MigratingContainerType());
+  ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
 
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
