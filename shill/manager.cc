@@ -1884,7 +1884,6 @@ void Manager::SortServicesTask() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
-  UpdateBlackholeUserTraffic();
   UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
   DetectMultiHomedDevices();
@@ -1982,7 +1981,7 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
 
 void Manager::SetAlwaysOnVpn(const std::string& mode,
                              VPNServiceRefPtr service) {
-  LOG(INFO) << "Setting always-on-vpn to mode=" << mode
+  LOG(INFO) << "Setting always-on VPN to mode=" << mode
             << " service=" << (service ? service->log_name() : "nullptr");
 
   const std::string previous_mode = always_on_vpn_mode_;
@@ -2990,10 +2989,32 @@ std::string Manager::GetAlwaysOnVpnPackage(Error* /*error*/) {
 
 bool Manager::SetAlwaysOnVpnPackage(const std::string& package_name,
                                     Error* error) {
-  if (props_.always_on_vpn_package == package_name)
+  LOG(INFO) << "Setting ARC always-on VPN package: \"" << package_name << "\"";
+
+  // Until the legacy ARC always-on VPN has migrated to SetAlwaysOnVpn, always
+  // assume that the always-on VPN mode is Strict if Chrome called the Manager
+  // SetAlwaysOnVpnPackage DBus method, and ensures that lockdown VPN rules are
+  // enabled in patchpanel. If Android always-on VPN App is cleared or if the
+  // Android always-on VPN lockdown mode is disabled, ARC will notify Chrome
+  // and Chrome will clear the always-on VPN packae name. Ensure that lockdown
+  // VPN rules are disabled in patchpanel.
+  bool is_android_vpn_lockdown_enabled = !package_name.empty();
+  bool was_android_vpn_lockdown_enabled = !props_.always_on_vpn_package.empty();
+  if (props_.always_on_vpn_package == package_name) {
     return false;
+  }
+
+  if (is_android_vpn_lockdown_enabled && !was_android_vpn_lockdown_enabled) {
+    LOG(INFO) << "Starting VPN lockdown";
+    patchpanel_client_->SetVpnLockdown(true);
+  }
+
+  if (!is_android_vpn_lockdown_enabled && was_android_vpn_lockdown_enabled) {
+    LOG(INFO) << "Stopping VPN lockdown";
+    patchpanel_client_->SetVpnLockdown(false);
+  }
+
   props_.always_on_vpn_package = package_name;
-  UpdateBlackholeUserTraffic();
   return true;
 }
 

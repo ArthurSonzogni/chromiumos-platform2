@@ -609,7 +609,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
-  FRIEND_TEST(ManagerTest, UpdateBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
@@ -617,7 +616,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
-  FRIEND_TEST(ManagerTest, ShouldBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
@@ -635,6 +633,8 @@ class Manager {
   void UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile);
   // Set the always-on VPN configuration and start or stop VPN lockdown if
   // needed.
+  // TODO(b/188864779) Generalize to support both setups of always-on VPNService
+  // and legacy ARC++ always-on VPN package name property.
   void SetAlwaysOnVpn(const std::string& mode, VPNServiceRefPtr service);
   // Connect the always-on VPN and maintain the previous connection attempts
   // count.
@@ -656,6 +656,8 @@ class Manager {
   std::string GetPortalFallbackHttpUrls(Error* error);
   std::string GetPortalFallbackHttpsUrls(Error* error);
   ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
+  // TODO(b/188864779) Migrate to a Profile property and migrate the storage
+  // from Chrome to shill.
   bool SetAlwaysOnVpnPackage(const std::string& package_name, Error* error);
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);

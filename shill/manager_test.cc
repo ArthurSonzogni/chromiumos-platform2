@@ -91,6 +91,16 @@ using ::testing::Test;
 using ::testing::WithArg;
 using ::testing::WithParamInterface;
 
+namespace {
+class MockPatchpanelClient : public patchpanel::FakeClient {
+ public:
+  MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() = default;
+
+  MOCK_METHOD(bool, SetVpnLockdown, (bool enable), (override));
+};
+}  // namespace
+
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
@@ -154,7 +164,7 @@ class ManagerTest : public PropertyStoreTest {
     mock_devices_.push_back(
         new NiceMock<MockDevice>(manager(), "null3", "addr3", 3));
 
-    auto client = std::make_unique<patchpanel::FakeClient>();
+    auto client = std::make_unique<MockPatchpanelClient>();
     patchpanel_client_ = client.get();
     manager()->patchpanel_client_ = std::move(client);
   }
@@ -540,7 +550,7 @@ class ManagerTest : public PropertyStoreTest {
   MockThrottler* throttler_;
   MockUpstart* upstart_;
   NiceMock<MockResolver> resolver_;
-  patchpanel::FakeClient* patchpanel_client_;
+  MockPatchpanelClient* patchpanel_client_;
 };
 
 const char ManagerTest::TerminationActionTest::kActionName[] = "action";
@@ -4243,102 +4253,32 @@ TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
   const std::string kPackage = "com.example.test.vpn";
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
 
-  // If the package is not changed, return false
+  // If the package name remains empty, expect to receive false.
+  EXPECT_CALL(*patchpanel_client_, SetVpnLockdown(_)).Times(0);
   EXPECT_EQ(false, manager()->SetAlwaysOnVpnPackage("", nullptr));
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
+  Mock::VerifyAndClearExpectations(patchpanel_client_);
 
-  // If the package is not changed, return true
+  // If the package name has changed, expect to receive true and expect VPN
+  // lockdown to start.
+  EXPECT_CALL(*patchpanel_client_, SetVpnLockdown(true));
   EXPECT_EQ(true, manager()->SetAlwaysOnVpnPackage(kPackage, nullptr));
   EXPECT_EQ(kPackage, manager()->GetAlwaysOnVpnPackage(nullptr));
+  Mock::VerifyAndClearExpectations(patchpanel_client_);
 
+  // If the package is not changed, expect to receive false and no change for
+  // VPN lockdown.
+  EXPECT_CALL(*patchpanel_client_, SetVpnLockdown(_)).Times(0);
   EXPECT_EQ(false, manager()->SetAlwaysOnVpnPackage(kPackage, nullptr));
   EXPECT_EQ(kPackage, manager()->GetAlwaysOnVpnPackage(nullptr));
+  Mock::VerifyAndClearExpectations(patchpanel_client_);
 
+  // If the package is reset, expect to receive true and expect VPN lockdown to
+  // stop.
+  EXPECT_CALL(*patchpanel_client_, SetVpnLockdown(false));
   EXPECT_EQ(true, manager()->SetAlwaysOnVpnPackage("", nullptr));
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));
-}
-
-TEST_F(ManagerTest, ShouldBlackholeUserTraffic) {
-  const std::string kRegistered = mock_devices_[0]->UniqueName();
-  const std::string kUnregistered = mock_devices_[1]->UniqueName();
-
-  manager()->RegisterDevice(mock_devices_[0]);
-
-  const std::string kOnlinePackage = "com.example.test.vpn1";
-  const std::string kOfflinePackage = "com.example.test.vpn2";
-  const std::string kOtherPackage = "com.example.test.vpn3";
-
-  MockServiceRefPtr online_service(new NiceMock<MockService>(manager()));
-  MockServiceRefPtr offline_service(new NiceMock<MockService>(manager()));
-
-  EXPECT_CALL(*online_service, IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*online_service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*online_service, IsAlwaysOnVpn(kOnlinePackage))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*offline_service, IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*offline_service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*offline_service, IsAlwaysOnVpn(kOfflinePackage))
-      .WillRepeatedly(Return(true));
-  manager()->RegisterService(online_service);
-  manager()->RegisterService(offline_service);
-
-  // No package set: no blackholing
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kRegistered));
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
-
-  // Package set, service is not online yet, blackhole all registered devices
-  manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
-  EXPECT_EQ(true, manager()->ShouldBlackholeUserTraffic(kRegistered));
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
-
-  // Service comes online, stop blackholing
-  EXPECT_CALL(*online_service, IsOnline()).WillRepeatedly(Return(true));
-  manager()->UpdateBlackholeUserTraffic();
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kRegistered));
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
-
-  // Set to a different package whose service is offline, resume blackholing
-  manager()->SetAlwaysOnVpnPackage(kOfflinePackage, nullptr);
-  EXPECT_EQ(true, manager()->ShouldBlackholeUserTraffic(kRegistered));
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
-
-  // Set to a different package which has no service, keep blackholing
-  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
-  EXPECT_EQ(true, manager()->ShouldBlackholeUserTraffic(kRegistered));
-  EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
-}
-
-TEST_F(ManagerTest, UpdateBlackholeUserTraffic) {
-  manager()->RegisterDevice(mock_devices_[0]);
-
-  const std::string kOnlinePackage = "com.example.test.vpn1";
-  const std::string kOtherPackage = "com.example.test.vpn2";
-
-  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service, IsAlwaysOnVpn(kOnlinePackage))
-      .WillRepeatedly(Return(true));
-  manager()->RegisterService(service);
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
-  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(0);
-  manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(0);
-  manager()->UpdateBlackholeUserTraffic();
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
-  EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(true));
-  manager()->UpdateBlackholeUserTraffic();
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
-  manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
-
-  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
-  manager()->SetAlwaysOnVpnPackage("", nullptr);
+  Mock::VerifyAndClearExpectations(patchpanel_client_);
 }
 
 TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
