@@ -23,8 +23,6 @@
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
-#include "features/auto_framing/face_tracker.h"
-#include "features/auto_framing/framer.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/gpu_resources.h"
 #include "gpu/image_processor.h"
@@ -38,28 +36,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   static constexpr const char kOverrideAutoFramingConfigFile[] =
       "/run/camera/auto_framing_config.json";
 
-  enum class Detector {
-    // Face detector. It cannot be paired with MotionModel::kLibAutoFraming.
-    kFace = 0,
-    // Face-Person-Pose detector. The output ROI contains face and part of body
-    // regions.
-    kFacePersonPose = 1,
-  };
-
-  enum class MotionModel {
-    // IIR filtering implemented in Framer.
-    kIirFilter = 0,
-    // Motion model implemented in libautoframing.
-    kLibAutoFraming = 1,
-  };
-
   struct Options {
-    // The detection model for detecting regions of interest.
-    Detector detector = Detector::kFacePersonPose;
-
-    // The motion model for smoothing framing window moves.
-    MotionModel motion_model = MotionModel::kLibAutoFraming;
-
     // The filtering algorithm to scale the cropped region into output frames.
     FilterMode output_filter_mode = FilterMode::kBicubic;
 
@@ -173,14 +150,11 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};
   const camera3_stream_t* target_output_stream_ = nullptr;
-  bool override_crop_window_ = false;
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
   int64_t last_timestamp_ = 0;
   int64_t timestamp_offset_ = 0;
 
   AutoFramingClient auto_framing_client_;
-  std::unique_ptr<FaceTracker> face_tracker_;
-  std::unique_ptr<Framer> framer_;
   std::unique_ptr<CameraBufferPool> full_frame_buffer_pool_;
 
   std::vector<Rect<float>> faces_;

@@ -24,8 +24,8 @@
 #include <sys/types.h>
 
 #include "cros-camera/camera_metadata_utils.h"
-#include "cros-camera/constants.h"
 #include "gpu/egl/egl_fence.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
 
@@ -36,8 +36,6 @@ constexpr char kMetadataDumpPath[] =
 
 constexpr char kEnableKey[] = "enable";
 constexpr char kDebugKey[] = "debug";
-constexpr char kDetectorKey[] = "detector";
-constexpr char kMotionModelKey[] = "motion_model";
 constexpr char kOutputFilterModeKey[] = "output_filter_mode";
 constexpr char kDetectionRateKey[] = "detection_rate";
 constexpr char kEnableDelayKey[] = "enable_delay";
@@ -572,18 +570,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     ctx->state_transition = StateTransitionOnThread();
   }
 
-  if (face_tracker_) {
-    // Using face detector.
-    if (result->feature_metadata().faces) {
-      face_tracker_->OnNewFaceData(*result->feature_metadata().faces);
-      faces_ = face_tracker_->GetActiveFaceRectangles();
-      region_of_interest_ =
-          face_tracker_->GetActiveBoundingRectangleOnActiveStream();
-      framer_->OnNewRegionOfInterest(result->frame_number(),
-                                     region_of_interest_);
-    }
-  }
-
   // Update face metadata using the last framing information.
   UpdateFaceRectangleMetadataOnThread(result);
 
@@ -624,65 +610,51 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     return false;
   }
 
-  if (!face_tracker_) {
-    // Using FPP detector.
-    if (!ctx->timestamp.has_value()) {
-      VLOGF(1) << "Sensor timestamp not found for result "
-               << result->frame_number() << "; using last timestamp plus 1";
-      ctx->timestamp = last_timestamp_ + 1;
-      last_timestamp_ = *ctx->timestamp;
-    }
+  if (!ctx->timestamp.has_value()) {
+    VLOGF(1) << "Sensor timestamp not found for result "
+             << result->frame_number() << "; using last timestamp plus 1";
+    ctx->timestamp = last_timestamp_ + 1;
+    last_timestamp_ = *ctx->timestamp;
+  }
 
-    if (full_frame_buffer.release_fence != -1) {
-      if (sync_wait(full_frame_buffer.release_fence, kSyncWaitTimeoutMs) != 0) {
-        LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
-                    << result->frame_number();
-        return false;
-      }
-      close(full_frame_buffer.release_fence);
-      full_frame_buffer.release_fence = -1;
-    }
-
-    if (ctx->state_transition->first != State::kOff &&
-        ctx->state_transition->second == State::kOff) {
-      if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
-        LOGF(ERROR) << "Failed to reset crop window at result "
-                    << result->frame_number();
-        return false;
-      }
-    }
-    if (ctx->state_transition->first != State::kOn &&
-        ctx->state_transition->second == State::kOn) {
-      auto_framing_client_.ResetDetectionTimer();
-    }
-    if (!auto_framing_client_.ProcessFrame(
-            *ctx->timestamp, ctx->state_transition->second == State::kOn
-                                 ? *full_frame_buffer.buffer
-                                 : nullptr)) {
-      LOGF(ERROR) << "Failed to process frame " << result->frame_number();
+  if (full_frame_buffer.release_fence != -1) {
+    if (sync_wait(full_frame_buffer.release_fence, kSyncWaitTimeoutMs) != 0) {
+      LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
+                  << result->frame_number();
       return false;
     }
+    close(full_frame_buffer.release_fence);
+    full_frame_buffer.release_fence = -1;
+  }
 
-    std::optional<Rect<float>> roi =
-        auto_framing_client_.TakeNewRegionOfInterest();
-    if (roi) {
-      region_of_interest_ = *roi;
-      if (!override_crop_window_) {
-        DCHECK_NE(framer_, nullptr);
-        framer_->OnNewRegionOfInterest(result->frame_number(),
-                                       region_of_interest_);
-      }
+  if (ctx->state_transition->first != State::kOff &&
+      ctx->state_transition->second == State::kOff) {
+    if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
+      LOGF(ERROR) << "Failed to reset crop window at result "
+                  << result->frame_number();
+      return false;
     }
+  }
+  if (ctx->state_transition->first != State::kOn &&
+      ctx->state_transition->second == State::kOn) {
+    auto_framing_client_.ResetDetectionTimer();
+  }
+  if (!auto_framing_client_.ProcessFrame(
+          *ctx->timestamp, ctx->state_transition->second == State::kOn
+                               ? *full_frame_buffer.buffer
+                               : nullptr)) {
+    LOGF(ERROR) << "Failed to process frame " << result->frame_number();
+    return false;
+  }
+
+  std::optional<Rect<float>> roi =
+      auto_framing_client_.TakeNewRegionOfInterest();
+  if (roi) {
+    region_of_interest_ = *roi;
   }
 
   // Crop the full frame into client buffers.
-  if (override_crop_window_) {
-    active_crop_region_ = auto_framing_client_.GetCropWindow(*ctx->timestamp);
-  } else {
-    DCHECK_NE(framer_, nullptr);
-    active_crop_region_ =
-        framer_->ComputeActiveCropRegion(result->frame_number());
-  }
+  active_crop_region_ = auto_framing_client_.GetCropWindow(*ctx->timestamp);
   for (auto& b : ctx->client_buffers) {
     Rect<float> crop_region;
     if (options_.debug) {
@@ -735,41 +707,15 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
   DCHECK(thread_.IsCurrentThread());
 
-  // We only load |options_.{detector,motion_model}| once here. Later functions
-  // should check |face_tracker_|, |override_crop_window_| for the selected
-  // modes.
-  if (options_.detector == Detector::kFace &&
-      options_.motion_model == MotionModel::kLibAutoFraming) {
-    LOGF(ERROR) << "Face detector cannot be paired with libautoframing";
+  if (!auto_framing_client_.SetUp(AutoFramingClient::Options{
+          .input_size = full_frame_size_,
+          .frame_rate = static_cast<double>(kRequiredFrameRate),
+          .target_aspect_ratio_x = target_aspect_ratio_x,
+          .target_aspect_ratio_y = target_aspect_ratio_y,
+          .detection_rate = options_.detection_rate,
+      })) {
     return false;
   }
-  switch (options_.detector) {
-    case Detector::kFace: {
-      face_tracker_ = std::make_unique<FaceTracker>(FaceTracker::Options{
-          .active_array_dimension = active_array_dimension_,
-          .active_stream_dimension = full_frame_size_});
-      break;
-    }
-    case Detector::kFacePersonPose: {
-      if (!auto_framing_client_.SetUp(AutoFramingClient::Options{
-              .input_size = full_frame_size_,
-              .frame_rate = static_cast<double>(kRequiredFrameRate),
-              .target_aspect_ratio_x = target_aspect_ratio_x,
-              .target_aspect_ratio_y = target_aspect_ratio_y,
-              .detection_rate = options_.detection_rate,
-          })) {
-        return false;
-      }
-      break;
-    }
-  }
-  override_crop_window_ = options_.motion_model == MotionModel::kLibAutoFraming;
-
-  framer_ = std::make_unique<Framer>(Framer::Options{
-      .input_size = full_frame_size_,
-      .target_aspect_ratio_x = target_aspect_ratio_x,
-      .target_aspect_ratio_y = target_aspect_ratio_y,
-  });
 
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
@@ -889,8 +835,6 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   DCHECK(thread_.IsCurrentThread());
 
   auto_framing_client_.TearDown();
-  face_tracker_.reset();
-  framer_.reset();
 
   state_ = State::kOff;
   client_streams_.clear();
@@ -910,14 +854,8 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
     const base::Value& json_values) {
   DCHECK(thread_.IsCurrentThread());
 
-  int detector, motion_model, filter_mode;
+  int filter_mode;
   float detection_rate, enable_delay, disable_delay;
-  if (LoadIfExist(json_values, kDetectorKey, &detector)) {
-    options_.detector = static_cast<Detector>(detector);
-  }
-  if (LoadIfExist(json_values, kMotionModelKey, &motion_model)) {
-    options_.motion_model = static_cast<MotionModel>(motion_model);
-  }
   if (LoadIfExist(json_values, kOutputFilterModeKey, &filter_mode)) {
     options_.output_filter_mode = static_cast<FilterMode>(filter_mode);
   }
@@ -934,8 +872,6 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   VLOGF(1) << "AutoFramingStreamManipulator options:"
-           << " detector=" << static_cast<int>(options_.detector)
-           << " motion_model=" << static_cast<int>(options_.motion_model)
            << " output_filter_mode="
            << static_cast<int>(options_.output_filter_mode)
            << " detection_rate=" << options_.detection_rate
@@ -944,13 +880,6 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
            << (options_.enable ? base::NumberToString(*options_.enable)
                                : "(not set)")
            << " debug=" << options_.debug;
-
-  if (face_tracker_) {
-    face_tracker_->OnOptionsUpdated(json_values);
-  }
-  if (framer_) {
-    framer_->OnOptionsUpdated(json_values);
-  }
 }
 
 void AutoFramingStreamManipulator::OnOptionsUpdated(

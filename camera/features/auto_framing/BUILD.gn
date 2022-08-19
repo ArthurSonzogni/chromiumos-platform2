@@ -18,8 +18,6 @@ source_set("auto_framing") {
   sources = [
     "//camera/features/auto_framing/auto_framing_client.cc",
     "//camera/features/auto_framing/auto_framing_stream_manipulator.cc",
-    "//camera/features/auto_framing/face_tracker.cc",
-    "//camera/features/auto_framing/framer.cc",
   ]
   libs = [ "autoframing_cros" ]
   public_configs = [ ":target_defaults" ]
