@@ -179,6 +179,9 @@ void FetchAggregator::Run(
             CreateFetchCallback(&barrier, &info->audio_hardware_result));
         break;
       }
+      case mojom::ProbeCategoryEnum::kSensor: {
+        break;
+      }
     }
   }
 }

@@ -830,6 +830,14 @@ event --help`.
 | shutdown_reason | string | The shutdown reason (including reboot). |
 
 
+###  Sensor
+
+#####  SensorInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| lid_angle | uint16? | Angle between lid and base. |
+
+
 ###  Storage
 
 ####  Device
