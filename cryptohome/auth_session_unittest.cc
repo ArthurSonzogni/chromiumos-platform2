@@ -913,7 +913,7 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   ASSERT_THAT(update_future.Get(), IsOk());
 }
 
-// Test if AuthSession correctly updates existing credentials for a new user.
+// Test if UpdateAuthSession fails for not matching label.
 TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   // Setup.
   bool called = false;
@@ -1440,6 +1440,181 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // TODO(b:223222440) Add test to for adding a PIN after reset secret
   // generation function is updated.
+}
+
+// UpdateAuthFactor request success when updating authenticated password VK.
+TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  AuthBlockState auth_block_state;
+  auth_block_state.state = TpmBoundToPcrAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // GetAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
+  // called for the key update operations below.
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillRepeatedly([&](AuthBlockType auth_block_type,
+                          const AuthInput& auth_input,
+                          AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(),
+                 std::make_unique<KeyBlobs>(),
+                 std::make_unique<AuthBlockState>(auth_block_state));
+        return true;
+      });
+  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+
+  // Set a valid |vault_keyset_| to update.
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->Initialize(&platform_, &crypto_);
+  vk->CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
+  vk->SetAuthBlockState(auth_block_state);
+
+  auth_session.set_vault_keyset_for_testing(std::move(vk));
+
+  user_data_auth::UpdateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), IsOk());
+  EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
+      brillo::SecureBlob(kFakePass)));
+}
+
+// UpdateAuthFactor fails if label doesn't exist.
+TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  AuthBlockState auth_block_state;
+  auth_block_state.state = TpmBoundToPcrAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  user_data_auth::UpdateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), NotOk());
+  // Verify that the credential_verifier is not updated on failure.
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
+}
+
+// UpdateAuthFactor fails if label doesn't exist in the existing keysets.
+TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+
+  AuthBlockState auth_block_state;
+  auth_block_state.state = TpmBoundToPcrAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  user_data_auth::UpdateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeOtherLabel);
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), NotOk());
+  // Verify that the credential_verifier is not updated on failure.
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment

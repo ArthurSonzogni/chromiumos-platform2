@@ -232,6 +232,18 @@ class AuthSession final {
     return cryptohome_recovery_ephemeral_pub_key_;
   }
 
+  // Sets |vault_keyset_| for testing purpose.
+  void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
+    vault_keyset_ = std::move(value);
+  }
+
+  // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
+  // corresponding AuthFactors for testing purpose.
+  void set_label_to_auth_factor_for_testing(
+      std::map<std::string, std::unique_ptr<AuthFactor>> value) {
+    label_to_auth_factor_ = std::move(value);
+  }
+
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -343,6 +355,15 @@ class AuthSession final {
                          CryptoStatus callback_error,
                          std::unique_ptr<KeyBlobs> key_blobs,
                          std::unique_ptr<AuthBlockState> auth_state);
+
+  // Updates a VaultKeyset identified by the |auth_factor_label|. Converts
+  // AuthFactor parameters into KeyData and calls UpdateVaultKeyset to carry
+  // out the update operation.
+  void UpdateAuthFactorViaVaultKeyset(AuthBlockType auth_block_type,
+                                      AuthFactorType auth_factor_type,
+                                      const std::string& auth_factor_label,
+                                      const AuthInput& auth_input,
+                                      StatusCallback on_done);
 
   // Persists key blocks for a new secret to the USS and onto disk. Upon
   // completion the |on_done| callback will be called. Designed to be used in
@@ -461,13 +482,6 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
-  // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
-  // corresponding AuthFactors for testing purpose.
-  void set_label_to_auth_factor_for_testing(
-      std::map<std::string, std::unique_ptr<AuthFactor>> value) {
-    label_to_auth_factor_ = std::move(value);
-  }
-
   const std::string username_;
   const std::string obfuscated_username_;
   const base::UnguessableToken token_;
@@ -546,19 +560,9 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
-  FRIEND_TEST(AuthSessionTest, AddAuthFactorNewUser);
-  FRIEND_TEST(AuthSessionTest, AddMultipleAuthFactor);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
-  FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);
-  FRIEND_TEST(AuthSessionTest,
-              AuthenticateAuthFactorExistingVKUserAndResaveForResetSeed);
-  FRIEND_TEST(AuthSessionTest,
-              AuthenticateAuthFactorNotAddingResetSeedToPINVaultKeyset);
-  FRIEND_TEST(AuthSessionTest,
-              AuthenticateAuthFactorExistingVKUserAndResaveForUpdate);
-  FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
