@@ -17,7 +17,10 @@
 #     options(optional): A string of options for installing files.
 #     outputs(optional): A list of new file names to be renamed to.
 #       When it is not specified, original names are used.
+#     glob(optional): A boolean to expand * and ** glob patterns.
 #     recursive(optional): A boolean to install files recursively.
+#     tree_relative_to(optional): If given, files will be installed as
+#       preserving the relative directory tree.
 #     symlinks(optional): A list of new symlinks to be created.
 #       When install_path is specified, symlinks are created
 #       in ${install_path}/${symlink}.
@@ -29,6 +32,7 @@ template("install_config") {
     forward_variables_from(invoker,
                            "*",
                            [
+                             "glob",
                              "install_path",
                              "metadata",
                              "options",
@@ -36,9 +40,15 @@ template("install_config") {
                              "recursive",
                              "sources",
                              "symlinks",
+                             "tree_relative_to",
                              "type",
                            ])
     assert(defined(invoker.sources), "sources must be set")
+    if (defined(invoker.outputs)) {
+      assert(!defined(invoker.glob), "glob cannot be used with outputs")
+      assert(!defined(invoker.tree_relative_to),
+             "tree_relative_to cannot be used with outputs")
+    }
     metadata = {
       if (defined(invoker.metadata)) {
         forward_variables_from(invoker.metadata, "*")
@@ -47,6 +57,7 @@ template("install_config") {
         {
           forward_variables_from(invoker,
                                  [
+                                   "glob",
                                    "install_path",
                                    "options",
                                    "outputs",
@@ -58,6 +69,10 @@ template("install_config") {
           foreach(x, invoker.sources) {
             # Rebase to the system absolute path.
             sources += [ rebase_path(x, "") ]
+          }
+          if (defined(invoker.tree_relative_to)) {
+            # Rebase to the system absolute path.
+            tree_relative_to = rebase_path(invoker.tree_relative_to, "")
           }
         },
       ]

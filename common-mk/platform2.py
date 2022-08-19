@@ -10,6 +10,7 @@ Takes care of running GN/ninja/etc... with all the right values.
 
 import collections
 import glob
+import itertools
 import json
 import os
 import shlex
@@ -619,8 +620,35 @@ class Platform2(object):
             recursive = install_config.get("recursive")
             options = install_config.get("options")
             command_type = install_config.get("type")
-            config_key = (install_path, recursive, options, command_type)
-            config_group[config_key].append((sources, outputs, symlinks))
+            do_glob = install_config.get("glob")
+            tree_relative_to = install_config.get("tree_relative_to")
+            if do_glob:
+                sources = list(
+                    itertools.chain.from_iterable(
+                        # glob is always recursive to support **.
+                        glob.glob(x, recursive=True)
+                        for x in sources
+                    )
+                )
+            if tree_relative_to:
+                for source in sources:
+                    new_install_path = install_path
+                    relpath = os.path.relpath(source, tree_relative_to)
+                    new_install_path = os.path.join(
+                        install_path, os.path.dirname(relpath)
+                    )
+                    config_key = (
+                        new_install_path,
+                        recursive,
+                        options,
+                        command_type,
+                    )
+                    config_group[config_key].append(
+                        ([source], outputs, symlinks)
+                    )
+            else:
+                config_key = (install_path, recursive, options, command_type)
+                config_group[config_key].append((sources, outputs, symlinks))
         cmd_list = []
         for install_config, install_args in config_group.items():
             args = []
