@@ -83,6 +83,7 @@ class Partner : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTPeripheral);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeDPAltHub);
   FRIEND_TEST(MetricsTest, CheckPartnerTypePowerBrick);
+  FRIEND_TEST(MetricsTest, CheckNoPartnerType);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
   FRIEND_TEST(PartnerTest, SupportsPD);
 
@@ -94,6 +95,9 @@ class Partner : public Peripheral {
   // sysfs. If there is an error parsing the file contents, the value is assumed
   // to be false.
   void UpdateSupportsPD();
+
+  // Explicitly set supports_pd for unit testing purpose.
+  void SetSupportsPD(bool supports_pd) { supports_pd_ = supports_pd; }
 
   // A map representing all the alternate modes supported by the partner.
   // The key is the index of the alternate mode as determined by the connector

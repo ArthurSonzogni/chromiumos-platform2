@@ -10,6 +10,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "typecd/mock_port.h"
 #include "typecd/test_constants.h"
 #include "typecd/test_utils.h"
 
@@ -189,6 +190,28 @@ TEST_F(MetricsTest, CheckPartnerTypePowerBrick) {
   p.SetProductTypeVDO3(0x0);
 
   EXPECT_EQ(PartnerTypeMetric::kPowerBrick, p.GetPartnerTypeMetric());
+}
+
+// Test PartnerType metrics with an invalid id_header, using actual values from
+// Google Zinger charger.
+TEST_F(MetricsTest, CheckNoPartnerType) {
+  auto port = std::make_unique<MockPort>(base::FilePath("bar"), 0);
+  EXPECT_CALL(*port, GetDataRole())
+      .WillRepeatedly(testing::Return(DataRole::kHost));
+  EXPECT_CALL(*port, GetPowerRole())
+      .WillRepeatedly(testing::Return(PowerRole::kSink));
+
+  Partner p(base::FilePath("foo"), port.get());
+  p.SetPDRevision(PDRevision::k20);
+  p.SetIdHeaderVDO(0x040018d1);
+  p.SetCertStatVDO(0x0);
+  p.SetProductVDO(0x50120001);
+  p.SetProductTypeVDO1(0x0);
+  p.SetProductTypeVDO2(0x0);
+  p.SetProductTypeVDO3(0x0);
+  p.SetSupportsPD(true);
+
+  EXPECT_EQ(PartnerTypeMetric::kPDSourcingDevice, p.GetPartnerTypeMetric());
 }
 
 TEST_F(MetricsTest, CheckPartnerTypeOther) {

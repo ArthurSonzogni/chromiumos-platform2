@@ -249,12 +249,6 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
     return ret;
   }
 
-  // We only proceed in this exercise if the partner doesn't have an ID header
-  // VDO. Otherwise, it should have been classified some way from the above.
-  if (GetIdHeaderVDO() != 0x0) {
-    return ret;
-  }
-
   // Grab all the variables together.
   DataRole port_dr = port_->GetDataRole();
   PowerRole port_pr = port_->GetPowerRole();

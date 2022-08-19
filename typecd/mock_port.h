@@ -20,6 +20,7 @@ class MockPort : public Port {
   MockPort(base::FilePath path, int port_num) : Port(path, port_num) {}
 
   MOCK_METHOD(DataRole, GetDataRole, (), (override));
+  MOCK_METHOD(PowerRole, GetPowerRole, (), (override));
   MOCK_METHOD(bool,
               CanEnterDPAltMode,
               (bool* invalid_dpalt_cable_ptr),
