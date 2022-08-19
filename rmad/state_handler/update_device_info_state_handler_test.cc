@@ -123,10 +123,10 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     if (!custom_label.empty()) {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_))
+      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _))
           .WillByDefault(DoAll(SetArgPointee<0>(custom_label), Return(true)));
     } else {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_)).WillByDefault(Return(false));
+      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _)).WillByDefault(Return(false));
     }
 
     if (dram_part_num) {
@@ -181,10 +181,10 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     if (set_custom_label) {
-      ON_CALL(*vpd_utils, SetCustomLabelTag(_))
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _))
           .WillByDefault(DoAll(SaveArg<0>(&custom_label_set_), Return(true)));
     } else {
-      ON_CALL(*vpd_utils, SetCustomLabelTag(_)).WillByDefault(Return(false));
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _)).WillByDefault(Return(false));
     }
 
     if (set_dram_part_num) {

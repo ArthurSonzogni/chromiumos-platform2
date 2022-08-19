@@ -18,11 +18,11 @@ bool VpdUtilsImplThreadSafe::GetSerialNumber(std::string* serial_number) const {
   return VpdUtilsImpl::GetSerialNumber(serial_number);
 }
 
-bool VpdUtilsImplThreadSafe::GetCustomLabelTag(
-    std::string* custom_label_tag) const {
+bool VpdUtilsImplThreadSafe::GetCustomLabelTag(std::string* custom_label_tag,
+                                               bool use_legacy) const {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::GetCustomLabelTag(custom_label_tag);
+  return VpdUtilsImpl::GetCustomLabelTag(custom_label_tag, use_legacy);
 }
 
 bool VpdUtilsImplThreadSafe::GetRegion(std::string* region) const {
@@ -60,10 +60,10 @@ bool VpdUtilsImplThreadSafe::SetSerialNumber(const std::string& serial_number) {
 }
 
 bool VpdUtilsImplThreadSafe::SetCustomLabelTag(
-    const std::string& custom_label_tag) {
+    const std::string& custom_label_tag, bool use_legacy) {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::SetCustomLabelTag(custom_label_tag);
+  return VpdUtilsImpl::SetCustomLabelTag(custom_label_tag, use_legacy);
 }
 
 bool VpdUtilsImplThreadSafe::SetRegion(const std::string& region) {

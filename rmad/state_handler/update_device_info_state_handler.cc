@@ -321,9 +321,15 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     custom_label_tag =
         device_info.whitelabel_list(device_info.whitelabel_index());
   }
+  // Whether the device uses the legacy "whitelabel_tag" instead of
+  // "custom_label_tag".
+  // TODO(chenghan): For the initial launch on Octopus, |use_legacy| is always
+  //                 true. Investigate how to generalize this when expanding to
+  //                 other platforms, e.g. configure this in Boxster?
+  const bool use_legacy = true;
   // We need to set the custom-label-tag when the model has it.
   if (!device_info.whitelabel_list().empty() &&
-      !vpd_utils_->SetCustomLabelTag(custom_label_tag)) {
+      !vpd_utils_->SetCustomLabelTag(custom_label_tag, use_legacy)) {
     LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";
     return false;
   }

@@ -28,7 +28,8 @@ class VpdUtilsImplThreadSafe
   // Override high level commands to ensure that the vpd command is only called
   // once at the same time.
   bool GetSerialNumber(std::string* serial_number) const override;
-  bool GetCustomLabelTag(std::string* custom_label_tag) const override;
+  bool GetCustomLabelTag(std::string* custom_label_tag,
+                         bool use_legacy) const override;
   bool GetRegion(std::string* region) const override;
   bool GetCalibbias(const std::vector<std::string>& entries,
                     std::vector<int>* calibbias) const override;
@@ -36,7 +37,8 @@ class VpdUtilsImplThreadSafe
                            std::string* gbind) const override;
   bool GetStableDeviceSecret(std::string* stable_device_secret) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
-  bool SetCustomLabelTag(const std::string& custom_label_tag) override;
+  bool SetCustomLabelTag(const std::string& custom_label_tag,
+                         bool use_legacy) override;
   bool SetRegion(const std::string& region) override;
   bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
   bool SetRegistrationCode(const std::string& ubind,

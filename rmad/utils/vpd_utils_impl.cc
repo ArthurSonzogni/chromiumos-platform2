@@ -21,6 +21,9 @@ const char kVpdCmdPath[] = "/usr/sbin/vpd";
 
 constexpr char kVpdKeySerialNumber[] = "serial_number";
 constexpr char kVpdKeyCustomLabelTag[] = "custom_label_tag";
+// Legacy name of custom_label_tag (see go/coil). We still need it for backward
+// compatibility.
+constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
 constexpr char kVpdKeyRegion[] = "region";
 constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
@@ -38,7 +41,7 @@ VpdUtilsImpl::VpdUtilsImpl() : VpdUtils() {
 VpdUtilsImpl::VpdUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
     : VpdUtils(), cmd_utils_(std::move(cmd_utils)) {}
 
-// We flush all caches into
+// We flush all caches into real VPD.
 VpdUtilsImpl::~VpdUtilsImpl() {
   FlushOutRoVpdCache();
   FlushOutRwVpdCache();
@@ -50,9 +53,13 @@ bool VpdUtilsImpl::GetSerialNumber(std::string* serial_number) const {
   return GetRoVpd(kVpdKeySerialNumber, serial_number);
 }
 
-bool VpdUtilsImpl::GetCustomLabelTag(std::string* custom_label_tag) const {
+bool VpdUtilsImpl::GetCustomLabelTag(std::string* custom_label_tag,
+                                     bool use_legacy) const {
   CHECK(custom_label_tag);
 
+  if (use_legacy) {
+    return GetRoVpd(kVpdKeyWhitelabelTag, custom_label_tag);
+  }
   return GetRoVpd(kVpdKeyCustomLabelTag, custom_label_tag);
 }
 
@@ -109,8 +116,13 @@ bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
   return true;
 }
 
-bool VpdUtilsImpl::SetCustomLabelTag(const std::string& custom_label_tag) {
-  cache_ro_[kVpdKeyCustomLabelTag] = custom_label_tag;
+bool VpdUtilsImpl::SetCustomLabelTag(const std::string& custom_label_tag,
+                                     bool use_legacy) {
+  if (use_legacy) {
+    cache_ro_[kVpdKeyWhitelabelTag] = custom_label_tag;
+  } else {
+    cache_ro_[kVpdKeyCustomLabelTag] = custom_label_tag;
+  }
   return true;
 }
 

@@ -19,8 +19,11 @@ class VpdUtils {
   // Get the serial number of the device from vpd.
   virtual bool GetSerialNumber(std::string* serial_number) const = 0;
 
-  // Get custom-label-tag of the device from vpd.
-  virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
+  // Get custom-label-tag of the device from vpd. Old devices should set
+  // |use_legacy| to true to use the old tag for backward compatibility with the
+  // factory branch.
+  virtual bool GetCustomLabelTag(std::string* custom_label_tag,
+                                 bool use_legacy) const = 0;
 
   // Get the region of the device from vpd.
   virtual bool GetRegion(std::string* region) const = 0;
@@ -45,8 +48,11 @@ class VpdUtils {
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
 
   // Save custom-label-tag in the cache until flush is called and set to vpd.
-  // Return true if it succeeds, otherwise return false.
-  virtual bool SetCustomLabelTag(const std::string& custom_label_tag) = 0;
+  // Return true if it succeeds, otherwise return false. Old devices should set
+  // |use_legacy| to true to use the old tag for backward compatibility with the
+  // factory branch.
+  virtual bool SetCustomLabelTag(const std::string& custom_label_tag,
+                                 bool use_legacy) = 0;
 
   // Save the region tag in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
