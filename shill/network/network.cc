@@ -72,6 +72,10 @@ void Network::Start(const Network::StartOptions& opts) {
   // TODO(b/232177767): Log the StartOptions and other parameters.
   Stop();
 
+  // If the execution of this function fails, StopInternal() will be called and
+  // turn this variable to false.
+  has_started_ = true;
+
   bool ipv6_started = false;
   if (opts.accept_ra) {
     StartIPv6();
@@ -149,6 +153,8 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure) {
+  const bool should_trigger_callback = has_started_;
+  has_started_ = false;
   StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
@@ -172,7 +178,9 @@ void Network::StopInternal(bool is_failure) {
     event_handler_->OnIPConfigsPropertyUpdated();
   }
   connection_ = nullptr;
-  event_handler_->OnNetworkStopped(is_failure);
+  if (should_trigger_callback) {
+    event_handler_->OnNetworkStopped(is_failure);
+  }
 }
 
 bool Network::HasConnectionObject() const {

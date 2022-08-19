@@ -213,6 +213,7 @@ class DeviceTest : public testing::Test {
     auto controller = CreateDHCPController();
     dhcp_controller_ = controller.get();
     device_->network()->set_dhcp_controller(std::move(controller));
+    device_->network()->has_started_ = true;
   }
 
   void SetupIPv6Config() {

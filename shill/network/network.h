@@ -116,6 +116,8 @@ class Network {
   void Start(const StartOptions& options);
   // Configures (or reconfigures) the associated Connection object with the
   // given IPConfig.
+  // TODO(b/232177767): Move this function into private section. Currently this
+  // is only used in Device::UpdateBlackholeUserTraffic().
   void SetupConnection(IPConfig* ipconfig);
   // Stops the network connection. OnNetworkStopped() will be called when
   // cleaning up the network state is finished.
@@ -164,6 +166,9 @@ class Network {
   std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   // Functions for IPv6.
+  // TODO(b/232177767): Move StartIPv6() and StopIPv6() into private section.
+  // Currently these two functions are only used in cellular.cc, and those
+  // usages will not affect the logical state of Network.
   void StopIPv6();
   void StartIPv6();
   // Invalidate the IPv6 config kept in shill and wait for the new config from
@@ -209,10 +214,6 @@ class Network {
   mockable const std::vector<std::string>& dns_servers() const;
   mockable const IPAddress& local() const;
   const IPAddress& gateway() const;
-
-  // TODO(b/232177767): Remove once we eliminate all Connection references in
-  // shill.
-  Connection* connection() const { return connection_.get(); }
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
@@ -272,6 +273,14 @@ class Network {
   // If true, IP parameters should not be modified. This should not be changed
   // after a Network object is created. Make it modifiable just for unit tests.
   bool fixed_ip_params_;
+
+  // Indicates whether the network is in a configuring or connected state.
+  // TODO(b/232177767): Consider change this to a enum class with three states.
+  // Currently the connected state is actually represented by whether a
+  // Connection object exists, and this variable is only used for deciding
+  // whether OnNetworkStopped() event needs to be triggered or not in
+  // StopInternal().
+  bool has_started_ = false;
 
   std::unique_ptr<Connection> connection_;
 
