@@ -6,7 +6,14 @@
 #ifndef CAMERA_HAL_FAKE_CAMERA_HAL_H_
 #define CAMERA_HAL_FAKE_CAMERA_HAL_H_
 
+#include <memory>
+
+#include <base/sequence_checker.h>
+#include <base/task/sequenced_task_runner.h>
+
+#include "common/reloadable_config_file.h"
 #include "cros-camera/cros_camera_hal.h"
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 
@@ -39,6 +46,16 @@ class CameraHal {
                  hw_device_t** hw_device,
                  ClientType client_type);
   int GetCameraInfo(int id, struct camera_info* info, ClientType client_type);
+
+ private:
+  void OnSpecUpdated(const base::Value& json_values);
+
+  std::unique_ptr<ReloadableConfigFile> config_file_;
+
+  HalSpec hal_spec_;
+
+  // All methods of this class should be run on the same thread.
+  SEQUENCE_CHECKER(sequence_checker_);
 };
 }  // namespace cros
 

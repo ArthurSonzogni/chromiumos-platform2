@@ -5,32 +5,62 @@
 
 #include "hal/fake/camera_hal.h"
 
-#include <base/no_destructor.h>
+#include <memory>
 
-#include "base/strings/string_number_conversions.h"
+#include <base/no_destructor.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/threading/sequenced_task_runner_handle.h>
+
 #include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
 
 namespace cros {
 
-CameraHal::CameraHal() = default;
+namespace {
+// The default fake hal spec file. The file should contain a JSON that is
+// parsed to HalSpec struct.
+static constexpr const char kDefaultFakeHalSpecFile[] =
+    "/etc/camera/fake_hal.json";
+static constexpr const char kOverrideFakeHalSpecFile[] =
+    "/run/camera/fake_hal.json";
+}  // namespace
+
+CameraHal::CameraHal() {
+  // The constructor is first called by set_up which is not on the same
+  // sequence as the other methods this class is run on.
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
 
 CameraHal::~CameraHal() = default;
 
 CameraHal& CameraHal::GetInstance() {
-  static CameraHal camera_hal;
-  return camera_hal;
+  // Leak the static camera HAL here, since it has a non-trivial destructor
+  // (from ReloadableConfigFile -> base::FilePathWatcher).
+  static base::NoDestructor<CameraHal> camera_hal;
+  return *camera_hal;
 }
 
 int CameraHal::GetNumberOfCameras() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   return 0;
 }
 
 int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   return 0;
 }
 
 int CameraHal::Init() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  config_file_ = std::make_unique<ReloadableConfigFile>(
+      ReloadableConfigFile::Options{base::FilePath(kDefaultFakeHalSpecFile),
+                                    base::FilePath(kOverrideFakeHalSpecFile)});
+  config_file_->SetCallback(
+      base::BindRepeating(&CameraHal::OnSpecUpdated, base::Unretained(this)));
+
   return 0;
 }
 
@@ -45,13 +75,34 @@ int CameraHal::OpenDevice(int id,
                           const hw_module_t* module,
                           hw_device_t** hw_device,
                           ClientType client_type) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   return -EINVAL;
 }
 
 int CameraHal::GetCameraInfo(int id,
                              struct camera_info* info,
                              ClientType client_type) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   return -EINVAL;
+}
+
+void CameraHal::OnSpecUpdated(const base::Value& json_values) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  auto hal_spec = ParseHalSpecFromJsonValue(json_values);
+  if (!hal_spec.has_value()) {
+    LOGF(WARNING) << "config file is not formatted correctly, ignored.";
+    return;
+  }
+
+  // TODO(pihsun): Applies the config diff.
+  hal_spec_ = hal_spec.value();
+
+  for (const auto& c : hal_spec_.cameras) {
+    LOGF(INFO) << "id = " << c.id << ", connected = " << c.connected;
+  }
 }
 
 static int camera_device_open_ext(const hw_module_t* module,
