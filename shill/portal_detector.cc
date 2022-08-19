@@ -204,28 +204,28 @@ void PortalDetector::HttpRequestSuccessCallback(
   result_->http_status_code = status_code;
   if (status_code == brillo::http::status_code::NoContent) {
     result_->http_status = Status::kSuccess;
-  } else if (status_code == brillo::http::status_code::Redirect) {
+  } else if (status_code == brillo::http::status_code::Redirect ||
+             status_code == brillo::http::status_code::RedirectKeepVerb) {
     result_->http_status = Status::kRedirect;
     std::string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
-    if (redirect_url_string.empty()) {
-      LOG(ERROR) << LoggingTag() << ": No Location field in redirect header.";
-    } else {
+    if (!redirect_url_string.empty()) {
       HttpUrl redirect_url;
       if (!redirect_url.ParseFromString(redirect_url_string)) {
-        LOG(ERROR) << LoggingTag()
-                   << ": Unable to parse redirect URL: " << redirect_url_string;
         result_->http_status = Status::kFailure;
       } else {
-        LOG(INFO) << LoggingTag() << ": Redirect URL: " << redirect_url_string;
         result_->redirect_url_string = redirect_url_string;
         result_->probe_url_string = http_url_string_;
       }
     }
+    LOG(INFO) << LoggingTag()
+              << ": Redirect response, Redirect URL: " << redirect_url_string
+              << ", response status code: " << status_code;
   } else {
     result_->http_status = Status::kFailure;
   }
-  LOG(INFO) << LoggingTag() << ": HTTP probe response code=" << status_code
+  LOG(INFO) << LoggingTag()
+            << ": HTTP probe response status code=" << status_code
             << " status=" << result_->http_status;
   if (result_->IsComplete())
     CompleteTrial(*result_);
@@ -241,7 +241,8 @@ void PortalDetector::HttpsRequestSuccessCallback(
   result_->https_status = (status_code == brillo::http::status_code::NoContent)
                               ? Status::kSuccess
                               : Status::kFailure;
-  LOG(INFO) << LoggingTag() << ": HTTPS probe response code=" << status_code
+  LOG(INFO) << LoggingTag()
+            << ": HTTPS probe response status code=" << status_code
             << " status=" << result_->https_status;
   if (result_->IsComplete())
     CompleteTrial(*result_);

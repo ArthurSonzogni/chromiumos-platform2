@@ -207,6 +207,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, RequestRedirect);
+  FRIEND_TEST(PortalDetectorTest, RequestTempRedirect);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);

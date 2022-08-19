@@ -454,6 +454,29 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   ExpectCleanupTrial();
 }
 
+TEST_F(PortalDetectorTest, RequestTempRedirect) {
+  StartAttempt();
+
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  result.redirect_url_string = kHttpUrl;
+  result.probe_url_string = kHttpUrl;
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
+  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_NE(nullptr, portal_detector_->http_request_);
+  EXPECT_NE(nullptr, portal_detector_->https_request_);
+  ExpectRequestSuccessWithStatus(123, false);
+
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
+  EXPECT_CALL(*brillo_connection(), GetResponseHeader("Location"))
+      .WillOnce(Return(kHttpUrl));
+  ExpectRequestSuccessWithStatus(307, true);
+  ExpectCleanupTrial();
+}
+
 TEST_F(PortalDetectorTest, PhaseToString) {
   struct {
     PortalDetector::Phase phase;
