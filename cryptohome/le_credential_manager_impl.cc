@@ -140,7 +140,8 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
         pinweaver_->RemoveCredential(label.value(), h_aux,
                                      result->new_mac.value());
     if (!remove_result.ok()) {
-      ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
+      ReportLEResult(kLEOpInsert, kLEActionBackendRecoverInsert,
+                     LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR)
           << " Failed to rewind aborted InsertCredential in PinWeaver, label: "
           << label.value() << ": " << std::move(remove_result.status());
@@ -148,9 +149,10 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
       // do much else now. We block further LE operations until at least the
       // next boot.
       is_locked_ = true;
-      // TODO(crbug.com/809749): Report failure to UMA.
     }
     root_hash_ = remove_result->new_root;
+
+    ReportLEResult(kLEOpInsert, kLEActionBackendRecoverInsert, LE_CRED_SUCCESS);
 
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManStoreFailedInInsertCred),
@@ -316,7 +318,6 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
       // The hope is that on reboot, the disk operations start working. In that
       // case, we will be able to replay this operation from the TPM log.
       is_locked_ = true;
-      // TODO(crbug.com/809749): Report failure to UMA.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManStoreLabelFailedInCheckSecret),
           ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),

@@ -464,6 +464,7 @@ inline constexpr char kLEActionBackend[] = ".Backend";
 inline constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
 inline constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
 inline constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
+inline constexpr char kLEActionBackendRecoverInsert[] = ".BackendRecoverInsert";
 
 // Attestation-related operations. Those are suffixes of the histogram
 // kAttestationStatusHistogramPrefix defined in the .cc file.
