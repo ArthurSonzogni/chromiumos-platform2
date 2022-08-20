@@ -99,6 +99,12 @@ typeDefs:
         description: Symlink file that will be installed pointing to the destination.
         type: string
     additionalProperties: false
+  frid-match: &frid_match
+    description: |
+      String which must match the AP firmware FRID (first part before the
+      period) in order for the config to match.  Leaving this value unset
+      will cause the config to match any FRID.
+    type: string
   sku-id: &sku_id
     description: SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID.
     type: integer
@@ -837,8 +843,10 @@ properties:
                     smbios-name-match:
                       description: "[x86] Firmware name built into the firmware and reflected back
                         out in the SMBIOS tables. Leaving this value unset will cause the config
-                        to match any SMBIOS product name."
+                        to match any SMBIOS product name.  Setting this is deprecated in favor
+                        of FRID matching."
                       type: string
+                    frid: *frid_match
                     sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id
@@ -847,8 +855,10 @@ properties:
                 - properties:
                     device-tree-compatible-match:
                       description: "[ARM] String pattern (partial) that is matched against the
-                        contents of /proc/device-tree/compatible on ARM devices."
+                        contents of /proc/device-tree/compatible on ARM devices.  Setting this
+                        is deprecated in favor of FRID matching."
                       type: string
+                    frid: *frid_match
                     sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id

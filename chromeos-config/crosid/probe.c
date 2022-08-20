@@ -80,6 +80,12 @@ int crosid_probe(struct crosid_probed_device_data *out)
 		crosid_log(LOG_DBG, "Read FDT compatible\n");
 	}
 
+	if (crosid_probe_frid(&out->frid) >= 0) {
+		crosid_log(LOG_DBG, "Read FRID \"%s\"\n", out->frid.value);
+	} else {
+		crosid_log(LOG_DBG, "Device has no FRID\n");
+	}
+
 	if (read_optional_string(SYSFS_VPD_RO_PATH, "customization_id",
 				 &out->customization_id) >= 0) {
 		crosid_log(LOG_DBG, "Read customization_id=\"%s\" (from VPD)\n",
@@ -134,6 +140,7 @@ void crosid_probe_free(struct crosid_probed_device_data *data)
 {
 	free(data->smbios_name.value);
 	free(data->fdt_compatible.value);
+	free(data->frid.value);
 	free(data->custom_label_tag.value);
 	free(data->customization_id.value);
 	free(data->firmware_manifest_key);

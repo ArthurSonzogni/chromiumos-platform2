@@ -18,11 +18,20 @@ add_global_arguments('-Wstrict-prototypes', language: 'c')
 add_global_arguments('-Wundef', language: 'c')
 add_global_arguments('-Wmissing-variable-declarations', language: 'c')
 add_global_arguments('-Wmissing-prototypes', language: 'c')
+common_c_args = ['-DCROSID_INTERNAL_API']
 
-lib_files = ['api.c', 'file_ops.c', 'logging.c', 'match.c', 'probe.c', 'sku.c']
+lib_files = [
+    'api.c',
+    'frid.c',
+    'file_ops.c',
+    'logging.c',
+    'match.c',
+    'probe.c',
+    'sku.c',
+]
 src_files = lib_files + ['main.c']
 
-libcrosid = library('crosid', lib_files)
+libcrosid = library('crosid', lib_files, c_args: common_c_args)
 
 # Generate crosid.pc
 pkg = import('pkgconfig')
@@ -37,7 +46,7 @@ pkg.generate(
 executable(
     'crosid',
     src_files,
-    c_args: ['-flto'],
+    c_args: ['-flto'] + common_c_args,
     link_args: ['-flto'],
 )
 
@@ -50,7 +59,7 @@ coverage_flags = [
 executable(
     'crosid.test',
     src_files,
-    c_args: coverage_flags,
+    c_args: coverage_flags + common_c_args,
     link_args: coverage_flags,
     native: true,
 )

@@ -1320,22 +1320,20 @@ def _build_camera(hw_topology):
 
 def _build_identity(hw_scan_config, program, brand_scan_config=None):
     identity = {}
-    _upsert(hw_scan_config.firmware_sku, identity, "sku-id")
+    _upsert(hw_scan_config.frid, identity, "frid")
+    _upsert(
+        hw_scan_config.device_tree_compatible_match,
+        identity,
+        "device-tree-compatible-match",
+    )
     _upsert(hw_scan_config.smbios_name_match, identity, "smbios-name-match")
+    _upsert(hw_scan_config.firmware_sku, identity, "sku-id")
     # 'platform-name' is needed to support 'mosys platform name'. Clients should
     # no longer require platform name, but set it here for backwards compatibility.
     if program.mosys_platform_name:
         _upsert(program.mosys_platform_name, identity, "platform-name")
     else:
         _upsert(program.name, identity, "platform-name")
-
-    # ARM architecture
-    _upsert(
-        hw_scan_config.device_tree_compatible_match,
-        identity,
-        "device-tree-compatible-match",
-    )
-
     if brand_scan_config:
         _upsert(brand_scan_config.whitelabel_tag, identity, "whitelabel-tag")
 

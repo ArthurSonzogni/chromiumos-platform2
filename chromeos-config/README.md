@@ -705,12 +705,14 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | custom-label-tag | string |  | False | x86 | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
 | customization-id | string |  | False | x86 | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
+| frid | string |  | False | x86 | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
 | platform-name | string |  | False | x86 | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
 | sku-id | integer |  | False | x86 | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
-| smbios-name-match | string |  | False | x86 | False | [x86] Firmware name built into the firmware and reflected back out in the SMBIOS tables. Leaving this value unset will cause the config to match any SMBIOS product name. |
+| smbios-name-match | string |  | False | x86 | False | [x86] Firmware name built into the firmware and reflected back out in the SMBIOS tables. Leaving this value unset will cause the config to match any SMBIOS product name.  Setting this is deprecated in favor of FRID matching. |
 | custom-label-tag | string |  | False | ARM | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
 | customization-id | string |  | False | ARM | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
-| device-tree-compatible-match | string |  | False | ARM | False | [ARM] String pattern (partial) that is matched against the contents of /proc/device-tree/compatible on ARM devices. |
+| device-tree-compatible-match | string |  | False | ARM | False | [ARM] String pattern (partial) that is matched against the contents of /proc/device-tree/compatible on ARM devices.  Setting this is deprecated in favor of FRID matching. |
+| frid | string |  | False | ARM | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
 | platform-name | string |  | False | ARM | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
 | sku-id | integer |  | False | ARM | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
 

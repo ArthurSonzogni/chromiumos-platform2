@@ -6,12 +6,12 @@ import enum
 import struct
 
 
-STRUCT_VERSION = 2
+STRUCT_VERSION = 3
 # version, entry_count
 HEADER_FORMAT = "<LL"
-# flags, smbios name match, fdt compatible match, sku match,
-# custom label match, firmware manifest name
-ENTRY_FORMAT = "<LLLLLL"
+# flags, smbios name match, fdt compatible match, frid match,
+# sku match, custom label match, firmware manifest name
+ENTRY_FORMAT = "<LLLLLLL"
 
 
 class EntryFlags(enum.Enum):
@@ -31,6 +31,9 @@ class EntryFlags(enum.Enum):
 
     # For x86 only: this device has an SMBIOS name to match.
     HAS_SMBIOS_NAME = 1 << 4
+
+    # Config should match based on FRID.
+    HAS_FRID = 1 << 5
 
 
 def WriteIdentityStruct(config, output_file):
@@ -84,6 +87,7 @@ def WriteIdentityStruct(config, output_file):
 
         smbios_name_match = None
         fdt_compatible_match = None
+        frid_match = None
         custom_label_match = None
         if "smbios-name-match" in identity_info:
             flags |= EntryFlags.HAS_SMBIOS_NAME.value
@@ -91,6 +95,9 @@ def WriteIdentityStruct(config, output_file):
         if "device-tree-compatible-match" in identity_info:
             flags |= EntryFlags.HAS_FDT_COMPATIBLE.value
             fdt_compatible_match = identity_info["device-tree-compatible-match"]
+        if "frid" in identity_info:
+            flags |= EntryFlags.HAS_FRID.value
+            frid_match = identity_info["frid"]
 
         if "customization-id" in identity_info:
             flags |= EntryFlags.HAS_CUSTOMIZATION_ID.value
@@ -105,6 +112,7 @@ def WriteIdentityStruct(config, output_file):
                 flags,
                 _StringTableIndex(smbios_name_match),
                 _StringTableIndex(fdt_compatible_match),
+                _StringTableIndex(frid_match),
                 sku_id,
                 _StringTableIndex(custom_label_match),
                 _StringTableIndex(firmware_manifest_key),

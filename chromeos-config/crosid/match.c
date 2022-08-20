@@ -125,6 +125,11 @@ static bool table_entry_matches(struct crosid_table_header *table,
 		}
 	}
 
+	if (entry->flags & MATCH_FRID) {
+		mismatches += !check_optional_string_match(
+			&data->frid, strings + entry->frid_match, "FRID");
+	}
+
 	if (entry->flags & MATCH_SKU_ID) {
 		crosid_log(LOG_DBG, "  Requires SKU ID == %u ",
 			   entry->sku_id_match);

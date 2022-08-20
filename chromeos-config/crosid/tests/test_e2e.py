@@ -23,6 +23,7 @@ def getvars(output):
 def make_config(
     model_name,
     smbios_name_match=None,
+    frid_match=None,
     sku_id=None,
     fdt_match=None,
     customization_id=None,
@@ -31,6 +32,8 @@ def make_config(
     identity = {}
     if smbios_name_match is not None:
         identity["smbios-name-match"] = smbios_name_match
+    if frid_match is not None:
+        identity["frid"] = frid_match
     if sku_id is not None:
         identity["sku-id"] = sku_id
     if fdt_match is not None:
@@ -51,6 +54,8 @@ def make_fake_sysroot(
     smbios_sku=None,
     fdt_compatible=None,
     fdt_sku=None,
+    acpi_frid=None,
+    fdt_frid=None,
     vpd_values=None,
     configs=(),
 ):
@@ -78,6 +83,18 @@ def make_fake_sysroot(
         proc_fdt_coreboot_path.mkdir(exist_ok=True, parents=True)
         contents = fdt_sku.to_bytes(4, byteorder="big")
         (proc_fdt_coreboot_path / "sku-id").write_bytes(contents)
+
+    proc_fdt_chromeos_path = proc_fdt_path / "firmware" / "chromeos"
+    if fdt_frid is not None:
+        proc_fdt_chromeos_path.mkdir(exist_ok=True, parents=True)
+        (proc_fdt_chromeos_path / "readonly-firmware-version").write_text(
+            fdt_frid
+        )
+
+    chromeos_acpi_path = path / "sys" / "devices" / "platform" / "chromeos_acpi"
+    if acpi_frid is not None:
+        chromeos_acpi_path.mkdir(exist_ok=True, parents=True)
+        (chromeos_acpi_path / "FRID").write_text(acpi_frid)
 
     if vpd_values:
         vpd_sysfs_path = path / "sys" / "firmware" / "vpd" / "ro"
@@ -484,4 +501,63 @@ def test_corrupted_sku_arm(tmp_path, executable_path, contents):
         "SKU": "none",
         "CONFIG_INDEX": "8",
         "FIRMWARE_MANIFEST_KEY": "lazor",
+    }
+
+
+def test_frid_match_acpi(tmp_path, executable_path):
+    configs = [
+        make_config("brya", frid_match="Google_Brya"),
+        make_config("redrix", frid_match="Google_Redrix"),
+        make_config("vell", frid_match="Google_Vell"),
+    ]
+
+    make_fake_sysroot(
+        tmp_path,
+        configs=configs,
+        acpi_frid="Google_Redrix.1234_5678_910",
+    )
+
+    result = subprocess.run(
+        [executable_path, "--sysroot", tmp_path],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding="utf-8",
+    )
+
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "1",
+        "FIRMWARE_MANIFEST_KEY": "redrix",
+    }
+
+
+def test_frid_match_fdt(tmp_path, executable_path):
+    configs = [
+        make_config("trogdor", frid_match="Google_Trogdor"),
+        make_config("lazor", frid_match="Google_Lazor", sku_id=1),
+        make_config("limozeen", frid_match="Google_Lazor", sku_id=5),
+    ]
+
+    make_fake_sysroot(
+        tmp_path,
+        configs=configs,
+        fdt_frid="Google_Lazor.1234_5678_910",
+        fdt_sku=5,
+    )
+
+    result = subprocess.run(
+        [executable_path, "--sysroot", tmp_path],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding="utf-8",
+    )
+
+    assert getvars(result.stdout) == {
+        "SKU": "5",
+        "CONFIG_INDEX": "2",
+        "FIRMWARE_MANIFEST_KEY": "limozeen",
     }

@@ -10,12 +10,20 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef CROSID_INTERNAL_API
 /* Common path constants */
 #define PROC_FDT_PATH "/proc/device-tree"
 #define PROC_FDT_COREBOOT_PATH PROC_FDT_PATH "/firmware/coreboot"
+#define PROC_FDT_CHROMEOS_PATH PROC_FDT_PATH "/firmware/chromeos"
+#define SYSFS_CHROMEOS_ACPI_PATH "/sys/devices/platform/chromeos_acpi"
 #define SYSFS_SMBIOS_ID_PATH "/sys/class/dmi/id"
 #define SYSFS_VPD_RO_PATH "/sys/firmware/vpd/ro"
 #define UNIBUILD_CONFIG_PATH "/usr/share/chromeos-config"
+
+/* Common macros */
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#endif /* CROSID_INTERNAL_API */
 
 /* Logging functions */
 
@@ -107,10 +115,20 @@ struct crosid_probed_device_data {
 	uint32_t sku_id;
 	struct crosid_optional_string smbios_name;
 	struct crosid_optional_string fdt_compatible;
+	struct crosid_optional_string frid;
 	struct crosid_optional_string custom_label_tag;
 	struct crosid_optional_string customization_id;
 	char *firmware_manifest_key;
 };
+
+/**
+ * crosid_probe_frid() - Read FRID up until first period from device
+ *
+ * @out: A caller-allocated struct to write the FRID
+ *
+ * Returns: <0 on error, 0 on success.
+ */
+int crosid_probe_frid(struct crosid_optional_string *out);
 
 /**
  * crosid_probe() - Read firmware variables from device
@@ -158,7 +176,7 @@ void crosid_probe_free(struct crosid_probed_device_data *data);
  * the struct format.  This must be kept in sync with the
  * cros_config_schema implementation.
  */
-#define CROSID_TABLE_VERSION 2
+#define CROSID_TABLE_VERSION 3
 
 enum crosid_table_flags {
 	MATCH_SKU_ID = (1 << 0),
@@ -166,12 +184,14 @@ enum crosid_table_flags {
 	MATCH_CUSTOMIZATION_ID = (1 << 2),
 	MATCH_FDT_COMPATIBLE = (1 << 3),
 	MATCH_SMBIOS_NAME = (1 << 4),
+	MATCH_FRID = (1 << 5),
 };
 
 struct crosid_table_entry {
 	uint32_t flags;
 	uint32_t smbios_name_match;
 	uint32_t fdt_compatible_match;
+	uint32_t frid_match;
 	uint32_t sku_id_match;
 	union {
 		uint32_t customization_id_match;
