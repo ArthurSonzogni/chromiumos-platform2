@@ -225,6 +225,13 @@ TEST_F(DeviceIdFromSysfsTest, InternalPciDeviceWithAnyVendorId) {
                                         DeviceId::LocationType::kInternal});
 }
 
+TEST_F(DeviceIdFromSysfsTest, InternalPciDeviceWithAnyVendorIdTrailingNewline) {
+  CreateDeviceSysfs(kDeviceName0, kPciBusName);
+  CreateDeviceSysfsFile(kDeviceName0, "untrusted", "0\n");
+  ExpectDeviceId(kDeviceName0, DeviceId{DeviceId::BusType::kPci,
+                                        DeviceId::LocationType::kInternal});
+}
+
 TEST_F(DeviceIdFromSysfsTest, UsbDevice) {
   CreateDeviceSysfs(kDeviceName1, kUsbBusName);
   CreateDeviceSysfsFile(kDeviceName1, "idVendor", "af36");

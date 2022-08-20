@@ -107,6 +107,7 @@ std::unique_ptr<DeviceId> DeviceId::CreateFromSysfs(
     if (base::ReadFileToString(syspath.Append(kExternalAttribute),
                                &is_external) &&
         !is_external.empty()) {
+      is_external = base::CollapseWhitespaceASCII(is_external, true);
       if (is_external == "0") {
         dev->location_type_ = LocationType::kInternal;
       } else {
