@@ -10,3 +10,8 @@ panic = "abort"
 overflow-checks = true
 
 [dependencies]
+
+[features]
+ti50_onboard = [] # feature has no explicit dependencies
+cr50_onboard = [] # feature has no explicit dependencies
+generic_tpm2 = [] # feature has no explicit dependencies

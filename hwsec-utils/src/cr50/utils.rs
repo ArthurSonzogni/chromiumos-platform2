@@ -4,13 +4,9 @@
 
 use super::RmaSnBits;
 use crate::context::Context;
+use crate::cr50::PLATFORM_INDEX;
 use crate::error::HwsecError;
 use crate::tpm2::nv_read;
-
-#[cfg(generic_tpm2)]
-const PLATFORM_INDEX: bool = true;
-#[cfg(not(generic_tpm2))]
-const PLATFORM_INDEX: bool = false;
 
 pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecError> {
     const READ_SN_BITS_INDEX: u32 = 0x013fff01;
@@ -53,7 +49,7 @@ pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecE
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "generic_tpm2")))]
 mod tests {
     use super::*;
     use crate::context::mock::MockContext;
