@@ -23,13 +23,15 @@ def ParseArgs(argv):
     Invalid arguments or -h cause this function to print a message and exit.
 
     Args:
-      argv: List of string arguments (excluding program name / argv[0])
+        argv: List of string arguments (excluding program name / argv[0])
 
     Returns:
-      argparse.Namespace object containing the attributes.
+        argparse.Namespace object containing the attributes.
     """
     parser = argparse.ArgumentParser(
-        description="Generates Markdown documentation based on the config schema"
+        description=(
+            "Generates Markdown documentation based on the config schema"
+        ),
     )
     parser.add_argument(
         "-s",
@@ -47,15 +49,15 @@ def ParseArgs(argv):
 def QuoteRegex(text):
     """Quote regex column.
 
-    Use code block to quote the regex column, so most of the characters won't be
-    treated as Markdown format syntax.  Pipe (|) is an exception, we need to
+    Use code block to quote the regex column, so most of the characters won't
+    be treated as Markdown format syntax.  Pipe (|) is an exception, we need to
     explicitly escape it.
 
     Args:
-      text: a string to quote
+        text: a string to quote
 
     Returns:
-      A quoted string.
+        A quoted string.
     """
     return "```%s```" % text.replace("|", "\\|")
 
@@ -66,11 +68,11 @@ def PopulateTypeDef(
     """Populates type definitions in the output (recursive)
 
     Args:
-      name: Name of the type
-      type_def: Dict containing all of the type def attributes
-      ref_types: Shared type definitions using the #ref attribute
-      output: Running array of markdown string output lines
-      inherited_build_only: Boolean, whether this element is the child of a
+        name: Name of the type
+        type_def: Dict containing all of the type def attributes
+        ref_types: Shared type definitions using the #ref attribute
+        output: Running array of markdown string output lines
+        inherited_build_only: Boolean, whether this element is the child of a
           build-only element.
     """
     child_types = collections.OrderedDict()
@@ -108,14 +110,17 @@ def PopulateTypeDef(
     if additional_props:
         output.append(
             "| [ANY] | N/A | N/A | N/A | N/A | N/A | "
-            "This type allows additional properties not governed by the schema. "
-            "See the type description for details on these additional properties.|"
+            "This type allows additional properties not governed by the "
+            "schema. "
+            "See the type description for details on these additional "
+            "properties.|"
         )
 
     for attr_group_name, attrs in attrs_by_group.items():
         for attr in attrs:
             attr_name = attr
 
+            # pylint: disable=line-too-long
             # https://github.com/google/gitiles/blob/HEAD/Documentation/markdown.md#named-anchors
             attr_anchor = ""
             for c in attr_name:
@@ -197,8 +202,8 @@ def Main(schema, output):
     """Generates markdown documentation based on the JSON schema.
 
     Args:
-      schema: Schema file.
-      output: Output file.
+        schema: Schema file.
+        output: Output file.
     """
     schema_yaml = libcros_schema.LoadYaml(libcros_schema.ApplyImports(schema))
     ref_types = {}

@@ -34,8 +34,8 @@ def CrosConfig(fname=None, model_filter_regex=None):
     which will have a different means of creating the impl class.
 
     Args:
-      fname: Filename of config file
-      model_filter_regex: Only returns configs that match the filter
+        fname: Filename of config file
+        model_filter_regex: Only returns configs that match the filter
     """
     if not fname:
         if "SYSROOT" not in os.environ:

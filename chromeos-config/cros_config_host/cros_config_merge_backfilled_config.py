@@ -3,6 +3,7 @@
 # Copyright 2022 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """A command-line utility to merge from two ConfigBundle protos. One
 ConfigBundle is generated from Starlark source files, another is generated from
 external data sources such as HWID and model.yaml (i.e. "backfilled").

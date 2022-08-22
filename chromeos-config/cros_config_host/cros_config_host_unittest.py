@@ -118,8 +118,8 @@ class CrosConfigHostTest(unittest.TestCase):
         self.assertEqual(output, "VERSION1\n")
 
     def testGetFingerprintFirmwareROVersionNotSpecified(self):
-        # If the ro-version is not specified, nothing is returned and the exit code
-        # should be 0.
+        # If the ro-version is not specified, nothing is returned and the exit
+        # code should be 0.
         output = self._check_output(
             "get-fpmcu-firmware-ro-version", "some_fpmcu"
         )

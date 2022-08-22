@@ -39,7 +39,7 @@ class DeviceConfigJson(DeviceConfig):
     """JSON specific impl of DeviceConfig
 
     Attributes:
-      _config: Root dictionary element for a given config.
+        _config: Root dictionary element for a given config.
     """
 
     def __init__(self, config):
@@ -163,16 +163,16 @@ class CrosConfigJson(CrosConfigBaseImpl):
     """JSON specific impl of CrosConfig
 
     Attributes:
-      _json: Root json for the entire config.
-      _configs: List of DeviceConfigJson instances
+        _json: Root json for the entire config.
+        _configs: List of DeviceConfigJson instances
     """
 
     def __init__(self, infile, model_filter_regex=None):
         """Constructor for JSON specific implementation of CrosConfig
 
         Args:
-          infile: File-like object with JSON configuration
-          model_filter_regex: Only returns configs that match the filter.
+            infile: File-like object with JSON configuration
+            model_filter_regex: Only returns configs that match the filter.
         """
         self._json = json.loads(
             TransformConfig(
@@ -192,8 +192,8 @@ class CrosConfigJson(CrosConfigBaseImpl):
         processed = set()
         for config in self._configs:
             fw = config.GetFirmwareConfig()
-            # For partial configs (public vs private), we need to support the name
-            # for cases where identity isn't specified.
+            # For partial configs (public vs private), we need to support the
+            # name for cases where identity isn't specified.
             brand_code = config.GetProperty("/", "brand-code")
             if fw:
                 image_name = fw.get("image-name")
@@ -287,9 +287,10 @@ class CrosConfigJson(CrosConfigBaseImpl):
                                 fw_signer_config, "signature-id"
                             )
                             wl_fw_info = copy.deepcopy(info)
-                            # Firmware info associated with model name should be kept with
-                            # have_image=True so following process will generate one firmware
-                            # entry for this model.
+                            # Firmware info associated with model name should
+                            # be kept with have_image=True so following
+                            # process will generate one firmware entry for
+                            # this model.
                             if wl_sig_id == name:
                                 wl_config.firmware_info[
                                     wl_sig_id

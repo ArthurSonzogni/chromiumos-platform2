@@ -80,10 +80,10 @@ def parse_args(argv):
     Invalid arguments or -h cause this function to print a message and exit.
 
     Args:
-      argv: List of string arguments (excluding program name / argv[0])
+        argv: List of string arguments (excluding program name / argv[0])
 
     Returns:
-      argparse.Namespace object containing the attributes.
+        argparse.Namespace object containing the attributes.
     """
     parser = argparse.ArgumentParser(
         description="Converts source proto config into platform JSON config."
@@ -131,7 +131,8 @@ def _upsert(field, target, target_name):
 def _build_arc(config, config_files):
     build_properties = {
         # TODO(chromium:1126527) - Push this into the overlay itself.
-        # This isn't/can't be device specific and shouldn't be configured as such.
+        # This isn't/can't be device specific and shouldn't be configured as
+        # such.
         "device": "%s_cheets" % config.program.name.lower(),
         "first-api-level": "28",
         "marketing-name": config.device_brand.brand_name,
@@ -258,7 +259,8 @@ def _build_derived_platform_power_prefs(capabilities) -> dict:
     result = {}
 
     # Falsy values are filtered out, deferring to the equivalent powerd default
-    # pref values. Dark resume is inverted; wrap it so False values are forwarded.
+    # pref values. Dark resume is inverted; wrap it so False values are
+    # forwarded.
     if capabilities.dark_resume:
         result["disable-dark-resume"] = wrappers_pb2.BoolValue(
             value=not capabilities.dark_resume
@@ -385,8 +387,8 @@ def _build_ash_flags(config: Config) -> List[str]:
     # A map from flag name -> value. Value may be None for boolean flags.
     flags = {}
 
-    # Adds a flag name -> value pair to flags map. |value| may be None for boolean
-    # flags.
+    # Adds a flag name -> value pair to flags map. |value| may be None for
+    # boolean flags.
     def _add_flag(name, value=None):
         flags[name] = value
 
@@ -410,7 +412,8 @@ def _build_ash_flags(config: Config) -> List[str]:
         )
 
     wallpaper = config.brand_config.wallpaper
-    # If a wallpaper is set, the 'default-wallpaper-is-oem' flag needs to be set.
+    # If a wallpaper is set, the 'default-wallpaper-is-oem' flag needs to be
+    # set.
     # If a wallpaper is not set, the 'default_[large|small].jpg' wallpapers
     # should still be set.
     if wallpaper:
@@ -452,8 +455,8 @@ def _build_ash_flags(config: Config) -> List[str]:
                     "edge": topology_pb2.HardwareFeatures.Button.Edge.Name(
                         power_button.edge
                     ).lower(),
-                    # Starlark sometimes represents float literals strangely, e.g. changing
-                    # 0.9 to 0.899999. Round to two digits here.
+                    # Starlark sometimes represents float literals strangely,
+                    # e.g. changing 0.9 to 0.899999. Round to two digits here.
                     "position": round(power_button.position, 2),
                 }
             ),
@@ -553,10 +556,10 @@ def _build_ath10k_config(ath10k_config):
     """Builds the wifi configuration for the ath10k driver.
 
     Args:
-      ath10k_config: Ath10kConfig config.
+        ath10k_config: Ath10kConfig config.
 
     Returns:
-      wifi configuration for the ath10k driver.
+        wifi configuration for the ath10k driver.
     """
     result = {}
 
@@ -579,10 +582,10 @@ def _build_rtw88_config(rtw88_config):
     """Builds the wifi configuration for the rtw88 driver.
 
     Args:
-      rtw88_config: Rtw88Config config.
+        rtw88_config: Rtw88Config config.
 
     Returns:
-      wifi configuration for the rtw88 driver.
+        wifi configuration for the rtw88 driver.
     """
     result = {}
 
@@ -617,11 +620,11 @@ def _build_intel_config(config, config_files):
     """Builds the wifi configuration for the intel driver.
 
     Args:
-      config: Config namedtuple
-      config_files: Map to look up the generated config files.
+        config: Config namedtuple
+        config_files: Map to look up the generated config files.
 
     Returns:
-      wifi configuration for the intel driver.
+        wifi configuration for the intel driver.
     """
     design_name = config.hw_design.name.lower()
     return config_files.wifi_sar_map.get(design_name)
@@ -631,10 +634,10 @@ def _build_mtk_config(mtk_config):
     """Builds the wifi configuration for the mtk driver.
 
     Args:
-      mtk_config: MtkConfig config.
+        mtk_config: MtkConfig config.
 
     Returns:
-      wifi configuration for the mtk driver.
+        wifi configuration for the mtk driver.
     """
     result = {}
 
@@ -684,11 +687,11 @@ def _build_wifi(config, config_files):
     """Builds the wifi configuration.
 
     Args:
-      config: Config namedtuple
-      config_files: Map to look up the generated config files.
+        config: Config namedtuple
+        config_files: Map to look up the generated config files.
 
     Returns:
-      wifi configuration.
+        wifi configuration.
     """
     config_field = config.sw_config.wifi_config.WhichOneof("wifi_config")
     if config_field == "ath10k_config":
@@ -726,10 +729,10 @@ def _build_health(config: Config):
     """Builds the health configuration.
 
     Args:
-      config: Config namedtuple
+        config: Config namedtuple
 
     Returns:
-      health configuration.
+        health configuration.
     """
     if not config.sw_config.health_config:
         return None
@@ -745,10 +748,10 @@ def _build_branding(config: Config):
     """Builds the branding configuration.
 
     Args:
-      config: Config namedtuple
+        config: Config namedtuple
 
     Returns:
-      branding configuration.
+        branding configuration.
     """
     result = {}
     if config.device_brand.export_oem_info and config.oem:
@@ -1326,8 +1329,9 @@ def _build_identity(hw_scan_config, program, brand_scan_config=None):
     )
     _upsert(hw_scan_config.smbios_name_match, identity, "smbios-name-match")
     _upsert(hw_scan_config.firmware_sku, identity, "sku-id")
-    # 'platform-name' is needed to support 'mosys platform name'. Clients should
-    # no longer require platform name, but set it here for backwards compatibility.
+    # 'platform-name' is needed to support 'mosys platform name'.
+    # Clients should no longer require platform name, but set it here for
+    # backwards compatibility.
     if program.mosys_platform_name:
         _upsert(program.mosys_platform_name, identity, "platform-name")
     else:
@@ -1517,7 +1521,8 @@ def _transform_build_configs(
                     elif brand_id in signer_configs_by_brand:
                         device_signer_config = signer_configs_by_brand[brand_id]
                     else:
-                        # Assume that if signer configs are set, every config is setup
+                        # Assume that if signer configs are set, every config
+                        # is setup
                         raise Exception(
                             "Signer config missing for design: %s, brand: %s"
                             % (design_id, brand_id)
@@ -1556,12 +1561,12 @@ def _transform_build_config(config, config_files, whitelabel):
     """Transforms Config instance into target platform JSON schema.
 
     Args:
-      config: Config namedtuple
-      config_files: Map to look up the generated config files.
-      whitelabel: Whether the config is for a whitelabel design
+        config: Config namedtuple
+        config_files: Map to look up the generated config files.
+        whitelabel: Whether the config is for a whitelabel design
 
     Returns:
-      Unique config payload based on the platform JSON schema.
+        Unique config payload based on the platform JSON schema.
     """
     result = {
         "identity": _build_identity(
@@ -1642,8 +1647,8 @@ def write_output(configs, output=None):
     """Writes a list of configs to platform JSON format.
 
     Args:
-      configs: List of config dicts defined in cros_config_schema.yaml
-      output: Target file output (if None, prints to stdout)
+        configs: List of config dicts defined in cros_config_schema.yaml
+        output: Target file output (if None, prints to stdout)
     """
     json_output = json.dumps(
         {
@@ -1690,15 +1695,16 @@ def _get_arc_camera_features(camera):
     """Gets camera related features for ARC hardware_features.xml from camera
 
     topology. Check
-    https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_CAMERA
-    and CTS android.app.cts.SystemFeaturesTest#testCameraFeatures for the correct
-    settings.
+    https://developer.android.com/reference/android/content/pm/
+    PackageManager#FEATURE_CAMERA
+    and CTS android.app.cts.SystemFeaturesTest#testCameraFeatures for the
+    correct settings.
 
     Args:
-      camera: A HardwareFeatures.Camera proto message.
+        camera: A HardwareFeatures.Camera proto message.
 
     Returns:
-      list of camera related ARC features as XML elements.
+        list of camera related ARC features as XML elements.
     """
     camera_pb = topology_pb2.HardwareFeatures.Camera
 
@@ -1745,10 +1751,10 @@ def _generate_arc_hardware_features(hw_features):
     """Generates ARC hardware_features.xml file content.
 
     Args:
-      hw_features: HardwareFeatures proto message.
+        hw_features: HardwareFeatures proto message.
 
     Returns:
-      bytes of the hardware_features.xml content.
+        bytes of the hardware_features.xml content.
     """
     touchscreen = _any_present([hw_features.screen.touch_support])
     acc = hw_features.accelerometer
@@ -1799,13 +1805,13 @@ def _generate_arc_media_profiles(hw_features, sw_config, dtd_path):
     """Generates ARC media_profiles.xml file content.
 
     Args:
-      hw_features: HardwareFeatures proto message.
-      sw_config: SoftwareConfig proto message.
-      dtd_path: Full path to dtd media profiles file.
+        hw_features: HardwareFeatures proto message.
+        sw_config: SoftwareConfig proto message.
+        dtd_path: Full path to dtd media profiles file.
 
     Returns:
-      bytes of the media_profiles.xml content, or None if |sw_config| disables the
-      generation or there's no camera.
+        bytes of the media_profiles.xml content, or None if |sw_config|
+        disables the generation or there's no camera.
     """
 
     def _gen_camcorder_profiles(camera_id, resolutions):
@@ -1971,17 +1977,19 @@ def _write_files_by_design_config(
     """Writes generated files for each design config.
 
     Args:
-      configs: Source ConfigBundle to process.
-      output_dir: Path to the generated output.
-      build_dir: Path to the config file from portage's perspective.
-      system_dir: Path to the config file in the target device.
-      file_name_template: Template string of the config file name including one
-        format()-style replacement field for the config id, e.g. 'config_{}.xml'.
-      generate_file_content: Function to generate config file content from
+        configs: Source ConfigBundle to process.
+        output_dir: Path to the generated output.
+        build_dir: Path to the config file from portage's perspective.
+        system_dir: Path to the config file in the target device.
+        file_name_template: Template string of the config file name including
+                            one
+        format()-style replacement field for the config id,
+                            e.g. 'config_{}.xml'.
+        generate_file_content: Function to generate config file content from
         HardwareFeatures and SoftwareConfig proto.
 
     Returns:
-      dict that maps the formatted config id to the correct file.
+        dict that maps the formatted config id to the correct file.
     """
     # pylint: disable=too-many-arguments,too-many-locals
     result = {}
@@ -2001,11 +2009,13 @@ def _write_files_by_design_config(
             # Constructs the following map:
             # design_name -> config -> design_configs
             # This allows any of the following file naming schemes:
-            # - All configs within a design share config (design_name prefix only)
+            # - All configs within a design share config
+            #   (design_name prefix only)
             # - Nobody shares (full design_name and config id prefix needed)
             #
-            # Having shared configs when possible makes code reviews easier around
-            # the configs and makes debugging easier on the platform side.
+            # Having shared configs when possible makes code reviews easier
+            # around # the configs and makes debugging easier on the platform
+            # side.
             arc_configs = configs_by_design.get(design_name, {})
             design_configs = arc_configs.get(config_content, [])
             design_configs.append(design_config)
@@ -2058,7 +2068,7 @@ def _read_config(path):
     """Reads a ConfigBundle proto from a json pb file.
 
     Args:
-      path: Path to the file encoding the json pb proto.
+        path: Path to the file encoding the json pb proto.
     """
     config = config_bundle_pb2.ConfigBundle()
     with open(path, "r") as f:
@@ -2080,11 +2090,11 @@ def _camera_map(configs, project_name):
     design.
 
     Args:
-      configs: Source ConfigBundle to process.
-      project_name: Name of project processing for.
+        configs: Source ConfigBundle to process.
+        project_name: Name of project processing for.
 
     Returns:
-      map from design name to camera config.
+        map from design name to camera config.
     """
     result = {}
     for design in configs.design_list:
@@ -2118,10 +2128,10 @@ def _dptf_map(project_name):
     for design config (firmware sku level) specific configs.
 
     Args:
-      project_name: Name of project processing for.
+        project_name: Name of project processing for.
 
     Returns:
-      map from design name or empty string (project wide), to dptf config.
+        map from design name or empty string (project wide), to dptf config.
     """
     result = {}
     for file in glob.iglob(
@@ -2158,13 +2168,13 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
     provided when building coreboot.
 
     Args:
-      configs: Source ConfigBundle to process.
-      project_name: Name of project processing for.
-      output_dir: Path to the generated output.
-      build_root_dir: Path to the config file from portage's perspective.
+        configs: Source ConfigBundle to process.
+        project_name: Name of project processing for.
+        output_dir: Path to the generated output.
+        build_root_dir: Path to the config file from portage's perspective.
 
     Returns:
-      dict that maps the design name onto the wifi config for that design.
+        dict that maps the design name onto the wifi config for that design.
     """
     # pylint: disable=too-many-locals
     result = {}
@@ -2189,8 +2199,8 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
                     with open(output_path, "rb") as f:
                         if f.read() != sar_file_content:
                             raise Exception(
-                                "Project {} has conflicting wifi sar file content under "
-                                "wifi sar id {}.".format(
+                                "Project {} has conflicting wifi sar file"
+                                "content under wifi sar id {}.".format(
                                     project_name, wifi_sar_id
                                 )
                             )
@@ -2210,10 +2220,12 @@ def _extract_fw_config_value(hw_design_config, topology):
     """Extracts the firwmare config value for the given topology.
 
     Args:
-      hw_design_config: Design extracting value from.
-      topology: Topology proto to extract the firmware config value for.
-    Returns: the extracted value or raises a ValueError if no firmware
-      configuration segment with `name` is found.
+        hw_design_config: Design extracting value from.
+        topology: Topology proto to extract the firmware config value for.
+
+    Returns:
+        the extracted value or raises a ValueError if no firmware
+        configuration segment with `name` is found.
     """
     mask = topology.hardware_feature.fw_config.mask
     if not mask:
@@ -2278,10 +2290,10 @@ def wrds_ewrd_encode(sar_table_config):
     """Creates and returns encoded power tables.
 
     args:
-      sar_table_config: contains power table values configured in config.star
+        sar_table_config: contains power table values configured in config.star
 
     returns:
-      Encoded power tables as bytearray
+        Encoded power tables as bytearray
     """
 
     def power_table(tpc, revision):
@@ -2383,7 +2395,7 @@ def wgds_encode(wgds_config):
     """Creates and returns encoded geo offset tables.
 
     args:
-      wgds_config: contains offset table values configured in config.star
+        wgds_config: contains offset table values configured in config.star
 
     returns:
       Encoded geo offset tables as bytearray
@@ -2441,10 +2453,10 @@ def antgain_encode(ant_gain_config):
     """Creates and returns encoded antenna gain tables.
 
     args:
-      ant_gain_config: contains antenna gain values configured in config.star
+        ant_gain_config: contains antenna gain values configured in config.star
 
     returns:
-      Encoded antenna gain tables as bytearray
+        Encoded antenna gain tables as bytearray
     """
 
     def antgain_table(gains, revision):
@@ -2503,7 +2515,7 @@ def wtas_encode(wtas_config):
     """Creates and returns encoded time average sar tables.
 
     args:
-      wtas_encode: contains time average sar values configured in config.star
+        wtas_encode: contains time average sar values configured in config.star
 
     returns:
       Encoded time average sar tables as bytearray
@@ -2547,7 +2559,7 @@ def dsm_encode(dsm_config):
     """Creates and returns device specific method return values.
 
     args:
-      dsm_config: contains device specific method return values configured in
+        dsm_config: contains device specific method return values configured in
       config.star
 
     returns:
@@ -2606,7 +2618,7 @@ def _create_intel_sar_file_content(intel_config):
     only.
 
     args:
-      intel_config: intelconfig config.
+        intel_config: intelconfig config.
 
     returns:
       sar file content for the given config, see:
@@ -2678,9 +2690,9 @@ def Main(
     """Transforms source proto config into platform JSON.
 
     Args:
-      project_configs: List of source project configs to transform.
-      program_config: Program config for the given set of projects.
-      output: Output file that will be generated by the transform.
+        project_configs: List of source project configs to transform.
+        program_config: Program config for the given set of projects.
+        output: Output file that will be generated by the transform.
     """
     # pylint: disable=too-many-locals
     configs = _merge_configs(
@@ -2739,7 +2751,7 @@ def main(argv=None):
     """Main program which parses args and runs
 
     Args:
-      argv: List of command line arguments, if None uses sys.argv.
+        argv: List of command line arguments, if None uses sys.argv.
     """
     if argv is None:
         argv = sys.argv[1:]

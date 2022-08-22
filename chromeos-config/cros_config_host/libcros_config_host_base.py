@@ -95,10 +95,10 @@ class PathComponent(object):
     """A component in a directory/file tree
 
     Attributes:
-      name: Name this component
-      children: Dict of children:
-        key: Name of child
-        value: PathComponent object for child
+        name: Name this component
+        children: Dict of children:
+            key: Name of child
+            value: PathComponent object for child
     """
 
     def __init__(self, name):
@@ -119,13 +119,14 @@ class PathComponent(object):
     def ShowTree(self, base_path, path="", indent=0):
         """Show a tree of file paths
 
-        This shows a component and all its children. Nodes can either be directories
-        or files. Each file is shown with its size, or 'missing' if not found.
+        This shows a component and all its children. Nodes can either be
+        directories or files. Each file is shown with its size, or 'missing'
+        if not found.
 
         Args:
-          base_path: Base path where the actual files can be found
-          path: Path of this component relative to the root (e.g. 'etc/cras/)
-          indent: Indent level we are up to (0 = first)
+            base_path: Base path where the actual files can be found
+            path: Path of this component relative to the root (e.g. 'etc/cras/)
+            indent: Indent level we are up to (0 = first)
         """
         path = os.path.join(path, self.name)
         fname = os.path.join(base_path, path)
@@ -159,28 +160,28 @@ class DeviceConfig(object):
         """Returns the name of the config.
 
         Returns:
-          Name of he config
+            Name of the config
         """
 
     def GetProperties(self, path):
         """Returns a map of properties at the given config path.
 
         Args:
-          path: Path to the config desired.
+            path: Path to the config desired.
 
         Returns:
-          A map of properties at the given config path.
+            A map of properties at the given config path.
         """
 
     def GetProperty(self, path, name):
         """Returns the name value at a given path.
 
         Args:
-          path: Path to the config desired.
-          name: Property desired.
+            path: Path to the config desired.
+            name: Property desired.
 
         Returns:
-          Requested value or empty string if not present.
+            Requested value or empty string if not present.
         """
 
     def GetFirmwareConfig(self):
@@ -190,11 +191,11 @@ class DeviceConfig(object):
     def GetFirmwareUris(self):
         """Returns a list of (string) firmware URIs.
 
-        Generates and returns a list of firmeware URIs for this device. These URIs
-        can be used to pull down remote firmware packages.
+        Generates and returns a list of firmeware URIs for this device. These
+        URIs can be used to pull down remote firmware packages.
 
         Returns:
-          A list of (string) full firmware URIs, or an empty list on failure.
+            A list of (string) full firmware URIs, or an empty list on failure.
         """
         firmware = self.GetFirmwareConfig()
         if not firmware:
@@ -231,91 +232,91 @@ class DeviceConfig(object):
         """Get a list of unique touch firmware files
 
         Returns:
-          List of SymlinkedFile objects representing the touch firmware referenced
-            by this model
+            List of SymlinkedFile objects representing the touch firmware
+            referenced by this model
         """
 
     def GetDetachableBaseFirmwareFiles(self):
         """Get a list of unique detachable base firmware files
 
         Returns:
-          List of SymlinkedFile objects representing the detachable base firmware
-            referenced by this model
+            List of SymlinkedFile objects representing the detachable base
+            firmware referenced by this model
         """
 
     def GetArcFiles(self):
         """Get a list of arc++ files for this device
 
         Returns:
-          List of BaseFile objects representing the arc++ files needed.
+            List of BaseFile objects representing the arc++ files needed.
         """
 
     def GetAudioFiles(self):
         """Get a list of audio files
 
         Returns:
-          List of BaseFile objects representing the audio files referenced
-          by this device.
+            List of BaseFile objects representing the audio files referenced
+            by this device.
         """
 
     def GetBluetoothFiles(self):
         """Get a list of bluetooth config files
 
         Returns:
-          List of BaseFile objects representing the bluetooth files referenced
-          by this device.
+            List of BaseFile objects representing the bluetooth files
+            referenced by this device.
         """
 
     def GetCameraFiles(self):
         """Get a list of camera config files
 
         Returns:
-          List of BaseFile objects representing the camera files referenced
-          by this device.
+            List of BaseFile objects representing the camera files referenced
+            by this device.
         """
 
     def GetThermalFiles(self):
         """Get a list of thermal files
 
         Returns:
-          List of BaseFile objects representing the thermal files referenced
-          by this device.
+            List of BaseFile objects representing the thermal files referenced
+            by this device.
         """
 
     def GetIntelWifiSarFiles(self):
         """Get a list of intel wifi sar files
 
         Returns:
-          List of BaseFile objects representing the intel wifi sar files referenced
-          for this device.
+            List of BaseFile objects representing the intel wifi sar filesi
+            referenced for this device.
         """
 
     def GetFirmwareInfo(self):
         """Gets the FirmewareInfo instance for a given device.
 
         Returns:
-          Returns the FirmwareInfo instance.
+            Returns the FirmwareInfo instance.
         """
 
     def GetFirmwareConfigs(self):
         """Gets unique firmware configs for all devices.
 
         Returns:
-          Dictionary of FirmwareImage objects grouped by config name.
+            Dictionary of FirmwareImage objects grouped by config name.
         """
 
     def GetFirmwareConfigsByDevice(self):
         """Gets firmware config name for all devices.
 
         Returns:
-          Dictionary of firmware config names grouped by device.
+            Dictionary of firmware config names grouped by device.
         """
 
     def GetDeviceSignerInfo(self):
         """Gets firmware signer info for all devices.
 
         Returns:
-          Dictionary of DeviceSignerInfo grouped by device.
+            Dictionary of DeviceSignerInfo grouped by device.
         """
 
     def GetWallpaperFiles(self):
@@ -325,8 +326,8 @@ class DeviceConfig(object):
         """Get a list of autobrightness files
 
         Returns:
-          List of BaseFile objects representing the autobrightness files referenced
-          by this device.
+            List of BaseFile objects representing the autobrightness files
+            referenced by this device.
         """
 
 
@@ -337,7 +338,7 @@ class CrosConfigBaseImpl(object):
         """Gets a (DeviceConfig) instance by name.
 
         Returns:
-          (DeviceConfig) instance if found, else None
+            (DeviceConfig) instance if found, else None
         """
         for device in self.GetDeviceConfigs():
             if device.GetName() == name:
@@ -348,14 +349,14 @@ class CrosConfigBaseImpl(object):
         """Returns a list of (DeviceConfig) instances.
 
         Returns:
-          A list of (DeviceConfig) instances.
+            A list of (DeviceConfig) instances.
         """
 
     def GetFullConfig(self):
         """Returns a full dict of every config returned from every API.
 
         Returns:
-          Dictionary that maps method call onto return config.
+            Dictionary that maps method call onto return config.
         """
         result = {}
         result["ListModels"] = self.GetModelList()
@@ -395,8 +396,9 @@ class CrosConfigBaseImpl(object):
             for path in schema_properties:
                 for schema_property in schema_properties[path]:
                     prop_value = device.GetProperty(path, schema_property)
-                    # Only dump populated values; this makes it so the config dumps
-                    # don't need to be updated when new schema attributes are added.
+                    # Only dump populated values; this makes it so the config
+                    # dumps # don't need to be updated when new schema
+                    # attributes are added.
                     if prop_value:
                         value_map[
                             "%s::%s" % (path, schema_property)
@@ -407,11 +409,11 @@ class CrosConfigBaseImpl(object):
     def GetFirmwareUris(self):
         """Returns a list of (string) firmware URIs.
 
-        Generates and returns a list of firmeware URIs for all device. These URIs
-        can be used to pull down remote firmware packages.
+        Generates and returns a list of firmeware URIs for all device. These
+        URIs can be used to pull down remote firmware packages.
 
         Returns:
-          A list of (string) full firmware URIs, or an empty list on failure.
+            A list of (string) full firmware URIs, or an empty list on failure.
         """
         uris = set()
         for device in self.GetDeviceConfigs():
@@ -422,10 +424,11 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique files for all devices.
 
         Args:
-          func_name: name of method to invoke on a DeviceConfig to retrieve files.
+            func_name: name of method to invoke on a DeviceConfig to retrieve
+              files.
 
         Returns:
-          list of files sorted by source.
+            list of files sorted by source.
         """
         file_set = set()
         for device in self.GetDeviceConfigs():
@@ -440,8 +443,8 @@ class CrosConfigBaseImpl(object):
         These files may come from ${FILESDIR} or from a tar file in BCS.
 
         Returns:
-          List of SymlinkedFile objects representing all the touch firmware
-          referenced by all devices
+            List of SymlinkedFile objects representing all the touch firmware
+            referenced by all devices
         """
         return self._GetFiles("GetTouchFirmwareFiles")
 
@@ -451,8 +454,8 @@ class CrosConfigBaseImpl(object):
         These files may come from ${FILESDIR} or from a tar file in BCS.
 
         Returns:
-          List of SymlinkedFile objects representing all the detachable base
-          firmware referenced by all devices
+            List of SymlinkedFile objects representing all the detachable base
+            firmware referenced by all devices
         """
         return self._GetFiles("GetDetachableBaseFirmwareFiles")
 
@@ -460,12 +463,13 @@ class CrosConfigBaseImpl(object):
         """Form a valid BCS URI for downloading files.
 
         Args:
-          overlay: Name of overlay (e.g. 'reef-private')
-          path: Path to file in overlay (e.g. 'chromeos-base/'
-            'chromeos-touch-firmware-reef/chromeos-touch-firmware-reef-1.0-r9.tbz2')
+            overlay: Name of overlay (e.g. 'reef-private')
+            path: Path to file in overlay (e.g. 'chromeos-base/'
+            'chromeos-touch-firmware-reef/'
+            'chromeos-touch-firmware-reef-1.0-r9.tbz2')
 
         Returns:
-          Valid BCS URI to download from
+            Valid BCS URI to download from
         """
         if not overlay.startswith("overlay"):
             return None
@@ -483,8 +487,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique Arc++ files for all devices
 
         Returns:
-          List of BaseFile objects representing all the arc++ files referenced
-          by all devices
+            List of BaseFile objects representing all the arc++ files
+            referenced by all devices
         """
         return self._GetFiles("GetArcFiles")
 
@@ -492,8 +496,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique audio files for all models
 
         Returns:
-          List of BaseFile objects representing all the audio files referenced
-          by all models
+            List of BaseFile objects representing all the audio files
+            referenced by all models
         """
         return self._GetFiles("GetAudioFiles")
 
@@ -501,8 +505,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique bluetooth files for all devices
 
         Returns:
-          List of BaseFile objects representing all the bluetooth files referenced
-          by all devices
+            List of BaseFile objects representing all the bluetooth files
+            referenced by all devices
         """
         return self._GetFiles("GetBluetoothFiles")
 
@@ -510,8 +514,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique camera files for all devices
 
         Returns:
-          List of BaseFile objects representing all the camera files referenced
-          by all devices
+            List of BaseFile objects representing all the camera files
+            referenced by all devices
         """
         return self._GetFiles("GetCameraFiles")
 
@@ -521,10 +525,10 @@ class CrosConfigBaseImpl(object):
         Historically this maps to the name of the coreboot build target.
 
         Args:
-          config: config object that contains /firmware node
+            config: config object that contains /firmware node
 
         Returns:
-          A string of the firmware group name
+            A string of the firmware group name
         """
         # Use coreboot as key if it exist to support historical use case of
         # grouping firmware build targets by coreboot name
@@ -542,7 +546,7 @@ class CrosConfigBaseImpl(object):
         environment variable.
 
         Returns:
-          A list of firmware build targets
+            A list of firmware build targets
         """
         fw_name = os.getenv("FW_NAME")
         if fw_name:
@@ -550,13 +554,13 @@ class CrosConfigBaseImpl(object):
         return []
 
     def GetFirmwareBuildTargets(self, target_type):
-        """Returns a list of all firmware build-targets of the given target type.
+        """Returns all firmware build-targets of the given target type.
 
         Args:
-          target_type: A string type for the build-targets to return
+            target_type: A string type for the build-targets to return
 
         Returns:
-          A list of all build-targets of the given type, for all models.
+            A list of all build-targets of the given type, for all models.
         """
         firmware_filter = self._GetFirmwareFilter()
         build_targets = []
@@ -585,15 +589,16 @@ class CrosConfigBaseImpl(object):
         """Get named firmware build combinations for all devices.
 
         Args:
-          components: List of firmware components to get target combinations for.
+            components: List of firmware components to get target combinations
+            for.
 
         Returns:
-          OrderedDict containing firmware combinations
-            key: combination name
-            value: list of firmware targets for specified types
+            OrderedDict containing firmware combinations
+                key: combination name
+                value: list of firmware targets for specified types
 
         Raises:
-          ValueError if a collision is encountered for named combinations.
+            ValueError if a collision is encountered for named combinations.
         """
         firmware_filter = self._GetFirmwareFilter()
 
@@ -622,8 +627,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique thermal files for all models
 
         Returns:
-          List of BaseFile objects representing all the audio files referenced
-          by all devices
+            List of BaseFile objects representing all the audio files
+            referenced by all devices
         """
         return self._GetFiles("GetThermalFiles")
 
@@ -631,8 +636,8 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique intel wifi sar files for all models
 
         Returns:
-          List of BaseFile objects representing all the intel wifi sar files
-          referenced by all devices
+            List of BaseFile objects representing all the intel wifi sar files
+            referenced by all devices
         """
         return self._GetFiles("GetIntelWifiSarFiles")
 
@@ -644,11 +649,11 @@ class CrosConfigBaseImpl(object):
         """Get a tree of all files installed by the config
 
         This looks at all available config that installs files in the root and
-        returns them as a tree structure. This can be passed to ShowTree(), which
-        is the only feature currently implemented which uses this tree.
+        returns them as a tree structure. This can be passed to ShowTree(),
+        which is the only feature currently implemented which uses this tree.
 
         Returns:
-          PathComponent object containing the root component
+            PathComponent object containing the root component
         """
         paths = set()
         for item in self.GetAudioFiles():
@@ -666,7 +671,7 @@ class CrosConfigBaseImpl(object):
         """Return a list of models
 
         Returns:
-          List of model names, each a string
+            List of model names, each a string
         """
         return sorted(
             set([device.GetName() for device in self.GetDeviceConfigs()])
@@ -691,28 +696,29 @@ class CrosConfigBaseImpl(object):
         """Get a list of unique autobrightness files for all models
 
         Returns:
-          List of BaseFile objects representing all the autobrightness files
-          referenced by all devices
+            List of BaseFile objects representing all the autobrightness files
+            referenced by all devices
         """
         return self._GetFiles("GetAutobrightnessFiles")
 
     def GetFirmwareRecoveryInput(self, build_target_name, build_target_value):
         """Gets the recovery input method for the given build target.
-        If the device config does not specify the firmware recovery input, it will
-        be inferred from the form factor.
+
+        If the device config does not specify the firmware recovery input,
+        it will be inferred from the form factor.
         If no recovery input is found, an empty string is returned
 
         Args:
-          build_target_name: Build target name (e.g. "depthcharge")
-          build_target_value: Build target for the associated name
+            build_target_name: Build target name (e.g. "depthcharge")
+            build_target_value: Build target for the associated name
 
         Returns:
-          Recovery input method string. Empty string if not determinable from
-          config.
+            Recovery input method string. Empty string if not determinable from
+            config.
 
         Raises:
-          ValidationError if single build_target_value target is paired with
-          multiple recovery inputs
+            ValidationError if single build_target_value target is paired with
+            multiple recovery inputs
         """
         # Try to retrieve recovery-input first
         methods = OrderedDict()
@@ -720,7 +726,8 @@ class CrosConfigBaseImpl(object):
             key = device.GetProperties(
                 "/firmware/build-targets/%s" % build_target_name
             )
-            # Skip targets that aren't specified in the JSON or don't match target
+            # Skip targets that aren't specified in the JSON or don't match
+            # target
             if not key or key != build_target_value:
                 continue
 
@@ -744,7 +751,8 @@ class CrosConfigBaseImpl(object):
             key = device.GetProperties(
                 "/firmware/build-targets/%s" % build_target_name
             )
-            # Skip targets that aren't specified in the JSON or don't match target
+            # Skip targets that aren't specified in the JSON or don't match
+            # target
             if not key or key != build_target_value:
                 continue
 

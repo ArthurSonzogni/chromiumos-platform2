@@ -288,7 +288,8 @@ class ValidateFingerprintSchema(cros_test_lib.TestCase):
                         "identity": {"platform-name": "foo", "sku-id": 1},
                         "name": "foo",
                         "fingerprint": {
-                            # "ro-version" only allowed if "board" is also specified.
+                            # "ro-version" only allowed if "board" is also
+                            # specified.
                             "ro-version": "123"
                         },
                     },
@@ -618,8 +619,8 @@ chromeos:
         self.assertRegex(
             str(ctx.exception),
             re.compile(
-                "You may not use different fingerprint firmware RO versions on the "
-                "same board:.*"
+                "You may not use different fingerprint firmware RO versions "
+                "on the same board:.*"
             ),
         )
 

@@ -22,7 +22,7 @@ def FormatJson(config):
     """Formats JSON for output or printing.
 
     Args:
-      config: Dictionary to be output
+        config: Dictionary to be output
     """
     return json.dumps(config, sort_keys=True, indent=2, separators=(",", ": "))
 
@@ -31,11 +31,11 @@ def LoadYaml(stream):
     """Load the first YAML document in a stream.
 
     Args:
-      stream: A file-like object or string which contains a YAML
+        stream: A file-like object or string which contains a YAML
         document.
 
     Returns:
-      A Python object which corresponds to the YAML source.
+        A Python object which corresponds to the YAML source.
     """
 
     # Prefer libyaml, as it's significantly faster than the default
@@ -56,8 +56,8 @@ def ValidateConfigSchema(schema, config):
     Verifies that the config complies with the schema supplied.
 
     Args:
-      schema: Source schema used to verify the config.
-      config: Config (transformed) that will be verified.
+        schema: Source schema used to verify the config.
+        config: Config (transformed) that will be verified.
     """
     json_config = json.loads(config)
     schema_json = LoadYaml(schema)
@@ -68,8 +68,8 @@ def FindImports(config_file, includes):
     """Recursively looks up and finds files to include for yaml.
 
     Args:
-      config_file: Path to the config file for which to apply imports.
-      includes: List that is built up through processing the files.
+        config_file: Path to the config file for which to apply imports.
+        includes: List that is built up through processing the files.
     """
     working_dir = os.path.dirname(config_file)
     with open(config_file, "r") as config_stream:
@@ -102,10 +102,10 @@ def ApplyImports(config_file):
     """Parses the imports statements and applies them to a result config.
 
     Args:
-      config_file: Path to the config file for which to apply imports.
+        config_file: Path to the config file for which to apply imports.
 
     Returns:
-      Raw config with the imports applied.
+        Raw config with the imports applied.
     """
     import_files = []
     FindImports(config_file, import_files)
@@ -130,12 +130,12 @@ def GetSchemaPropertyAttrs(schema_yaml):
     """Returns schema defined attributes on a per property basis.
 
     Args:
-      schema_yaml: Source schema that contains the properties.
+        schema_yaml: Source schema that contains the properties.
 
     Returns:
-      Dictionary
-        key - full path to the property in the schema
-        value - PropertyAttrs object with the schema attributes
+        Dictionary
+            key - full path to the property in the schema
+            value - PropertyAttrs object with the schema attributes
     """
     root_path = "properties/chromeos/properties/configs/items/properties"
     schema_node = schema_yaml
@@ -151,9 +151,9 @@ def _GetSchemaPropertyAttrs(schema_node, path, result):
     """Recursively extracts property attributes from the schema.
 
     Args:
-      schema_node: Single node from the schema
-      path: Running path that a given node maps to
-      result: Running collection of results
+        schema_node: Single node from the schema
+        path: Running path that a given node maps to
+        result: Running collection of results
     """
     for key in schema_node:
         new_path = path + [key]

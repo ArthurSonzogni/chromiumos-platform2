@@ -16,10 +16,10 @@ def Serialize(obj):
     """Convert a string, integer, bytes, or bool to its file representation.
 
     Args:
-      obj: The string, integer, bytes, or bool to serialize.
+        obj: The string, integer, bytes, or bool to serialize.
 
     Returns:
-      The bytes representation of the object suitable for dumping into a file.
+        The bytes representation of the object suitable for dumping into a file.
     """
     if isinstance(obj, bytes):
         return obj
@@ -32,8 +32,8 @@ def WriteConfigFSFiles(config, base_path):
     """Recursive function to write ConfigFS data out to files and directories.
 
     Args:
-      config: The configuration item (dict, list, str, int, or bool).
-      base_path: The path to write out to.
+        config: The configuration item (dict, list, str, int, or bool).
+        base_path: The path to write out to.
     """
     if isinstance(config, dict):
         iterator = config.items()
@@ -58,8 +58,8 @@ def GenerateConfigFSData(config, output_fs):
     """Generate the ConfigFS private data.
 
     Args:
-      config: The configuration dictionary.
-      output_fs: The file name to write the SquashFS image at.
+        config: The configuration dictionary.
+        output_fs: The file name to write the SquashFS image at.
     """
     with tempfile.TemporaryDirectory(prefix="configfs.") as configdir:
         os.chmod(configdir, 0o755)

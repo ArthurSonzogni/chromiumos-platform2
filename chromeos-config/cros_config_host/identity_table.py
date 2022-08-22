@@ -44,8 +44,8 @@ def WriteIdentityStruct(config, output_file):
     cros_configfs.
 
     Args:
-      config: The configuration dictionary (containing "chromeos").
-      output_file: A file-like object to write to, opened in binary mode.
+        config: The configuration dictionary (containing "chromeos").
+        output_file: A file-like object to write to, opened in binary mode.
     """
     device_configs = config["chromeos"]["configs"]
     string_table = []

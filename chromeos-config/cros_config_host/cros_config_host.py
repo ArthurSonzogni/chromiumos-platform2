@@ -32,7 +32,7 @@ def DumpConfig(config):
     """Dumps all of the config to stdout
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     result = config.GetFullConfig()
     output = json.dumps(result, sort_keys=True, indent=2)
@@ -43,7 +43,7 @@ def ListModels(config):
     """Prints all models in a config to stdout, one per line.
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for model_name in config.GetModelList():
         print(model_name)
@@ -53,9 +53,10 @@ def GetProperty(device, path, prop):
     """Prints a property from the config tree for all models in the list models.
 
     Args:
-      device: DeviceConfig instance for the lookup.
-      path: The path (relative to a device) for the node containing the property.
-      prop: The property to get (by name).
+        device: DeviceConfig instance for the lookup.
+        path: The path (relative to a device) for the node containing the
+            property.
+        prop: The property to get (by name).
     """
     print(device.GetProperty(path, prop))
 
@@ -64,7 +65,7 @@ def GetFirmwareUris(config):
     """Prints space-separated firmware uris for all models in models.
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     print(" ".join(config.GetFirmwareUris()))
 
@@ -79,7 +80,7 @@ def GetTouchFirmwareFiles(config):
        /lib/firmware/wacom_firmware_reef.bin
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetTouchFirmwareFiles():
         print(files.source)
@@ -97,7 +98,7 @@ def GetDetachableBaseFirmwareFiles(config):
        /lib/firmware/masterball.fw
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetDetachableBaseFirmwareFiles():
         print(files.source)
@@ -108,13 +109,13 @@ def GetDetachableBaseFirmwareFiles(config):
 def GetArcFiles(config):
     """Print a list of arc++ files across all models
 
-    The output is one line for the source file (typically relative to ${FILESDIR})
-    and one line for the install file, e.g.:
+    The output is one line for the source file (typically relative to
+    ${FILESDIR}) and one line for the install file, e.g.:
        astronaut/arc++/board_hardware_features
        /usr/sbin/astronaut/board_hardware_features
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetArcFiles():
         print(files.source)
@@ -124,13 +125,13 @@ def GetArcFiles(config):
 def GetAudioFiles(config):
     """Print a list of audio files across all models
 
-    The output is one line for the source file and one line for the install file,
-    e.g.:
+    The output is one line for the source file and one line for the install
+    file, e.g.:
        ucm-config/bxtda7219max.reef.BASKING/bxtda7219max.reef.BASKING.conf
        /usr/share/alsa/ucm/bxtda7219max.basking/bxtda7219max.basking.conf
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetAudioFiles():
         print(files.source)
@@ -140,13 +141,13 @@ def GetAudioFiles(config):
 def GetBluetoothFiles(config):
     """Print a list of bluetooth files across all devices
 
-    The output is one line for the source file and one line for the install file,
-    e.g.:
+    The output is one line for the source file and one line for the install
+    file, e.g.:
        bluetooth/main.conf
        /etc/bluetooth/main.conf
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetBluetoothFiles():
         print(files.source)
@@ -156,13 +157,13 @@ def GetBluetoothFiles(config):
 def GetCameraFiles(config):
     """Print a list of camera files across all devices
 
-    The output is one line for the source file and one line for the install file.
-    e.g.:
-      sw_build_config/platform/chromeos-config/camera/camera_config_${design}.json
+    The output is one line for the source file and one line for the install
+    file, e.g.:
+      sw_build_config/.../camera_config_${design}.json
       /etc/camera/camera_config_${design}.json
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetCameraFiles():
         print(files.source)
@@ -173,8 +174,9 @@ def GetFirmwareBuildTargets(config, target_type):
     """Lists all firmware build-targets of the given type, for all models.
 
     Args:
-      config: A CrosConfig instance to load data from.
-      target_type: A string name for what target type to get build-targets for.
+        config: A CrosConfig instance to load data from.
+        target_type: A string name for what target type to get build-targets
+        for.
     """
     for target in config.GetFirmwareBuildTargets(target_type):
         print(target)
@@ -188,11 +190,11 @@ def GetFingerprintFirmwareROVersion(config, fpmcu):
     prints the value of the first "ro-version".
 
     Args:
-      config: A CrosConfig instance.
-      fpmcu: "FPMCU board".
+        config: A CrosConfig instance.
+        fpmcu: "FPMCU board".
 
     Returns:
-      Exit code: 0 always since the ro-version does not have to be specified.
+        Exit code: 0 always since the ro-version does not have to be specified.
     """
     devices = config.GetDeviceConfigs()
     for device in devices:
@@ -210,13 +212,13 @@ def GetFingerprintFirmwareROVersion(config, fpmcu):
 def GetThermalFiles(config):
     """Print a list of thermal files across all models
 
-    The output is one line for the source file (typically relative to ${FILESDIR})
-    and one line for the install file, e.g.:
+    The output is one line for the source file (typically relative to
+    ${FILESDIR}) and one line for the install file, e.g.:
        astronaut/dptf.dv
        /etc/dptf/astronaut/dptf.dv
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetThermalFiles():
         print(files.source)
@@ -229,11 +231,11 @@ def GetIntelWifiSarFiles(config):
     The output is one line for the source file
     and one line for the install file, e.g.:
 
-       proj/sw_build_config/platform/chromeos-config/generated/wifi/wifi_sar_6.hex
+       proj/sw_build_config/.../generated/wifi/wifi_sar_6.hex
        /firmware/cbfs-rw-raw/proj/wifi_sar_6.hex
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetIntelWifiSarFiles():
         print(files.source)
@@ -243,12 +245,12 @@ def GetIntelWifiSarFiles(config):
 def FileTree(config, root):
     """Print a tree showing all files installed for this config
 
-    The output is a tree structure printed one directory/file per line. Each file
-    is shown with its size, or missing it if is not present.
+    The output is a tree structure printed one directory/file per line. Each
+    file is shown with its size, or missing it if is not present.
 
     Args:
-      config: A CrosConfig instance
-      root: Path to the root directory for the board (e.g. '/build/reef-uni')
+        config: A CrosConfig instance
+        root: Path to the root directory for the board (e.g. '/build/reef-uni')
     """
     tree = config.GetFileTree()
     config.ShowTree(tree, root)
@@ -258,8 +260,8 @@ def GetFirmwareBuildCombinations(config, targets):
     """Print the firmware build combinations for requested targets
 
     Args:
-      config: A CrosConfig instance
-      targets: List of names of the build targets to get combinations for
+        config: A CrosConfig instance
+        targets: List of names of the build targets to get combinations for
     """
     d = config.GetFirmwareBuildCombinations(targets)
     for name, target_values in d.items():
@@ -275,10 +277,10 @@ def GetWallpaperFiles(config):
     """Get the wallpaper files needed for installation
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
 
     Returns:
-      List of wallpaper filenames (sorted)
+        List of wallpaper filenames (sorted)
     """
     for fname in config.GetWallpaperFiles():
         print(fname)
@@ -287,13 +289,13 @@ def GetWallpaperFiles(config):
 def GetAutobrightnessFiles(config):
     """Print a list of autobrightness files across all models
 
-    The output is one line for the source file (typically relative to ${FILESDIR})
-    and one line for the install file, e.g.:
+    The output is one line for the source file (typically relative to
+    ${FILESDIR}) and one line for the install file, e.g.:
        kohaku/autobrightness/model_params.json
        usr/share/chromeos-assets/autobrightness/kohaku/model_params.json
 
     Args:
-      config: A CrosConfig instance
+        config: A CrosConfig instance
     """
     for files in config.GetAutobrightnessFiles():
         print(files.source)
@@ -304,9 +306,9 @@ def GetFirmwareRecoveryInput(config, build_target_name, build_target_value):
     """Print the recovery input method for firmware config
 
     Args:
-      config: A CrosConfig instance
-      build_target_name: Build target name (e.g. "depthcharge")
-      build_target_value: Build target for the associated name
+        config: A CrosConfig instance
+        build_target_name: Build target name (e.g. "depthcharge")
+        build_target_value: Build target for the associated name
     """
     print(
         config.GetFirmwareRecoveryInput(build_target_name, build_target_value)
@@ -317,10 +319,11 @@ def GetParser(description):
     """Returns an ArgumentParser structured for the cros_config_host CLI.
 
     Args:
-      description: A description of the entire script, and it's purpose in life.
+        description: A description of the entire script, and it's purpose in
+                     life.
 
     Returns:
-      An ArgumentParser structured for the cros_config_host CLI.
+        An ArgumentParser structured for the cros_config_host CLI.
     """
     parser = argparse.ArgumentParser(description)
     parser.add_argument(
@@ -440,7 +443,8 @@ def GetParser(description):
     # Parser: write-target-dirs
     subparsers.add_parser(
         "write-target-dirs",
-        help="Writes out a list of target directories for each PropFile element",
+        help="Writes out a list of target directories for each PropFile "
+        "element",
     )
     # Parser: get-firmware-build-combinations
     build_combination_parser = subparsers.add_parser(
@@ -461,8 +465,9 @@ def GetParser(description):
     # Parser: get-autobrightness-files
     subparsers.add_parser(
         "get-autobrightness-files",
-        help="Lists pairs of autobrightness files in sequence: first line is "
-        "the relative source pathname, second line is the full install pathname",
+        help="Lists pairs of autobrightness files in sequence: first line "
+        "is the relative source pathname, second line is the full install "
+        "pathname",
     )
     # Parser: get-firmware-recovery-input
     firmware_recovery_input_parser = subparsers.add_parser(
@@ -507,8 +512,8 @@ def main(argv=None):
     elif opts.subcommand == "get":
         if not opts.model:
             print(
-                "You must specify --model for this command. See --help for more "
-                "info.",
+                "You must specify --model for this command. See --help for "
+                "more info.",
                 file=sys.stderr,
             )
             return
