@@ -62,7 +62,6 @@ class MockDevice : public Device {
               GetGeolocationObjects,
               (),
               (const, override));
-  MOCK_METHOD(void, UpdateBlackholeUserTraffic, (), (override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (const IPAddress&,

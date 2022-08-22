@@ -412,22 +412,6 @@ void Device::ForceIPConfigUpdate() {
   network()->InvalidateIPv6Config();
 }
 
-void Device::UpdateBlackholeUserTraffic() {
-  SLOG(this, 2) << __func__;
-  if (ipconfig()) {
-    bool updated;
-    if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-      updated = ipconfig()->SetBlackholedUids(
-          RoutingTable::GetInstance()->GetUserTrafficUids());
-    } else {
-      updated = ipconfig()->ClearBlackholedUids();
-    }
-    if (updated) {
-      network_->SetupConnection(ipconfig());
-    }
-  }
-}
-
 void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
                                   const ServiceRefPtr& new_service) {
   std::set<std::string> devices{link_name_};
@@ -532,13 +516,6 @@ void Device::OnNetworkStopped(bool is_failure) {
     OnIPConfigFailure();
   }
   StopAllActivities();
-}
-
-std::vector<uint32_t> Device::GetBlackholedUids() {
-  if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-    return RoutingTable::GetInstance()->GetUserTrafficUids();
-  }
-  return {};
 }
 
 void Device::OnGetDHCPLease() {}

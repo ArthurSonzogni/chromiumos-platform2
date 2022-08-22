@@ -287,10 +287,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // change the state of the previously selected service.
   mockable void ResetConnection();
 
-  // If the status of browser traffic blackholing changed, this will restart
-  // the active connection with the right setting.
-  mockable void UpdateBlackholeUserTraffic();
-
   // Responds to a neighbor reachability event from patchpanel. The base class
   // does nothing here so the derived class doesn't need to call this.
   virtual void OnNeighborReachabilityEvent(
@@ -317,7 +313,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
   void OnGetSLAACAddress() override;
-  std::vector<uint32_t> GetBlackholedUids() override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;

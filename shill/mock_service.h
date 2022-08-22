@@ -51,7 +51,6 @@ class MockService : public Service {
   MOCK_METHOD(ConnectFailure, failure, (), (const, override));
   MOCK_METHOD(RpcIdentifier, GetDeviceRpcId, (Error*), (const, override));
   MOCK_METHOD(const RpcIdentifier&, GetRpcIdentifier, (), (const, override));
-  MOCK_METHOD(bool, IsAlwaysOnVpn, (const std::string&), (const, override));
   MOCK_METHOD(std::string, GetStorageIdentifier, (), (const, override));
   MOCK_METHOD(std::string,
               GetLoadableStorageIdentifier,

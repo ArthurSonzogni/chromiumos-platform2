@@ -512,8 +512,6 @@ class Manager {
   bool scan_allow_roam() const { return props_.scan_allow_roam; }
 #endif  // DISABLE_WIFI
 
-  bool ShouldBlackholeUserTraffic(const std::string& device_name) const;
-
   // Returns whether the swanctl-based driver should be used.
   bool GetUseSwanctlDriver(Error* error);
 
@@ -791,8 +789,6 @@ class Manager {
 
   std::string GetAlwaysOnVpnPackage(Error* error);
 
-  void UpdateBlackholeUserTraffic();
-
   // Initializes patchpanel_client_ if it has not already been initialized.
   void InitializePatchpanelClient();
 
@@ -956,10 +952,6 @@ class Manager {
   uint32_t download_rate_kbits_;
   uint32_t upload_rate_kbits_;
 
-  // Whether user traffic should be blocked on the interfaces managed by
-  // Manager. Also see kUserTrafficUsernames in routing_tables.cc for the
-  // definition of user traffic.
-  bool should_blackhole_user_traffic_;
   // Map of active portal detectors for CreateConnectivityReport, indexed by
   // the Connection interface name.
   std::map<std::string, std::unique_ptr<PortalDetector>>

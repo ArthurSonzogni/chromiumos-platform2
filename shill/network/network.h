@@ -82,12 +82,6 @@ class Network {
     // OnGetSLAACAddress, OnIPConfigsPropertyUpdated, and OnConnectionUpdated
     // (if IPv4 is not yet configured).
     virtual void OnIPv6ConfiguredWithSLAACAddress() = 0;
-
-    // TODO(b/232177767): Get the list of uids whose traffic should be blocked
-    // on this connection. This is not a signal or callback. Put it here just to
-    // avoid introducing Manager dependency on Network. Find a better solution
-    // later.
-    virtual std::vector<uint32_t> GetBlackholedUids() = 0;
   };
 
   // Options for starting a network.

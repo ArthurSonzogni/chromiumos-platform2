@@ -151,12 +151,10 @@ class Connection {
   // matches one of the interface's addresses to the per-device table.
   bool use_if_addrs_;
   std::vector<IPAddress> allowed_dsts_;
-  std::vector<uint32_t> blackholed_uids_;
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
   bool fixed_ip_params_;
   uint32_t table_id_;
-  uint32_t blackhole_table_id_;
   IPAddress local_;
   IPAddress gateway_;
 

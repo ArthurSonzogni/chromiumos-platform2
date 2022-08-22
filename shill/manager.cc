@@ -211,7 +211,6 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
-      should_blackhole_user_traffic_(false),
       tethering_manager_(new TetheringManager()) {
   HelpRegisterConstDerivedRpcIdentifier(
       kActiveProfileProperty, &Manager::GetActiveProfileRpcIdentifier);
@@ -2879,39 +2878,6 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
     }
   }
   return interfaces;
-}
-
-bool Manager::ShouldBlackholeUserTraffic(const std::string& device_name) const {
-  if (!should_blackhole_user_traffic_) {
-    return false;
-  }
-  for (const auto& device : devices_) {
-    if (device->UniqueName() == device_name)
-      return true;
-  }
-  return false;
-}
-
-void Manager::UpdateBlackholeUserTraffic() {
-  bool before_update = should_blackhole_user_traffic_;
-  if (props_.always_on_vpn_package.empty()) {
-    should_blackhole_user_traffic_ = false;
-  } else {
-    should_blackhole_user_traffic_ = true;
-    for (const auto& service : services_) {
-      if (service->IsOnline() &&
-          service->IsAlwaysOnVpn(props_.always_on_vpn_package)) {
-        should_blackhole_user_traffic_ = false;
-        break;
-      }
-    }
-  }
-  if (should_blackhole_user_traffic_ == before_update) {
-    return;
-  }
-  for (const auto& device : devices_) {
-    device->UpdateBlackholeUserTraffic();
-  }
 }
 
 void Manager::InitializePatchpanelClient() {

@@ -186,18 +186,6 @@ NetworkConfig IPConfig::ApplyNetworkConfig(const NetworkConfig& config) {
   return current_config;
 }
 
-bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {
-  if (properties_.blackholed_uids == uids) {
-    return false;
-  }
-  properties_.blackholed_uids = uids;
-  return true;
-}
-
-bool IPConfig::ClearBlackholedUids() {
-  return SetBlackholedUids(std::vector<uint32_t>());
-}
-
 void IPConfig::UpdateProperties(const Properties& properties) {
   properties_ = properties;
   EmitChanges();
@@ -233,7 +221,6 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.domain_name == rhs.domain_name &&
          lhs.domain_search == rhs.domain_search && lhs.gateway == rhs.gateway &&
          lhs.method == rhs.method && lhs.peer_address == rhs.peer_address &&
-         lhs.blackholed_uids == rhs.blackholed_uids &&
          lhs.default_route == rhs.default_route &&
          lhs.inclusion_list == rhs.inclusion_list &&
          lhs.exclusion_list == rhs.exclusion_list &&

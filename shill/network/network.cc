@@ -141,8 +141,6 @@ void Network::SetupConnection(IPConfig* ipconfig) {
         interface_index_, interface_name_, fixed_ip_params_, technology_,
         device_info_);
   }
-  const auto& blackhole_uids = event_handler_->GetBlackholedUids();
-  ipconfig->SetBlackholedUids(blackhole_uids);
   connection_->UpdateFromIPConfig(ipconfig->properties());
   ConfigureStaticIPv6Address();
   event_handler_->OnConnectionUpdated(ipconfig);

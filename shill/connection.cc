@@ -83,7 +83,6 @@ Connection::Connection(int interface_index,
       use_if_addrs_(false),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
-      blackhole_table_id_(RT_TABLE_UNSPEC),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
       device_info_(device_info),
@@ -103,9 +102,6 @@ Connection::~Connection() {
     device_info_->FlushAddresses(interface_index_, IPAddress::kFamilyUnknown);
   }
   routing_table_->FlushRules(interface_index_);
-  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
-    routing_table_->FreeAdditionalTableId(blackhole_table_id_);
-  }
 }
 
 bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
@@ -286,22 +282,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
   }
 
-  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
-    routing_table_->FreeAdditionalTableId(blackhole_table_id_);
-    blackhole_table_id_ = RT_TABLE_UNSPEC;
-  }
-
-  blackholed_uids_ = properties.blackholed_uids;
-
-  if (!blackholed_uids_.empty()) {
-    blackhole_table_id_ = routing_table_->RequestAdditionalTableId();
-    CHECK(blackhole_table_id_);
-    routing_table_->CreateBlackholeRoute(
-        interface_index_, IPAddress::kFamilyIPv4, 0, blackhole_table_id_);
-    routing_table_->CreateBlackholeRoute(
-        interface_index_, IPAddress::kFamilyIPv6, 0, blackhole_table_id_);
-  }
-
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv6, 0, table_id_);
@@ -342,23 +322,7 @@ void Connection::UpdateRoutingPolicy() {
   // only.
   bool no_ipv6 = technology_ == Technology::kCellular && !is_primary_physical_;
 
-  uint32_t blackhole_offset = 0;
-  if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
-    blackhole_offset = 1;
-    for (const auto& uid : blackholed_uids_) {
-      auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                       .SetPriority(priority_)
-                       .SetTable(blackhole_table_id_)
-                       .SetUidRange({uid, uid});
-      routing_table_->AddRule(interface_index_, entry);
-      if (no_ipv6) {
-        continue;
-      }
-      routing_table_->AddRule(interface_index_, entry.FlipFamily());
-    }
-  }
-
-  AllowTrafficThrough(table_id_, priority_ + blackhole_offset, no_ipv6);
+  AllowTrafficThrough(table_id_, priority_, no_ipv6);
 
   // b/177620923 Add uid rules just before the default rule to route to the VPN
   // interface any untagged traffic owner by a uid routed through VPN
@@ -383,7 +347,7 @@ void Connection::UpdateRoutingPolicy() {
     // rules are not inadvertently too aggressive.
     auto main_table_rule =
         RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetPriority(priority_ + blackhole_offset - 1)
+            .SetPriority(priority_ - 1)
             .SetTable(RT_TABLE_MAIN);
     routing_table_->AddRule(interface_index_, main_table_rule);
     routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());

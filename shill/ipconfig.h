@@ -57,8 +57,6 @@ class IPConfig {
     // Note that presense of this field indicates that this is a p2p interface,
     // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
-    // List of uids that have their traffic blocked.
-    std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default
     // route. This flag only affects IPv4.
     bool default_route = true;
@@ -132,10 +130,6 @@ class IPConfig {
   // Applies |config| to this object and inform D-Bus listeners of the change.
   // Returns the current config before applying the incoming one.
   NetworkConfig ApplyNetworkConfig(const NetworkConfig& config);
-
-  // Returns whether the function call changed the configuration.
-  bool SetBlackholedUids(const std::vector<uint32_t>& uids);
-  bool ClearBlackholedUids();
 
  private:
   friend class IPConfigTest;

@@ -74,24 +74,6 @@ TEST_F(IPConfigTest, DeviceName) {
   EXPECT_EQ(kDeviceName, ipconfig_->device_name());
 }
 
-TEST_F(IPConfigTest, SetBlackholedUids) {
-  std::vector<uint32_t> uids = {1000, 216};
-  std::vector<uint32_t> empty_uids = {};
-  // SetBlackholedUids returns true if the value changes
-  EXPECT_TRUE(ipconfig_->SetBlackholedUids(uids));
-  EXPECT_EQ(uids, ipconfig_->properties().blackholed_uids);
-
-  // SetBlackholeBrowserTraffic returns false if the value does not change
-  EXPECT_FALSE(ipconfig_->SetBlackholedUids(uids));
-  EXPECT_EQ(uids, ipconfig_->properties().blackholed_uids);
-
-  EXPECT_TRUE(ipconfig_->ClearBlackholedUids());
-  EXPECT_EQ(empty_uids, ipconfig_->properties().blackholed_uids);
-
-  EXPECT_FALSE(ipconfig_->ClearBlackholedUids());
-  EXPECT_EQ(empty_uids, ipconfig_->properties().blackholed_uids);
-}
-
 TEST_F(IPConfigTest, UpdateProperties) {
   IPConfig::Properties properties;
   properties.address = "1.2.3.4";

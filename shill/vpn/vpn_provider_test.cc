@@ -235,7 +235,6 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 TEST_F(VPNProviderTest, CreateService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
-  static const char kHost[] = "test-vpn-host";
   static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
                                        kProviderThirdPartyVpn,
                                        kProviderWireGuard};
@@ -250,7 +249,6 @@ TEST_F(VPNProviderTest, CreateService) {
     EXPECT_EQ(type, service->driver()->GetProviderType());
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
     EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << type;
-    EXPECT_FALSE(service->IsAlwaysOnVpn(kHost)) << type;
     EXPECT_TRUE(error.IsSuccess()) << type;
   }
   Error error;
@@ -277,7 +275,6 @@ TEST_F(VPNProviderTest, CreateArcService) {
   EXPECT_EQ(kProviderArcVpn, service->driver()->GetProviderType());
   EXPECT_EQ(kName, GetServiceFriendlyName(service));
   EXPECT_EQ(kStorageID, service->GetStorageIdentifier());
-  EXPECT_TRUE(service->IsAlwaysOnVpn(kHost));
   EXPECT_TRUE(error.IsSuccess());
 }
 
