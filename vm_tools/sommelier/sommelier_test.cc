@@ -89,11 +89,24 @@ uint32_t AuraSurfaceId(sl_window* window) {
   return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_surface));
 }
 
+uint32_t AuraToplevelId(sl_window* window) {
+  assert(window->aura_toplevel);
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_toplevel));
+}
+
 // This family of functions retrieves Sommelier's listeners for events received
 // from the host, so we can call them directly in the test rather than
 // (a) exporting the actual functions (which are typically static), or (b)
 // creating a fake host compositor to dispatch events via libwayland
 // (unnecessarily complicated).
+const zaura_toplevel_listener* HostEventHandler(
+    struct zaura_toplevel* aura_toplevel) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(aura_toplevel));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const zaura_toplevel_listener*>(listener);
+}
+
 const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface) {
   const void* listener =
       wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_surface));
@@ -399,7 +412,7 @@ class WaylandTest : public ::testing::Test {
     sl_registry_handler(&ctx, registry, next_server_id++, "xdg_wm_base",
                         XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION);
     sl_registry_handler(&ctx, registry, next_server_id++, "zaura_shell",
-                        ZAURA_SURFACE_SET_FULLSCREEN_MODE_SINCE_VERSION);
+                        ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS_SINCE_VERSION);
   }
 
   // Set up one or more fake outputs for the test.
@@ -1000,6 +1013,150 @@ TEST_F(X11Test, XdgToplevelConfigureTriggersX11Configure) {
       ->configure(nullptr, window->xdg_toplevel, width, height, &states);
   HostEventHandler(window->xdg_surface)
       ->configure(nullptr, window->xdg_surface, 123 /* serial */);
+}
+
+TEST_F(X11Test, AuraToplevelConfigureTriggersX11Configure) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  ctx.use_direct_scale = 1;
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int x = 50;
+  const int y = 60;
+  const int width = 1024;
+  const int height = 768;
+
+  // Assert: Set up expectations for Sommelier to send appropriate X11 requests.
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->frame_id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({x, y, width, height, 0}))))
+      .Times(1);
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({0, 0, width, height, 0}))))
+      .Times(1);
+
+  // Act: Pretend the host compositor sends us some configure events.
+  wl_array states;
+  wl_array_init(&states);
+  uint32_t* state =
+      static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t)));
+  *state = XDG_TOPLEVEL_STATE_ACTIVATED;
+
+  HostEventHandler(window->aura_toplevel)
+      ->configure(nullptr, window->aura_toplevel, x, y, width, height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123 /* serial */);
+}
+
+TEST_F(X11Test, AuraToplevelOriginChangeTriggersX11Configure) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int x = 50;
+  const int y = 60;
+
+  // Assert
+  EXPECT_CALL(xcb, configure_window(testing::_, window->frame_id,
+                                    XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+                                    ValueListMatches(std::vector({x, y}))))
+      .Times(1);
+
+  // Act
+  HostEventHandler(window->aura_toplevel)
+      ->origin_change(nullptr, window->aura_toplevel, x, y);
+}
+
+// When the host compositor sends a window position, make sure we don't send
+// a bounds request back. Otherwise we get glitching due to rounding and race
+// conditions.
+TEST_F(X11Test, AuraToplevelOriginChangeDoesNotRoundtrip) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int x = 50;
+  const int y = 60;
+
+  // Assert: set_window_bounds() never sent.
+  EXPECT_CALL(mock_wayland_channel_,
+              send(testing::Not(AtLeastOneMessage(
+                  AuraToplevelId(window), ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS))))
+      .Times(testing::AtLeast(0));
+
+  // Act
+  HostEventHandler(window->aura_toplevel)
+      ->origin_change(nullptr, window->aura_toplevel, x, y);
+  Pump();
+}
+
+TEST_F(X11Test, X11ConfigureRequestPositionIsForwardedToAuraHost) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;  // pretend window is mapped
+  Pump();               // discard Wayland requests sent in setup
+
+  // Assert
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AtLeastOneMessage(AuraToplevelId(window),
+                                     ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS)))
+      .RetiresOnSaturation();
+
+  // Act
+  xcb_configure_request_event_t configure = {
+      .response_type = XCB_CONFIGURE_REQUEST,
+      .sequence = 123,
+      .parent = window->frame_id,
+      .window = window->id,
+      .x = 10,
+      .y = 20,
+      .width = 300,
+      .height = 400,
+      .value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                    XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT};
+  sl_handle_configure_request(&ctx, &configure);
+  Pump();
+}
+
+TEST_F(X11Test, X11ConfigureRequestWithoutPositionIsNotForwardedToAuraHost) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;  // pretend window is mapped
+
+  // Assert: set_window_bounds() never sent.
+  EXPECT_CALL(mock_wayland_channel_,
+              send(testing::Not(AtLeastOneMessage(
+                  AuraToplevelId(window), ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS))))
+      .Times(testing::AtLeast(0));
+
+  // Act
+  xcb_configure_request_event_t configure = {
+      .response_type = XCB_CONFIGURE_REQUEST,
+      .sequence = 123,
+      .parent = window->frame_id,
+      .window = window->id,
+      .width = 300,
+      .height = 400,
+      .value_mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT};
+  sl_handle_configure_request(&ctx, &configure);
+  Pump();
 }
 
 }  // namespace sommelier

@@ -182,6 +182,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->timing = NULL;
   ctx->trace_filename = NULL;
   ctx->enable_xshape = false;
+  ctx->enable_x11_move_windows = false;
   ctx->trace_system = false;
   ctx->use_direct_scale = false;
 

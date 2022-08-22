@@ -184,6 +184,7 @@ struct sl_context {
   Timing* timing;
   const char* trace_filename;
   bool enable_xshape;
+  bool enable_x11_move_windows;
   bool trace_system;
   bool use_explicit_fence;
   bool use_virtgpu_channel;

@@ -31,6 +31,7 @@ struct sl_config {
 
 struct sl_host_surface;
 
+// An X11 window.
 struct sl_window {
   sl_window(struct sl_context* ctx,
             xcb_window_t id,
@@ -47,10 +48,14 @@ struct sl_window {
   uint32_t host_surface_id = 0;
   int unpaired = 1;
   bool shaped = false;
+
+  // Window position and size are specified in X11's coordinate space
+  // (Virtual Coordinate Space, as defined in sommelier-transform.h).
   int x = 0;
   int y = 0;
   int width = 0;
   int height = 0;
+
   int border_width = 0;
   int depth = 0;
   int managed = 0;
@@ -86,6 +91,7 @@ struct sl_window {
   struct xdg_toplevel* xdg_toplevel = nullptr;
   struct xdg_popup* xdg_popup = nullptr;
   struct zaura_surface* aura_surface = nullptr;
+  struct zaura_toplevel* aura_toplevel = nullptr;
   struct sl_host_surface* paired_surface = nullptr;
   struct pixman_region32 shape_rectangles;
   struct wl_list link = {};
@@ -188,6 +194,7 @@ struct sl_mwm_hints {
 #define WM_STATE_ICONIC 3
 
 void sl_window_update(struct sl_window* window);
+void sl_toplevel_send_window_bounds_to_host(struct sl_window* window);
 void sl_update_application_id(struct sl_context* ctx, struct sl_window* window);
 void sl_configure_window(struct sl_window* window);
 void sl_send_configure_notify(struct sl_window* window);

@@ -5,6 +5,7 @@
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <cstdint>
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
@@ -213,15 +214,26 @@ static void sl_internal_xdg_surface_configure(void* data,
 static const struct xdg_surface_listener sl_internal_xdg_surface_listener = {
     sl_internal_xdg_surface_configure};
 
-static void sl_internal_xdg_toplevel_configure(
-    void* data,
-    struct xdg_toplevel* xdg_toplevel,
-    int32_t width,
-    int32_t height,
-    struct wl_array* states) {
-  TRACE_EVENT("other", "sl_internal_xdg_toplevel_configure");
-  struct sl_window* window =
-      static_cast<sl_window*>(xdg_toplevel_get_user_data(xdg_toplevel));
+////////////////////////////////////////////////////////////////////////////////
+// common toplevel code
+
+static const int32_t kUnspecifiedCoord = INT32_MIN;
+
+// Handle a configure event on a toplevel object from the compositor.
+//
+// window: The window being configured.
+// x: The configured X coordinate in host logical space, or kUnspecifiedCoord
+//    for toplevel objects that don't send positions.
+// y: The configured Y coordinate in host logical space, or kUnspecifiedCoord
+//    for toplevel objects that don't send positions.
+// width, height: Configured size in host logical space.
+// states: Array of XDG_TOPLEVEL_STATE_* enum values.
+static void sl_internal_toplevel_configure(struct sl_window* window,
+                                           int32_t x,
+                                           int32_t y,
+                                           int32_t width,
+                                           int32_t height,
+                                           struct wl_array* states) {
   int activated = 0;
   uint32_t* state;
   int i = 0;
@@ -255,7 +267,17 @@ static void sl_internal_xdg_toplevel_configure(
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
                                XCB_CONFIG_WINDOW_HEIGHT |
                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
-    if (!(window->size_flags & (US_POSITION | P_POSITION))) {
+    if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
+      // Convert to virtual coordinates
+      int32_t guest_x = x;
+      int32_t guest_y = y;
+      sl_transform_host_to_guest(window->ctx, window->paired_surface, &guest_x,
+                                 &guest_y);
+
+      window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+      window->next_config.values[i++] = guest_x;
+      window->next_config.values[i++] = guest_y;
+    } else if (!(window->size_flags & (US_POSITION | P_POSITION))) {
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       if (window->paired_surface && window->paired_surface->output) {
         window->next_config.values[i++] =
@@ -313,6 +335,28 @@ static void sl_internal_xdg_toplevel_configure(
   window->next_config.states_length = i;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// xdg_toplevel event listeners
+//
+// https://crsrc.org/s/?q=f:sommelier/protocol/xdg-shell.xml%20name=\"xdg_toplevel
+//
+// In Exo, this is sent from
+// https://crsrc.org/s/?q=f:exo%2Fwayland.*cc%20xdg_toplevel_send_configure
+static void sl_internal_xdg_toplevel_configure(
+    void* unused_data,
+    struct xdg_toplevel* xdg_toplevel,
+    int32_t width,
+    int32_t height,
+    struct wl_array* states) {
+  TRACE_EVENT("other", "sl_internal_xdg_toplevel_configure");
+  struct sl_window* window =
+      static_cast<sl_window*>(xdg_toplevel_get_user_data(xdg_toplevel));
+  sl_internal_toplevel_configure(window, kUnspecifiedCoord, kUnspecifiedCoord,
+                                 width, height, states);
+}
+
+// In Exo, this is sent from
+// https://crsrc.org/s/?q=f:exo%2Fwayland.*cc%20xdg_toplevel_send_close
 static void sl_internal_xdg_toplevel_close(void* data,
                                            struct xdg_toplevel* xdg_toplevel) {
   TRACE_EVENT("other", "sl_internal_xdg_toplevel_close");
@@ -332,6 +376,102 @@ static void sl_internal_xdg_toplevel_close(void* data,
 
 static const struct xdg_toplevel_listener sl_internal_xdg_toplevel_listener = {
     sl_internal_xdg_toplevel_configure, sl_internal_xdg_toplevel_close};
+
+////////////////////////////////////////////////////////////////////////////////
+// zaura_toplevel event listeners
+//
+// https://crsrc.org/s/?q=f:sommelier/protocol/aura-shell.xml%20name=\"zaura_toplevel
+
+// Sent from Exo here:
+// https://crsrc.org/s/?q=f:exo%2Fwayland.*cc%20zaura_toplevel_send_configure
+static void sl_internal_zaura_toplevel_configure(
+    void* unused_data,
+    struct zaura_toplevel* zaura_toplevel,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height,
+    struct wl_array* states) {
+  TRACE_EVENT("other", "sl_internal_zaura_toplevel_configure");
+  struct sl_window* window =
+      static_cast<sl_window*>(zaura_toplevel_get_user_data(zaura_toplevel));
+
+  // aura_toplevel.configure replaces xdg_toplevel.configure for surfaces on
+  // which zaura_toplevel_set_supports_screen_coordinates() has been called.
+  // So we shouldn't get duplicate events.
+  //
+  // TODO(cpelling): Handle aura-specific states.
+  sl_internal_toplevel_configure(window, x, y, width, height, states);
+}
+
+// Sent from Exo here:
+// https://crsrc.org/s/?q=f:exo%2Fwayland.*cc%20zaura_toplevel_send_origin_change
+static void sl_internal_zaura_toplevel_origin_change(
+    void* data, struct zaura_toplevel* zaura_toplevel, int32_t x, int32_t y) {
+  // aura_toplevel.origin_change is not part of the normal configuration
+  // lifecycle, and is not followed by xdg_surface.configure. So just apply
+  // this change immediately.
+  sl_window* window =
+      static_cast<sl_window*>(zaura_toplevel_get_user_data(zaura_toplevel));
+  int32_t guest_x = x;
+  int32_t guest_y = y;
+  sl_transform_host_to_guest(window->ctx, window->paired_surface, &guest_x,
+                             &guest_y);
+  uint32_t values[] = {static_cast<uint32_t>(guest_x),
+                       static_cast<uint32_t>(guest_y)};
+  window->x = guest_x;
+  window->y = guest_y;
+  xcb()->configure_window(window->ctx->connection, window->frame_id,
+                          XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, values);
+}
+
+static const struct zaura_toplevel_listener
+    sl_internal_zaura_toplevel_listener = {
+        sl_internal_zaura_toplevel_configure,
+        sl_internal_zaura_toplevel_origin_change};
+
+void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
+  // Don't send window bounds if fullscreen/maximized/resizing,
+  // or if the feature is unsupported by the host or disabled by flag.
+  if (!window->allow_resize || !window->ctx->enable_x11_move_windows ||
+      !window->ctx->aura_shell ||
+      window->ctx->aura_shell->version <
+          ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS_SINCE_VERSION ||
+      !window->aura_toplevel) {
+    return;
+  }
+  int32_t x = window->x;
+  int32_t y = window->y;
+  int32_t w = window->width;
+  int32_t h = window->height;
+  if (window->size_flags & P_MIN_SIZE) {
+    if (w < window->min_width)
+      w = window->min_width;
+    if (h < window->min_height)
+      h = window->min_height;
+  }
+  if (window->size_flags & P_MAX_SIZE) {
+    if (w > window->max_width)
+      w = window->max_width;
+    if (h > window->max_height)
+      h = window->max_height;
+  }
+
+  sl_transform_guest_to_host(window->ctx, window->paired_surface, &x, &y);
+  sl_transform_guest_to_host(window->ctx, window->paired_surface, &w, &h);
+
+  // TODO(cpelling): Don't just arbitrarily pick the first output;
+  // instead, choose the one containing the window in guest space.
+  struct sl_host_output* output;
+  wl_list_for_each(output, &window->ctx->host_outputs, link) {
+    zaura_toplevel_set_window_bounds(window->aura_toplevel, x, y, w, h,
+                                     output->proxy);
+    break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void sl_update_application_id(struct sl_context* ctx,
                               struct sl_window* window) {
   TRACE_EVENT("other", "sl_update_application_id");
@@ -525,6 +665,31 @@ void sl_window_update(struct sl_window* window) {
       xdg_toplevel_add_listener(window->xdg_toplevel,
                                 &sl_internal_xdg_toplevel_listener, window);
     }
+
+    // aura_toplevel is only needed for the --enable-x11-move-windows case
+    // right now. Setting it up means we get x and y coordinates in configure
+    // events (aura_toplevel.configure replaces xdg_toplevel.configure), which
+    // changes how windows are positioned in the X server's coordinate space. If
+    // windows end up partially offscreen in that space, we get bugs like
+    // b/269053427.
+    //
+    // Bottom line: If --enable-x11-move-windows is enabled, apps are
+    // responsible for keeping themselves onscreen within X space. If not,
+    // Sommelier is; in which case it should ignore the host compositor's
+    // positioning decisions, since those are made without reference to X space.
+    // Sommelier could listen to aura_toplevel.configure and ignore the x and y
+    // coordinates, but for now the most conservative approach is to avoid using
+    // aura_toplevel entirely. This can be revisited later if we need
+    // aura_toplevel for anything else.
+    if (ctx->enable_x11_move_windows && ctx->aura_shell &&
+        window->xdg_toplevel && !window->aura_toplevel) {
+      window->aura_toplevel = zaura_shell_get_aura_toplevel_for_xdg_toplevel(
+          ctx->aura_shell->internal, window->xdg_toplevel);
+      zaura_toplevel_set_supports_screen_coordinates(window->aura_toplevel);
+      zaura_toplevel_add_listener(window->aura_toplevel,
+                                  &sl_internal_zaura_toplevel_listener, window);
+    }
+
     if (parent)
       xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
     if (window->name)

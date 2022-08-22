@@ -49,7 +49,7 @@
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
 
 // Check that required macro definitions exist.
 #ifndef XWAYLAND_PATH
@@ -1327,8 +1327,9 @@ void sl_handle_map_request(struct sl_context* ctx,
       window->decorated = mwm_hints.decorations & MWM_DECOR_TITLE;
   }
 
-  // Allow user/program controlled position for transients.
-  if (window->transient_for)
+  // Allow user/program controlled position for transients,
+  // or for all windows if --enable_x11_move_windows was specified.
+  if (window->transient_for || ctx->enable_x11_move_windows)
     window->size_flags |= size_hints.flags & (US_POSITION | P_POSITION);
 
   // If startup ID is not set, then try the client leader window.
@@ -1563,6 +1564,19 @@ void sl_handle_configure_request(struct sl_context* ctx,
     window->border_width = 0;
   } else {
     sl_send_configure_notify(window);
+  }
+
+  // If client requested a location change, forward that to the host.
+  //
+  // This is handled as a special case because there's no existing way
+  // to send location changes, and it's done only upon ConfigureRequest
+  // since most of the time the host has authority over window position
+  // (important so that window dragging works properly, for example).
+  //
+  // This implies sending width and height as well, only because we
+  // don't have a way to omit them from the request.
+  if (event->value_mask & (XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y)) {
+    sl_toplevel_send_window_bounds_to_host(window);
   }
 }
 
@@ -3343,6 +3357,8 @@ static void sl_print_usage() {
       "  --xwayland-gl-driver-path=PATH\tPath to GL drivers for Xwayland\n"
       "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
       "  --enable-xshape\t\tEnable X11 XShape extension support\n"
+      "  --enable-x11-move-windows\t\tLet X11 apps control window position,\n"
+      "\tif the host compositor supports the aura_shell protocol.\n"
       "  --no-exit-with-child\t\tKeep process alive after child exists\n"
       "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
       "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
@@ -3798,6 +3814,8 @@ int real_main(int argc, char** argv) {
       ctx.use_explicit_fence = true;
     } else if (strstr(arg, "--enable-xshape") == arg) {
       ctx.enable_xshape = true;
+    } else if (strstr(arg, "--enable-x11-move-windows") == arg) {
+      ctx.enable_x11_move_windows = true;
     } else if (strstr(arg, "--virtgpu-channel") == arg) {
       ctx.use_virtgpu_channel = true;
     } else if (strstr(arg, "--noop-driver") == arg) {
