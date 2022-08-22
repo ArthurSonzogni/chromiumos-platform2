@@ -148,6 +148,7 @@ static_library("libconcierge") {
     "../concierge/shared_data.cc",
     "../concierge/shill_client.cc",
     "../concierge/sibling_vms.cc",
+    "../concierge/spaced_observer.cc",
     "../concierge/ssh_keys.cc",
     "../concierge/startup_listener_impl.cc",
     "../concierge/tap_device_builder.cc",
@@ -167,6 +168,7 @@ static_library("libconcierge") {
     "crosvm_control",
   ]
   all_dependent_pkg_deps = [
+    "blkid",
     "grpc++",
     "libarchive",
     "libcrossystem",
@@ -174,6 +176,7 @@ static_library("libconcierge") {
     "libminijail",
     "libqcow_utils",
     "libshill-client",
+    "libspaced",
     "protobuf",
     "re2",
     "system_api",

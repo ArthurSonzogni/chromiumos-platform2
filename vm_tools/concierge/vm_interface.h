@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <crosvm/crosvm_control.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"

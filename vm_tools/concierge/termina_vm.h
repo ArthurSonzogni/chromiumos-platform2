@@ -237,6 +237,11 @@ class TerminaVm final : public VmBaseImpl {
   // Adjusts the amount of CPU the Termina VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
+  // Sends a stateful update to be handled by the VM. Generally this means
+  // adjusting the size of a storage balloon and/or tweaking disk settings (i.e
+  // proc/sys/vm/dirty_ratio).
+  void HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {}
+
   static std::unique_ptr<TerminaVm> CreateForTesting(
       std::unique_ptr<patchpanel::Subnet> subnet,
       uint32_t vsock_cid,

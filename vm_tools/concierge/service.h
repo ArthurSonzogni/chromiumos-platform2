@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -31,6 +32,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <grpcpp/grpcpp.h>
+#include <spaced/disk_usage_proxy.h>
 
 #include "base/files/file_path.h"
 #include "featured/feature_library.h"
@@ -39,6 +41,7 @@
 #include "vm_tools/concierge/manatee_memory_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
+#include "vm_tools/concierge/spaced_observer.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
@@ -400,6 +403,21 @@ class Service final {
                         VmBuilder& vm_builder,
                         std::string& error);
 
+  // Handles StatefulDiskSpaceUpdate from spaced.
+  void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& update);
+
+  // Delegates a stateful disk update to be handled by the VM with the specified
+  // |vm_id|.
+  void HandleStatefulDiskSpaceUpdate(
+      VmId vm_id, const spaced::StatefulDiskSpaceUpdate update);
+
+  // Adds |vm_id| to the list of VMs that are using storage ballooning.
+  void AddStorageBalloonVm(VmId vm_id);
+
+  // Removes the |vm_id| from the list of VMs that are using storage
+  // ballooning.
+  void RemoveStorageBalloonVm(VmId vm_id);
+
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;
 
@@ -493,6 +511,12 @@ class Service final {
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
+
+  // Proxy for interacting with spaced.
+  std::unique_ptr<SpacedObserver> spaced_observer_;
+
+  // List of active VMs using storage ballooning.
+  std::set<VmId> storage_balloon_vms_;
 
   // Used to serialize erasing and creating the GPU shader disk cache in the
   // event that VMs are started simultaneously from multiple threads.

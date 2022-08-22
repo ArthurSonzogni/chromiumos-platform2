@@ -64,6 +64,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
+#include <blkid/blkid.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
@@ -1398,6 +1399,12 @@ bool Service::Init() {
       base::BindRepeating(&Service::HandleSuspendDone,
                           weak_ptr_factory_.GetWeakPtr()));
 
+  // Setup D-Bus proxy for spaced.
+  spaced_observer_ = std::make_unique<SpacedObserver>(
+      base::BindRepeating(&Service::OnStatefulDiskSpaceUpdate,
+                          weak_ptr_factory_.GetWeakPtr()),
+      bus_);
+
   // Get the D-Bus proxy for communicating with cicerone.
   cicerone_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::cicerone::kVmCiceroneServiceName,
@@ -1563,6 +1570,13 @@ void Service::HandleChildExit() {
         mms_->RemoveVm(iter->second->GetInfo().vm_memory_id);
       }
 
+      // Remove it from VMs using storage ballooning. This is quick and needs
+      // to be done to clean up balloon state before we notify others of the
+      // VM being stopped.
+      if (iter->second->GetInfo().storage_ballooning) {
+        RemoveStorageBalloonVm(iter->first);
+      }
+
       // Notify that the VM has exited.
       NotifyVmStopped(iter->first, iter->second->GetInfo().cid, VM_EXITED);
 
@@ -1582,6 +1596,35 @@ void Service::HandleSigterm() {
   }
 }
 
+// Helper function to return the filesystem type of a given file/path. If no
+// file system exists, or if the function fails, it will return an empty string.
+std::string GetFilesystem(const base::FilePath& disk_location) {
+  std::string output;
+  blkid_cache blkid_cache;
+  // No cache file is used as it should always query information from
+  // the device, i.e. setting cache file to /dev/null.
+  if (blkid_get_cache(&blkid_cache, "/dev/null") != 0) {
+    LOG(ERROR) << "Failed to initialize blkid cache handler";
+    return output;
+  }
+  blkid_dev dev = blkid_get_dev(blkid_cache, disk_location.value().c_str(),
+                                BLKID_DEV_NORMAL);
+  if (!dev) {
+    LOG(ERROR) << "Failed to get device for '" << disk_location.value().c_str()
+               << "'";
+    blkid_put_cache(blkid_cache);
+    return output;
+  }
+
+  char* filesystem_type =
+      blkid_get_tag_value(blkid_cache, "TYPE", disk_location.value().c_str());
+  if (filesystem_type) {
+    output = filesystem_type;
+  }
+  blkid_put_cache(blkid_cache);
+  return output;
+}
+
 StartVmResponse Service::StartVm(StartVmRequest request,
                                  std::unique_ptr<dbus::MessageReader> reader,
                                  VmMemoryId vm_memory_id) {
@@ -1592,8 +1635,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmInfo::VmType classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(classification);
-
-  vm_info->set_storage_ballooning(request.storage_ballooning());
 
   std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
       bios_fd, pflash_fd;
@@ -1816,6 +1857,14 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     response.set_failure_reason(
         "Internal error: unable to determine stateful disk size");
     return response;
+  }
+
+  // Storage ballooning only enabled for ext4 setups of Borealis in order
+  // to not interfere with the storage management solutions of legacy
+  // setups.
+  if (classification == VmInfo::BOREALIS &&
+      GetFilesystem(stateful_path) == "ext4") {
+    vm_info->set_storage_ballooning(request.storage_ballooning());
   }
 
   for (const auto& disk : request.disks()) {
@@ -2201,6 +2250,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
   SendVmStartedSignal(vm_id, *vm_info, response.status());
 
+  if (vm_info->storage_ballooning()) {
+    AddStorageBalloonVm(vm_id);
+  }
   vms_[vm_id] = std::move(vm);
   return response;
 }
@@ -2263,6 +2315,10 @@ bool Service::StopVm(const VmId& vm_id, VmStopReason reason) {
 
   // Notify that we have stopped a VM.
   NotifyVmStopped(iter->first, iter->second->GetInfo().cid, reason);
+
+  if (iter->second->GetInfo().storage_ballooning) {
+    RemoveStorageBalloonVm(iter->first);
+  }
 
   vms_.erase(iter);
   return true;
@@ -2777,23 +2833,6 @@ bool Service::StartTermina(TerminaVm* vm,
   }
 
   return true;
-}
-
-// Helper function to return the filesystem type of a given file/path. If no
-// file system exists, or if the function fails, it will return an empty string.
-std::string GetFilesystem(base::FilePath disk_location) {
-  int exit_code = -1;
-  std::string output;
-  base::GetAppOutputWithExitCode(
-      base::CommandLine({"/sbin/blkid", "--match-tag TYPE", "--output value",
-                         disk_location.value()}),
-      &output, &exit_code);
-  if (exit_code != 0) {
-    LOG(WARNING) << "Can't get the filesystem for '"
-                 << disk_location.value().c_str()
-                 << "', exit status: " << exit_code;
-  }
-  return output;
 }
 
 // Creates a filesystem at the specified file/path.
@@ -4740,6 +4779,38 @@ bool Service::SetWaylandServer(const std::string& request_wayland_server,
   }
   vm_builder.SetWaylandSocket(std::move(computed_wayland_server));
   return true;
+}
+
+void Service::AddStorageBalloonVm(VmId vm_id) {
+  storage_balloon_vms_.insert(vm_id);
+}
+
+void Service::RemoveStorageBalloonVm(VmId vm_id) {
+  storage_balloon_vms_.erase(vm_id);
+}
+
+void Service::OnStatefulDiskSpaceUpdate(
+    const spaced::StatefulDiskSpaceUpdate& update) {
+  for (auto& vm_id : storage_balloon_vms_) {
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Service::HandleStatefulDiskSpaceUpdate,
+                       weak_ptr_factory_.GetWeakPtr(), vm_id, update));
+  }
+}
+
+void Service::HandleStatefulDiskSpaceUpdate(
+    VmId vm_id, const spaced::StatefulDiskSpaceUpdate update) {
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    storage_balloon_vms_.erase(vm_id);
+    return;
+  }
+  auto classification = iter->second->GetInfo().type;
+  if (classification == VmInfo::BOREALIS || classification == VmInfo::TERMINA) {
+    static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
+  }
 }
 
 }  // namespace concierge
