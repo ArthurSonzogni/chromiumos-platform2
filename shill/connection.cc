@@ -100,7 +100,7 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   if (!fixed_ip_params_) {
-    device_info_->FlushAddresses(interface_index_);
+    device_info_->FlushAddresses(interface_index_, IPAddress::kFamilyUnknown);
   }
   routing_table_->FlushRules(interface_index_);
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
@@ -261,8 +261,11 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
       // The address has changed for this interface.  We need to flush
       // everything and start over.
       LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
+      // TODO(b/243336792): FlushRoutesWithTag() will not remove the IPv6 routes
+      // managed by the kernel so this will not cause any problem now. Revisit
+      // this part later.
       routing_table_->FlushRoutesWithTag(interface_index_);
-      device_info_->FlushAddresses(interface_index_);
+      device_info_->FlushAddresses(interface_index_, local.family());
     }
 
     LOG(INFO) << __func__ << ": Installing with parameters:"

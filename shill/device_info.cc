@@ -726,7 +726,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
   if (flush) {
     // Reset the routing table and addresses.
     routing_table_->FlushRoutes(interface_index);
-    FlushAddresses(interface_index);
+    FlushAddresses(interface_index, IPAddress::kFamilyUnknown);
   }
 
   manager_->UpdateUninitializedTechnologies();
@@ -988,13 +988,20 @@ std::vector<IPAddress> DeviceInfo::GetAddresses(int interface_index) const {
   return addresses;
 }
 
-void DeviceInfo::FlushAddresses(int interface_index) const {
-  SLOG(this, 2) << __func__ << "(" << interface_index << ")";
+void DeviceInfo::FlushAddresses(int interface_index,
+                                IPAddress::Family family) const {
+  SLOG(this, 2) << __func__ << ": if_index=" << interface_index
+                << ", family=" << family;
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return;
   }
   for (const auto& address_info : info->ip_addresses) {
+    // Skip if family is specified and not matched.
+    if (family != IPAddress::kFamilyUnknown &&
+        family != address_info.address.family()) {
+      continue;
+    }
     if (address_info.address.family() == IPAddress::kFamilyIPv4 ||
         (address_info.scope == RT_SCOPE_UNIVERSE &&
          (address_info.flags & ~IFA_F_TEMPORARY) == 0)) {

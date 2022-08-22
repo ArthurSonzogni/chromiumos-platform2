@@ -190,10 +190,12 @@ class ConnectionTest : public Test {
                 FlushRoutesWithTag(connection_->interface_index_));
     EXPECT_CALL(routing_table_, FlushRules(connection_->interface_index_));
     if (connection_->fixed_ip_params_) {
-      EXPECT_CALL(*device_info_, FlushAddresses(connection_->interface_index_))
+      EXPECT_CALL(*device_info_, FlushAddresses(connection_->interface_index_,
+                                                IPAddress::kFamilyUnknown))
           .Times(0);
     } else {
-      EXPECT_CALL(*device_info_, FlushAddresses(connection_->interface_index_));
+      EXPECT_CALL(*device_info_, FlushAddresses(connection_->interface_index_,
+                                                IPAddress::kFamilyUnknown));
     }
   }
 
@@ -884,7 +886,8 @@ TEST_F(ConnectionTest, HasOtherAddress) {
                               IsIPAddress(local_address_, kPrefix0)))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(device->interface_index()));
-  EXPECT_CALL(*device_info_, FlushAddresses(device->interface_index()));
+  EXPECT_CALL(*device_info_, FlushAddresses(device->interface_index(),
+                                            local_address_.family()));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(device->interface_index(),
                                   IsIPAddress(local_address_, kPrefix0),

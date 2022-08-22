@@ -45,7 +45,10 @@ class MockDeviceInfo : public DeviceInfo {
               (const, override));
   MOCK_METHOD(bool, GetFlags, (int, unsigned int*), (const, override));
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (int), (const, override));
-  MOCK_METHOD(void, FlushAddresses, (int), (const, override));
+  MOCK_METHOD(void,
+              FlushAddresses,
+              (int, IPAddress::Family),
+              (const, override));
   MOCK_METHOD(bool,
               HasOtherAddress,
               (int, const IPAddress&),

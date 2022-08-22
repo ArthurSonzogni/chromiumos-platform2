@@ -104,8 +104,12 @@ class DeviceInfo {
                              uint64_t* tx_bytes) const;
   virtual std::vector<IPAddress> GetAddresses(int interface_index) const;
 
-  // Flush all addresses associated with |interface_index|.
-  virtual void FlushAddresses(int interface_index) const;
+  // Flushes all addresses associated with |interface_index|. If |family| is
+  // either kFamilyIPv4 or kFamilyIPv6, only the addresses with that family will
+  // be removed. kFamilyUnknown means to remove all addresses.
+  virtual void FlushAddresses(
+      int interface_index,
+      IPAddress::Family family = IPAddress::kFamilyUnknown) const;
   // Returns whether this interface does not have |this_address|
   // but has another non-temporary address of the same family.
   virtual bool HasOtherAddress(int interface_index,

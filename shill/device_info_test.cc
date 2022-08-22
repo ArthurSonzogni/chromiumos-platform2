@@ -842,14 +842,32 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
   message = BuildAddressMessage(RTNLMessage::kModeAdd, address4,
                                 IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
+  IPAddress address5(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
+  SendMessageToDeviceInfo(*message);
 
-  // DeviceInfo now has 4 addresses associated with it, but only two of
-  // them are valid for flush.
+  // Remove all.
   EXPECT_CALL(rtnl_handler_,
               RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address1)));
   EXPECT_CALL(rtnl_handler_,
               RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address2)));
-  device_info_.FlushAddresses(kTestDeviceIndex);
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address5)));
+  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyUnknown);
+
+  // Remove IPv4.
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address5)));
+  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyIPv4);
+
+  // Remove IPv6.
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address1)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address2)));
+  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyIPv6);
 }
 
 TEST_F(DeviceInfoTest, HasOtherAddress) {
