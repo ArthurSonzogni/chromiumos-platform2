@@ -1,8 +1,8 @@
-# The Chromium OS Platform
+# The ChromiumOS Platform
 
-This repo holds (most) of the custom code that makes up the Chromium OS
+This repo holds (most) of the custom code that makes up the ChromiumOS
 platform.  That largely covers daemons, programs, and libraries that were
-written specifically for Chromium OS.
+written specifically for ChromiumOS.
 
 We moved from multiple separate repos in platform/ to a single repo in
 platform2/ for a number of reasons:
@@ -18,7 +18,7 @@ standalone already (such as vboot), or never got around to being folded in
 
 Similarly, some projects that were merged in, were then merged back out.
 This was due to the evolution of the Brillo project and collaboration with
-Android.  That means the AOSP repos are the upstream and Chromium OS carries
+Android.  That means the AOSP repos are the upstream and ChromiumOS carries
 copies.
 
 # Local Project Directory
@@ -32,7 +32,7 @@ copies.
 | [biod](./biod/) | Biometrics daemon |
 | [bootid-logger](./bootid-logger/) | Simple command to record the current boot id to the log. |
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
-| [camera](./camera/) | Chrome OS Camera daemon |
+| [camera](./camera/) | ChromeOS Camera daemon |
 | [cfm-dfu-notification](./cfm-dfu-notification/) | CFM specific library for DFU notifications |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |
 | [chargesplash](./chargesplash/) | Frecon-based charging indicator |
@@ -45,8 +45,8 @@ copies.
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
 | [cronista](./cronista/) | Tamper evident storage daemon |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
-| [crosdns](./crosdns/) | Hostname resolution service for Chrome OS |
-| [crosh](./crosh/) | The Chromium OS shell |
+| [crosdns](./crosdns/) | Hostname resolution service for ChromeOS |
+| [crosh](./crosh/) | The ChromiumOS shell |
 | [croslog](./croslog/) | The log manipulation command |
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
 | [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
@@ -72,9 +72,9 @@ copies.
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hardware_verifier](./hardware_verifier/) | Hardware verifier tool |
-| [hermes](./hermes/) | Chrome OS LPA implementation for eSIM hardware support |
-| [hiberman](./hiberman/) | Chrome OS Hibernation Manager |
-| [hps](./hps/) | Chrome OS HPS daemon and utilities |
+| [hermes](./hermes/) | ChromeOS LPA implementation for eSIM hardware support |
+| [hiberman](./hiberman/) | ChromeOS Hibernation Manager |
+| [hps](./hps/) | ChromeOS HPS daemon and utilities |
 | [hwsec-test-utils](./hwsec-test-utils/) | Hwsec-related test-only features |
 | [hwsec-utils](./hwsec-utils/) | Hwsec-related features |
 | [iioservice](./iioservice/) | Daemon and libraries that provide sensor data to all processes |
@@ -88,7 +88,7 @@ copies.
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
-| [libcrossystem](./libcrossystem/) | Library for getting Chrome OS system properties |
+| [libcrossystem](./libcrossystem/) | Library for getting ChromeOS system properties |
 | [libec](./libec/) | Library for interacting with [EC](https://chromium.googlesource.com/chromiumos/platform/ec/) |
 | [libhwsec](./libhwsec/) | Library for the utility functions of all TPM related daemons except for trunks and trousers |
 | [libhwsec-foundation](./libhwsec-foundation/) | Library for the utility functions of all TPM related daemons and libraries |
@@ -109,14 +109,14 @@ copies.
 | [missive](./missive/) | Daemon for the storage of encrypted records for managed devices. |
 | [mist](./mist/) | Modem USB Interface Switching Tool |
 | [ml](./ml/) | Machine learning service |
-| [ml_benchmark](./ml_benchmark/) | ML performance benchmark for Chrome OS |
+| [ml_benchmark](./ml_benchmark/) | ML performance benchmark for ChromeOS |
 | [ml_core](./ml_core/) | Machine learning feature library |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
 | [mojo_service_manager](./mojo_service_manager/) | Daemon for managing mojo services |
 | [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
 | [nnapi](./nnapi/) | Implementation of the Android [Neural Networks API](https://developer.android.com/ndk/guides/neuralnetworks) |
-| [ocr](./ocr/) | Optical Character Recognition (OCR) service for Chrome OS |
+| [ocr](./ocr/) | Optical Character Recognition (OCR) service for ChromeOS |
 | [oobe_config](./oobe_config/) | Utilities for saving and restoring OOBE config state |
 | [os_install_service](./os_install_service/) | Service that can be triggered by the UI to install CrOS to disk from a USB device |
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
@@ -131,8 +131,8 @@ copies.
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [regions](./regions/) ||
 | [resourced](./resourced/) | Resource Management Daemon |
-| [rgbkbd](./rgbkbd/) | Chrome OS RGB Keyboard Daemon |
-| [rmad](./rmad/) | Chrome OS RMA Daemon |
+| [rgbkbd](./rgbkbd/) | ChromeOS RGB Keyboard Daemon |
+| [rmad](./rmad/) | ChromeOS RMA Daemon |
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
@@ -140,8 +140,8 @@ copies.
 | [secanomalyd](./secanomalyd/) | Daemon for detecting and reporting security anomalies |
 | [secure-wipe](./secure-wipe/) | Secure disk wipe |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
-| [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
-| [shill](./shill/) | Chrome OS Connection Manager |
+| [sepolicy](./sepolicy/) | SELinux policy for ChromeOS |
+| [shill](./shill/) | ChromeOS Connection Manager |
 | [sirenia](./sirenia/) | Minimalistic init written in Rust |
 | [smbfs](./smbfs/) | FUSE-based filesystem for accessing Samba / Windows networking shares |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
@@ -150,7 +150,7 @@ copies.
 | [st_flash](./st_flash/) ||
 | [storage_info](./storage_info/) | Helper shell functions for retrieving disk information) |
 | [syslog-cat](./syslog-cat/) | Helper command to forward stdout/stderr from process to syslog |
-| [system-proxy](./system-proxy/) | Daemon for web proxy authentication support on Chrome OS |
+| [system-proxy](./system-proxy/) | Daemon for web proxy authentication support on ChromeOS |
 | [system_api](./system_api/) | Headers and .proto files etc. to be shared with chromium |
 | [timberslide](./timberslide/) | Tool for working with EC crashes for reporting purposes |
 | [touch_firmware_calibration](./touch_firmware_calibration/) ||
@@ -162,13 +162,13 @@ copies.
 | [typecd](./typecd/) | System daemon to keep track of USB Type C state |
 | [u2fd](./u2fd/) | U2FHID emulation daemon for systems with secure elements (not TPMs) |
 | [ureadahead-diff](./ureadahead-diff/) | Tool to calculate difference between 2 ureadahead packs |
-| [usb_bouncer](./usb_bouncer/) | Tools for managing USBGuard white-lists and configuration on Chrome OS |
+| [usb_bouncer](./usb_bouncer/) | Tools for managing USBGuard white-lists and configuration on ChromeOS |
 | [userfeedback](./userfeedback/) | Various utilities to gather extended data for user feedback reports |
 | [verity](./verity/) | Userspace tools for working dm-verity (verified disk images) |
 | [virtual_file_provider](./virtual_file_provider/) ||
 | [vm_tools](./vm_tools/) | Utilities for Virtual Machine (VM) orchestration |
-| [vpn-manager](./vpn-manager/) | Chrome OS Native L2TP/IPsec VPN Daemon |
-| [vtpm](./vtpm/) | Chrome OS virtual TPM Daemon |
+| [vpn-manager](./vpn-manager/) | ChromeOS Native L2TP/IPsec VPN Daemon |
+| [vtpm](./vtpm/) | ChromeOS virtual TPM Daemon |
 | [webserver](./webserver/) | Small web server with D-Bus client backends |
 | [wifi-testbed](./wifi-testbed/) | Tools for creating a WiFi testbed image |
 
