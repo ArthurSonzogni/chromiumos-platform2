@@ -86,9 +86,6 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   const std::string& obfuscated_username =
       auth_input.obfuscated_username.value();
 
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
@@ -121,21 +118,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   }
 
   // Generate wrapped keys from the recovery key.
-  // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
-  brillo::SecureBlob aes_skey(kDefaultAesKeySize);
-  brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!DeriveSecretsScrypt(generate_hsm_payload_response.recovery_key, salt,
-                           {&aes_skey, &vkk_iv})) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kAuth}),
-        CryptoError::CE_OTHER_FATAL);
-  }
-  key_blobs->vkk_key = aes_skey;
-  key_blobs->vkk_iv = vkk_iv;
-  key_blobs->chaps_iv = vkk_iv;
+  key_blobs->vkk_key = generate_hsm_payload_response.recovery_key;
 
   // Save generated data in auth_block_state.
   CryptohomeRecoveryAuthBlockState auth_state;
@@ -161,7 +144,6 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   auth_state.channel_pub_key = generate_hsm_payload_response.channel_pub_key;
   auth_state.encrypted_rsa_priv_key =
       generate_hsm_payload_response.encrypted_rsa_priv_key;
-  auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
 
   if (revocation::IsRevocationSupported(hwsec_)) {
@@ -290,21 +272,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   // Generate wrapped keys from the recovery key.
-  // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
-  brillo::SecureBlob aes_skey(kDefaultAesKeySize);
-  brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!DeriveSecretsScrypt(recovery_key, auth_state->salt,
-                           {&aes_skey, &vkk_iv})) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockScryptDeriveFailedInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kAuth}),
-        CryptoError::CE_OTHER_FATAL);
-  }
-  key_blobs->vkk_key = aes_skey;
-  key_blobs->vkk_iv = vkk_iv;
-  key_blobs->chaps_iv = vkk_iv;
+  key_blobs->vkk_key = recovery_key;
 
   if (state.revocation_state.has_value()) {
     DCHECK(revocation::IsRevocationSupported(hwsec_));

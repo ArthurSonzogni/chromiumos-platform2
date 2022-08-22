@@ -98,18 +98,16 @@ table CryptohomeRecoveryAuthBlockState (secure) {
   // persisted on a chromebook and will be eventually used for recovery,
   // serialized to CBOR.
   hsm_payload:[ubyte] (id: 0);
-  // The salt used to first scrypt the user input.
-  salt:[ubyte] (id: 1);
   // Secret share of the destination (encrypted with TPM).
-  encrypted_destination_share:[ubyte] (id: 2);
+  encrypted_destination_share:[ubyte] (id: 1);
   // Secret share of the destination sealed to TPM1.2 with binding to extended PCR).
-  extended_pcr_bound_destination_share:[ubyte] (id: 3);
+  extended_pcr_bound_destination_share:[ubyte] (id: 2);
   // Channel keys that will be used for secure communication during recovery.
   // Private key is encrypted with TPM.
-  channel_pub_key:[ubyte] (id: 4);
-  encrypted_channel_priv_key:[ubyte] (id: 5);
+  channel_pub_key:[ubyte] (id: 3);
+  encrypted_channel_priv_key:[ubyte] (id: 4);
   // RSA private key is used only on TMP 1.2 devices.
-  encrypted_rsa_priv_key:[ubyte] (id: 6);
+  encrypted_rsa_priv_key:[ubyte] (id: 5);
 }
 
 table TpmEccAuthBlockState (secure) {

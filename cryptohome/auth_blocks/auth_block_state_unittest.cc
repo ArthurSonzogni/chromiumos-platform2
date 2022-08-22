@@ -401,7 +401,6 @@ TEST(AuthBlockStateBindingTest, PinWeaverAuthBlockState) {
 TEST(AuthBlockStateBindingTest, CryptohomeRecoveryAuthBlockState) {
   AuthBlockState state = {.state = CryptohomeRecoveryAuthBlockState{
                               .hsm_payload = SecureBlob("hsm_payload"),
-                              .salt = SecureBlob("salt"),
                               .encrypted_destination_share =
                                   SecureBlob("encrypted_destination_share"),
                               .channel_pub_key = SecureBlob(),

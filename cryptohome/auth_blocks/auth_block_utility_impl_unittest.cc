@@ -1502,7 +1502,6 @@ TEST_F(AuthBlockUtilityImplTest,
        RemoveCryptohomeRecoveryWithoutRevocationAuthBlock) {
   CryptohomeRecoveryAuthBlockState recovery_state = {
       .hsm_payload = brillo::SecureBlob("hsm_payload"),
-      .salt = brillo::SecureBlob("salt"),
       .encrypted_destination_share =
           brillo::SecureBlob("encrypted_destination_share"),
       .channel_pub_key = brillo::SecureBlob("channel_pub_key"),
@@ -1533,7 +1532,6 @@ TEST_F(AuthBlockUtilityImplTest,
 
   CryptohomeRecoveryAuthBlockState recovery_state = {
       .hsm_payload = brillo::SecureBlob("hsm_payload"),
-      .salt = brillo::SecureBlob("salt"),
       .encrypted_destination_share =
           brillo::SecureBlob("encrypted_destination_share"),
       .channel_pub_key = brillo::SecureBlob("channel_pub_key"),
@@ -1605,7 +1603,6 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
   CryptohomeRecoveryAuthBlockState GetAuthBlockState() {
     return {
         .hsm_payload = hsm_payload_,
-        .salt = brillo::SecureBlob("salt"),
         .encrypted_destination_share = destination_share_,
         .channel_pub_key = channel_pub_key_,
         .encrypted_channel_priv_key = channel_priv_key_,
