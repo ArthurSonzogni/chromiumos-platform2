@@ -1155,6 +1155,47 @@ uint64_t TerminaVm::GetAvailableDiskSpace() {
   return response.available_space();
 }
 
+// Helper function to convert spaced enum to vm_tools equivalent.
+vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
+    spaced::StatefulDiskSpaceState state) {
+  switch (state) {
+    case spaced::StatefulDiskSpaceState::NORMAL:
+      return vm_tools::StatefulDiskSpaceState::DISK_NORMAL;
+      break;
+    case spaced::StatefulDiskSpaceState::LOW:
+      return vm_tools::StatefulDiskSpaceState::DISK_LOW;
+      break;
+    case spaced::StatefulDiskSpaceState::CRITICAL:
+      return vm_tools::StatefulDiskSpaceState::DISK_CRITICAL;
+      break;
+    case spaced::StatefulDiskSpaceState::NONE:
+    default:
+      return vm_tools::StatefulDiskSpaceState::DISK_NONE;
+  }
+}
+
+void TerminaVm::HandleStatefulUpdate(
+    const spaced::StatefulDiskSpaceUpdate update) {
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  vm_tools::UpdateStorageBalloonRequest request;
+  vm_tools::UpdateStorageBalloonRequest out;
+  request.set_state(MapSpacedStateToGuestState(update.state()));
+  request.set_free_space_bytes(update.free_space_bytes());
+  vm_tools::UpdateStorageBalloonResponse response;
+
+  grpc::Status status = stub_->UpdateStorageBalloon(&ctx, request, &response);
+
+  if (!status.ok()) {
+    LOG(ERROR) << "HandleStatefulUpdate RPC failed";
+  }
+
+  return;
+}
+
 uint32_t TerminaVm::GatewayAddress() const {
   return subnet_->AddressAtOffset(kHostAddressOffset);
 }

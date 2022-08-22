@@ -42,6 +42,41 @@ message NetworkConfigRequest {
   ResolvConfig resolv_config = 2;
 }
 
+// Possible states for the host stateful disk to be in.
+enum StatefulDiskSpaceState {
+  // No value was set.
+  DISK_NONE = 0;
+  // No action is taken in this state.
+  DISK_NORMAL = 1;
+  // Prepare applications for impending critical disk space state.
+  DISK_LOW = 2;
+  // Critical disk space state.
+  DISK_CRITICAL = 3;
+}
+
+// Request to update the storage balloon according to a stateful disk update.
+message UpdateStorageBalloonRequest {
+  // What overall state the disk is in.
+  StatefulDiskSpaceState state = 1;
+
+  // How many bytes remain free on the host's stateful.
+  int64 free_space_bytes = 2;
+}
+
+// Possible results of a UpdateStorageBalloonRequest.
+enum UpdateStorageBalloonResult {
+  // Request worked as intended.
+  SUCCESS = 0;
+  // Balloon failed to be inflated.
+  BALLOON_INFLATE_FAILED = 1;
+}
+
+// Response to UpdateStorageBalloonRequest.
+message UpdateStorageBalloonResponse {
+  // Result of the UpdateStorageBalloonRequest.
+  UpdateStorageBalloonResult result = 1;
+}
+
 // Parameters needed to spawn a container guest.
 message ConfigureContainerGuestRequest {
   // Token which cicerone will check to verify that the guest spawned.
@@ -347,4 +382,10 @@ service Maitred {
 
   // Prepares to suspend the VM.
   rpc PrepareToSuspend(EmptyMessage) returns (EmptyMessage);
+
+  // Adjusts the disk state of the VM based on the given state. This generally
+  // means adjusting the size of the storage balloon and/or other parameters
+  // (e.g /proc/sys/dirty_ratio).
+  rpc UpdateStorageBalloon(UpdateStorageBalloonRequest)
+      returns (UpdateStorageBalloonResponse);
 }

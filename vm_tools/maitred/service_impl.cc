@@ -27,6 +27,7 @@
 #include <linux/fs.h>
 #include <linux/vm_sockets.h>
 
+#include <algorithm>
 #include <csignal>
 #include <map>
 #include <string>
@@ -76,6 +77,8 @@ constexpr char kSetPathScript[] = "set-path-for-lxd-next.sh";
 
 constexpr char kLocaltimePath[] = "/etc/localtime";
 constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
+
+constexpr int64_t kGiB = 1024 * 1024 * 1024;
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -1128,6 +1131,26 @@ grpc::Status ServiceImpl::PrepareToSuspend(grpc::ServerContext* ctx,
   // Commit filesystem caches to disks. This is important especially when a disk
   // is on external storage which can be unplugged while the device is asleep.
   sync();
+
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::UpdateStorageBalloon(
+    grpc::ServerContext* ctx,
+    const vm_tools::UpdateStorageBalloonRequest* request,
+    vm_tools::UpdateStorageBalloonResponse* response) {
+  response->set_result(vm_tools::UpdateStorageBalloonResult::SUCCESS);
+  if (!balloon_) {
+    balloon_ = std::make_unique<brillo::StorageBalloon>(
+        base::FilePath("/mnt/stateful/"));
+  }
+  if (!balloon_->Adjust(std::max(
+          int64_t(request->free_space_bytes() - (1 * kGiB)), int64_t(0)))) {
+    LOG(ERROR) << "Failed to adjust balloon, free_space_bytes:"
+               << request->free_space_bytes() << " state:" << request->state();
+    response->set_result(
+        vm_tools::UpdateStorageBalloonResult::BALLOON_INFLATE_FAILED);
+  }
 
   return grpc::Status::OK;
 }

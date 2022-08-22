@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include "base/files/file_path.h"
+#include "brillo/storage_balloon.h"
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -122,6 +123,13 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
                                 const EmptyMessage* request,
                                 EmptyMessage* response) override;
 
+  // TODO(b/241185611): Remove this grpc when we put ballooning into its own
+  // service.
+  grpc::Status UpdateStorageBalloon(
+      grpc::ServerContext* ctx,
+      const vm_tools::UpdateStorageBalloonRequest* request,
+      vm_tools::UpdateStorageBalloonResponse* response) override;
+
  private:
   std::unique_ptr<vm_tools::maitred::Init> init_;
 
@@ -154,6 +162,8 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   base::FilePath localtime_file_path_;
   // Path to zoneinfo directory
   base::FilePath zoneinfo_file_path_;
+
+  std::unique_ptr<brillo::StorageBalloon> balloon_;
 };
 
 }  // namespace maitred

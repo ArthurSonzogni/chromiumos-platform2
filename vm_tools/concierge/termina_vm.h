@@ -23,6 +23,7 @@
 #include <chromeos/patchpanel/subnet.h>
 #include <manatee/dbus-proxies.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -240,7 +241,7 @@ class TerminaVm final : public VmBaseImpl {
   // Sends a stateful update to be handled by the VM. Generally this means
   // adjusting the size of a storage balloon and/or tweaking disk settings (i.e
   // proc/sys/vm/dirty_ratio).
-  void HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {}
+  void HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update);
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
       std::unique_ptr<patchpanel::Subnet> subnet,
