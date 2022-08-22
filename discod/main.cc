@@ -39,6 +39,11 @@ std::unique_ptr<ControlLoop> MakeControlLoop(const base::FilePath& root_device,
     return nullptr;
   }
 
+  if (!IsWriteBoosterSupported(root_device, root)) {
+    VLOG(1) << "WriteBooster is not supported: " << root_device;
+    return nullptr;
+  }
+
   base::FilePath device_node = GetUfsDeviceNode(root_device, root);
   base::FilePath ufs_wb_node = GetUfsWriteBoosterNode(root_device, root);
 

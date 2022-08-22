@@ -12,6 +12,8 @@
 namespace discod {
 
 bool IsUfs(const base::FilePath& root_device, const base::FilePath& root);
+bool IsWriteBoosterSupported(const base::FilePath& root_device,
+                             const base::FilePath& root);
 base::FilePath GetUfsDeviceNode(const base::FilePath& root_device,
                                 const base::FilePath& root);
 base::FilePath GetUfsWriteBoosterNode(const base::FilePath& root_device,
