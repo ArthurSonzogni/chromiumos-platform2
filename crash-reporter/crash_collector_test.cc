@@ -1289,7 +1289,7 @@ TEST_F(CrashCollectorTest, FormatDumpBasename) {
   tm.tm_mon = 4;
   tm.tm_year = 110;
   tm.tm_isdst = -1;
-  std::string basename = collector_.FormatDumpBasename("foo", mktime(&tm), 100);
+  std::string basename = collector_.FormatDumpBasename("foo", timegm(&tm), 100);
   EXPECT_THAT(basename,
               testing::MatchesRegex(R"(foo\.20100523\.135015\.[0-9]{5}\.100)"));
 }

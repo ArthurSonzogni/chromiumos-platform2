@@ -875,7 +875,7 @@ std::string CrashCollector::FormatDumpBasename(const std::string& exec_name,
                                                time_t timestamp,
                                                pid_t pid) {
   struct tm tm;
-  localtime_r(&timestamp, &tm);
+  gmtime_r(&timestamp, &tm);
   std::string sanitized_exec_name = Sanitize(exec_name);
   // Add a random 5-digit number to reduce the chance of filename collisions.
   int rand = base::RandGenerator(100'000);
