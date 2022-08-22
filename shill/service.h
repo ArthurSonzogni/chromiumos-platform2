@@ -485,6 +485,9 @@ class Service : public base::RefCounted<Service> {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   std::string GetEapPassphrase(Error* error);
 
+  //  Implements Service.RequestPortalDetection.
+  void RequestPortalDetection(Error* error);
+
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }
 

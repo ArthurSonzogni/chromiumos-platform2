@@ -52,6 +52,7 @@ const char kGetLoadableProfileEntriesFunction[] = "GetLoadableProfileEntries";
 const char kGetWiFiPassphraseFunction[] = "GetWiFiPassphrase";
 const char kGetEapPassphraseFunction[] = "GetEapPassphrase";
 const char kRemoveServiceFunction[] = "Remove";
+const char kRequestPortalDetection[] = "RequestPortalDetection";
 const char kRequestTrafficCountersFunction[] = "RequestTrafficCounters";
 const char kResetTrafficCountersFunction[] = "ResetTrafficCounters";
 const char kSetPropertiesFunction[] = "SetProperties";

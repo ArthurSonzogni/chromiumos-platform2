@@ -33,6 +33,7 @@
 		<method name="GetEapPassphrase">
 			<arg type="s" direction="out"/>
 		</method>
+		<method name="RequestPortalDetection"/>
 		<method name="RequestTrafficCounters">
 			<arg type="aa{sv}" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

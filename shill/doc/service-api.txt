@@ -195,6 +195,15 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.IllegalOperation
 
+		void RequestPortalDetection()
+
+			Request portal detection on the Service if it is
+			connected and detection is enabled. This will cause
+			portal detection to restart if it is already in
+			progress, resetting the interval between checks.
+
+			Possible Errors: [service].Error.OperationFailed
+
 		array{dict} RequestTrafficCounters()
 
 			Return the current traffic counters for a Service.

@@ -337,6 +337,7 @@ Methods		dict GetProperties()
 
 		void RecheckPortal()
 
+			Deprecated: Use Service.RequestPortalDetection instead.
 			Retest the portal state of all connected services
 			if a check is not currently in progress.
 

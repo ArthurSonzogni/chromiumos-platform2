@@ -75,6 +75,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
                          std::string* out_passphrase) override;
   bool GetEapPassphrase(brillo::ErrorPtr* error,
                         std::string* out_passphrase) override;
+  bool RequestPortalDetection(brillo::ErrorPtr* error) override;
   void RequestTrafficCounters(
       DBusMethodResponsePtr<VariantDictionaries> response) override;
   bool ResetTrafficCounters(brillo::ErrorPtr* error) override;

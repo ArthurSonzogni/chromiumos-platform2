@@ -1191,6 +1191,20 @@ std::string Service::GetEapPassphrase(Error* error) {
   return std::string();
 }
 
+void Service::RequestPortalDetection(Error* error) {
+  DeviceRefPtr device = manager_->FindDeviceFromService(this);
+  if (!device) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to find device from service: " + log_name());
+    return;
+  }
+  if (!device->UpdatePortalDetector(/*restart=*/true)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        "Failed to restart portal detection for service: " + log_name());
+  }
+}
+
 void Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
     return;

@@ -207,6 +207,13 @@ bool ServiceDBusAdaptor::GetEapPassphrase(brillo::ErrorPtr* error,
   return true;
 }
 
+bool ServiceDBusAdaptor::RequestPortalDetection(brillo::ErrorPtr* error) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  service_->RequestPortalDetection(&e);
+  return !e.ToChromeosError(error);
+}
+
 void ServiceDBusAdaptor::RequestTrafficCounters(
     DBusMethodResponsePtr<VariantDictionaries> response) {
   SLOG(this, 2) << __func__;

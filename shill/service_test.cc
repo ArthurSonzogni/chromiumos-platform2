@@ -2415,6 +2415,21 @@ TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
   EXPECT_FALSE(HasPendingConnect());
 }
 
+TEST_F(ServiceTest, RequestPortalDetection) {
+  scoped_refptr<MockDevice> mock_device =
+      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+  ON_CALL(mock_manager_, FindDeviceFromService(_))
+      .WillByDefault(Return(mock_device));
+
+  EXPECT_CALL(*mock_device, UpdatePortalDetector(true)).WillOnce(Return(true));
+
+  Error error;
+  service_->RequestPortalDetection(&error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  Mock::VerifyAndClearExpectations(mock_device.get());
+}
+
 TEST_F(ServiceTest, TrafficCounters) {
   patchpanel::TrafficCounter counter0, counter1;
   counter0.set_source(patchpanel::TrafficCounter::CHROME);
