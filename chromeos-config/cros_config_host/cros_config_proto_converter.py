@@ -1686,7 +1686,7 @@ def _get_formatted_config_id(design_config):
 
 def _write_file(output_dir, file_name, file_content):
     os.makedirs(output_dir, exist_ok=True)
-    output = "{}/{}".format(output_dir, file_name)
+    output = os.path.join(output_dir, file_name)
     with open(output, "wb") as f:
         f.write(file_content)
 
@@ -2034,8 +2034,8 @@ def _write_files_by_design_config(
                     file_name = file_name_template.format(config_id)
                     _write_file(output_dir, file_name, file_content)
                 result[config_id] = _file_v2(
-                    "{}/{}".format(build_dir, file_name),
-                    "{}/{}".format(system_dir, file_name),
+                    os.path.join(build_dir, file_name),
+                    os.path.join(system_dir, file_name),
                 )
     return result
 
@@ -2043,8 +2043,8 @@ def _write_files_by_design_config(
 def _write_arc_hardware_feature_files(configs, output_root_dir, build_root_dir):
     return _write_files_by_design_config(
         configs,
-        output_root_dir + "/arc",
-        build_root_dir + "/arc",
+        os.path.join(output_root_dir, "arc"),
+        os.path.join(build_root_dir, "arc"),
         "/etc",
         "hardware_features_{}.xml",
         lambda hw_features, _: _generate_arc_hardware_features(hw_features),
@@ -2056,8 +2056,8 @@ def _write_arc_media_profile_files(
 ):
     return _write_files_by_design_config(
         configs,
-        output_root_dir + "/arc",
-        build_root_dir + "/arc",
+        os.path.join(output_root_dir, "arc"),
+        os.path.join(build_root_dir, "arc"),
         "/etc",
         "media_profiles_{}.xml",
         functools.partial(_generate_arc_media_profiles, dtd_path=dtd_path),
@@ -2199,16 +2199,15 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
                     with open(output_path, "rb") as f:
                         if f.read() != sar_file_content:
                             raise Exception(
-                                "Project {} has conflicting wifi sar file"
-                                "content under wifi sar id {}.".format(
-                                    project_name, wifi_sar_id
-                                )
+                                f"Project {project_name} has conflicting wifi "
+                                "sar file content under wifi sar id "
+                                "{wifi_sar_id}."
                             )
                 else:
                     with open(output_path, "wb") as f:
                         f.write(sar_file_content)
-                system_path = "/firmware/cbfs-rw-raw/{}/{}".format(
-                    design_name, filename
+                system_path = os.path.join(
+                    "/firmware/cbfs-rw-raw", design_name, filename
                 )
                 result[design_name] = {
                     "sar-file": _file_v2(build_path, system_path)
