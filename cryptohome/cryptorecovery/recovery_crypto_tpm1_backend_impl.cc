@@ -221,7 +221,6 @@ bool RecoveryCryptoTpm1BackendImpl::GenerateRsaKeyPair(
   brillo::SecureBlob rsa_public_key_pkcs1_der;
 
   // Generate RSA key pair
-  // TODO(b/196191918): Get the real pcr_map
   if (!tpm_impl_->CreatePCRBoundKey(
           /*pcr_map=*/{{}}, AsymmetricKeyUsage::kSignKey,
           encrypted_rsa_private_key, &rsa_public_key_pkcs1_der,
@@ -245,7 +244,6 @@ bool RecoveryCryptoTpm1BackendImpl::SignRequestPayload(
     const brillo::SecureBlob& request_payload,
     brillo::SecureBlob* signature) {
   CHECK(signature);
-  // TODO(b/196191918): Get the real bound_pcr_index
   if (!tpm_impl_->Sign(encrypted_rsa_private_key, request_payload,
                        /*bound_pcr_index=*/kNotBoundToPCR, signature)) {
     LOG(ERROR) << "Error signing with PCR bound key.";
