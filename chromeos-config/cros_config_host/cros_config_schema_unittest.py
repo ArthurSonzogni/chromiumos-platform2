@@ -719,12 +719,12 @@ class MainTests(cros_test_lib.TempDirTestCase):
     def assertFileEqual(self, file_expected, file_actual):
         self.assertTrue(
             os.path.isfile(file_expected),
-            "Expected file does not exist at path: {}".format(file_expected),
+            f"Expected file does not exist at path: {file_expected}",
         )
 
         self.assertTrue(
             os.path.isfile(file_actual),
-            "Actual file does not exist at path: {}".format(file_actual),
+            f"Actual file does not exist at path: {file_actual}",
         )
 
         regen_message = (
@@ -741,19 +741,12 @@ class MainTests(cros_test_lib.TempDirTestCase):
                     line_expected,
                     line_actual,
                     (
-                        "Files differ at line {0}\n"
-                        "Expected: {1}\n"
-                        "Actual  : {2}\n"
-                        "Path of expected output file: {3}\n"
-                        "Path of actual output file: {4}\n"
-                        "{5}"
-                    ).format(
-                        line_num,
-                        repr(line_expected),
-                        repr(line_actual),
-                        file_expected,
-                        file_actual,
-                        regen_message,
+                        f"Files differ at line {line_num}\n"
+                        "Expected: {line_expected}\n"
+                        "Actual  : {line_actual}\n"
+                        "Path of expected output file: {file_expected}\n"
+                        "Path of actual output file: {file_actual}\n"
+                        "{regen_message}"
                     ),
                 )
 
@@ -767,10 +760,10 @@ class MainTests(cros_test_lib.TempDirTestCase):
                 line_expected,
                 line_actual,
                 (
-                    "Strings differ at line {0}\n"
-                    "Expected: {1}\n"
-                    "Actual  : {2}\n"
-                ).format(line_num, repr(line_expected), repr(line_actual)),
+                    f"Strings differ at line {line_num}\n"
+                    "Expected: {repr(line_expected)}\n"
+                    "Actual  : {repr(line_actual)}\n"
+                ),
             )
 
     def testMainWithExampleWithBuild(self):

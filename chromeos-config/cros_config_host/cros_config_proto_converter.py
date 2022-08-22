@@ -1960,7 +1960,7 @@ def _generate_arc_media_profiles(hw_features, sw_config, dtd_path):
     dtd = etree.DTD(str(dtd_path))
     if not dtd.validate(root):
         raise etree.DTDValidateError(
-            "Invalid media_profiles.xml generated:\n{}".format(dtd.error_log)
+            f"Invalid media_profiles.xml generated:\n{dtd.error_log}"
         )
 
     return XML_DECLARATION + etree.tostring(root, pretty_print=True)
@@ -2192,7 +2192,7 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
                 )
                 output_path = os.path.join(output_dir, "wifi")
                 os.makedirs(output_path, exist_ok=True)
-                filename = "wifi_sar_{}.hex".format(wifi_sar_id)
+                filename = f"wifi_sar_{wifi_sar_id}.hex"
                 output_path = os.path.join(output_path, filename)
                 build_path = os.path.join(build_root_dir, "wifi", filename)
                 if os.path.exists(output_path):
@@ -2229,9 +2229,7 @@ def _extract_fw_config_value(hw_design_config, topology):
     mask = topology.hardware_feature.fw_config.mask
     if not mask:
         raise ValueError(
-            "No firmware configuration mask found in topology {}".format(
-                topology
-            )
+            f"No firmware configuration mask found in topology {topology}"
         )
 
     fw_config = hw_design_config.hardware_features.fw_config.value

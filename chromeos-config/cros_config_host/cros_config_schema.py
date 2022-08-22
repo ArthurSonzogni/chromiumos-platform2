@@ -749,11 +749,9 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
             for key, value in hardware_properties.items():
                 if not isinstance(value, (bool, six.string_types)):
                     raise ValidationError(
-                        (
-                            "All configs under hardware-properties must be "
-                            "boolean or an enum\n"
-                            "However, key '{}' has value '{}'."
-                        ).format(key, value)
+                        f"All configs under hardware-properties must be "
+                        "boolean or an enum\n"
+                        "However, key '{key}' has value '{value}'."
                     )
 
 
