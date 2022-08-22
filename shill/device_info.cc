@@ -998,9 +998,9 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
     if (address_info.address.family() == IPAddress::kFamilyIPv4 ||
         (address_info.scope == RT_SCOPE_UNIVERSE &&
          (address_info.flags & ~IFA_F_TEMPORARY) == 0)) {
-      SLOG(this, 2) << __func__ << ": removing ip address "
-                    << address_info.address.ToString() << " from interface "
-                    << interface_index;
+      LOG(INFO) << __func__ << ": removing address "
+                << address_info.address.ToString() << " from interface "
+                << interface_index;
       rtnl_handler_->RemoveInterfaceAddress(interface_index,
                                             address_info.address);
     }
@@ -1390,7 +1390,8 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   }
   if (iter != address_list.end()) {
     if (msg.mode() == RTNLMessage::kModeDelete) {
-      SLOG(this, 2) << "Delete address for interface " << interface_index;
+      LOG(INFO) << "DeviceInfo cache: Delete address " << address.ToString()
+                << " for interface " << interface_index;
       address_list.erase(iter);
     } else {
       iter->flags = status.flags;
@@ -1398,8 +1399,8 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
     }
   } else if (msg.mode() == RTNLMessage::kModeAdd) {
     address_list.push_back(AddressData(address, status.flags, status.scope));
-    SLOG(this, 2) << "Add address " << address.ToString() << " for interface "
-                  << interface_index;
+    LOG(INFO) << "DeviceInfo cache: Add address " << address.ToString()
+              << " for interface " << interface_index;
   }
 
   DeviceRefPtr device = GetDevice(interface_index);
