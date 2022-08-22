@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fmt::Write;
 use std::num::ParseIntError;
 
 use crate::error::HwsecError;
@@ -90,9 +89,7 @@ impl TpmCmdArg {
     pub fn to_hex_tokens(&self) -> Vec<String> {
         let mut tokens = Vec::<String>::new();
         for byte in &self.bytes {
-            let mut tok = String::with_capacity(2);
-            write!(&mut tok, "{:02x}", byte).unwrap();
-            tokens.push(tok);
+            tokens.push(format!("{:02x}", byte));
         }
         tokens
     }
@@ -118,13 +115,14 @@ impl TpmCmdResponse {
         // for converting raw_response to a more handy Vec<u8> structure.
 
         // Convert Vec<u8> to &str
-        let s = std::str::from_utf8(&raw_response).unwrap();
+        let s = std::str::from_utf8(&raw_response)
+            .map_err(|_| HwsecError::Tpm2ResponseBadFormatError)?;
 
         // Replace, for the second case, unnecessary characters to unify the format
         let s = &s.replace("0x", "").replace(' ', "").replace('\n', "");
 
         // decode the string reformatted
-        let decoded_response = hex_decode(s).unwrap();
+        let decoded_response = hex_decode(s).map_err(|_| HwsecError::Tpm2ResponseBadFormatError)?;
 
         // Check if the response contains basic information (i.e. tag(2) + size(4) + return_code(4))
         if decoded_response.len() < 2 + 4 + 4 {

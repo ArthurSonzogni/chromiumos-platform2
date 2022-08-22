@@ -49,7 +49,9 @@ fn gen_tpm_cmd(
 
 fn trunksd_is_running(ctx: &mut impl Context) -> bool {
     if let Ok(o) = ctx.cmd_runner().run("status", vec!["trunksd"]) {
-        std::str::from_utf8(&o.stdout).unwrap().contains("running")
+        std::str::from_utf8(&o.stdout)
+            .unwrap_or("stopped")
+            .contains("running")
     } else {
         false
     }
