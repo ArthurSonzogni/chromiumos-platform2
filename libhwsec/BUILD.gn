@@ -210,6 +210,7 @@ source_set("hardware_abstraction_external_library") {
     "factory/factory_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "frontend/pinweaver/frontend_impl.cc",
+    "frontend/recovery_crypto/frontend_impl.cc",
     "middleware/middleware.cc",
     "structures/key.cc",
   ]

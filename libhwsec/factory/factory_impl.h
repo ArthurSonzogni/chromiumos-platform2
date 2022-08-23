@@ -11,6 +11,7 @@
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
+#include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/middleware/middleware.h"
 
 namespace hwsec {
@@ -21,6 +22,7 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   ~FactoryImpl() override;
   std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
   std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() override;
+  std::unique_ptr<RecoveryCryptoFrontend> GetRecoveryCryptoFrontend() override;
 
  private:
   MiddlewareOwner middleware_;
