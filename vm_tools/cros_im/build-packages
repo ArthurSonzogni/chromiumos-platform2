@@ -21,6 +21,22 @@ If ARCH is omitted, builds for all architectures.
 END
 }
 
+create_changelog() {
+  # Set environment variables for the dch tool
+  export DEBFULLNAME="The ChromiumOS Authors"
+  export DEBEMAIL="chromium-os-dev@chromium.org"
+
+  # Set version number to number of commits in main
+  local version
+  version="$(git rev-list --count HEAD)"
+
+  # Use dch to update version number and time in debian/changelog
+  dch --package cros-im \
+    -v "${version}" \
+    --check-dirname-regex=cros_im \
+    ""
+}
+
 setup_deps() {
   apt-get update
   apt-get install -y debian-archive-keyring pbuilder debootstrap devscripts \
@@ -79,6 +95,7 @@ main() {
   fi
 
   setup_deps
+  create_changelog
 
   local arch
   for dist in ${RELEASES}; do
