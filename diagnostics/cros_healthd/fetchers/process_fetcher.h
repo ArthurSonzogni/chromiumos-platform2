@@ -40,8 +40,9 @@ class ProcessFetcher final : public BaseFetcher {
  private:
   // Parses relevant fields from /proc/|process_id_|/stat. Returns the first
   // error encountered or std::nullopt if no errors occurred. |priority|,
-  // |nice|, |start_time_ticks|, |name|, |parent_process_id|, |process_group_id|
-  // and |threads| are only valid if std::nullopt was returned.
+  // |nice|, |start_time_ticks|, |name|, |parent_process_id|,
+  // |process_group_id|, |threads| and |process_id| are only valid if
+  // std::nullopt was returned.
   std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
       mojom::ProcessState* state,
       int8_t* priority,
@@ -50,7 +51,8 @@ class ProcessFetcher final : public BaseFetcher {
       std::optional<std::string>* name,
       uint32_t* parent_process_id,
       uint32_t* process_group_id,
-      uint32_t* threads);
+      uint32_t* threads,
+      uint32_t* process_id);
 
   // Parses relevant fields from /proc/|process_id_|/statm. Returns the first
   // error encountered or std::nullopt if no errors occurred.

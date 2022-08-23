@@ -78,7 +78,8 @@ constexpr char kInvalidParentProcessID[] = "InvalidParentProcessID";
 constexpr char kInvalidProcessGroupID[] = "InvalidProcessGroupID";
 // Invalid threads value.
 constexpr char kInvalidThreads[] = "InvalidThreads";
-
+// Invalid process id value.
+constexpr char kInvalidProcessID[] = "InvalidProcessID";
 // Valid fake data for /proc/|kPid|/statm.
 constexpr char kFakeProcPidStatmContents[] = "25648 2657 2357 151 0 18632 0";
 // Invalid /proc/|kPid|/statm: not enough tokens.
@@ -273,6 +274,7 @@ TEST_F(ProcessFetcherTest, FetchProcessInfo) {
   EXPECT_EQ(process_info->parent_process_id, kExpectedParentProcessID);
   EXPECT_EQ(process_info->process_group_id, kExpectedProcessGroupID);
   EXPECT_EQ(process_info->threads, kExpectedThreads);
+  EXPECT_EQ(process_info->process_id, kPid);
 }
 
 // Test that we handle a missing /proc/uptime file.
@@ -449,6 +451,18 @@ TEST_F(ProcessFetcherTest, InvalidProcessGroupIDRead) {
 TEST_F(ProcessFetcherTest, InvalidThreadsRead) {
   ASSERT_TRUE(
       WriteProcPidStatData(kInvalidThreads, ProcPidStatIndices::kThreads));
+
+  auto process_result = FetchProcessInfo();
+
+  ASSERT_TRUE(process_result->is_error());
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
+}
+
+// Test that we handle an invalid process id value read from the
+// /proc/|kPid|/stat file.
+TEST_F(ProcessFetcherTest, InvalidProcessIDRead) {
+  ASSERT_TRUE(
+      WriteProcPidStatData(kInvalidProcessID, ProcPidStatIndices::kProcessID));
 
   auto process_result = FetchProcessInfo();
 

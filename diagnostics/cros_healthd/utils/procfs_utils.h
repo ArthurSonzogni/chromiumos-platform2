@@ -15,6 +15,7 @@ namespace diagnostics {
 // numerical order. Note that this is not an enum class so that it can be
 // implicitly converted to ints when used as an index into an array or vector.
 enum ProcPidStatIndices {
+  kProcessID = 0,
   kName = 1,
   kState = 2,
   kParentProcessID = 3,

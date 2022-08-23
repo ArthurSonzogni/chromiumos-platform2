@@ -476,6 +476,7 @@ void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
   SET_DICT(nice, info, &output);
   SET_DICT(parent_process_id, info, &output);
   SET_DICT(process_group_id, info, &output);
+  SET_DICT(process_id, info, &output);
   SET_DICT(physical_bytes_read, info, &output);
   SET_DICT(physical_bytes_written, info, &output);
   SET_DICT(priority, info, &output);
