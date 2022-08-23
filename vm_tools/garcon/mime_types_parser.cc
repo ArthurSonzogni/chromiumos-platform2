@@ -145,6 +145,11 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
   std::vector<Node> stack;
   stack.push_back(std::move(root));
 
+  struct WeightedMime {
+    std::string mime_type;
+    uint8_t weight;
+  };
+  std::map<std::string, WeightedMime> types;
   uint32_t num_nodes = 0;
   while (stack.size() > 0) {
     // Pop top node from the stack and process children.
@@ -158,19 +163,27 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
       }
       p += 4;
 
-      // Leaf node, add mime type.
+      // Leaf node, add mime type if it is highest weight.
       if (c == 0) {
         uint32_t mime_type_offset = 0;
         if (!ReadInt(buf, p, "mime type offset", kHeaderSize,
                      alias_list_offset - 1, &mime_type_offset)) {
           return false;
         }
-        p += 8;
+        p += 4;
+        uint8_t weight = 50;
+        if ((p + 3) < buf.size()) {
+          weight = buf[p + 3];
+        }
+        p += 4;
         if (n.ext.size() == 0 || n.ext[0] != '.') {
           LOG(INFO) << "Ignoring extension without leading dot " << n.ext;
         } else {
-          (*out_mime_types)[n.ext.substr(1)] =
-              std::string(buf.c_str() + mime_type_offset);
+          std::string ext = n.ext.substr(1);
+          auto it = types.find(ext);
+          if (it == types.end() || weight > it->second.weight) {
+            types[ext] = {std::string(buf.c_str() + mime_type_offset), weight};
+          }
         }
         continue;
       }
@@ -203,6 +216,9 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
     }
   }
 
+  for (auto const& item : types) {
+    (*out_mime_types)[item.first] = item.second.mime_type;
+  }
   return true;
 }
 
