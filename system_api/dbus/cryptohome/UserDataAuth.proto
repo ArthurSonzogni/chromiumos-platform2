@@ -744,6 +744,8 @@ message StartAuthSessionRequest {
 }
 
 message StartAuthSessionReply {
+  reserved 7;
+
   // Error if any to start the Auth Session
   // TODO(b/229807416): Remove once CryptohomeError refactor is complete.
   CryptohomeErrorCode error = 1;
@@ -764,10 +766,6 @@ message StartAuthSessionReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 6;
-
-  // Deprecated. Use ListAuthFactors to determine this. Was never actually
-  // implemented on StartAuthSession.
-  repeated AuthFactorType supported_auth_factors = 7;
 }
 
 message AddCredentialsRequest {
