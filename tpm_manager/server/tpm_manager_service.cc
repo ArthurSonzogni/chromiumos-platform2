@@ -1275,14 +1275,22 @@ void TpmManagerService::CheckPowerWashResult(
 
   if (complete_file_exist && !report_file_exist) {
     if (base::WriteFile(report_file, "", 0) < 0) {
-      LOG(WARNING) << "Unable to create " << report_file.value();
+      LOG(WARNING) << __func__ << ": Unable to create " << report_file.value();
     }
-    tpm_manager_metrics_->ReportPowerWashResult(
-        TpmStatus::kTpmUnowned == status ? TPMPowerWashResult::kTPMClearSuccess
-                                         : TPMPowerWashResult::kTPMClearFailed);
+    if (TpmStatus::kTpmUnowned == status) {
+      LOG(INFO) << __func__
+                << ": Power wash success. TPM is in not owned state.";
+      tpm_manager_metrics_->ReportPowerWashResult(
+          TPMPowerWashResult::kTPMClearSuccess);
+    } else {
+      LOG(ERROR) << __func__
+                 << ": Power wash failed. TPM is not in not owned state.";
+      tpm_manager_metrics_->ReportPowerWashResult(
+          TPMPowerWashResult::kTPMClearFailed);
+    }
   } else if (!complete_file_exist && report_file_exist) {
     if (!base::DeleteFile(report_file)) {
-      LOG(WARNING) << "Unable to delete " << report_file.value();
+      LOG(WARNING) << __func__ << ": Unable to delete " << report_file.value();
     }
   }
 }
