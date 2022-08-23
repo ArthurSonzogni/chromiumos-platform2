@@ -89,6 +89,7 @@ class BackendTpm1 : public Backend {
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
   Vendor* GetVendor() override { return &vendor_; }
+  RecoveryCrypto* GetRecoveryCrypto() override { return nullptr; }
 
   Proxy& proxy_;
   OverallsContext overall_context_;

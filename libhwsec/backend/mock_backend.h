@@ -15,6 +15,7 @@
 #include "libhwsec/backend/mock_key_management.h"
 #include "libhwsec/backend/mock_pinweaver.h"
 #include "libhwsec/backend/mock_random.h"
+#include "libhwsec/backend/mock_recovery_crypto.h"
 #include "libhwsec/backend/mock_ro_data.h"
 #include "libhwsec/backend/mock_sealing.h"
 #include "libhwsec/backend/mock_session_management.h"
@@ -44,6 +45,7 @@ class MockBackend : public Backend {
     MockRandom random;
     MockPinWeaver pinweaver;
     MockVendor vendor;
+    MockRecoveryCrypto recovery_crypto;
   };
 
   MockBackend() = default;
@@ -73,6 +75,9 @@ class MockBackend : public Backend {
   Random* GetRandom() override { return &mock_data_.random; }
   PinWeaver* GetPinWeaver() override { return &mock_data_.pinweaver; }
   Vendor* GetVendor() override { return &mock_data_.vendor; }
+  RecoveryCrypto* GetRecoveryCrypto() override {
+    return &mock_data_.recovery_crypto;
+  }
 
   MockBackendData mock_data_;
 };

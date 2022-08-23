@@ -16,6 +16,7 @@
 #include "libhwsec/backend/key_management.h"
 #include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/backend/random.h"
+#include "libhwsec/backend/recovery_crypto.h"
 #include "libhwsec/backend/ro_data.h"
 #include "libhwsec/backend/sealing.h"
 #include "libhwsec/backend/session_management.h"
@@ -62,6 +63,7 @@ class Backend {
   using Random = ::hwsec::Random;
   using PinWeaver = ::hwsec::PinWeaver;
   using Vendor = ::hwsec::Vendor;
+  using RecoveryCrypto = ::hwsec::RecoveryCrypto;
 
   virtual ~Backend() = default;
 
@@ -98,6 +100,8 @@ class Backend {
       return GetPinWeaver();
     else if constexpr (std::is_same_v<SubClass, Vendor>)
       return GetVendor();
+    else if constexpr (std::is_same_v<SubClass, RecoveryCrypto>)
+      return GetRecoveryCrypto();
     NOTREACHED() << "Should not reach here.";
   }
 
@@ -117,6 +121,7 @@ class Backend {
   virtual Random* GetRandom() = 0;
   virtual PinWeaver* GetPinWeaver() = 0;
   virtual Vendor* GetVendor() = 0;
+  virtual RecoveryCrypto* GetRecoveryCrypto() = 0;
 };
 
 }  // namespace hwsec
