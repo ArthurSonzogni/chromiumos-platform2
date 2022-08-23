@@ -155,7 +155,7 @@ class UserDataAuthTestBase : public ::testing::Test {
 
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsDAMitigationReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
 
     if (!userdataauth_) {

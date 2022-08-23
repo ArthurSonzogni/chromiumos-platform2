@@ -198,7 +198,7 @@ TEST_F(CryptoTest, TpmStepTest) {
       .WillRepeatedly(DoAll(ReturnValue(blob)));
   EXPECT_CALL(hwsec, IsEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec, IsDAMitigationReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(pinweaver, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   crypto.Init();
@@ -254,7 +254,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   EXPECT_CALL(hwsec, IsEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(hwsec, IsReady()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(hwsec, IsDAMitigationReady()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(pinweaver, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   SecureBlob vkk_key;
@@ -276,7 +276,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
       .WillRepeatedly(DoAll(ReturnValue(blob)));
   EXPECT_CALL(hwsec, IsEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec, IsDAMitigationReady()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(pinweaver, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   crypto.Init();
@@ -345,7 +345,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
       .WillRepeatedly(DoAll(ReturnValue(blob)));
   EXPECT_CALL(hwsec, IsEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec, IsDAMitigationReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(pinweaver, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
   crypto.Init();
@@ -383,8 +383,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
     EXPECT_CALL(hwsec, IsEnabled()).WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(hwsec, IsReady()).WillRepeatedly(ReturnValue(false));
-    EXPECT_CALL(hwsec, IsDAMitigationReady())
-        .WillRepeatedly(ReturnValue(false));
+    EXPECT_CALL(hwsec, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(pinweaver, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
     VaultKeyset vault_keyset;

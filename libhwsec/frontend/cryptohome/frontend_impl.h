@@ -38,6 +38,7 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
   StatusOr<uint32_t> GetKeyHandle(Key key) override;
   Status SetCurrentUser(const std::string& current_user) override;
   StatusOr<bool> IsCurrentUserSet() override;
+  StatusOr<bool> IsSealingSupported() override;
   StatusOr<brillo::Blob> SealWithCurrentUser(
       const std::optional<std::string>& current_user,
       const brillo::SecureBlob& auth_value,

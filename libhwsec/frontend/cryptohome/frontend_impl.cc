@@ -83,6 +83,10 @@ StatusOr<bool> CryptohomeFrontendImpl::IsCurrentUserSet() {
   return middleware_.CallSync<&Backend::Config::IsCurrentUserSet>();
 }
 
+StatusOr<bool> CryptohomeFrontendImpl::IsSealingSupported() {
+  return middleware_.CallSync<&Backend::Sealing::IsSupported>();
+}
+
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::SealWithCurrentUser(
     const std::optional<std::string>& current_user,
     const brillo::SecureBlob& auth_value,

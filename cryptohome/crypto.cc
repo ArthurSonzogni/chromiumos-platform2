@@ -186,7 +186,7 @@ bool Crypto::is_cryptohome_key_loaded() const {
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {
-  hwsec::StatusOr<bool> is_ready = hwsec_->IsDAMitigationReady();
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsSealingSupported();
   if (!is_ready.ok()) {
     LOG(ERROR) << "Failed to get da mitigation status: " << is_ready.status();
     return false;

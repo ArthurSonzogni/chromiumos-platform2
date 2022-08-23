@@ -653,7 +653,7 @@ TEST_F(VaultKeysetTest, DecryptTPMReboot) {
   // Setup
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec_, GetManufacturer())
       .WillRepeatedly(ReturnValue(0x43524f53));
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
@@ -864,8 +864,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
 
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsDAMitigationReady())
-        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
 
     // Raw pointer as crypto_ expects unique_ptr, which we will wrap this

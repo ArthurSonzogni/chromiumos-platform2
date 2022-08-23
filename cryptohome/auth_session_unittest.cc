@@ -109,8 +109,7 @@ class AuthSessionTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsDAMitigationReady())
-        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, GetManufacturer())
         .WillRepeatedly(ReturnValue(0x43524f53));
     EXPECT_CALL(hwsec_, GetAuthValue(_, _))

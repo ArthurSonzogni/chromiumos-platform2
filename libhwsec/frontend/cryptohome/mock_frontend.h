@@ -42,6 +42,7 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
   MOCK_METHOD(StatusOr<uint32_t>, GetKeyHandle, (Key), (override));
   MOCK_METHOD(Status, SetCurrentUser, (const std::string&), (override));
   MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsSealingSupported, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               SealWithCurrentUser,
               (const std::optional<std::string>&,

@@ -176,7 +176,7 @@ class KeysetManagementTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-    EXPECT_CALL(hwsec_, IsDAMitigationReady())
+    EXPECT_CALL(hwsec_, IsSealingSupported())
         .WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(false));
 
@@ -1410,7 +1410,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
 
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
 
   crypto_.Init();
 

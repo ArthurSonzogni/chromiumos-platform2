@@ -75,6 +75,9 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
   // Is the current user had been set or not.
   virtual StatusOr<bool> IsCurrentUserSet() = 0;
 
+  // Is the device supported sealing/unsealing or not.
+  virtual StatusOr<bool> IsSealingSupported() = 0;
+
   // Seals the |unsealed_data| with |auth_value| and binds to |current_user|.
   // If the |current_user| is std::nullopt, it would bind to the prior login
   // state.

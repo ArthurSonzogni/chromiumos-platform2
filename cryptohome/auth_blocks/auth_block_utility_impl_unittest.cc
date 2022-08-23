@@ -93,7 +93,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
         brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsDAMitigationReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, GetPubkeyHash(_))
         .WillByDefault(ReturnValue(brillo::BlobFromString("public key hash")));
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
@@ -1505,7 +1505,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
-  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillOnce(ReturnValue(false));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(false));
   EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
@@ -1513,7 +1513,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                 AuthFactorStorageType::kVaultKeyset));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
-  EXPECT_CALL(hwsec_, IsDAMitigationReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(true));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillOnce(Return(nullptr));
   EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
