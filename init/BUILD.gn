@@ -187,6 +187,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":libcrosstartup",
       "//common-mk/testrunner",
@@ -203,6 +204,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":libclobber",
       ":libcrossystem",
@@ -218,6 +220,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":file_attrs_cleaner_lib",
       "//common-mk/testrunner",
@@ -235,6 +238,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":process_killer_lib",
       "//common-mk/testrunner",
@@ -251,6 +255,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [ "//common-mk/testrunner" ]
   }
 
@@ -261,6 +266,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":usermode-helper_lib",
       "//common-mk/testrunner",
@@ -274,6 +280,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":utils",
       "//common-mk/testrunner",
