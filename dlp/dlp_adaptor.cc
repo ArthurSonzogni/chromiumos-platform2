@@ -276,8 +276,11 @@ void DlpAdaptor::RequestFileAccess(
           &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
           std::move(response), std::move(remote_fd)));
 
-  matching_request.set_destination_url(request.destination_url());
-  matching_request.set_destination_component(request.destination_component());
+  if (request.has_destination_url())
+    matching_request.set_destination_url(request.destination_url());
+  if (request.has_destination_component())
+    matching_request.set_destination_component(request.destination_component());
+
   matching_request.set_file_action(FileAction::TRANSFER);
 
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
@@ -367,9 +370,12 @@ void DlpAdaptor::CheckFilesTransfer(
     return;
   }
 
-  matching_request.set_destination_url(request.destination_url());
-  matching_request.set_destination_component(request.destination_component());
-  matching_request.set_file_action(request.file_action());
+  if (request.has_destination_url())
+    matching_request.set_destination_url(request.destination_url());
+  if (request.has_destination_component())
+    matching_request.set_destination_component(request.destination_component());
+  if (request.has_file_action())
+    matching_request.set_file_action(request.file_action());
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
