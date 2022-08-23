@@ -3,10 +3,11 @@
 // found in the LICENSE file.
 
 use std::error::Error;
-use std::path::Path;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
-use std::io::{stdin, stdout, BufRead, Write};
+use std::io::{copy, stdin, stdout, BufRead, Write};
 
 use getopts::Options;
 
@@ -686,6 +687,39 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn logs(&mut self) -> VmcResult {
+        if self.args.len() != 1 {
+            return Err(ExpectedName.into());
+        }
+
+        let user_id_hash = get_user_hash(self.environ)?;
+        let encoded_name = base64::encode(self.args[0]);
+        let log_root = PathBuf::from("/run/daemon-store/crosvm")
+            .join(user_id_hash)
+            .join("log");
+
+        let mut counter = 0;
+        for n in (0..6).rev() {
+            // Logs are stored in log_root/<base64name>.log, then .1, .2, etc
+            // appended as logs are rotated. Start at 5 then work our way back
+            // to the start, skipping any which don't exist.
+            let path;
+            if n == 0 {
+                path = log_root.join(format!("{}.log", encoded_name));
+            } else {
+                path = log_root.join(format!("{}.log.{}", encoded_name, n));
+            }
+            if !path.exists() {
+                continue;
+            }
+
+            let mut reader = File::open(&path)?;
+            println!("\n=======================\nLogs from {}", path.display());
+            copy(&mut reader, &mut stdout().lock())?;
+        }
+        Ok(())
+    }
+
     fn share(&mut self) -> VmcResult {
         if self.args.len() != 2 {
             return Err(ExpectedVmAndPath.into());
@@ -943,6 +977,7 @@ const USAGE: &str = r#"
      import [-p] <vm name> <file name> [<removable storage name>] |
      resize <vm name> <size> |
      list |
+     logs <vm name> |
      share <vm name> <path> |
      unshare <vm name> <path> |
      container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM]
@@ -1003,6 +1038,7 @@ impl Frontend for Vmc {
             "disk-op-status" => command.disk_op_status(),
             "resize" => command.resize(),
             "list" => command.list(),
+            "logs" => command.logs(),
             "share" => command.share(),
             "unshare" => command.unshare(),
             "container" => command.container(),
@@ -1232,6 +1268,7 @@ mod tests {
                 "removable media",
             ],
             &["vmc", "list"],
+            &["vmc", "logs", "cowcat"],
             &["vmc", "share", "termina", "my-folder"],
             &["vmc", "unshare", "termina", "my-folder"],
             &["vmc", "usb-attach", "termina", "1:2"],
@@ -1327,6 +1364,8 @@ mod tests {
             &["vmc", "import", "-p", "termina"],
             &["vmc", "import", "-p", "termina", "too", "many", "args"],
             &["vmc", "list", "extra args"],
+            &["vmc", "logs"],
+            &["vmc", "logs", "too", "many args"],
             &["vmc", "share"],
             &["vmc", "share", "too", "many", "args"],
             &["vmc", "unshare"],
