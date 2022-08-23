@@ -8,8 +8,10 @@
 
 #include <memory>
 
+#include <base/containers/flat_map.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
+#include <camera/camera_metadata.h>
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/cros_camera_hal.h"
@@ -50,9 +52,24 @@ class CameraHal {
  private:
   void OnSpecUpdated(const base::Value& json_values);
 
+  void ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec);
+
+  void NotifyCameraConnected(int id, bool connected);
+
+  bool IsCameraIdValid(int id);
+
+  bool SetUpCamera(int id, const CameraSpec& config);
+  void TearDownCamera(int id);
+
+  // Used to report camera info at anytime.
+  base::flat_map<int, android::CameraMetadata> static_metadata_;
+  base::flat_map<int, android::CameraMetadata> request_template_;
+
   std::unique_ptr<ReloadableConfigFile> config_file_;
 
   HalSpec hal_spec_;
+
+  const camera_module_callbacks_t* callbacks_ = nullptr;
 
   // All methods of this class should be run on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

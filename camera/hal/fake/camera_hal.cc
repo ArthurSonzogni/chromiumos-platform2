@@ -5,14 +5,19 @@
 
 #include "hal/fake/camera_hal.h"
 
+#include <algorithm>
 #include <memory>
+#include <utility>
 
+#include <base/containers/contains.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
+
+#include "hal/fake/metadata_handler.h"
 
 namespace cros {
 
@@ -49,6 +54,9 @@ int CameraHal::GetNumberOfCameras() const {
 int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  callbacks_ = callbacks;
+  ApplySpec({}, hal_spec_);
+
   return 0;
 }
 
@@ -80,12 +88,30 @@ int CameraHal::OpenDevice(int id,
   return -EINVAL;
 }
 
+bool CameraHal::IsCameraIdValid(int id) {
+  return base::Contains(hal_spec_.cameras, id,
+                        [](const auto& spec) { return spec.id; });
+}
+
 int CameraHal::GetCameraInfo(int id,
                              struct camera_info* info,
                              ClientType client_type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  VLOGFID(1, id);
 
-  return -EINVAL;
+  if (!IsCameraIdValid(id)) {
+    LOGF(ERROR) << "Camera ID " << id << " is invalid";
+    return -EINVAL;
+  }
+
+  info->facing = CAMERA_FACING_EXTERNAL;
+  info->orientation = 0;
+  info->device_version = CAMERA_DEVICE_API_VERSION_3_5;
+  info->static_camera_characteristics = static_metadata_[id].getAndLock();
+  info->resource_cost = 0;
+  info->conflicting_devices = nullptr;
+  info->conflicting_devices_length = 0;
+  return 0;
 }
 
 void CameraHal::OnSpecUpdated(const base::Value& json_values) {
@@ -97,11 +123,86 @@ void CameraHal::OnSpecUpdated(const base::Value& json_values) {
     return;
   }
 
-  // TODO(pihsun): Applies the config diff.
+  ApplySpec(hal_spec_, hal_spec.value());
   hal_spec_ = hal_spec.value();
+}
 
-  for (const auto& c : hal_spec_.cameras) {
-    LOGF(INFO) << "id = " << c.id << ", connected = " << c.connected;
+bool CameraHal::SetUpCamera(int id, const CameraSpec& spec) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  android::CameraMetadata static_metadata, request_template;
+
+  if (!FillDefaultMetadata(&static_metadata, &request_template).ok()) {
+    return false;
+  }
+
+  static_metadata_[id] = std::move(static_metadata);
+  request_template_[id] = std::move(request_template);
+
+  return true;
+}
+
+void CameraHal::TearDownCamera(int id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  static_metadata_.erase(id);
+  request_template_.erase(id);
+}
+
+void CameraHal::NotifyCameraConnected(int id, bool connected) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(callbacks_ != nullptr);
+
+  callbacks_->camera_device_status_change(
+      callbacks_, id,
+      connected ? CAMERA_DEVICE_STATUS_PRESENT
+                : CAMERA_DEVICE_STATUS_NOT_PRESENT);
+}
+
+void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (callbacks_ == nullptr) {
+    // Spec will be applied when callback is set.
+    return;
+  }
+
+  for (const auto& old_camera_spec : old_spec.cameras) {
+    int id = old_camera_spec.id;
+    auto it = std::find_if(new_spec.cameras.begin(), new_spec.cameras.end(),
+                           [&](const auto& spec) { return spec.id == id; });
+    // TODO(pihsun): Might need to close the camera if some currently opened
+    // camera is removed in spec.
+    if (it == new_spec.cameras.end()) {
+      // Camera entry removed.
+      if (old_camera_spec.connected) {
+        VLOGF(1) << "Removing camera " << id;
+        NotifyCameraConnected(id, false);
+        TearDownCamera(id);
+      }
+    } else {
+      if (it->connected != old_camera_spec.connected) {
+        // Device connected state changed.
+        VLOGF(1) << "Camera " << id << " connected state changed "
+                 << old_camera_spec.connected << "->" << it->connected;
+        NotifyCameraConnected(id, it->connected);
+      }
+    }
+  }
+  for (const auto& camera_spec : new_spec.cameras) {
+    int id = camera_spec.id;
+    if (std::none_of(old_spec.cameras.begin(), old_spec.cameras.end(),
+                     [&](const auto& spec) { return spec.id == id; })) {
+      // New device.
+      VLOGF(1) << "Adding camera " << id;
+      if (!SetUpCamera(id, camera_spec)) {
+        // TODO(pihsun): Better handle error? We should at least remove the
+        // entry from the new spec.
+        LOGF(WARNING) << "Error when setting up camera id " << id;
+        continue;
+      }
+      NotifyCameraConnected(id, camera_spec.connected);
+    }
   }
 }
 

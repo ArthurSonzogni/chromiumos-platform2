@@ -10,6 +10,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "absl",
     "libcros_camera",
     "libcros_camera_android_deps",
   ]
@@ -20,6 +21,7 @@ shared_library("libcamera_hal") {
   sources = [
     "camera_hal.cc",
     "hal_spec.cc",
+    "metadata_handler.cc",
     "value_util.cc",
   ]
   configs += [ ":target_defaults" ]

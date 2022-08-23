@@ -6,9 +6,11 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "cros-camera/common.h"
 #include "hal/fake/hal_spec.h"
 #include "hal/fake/value_util.h"
 
@@ -31,6 +33,12 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
     CameraSpec camera_spec;
 
     if (auto id = GetValue<int>(*spec_value, kIdKey)) {
+      if (base::Contains(camera_specs, *id,
+                         [](const CameraSpec& spec) { return spec.id; })) {
+        LOGF(WARNING) << "duplicated id " << *id << " at " << spec_value->path
+                      << ".id, ignore";
+        continue;
+      }
       camera_spec.id = *id;
     } else {
       // TODO(pihsun): Use generated ID for this case?
