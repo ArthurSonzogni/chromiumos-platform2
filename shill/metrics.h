@@ -1020,7 +1020,7 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricNetworkSecuritySuffix[] = "Security";
   static constexpr int kMetricNetworkSecurityMax = kWirelessSecurityMax;
   static constexpr char kMetricWirelessSecurityChange[] =
-      "Network.Shill.WiFi.SecurityChange";
+      "Network.Shill.Wifi.SecurityChange";
   static constexpr char kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
   static constexpr int kMetricNetworkSignalStrengthMin = 1;
   static constexpr int kMetricNetworkSignalStrengthMax = 200;
