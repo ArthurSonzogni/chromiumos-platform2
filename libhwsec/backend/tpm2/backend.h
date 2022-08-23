@@ -19,6 +19,7 @@
 #include "libhwsec/backend/tpm2/random.h"
 #include "libhwsec/backend/tpm2/sealing.h"
 #include "libhwsec/backend/tpm2/signature_sealing.h"
+#include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/state.h"
 #include "libhwsec/backend/tpm2/storage.h"
 #include "libhwsec/backend/tpm2/vendor.h"
@@ -55,6 +56,7 @@ class BackendTpm2 : public Backend {
   SignatureSealingTpm2& GetSignatureSealingTpm2() { return signature_sealing_; }
   DerivingTpm2& GetDerivingTpm2() { return deriving_; }
   EncryptionTpm2& GetEncryptionTpm2() { return encryption_; }
+  SigningTpm2& GetSigningTpm2() { return signing_; }
   KeyManagementTpm2& GetKeyManagementTpm2() { return key_management_; }
   ConfigTpm2& GetConfigTpm2() { return config_; }
   RandomTpm2& GetRandomTpm2() { return random_; }
@@ -77,7 +79,7 @@ class BackendTpm2 : public Backend {
   }
   Deriving* GetDeriving() override { return &deriving_; }
   Encryption* GetEncryption() override { return &encryption_; }
-  Signing* GetSigning() override { return nullptr; }
+  Signing* GetSigning() override { return &signing_; }
   KeyManagement* GetKeyManagement() override { return &key_management_; }
   SessionManagement* GetSessionManagement() override { return nullptr; }
   Config* GetConfig() override { return &config_; }
@@ -97,6 +99,7 @@ class BackendTpm2 : public Backend {
   SignatureSealingTpm2 signature_sealing_{*this};
   DerivingTpm2 deriving_{*this};
   EncryptionTpm2 encryption_{*this};
+  SigningTpm2 signing_{*this};
   KeyManagementTpm2 key_management_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
