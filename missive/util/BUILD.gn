@@ -73,7 +73,10 @@ source_set("test_callbacks_support") {
     "test_support_callbacks.h",
   ]
 
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:test",
+  ]
 }
 
 source_set("disconnectable_client") {

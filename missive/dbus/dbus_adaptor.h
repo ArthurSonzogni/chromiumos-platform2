@@ -24,8 +24,12 @@ namespace reporting {
 class DBusAdaptor : public org::chromium::MissivedAdaptor,
                     public org::chromium::MissivedInterface {
  public:
-  DBusAdaptor(scoped_refptr<dbus::Bus> bus,
-              std::unique_ptr<MissiveService> missive);
+  // Bus and missive are mandatory parameters, failure_cb by default
+  // crashes with error message - may be replaced for testing.
+  DBusAdaptor(
+      scoped_refptr<dbus::Bus> bus,
+      std::unique_ptr<MissiveService> missive,
+      base::OnceCallback<void(Status)> failure_cb = base::BindOnce(OnFailure));
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
@@ -56,8 +60,11 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
  private:
   void StartupFinished(Status status);
 
+  static void OnFailure(Status status);
+
   brillo::dbus_utils::DBusObject dbus_object_;
   const std::unique_ptr<MissiveService> missive_;
+  base::OnceCallback<void(Status)> failure_cb_;
   bool daemon_is_ready_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
 
   SEQUENCE_CHECKER(sequence_checker_);

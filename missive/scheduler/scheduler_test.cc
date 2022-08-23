@@ -134,15 +134,12 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   auto job = FakeJob::Create(std::move(delegate));
 
   {
-    test::TestCallbackAutoWaiter waiter;
+    test::TestEvent<Status> start_event;
     complete_waiter_.Attach();
-    job->Start(base::BindOnce(
-        [](test::TestCallbackWaiter* waiter, Status status) {
-          EXPECT_OK(status) << status;
-          waiter->Signal();
-        },
-        &waiter));
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
+    const auto status = start_event.result();
+    EXPECT_OK(status) << status;
     complete_waiter_.Wait();
   }
 
@@ -154,14 +151,11 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   // Now that the job has completed successfully, it shouldn't be startable, or
   // cancellable.
   {
-    test::TestCallbackAutoWaiter waiter;
-    job->Start(base::BindOnce(
-        [](test::TestCallbackWaiter* waiter, Status status) {
-          EXPECT_FALSE(status.ok());
-          waiter->Signal();
-        },
-        &waiter));
+    test::TestEvent<Status> start_event;
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
+    const auto status = start_event.result();
+    EXPECT_FALSE(status.ok());
   }
 
   // Nothing should have changed from before.
@@ -183,15 +177,12 @@ TEST_F(JobTest, CancelsWhenJobFails) {
   job->SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
 
   {
-    test::TestCallbackAutoWaiter waiter;
     complete_waiter_.Attach();
-    job->Start(base::BindOnce(
-        [](test::TestCallbackWaiter* waiter, Status status) {
-          EXPECT_OK(status) << status;
-          waiter->Signal();
-        },
-        &waiter));
+    test::TestEvent<Status> start_event;
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
+    const auto status = start_event.result();
+    EXPECT_OK(status) << status;
     complete_waiter_.Wait();
   }
 
@@ -207,14 +198,11 @@ TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
 
   EXPECT_TRUE(job->Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
 
-  test::TestCallbackAutoWaiter waiter;
-  job->Start(base::BindOnce(
-      [](test::TestCallbackWaiter* waiter, Status status) {
-        EXPECT_TRUE(!status.ok());
-        waiter->Signal();
-      },
-      &waiter));
+  test::TestEvent<Status> start_event;
+  job->Start(start_event.cb());
   task_environment_.FastForwardBy(base::Seconds(1));
+  const auto status = start_event.result();
+  EXPECT_FALSE(status.ok());
 }
 
 class TestSchedulerObserver : public Scheduler::SchedulerObserver {

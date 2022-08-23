@@ -36,7 +36,7 @@ If there are errors on conflicting USE flags, rebuild the dependencies with
 
 ```
 # HOST (inside chroot)
-~$ build_packages --board=${BOARD} --with-nodebug
+~$ build_packages --board=${BOARD} --no-withdebug
 ```
 
 For convenience, if you always work with a non-debug image, consider disabling

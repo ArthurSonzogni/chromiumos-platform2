@@ -13,9 +13,12 @@
 #include <base/callback_forward.h>
 #include <base/callback_helpers.h>
 #include <base/logging.h>
-#include <base/run_loop.h>
-#include <base/synchronization/lock.h>
+#include <base/task/bind_post_task.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/test/test_future.h>
 #include <base/thread_annotations.h>
+#include <base/threading/sequenced_task_runner_handle.h>
+#include <gtest/gtest.h>
 
 namespace reporting {
 namespace test {
@@ -23,95 +26,80 @@ namespace test {
 // Usage (in tests only):
 //
 //   TestEvent<ResType> e;
+//
 //   ... Do some async work passing e.cb() as a completion callback of
 //   base::OnceCallback<void(ResType res)> type which also may perform some
 //   other action specified by |done| callback provided by the caller.
-//   ... = e.result();  // Will wait for e.cb() to be called and return the
-//   collected result.
+//   Now wait for e.cb() to be called and return the collected result.
 //
-//   This class follows base::BarrierCallback in using mutex Lock.
-//   It can only be done in tests, never in production code.
+//   ... = e.result();
 //
 template <typename ResType>
-class TestEvent {
+class TestEvent : base::test::TestFuture<ResType> {
  public:
-  TestEvent() : run_loop_(base::RunLoop::Type::kNestableTasksAllowed) {}
+  TestEvent() = default;
   ~TestEvent() = default;
   TestEvent(const TestEvent& other) = delete;
   TestEvent& operator=(const TestEvent& other) = delete;
-  ResType result() {
-    run_loop_.Run();
-    base::ReleasableAutoLock lock(&mutex_);
-    return std::forward<ResType>(result_);
+
+  template <std::enable_if_t<std::is_move_constructible<ResType>::value, bool> =
+                false>
+  [[nodiscard]] const ResType& ref_result() {
+    return base::test::TestFuture<ResType>::Get();
   }
 
-  // Repeating callback to hand over to the processing method.
-  // Even though it is repeating, it can be only called once, since
-  // it quits run_loop; repeating declaration is only needed for cases
-  // when the caller requires it.
-  // If the caller expects OnceCallback, result will be converted automatically.
-  base::RepeatingCallback<void(ResType res)> cb() {
-    return base::BindRepeating(&TestEvent<ResType>::Callback,
-                               base::Unretained(this));
+  template <
+      std::enable_if_t<std::is_move_constructible<ResType>::value, bool> = true>
+  [[nodiscard]] ResType result() {
+    return std::forward<ResType>(base::test::TestFuture<ResType>::Take());
   }
 
- private:
-  void Callback(ResType res) {
-    {
-      base::ReleasableAutoLock lock(&mutex_);
-      result_ = std::forward<ResType>(res);
-    }
-    run_loop_.Quit();
+  [[nodiscard]] base::OnceCallback<void(ResType res)> cb() {
+    return base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
+                              base::test::TestFuture<ResType>::GetCallback());
   }
-
-  base::RunLoop run_loop_;
-  base::Lock mutex_;
-  ResType result_ GUARDED_BY(mutex_);
 };
 
 // Usage (in tests only):
 //
 //   TestMultiEvent<ResType1, Restype2, ...> e;
+//
 //   ... Do some async work passing e.cb() as a completion callback of
 //   base::OnceCallback<void(ResType1, Restype2, ...)> type which also may
 //   perform some other action specified by |done| callback provided by the
-//   caller. std::tie(res1, res2, ...) = e.result();  // Will wait for e.cb() to
-//   be called and return the collected results.
+//   caller. Now wait for e.cb() to be called and return the collected results.
 //
-//   This class follows base::BarrierCallback in using mutex Lock.
-//   It can only be done in tests, never in production code.
+//   std::tie(res1, res2, ...) = e.result();
 //
 template <typename... ResType>
-class TestMultiEvent {
+class TestMultiEvent : base::test::TestFuture<ResType...> {
  public:
-  TestMultiEvent() : run_loop_(base::RunLoop::Type::kNestableTasksAllowed) {}
+  TestMultiEvent() = default;
   ~TestMultiEvent() = default;
   TestMultiEvent(const TestMultiEvent& other) = delete;
   TestMultiEvent& operator=(const TestMultiEvent& other) = delete;
-  std::tuple<ResType...> result() {
-    run_loop_.Run();
-    base::ReleasableAutoLock lock(&mutex_);
-    return std::forward<std::tuple<ResType...>>(result_);
+
+  template <std::enable_if_t<
+                std::is_move_constructible<std::tuple<ResType...>>::value,
+                bool> = false>
+  [[nodiscard]] const std::tuple<ResType...>& ref_result() {
+    return base::test::TestFuture<ResType...>::Get();
+  }
+
+  template <std::enable_if_t<
+                std::is_move_constructible<std::tuple<ResType...>>::value,
+                bool> = true>
+  [[nodiscard]] std::tuple<ResType...> result() {
+    return std::forward<std::tuple<ResType...>>(
+        base::test::TestFuture<ResType...>::Take());
   }
 
   // Completion callback to hand over to the processing method.
-  base::RepeatingCallback<void(ResType... res)> cb() {
-    return base::BindRepeating(&TestMultiEvent<ResType...>::Callback,
-                               base::Unretained(this));
+  [[nodiscard]] base::OnceCallback<void(ResType... res)> cb() {
+    return base::BindPostTask(
+        base::SequencedTaskRunnerHandle::Get(),
+        base::test::TestFuture<ResType...>::GetCallback());
   }
-
- private:
-  void Callback(ResType... res) {
-    {
-      base::ReleasableAutoLock lock(&mutex_);
-      result_ = std::forward_as_tuple(res...);
-    }
-    run_loop_.Quit();
-  }
-
-  base::RunLoop run_loop_;
-  base::Lock mutex_;
-  std::tuple<ResType...> result_ GUARDED_BY(mutex_);
 };
 
 // Usage (in tests only):
@@ -129,7 +117,7 @@ class TestMultiEvent {
 //
 //  And  in each of N actions: waiter.Signal(); when done
 
-class TestCallbackWaiter {
+class TestCallbackWaiter : public base::test::TestFuture<bool> {
  public:
   TestCallbackWaiter();
   ~TestCallbackWaiter();
@@ -147,17 +135,17 @@ class TestCallbackWaiter {
       return;
     }
     // Dropping the last owner.
-    run_loop_.Quit();
+    std::move(signaled_cb_).Run(true);
   }
 
   void Wait() {
     Signal();  // Rid of the constructor's ownership.
-    run_loop_.Run();
+    ASSERT_TRUE(base::test::TestFuture<bool>::Get());
   }
 
  private:
   base::AtomicRefCount counter_{1};  // Owned by constructor.
-  base::RunLoop run_loop_;
+  base::OnceCallback<void(bool)> signaled_cb_;
 };
 
 // RAII wrapper for TestCallbackWaiter.

@@ -35,12 +35,14 @@ ResponseType RespondDaemonNotReady() {
 }  // namespace
 
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
-                         std::unique_ptr<MissiveService> missive)
+                         std::unique_ptr<MissiveService> missive,
+                         base::OnceCallback<void(Status)> failure_cb)
     : org::chromium::MissivedAdaptor(this),
       dbus_object_(/*object_manager=*/nullptr,
                    bus,
                    org::chromium::MissivedAdaptor::GetObjectPath()),
-      missive_(std::move(missive)) {
+      missive_(std::move(missive)),
+      failure_cb_(std::move(failure_cb)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   missive_->StartUp(
       bus, base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
@@ -51,11 +53,18 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
 void DBusAdaptor::StartupFinished(Status status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!status.ok()) {
-    LOG(FATAL) << "Unable to start Missive daemon, status: " << status;
+    if (failure_cb_) {
+      std::move(failure_cb_).Run(status);
+    }
     return;
   }
   daemon_is_ready_ = true;
   missive_->OnReady();
+}
+
+// static
+void DBusAdaptor::OnFailure(Status status) {
+  LOG(FATAL) << "Unable to start Missive daemon, status: " << status;
 }
 
 void DBusAdaptor::RegisterAsync(
