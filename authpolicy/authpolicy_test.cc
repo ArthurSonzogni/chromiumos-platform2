@@ -280,7 +280,7 @@ class TestPathService : public PathService {
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
 
-    // Fill in the rest of the paths and build dependend paths.
+    // Fill in the rest of the paths and build dependent paths.
     Initialize();
   }
 };
@@ -1190,7 +1190,7 @@ TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
   CheckKrb5EncTypes(paths_->Get(Path::USER_KRB5_CONF), kKrb5EncTypesStrong);
 }
 
-// If The encryption types reset to strong after device policy fetch.
+// The encryption types are loaded from the device policy file on startup.
 TEST_F(AuthPolicyTest, LoadsDevicePolicyOnStartup) {
   // Join to bootstrap a config file.
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
@@ -1407,7 +1407,7 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
             Auth(kUserPrincipal, kBadAccountId, MakePasswordFd()));
 }
 
-// Successful user authentication.
+// User authentication sets account info.
 TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   ActiveDirectoryAccountInfo account_info;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));

@@ -85,7 +85,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                      int32_t* error,
                      std::vector<uint8_t>* user_status_blob) override;
 
-  // |kerberos_files_blob| is a serialized KerberosFiles profobuf.
+  // |kerberos_files_blob| is a serialized KerberosFiles protobuf.
   void GetUserKerberosFiles(const std::string& account_id,
                             int32_t* error,
                             std::vector<uint8_t>* kerberos_files_blob) override;
@@ -97,7 +97,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                     std::string* joined_domain) override;
 
   void RefreshUserPolicy(PolicyResponseCallback callback,
-                         const std::string& acccount_id) override;
+                         const std::string& account_id) override;
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
