@@ -849,6 +849,9 @@ bool BuildAuthInput(Printer& printer,
         epoch_response);
 
     return true;
+  } else if (cl->HasSwitch(switches::kPublicMount)) {
+    auth_input->mutable_kiosk_input();
+    return true;
   }
   printer.PrintHumanOutput("No auth input specified\n");
   return false;
