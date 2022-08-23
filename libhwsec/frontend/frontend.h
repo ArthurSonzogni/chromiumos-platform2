@@ -9,6 +9,9 @@
 
 namespace hwsec {
 
+// Frontend is the layer to simplify the call to backend. And provide specific
+// to different application. Note: This layer should be state-less and thread
+// safe.
 class HWSEC_EXPORT Frontend {
  public:
   virtual ~Frontend() = default;

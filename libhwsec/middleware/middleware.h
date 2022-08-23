@@ -38,6 +38,9 @@
 //
 // Note: The middleware can maintain a standalone thread, or use the same task
 // runner as the caller side.
+//
+// Note2: The moveable function parameters would not be copied, the other kinds
+// of function parameters would be copied due to base::BindOnce.
 
 namespace hwsec {
 
@@ -89,21 +92,26 @@ class Middleware {
       : middleware_derivative_(middleware_derivative) {}
 
   template <auto Func, typename... Args>
-  auto CallSync(const Args&... args) {
-    auto task = base::BindOnce(&Middleware::CallSyncInternal<Func, Args...>,
-                               middleware_derivative_.middleware, args...);
+  auto CallSync(Args&&... args) {
+    auto task = base::BindOnce(
+        &Middleware::CallSyncInternal<Func, decltype(ForwareParameter(
+                                                std::declval<Args>()))...>,
+        middleware_derivative_.middleware,
+        ForwareParameter(std::forward<Args>(args))...);
     return RunBlockingTask(std::move(task));
   }
 
   template <auto Func, typename Callback, typename... Args>
-  void CallAsync(Callback callback, const Args&... args) {
+  void CallAsync(Callback callback, Args&&... args) {
     CHECK(middleware_derivative_.task_runner);
 
     SubClassCallback<decltype(Func)> reply = std::move(callback);
     reply = base::BindPostTask(GetReplyRunner(), std::move(reply));
     base::OnceClosure task = base::BindOnce(
-        &Middleware::CallAsyncInternal<Func, Args...>,
-        middleware_derivative_.middleware, std::move(reply), args...);
+        &Middleware::CallAsyncInternal<Func, decltype(ForwareParameter(
+                                                 std::declval<Args>()))...>,
+        middleware_derivative_.middleware, std::move(reply),
+        ForwareParameter(std::forward<Args>(args))...);
     middleware_derivative_.task_runner->PostTask(FROM_HERE, std::move(task));
   }
 
@@ -169,6 +177,27 @@ class Middleware {
   template <typename Func>
   using SubClassCallback = typename SubClassHelper<Func>::Callback;
 
+  // The custom parameter forwarding rules.
+  template <typename T>
+  static T ForwareParameter(T&& t) {
+    // The rvalue should still be rvalue, because we have the ownership.
+    return t;
+  }
+
+  template <typename T>
+  static const T& ForwareParameter(T& t) {
+    // Add const for normal reference, because we don't have the ownership.
+    // base::BindOnce will copy const reference parameter when binding.
+    return t;
+  }
+
+  template <typename T>
+  static const T& ForwareParameter(const T& t) {
+    // The const reference would still be const reference.
+    // base::BindOnce will copy const reference parameter when binding.
+    return t;
+  }
+
   template <typename Arg>
   static bool ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
     if constexpr (std::is_same_v<Arg, Key>) {
@@ -184,7 +213,7 @@ class Middleware {
 
   template <auto Func, typename... Args>
   static SubClassResult<decltype(Func)> CallSyncInternal(
-      base::WeakPtr<MiddlewareOwner> middleware, const Args&... args) {
+      base::WeakPtr<MiddlewareOwner> middleware, Args... args) {
     using hwsec_foundation::status::MakeStatus;
 
     if (!middleware) {
@@ -233,9 +262,9 @@ class Middleware {
   template <auto Func, typename... Args>
   static void CallAsyncInternal(base::WeakPtr<MiddlewareOwner> middleware,
                                 SubClassCallback<decltype(Func)> callback,
-                                const Args&... args) {
-    std::move(callback).Run(std::move(middleware),
-                            CallSyncInternal<Func, Args...>(args...));
+                                Args... args) {
+    std::move(callback).Run(CallSyncInternal<Func, Args...>(
+        std::move(middleware), ForwareParameter(std::move(args))...));
   }
 
   static scoped_refptr<base::TaskRunner> GetReplyRunner() {

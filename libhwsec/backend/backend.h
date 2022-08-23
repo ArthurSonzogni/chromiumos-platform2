@@ -30,6 +30,10 @@ namespace hwsec {
 // Backend is the layer to abstract the difference between different security
 // module(e.g. TPM1.2, TPM2.0, GSC...). And provide a unified interface. Note:
 // This class is NOT thread safe.
+//
+// Note: The backend function parameters must be const reference or copyable.
+// Otherwise the middleware would not be able to retry the command for
+// communication error.
 class Backend {
  public:
   // A helper to give subclasses the ability to access the backend.
