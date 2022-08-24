@@ -443,14 +443,22 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
 
   // |auth_state| will be the input to AuthSession::AddVaultKeyset(),
   // which calls VaultKeyset::Encrypt().
-  if (initial_keyset && auth_block_type == AuthBlockType::kPinWeaver) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionPinweaverUnsupportedInAddKeyset),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-    return;
+  if (auth_block_type == AuthBlockType::kPinWeaver) {
+    if (initial_keyset) {
+      // The initial keyset cannot be a PIN, when using vault keysets.
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionPinweaverUnsupportedInAddKeyset),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
+      return;
+    }
+    // Since this is not the initial keyset, there should now be a valid
+    // authenticated VaultKeyset. Use it to get the reset seed for the PIN VK.
+    DCHECK(vault_keyset_);
+    auth_input.reset_seed = vault_keyset_->GetResetSeed();
   }
 
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
