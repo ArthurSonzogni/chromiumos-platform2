@@ -91,6 +91,10 @@ bool Dlc::Mount(HelperProcessProxy* proxy, const std::string& a_or_b_str) {
                GetMountPoint());
 }
 
+bool Dlc::Mount(HelperProcessProxy* proxy, const base::FilePath& path) {
+  return Mount(proxy, path, GetManifestPath(), GetTablePath(), GetMountPoint());
+}
+
 bool Dlc::Mount(HelperProcessProxy* proxy,
                 const base::FilePath& image_path,
                 const base::FilePath& manifest_path,

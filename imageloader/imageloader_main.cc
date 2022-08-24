@@ -16,6 +16,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 
 #include "imageloader/component.h"
 #include "imageloader/global_context.h"
@@ -124,6 +125,10 @@ int main(int argc, char** argv) {
               "component and exit immediately.");
   DEFINE_string(mount_component, "",
                 "Specifies the name of the component when using --mount.");
+  DEFINE_string(mount_dlc, "",
+                "Specifies the ID of the DLC when using --mount.");
+  DEFINE_string(dlc_path, "",
+                "Specifies the path of the DLC to use when using --mount.");
   DEFINE_string(mount_point, "",
                 "Specifies the mountpoint when using either --mount or "
                 "--unmount.");
@@ -197,37 +202,58 @@ int main(int argc, char** argv) {
     // Run with minimal privilege.
     imageloader::ImageLoader::EnterSandbox();
 
-    if (FLAGS_mount_component.empty()) {
-      LOG(ERROR) << "--mount_component=name must be set with --mount";
-      return 1;
-    }
-    // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
-    // which may not be available at early boot.
-    imageloader::ImageLoaderImpl loader(std::move(config));
+    if (!FLAGS_mount_component.empty()) {
+      // Access the ImageLoaderImpl directly to avoid needless dbus
+      // dependencies, which may not be available at early boot.
+      imageloader::ImageLoaderImpl loader(std::move(config));
 
-    std::string component_version =
-        loader.GetComponentVersion(FLAGS_mount_component);
-    // imageloader returns "" if the component doesn't exist. In this case
-    // return 0 so our crash reporting doesn't think something actually went
-    // wrong.
-    if (component_version.empty())
-      return 0;
+      std::string component_version =
+          loader.GetComponentVersion(FLAGS_mount_component);
+      // imageloader returns "" if the component doesn't exist. In this case
+      // return 0 so our crash reporting doesn't think something actually went
+      // wrong.
+      if (component_version.empty())
+        return 0;
 
-    if (FLAGS_mount_point.empty()) {
-      if (loader
-              .LoadComponent(FLAGS_mount_component, helper_process_proxy.get())
-              .empty()) {
+      if (FLAGS_mount_point.empty()) {
+        if (loader
+                .LoadComponent(FLAGS_mount_component,
+                               helper_process_proxy.get())
+                .empty()) {
+          LOG(ERROR) << "Failed to verify and mount component: "
+                     << FLAGS_mount_component;
+          return 1;
+        }
+      } else if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
+                                       helper_process_proxy.get())) {
         LOG(ERROR) << "Failed to verify and mount component: "
-                   << FLAGS_mount_component;
+                   << FLAGS_mount_component << " at " << FLAGS_mount_point;
         return 1;
       }
-    } else if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
-                                     helper_process_proxy.get())) {
-      LOG(ERROR) << "Failed to verify and mount component: "
-                 << FLAGS_mount_component << " at " << FLAGS_mount_point;
-      return 1;
+      return 0;
     }
-    return 0;
+
+    if (!FLAGS_mount_dlc.empty()) {
+      if (FLAGS_dlc_path.empty()) {
+        LOG(ERROR) << "--dlc_path=path must be set with --mount_dlc";
+        return 1;
+      }
+
+      imageloader::LoadDlcRequest request;
+      request.set_id(FLAGS_mount_dlc);
+      request.set_path(FLAGS_dlc_path);
+
+      // Access the ImageLoaderImpl directly to avoid needless dbus
+      // dependencies, which may not be available at early boot.
+      imageloader::ImageLoaderImpl loader(std::move(config));
+
+      return loader.LoadDlc(request, helper_process_proxy.get()).empty() ? 0
+                                                                         : 1;
+    }
+
+    LOG(ERROR) << "--mount_component=name or --mount_dlc=name must be set "
+                  "with --mount";
+    return 1;
   }
 
   // Unmount all component mount points and exit.

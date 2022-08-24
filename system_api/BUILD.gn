@@ -26,6 +26,8 @@ group("all") {
     ":system_api-fusebox-protos",
     ":system_api-hps-goprotos",
     ":system_api-hps-protos",
+    ":system_api-imageloader-goprotos",
+    ":system_api-imageloader-protos",
     ":system_api-kerberos-goprotos",
     ":system_api-kerberos-protos",
     ":system_api-login_manager-goprotos",
@@ -454,6 +456,19 @@ goproto_library("system_api-dlcservice-goprotos") {
   proto_in_dir = "dbus/dlcservice"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/dlcservice.proto" ]
+}
+
+proto_library("system_api-imageloader-protos") {
+  proto_in_dir = "dbus/imageloader"
+  proto_out_dir = "include/imageloader/proto_bindings"
+  sources = [ "${proto_in_dir}/imageloader.proto" ]
+  standalone = true
+}
+
+goproto_library("system_api-imageloader-goprotos") {
+  proto_in_dir = "dbus/imageloader"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/imageloader.proto" ]
 }
 
 proto_library("system_api-update_engine-protos") {

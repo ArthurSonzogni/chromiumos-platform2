@@ -11,6 +11,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxies.h>
 
 #include "dlcservice/dbus_adaptors/org.chromium.DlcServiceInterface.h"

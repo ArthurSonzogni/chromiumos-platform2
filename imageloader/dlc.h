@@ -39,6 +39,9 @@ class Dlc {
   // Mount the image.
   bool Mount(HelperProcessProxy* proxy, const std::string& a_or_b);
 
+  // Mount the image at path.
+  bool Mount(HelperProcessProxy* proxy, const base::FilePath& path);
+
   // Returns the directory where the DLC will be mounted. look at |mount_base_|.
   base::FilePath GetMountPoint();
 

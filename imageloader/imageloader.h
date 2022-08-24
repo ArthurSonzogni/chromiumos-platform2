@@ -16,6 +16,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/errors/error.h>
 #include <brillo/process/process_reaper.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 
 #include "imageloader/dbus_adaptors/org.chromium.ImageLoaderInterface.h"
 #include "imageloader/helper_process_proxy.h"
@@ -74,6 +75,11 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                     const std::string& package,
                     const std::string& a_or_b,
                     std::string* out_mount_point) override;
+
+  // Load and mount a DLC image based on the proto.
+  bool LoadDlc(brillo::ErrorPtr* err,
+               const LoadDlcRequest& request,
+               std::string* out_mount_point) override;
 
   // Remove a component given component |name|.
   bool RemoveComponent(brillo::ErrorPtr* err,

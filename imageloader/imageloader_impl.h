@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 
 #include "imageloader/helper_process_proxy.h"
 
@@ -78,6 +79,10 @@ class ImageLoaderImpl {
                            const std::string& package,
                            const std::string& a_or_b,
                            HelperProcessProxy* proxy);
+
+  // Load and mount a DLC image based on the proto.
+  // Returns empty string on failure.
+  std::string LoadDlc(const LoadDlcRequest& request, HelperProcessProxy* proxy);
 
   // Load the specified component at a set mount point.
   bool LoadComponent(const std::string& name,

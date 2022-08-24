@@ -17,6 +17,7 @@
 #include <brillo/message_loops/message_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxies.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>

@@ -37,6 +37,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrypto",
     "libminijail",
+    "system_api",
     "vboot_host",
   ]
 

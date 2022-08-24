@@ -16,6 +16,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxy-mocks.h>
 #if USE_LVM_STATEFUL_PARTITION
 #include <lvmd/proto_bindings/lvmd.pb.h>

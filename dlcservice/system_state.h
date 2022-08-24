@@ -12,6 +12,7 @@
 #include <base/time/time.h>
 #include <base/time/clock.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxies.h>
 #include <session_manager/dbus-proxies.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>

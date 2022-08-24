@@ -121,6 +121,18 @@ std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
   return dlc.Mount(proxy, a_or_b) ? dlc.GetMountPoint().value() : kBadResult;
 }
 
+std::string ImageLoaderImpl::LoadDlc(const LoadDlcRequest& request,
+                                     HelperProcessProxy* proxy) {
+  if (!IsIdValid(request.id())) {
+    return kBadResult;
+  }
+
+  Dlc dlc(request.id(), "package", config_.mount_path);
+  return dlc.Mount(proxy, base::FilePath(request.path()))
+             ? dlc.GetMountPoint().value()
+             : kBadResult;
+}
+
 std::string ImageLoaderImpl::LoadComponentAtPath(
     const std::string& name,
     const base::FilePath& component_path,

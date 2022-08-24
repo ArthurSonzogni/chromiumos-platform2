@@ -148,6 +148,14 @@ bool ImageLoader::LoadDlcImage(brillo::ErrorPtr* err,
   return true;
 }
 
+bool ImageLoader::LoadDlc(brillo::ErrorPtr* err,
+                          const LoadDlcRequest& request,
+                          std::string* out_mount_point) {
+  *out_mount_point = impl_.LoadDlc(request, helper_process_proxy_.get());
+  PostponeShutdown();
+  return true;
+}
+
 bool ImageLoader::RemoveComponent(brillo::ErrorPtr* err,
                                   const std::string& name,
                                   bool* out_success) {
