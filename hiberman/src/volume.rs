@@ -235,11 +235,7 @@ impl VolumeManager {
             file.set_len(snapshot_size)?;
         }
 
-        for snap_entry in
-            read_dir(&snapshot_dir).context("Failed to enumerate snapshot directory")?
-        {
-            let snap_name_entry = snap_entry?.file_name();
-            let snap_name = snap_name_entry.to_string_lossy();
+        for snap_name in Self::get_snapshot_file_names()? {
             if !active_lvs.contains(&snap_name.to_string()) {
                 info!("Removing old snapshot: {}", &snap_name);
                 delete_snapshot(&snap_name).context("Failed to delete old snapshot")?;
@@ -251,11 +247,7 @@ impl VolumeManager {
 
     /// Set up dm-snapshots for the stateful LVs.
     pub fn setup_stateful_snapshots(&mut self) -> Result<()> {
-        let snapshot_files =
-            read_dir(snapshot_dir()).context("Failed to enumerate snapshot directory")?;
-        for snapshot_name in snapshot_files {
-            let lv_name_path = snapshot_name?.file_name();
-            let lv_name = lv_name_path.to_string_lossy();
+        for lv_name in Self::get_snapshot_file_names()? {
             self.setup_snapshot(&lv_name)?;
         }
 
@@ -362,10 +354,7 @@ impl VolumeManager {
         let mut snapshots = vec![];
         let mut bad_snapshots = vec![];
         let mut result = Ok(());
-        let snapshot_files = read_dir(snapshot_dir())?;
-        for snap_entry in snapshot_files {
-            let snap_name_entry = snap_entry?.file_name();
-            let name = snap_name_entry.to_string_lossy();
+        for name in Self::get_snapshot_file_names()? {
             let snapshot = match DmSnapshotMerge::new(&name) {
                 Ok(o) => match o {
                     Some(s) => s,
@@ -455,6 +444,24 @@ impl VolumeManager {
         }
 
         Ok((split[0].to_string(), split[1..].join(":")))
+    }
+
+    /// Return a list of strings describing the file names in the snapshot
+    /// directory.
+    fn get_snapshot_file_names() -> Result<Vec<String>> {
+        let snapshot_dir = snapshot_dir();
+        if !snapshot_dir.exists() {
+            return Ok(vec![]);
+        }
+
+        let mut files = vec![];
+        let snapshot_files = read_dir(snapshot_dir)?;
+        for snap_entry in snapshot_files {
+            let snap_name_entry = snap_entry?.file_name();
+            files.push(snap_name_entry.to_string_lossy().to_string());
+        }
+
+        Ok(files)
     }
 }
 
