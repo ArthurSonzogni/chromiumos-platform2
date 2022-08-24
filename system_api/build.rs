@@ -80,10 +80,18 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "auth_factor",
         "system_api/dbus/cryptohome/auth_factor.proto",
     ),
+    (
+        "concierge_service",
+        "system_api/dbus/vm_concierge/concierge_service.proto",
+    ),
     ("dlcservice", "system_api/dbus/dlcservice/dlcservice.proto"),
     ("fido", "system_api/dbus/cryptohome/fido.proto"),
     ("key", "system_api/dbus/cryptohome/key.proto"),
     ("rpc", "system_api/dbus/cryptohome/rpc.proto"),
+    (
+        "shadercached",
+        "system_api/dbus/shadercached/shadercached.proto",
+    ),
     (
         "UserDataAuth",
         "system_api/dbus/cryptohome/UserDataAuth.proto",
