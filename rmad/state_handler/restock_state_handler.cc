@@ -10,7 +10,6 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 

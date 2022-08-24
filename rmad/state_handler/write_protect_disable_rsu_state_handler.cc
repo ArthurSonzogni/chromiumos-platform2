@@ -13,7 +13,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"

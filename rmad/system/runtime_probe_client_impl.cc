@@ -13,12 +13,7 @@
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <rmad/proto_bindings/rmad.pb.h>
-
-// Include the protobuf before generated D-Bus headers to ensure the protobuf
-// message classes are defined before adaptor/proxy classes.
-// TODO(crbug.com/1255584): Includes headers in alphabetical order.
-#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
-#include <runtime_probe/dbus-proxies.h>  // NOLINT(build/include_alpha)
+#include <runtime_probe/dbus-proxies.h>
 
 #include "rmad/utils/component_utils.h"
 

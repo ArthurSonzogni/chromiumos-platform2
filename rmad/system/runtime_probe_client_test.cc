@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 
 #include <memory>
@@ -119,37 +118,5 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
   ComponentsWithIdentifier components;
   EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, &components));
 }
-
-namespace fake {
-
-// Tests for |FakeRuntimeProbeClient|.
-class FakeRuntimeProbeClientTest : public testing::Test {
- public:
-  FakeRuntimeProbeClientTest() = default;
-  ~FakeRuntimeProbeClientTest() override = default;
-
-  void SetUp() override {
-    fake_runtime_probe_client_ = std::make_unique<FakeRuntimeProbeClient>();
-  }
-
- protected:
-  std::unique_ptr<FakeRuntimeProbeClient> fake_runtime_probe_client_;
-};
-
-TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_Specified) {
-  ComponentsWithIdentifier components;
-  EXPECT_TRUE(fake_runtime_probe_client_->ProbeCategories(
-      {RMAD_COMPONENT_CAMERA}, &components));
-  EXPECT_EQ(1, components.size());
-  EXPECT_EQ(components[0].first, RMAD_COMPONENT_CAMERA);
-}
-
-TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_All) {
-  ComponentsWithIdentifier components;
-  EXPECT_TRUE(fake_runtime_probe_client_->ProbeCategories({}, &components));
-  EXPECT_EQ(8, components.size());
-}
-
-}  // namespace fake
 
 }  // namespace rmad

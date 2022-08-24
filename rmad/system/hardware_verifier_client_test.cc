@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/system/fake_hardware_verifier_client.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
 
 #include <memory>
@@ -202,63 +201,5 @@ TEST_F(HardwareVerifierClientTest,
   EXPECT_FALSE(
       hardware_verifier_client_->GetHardwareVerificationResult(&result));
 }
-
-namespace fake {
-
-// Tests for |FakeHardwareVerifierClient|.
-class FakeHardwareVerifierClientTest : public testing::Test {
- public:
-  FakeHardwareVerifierClientTest() = default;
-  ~FakeHardwareVerifierClientTest() override = default;
-
-  bool WriteHardwareVerificationResult(const std::string& str) {
-    base::FilePath hw_verification_result_file_path =
-        temp_dir_.GetPath().AppendASCII(kHwVerificationResultFilePath);
-    return base::WriteFile(hw_verification_result_file_path, str);
-  }
-
- protected:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    fake_hardware_verifier_client_ =
-        std::make_unique<FakeHardwareVerifierClient>(temp_dir_.GetPath());
-  }
-
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<FakeHardwareVerifierClient> fake_hardware_verifier_client_;
-};
-
-TEST_F(FakeHardwareVerifierClientTest, GetHardwareVerificationResult_Pass) {
-  WriteHardwareVerificationResult("1");
-  HardwareVerificationResult result;
-  EXPECT_TRUE(
-      fake_hardware_verifier_client_->GetHardwareVerificationResult(&result));
-  EXPECT_TRUE(result.is_compliant());
-  EXPECT_EQ(result.error_str(), "hardware_verification_pass");
-}
-
-TEST_F(FakeHardwareVerifierClientTest, GetHardwareVerificationResult_Fail) {
-  WriteHardwareVerificationResult("0");
-  HardwareVerificationResult result;
-  EXPECT_TRUE(
-      fake_hardware_verifier_client_->GetHardwareVerificationResult(&result));
-  EXPECT_FALSE(result.is_compliant());
-  EXPECT_EQ(result.error_str(), "hardware_verification_fail");
-}
-
-TEST_F(FakeHardwareVerifierClientTest, GetHardwareVerificationResult_NoFile) {
-  HardwareVerificationResult result;
-  EXPECT_FALSE(
-      fake_hardware_verifier_client_->GetHardwareVerificationResult(&result));
-}
-
-TEST_F(FakeHardwareVerifierClientTest, GetHardwareVerificationResult_Invalid) {
-  WriteHardwareVerificationResult("");
-  HardwareVerificationResult result;
-  EXPECT_FALSE(
-      fake_hardware_verifier_client_->GetHardwareVerificationResult(&result));
-}
-
-}  // namespace fake
 
 }  // namespace rmad

@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 
 #include <base/files/file_path.h>
@@ -80,41 +79,5 @@ TEST_F(PowerManagerClientTest, Shutdown_Failed) {
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
   EXPECT_FALSE(power_manager_client()->Shutdown());
 }
-
-namespace fake {
-
-class FakePowerManagerClientTest : public testing::Test {
- public:
-  FakePowerManagerClientTest() = default;
-  ~FakePowerManagerClientTest() override = default;
-
- protected:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    fake_power_manager_client_ =
-        std::make_unique<FakePowerManagerClient>(temp_dir_.GetPath());
-  }
-
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<FakePowerManagerClient> fake_power_manager_client_;
-};
-
-TEST_F(FakePowerManagerClientTest, Restart) {
-  const base::FilePath reboot_request_file_path =
-      temp_dir_.GetPath().AppendASCII(kRebootRequestFilePath);
-  EXPECT_FALSE(base::PathExists(reboot_request_file_path));
-  EXPECT_TRUE(fake_power_manager_client_->Restart());
-  EXPECT_TRUE(base::PathExists(reboot_request_file_path));
-}
-
-TEST_F(FakePowerManagerClientTest, Shutdown) {
-  const base::FilePath shutdown_request_file_path =
-      temp_dir_.GetPath().AppendASCII(kShutdownRequestFilePath);
-  EXPECT_FALSE(base::PathExists(shutdown_request_file_path));
-  EXPECT_TRUE(fake_power_manager_client_->Shutdown());
-  EXPECT_TRUE(base::PathExists(shutdown_request_file_path));
-}
-
-}  // namespace fake
 
 }  // namespace rmad

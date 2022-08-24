@@ -18,8 +18,6 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
-#include "rmad/system/fake_cryptohome_client.h"
-#include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"

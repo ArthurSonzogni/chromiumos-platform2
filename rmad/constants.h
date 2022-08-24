@@ -60,29 +60,6 @@ inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
 inline constexpr std::array<RmadComponent, 2> kComponentsNeedUpdateCbi = {
     RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
 
-// Constants for fake utilities.
-namespace fake {
-
-inline constexpr char kRebootRequestFilePath[] = "reboot_request";
-inline constexpr char kShutdownRequestFilePath[] = "shutdown_request";
-
-inline constexpr char kRoVerificationStatusFilePath[] =
-    "ro_verification_status";
-inline constexpr char kHwVerificationResultFilePath[] =
-    "hardware_verification_result";
-inline constexpr char kHwwpDisabledFilePath[] =
-    "hardware_write_protect_disabled";
-inline constexpr char kFactoryModeEnabledFilePath[] = "factory_mode_enabled";
-inline constexpr char kBlockCcdFilePath[] = "block_ccd";
-inline constexpr char kPowerSourcePresentFilePath[] = "power_source_present";
-inline constexpr char kCbiFilePath[] = "cbi";
-inline constexpr char kCrosSystemFilePath[] = "crossystem";
-inline constexpr char kVpdFilePath[] = "vpd";
-inline constexpr char kMetricsRecordSuccessFilePath[] =
-    "metrics_record_success";
-
-}  // namespace fake
-
 }  // namespace rmad
 
 #endif  // RMAD_CONSTANTS_H_

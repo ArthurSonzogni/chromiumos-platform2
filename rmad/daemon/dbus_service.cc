@@ -22,7 +22,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/daemon/daemon_callback.h"
-#include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"

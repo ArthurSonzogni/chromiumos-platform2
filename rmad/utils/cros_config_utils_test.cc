@@ -9,7 +9,6 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/values.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

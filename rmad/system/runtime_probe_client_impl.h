@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 #include <rmad/proto_bindings/rmad.pb.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 namespace org {
 namespace chromium {

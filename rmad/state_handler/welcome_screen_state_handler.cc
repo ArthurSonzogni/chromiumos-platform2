@@ -12,7 +12,6 @@
 #include <base/notreached.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
-#include "rmad/system/fake_hardware_verifier_client.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 

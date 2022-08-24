@@ -25,11 +25,6 @@ source_set("libsystem") {
   sources = [
     "cros_disks_client_impl.cc",
     "cryptohome_client_impl.cc",
-    "fake_cryptohome_client.cc",
-    "fake_hardware_verifier_client.cc",
-    "fake_power_manager_client.cc",
-    "fake_runtime_probe_client.cc",
-    "fake_tpm_manager_client.cc",
     "hardware_verifier_client_impl.cc",
     "power_manager_client_impl.cc",
     "runtime_probe_client_impl.cc",

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/system/cryptohome_client_impl.h"
-#include "rmad/system/fake_cryptohome_client.h"
 
 #include <cstdint>
 #include <memory>
@@ -98,41 +97,5 @@ TEST_F(CryptohomeClientTest, Proxy_Failed) {
 
   EXPECT_FALSE(cryptohome_client->IsCcdBlocked());
 }
-
-namespace fake {
-
-// Tests for |FakeCryptohomeClient|.
-class FakeCryptohomeClientTest : public testing::Test {
- public:
-  FakeCryptohomeClientTest() = default;
-  ~FakeCryptohomeClientTest() override = default;
-
-  void SetBlockCcd() {
-    const base::FilePath block_ccd_file_path =
-        temp_dir_.GetPath().AppendASCII(kBlockCcdFilePath);
-    brillo::TouchFile(block_ccd_file_path);
-  }
-
- protected:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    fake_cryptohome_client_ =
-        std::make_unique<FakeCryptohomeClient>(temp_dir_.GetPath());
-  }
-
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<FakeCryptohomeClient> fake_cryptohome_client_;
-};
-
-TEST_F(FakeCryptohomeClientTest, CcdBlocked) {
-  SetBlockCcd();
-  EXPECT_TRUE(fake_cryptohome_client_->IsCcdBlocked());
-}
-
-TEST_F(FakeCryptohomeClientTest, CcdNotBlocked) {
-  EXPECT_FALSE(fake_cryptohome_client_->IsCcdBlocked());
-}
-
-}  // namespace fake
 
 }  // namespace rmad

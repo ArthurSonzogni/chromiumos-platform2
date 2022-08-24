@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/system/fake_shill_client.h"
 #include "rmad/system/shill_client_impl.h"
 
 #include <memory>
@@ -49,21 +48,5 @@ TEST_F(ShillClientTest, DisableCellular_NoResponse) {
       std::make_unique<ShillClientImpl>(std::move(mock_flimflam_manager_proxy));
   EXPECT_FALSE(shill_client->DisableCellular());
 }
-
-namespace fake {
-
-// Tests for |FakeShillClient|.
-class FakeShillClientTest : public testing::Test {
- public:
-  FakeShillClientTest() = default;
-  ~FakeShillClientTest() override = default;
-};
-
-TEST_F(FakeShillClientTest, DisableCellular) {
-  auto fake_shill_client = std::make_unique<FakeShillClient>();
-  EXPECT_TRUE(fake_shill_client->DisableCellular());
-}
-
-}  // namespace fake
 
 }  // namespace rmad
