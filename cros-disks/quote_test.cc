@@ -70,32 +70,37 @@ TEST(Quote, VectorOfStrings) {
 }
 
 TEST(Redact, StringLiteral) {
-  EXPECT_EQ(Redacted<char[1]>(""), "(redacted)");
-  EXPECT_EQ(Redacted<char[8]>(R"(a\b"c'd)"), "(redacted)");
+  EXPECT_EQ(Redacted<char[1]>(""), "''");
+  EXPECT_EQ(Redacted<char[8]>(R"(a\b"c'd)"), "***");
 }
 
 TEST(Redact, CStyleString) {
   EXPECT_EQ(Redacted<const char*>(nullptr), "(null)");
-  EXPECT_EQ(Redacted<const char*>(""), "(redacted)");
-  EXPECT_EQ(Redacted<const char*>("a"), "(redacted)");
+  EXPECT_EQ(Redacted<const char*>(""), "''");
+  EXPECT_EQ(Redacted<const char*>("a"), "***");
 }
 
 TEST(Redact, StdString) {
-  EXPECT_EQ(Redacted<std::string>(""), "(redacted)");
-  EXPECT_EQ(Redacted<std::string>("a"), "(redacted)");
+  EXPECT_EQ(Redacted<std::string>(""), "''");
+  EXPECT_EQ(Redacted<std::string>("a"), "***");
+  EXPECT_EQ(Redacted<std::string>("/sys"), "'/sys'");
+  EXPECT_EQ(Redacted<std::string>("drivefs://secret"), "'drivefs://***'");
 }
 
 TEST(Redact, FilePath) {
-  EXPECT_EQ(Redacted(base::FilePath("")), "(redacted)");
-  EXPECT_EQ(Redacted(base::FilePath("a")), "(redacted)");
+  EXPECT_EQ(Redacted(base::FilePath("")), "''");
+  EXPECT_EQ(Redacted(base::FilePath("a")), "'a'");
+  EXPECT_EQ(Redacted(base::FilePath("/sys")), "'/sys'");
+  EXPECT_EQ(Redacted(base::FilePath("/media/archive/secret1/secret2.ext")),
+            "'/media/archive/***.ext'");
 }
 
 TEST(Redact, VectorOfStrings) {
   EXPECT_EQ(Redacted<std::vector<std::string>>({}), "[]");
-  EXPECT_EQ(Redacted<std::vector<std::string>>({""}), "[(redacted)]");
-  EXPECT_EQ(Redacted<std::vector<std::string>>({"a"}), "[(redacted)]");
+  EXPECT_EQ(Redacted<std::vector<std::string>>({""}), "['']");
+  EXPECT_EQ(Redacted<std::vector<std::string>>({"a"}), "[***]");
   EXPECT_EQ(Redacted<std::vector<std::string>>({"", "'", "a"}),
-            R"([(redacted), (redacted), (redacted)])");
+            R"(['', ***, ***])");
 }
 
 }  // namespace
