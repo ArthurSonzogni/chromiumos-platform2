@@ -20,6 +20,7 @@
 #include "vm_tools/garcon/xdg_util.h"
 
 namespace {
+constexpr int kMaxHyphensAllowed = 32;
 // Ridiculously large size for a desktop file.
 constexpr size_t kMaxDesktopFileSize = 10485760;  // 10 MB
 // Group name for the main entry we want.
@@ -90,22 +91,59 @@ base::FilePath DesktopFile::FindFileForDesktopId(
   if (desktop_id.empty()) {
     return base::FilePath();
   }
-  // First we need to create the relative path that corresponds to this ID. This
-  // is done by replacing all dash chars with the path separator and then
-  // appending the .desktop file extension to the name. Alternatively, we also
-  // look without doing any replacing.
-  std::string rel_path1;
-  base::ReplaceChars(desktop_id, "-", "/", &rel_path1);
-  rel_path1 += kDesktopFileExtension;
-  std::string rel_paths[] = {rel_path1, desktop_id + kDesktopFileExtension};
+
+  // Check whether we should have a path separator for all possible positions of
+  // the hyphens. (ref: b/243139102)
+  uint32_t hyphen_count = 1;
+  std::vector<int> hyphen_index;
+  std::string mutable_desktop_id;
+  base::ReplaceChars(desktop_id, "-", "/", &mutable_desktop_id);
+  for (int i = 0; i < desktop_id.size(); i++) {
+    if (desktop_id[i] == '-') {
+      hyphen_count = hyphen_count << 1;
+      hyphen_index.push_back(i);
+    }
+  }
+
+  // If there are actually more than 32 path separators and hyphens it'd take
+  // way too long, reverting to two candidate approach.
+  if (hyphen_index.size() > kMaxHyphensAllowed) {
+    std::string rel_path1;
+    base::ReplaceChars(desktop_id, "-", "/", &rel_path1);
+    rel_path1 += kDesktopFileExtension;
+    std::string rel_paths[] = {rel_path1, desktop_id + kDesktopFileExtension};
+
+    std::vector<base::FilePath> search_paths = GetPathsForDesktopFiles();
+    for (const auto& curr_path : search_paths) {
+      for (const auto& rel_path : rel_paths) {
+        base::FilePath test_path(curr_path.Append(rel_path));
+        if (base::PathExists(test_path))
+          return test_path;
+      }
+    }
+    return base::FilePath();
+  }
 
   std::vector<base::FilePath> search_paths = GetPathsForDesktopFiles();
-  for (const auto& curr_path : search_paths) {
-    for (const auto& rel_path : rel_paths) {
-      base::FilePath test_path = curr_path.Append(rel_path);
-      if (base::PathExists(test_path)) {
-        return test_path;
+  // Check the base case
+  for (uint32_t i = 0; i < hyphen_count; i++) {
+    uint32_t bitmask = i;
+    int hyphen_end = hyphen_index.size() - 1;
+    for (int pos = hyphen_end; bitmask > 0 && pos >= 0; --pos) {
+      if ((bitmask & 1) == 1) {
+        // Replace with hyphen.
+        mutable_desktop_id[hyphen_index[pos]] = '-';
+      } else {
+        // Only things that have been flipped before needs flipping.
+        mutable_desktop_id[hyphen_index[pos]] = '/';
       }
+      bitmask >>= 1;
+    }
+    for (const auto& curr_path : search_paths) {
+      base::FilePath test_path(
+          curr_path.Append(mutable_desktop_id + kDesktopFileExtension));
+      if (base::PathExists(test_path))
+        return test_path;
     }
   }
   return base::FilePath();

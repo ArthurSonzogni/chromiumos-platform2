@@ -92,6 +92,7 @@ grpc::Status ServiceImpl::LaunchApplication(
   LOG(INFO) << "Received request to launch application in container";
 
   if (request->desktop_file_id().empty()) {
+    LOG(ERROR) << "Failed to launch application: missing desktop_file_id";
     return grpc::Status(grpc::INVALID_ARGUMENT, "missing desktop_file_id");
   }
 
@@ -99,6 +100,7 @@ grpc::Status ServiceImpl::LaunchApplication(
   base::FilePath file_path =
       DesktopFile::FindFileForDesktopId(request->desktop_file_id());
   if (file_path.empty()) {
+    LOG(ERROR) << "Failed to launch application: missing file_path";
     response->set_success(false);
     response->set_failure_reason("Desktop file does not exist");
     return grpc::Status::OK;
@@ -108,6 +110,8 @@ grpc::Status ServiceImpl::LaunchApplication(
   std::unique_ptr<DesktopFile> desktop_file =
       DesktopFile::ParseDesktopFile(file_path);
   if (!desktop_file) {
+    LOG(ERROR)
+        << "Failed to launch application: Desktop file contents are invalid";
     response->set_success(false);
     response->set_failure_reason("Desktop file contents are invalid");
     return grpc::Status::OK;
@@ -115,6 +119,7 @@ grpc::Status ServiceImpl::LaunchApplication(
 
   // Make sure this desktop file is for an application.
   if (!desktop_file->IsApplication()) {
+    LOG(ERROR) << "Failed to launch application: Isn't application";
     response->set_success(false);
     response->set_failure_reason("Desktop file is not for an application");
     return grpc::Status::OK;
@@ -128,6 +133,8 @@ grpc::Status ServiceImpl::LaunchApplication(
   // the program for multiple files.
   std::vector<std::string> argv = desktop_file->GenerateArgvWithFiles(files);
   if (argv.empty()) {
+    LOG(ERROR) << "Failed to launch application: Failed to generate argv list "
+                  "for application";
     response->set_success(false);
     response->set_failure_reason(
         "Failure in generating argv list for application");
@@ -152,6 +159,7 @@ grpc::Status ServiceImpl::LaunchApplication(
   int stdio_fd[] = {-1, -1, -1};
 
   if (!Spawn(std::move(argv), std::move(env), desktop_file->path(), stdio_fd)) {
+    LOG(ERROR) << "Failed to launch application: Failed to execute application";
     response->set_success(false);
     response->set_failure_reason("Failure in execution of application");
   } else {

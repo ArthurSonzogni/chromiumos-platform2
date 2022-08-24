@@ -414,6 +414,57 @@ TEST_F(DesktopFileTest, GenerateArgvNoArgs) {
             std::vector<std::string>({"/usr/bin/vim"}));
 }
 
+TEST_F(DesktopFileTest, FindDesktopFileWithHyphens) {
+  base::FilePath test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "test-file.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("test-file").value());
+
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "some/test-file.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("some-test-file").value());
+
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "some-small/testfile.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("some-small-testfile").value());
+
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "some-small/test-file.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("some-small-test-file").value());
+
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "some/other-small/test-file.desktop");
+  EXPECT_EQ(
+      test_path.value(),
+      DesktopFile::FindFileForDesktopId("some-other-small-test-file").value());
+
+  test_path = WriteContentsToPath(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "some/small/test-file.desktop");
+  EXPECT_EQ(test_path.value(),
+            DesktopFile::FindFileForDesktopId("some-small-test-file").value());
+}
+
 TEST_F(DesktopFileTest, GenerateArgvComplexArgs) {
   std::unique_ptr<DesktopFile> desktop_file = ValidateDesktopFile(
       "[Desktop Entry]\n"
