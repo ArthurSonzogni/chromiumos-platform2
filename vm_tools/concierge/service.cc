@@ -227,6 +227,12 @@ constexpr char kArcVmInitialThrottleFeatureQuotaParam[] = "quota";
 const VariationsFeature kArcVmInitialThrottleFeature{
     kArcVmInitialThrottleFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
+// Opts to be used when making an ext4 image. Note: these were specifically
+// selected for Borealis, please take care when using outside of Borealis
+// (especially the casefold feature).
+const std::vector<std::string> kExtMkfsOpts = {
+    "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold"};
+
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
   UntrustedVMCheckResult(bool untrusted_vm_allowed, bool skip_host_checks)
@@ -2895,9 +2901,11 @@ bool Service::StartTermina(TerminaVm* vm,
 bool CreateFilesystem(base::FilePath disk_location,
                       enum FilesystemType filesystem_type) {
   std::string filesystem_string;
+  std::vector<string> mkfs_opts;
   switch (filesystem_type) {
     case FilesystemType::EXT4:
       filesystem_string = "ext4";
+      mkfs_opts = kExtMkfsOpts;
       break;
     case FilesystemType::UNSPECIFIED:
     default:
@@ -2917,14 +2925,17 @@ bool CreateFilesystem(base::FilePath disk_location,
     return true;
   }
 
+  // -q is added to silence the output.
+  std::vector<std::string> mkfs_args = {"/sbin/mkfs." + filesystem_string,
+                                        disk_location.value(), "-q"};
+  mkfs_args.insert(mkfs_args.end(), mkfs_opts.begin(), mkfs_opts.end());
+
   LOG(INFO) << "Creating " << filesystem_string << " filesystem at "
             << disk_location.value().c_str();
   int exit_code = -1;
   std::string output;
-  base::GetAppOutputWithExitCode(
-      base::CommandLine(
-          {"/sbin/mkfs." + filesystem_string, disk_location.value(), "-q"}),
-      &output, &exit_code);
+  base::GetAppOutputWithExitCode(base::CommandLine(mkfs_args), &output,
+                                 &exit_code);
   if (exit_code != 0) {
     LOG(ERROR) << "Can't format '" << disk_location.value().c_str()
                << "' as ext4, exit status: " << exit_code;
