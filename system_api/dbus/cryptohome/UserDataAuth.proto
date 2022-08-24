@@ -711,11 +711,32 @@ enum AuthSessionFlags {
   reserved 1;
 }
 
+// An intent specifies the set of operations that can be performed after
+// successfully authenticating an Auth Session.
+enum AuthIntent {
+  // Default value.
+  AUTH_INTENT_UNSPECIFIED = 0;
+  // Intent to decrypt the user's file system keys. Authorizing for this intent
+  // allows all privileged operations, e.g., preparing user's vault,
+  // adding/updating/removing factors.
+  AUTH_INTENT_DECRYPT = 1;
+  // Intent to simply check whether the authentication succeeds. Authorizing for
+  // this intent doesn't allow any privileged operation.
+  AUTH_INTENT_VERIFY_ONLY = 2;
+}
+
 message StartAuthSessionRequest {
   // The account of the user whose home directory is requested for mounting.
   cryptohome.AccountIdentifier account_id = 1;
   // AuthSessionFlags to define AuthSession behaviour.
   uint32 flags = 2;
+  // The target intent of the authentication. This parameter declares which kind
+  // of operations the caller wants to perform after the successful
+  // authentication. During authentication, cryptohome will only offer factors
+  // eligible for the intent.
+  // TODO(b/240596931): Stop assuming that leaving this unset is the same as
+  // `AUTH_INTENT_DECRYPT`, and forbid `AUTH_INTENT_UNSPECIFIED`.
+  AuthIntent intent = 3;
   // Currently nothing is required to be passed in for KeyData map request,
   // but in the future we can expect this to be expanded to filter queries with
   // |key.data().type()| to return all keys of a certain class, testing
@@ -935,6 +956,10 @@ message GetAuthSessionStatusReply {
   // The time left (in sec) in the current AuthSession. This is only set if
   // AuthSession is authenticated.
   uint32 time_left = 3;
+  // The intents that the Auth Session has been authorized for. This starts from
+  // an empty set when the session is created, and is updated when a factor is
+  // successfully authenticated.
+  repeated AuthIntent authorized_for = 4;
 }
 
 enum VaultEncryptionType {
@@ -1475,6 +1500,10 @@ message AuthenticateAuthFactorReply {
   CryptohomeErrorInfo error_info = 2;
   // Returns if the Auth Session is authenticated.
   bool authenticated = 3;
+  // The intents that the Auth Session has been authorized for. This starts from
+  // an empty set when the session is created, and is updated when a factor is
+  // successfully authenticated.
+  repeated AuthIntent authorized_for = 4;
 }
 
 // UpdateAuthFactorRequest is built when a user is trying to
