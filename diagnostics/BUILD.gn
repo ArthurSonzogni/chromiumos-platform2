@@ -15,6 +15,7 @@ group("all") {
     ":install_tmpfiles_config",
     "//diagnostics/cros_health_tool:cros-health-tool",
     "//diagnostics/cros_healthd:cros_healthd",
+    "//diagnostics/cros_healthd/executor:executor-delegate",
     "//diagnostics/cros_healthd/routines:floating-point-accuracy",
     "//diagnostics/cros_healthd/routines:prime-search",
     "//diagnostics/cros_healthd/routines:smartctl-check",

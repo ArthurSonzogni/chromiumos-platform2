@@ -26,3 +26,9 @@ source_set("libcros_healthd_executor") {
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
   ]
 }
+
+executable("executor-delegate") {
+  sources = [ "delegate_main.cc" ]
+  configs += [ ":libcros_healthd_executor_pkg_deps" ]
+  install_path = "/usr/libexec/diagnostics"
+}
