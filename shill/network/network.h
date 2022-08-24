@@ -46,7 +46,7 @@ class Network {
     // When this callback is called, the Network must be in a connected state,
     // but this signal does not always indicate a change from a non-connected
     // state to a connected state.
-    virtual void OnConnectionUpdated(IPConfig* ipconfig) = 0;
+    virtual void OnConnectionUpdated() = 0;
 
     // Called when the Network becomes idle from a non-idle state (configuring
     // or connected), no matter if this state change is caused by a failure

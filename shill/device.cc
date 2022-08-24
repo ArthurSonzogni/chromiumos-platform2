@@ -463,7 +463,7 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
       Uint64Accessor(new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
-void Device::OnConnectionUpdated(IPConfig* ipconfig) {
+void Device::OnConnectionUpdated() {
   // Report connection type.
   Metrics::NetworkConnectionIPType ip_type =
       network_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6

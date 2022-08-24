@@ -300,7 +300,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
-  void OnConnectionUpdated(IPConfig* ipconfig) override;
+  void OnConnectionUpdated() override;
   void OnNetworkStopped(bool is_failure) override;
   // Emit a property change signal for the "IPConfigs" property of this device.
   void OnIPConfigsPropertyUpdated() override;
