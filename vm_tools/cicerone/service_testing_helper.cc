@@ -18,6 +18,7 @@
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 #include "base/strings/string_number_conversions.h"
+#include "dbus/shadercached/dbus-constants.h"
 #include "dbus/vm_cicerone/dbus-constants.h"
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
@@ -620,6 +621,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
 
     mock_shill_manager_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
+
+    mock_shadercached_proxy_ = new dbus::MockObjectProxy(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
   } else {
     DCHECK_EQ(mock_type, NICE_MOCKS);
     mock_bus_ = new NiceMock<dbus::MockBus>(opts);
@@ -650,6 +654,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
     mock_shill_manager_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
+
+    mock_shadercached_proxy_ = new NiceMock<dbus::MockObjectProxy>(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
   }
 
@@ -688,6 +695,10 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
   EXPECT_CALL(*mock_bus_,
               GetObjectProxy(vm_tools::concierge::kVmConciergeServiceName, _))
       .WillOnce(Return(mock_concierge_service_proxy_.get()));
+
+  EXPECT_CALL(*mock_bus_,
+              GetObjectProxy(shadercached::kShaderCacheServiceName, _))
+      .WillOnce(Return(mock_shadercached_proxy_.get()));
 
   EXPECT_CALL(*mock_bus_, GetObjectProxy(shill::kFlimflamServiceName, _))
       .WillRepeatedly(Return(mock_shill_manager_proxy_.get()));

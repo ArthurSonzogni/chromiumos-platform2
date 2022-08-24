@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,19 +31,21 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/no_destructor.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/timezone/tzif_parser.h>
+#include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chunneld/proto_bindings/chunneld_service.pb.h>
 #include <dbus/object_proxy.h>
-#include <chromeos/constants/vm_tools.h>
+#include <dbus/shadercached/dbus-constants.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
+#include <vm_tools/cicerone/shadercached_helper.h>
 
 using std::string;
 
@@ -1518,12 +1521,8 @@ void Service::InstallVmShaderCache(
     return;
   }
 
-  LOG(INFO) << "Install shader request for app id: " << request->steam_app_id()
-            << ", vm name: " << vm_name << ", owner: " << owner_id;
-
-  // TOOD(b/239494222): Implement this method
-  *error_out = "Not implemented";
-  event->Signal();
+  shadercached_helper_->InstallShaderCache(
+      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
 }
 
 void Service::UninstallVmShaderCache(
@@ -1554,13 +1553,8 @@ void Service::UninstallVmShaderCache(
     return;
   }
 
-  LOG(INFO) << "Uninstall shader request for app id: "
-            << request->steam_app_id() << ", vm name: " << vm_name
-            << ", owner: " << owner_id;
-
-  // TOOD(b/239494222): Implement this method
-  *error_out = "Not implemented";
-  event->Signal();
+  shadercached_helper_->UninstallShaderCache(
+      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
 }
 
 void Service::InhibitScreensaver(const std::string& container_token,
@@ -1735,6 +1729,17 @@ bool Service::Init(
                << vm_tools::sk_forwarding::kVmSKForwardingServiceName;
     return false;
   }
+  shadercached_proxy_ = bus_->GetObjectProxy(
+      shadercached::kShaderCacheServiceName,
+      dbus::ObjectPath(shadercached::kShaderCacheServicePath));
+  if (!shadercached_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << shadercached::kShaderCacheServiceName;
+    return false;
+  }
+  shadercached_helper_ =
+      std::make_unique<ShadercachedHelper>(shadercached_proxy_);
+
   vm_disk_management_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::disk_management::kVmDiskManagementServiceName,
       dbus::ObjectPath(

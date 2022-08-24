@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_CICERONE_SERVICE_H_
 #define VM_TOOLS_CICERONE_SERVICE_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -39,6 +40,7 @@
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/crash_listener_impl.h"
 #include "vm_tools/cicerone/guest_metrics.h"
+#include "vm_tools/cicerone/shadercached_helper.h"
 #include "vm_tools/cicerone/shill_client.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
@@ -850,6 +852,7 @@ class Service final {
   dbus::ObjectProxy* concierge_service_proxy_;           // Owned by |bus_|.
   dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;    // Owned by |bus_|.
   dbus::ObjectProxy* vm_disk_management_service_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* shadercached_proxy_;                // Owned by |bus_|.
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;
@@ -904,6 +907,9 @@ class Service final {
 
   // Handler and accumulator for guest metrics.
   std::unique_ptr<GuestMetrics> guest_metrics_;
+
+  // Helper for shadercached requests
+  std::unique_ptr<ShadercachedHelper> shadercached_helper_;
 
   // Should Service create GuestMetric instance on initialization?  Used for
   // testing.

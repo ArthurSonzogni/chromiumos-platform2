@@ -154,6 +154,9 @@ class ServiceTestingHelper {
   dbus::MockObjectProxy& get_mock_shill_manager_proxy() {
     return *mock_shill_manager_proxy_;
   }
+  dbus::MockObjectProxy& get_mock_shadercached_proxy() {
+    return *mock_shadercached_proxy_;
+  }
 
   // Calls Mock::VerifyAndClearExpectations on all the above mocks.
   void VerifyAndClearMockExpectations();
@@ -309,6 +312,7 @@ class ServiceTestingHelper {
   scoped_refptr<dbus::MockObjectProxy> mock_crosdns_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_concierge_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_shill_manager_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> mock_shadercached_proxy_;
 
   // Callbacks for dbus. Index is DbusCall value for callback.
   DbusCallback dbus_callbacks_[kNumDbusCalls];

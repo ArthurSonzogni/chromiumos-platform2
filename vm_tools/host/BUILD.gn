@@ -219,6 +219,7 @@ static_library("libcicerone") {
     "../cicerone/grpc_util.cc",
     "../cicerone/guest_metrics.cc",
     "../cicerone/service.cc",
+    "../cicerone/shadercached_helper.cc",
     "../cicerone/shill_client.cc",
     "../cicerone/tremplin_listener_impl.cc",
     "../cicerone/virtual_machine.cc",
