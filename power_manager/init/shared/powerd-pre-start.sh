@@ -45,10 +45,7 @@ for FILE in \
     /sys/module/printk/parameters/console_suspend \
     /sys/power/mem_sleep \
     /dev/snapshot \
-    $(find /sys/devices/ -name "dark_resume_active" -o \
-                         -name "dark_resume_source" -o \
-                         -name "wakeup_type" -o \
-                         -path "*/power/wakeup"); do
+    $(find /sys/devices/ -path "*/power/wakeup"); do
   # Test for existence to skip over wildcards that didn't match anything.
   if [ -e "${FILE}" ]; then
     chown power:power "${FILE}" || true
