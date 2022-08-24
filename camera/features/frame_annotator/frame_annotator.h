@@ -54,7 +54,9 @@ class FrameAnnotator {
     // by FaceRectanglesFreameAnnotator. Can be overridden by the override
     // config file.
     bool face_rectangles = true;
+    bool face_rectangles_confidence = true;
     bool face_landmarks = true;
+    bool face_landmarks_confidence = true;
   };
 
   virtual ~FrameAnnotator() = default;

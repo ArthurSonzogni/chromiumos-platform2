@@ -38,7 +38,9 @@ constexpr char kFaceRectanglesFrameAnnotatorKey[] =
 constexpr char kMetadataPreviewerFrameAnnotatorKey[] =
     "metadata_previewer_frame_annotator";
 constexpr char kFaceRectanglesKey[] = "face_rectangles";
+constexpr char kFaceRectanglesConfidenceKey[] = "face_rectangles_confidence";
 constexpr char kFaceLandmarksKey[] = "face_landmarks";
+constexpr char kFaceLandmarksConfidenceKey[] = "face_landmarks_confidence";
 
 constexpr int kSyncWaitTimeoutMs = 300;
 
@@ -358,7 +360,11 @@ void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
   update_bool_option(options_.metadata_previewer_frame_annotator,
                      kMetadataPreviewerFrameAnnotatorKey);
   update_bool_option(options_.face_rectangles, kFaceRectanglesKey);
+  update_bool_option(options_.face_rectangles_confidence,
+                     kFaceRectanglesConfidenceKey);
   update_bool_option(options_.face_landmarks, kFaceLandmarksKey);
+  update_bool_option(options_.face_landmarks_confidence,
+                     kFaceLandmarksConfidenceKey);
 
   for (auto& frame_annotator : frame_annotators_) {
     frame_annotator->UpdateOptions(options_);

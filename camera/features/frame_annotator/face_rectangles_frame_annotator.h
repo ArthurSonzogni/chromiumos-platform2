@@ -11,7 +11,6 @@
 
 #include <vector>
 
-#include "common/reloadable_config_file.h"
 #include "cros-camera/common_types.h"
 #include "cros-camera/face_detector_client_cros_wrapper.h"
 
@@ -30,6 +29,7 @@ class FaceRectanglesFrameAnnotator : public FrameAnnotator {
   FrameAnnotator::Options options_;
 
   Size active_array_dimension_;
+  camera_metadata_enum_android_lens_facing_t facing_;
 
   std::vector<human_sensing::CrosFace> cached_faces_;
 };

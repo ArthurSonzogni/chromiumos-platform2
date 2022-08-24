@@ -7,9 +7,13 @@
 #include "features/frame_annotator/face_rectangles_frame_annotator.h"
 
 #include <algorithm>
+#include <string>
 #include <utility>
 
+#include <base/strings/stringprintf.h>
+#include <skia/core/SkFont.h>
 #include <skia/core/SkPath.h>
+#include <skia/core/SkTypeface.h>
 
 #include "cros-camera/camera_metadata_utils.h"
 
@@ -18,6 +22,10 @@ namespace cros {
 namespace {
 
 constexpr SkScalar kLandmarkBoxLimit = 160;
+
+std::string ConfidenceToString(float confidence) {
+  return base::StringPrintf("%.2f", confidence);
+}
 
 SkPath BoxToTriangle(SkRect rect) {
   SkPath path;
@@ -40,6 +48,11 @@ bool FaceRectanglesFrameAnnotator::Initialize(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
+
+  auto facing = GetRoMetadata<uint8_t>(static_info, ANDROID_LENS_FACING);
+  DCHECK(facing.has_value());
+  facing_ = static_cast<camera_metadata_enum_android_lens_facing_t>(*facing);
+
   return true;
 }
 
@@ -67,12 +80,49 @@ bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
   Rect<uint32_t> full_frame_crop = GetCenteringFullCrop(
       active_array_dimension_, canvas_info.width(), canvas_info.height());
 
+  // Use a thinner font for better display if possible.
+  auto typeface = SkTypeface::MakeFromName(
+      nullptr,
+      SkFontStyle(SkFontStyle::kThin_Weight, SkFontStyle::kNormal_Width,
+                  SkFontStyle::Slant::kUpright_Slant));
+  SkFont font(typeface, 10 * scale_ratio);
+
   // Annotate each faces with a white box.
   SkPaint paint;
   paint.setStyle(SkPaint::kStroke_Style);
   paint.setAntiAlias(true);
   paint.setStrokeWidth(1);
   paint.setColor(0xffffffff);
+
+  auto draw_confidence = [&](SkRect box, float confidence) {
+    canvas->save();
+
+    SkScalar x = box.fLeft, y = box.fTop - 5;
+
+    if (options_.flip_type == FrameAnnotator::FlipType::kHorizontal ||
+        options_.flip_type == FrameAnnotator::FlipType::kRotate180 ||
+        (options_.flip_type == FrameAnnotator::FlipType::kDefault &&
+         facing_ == ANDROID_LENS_FACING_FRONT)) {
+      // Flip horizontally.
+      canvas->scale(-1, 1);
+      canvas->translate(-canvas_width, 0);
+      x += box.width();
+      x = canvas_width - x;
+    }
+    if (options_.flip_type == FrameAnnotator::FlipType::kVertical ||
+        options_.flip_type == FrameAnnotator::FlipType::kRotate180) {
+      // Flip vertically.
+      canvas->scale(1, -1);
+      canvas->translate(0, -canvas_height);
+      y += box.height() + 10;
+      y = canvas_height - y;
+    }
+
+    canvas->drawString(ConfidenceToString(confidence).c_str(), x, y, font,
+                       paint);
+
+    canvas->restore();
+  };
 
   for (const auto& face : cached_faces_) {
     // Assume the frame is center cropped and transform the bounding box
@@ -93,6 +143,9 @@ bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
     auto face_rect = bounding_box_to_skrect(face.bounding_box);
     if (options_.face_rectangles) {
       canvas->drawRect(face_rect, paint);
+      if (options_.face_rectangles_confidence) {
+        draw_confidence(face_rect, face.confidence);
+      }
     }
     if (options_.face_landmarks) {
       for (auto& landmark : face.landmarks) {
@@ -114,6 +167,8 @@ bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
           paint.setStyle(SkPaint::kFill_Style);
           canvas->drawCircle(landmark_rect.center(), 4 * scale_ratio, paint);
           paint.setStyle(saved_style);
+          landmark_rect = landmark_rect.makeInset(box_size - 6 * scale_ratio,
+                                                  box_size - 6 * scale_ratio);
         } else {
           switch (landmark.type) {
             case human_sensing::Landmark::Type::kLeftEye:
@@ -144,6 +199,9 @@ bool FaceRectanglesFrameAnnotator::Plot(SkCanvas* canvas) {
                             << ", " << landmark.y << ")";
               break;
           }
+        }
+        if (options_.face_landmarks_confidence) {
+          draw_confidence(landmark_rect, landmark.confidence);
         }
       }
     }
