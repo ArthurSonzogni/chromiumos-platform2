@@ -539,11 +539,14 @@ class Manager {
                                   const KeyValueStore& properties,
                                   Error* error);
 
-  // Enable or disable a tethering session.
-  bool SetTetheringEnabled(bool enabled, Error* error);
+  // Provider getter function.
+  const ProviderInterface* GetProviderWithTechnology(Technology technology) {
+    return providers_[technology];
+  }
 
-  // Check whether upstream network is ready for tethering.
-  std::string CheckTetheringReadiness(Error* error);
+  TetheringManager* tethering_manager() const {
+    return tethering_manager_.get();
+  }
 
  private:
   friend class ArcVpnDriverTest;

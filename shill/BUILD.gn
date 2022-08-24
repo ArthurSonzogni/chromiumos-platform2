@@ -724,6 +724,7 @@ if (use.test) {
       "store/property_store_test.cc",
       "technology_test.cc",
       "testrunner.cc",
+      "tethering_manager_test.cc",
       "throttler_test.cc",
       "timeout_set_test.cc",
       "upstart/mock_upstart.cc",

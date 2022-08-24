@@ -12,12 +12,16 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/store/property_accessor.h"
+#include "shill/technology.h"
 
 namespace shill {
 
-TetheringManager::TetheringManager()
-    : allowed_(false), state_(TetheringState::kTetheringIdle) {}
+TetheringManager::TetheringManager(Manager* manager)
+    : manager_(manager),
+      allowed_(false),
+      state_(TetheringState::kTetheringIdle) {}
 
 TetheringManager::~TetheringManager() = default;
 
@@ -52,7 +56,42 @@ bool TetheringManager::SetConfig(const KeyValueStore& config, Error* error) {
 }
 
 KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
-  return capabilities_;
+  KeyValueStore caps;
+  std::vector<std::string> upstream_technologies;
+  std::vector<std::string> downstream_technologies;
+
+  if (manager_->GetProviderWithTechnology(Technology::kEthernet))
+    upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
+
+  // TODO(b/244334719): add a check with the CellularProvider to see if
+  // tethering is enabled for the given SIM card and modem.
+  if (manager_->GetProviderWithTechnology(Technology::kCellular))
+    upstream_technologies.push_back(TechnologyName(Technology::kCellular));
+
+  if (manager_->GetProviderWithTechnology(Technology::kWiFi)) {
+    // TODO(b/244335143): This should be based on static SoC capability
+    // information. Need to revisit this when Shill has a SoC capability
+    // database.
+    const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+    if (!wifi_devices.empty()) {
+      WiFi* wifi_device = static_cast<WiFi*>(wifi_devices.front().get());
+      if (wifi_device->SupportAP()) {
+        downstream_technologies.push_back(TechnologyName(Technology::kWiFi));
+        // Wi-Fi specific tethering capabilities.
+        std::vector<std::string> security = {kSecurityWpa2};
+        if (wifi_device->SupportsWPA3()) {
+          security.push_back(kSecurityWpa3);
+          security.push_back(kSecurityWpa2Wpa3);
+        }
+        caps.Set<Strings>(kTetheringCapSecurityProperty, security);
+      }
+    }
+  }
+
+  caps.Set<Strings>(kTetheringCapUpstreamProperty, upstream_technologies);
+  caps.Set<Strings>(kTetheringCapDownstreamProperty, downstream_technologies);
+
+  return caps;
 }
 
 KeyValueStore TetheringManager::GetStatus(Error* /* error */) {
@@ -83,11 +122,6 @@ const char* TetheringManager::TetheringStateToString(
 }
 
 void TetheringManager::Start() {
-  // Initialize tethering capabilities
-  capabilities_.Set<Strings>(kTetheringCapUpstreamProperty, {});
-  capabilities_.Set<Strings>(kTetheringCapDownstreamProperty, {});
-  capabilities_.Set<Strings>(kTetheringCapSecurityProperty, {});
-  capabilities_.Set<Strings>(kTetheringCapBandProperty, {});
 }
 
 void TetheringManager::Stop() {}

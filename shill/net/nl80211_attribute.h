@@ -647,6 +647,12 @@ class Nl80211AttributeSupportedIftypes : public NetlinkNestedAttribute {
       delete;
   Nl80211AttributeSupportedIftypes& operator=(
       const Nl80211AttributeSupportedIftypes&) = delete;
+
+ private:
+  static bool ParseIfaceTypes(AttributeList* attribute_list,
+                              size_t id,
+                              const std::string& attribute_name,
+                              ByteString data);
 };
 
 class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {

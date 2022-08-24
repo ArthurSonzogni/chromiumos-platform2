@@ -928,7 +928,24 @@ Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
       kArrayAttrEnumVal,
-      NestedData(kTypeFlag, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true)));
+      NestedData(
+          kTypeU32, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true,
+          base::Bind(&Nl80211AttributeSupportedIftypes::ParseIfaceTypes))));
+}
+
+bool Nl80211AttributeSupportedIftypes::ParseIfaceTypes(
+    AttributeList* attribute_list,
+    size_t id,
+    const std::string& attribute_name,
+    ByteString data) {
+  if (!attribute_list) {
+    LOG(ERROR) << "NULL |attribute_list| parameter";
+    return false;
+  }
+  attribute_list->CreateU32Attribute(id, attribute_name.c_str());
+  // nl80211 attribute saves the iface types in |id| rather than payload.
+  return attribute_list->InitAttributeFromValue(
+      id, ByteString::CreateFromCPUUInt32(id));
 }
 
 const int Nl80211AttributeStatusCode::kName = NL80211_ATTR_STATUS_CODE;

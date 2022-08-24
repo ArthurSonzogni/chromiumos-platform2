@@ -211,7 +211,7 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
-      tethering_manager_(new TetheringManager()) {
+      tethering_manager_(new TetheringManager(this)) {
   HelpRegisterConstDerivedRpcIdentifier(
       kActiveProfileProperty, &Manager::GetActiveProfileRpcIdentifier);
   HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,
@@ -3247,13 +3247,5 @@ void Manager::ConnectivityTestCallback(const std::string& interface_name,
             << ". HTTPS probe phase=" << result.https_phase
             << ", status=" << result.https_status;
   connectivity_test_portal_detectors_.erase(interface_name);
-}
-
-bool Manager::SetTetheringEnabled(bool enabled, Error* error) {
-  return tethering_manager_->SetEnabled(enabled, error);
-}
-
-std::string Manager::CheckTetheringReadiness(Error* error) {
-  return tethering_manager_->CheckReadiness(error);
 }
 }  // namespace shill

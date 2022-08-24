@@ -259,6 +259,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool random_mac_supported() const { return random_mac_supported_; }
 
+  virtual bool SupportAP() const { return ap_mode_supported_; }
+
   bool IsPendingService(const WiFiService* service) const {
     return service == pending_service_.get();
   }
@@ -921,6 +923,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool random_mac_supported_;
   bool random_mac_enabled_;
   bool sched_scan_supported_;
+  bool ap_mode_supported_;
 
   // Holds the list of scan results waiting to be processed and a cancelable
   // closure for processing the pending tasks in PendingScanResultsHandler().

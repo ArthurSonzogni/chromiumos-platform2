@@ -9,6 +9,8 @@
 
 namespace shill {
 
+class Manager;
+
 // TetheringManager handles tethering related logics. It is created by the
 // Manager class. It reuses the Profile class to persist the tethering
 // parameters for each user. It interacts with HotspotDevice,
@@ -17,11 +19,11 @@ namespace shill {
 // tethering network.
 class TetheringManager {
  public:
-  TetheringManager();
+  explicit TetheringManager(Manager* manager);
   TetheringManager(const TetheringManager&) = delete;
   TetheringManager& operator=(const TetheringManager&) = delete;
 
-  virtual ~TetheringManager();
+  ~TetheringManager();
 
   // Initialize DBus properties related to tethering.
   void InitPropertyStore(PropertyStore* store);
@@ -33,6 +35,8 @@ class TetheringManager {
   bool SetEnabled(bool enabled, Error* error);
   // Check if upstream network is ready for tethering.
   std::string CheckReadiness(Error* error);
+  // Return tethering capabilities.
+  KeyValueStore GetCapabilities(Error* error);
 
  private:
   enum class TetheringState {
@@ -45,17 +49,15 @@ class TetheringManager {
 
   KeyValueStore GetConfig(Error* error);
   bool SetConfig(const KeyValueStore& config, Error* error);
-  KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetStatus(Error* error);
   static const char* TetheringStateToString(const TetheringState& state);
 
+  // TetheringManager is created and owned by Manager.
+  Manager* manager_;
   // Tethering feature flag.
   bool allowed_;
   // Tethering state as listed in enum TetheringState.
   TetheringState state_;
-  // Tethering capabilities including supported upstream and downstream
-  // technologies, downstream WiFi supported bands and security modes.
-  KeyValueStore capabilities_;
   // Tethering config including auto_disable, WiFi downstream SSID, band,
   // security, and passphrase.
   KeyValueStore config_;

@@ -295,6 +295,7 @@ WiFi::WiFi(Manager* manager,
       random_mac_supported_(false),
       random_mac_enabled_(false),
       sched_scan_supported_(false),
+      ap_mode_supported_(false),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       broadcast_probe_was_skipped_(false),
@@ -1851,6 +1852,25 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     if (random_mac_supported_) {
       SLOG(this, 7) << __func__ << ": "
                     << "Supports random MAC: " << random_mac_supported_;
+    }
+  }
+
+  // Look for supported interface types.
+  AttributeListConstRefPtr ifaces;
+  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_SUPPORTED_IFTYPES, &ifaces)) {
+    AttributeIdIterator ifaces_iter(*ifaces);
+    for (; !ifaces_iter.AtEnd(); ifaces_iter.Advance()) {
+      uint32_t iface;
+      if (!ifaces->GetU32AttributeValue(ifaces_iter.GetId(), &iface)) {
+        LOG(ERROR) << "Failed to get supported iface type "
+                   << ifaces_iter.GetId();
+        continue;
+      }
+      if (iface == NL80211_IFTYPE_AP) {
+        ap_mode_supported_ = true;
+        return;
+      }
     }
   }
 }
