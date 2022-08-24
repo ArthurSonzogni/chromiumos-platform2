@@ -105,17 +105,29 @@ pub async fn main() -> Result<()> {
         dlc_service::DLC_STATE_CHANGED_SIGNAL,
     );
     debug!("Matching DlcService signal: {}", mr.match_str());
-    let c_clone = c.clone();
+
+    // We need to create a new connection to receive signals explicitly.
+    // Reusing existing connection rejects the D-Bus signals.
+    let (resource_listen, c_listen) = dbus_tokio::connection::new_system_sync()?;
     let mount_points_clone2 = mount_points.clone();
+    tokio::spawn(async {
+        let err = resource_listen.await;
+        // Unmount all mount points
+        clean_up(mount_points_clone2).await;
+        error!("Lost connection to D-Bus: {}", err);
+        panic!("Lost connection to D-Bus: {}", err);
+    });
+
+    let mount_points_clone3 = mount_points.clone();
     // |msg_match| should remain in this scope to serve
-    let msg_match = c
+    let msg_match = c_listen
         .add_match(mr)
         .await?
         .cb(move |_, (raw_bytes,): (Vec<u8>,)| {
             tokio::spawn(handle_dlc_state_changed(
                 raw_bytes,
-                mount_points_clone2.clone(),
-                c_clone.clone(),
+                mount_points_clone3.clone(),
+                c_listen.clone(),
             ));
             true
         });
