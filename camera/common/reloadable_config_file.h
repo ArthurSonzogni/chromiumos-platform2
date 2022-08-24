@@ -49,6 +49,9 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   ReloadableConfigFile& operator=(const ReloadableConfigFile& other) = delete;
   ~ReloadableConfigFile() = default;
 
+  // Set the callback to be called when the config file changes. |callback|
+  // will either be called synchronously before this returns, or be called on
+  // the sequence that the constructor of this ReloadableConfigFile is called.
   void SetCallback(OptionsUpdateCallback callback);
   void UpdateOption(std::string key, base::Value value);
   base::Value CloneJsonValues() const;
