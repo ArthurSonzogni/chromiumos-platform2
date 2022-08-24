@@ -90,8 +90,6 @@ class IPConfig {
     uint32_t lease_duration_seconds = 0;
   };
 
-  enum Method { kMethodUnknown, kMethodPPP, kMethodStatic, kMethodDHCP };
-
   // Define a default and a minimum viable MTU value.
   static constexpr int kDefaultMTU = 1500;
   static constexpr int kMinIPv4MTU = 576;

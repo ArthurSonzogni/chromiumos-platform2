@@ -24,6 +24,9 @@ class ControlInterface;
 // ModemManager.
 class CellularBearer {
  public:
+  // The values are used in metrics and thus should not be changed.
+  enum class IPConfigMethod { kUnknown = 0, kPPP = 1, kStatic = 2, kDHCP = 3 };
+
   // Constructs a cellular bearer for observing property changes of a
   // corresponding bearer object, at the DBus path |dbus_path| of DBus service
   // |dbus_service|,  exposed by ModemManager. The ownership of
@@ -54,11 +57,11 @@ class CellularBearer {
 
   bool connected() const { return connected_; }
   const std::string& data_interface() const { return data_interface_; }
-  IPConfig::Method ipv4_config_method() const { return ipv4_config_method_; }
+  IPConfigMethod ipv4_config_method() const { return ipv4_config_method_; }
   const IPConfig::Properties* ipv4_config_properties() const {
     return ipv4_config_properties_.get();
   }
-  IPConfig::Method ipv6_config_method() const { return ipv6_config_method_; }
+  IPConfigMethod ipv6_config_method() const { return ipv6_config_method_; }
   const IPConfig::Properties* ipv6_config_properties() const {
     return ipv6_config_properties_.get();
   }
@@ -76,7 +79,7 @@ class CellularBearer {
   void GetIPConfigMethodAndProperties(
       const KeyValueStore& properties,
       IPAddress::Family address_family,
-      IPConfig::Method* ipconfig_method,
+      IPConfigMethod* ipconfig_method,
       std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const;
 
   // Resets bearer properties.
@@ -91,14 +94,14 @@ class CellularBearer {
   void set_data_interface(const std::string& data_interface) {
     data_interface_ = data_interface;
   }
-  void set_ipv4_config_method(IPConfig::Method ipv4_config_method) {
+  void set_ipv4_config_method(IPConfigMethod ipv4_config_method) {
     ipv4_config_method_ = ipv4_config_method;
   }
   void set_ipv4_config_properties(
       std::unique_ptr<IPConfig::Properties> ipv4_config_properties) {
     ipv4_config_properties_ = std::move(ipv4_config_properties);
   }
-  void set_ipv6_config_method(IPConfig::Method ipv6_config_method) {
+  void set_ipv6_config_method(IPConfigMethod ipv6_config_method) {
     ipv6_config_method_ = ipv6_config_method;
   }
   void set_ipv6_config_properties(
@@ -113,13 +116,13 @@ class CellularBearer {
   bool connected_ = false;
   std::string data_interface_;
 
-  // If |ipv4_config_method_| is set to |IPConfig::kMethodStatic|,
+  // If |ipv4_config_method_| is set to |IPConfigMethod::kStatic|,
   // |ipv4_config_properties_| is guaranteed to contain valid IP configuration
   // properties. Otherwise, |ipv4_config_properties_| is set to nullptr.
   // |ipv6_config_properties_| is handled similarly.
-  IPConfig::Method ipv4_config_method_ = IPConfig::kMethodUnknown;
+  IPConfigMethod ipv4_config_method_ = IPConfigMethod::kUnknown;
   std::unique_ptr<IPConfig::Properties> ipv4_config_properties_;
-  IPConfig::Method ipv6_config_method_ = IPConfig::kMethodUnknown;
+  IPConfigMethod ipv6_config_method_ = IPConfigMethod::kUnknown;
   std::unique_ptr<IPConfig::Properties> ipv6_config_properties_;
 
   base::WeakPtrFactory<CellularBearer> weak_ptr_factory_{this};

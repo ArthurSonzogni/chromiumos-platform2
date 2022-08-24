@@ -1084,8 +1084,8 @@ void Cellular::NotifyDetailedCellularConnectionResult(
     const Error& error, const shill::Stringmap& apn_info) {
   SLOG(this, 3) << __func__ << ": Result:" << error.type();
 
-  IPConfig::Method ipv4 = IPConfig::Method::kMethodUnknown;
-  IPConfig::Method ipv6 = IPConfig::Method::kMethodUnknown;
+  auto ipv4 = CellularBearer::IPConfigMethod::kUnknown;
+  auto ipv6 = CellularBearer::IPConfigMethod::kUnknown;
   uint32_t tech_used = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   uint32_t iccid_len = 0;
   SimType sim_type = kSimTypeUnknown;
@@ -1330,7 +1330,8 @@ void Cellular::EstablishLink() {
   CHECK(capability_);
 
   CellularBearer* bearer = capability_->GetActiveBearer();
-  if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodPPP) {
+  if (bearer &&
+      bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
     LOG(INFO) << "Start PPP connection on " << bearer->data_interface();
     StartPPP(bearer->data_interface());
     return;
@@ -1359,7 +1360,8 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     bool ipv6_configured = false;
 
     // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
-    if (bearer && bearer->ipv6_config_method() != IPConfig::kMethodUnknown) {
+    if (bearer && bearer->ipv6_config_method() !=
+                      CellularBearer::IPConfigMethod::kUnknown) {
       SLOG(this, 2) << "Assign static IPv6 configuration from bearer.";
       const auto& ipv6_props = *bearer->ipv6_config_properties();
       // Only apply static config if the address is link local. This is a
@@ -1375,7 +1377,8 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     std::optional<IPConfig::Properties> static_ipv4_props = std::nullopt;
     std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
 
-    if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodStatic) {
+    if (bearer && bearer->ipv4_config_method() ==
+                      CellularBearer::IPConfigMethod::kStatic) {
       SLOG(this, 2) << "Assign static IPv4 configuration from bearer.";
       // Override the MTU with a given limit for a specific serving operator
       // if the network doesn't report something lower.
@@ -1386,8 +1389,9 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
            serving_operator_info_->mtu() < static_ipv4_props->mtu)) {
         static_ipv4_props->mtu = serving_operator_info_->mtu();
       }
-    } else if (!ipv6_configured || (bearer && bearer->ipv4_config_method() ==
-                                                  IPConfig::kMethodDHCP)) {
+    } else if (!ipv6_configured ||
+               (bearer && bearer->ipv4_config_method() ==
+                              CellularBearer::IPConfigMethod::kDHCP)) {
       SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
       dhcp_opts = DHCPProvider::Options::Create(*manager());
       dhcp_opts->use_arp_gateway = false;

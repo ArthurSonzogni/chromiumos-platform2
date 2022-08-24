@@ -16,6 +16,7 @@
 #include <metrics/timer.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "shill/cellular/cellular_bearer.h"
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
 #include "shill/portal_detector.h"
@@ -1515,8 +1516,8 @@ class Metrics : public DefaultServiceObserver {
       const std::string& detailed_error,
       const std::string& uuid,
       const shill::Stringmap& apn_info,
-      IPConfig::Method ipv4_config_method,
-      IPConfig::Method ipv6_config_method,
+      CellularBearer::IPConfigMethod ipv4_config_method,
+      CellularBearer::IPConfigMethod ipv6_config_method,
       const std::string& home_mccmnc,
       const std::string& serving_mccmnc,
       const std::string& roaming_state,

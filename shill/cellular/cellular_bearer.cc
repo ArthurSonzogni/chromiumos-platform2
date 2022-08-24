@@ -35,16 +35,16 @@ const char kPropertyMethod[] = "method";
 const char kPropertyPrefix[] = "prefix";
 const char kPropertyMtu[] = "mtu";
 
-IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
+CellularBearer::IPConfigMethod ConvertMMBearerIPConfigMethod(uint32_t method) {
   switch (method) {
     case MM_BEARER_IP_METHOD_PPP:
-      return IPConfig::kMethodPPP;
+      return CellularBearer::IPConfigMethod::kPPP;
     case MM_BEARER_IP_METHOD_STATIC:
-      return IPConfig::kMethodStatic;
+      return CellularBearer::IPConfigMethod::kStatic;
     case MM_BEARER_IP_METHOD_DHCP:
-      return IPConfig::kMethodDHCP;
+      return CellularBearer::IPConfigMethod::kDHCP;
     default:
-      return IPConfig::kMethodUnknown;
+      return CellularBearer::IPConfigMethod::kUnknown;
   }
 }
 
@@ -84,7 +84,7 @@ bool CellularBearer::Init() {
 void CellularBearer::GetIPConfigMethodAndProperties(
     const KeyValueStore& properties,
     IPAddress::Family address_family,
-    IPConfig::Method* ipconfig_method,
+    IPConfigMethod* ipconfig_method,
     std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const {
   DCHECK(ipconfig_method);
   DCHECK(ipconfig_properties);
@@ -100,7 +100,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
   ipconfig_properties->reset();
 
-  if (*ipconfig_method != IPConfig::kMethodStatic)
+  if (*ipconfig_method != IPConfigMethod::kStatic)
     return;
 
   if (!properties.Contains<std::string>(kPropertyAddress) ||
@@ -108,7 +108,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
     SLOG(this, 2) << "Bearer '" << dbus_path_.value()
                   << "' static IP configuration does not specify valid "
                      "address/gateway information.";
-    *ipconfig_method = IPConfig::kMethodUnknown;
+    *ipconfig_method = IPConfigMethod::kUnknown;
     return;
   }
 
@@ -161,9 +161,9 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 void CellularBearer::ResetProperties() {
   connected_ = false;
   data_interface_.clear();
-  ipv4_config_method_ = IPConfig::kMethodUnknown;
+  ipv4_config_method_ = IPConfigMethod::kUnknown;
   ipv4_config_properties_.reset();
-  ipv6_config_method_ = IPConfig::kMethodUnknown;
+  ipv6_config_method_ = IPConfigMethod::kUnknown;
   ipv6_config_properties_.reset();
 }
 

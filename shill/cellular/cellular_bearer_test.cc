@@ -54,9 +54,11 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(kBearerDBusService, bearer_.dbus_service());
     EXPECT_FALSE(bearer_.connected());
     EXPECT_EQ("", bearer_.data_interface());
-    EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv4_config_method());
+    EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
+              bearer_.ipv4_config_method());
     EXPECT_EQ(nullptr, bearer_.ipv4_config_properties());
-    EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv6_config_method());
+    EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
+              bearer_.ipv6_config_method());
     EXPECT_EQ(nullptr, bearer_.ipv6_config_properties());
   }
 
@@ -113,7 +115,8 @@ class CellularBearerTest : public testing::Test {
   }
 
   void VerifyStaticIPv4ConfigMethodAndProperties() {
-    EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv4_config_method());
+    EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
+              bearer_.ipv4_config_method());
     const IPConfig::Properties* ipv4_config_properties =
         bearer_.ipv4_config_properties();
     ASSERT_NE(nullptr, ipv4_config_properties);
@@ -129,7 +132,8 @@ class CellularBearerTest : public testing::Test {
   }
 
   void VerifyStaticIPv6ConfigMethodAndProperties() {
-    EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv6_config_method());
+    EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
+              bearer_.ipv6_config_method());
     const IPConfig::Properties* ipv6_config_properties =
         bearer_.ipv6_config_properties();
     ASSERT_NE(nullptr, ipv6_config_properties);
@@ -208,21 +212,23 @@ TEST_F(CellularBearerTest, OnPropertiesChanged) {
       MM_BEARER_PROPERTY_IP4CONFIG,
       ConstructIPv4ConfigProperties(MM_BEARER_IP_METHOD_UNKNOWN));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv4_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
+            bearer_.ipv4_config_method());
 
   properties.Clear();
   properties.Set<KeyValueStore>(
       MM_BEARER_PROPERTY_IP4CONFIG,
       ConstructIPv4ConfigProperties(MM_BEARER_IP_METHOD_PPP));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodPPP, bearer_.ipv4_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kPPP, bearer_.ipv4_config_method());
 
   properties.Clear();
   properties.Set<KeyValueStore>(
       MM_BEARER_PROPERTY_IP4CONFIG,
       ConstructIPv4ConfigProperties(MM_BEARER_IP_METHOD_STATIC));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv4_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
+            bearer_.ipv4_config_method());
   VerifyStaticIPv4ConfigMethodAndProperties();
 
   properties.Clear();
@@ -230,7 +236,8 @@ TEST_F(CellularBearerTest, OnPropertiesChanged) {
       MM_BEARER_PROPERTY_IP4CONFIG,
       ConstructIPv4ConfigProperties(MM_BEARER_IP_METHOD_DHCP));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodDHCP, bearer_.ipv4_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kDHCP,
+            bearer_.ipv4_config_method());
 
   // Update 'ip6config' property.
   properties.Clear();
@@ -238,21 +245,23 @@ TEST_F(CellularBearerTest, OnPropertiesChanged) {
       MM_BEARER_PROPERTY_IP6CONFIG,
       ConstructIPv6ConfigProperties(MM_BEARER_IP_METHOD_UNKNOWN));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv6_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
+            bearer_.ipv6_config_method());
 
   properties.Clear();
   properties.Set<KeyValueStore>(
       MM_BEARER_PROPERTY_IP6CONFIG,
       ConstructIPv6ConfigProperties(MM_BEARER_IP_METHOD_PPP));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodPPP, bearer_.ipv6_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kPPP, bearer_.ipv6_config_method());
 
   properties.Clear();
   properties.Set<KeyValueStore>(
       MM_BEARER_PROPERTY_IP6CONFIG,
       ConstructIPv6ConfigProperties(MM_BEARER_IP_METHOD_STATIC));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv6_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
+            bearer_.ipv6_config_method());
   VerifyStaticIPv6ConfigMethodAndProperties();
 
   properties.Clear();
@@ -260,7 +269,8 @@ TEST_F(CellularBearerTest, OnPropertiesChanged) {
       MM_BEARER_PROPERTY_IP6CONFIG,
       ConstructIPv6ConfigProperties(MM_BEARER_IP_METHOD_DHCP));
   bearer_.OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties);
-  EXPECT_EQ(IPConfig::kMethodDHCP, bearer_.ipv6_config_method());
+  EXPECT_EQ(CellularBearer::IPConfigMethod::kDHCP,
+            bearer_.ipv6_config_method());
 }
 
 }  // namespace shill

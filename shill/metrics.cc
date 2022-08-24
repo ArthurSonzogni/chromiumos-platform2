@@ -1021,8 +1021,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     const std::string& detailed_error,
     const std::string& uuid,
     const shill::Stringmap& apn_info,
-    IPConfig::Method ipv4_config_method,
-    IPConfig::Method ipv6_config_method,
+    CellularBearer::IPConfigMethod ipv4_config_method,
+    CellularBearer::IPConfigMethod ipv6_config_method,
     const std::string& home_mccmnc,
     const std::string& serving_mccmnc,
     const std::string& roaming_state,
@@ -1084,8 +1084,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
 
   SLOG(this, 3) << __func__ << ": error:" << error << " uuid:" << uuid
                 << " apn:" << apn_name << " apn_source:" << apn_source
-                << " ipv4:" << ipv4_config_method
-                << " ipv6:" << ipv6_config_method
+                << " ipv4:" << static_cast<int>(ipv4_config_method)
+                << " ipv6:" << static_cast<int>(ipv6_config_method)
                 << " home_mccmnc:" << home_mccmnc
                 << " serving_mccmnc:" << serving_mccmnc
                 << " roaming_state:" << roaming_state
@@ -1099,8 +1099,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   metrics::structured::events::cellular::CellularConnectionAttempt()
       .Setconnect_result(static_cast<int64_t>(connect_result))
       .Setapn_id(HashApn(uuid, apn_name, username, password))
-      .Setipv4_config_method(ipv4_config_method)
-      .Setipv6_config_method(ipv6_config_method)
+      .Setipv4_config_method(static_cast<int>(ipv4_config_method))
+      .Setipv6_config_method(static_cast<int>(ipv6_config_method))
       .Sethome_mccmnc(home)
       .Setserving_mccmnc(serving)
       .Setroaming_state(roaming)
