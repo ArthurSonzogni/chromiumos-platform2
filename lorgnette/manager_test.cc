@@ -1051,6 +1051,37 @@ TEST_F(ManagerTest, RemoveDupWithRepeats) {
   }
 }
 
+TEST_F(ManagerTest, UsableScannerInfo) {
+  ScannerInfo scanner;
+  scanner.set_name(
+      "airscan:escl:Canon MF260 II Series:http://192.168.0.100/eSCL/");
+  scanner.set_manufacturer("CANON");
+  scanner.set_model("MF260 II Series");
+
+  EXPECT_TRUE(Manager::ScannerCanBeUsed(scanner));
+}
+
+TEST_F(ManagerTest, UnusableScannerInfo) {
+  ScannerInfo net_scanner;
+  net_scanner.set_name("pixma:MF260_192.168.0.100");
+  net_scanner.set_manufacturer("CANON");
+  net_scanner.set_model("MF260 II Series");
+
+  ScannerInfo usb_scanner;
+  usb_scanner.set_name("pixma:05d90023_265798");
+  usb_scanner.set_manufacturer("CANON");
+  usb_scanner.set_model("MF260 II Series");
+
+  ScannerInfo usb_scanner_variant;
+  usb_scanner_variant.set_name("pixma:05d90023_265798");
+  usb_scanner_variant.set_manufacturer("CANON");
+  usb_scanner_variant.set_model("MF 260 II Series");
+
+  EXPECT_FALSE(Manager::ScannerCanBeUsed(net_scanner));
+  EXPECT_FALSE(Manager::ScannerCanBeUsed(usb_scanner));
+  EXPECT_FALSE(Manager::ScannerCanBeUsed(usb_scanner_variant));
+}
+
 TEST(BackendFromDeviceName, IppUsbAndAirscan) {
   std::vector<std::pair<std::string, DocumentScanSaneBackend>> cases = {
       {"airscan:escl:HP LaserJet 4:http://192.168.0.15:80/eSCL/", kAirscanHp},

@@ -99,6 +99,10 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                                base::flat_set<std::string> seen_busdev,
                                const std::vector<ScannerInfo>& sane_scanners);
 
+  // Returns false if a particular scanner model is blocked (e.g. because of
+  // known backend incompatibilities).
+  static bool ScannerCanBeUsed(const ScannerInfo& scanner);
+
  private:
   friend class ManagerTest;
 

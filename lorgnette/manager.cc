@@ -304,6 +304,10 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 
   ListScannersResponse response;
   for (ScannerInfo& scanner : scanners) {
+    if (!ScannerCanBeUsed(scanner)) {
+      LOG(INFO) << "Removing blocked scanner from list: " << scanner.name();
+      continue;
+    }
     *response.add_scanners() = std::move(scanner);
   }
 
@@ -601,6 +605,19 @@ void Manager::RemoveDuplicateScanners(
     }
     scanners->push_back(scanner);
   }
+}
+
+bool Manager::ScannerCanBeUsed(const ScannerInfo& scanner) {
+  if (base::StartsWith(scanner.name(), "pixma:")) {
+    // Canon MF 260 can't be used with pixma (b/233012341).
+    if (base::StartsWith(scanner.name(), "pixma:MF260_") ||
+        scanner.model().find("MF260") != std::string::npos ||
+        scanner.model().find("MF 260") != std::string::npos) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool Manager::StartScanInternal(brillo::ErrorPtr* error,
