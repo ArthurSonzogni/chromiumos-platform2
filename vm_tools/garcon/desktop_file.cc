@@ -20,7 +20,7 @@
 #include "vm_tools/garcon/xdg_util.h"
 
 namespace {
-constexpr int kMaxHyphensAllowed = 32;
+constexpr int kMaxHyphensAllowed = 10;
 // Ridiculously large size for a desktop file.
 constexpr size_t kMaxDesktopFileSize = 10485760;  // 10 MB
 // Group name for the main entry we want.
