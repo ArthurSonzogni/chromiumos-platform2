@@ -38,6 +38,9 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
     case AuthFactorType::kPassword:
       metadata.metadata = PasswordAuthFactorMetadata();
       break;
+    case AuthFactorType::kPin:
+      metadata.metadata = PinAuthFactorMetadata();
+      break;
     case AuthFactorType::kKiosk:
       metadata.metadata = KioskAuthFactorMetadata();
       break;
@@ -50,26 +53,32 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
 // Returns the AuthFactor type mapped from the input VaultKeyset.
 AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
                                                const KeyData& key_data) {
+  // Kiosk is special, we need to identify it from key data and not flags.
   if (key_data.type() == KeyData::KEY_TYPE_KIOSK) {
     return AuthFactorType::kKiosk;
   }
 
+  // Convert the VK flags to a block type and then that to a factor type.
   AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
   if (!FlagsToAuthBlockType(vk_flags, auth_block_type)) {
     LOG(ERROR) << "Failed to get the AuthBlock type for AuthFactor convertion.";
     return AuthFactorType::kUnspecified;
   }
-  // For VaultKeysets password type maps to various wrapping methods.
-  if (auth_block_type == AuthBlockType::kDoubleWrappedCompat ||
-      auth_block_type == AuthBlockType::kTpmBoundToPcr ||
-      auth_block_type == AuthBlockType::kTpmNotBoundToPcr ||
-      auth_block_type == AuthBlockType::kLibScryptCompat ||
-      auth_block_type == AuthBlockType::kTpmEcc ||
-      auth_block_type == AuthBlockType::kScrypt) {
-    return AuthFactorType::kPassword;
+  switch (auth_block_type) {
+    case AuthBlockType::kDoubleWrappedCompat:
+    case AuthBlockType::kTpmBoundToPcr:
+    case AuthBlockType::kTpmNotBoundToPcr:
+    case AuthBlockType::kLibScryptCompat:
+    case AuthBlockType::kTpmEcc:
+    case AuthBlockType::kScrypt:
+      return AuthFactorType::kPassword;
+    case AuthBlockType::kPinWeaver:
+      return AuthFactorType::kPin;
+    case AuthBlockType::kChallengeCredential:  // Not yet implemented.
+    case AuthBlockType::kCryptohomeRecovery:   // Never reported by a VK.
+    case AuthBlockType::kMaxValue:
+      return AuthFactorType::kUnspecified;
   }
-
-  return AuthFactorType::kUnspecified;
 }
 
 // Returns the AuthFactor object converted from the input VaultKeyset.
