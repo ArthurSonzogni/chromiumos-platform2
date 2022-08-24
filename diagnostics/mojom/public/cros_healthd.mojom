@@ -6,7 +6,7 @@
 // browser and the telem and diag command-line tools.
 
 // NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
-// src/chromeos/services/cros_healthd/public/mojom/cros_healthd.mojom.
+// src/chromeos/ash/services/cros_healthd/public/mojom/cros_healthd.mojom.
 
 module chromeos.cros_healthd.mojom;
 
@@ -24,6 +24,7 @@ import "diagnostics/mojom/public/wilco_ec.mojom";
 // network-related implementations to the cros_healthd daemon.
 //
 // NextMinVersion: 2, NextIndex: 7
+[Stable]
 interface CrosHealthdServiceFactory {
   // Returns a bound interface to the diagnostics service.
   GetDiagnosticsService@0(pending_receiver<CrosHealthdDiagnosticsService> service);
@@ -54,6 +55,7 @@ interface CrosHealthdServiceFactory {
 // Diagnostics interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 1, NextIndex: 32
+[Stable]
 interface CrosHealthdDiagnosticsService {
   // Returns an array of all diagnostic routines that the platform supports.
   GetAvailableRoutines@0()
@@ -481,6 +483,7 @@ interface CrosHealthdDiagnosticsService {
 // Event interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 2, NextIndex: 7
+[Stable]
 interface CrosHealthdEventService {
   // Adds an observer to be notified on Bluetooth events. The caller can remove
   // the observer created by this call by closing their end of the message pipe.
@@ -540,6 +543,7 @@ interface CrosHealthdEventService {
 // Probe interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 interface CrosHealthdProbeService {
   // Returns information about a specific process running on the device.
   //
@@ -567,6 +571,7 @@ interface CrosHealthdProbeService {
 // Contains data about the current service instance of cros_healthd.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 struct ServiceStatus {
   // Boolean flag if the NetworkHealthService mojo remote has been sent from
   // Chrome and bound in cros_healthd.
@@ -579,6 +584,7 @@ struct ServiceStatus {
 // Interface to query the status of the cros_healthd service.
 //
 // NextMinVersion: 1, NextIndex: 1
+[Stable]
 interface CrosHealthdSystemService {
   // Returns the status of the cros_healthd service and external mojo remotes.
   GetServiceStatus@0() => (ServiceStatus response);
@@ -595,6 +601,7 @@ interface CrosHealthdSystemService {
 // See go/wilco-ec for more information
 //
 // NextMinVersion: 1, NextIndex: 4
+[Stable]
 interface WilcoEcServiceController {
   // Adds an observer to be notified on EC events. The caller can remove the
   // observer created by this call by closing their end of the message pipe.

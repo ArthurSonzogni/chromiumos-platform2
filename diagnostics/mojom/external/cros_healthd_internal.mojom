@@ -6,13 +6,14 @@
 // cros_healthd to obtain the browser resources.
 
 // NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
-// src/chromeos/services/cros_healthd/private/mojom/cros_healthd_internal.mojom.
+// src/chromeos/ash/services/cros_healthd/private/mojom/cros_healthd_internal.mojom.
 
 module chromeos.cros_healthd.internal.mojom;
 
 // Collects data from chromium to Healthd.
 //
 // NextMinVersion: 1, NextIndex: 2
+[Stable]
 interface ChromiumDataCollector {
   // Get touchscreen devices info.
   GetTouchscreenDevices@0() => (array<TouchscreenDevice> devices);
@@ -23,6 +24,7 @@ interface ChromiumDataCollector {
 // Data of a touch screen device in chromium.
 //
 // NextMinVersion: 1, NextIndex: 4
+[Stable]
 struct TouchscreenDevice {
   // The input device of this touchscreen.
   InputDevice input_device@0;
@@ -37,12 +39,13 @@ struct TouchscreenDevice {
 // Data of a input device in chromium.
 //
 // NextMinVersion: 1, NextIndex: 5
+[Stable]
 struct InputDevice {
   // Name of the device.
   string name@0;
 
   // The connection type of the input device.
-  [Extensible]
+  [Stable, Extensible]
   enum ConnectionType {
     // For mojo backward compatibility.
     [Default] kUnmappedEnumField,
