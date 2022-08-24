@@ -1299,15 +1299,6 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
   return sessions_[username];
 }
 
-bool UserDataAuth::RemoveUserSession(const std::string& username) {
-  AssertOnMountThread();
-
-  if (sessions_.count(username) != 0) {
-    return (1U == sessions_.erase(username));
-  }
-  return true;
-}
-
 void UserDataAuth::MountGuest(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();

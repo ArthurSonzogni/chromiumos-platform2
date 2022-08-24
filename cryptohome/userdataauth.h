@@ -858,11 +858,6 @@ class UserDataAuth {
   scoped_refptr<UserSession> GetOrCreateUserSession(
       const std::string& username);
 
-  // Safely removes the reference to the UserSession from. This method returns
-  // true if as a result of the operation there is no reference to a session of
-  // the given user (including if it was absent in the first place).
-  bool RemoveUserSession(const std::string& username);
-
   // Calling this method will mount the home directory for guest users.
   // This is usually called by DoMount(). Note that this method is asynchronous,
   // and will call |on_done| exactly once to deliver the result regardless of
