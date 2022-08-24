@@ -25,6 +25,8 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec/structures/key.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -41,6 +43,7 @@
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
 
@@ -1026,8 +1029,105 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
   }
 
   test_cases.clear();
-
   LOG(INFO) << "SignatureSealedSecretTest ended successfully.";
+  return true;
+}
+
+bool TpmLiveTest::RecoveryTpmBackendTest() {
+  LOG(INFO) << "RecoveryTpmBackendTest started";
+
+  cryptohome::cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
+      tpm_->GetRecoveryCryptoBackend();
+  if (!tpm_backend) {
+    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
+    return false;
+  }
+
+  hwsec_foundation::ScopedBN_CTX context =
+      hwsec_foundation::CreateBigNumContext();
+  std::optional<hwsec_foundation::EllipticCurve> ec_256 =
+      hwsec_foundation::EllipticCurve::Create(
+          hwsec_foundation::EllipticCurve::CurveType::kPrime256, context.get());
+  crypto::ScopedEC_KEY destination_share_key_pair =
+      ec_256->GenerateKey(context.get());
+  if (!destination_share_key_pair) {
+    LOG(ERROR) << "Failed to generate destination share key pair";
+    return false;
+  }
+  brillo::SecureBlob key_auth_value = tpm_backend->GenerateKeyAuthValue();
+
+  // Call key importing/sealing
+  cryptorecovery::EncryptEccPrivateKeyRequest encrypt_request_destination_share(
+      {.ec = ec_256.value(),
+       .own_key_pair = destination_share_key_pair,
+       .auth_value = key_auth_value,
+       .obfuscated_username = "obfuscated_username"});
+  cryptorecovery::EncryptEccPrivateKeyResponse
+      encrypt_response_destination_share;
+  if (!tpm_backend->EncryptEccPrivateKey(encrypt_request_destination_share,
+                                         &encrypt_response_destination_share)) {
+    LOG(ERROR) << "Failed to encrypt destination share.";
+    return false;
+  }
+
+  crypto::ScopedEC_KEY others_key_pair = ec_256->GenerateKey(context.get());
+  if (!others_key_pair) {
+    LOG(ERROR) << "Failed to generate other's key pair.";
+    return false;
+  }
+  const EC_POINT* others_pub_key_ptr =
+      EC_KEY_get0_public_key(others_key_pair.get());
+  if (!others_pub_key_ptr) {
+    LOG(ERROR) << "Failed to get other's public key pointer.";
+    return false;
+  }
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(others_pub_key_ptr, ec_256->GetGroup()));
+  if (!others_pub_key) {
+    LOG(ERROR) << "Failed to get other's public key.";
+    return false;
+  }
+
+  // Call key loading/unsealing
+  cryptorecovery::GenerateDhSharedSecretRequest
+      decrypt_request_destination_share(
+          {.ec = ec_256.value(),
+           .encrypted_own_priv_key =
+               encrypt_response_destination_share.encrypted_own_priv_key,
+           .extended_pcr_bound_own_priv_key =
+               encrypt_response_destination_share
+                   .extended_pcr_bound_own_priv_key,
+           .auth_value = key_auth_value,
+           .obfuscated_username = "obfuscated_username",
+           .others_pub_point = std::move(others_pub_key)});
+  crypto::ScopedEC_POINT point_dh =
+      tpm_backend->GenerateDiffieHellmanSharedSecret(
+          decrypt_request_destination_share);
+  if (!point_dh) {
+    LOG(ERROR) << "Failed to perform scalar multiplication of others_pub_key "
+                  "and destination_share";
+    return false;
+  }
+
+  LOG(INFO) << "RecoveryTpmBackendTest ended successfully.";
+
+  // Extend PCR value.
+  if (!tpm_->ExtendPCR(kTpmSingleUserPCR,
+                       BlobFromString("01234567890123456789"))) {
+    LOG(ERROR) << "Error extending PCR";
+    return false;
+  }
+
+  crypto::ScopedEC_POINT point_dh_null =
+      tpm_backend->GenerateDiffieHellmanSharedSecret(
+          decrypt_request_destination_share);
+  if (point_dh_null) {
+    LOG(ERROR) << "Generated DH shared secret successfully without the correct "
+                  "PCR state.";
+    return false;
+  }
+  LOG(INFO) << "RecoveryTpmBackendTest with PCR extended ended successfully.";
+
   return true;
 }
 

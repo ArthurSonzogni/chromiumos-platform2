@@ -31,16 +31,6 @@ class TpmLiveTest {
   // This method runs all of the tests.
   bool RunLiveTests();
 
- private:
-  // Helper method to try to sign some data.
-  bool SignData(const brillo::SecureBlob& pcr_bound_key,
-                const brillo::SecureBlob& public_key_der,
-                int index);
-
-  // Helper method to try to encrypt and decrypt some data.
-  bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
-                             const std::map<uint32_t, brillo::Blob>& pcr_map);
-
   // These tests check TPM-bound AuthBlocks work correctly.
   bool TpmEccAuthBlockTest();
   bool TpmBoundToPcrAuthBlockTest();
@@ -64,6 +54,20 @@ class TpmLiveTest {
   // This test checks the signature-sealed secret creation and its unsealing. A
   // random RSA key is used.
   bool SignatureSealedSecretTest();
+
+  // This test checks the recovery TPM backend's key import/sealing and
+  // load/unsealing.
+  bool RecoveryTpmBackendTest();
+
+ private:
+  // Helper method to try to sign some data.
+  bool SignData(const brillo::SecureBlob& pcr_bound_key,
+                const brillo::SecureBlob& public_key_der,
+                int index);
+
+  // Helper method to try to encrypt and decrypt some data.
+  bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
+                             const std::map<uint32_t, brillo::Blob>& pcr_map);
 
   FakePlatform platform_;
   Tpm* tpm_;
