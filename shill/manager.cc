@@ -319,13 +319,6 @@ void Manager::RegisterAsync(
   adaptor_->RegisterAsync(std::move(completion_callback));
 }
 
-void Manager::OnDhcpPropertyChanged(const std::string& key,
-                                    const std::string& value) {
-  adaptor_->EmitStringChanged(key, value);
-  if (profiles_.size() > 0)
-    profiles_.front()->Save();
-}
-
 void Manager::SetBlockedDevices(
     const std::vector<std::string>& blocked_devices) {
   blocked_devices_ = blocked_devices;
@@ -1353,9 +1346,6 @@ void Manager::EmitDeviceProperties() {
                                UninitializedTechnologies(&error));
 }
 
-void Manager::OnInnerDevicesChanged() {
-  EmitDeviceProperties();
-}
 
 void Manager::OnDeviceClaimerVanished() {
   // Reset device claimer.

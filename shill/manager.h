@@ -139,9 +139,6 @@ class Manager {
 
   void RegisterAsync(base::OnceCallback<void(bool)> completion_callback);
 
-  mockable void OnDhcpPropertyChanged(const std::string& key,
-                                      const std::string& value);
-
   virtual void SetBlockedDevices(
       const std::vector<std::string>& blockeded_devices);
   virtual void SetAllowedDevices(
@@ -486,9 +483,6 @@ class Manager {
   // Returns true iff |power_manager_| exists and is suspending (i.e.
   // power_manager->suspending() is true), false otherwise.
   virtual bool IsSuspending();
-
-  // Called when service's inner device changed.
-  virtual void OnInnerDevicesChanged();
 
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
   bool suppress_autoconnect() const { return suppress_autoconnect_; }

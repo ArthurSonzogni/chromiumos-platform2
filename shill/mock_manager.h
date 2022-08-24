@@ -27,10 +27,6 @@ class MockManager : public Manager {
 
   ~MockManager() override;
 
-  MOCK_METHOD(void,
-              OnDhcpPropertyChanged,
-              (const std::string&, const std::string&),
-              (override));
   MOCK_METHOD(DeviceInfo*, device_info, (), (override));
 #if !defined(DISABLE_CELLULAR)
   MOCK_METHOD(ModemInfo*, modem_info, (), (override));
@@ -124,7 +120,6 @@ class MockManager : public Manager {
   MOCK_METHOD(void, SetPassiveMode, (), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
   MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
-  MOCK_METHOD(void, OnInnerDevicesChanged, (), (override));
   MOCK_METHOD(void,
               ClaimDevice,
               (const std::string&, const std::string&, Error*),
