@@ -1,0 +1,27 @@
+[package]
+name = "shadercached"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[dependencies]
+anyhow = "=1.0.56"
+dbus = "=0.9.3"
+dbus-crossroads = "=0.5.0"
+dbus-tokio = "=0.7.5"
+protobuf = "=2.24.1"
+sys_util = "=0.1.0"
+system_api = { path = "../system_api" } # provided by ebuild
+tokio = { version = "=1.19.2", features = [
+  "macros",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+] }
+
+# All patches required for sys_util
+[patch.crates-io] # ignored by ebuild
+data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" }       # ignored by ebuild
+sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" }                 # ignored by ebuild
+sys_util = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util-0.1.0/" }           # ignored by ebuild
+sys_util_core = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util_core-0.1.0/" } # ignored by ebuild
