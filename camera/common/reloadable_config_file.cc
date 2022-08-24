@@ -102,7 +102,7 @@ void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(override_config_file_path_);
   if (options_update_callback_) {
-    options_update_callback_.Run(json_values_.Clone());
+    options_update_callback_.Run(json_values_);
   }
 }
 
