@@ -22,6 +22,8 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 
+#include "cros-disks/process.h"
+
 namespace cros_disks {
 namespace {
 
@@ -152,7 +154,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
 
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
-  int last_failure_code = 0;
+  Process::ExitCode last_failure_code = Process::ExitCode::kSuccess;
 
   while (true) {
     // Wait for any child process to terminate.
@@ -164,19 +166,19 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
 
       // No more child. By then, we should have closed the control pipe.
       DCHECK(!ctrl_fd_.is_valid());
-      VLOG(2) << "The 'init' process is finishing with exit code "
-              << last_failure_code;
-      _exit(last_failure_code);
+      VLOG(2) << "The 'init' process is finishing with " << last_failure_code;
+      _exit(static_cast<int>(last_failure_code));
     }
 
     // A child process finished.
     // Convert wait status to exit code.
-    const int exit_code = WaitStatusToExitCode(wstatus);
-    DCHECK_GE(exit_code, 0);
+    const Process::ExitCode exit_code =
+        static_cast<Process::ExitCode>(WaitStatusToExitCode(wstatus));
+    DCHECK_GE(static_cast<int>(exit_code), 0);
     VLOG(2) << "Child process " << pid
-            << " of the 'init' process finished with exit code " << exit_code;
+            << " of the 'init' process finished with " << exit_code;
 
-    if (exit_code > 0)
+    if (exit_code != Process::ExitCode::kSuccess)
       last_failure_code = exit_code;
 
     // Was it the 'launcher' process?
@@ -188,8 +190,8 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     const ssize_t written =
         HANDLE_EINTR(write(ctrl_fd_.get(), &exit_code, sizeof(exit_code)));
     PLOG_IF(ERROR, written != sizeof(exit_code))
-        << "Cannot write exit code " << exit_code
-        << " of the 'launcher' process " << launcher_pid << " to pipe "
+        << "Cannot write " << exit_code
+        << " returned by the 'launcher' process " << launcher_pid << " to pipe "
         << ctrl_fd_.get();
 
     // Close the control pipe.

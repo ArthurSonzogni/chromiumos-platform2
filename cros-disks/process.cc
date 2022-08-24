@@ -6,10 +6,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <string>
 
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -21,6 +23,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <chromeos/libminijail.h>
 
 #include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_init.h"
@@ -49,6 +52,65 @@ base::ScopedFD WrapStdIn(const base::StringPiece in) {
 }
 
 }  // namespace
+
+std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
+  switch (static_cast<int>(exit_code)) {
+#define PRINT(s)                                  \
+  case static_cast<int>(Process::ExitCode::k##s): \
+    return out << #s;
+    PRINT(None)
+    PRINT(Success)
+#undef PRINT
+
+#define PRINT(s)                  \
+  case MINIJAIL_ERR_SIG_BASE + s: \
+    return out << #s;
+    PRINT(SIGHUP)
+    PRINT(SIGINT)
+    PRINT(SIGQUIT)
+    PRINT(SIGILL)
+    PRINT(SIGTRAP)
+    PRINT(SIGABRT)
+    PRINT(SIGBUS)
+    PRINT(SIGFPE)
+    PRINT(SIGKILL)
+    PRINT(SIGUSR1)
+    PRINT(SIGSEGV)
+    PRINT(SIGUSR2)
+    PRINT(SIGPIPE)
+    PRINT(SIGALRM)
+    PRINT(SIGTERM)
+    PRINT(SIGSTKFLT)
+    PRINT(SIGCHLD)
+    PRINT(SIGCONT)
+    PRINT(SIGSTOP)
+    PRINT(SIGTSTP)
+    PRINT(SIGTTIN)
+    PRINT(SIGTTOU)
+    PRINT(SIGURG)
+    PRINT(SIGXCPU)
+    PRINT(SIGXFSZ)
+    PRINT(SIGVTALRM)
+    PRINT(SIGPROF)
+    PRINT(SIGWINCH)
+    PRINT(SIGIO)
+    PRINT(SIGPWR)
+#undef PRINT
+
+#define PRINT(s) \
+  case s:        \
+    return out << #s;
+    PRINT(MINIJAIL_ERR_NO_ACCESS)
+    PRINT(MINIJAIL_ERR_NO_COMMAND)
+    PRINT(MINIJAIL_ERR_MOUNT)
+    PRINT(MINIJAIL_ERR_PRELOAD)
+    PRINT(MINIJAIL_ERR_JAIL)
+    PRINT(MINIJAIL_ERR_INIT)
+#undef PRINT
+  }
+
+  return out << "Error " << static_cast<int>(exit_code);
+}
 
 // static
 const pid_t Process::kInvalidProcessId = -1;
@@ -349,8 +411,8 @@ int Process::Run() {
     }
   }
 
-  LOG(ERROR) << "Program " << quote(program_name_)
-             << " finished with exit code " << exit_code;
+  LOG(ERROR) << "Program " << quote(program_name_) << " finished with "
+             << ExitCode(exit_code);
 
   return exit_code;
 }

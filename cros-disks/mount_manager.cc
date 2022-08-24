@@ -309,12 +309,16 @@ void MountManager::OnSandboxedProcessExit(
                << info.si_status << ": " << strsignal(info.si_status);
   } else if (mount_point) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
-               << redact(mount_path) << " finished unexpectedly with exit code "
-               << info.si_status;
+               << redact(mount_path) << " finished unexpectedly with "
+               << Process::ExitCode(info.si_status);
+  } else if (info.si_status) {
+    LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
+               << redact(mount_path) << " finished with "
+               << Process::ExitCode(info.si_status);
   } else {
     LOG(INFO) << "FUSE program " << quote(program_name) << " for "
-              << redact(mount_path) << " finished with exit code "
-              << info.si_status;
+              << redact(mount_path) << " finished with "
+              << Process::ExitCode(info.si_status);
   }
 
   if (!mount_point) {

@@ -7,6 +7,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "cros-disks/daemon.h"
+#include "cros-disks/process.h"
 
 int main(int argc, char** argv) {
   DEFINE_bool(foreground, false, "Run in foreground");
@@ -25,7 +26,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Service started";
   const int ret = cros_disks::Daemon(!FLAGS_no_session_manager).Run();
-  LOG(INFO) << "Service stopped with exit code " << ret;
+  LOG(INFO) << "Service stopped with " << cros_disks::Process::ExitCode(ret);
 
   return ret;
 }

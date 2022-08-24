@@ -6,6 +6,7 @@
 #define CROS_DISKS_PROCESS_H_
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,13 @@ namespace cros_disks {
 // A base class for executing and monitoring a process.
 class Process {
  public:
+  // Exit code of a process. Valid values are in the range from 0 to 255.
+  enum class ExitCode : int {
+    kNone = -1,
+    kSuccess = 0,
+    kMax = 255,
+  };
+
   // Invalid process ID assigned to a process that has not started.
   static const pid_t kInvalidProcessId;
 
@@ -223,6 +231,8 @@ class Process {
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);
 };
+
+std::ostream& operator<<(std::ostream& out, Process::ExitCode exit_code);
 
 }  // namespace cros_disks
 

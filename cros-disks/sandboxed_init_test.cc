@@ -22,6 +22,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/process.h"
+
 namespace cros_disks {
 namespace {
 
@@ -132,7 +134,8 @@ class SandboxedInitTest : public testing::Test {
     }
 
     const int exit_code = SandboxedInit::WaitStatusToExitCode(wstatus);
-    LOG(INFO) << "The 'init' process finished with exit code " << exit_code;
+    LOG(INFO) << "The 'init' process finished with "
+              << Process::ExitCode(exit_code);
     pid_ = -1;
     return exit_code;
   }
@@ -142,7 +145,8 @@ class SandboxedInitTest : public testing::Test {
     EXPECT_TRUE(ctrl_.is_valid());
     LOG(INFO) << "Waiting for the 'launcher' process to finish...";
     const int exit_code = SandboxedInit::WaitForLauncher(&ctrl_);
-    LOG(INFO) << "The 'launcher' process finished with exit code " << exit_code;
+    LOG(INFO) << "The 'launcher' process finished with "
+              << Process::ExitCode(exit_code);
     EXPECT_FALSE(ctrl_.is_valid());
     return exit_code;
   }
@@ -158,8 +162,8 @@ class SandboxedInitTest : public testing::Test {
       LOG(INFO) << "The 'launcher' process is still running";
       EXPECT_TRUE(ctrl_.is_valid());
     } else {
-      LOG(INFO) << "The 'launcher' process finished with exit code "
-                << exit_code;
+      LOG(INFO) << "The 'launcher' process finished with "
+                << Process::ExitCode(exit_code);
       EXPECT_FALSE(ctrl_.is_valid());
     }
 
