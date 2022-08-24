@@ -644,6 +644,11 @@ const char kSecurityWpa2Enterprise[] = "wpa2-ent";
 const char kSecurityWpa2Wpa3Enterprise[] = "wpa2+wpa3-ent";
 const char kSecurityWpa3Enterprise[] = "wpa3-ent";
 
+// WiFi Band options.
+const char kBand2GHz[] = "2.4GHz";
+const char kBand5GHz[] = "5GHz";
+const char kBand6GHz[] = "6GHz";
+
 // Compress option values as expected by OpenVPN.
 const char kOpenVPNCompressFramingOnly[] = "";
 const char kOpenVPNCompressLz4[] = "lz4";
@@ -903,7 +908,6 @@ const char kTetheringConfSSIDProperty[] = "ssid";
 const char kTetheringConfUpstreamTech[] = "upstream_technology";
 
 // Manager kTetheringCapabilitiesProperty dictionary key names.
-const char kTetheringCapBandProperty[] = "wifi_bands";
 const char kTetheringCapDownstreamProperty[] = "downstream_technologies";
 const char kTetheringCapSecurityProperty[] = "wifi_security_modes";
 const char kTetheringCapUpstreamProperty[] = "upstream_technologies";

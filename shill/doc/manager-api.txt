@@ -726,9 +726,7 @@ Properties	object ActiveProfile [readonly]
 			array{string} upstream_technologies
 				array containing any/all of "wifi", "cellular", "ethernet"
 			array{string} wifi_security_modes
-				array containing any/all of "wpa2", "wpa3"
-			array{string} wifi_bands
-				array containing any/all of "2.4GHz", "5GHz", "6GHz"
+				array containing any/all of "wpa2", "wpa3" or "wpa2+wpa3"
 
 		dict TetheringConfig [readwrite]
 
@@ -736,22 +734,26 @@ Properties	object ActiveProfile [readonly]
 
 			boolean auto_disable
 				automatically disable tethering if no devices have been
-				associated for 10 minutes
+				associated for 10 minutes. Default to true.
+			boolean MAR
+				a random MAC address is used when a mobile AP is started
+				(WiFi downstream only). Default to true.
 			string hexSSID
 				the hex-encoded tethering SSID name to be advertised (WiFi
 				downstream only)
 			string band
 				the tethering band preference (WiFi downstream only)
-				this should be one of “2.4GHz”, “5GHz”, or “6GHz”
+				this should be one of “2.4GHz”, “5GHz”, or “6GHz”. If absent,
+				the band will be picked by Shill.
 			string security
 				the tethering security to be used (WiFi downstream only)
-				this should be one of "wpa2", "wpa3", "wpa2wpa3"
+				this should be one of "wpa2", "wpa3", "wpa2+wpa3"
 			string passphrase
 				the password to be used to authenticate to the tethering network
 				(WiFi downstream only)
 			string upstream_technology
 				Preferred upstream technology to use, one of "wifi", "cellular",
-				"ethernet". If not set, Shill will use cellular as the default
+				"ethernet". If absent, Shill will use cellular as the default
 				upstream technology.
 
 		dict TetheringStatus [readonly]
