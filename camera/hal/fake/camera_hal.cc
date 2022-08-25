@@ -24,10 +24,81 @@ namespace cros {
 namespace {
 // The default fake hal spec file. The file should contain a JSON that is
 // parsed to HalSpec struct.
-static constexpr const char kDefaultFakeHalSpecFile[] =
-    "/etc/camera/fake_hal.json";
-static constexpr const char kOverrideFakeHalSpecFile[] =
-    "/run/camera/fake_hal.json";
+constexpr const char kDefaultFakeHalSpecFile[] = "/etc/camera/fake_hal.json";
+constexpr const char kOverrideFakeHalSpecFile[] = "/run/camera/fake_hal.json";
+
+int camera_device_open_ext(const hw_module_t* module,
+                           const char* name,
+                           hw_device_t** device,
+                           ClientType client_type) {
+  // Make sure hal adapter loads the correct symbol.
+  if (module != &HAL_MODULE_INFO_SYM.common) {
+    LOGF(ERROR) << "Invalid module " << module << " expected "
+                << &HAL_MODULE_INFO_SYM.common;
+    return -EINVAL;
+  }
+
+  int id;
+  if (!base::StringToInt(name, &id)) {
+    LOGF(ERROR) << "Invalid camera name " << name;
+    return -EINVAL;
+  }
+  return CameraHal::GetInstance().OpenDevice(id, module, device, client_type);
+}
+
+int get_camera_info_ext(int id,
+                        struct camera_info* info,
+                        ClientType client_type) {
+  return CameraHal::GetInstance().GetCameraInfo(id, info, client_type);
+}
+
+int camera_device_open(const hw_module_t* module,
+                       const char* name,
+                       hw_device_t** device) {
+  return camera_device_open_ext(module, name, device, ClientType::kChrome);
+}
+
+int get_number_of_cameras() {
+  return CameraHal::GetInstance().GetNumberOfCameras();
+}
+
+int get_camera_info(int id, struct camera_info* info) {
+  return get_camera_info_ext(id, info, ClientType::kChrome);
+}
+
+int set_callbacks(const camera_module_callbacks_t* callbacks) {
+  return CameraHal::GetInstance().SetCallbacks(callbacks);
+}
+
+int init() {
+  return CameraHal::GetInstance().Init();
+}
+
+void set_up(CameraMojoChannelManagerToken* token) {
+  CameraHal::GetInstance().SetUp(token);
+}
+
+void tear_down() {
+  CameraHal::GetInstance().TearDown();
+}
+
+void set_privacy_switch_callback(PrivacySwitchStateChangeCallback callback) {
+  CameraHal::GetInstance().SetPrivacySwitchCallback(callback);
+}
+
+void get_vendor_tag_ops(vendor_tag_ops_t* ops) {}
+
+int open_legacy(const struct hw_module_t* module,
+                const char* id,
+                uint32_t halVersion,
+                struct hw_device_t** device) {
+  return -ENOSYS;
+}
+
+int set_torch_mode(const char* camera_id, bool enabled) {
+  return -ENOSYS;
+}
+
 }  // namespace
 
 CameraHal::CameraHal() {
@@ -63,6 +134,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 int CameraHal::Init() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  task_runner_ = base::SequencedTaskRunnerHandle::Get();
   config_file_ = std::make_unique<ReloadableConfigFile>(
       ReloadableConfigFile::Options{base::FilePath(kDefaultFakeHalSpecFile),
                                     base::FilePath(kOverrideFakeHalSpecFile)});
@@ -84,8 +156,19 @@ int CameraHal::OpenDevice(int id,
                           hw_device_t** hw_device,
                           ClientType client_type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  VLOGFID(1, id);
 
-  return -EINVAL;
+  cameras_[id] = std::make_unique<CameraClient>(
+      id, static_metadata_[id], request_template_[id], module, hw_device);
+
+  int ret = cameras_[id]->OpenDevice();
+  if (ret != 0) {
+    cameras_.erase(id);
+    return -ENODEV;
+  }
+
+  VLOGF_EXIT();
+  return 0;
 }
 
 bool CameraHal::IsCameraIdValid(int id) {
@@ -206,78 +289,43 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
   }
 }
 
-static int camera_device_open_ext(const hw_module_t* module,
-                                  const char* name,
-                                  hw_device_t** device,
-                                  ClientType client_type) {
-  // Make sure hal adapter loads the correct symbol.
-  if (module != &HAL_MODULE_INFO_SYM.common) {
-    LOGF(ERROR) << "Invalid module " << module << " expected "
-                << &HAL_MODULE_INFO_SYM.common;
-    return -EINVAL;
+void CameraHal::CloseDevice(int id) {
+  VLOGFID(1, id);
+  DCHECK(task_runner_);
+  base::WaitableEvent closed;
+  // The CameraHal is Singleton with NoDestructor so base::Unretained(this)
+  // will always be valid.
+  // The `closed` WaitableEvent is waited before this function returns, which
+  // ensures that the base::Unretained(&closed) is valid when it's used.
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&CameraHal::CloseDeviceOnHalThread,
+                                base::Unretained(this), id,
+                                base::BindOnce(&base::WaitableEvent::Signal,
+                                               base::Unretained(&closed))));
+  closed.Wait();
+}
+
+void CameraHal::CloseDeviceOnHalThread(int id,
+                                       base::OnceCallback<void()> callback) {
+  VLOGFID(1, id);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  cameras_.erase(id);
+  std::move(callback).Run();
+}
+
+int camera_device_close(struct hw_device_t* hw_device) {
+  camera3_device_t* cam_dev = reinterpret_cast<camera3_device_t*>(hw_device);
+  CameraClient* cam = static_cast<CameraClient*>(cam_dev->priv);
+  if (!cam) {
+    LOGF(ERROR) << "Camera device is NULL";
+    return -EIO;
   }
-
-  int id;
-  if (!base::StringToInt(name, &id)) {
-    LOGF(ERROR) << "Invalid camera name " << name;
-    return -EINVAL;
-  }
-  return CameraHal::GetInstance().OpenDevice(id, module, device, client_type);
+  cam_dev->priv = nullptr;
+  int ret = cam->CloseDevice();
+  CameraHal::GetInstance().CloseDevice(cam->GetId());
+  return ret;
 }
 
-static int get_camera_info_ext(int id,
-                               struct camera_info* info,
-                               ClientType client_type) {
-  return CameraHal::GetInstance().GetCameraInfo(id, info, client_type);
-}
-
-static int camera_device_open(const hw_module_t* module,
-                              const char* name,
-                              hw_device_t** device) {
-  return camera_device_open_ext(module, name, device, ClientType::kChrome);
-}
-
-static int get_number_of_cameras() {
-  return CameraHal::GetInstance().GetNumberOfCameras();
-}
-
-static int get_camera_info(int id, struct camera_info* info) {
-  return get_camera_info_ext(id, info, ClientType::kChrome);
-}
-
-static int set_callbacks(const camera_module_callbacks_t* callbacks) {
-  return CameraHal::GetInstance().SetCallbacks(callbacks);
-}
-
-static int init() {
-  return CameraHal::GetInstance().Init();
-}
-
-static void set_up(CameraMojoChannelManagerToken* token) {
-  CameraHal::GetInstance().SetUp(token);
-}
-
-static void tear_down() {
-  CameraHal::GetInstance().TearDown();
-}
-
-static void set_privacy_switch_callback(
-    PrivacySwitchStateChangeCallback callback) {
-  CameraHal::GetInstance().SetPrivacySwitchCallback(callback);
-}
-
-static void get_vendor_tag_ops(vendor_tag_ops_t* ops) {}
-
-static int open_legacy(const struct hw_module_t* module,
-                       const char* id,
-                       uint32_t halVersion,
-                       struct hw_device_t** device) {
-  return -ENOSYS;
-}
-
-static int set_torch_mode(const char* camera_id, bool enabled) {
-  return -ENOSYS;
-}
 }  // namespace cros
 
 static hw_module_methods_t gCameraModuleMethods = {

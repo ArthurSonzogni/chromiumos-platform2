@@ -19,7 +19,9 @@ pkg_config("target_defaults") {
 
 shared_library("libcamera_hal") {
   sources = [
+    "camera_client.cc",
     "camera_hal.cc",
+    "camera_hal_device_ops.cc",
     "hal_spec.cc",
     "metadata_handler.cc",
     "value_util.cc",
