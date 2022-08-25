@@ -11,6 +11,7 @@ brk: 1
 clock_gettime64: 1
 clock_gettime: 1
 close: 1
+dup2: 1
 dup: 1
 execve: 1
 exit: 1
@@ -40,6 +41,7 @@ restart_syscall: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
 sigreturn: 1
+socket: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1
