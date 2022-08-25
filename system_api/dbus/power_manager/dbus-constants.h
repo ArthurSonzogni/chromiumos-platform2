@@ -57,6 +57,7 @@ const char kHasAmbientColorDeviceMethod[] = "HasAmbientColorDevice";
 const char kChangeWifiRegDomainMethod[] = "ChangeWifiRegDomain";
 const char kChargeNowForAdaptiveChargingMethod[] =
     "ChargeNowForAdaptiveCharging";
+const char kGetChargeHistoryMethod[] = "GetChargeHistory";
 // TODO(b/166543531): Remove after migrating to BlueZ Battery Provider API.
 const char kRefreshBluetoothBatteryMethod[] = "RefreshBluetoothBattery";
 const char kRefreshAllPeripheralBatteryMethod[] = "RefreshAllPeripheralBattery";

@@ -211,6 +211,15 @@
       </tp:docstring>
     </method>
 
+    <method name="GetChargeHistory">
+      <tp:docstring>
+        Fetches the charge history for up to the last 30 days.
+        |serialized_proto| is a serialized power_manager::ChargeHistory
+        protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
+    </method>
+
     <!-- Signals -->
     <signal name="ScreenBrightnessChanged">
       <tp:docstring>

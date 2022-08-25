@@ -9,6 +9,8 @@
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 
+#include <algorithm>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -105,9 +107,14 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
 
   void CreateDefaultChargeHistory() {
     CreateChargeHistoryDirectories();
-    base::Time now = base::Time::Now();
+    // Tests may adjust the time to avoid race conditions around midnight, etc.,
+    // so use that time if it was set.
+    base::Time now = charge_history_->clock()->GetCurrentWallTime();
     base::Time today = now.UTCMidnight();
     for (int i = 0; i < 15; ++i) {
+      WriteChargeHistoryFile(charge_events_dir_,
+                             today - (i + 1) * base::Hours(20),
+                             base::Hours(i + 1));
       WriteChargeHistoryFile(time_on_ac_dir_, today - i * base::Days(1),
                              base::Hours(5));
       WriteChargeHistoryFile(time_full_on_ac_dir_, today - i * base::Days(1),
@@ -488,6 +495,71 @@ TEST_F(AdaptiveChargingControllerTest, TestChargeNow) {
   EXPECT_TRUE(recheck_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that the GetChargeHistory DBus method accurately returns the Charge
+// History.
+TEST_F(AdaptiveChargingControllerTest, TestGetChargeHistory) {
+  // Set wall time to avoid race conditions with midnight creating another day
+  // for Charge History.
+  base::Time now = base::Time::Now().UTCMidnight();
+  charge_history_->clock()->set_current_wall_time_for_testing(now);
+  Init();
+
+  ChargeHistoryState proto;
+  dbus::MethodCall method_call(kPowerManagerInterface, kGetChargeHistoryMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  EXPECT_TRUE(response &&
+              response->GetMessageType() != dbus::Message::MESSAGE_ERROR);
+  proto.Clear();
+  EXPECT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+
+  std::vector<std::pair<int64_t, int64_t>> stored_charge_events;
+  // We write 15 charge events when creating history, plus there's the
+  // incomplete charge event, since we're plugged in.
+  EXPECT_EQ(proto.charge_event().size(), 16);
+  for (auto& event : proto.charge_event()) {
+    stored_charge_events.push_back(
+        std::make_pair(event.start_time(), event.duration()));
+  }
+
+  // Reverse sort these values, so that we can verify the values in the
+  // same order they were generated in CreateDefaultChargeHistory.
+  std::sort(stored_charge_events.begin(), stored_charge_events.end(),
+            std::greater<>());
+
+  // The incomplete charge event that isn't created in
+  // CreateDefaultChargeHistory will be at the front, so skip it. This also
+  // means that the "i + 1" for charge events created in that function are
+  // changed to just "i".
+  for (size_t i = 1; i < proto.charge_event().size(); i++) {
+    EXPECT_EQ(stored_charge_events[i].first,
+              (now - i * base::Hours(20)).ToInternalValue());
+    EXPECT_EQ(stored_charge_events[i].second, base::Hours(i).ToInternalValue());
+  }
+
+  // Check the start time and duration of the incomplete charge event.
+  EXPECT_EQ(stored_charge_events[0].first, now.ToInternalValue());
+  EXPECT_EQ(stored_charge_events[0].second,
+            base::TimeDelta().ToInternalValue());
+
+  std::vector<int64_t> stored_midnights;
+  EXPECT_EQ(proto.daily_history().size(), 15);
+  for (auto& history : proto.daily_history()) {
+    stored_midnights.push_back(history.utc_midnight());
+    EXPECT_EQ(history.time_on_ac(), base::Hours(5).ToInternalValue());
+    EXPECT_EQ(history.time_full_on_ac(), base::Hours(2).ToInternalValue());
+    EXPECT_EQ(history.hold_time_on_ac(), base::Hours(1).ToInternalValue());
+  }
+
+  std::sort(stored_midnights.begin(), stored_midnights.end());
+  for (size_t i = 0; i < stored_midnights.size(); i++) {
+    EXPECT_EQ(
+        stored_midnights[i],
+        (now - base::Days(stored_midnights.size() - i - 1)).ToInternalValue());
+  }
 }
 
 // Test that we don't start Adaptive Charging when the battery is already full.

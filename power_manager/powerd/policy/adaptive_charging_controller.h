@@ -28,6 +28,7 @@
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
+#include "power_manager/proto_bindings/charge_history_state.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/user_charging_event.pb.h"
 
@@ -182,6 +183,12 @@ class ChargeHistory {
   // Reschedules pending writes to disk at the next 15 minute aligned time.
   void OnExitLowPowerState();
 
+  // Populate `protobuf` with the internal state of ChargeHistory.
+  // Returns true if the state was successfully copied to the protocol buffer,
+  // and false if it was not. This can happen if this is called before
+  // ChargeHistory has Init called on it.
+  bool CopyToProtocolBuffer(ChargeHistoryState* protobuf);
+
  private:
   // Helper function for `CheckAndFixSystemTimeChange` to correct different
   // `timestamp` values based on the current system time and ticks.
@@ -256,6 +263,14 @@ class ChargeHistory {
   void WriteDurationToFile(const base::FilePath& dir,
                            base::Time time,
                            base::TimeDelta duration);
+
+  // This returns the duration associated with a day that starts at `day_start`
+  // since `start`. `day_start` must be equal to a value returned by
+  // `base::Time::UTCMidnight`. For instance, if now is January 10th
+  // 00:00:00UTC, `day_start` is January 8th 00:00:00UTC, and `start` is January
+  // 8th 12:00:00UTC, this will return base::Hours(12). If `start` is changed to
+  // January 7th 00:00:00UTC, this will instead return base::Days(1).
+  base::TimeDelta DurationForDay(base::Time start, base::Time day_start);
 
   // Helper function to floor time values to a multiple of
   // `kChargeHistoryTimeInterval`.
@@ -364,6 +379,7 @@ class ChargeHistory {
   // events (including removal of min and max) where n <= 50.
   std::map<base::Time, base::TimeDelta> charge_events_;
 
+  // TODO(b/241061371): refactor these maps to group them together.
   // Ordered map of days to duration on AC for up to the last 30 days.
   std::map<base::Time, base::TimeDelta> time_on_ac_days_;
 
@@ -465,6 +481,11 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // system is plugged in.
   void HandleChargeNow(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
+
+  // Convert and copy `charge_history_` to a protobuf, then return it.
+  void HandleGetChargeHistory(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
 
   // Sets battery sustain via the `Delegate::SetBatterySustain` callback.
   // Returns true on success and false otherwise.

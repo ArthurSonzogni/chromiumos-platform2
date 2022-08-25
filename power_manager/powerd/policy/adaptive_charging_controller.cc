@@ -280,6 +280,76 @@ void ChargeHistory::OnExitLowPowerState() {
   ScheduleRewrites();
 }
 
+bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
+  DCHECK(proto);
+  // If Init wasn't called yet, we have no useful data to return. We need a
+  // valid PowerStatus as well to properly initialize, so we can't do that here.
+  if (!initialized_)
+    return false;
+
+  proto->Clear();
+
+  CheckAndFixSystemTimeChange();
+  for (auto& event : charge_events_) {
+    ChargeHistoryState::ChargeEvent* charge_event = proto->add_charge_event();
+    charge_event->set_start_time(event.first.ToInternalValue());
+    charge_event->set_duration(event.second.ToInternalValue());
+  }
+
+  // Do not set the duration for incomplete ChargeEvents.
+  if (ac_connect_time_ != base::Time()) {
+    ChargeHistoryState::ChargeEvent* charge_event = proto->add_charge_event();
+    charge_event->set_start_time(ac_connect_time_.ToInternalValue());
+  }
+
+  // Add any missing days. This can happen if this function is called after a
+  // new day has started, but before new days are created in these maps.
+  AddZeroDurationChargeDays(hold_time_on_ac_dir_, &hold_time_on_ac_days_);
+  AddZeroDurationChargeDays(time_full_on_ac_dir_, &time_full_on_ac_days_);
+  AddZeroDurationChargeDays(time_on_ac_dir_, &time_on_ac_days_);
+
+  auto time_on_ac_it = time_on_ac_days_.begin();
+  auto time_full_on_ac_it = time_full_on_ac_days_.begin();
+  auto hold_time_on_ac_it = hold_time_on_ac_days_.begin();
+  while (time_on_ac_it != time_on_ac_days_.end()) {
+    ChargeHistoryState::DailyHistory* history = proto->add_daily_history();
+    base::Time day_start = time_on_ac_it->first;
+    history->set_utc_midnight(day_start.ToInternalValue());
+
+    // Add in time for the current time on AC if an AC charger is connected.
+    base::TimeDelta duration = time_on_ac_it->second;
+    duration += DurationForDay(ac_connect_time_, day_start);
+    duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
+    history->set_time_on_ac(duration.ToInternalValue());
+    time_on_ac_it++;
+
+    // If this happens, we missed calling `AddZeroDurationChargeDays` somewhere.
+    if (time_full_on_ac_it->first != day_start) {
+      LOG(ERROR) << "Missing time_full_on_ac/ entry: " << day_start;
+      history->set_time_full_on_ac(0);
+    } else {
+      duration = time_full_on_ac_it->second;
+      duration += DurationForDay(full_charge_time_, day_start);
+      duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
+      history->set_time_full_on_ac(duration.ToInternalValue());
+      time_full_on_ac_it++;
+    }
+
+    if (hold_time_on_ac_it->first != day_start) {
+      LOG(ERROR) << "Missing hold_time_on_ac/ entry: " << day_start;
+      history->set_hold_time_on_ac(0);
+    } else {
+      duration = hold_time_on_ac_it->second;
+      duration += DurationForDay(hold_charge_time_, day_start);
+      duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
+      history->set_hold_time_on_ac(duration.ToInternalValue());
+      hold_time_on_ac_it++;
+    }
+  }
+
+  return true;
+}
+
 bool ChargeHistory::CheckAndFixTimestamp(base::Time* timestamp,
                                          const base::TimeTicks& ticks,
                                          const base::TimeDelta& ticks_offset) {
@@ -566,6 +636,18 @@ void ChargeHistory::WriteDurationToFile(const base::FilePath& dir,
   }
 }
 
+base::TimeDelta ChargeHistory::DurationForDay(base::Time start,
+                                              base::Time day_start) {
+  DCHECK(day_start == day_start.UTCMidnight());
+  base::Time day_end = day_start + base::Days(1);
+  if (start == base::Time() || start > day_end)
+    return base::TimeDelta();
+
+  base::Time now = FloorTime(clock_.GetCurrentWallTime());
+  return (now < day_end ? now : day_end) -
+         (start > day_start ? start : day_start);
+}
+
 // static
 base::Time ChargeHistory::FloorTime(base::Time time) {
   base::TimeDelta conv = time.ToDeltaSinceWindowsEpoch().FloorToMultiple(
@@ -695,6 +777,10 @@ void AdaptiveChargingController::Init(
   dbus_wrapper->ExportMethod(
       kChargeNowForAdaptiveChargingMethod,
       base::BindRepeating(&AdaptiveChargingController::HandleChargeNow,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kGetChargeHistoryMethod,
+      base::BindRepeating(&AdaptiveChargingController::HandleGetChargeHistory,
                           weak_ptr_factory_.GetWeakPtr()));
 
   int64_t alarm_seconds;
@@ -975,6 +1061,27 @@ void AdaptiveChargingController::HandleChargeNow(
   StopAdaptiveCharging();
   power_supply_->RefreshImmediately();
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
+}
+
+void AdaptiveChargingController::HandleGetChargeHistory(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  ChargeHistoryState protobuf;
+  if (!charge_history_.CopyToProtocolBuffer(&protobuf)) {
+    LOG(INFO) << "GetChargeHistory DBus method called before ChargeHistory was"
+              << " initialized";
+    std::move(response_sender)
+        .Run(
+            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+                method_call, DBUS_ERROR_FAILED,
+                "ChargeHistory not initialized yet")));
+    return;
+  }
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(protobuf);
+  std::move(response_sender).Run(std::move(response));
 }
 
 bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
