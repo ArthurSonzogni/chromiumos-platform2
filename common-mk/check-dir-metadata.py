@@ -69,7 +69,6 @@ LEGACYLIST = {
     "croslog",
     "cups_proxy",
     "disk_updater",
-    "dlcservice",
     "dlp",
     "dns-proxy",
     "easy-unlock",
