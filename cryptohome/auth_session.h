@@ -57,6 +57,8 @@ enum class AuthStatus {
 // credentials.
 class AuthSession final {
  public:
+  using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
+
   // Caller needs to ensure that the KeysetManagement*, AuthBlockUtility*,
   // AuthFactorManager* and UserSecretStashStorage* outlive the instance of
   // AuthSession.
@@ -116,8 +118,7 @@ class AuthSession final {
   // steps involved in multi-factor authentication.
   void Authenticate(
       const cryptohome::AuthorizationRequest& authorization_request,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done);
+      StatusCallback on_done);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession via an auth factor. It may be called multiple times depending
@@ -125,8 +126,7 @@ class AuthSession final {
   // Note: only USS users are supported currently.
   bool AuthenticateAuthFactor(
       const user_data_auth::AuthenticateAuthFactorRequest& request,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+      StatusCallback on_done);
 
   // RemoveAuthFactor is called when the user wants to remove auth factor
   // provided in the `request`. Note: only USS users are supported currently.
@@ -383,14 +383,12 @@ class AuthSession final {
   // given KeyBlobs. Designed to be used in conjunction with an async
   // DeriveKeyBlobs call by binding all of the initial parameters to make an
   // AuthBlock::DeriveCallback.
-  void LoadUSSMainKeyAndFsKeyset(
-      const std::string& auth_factor_label,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
-      CryptoStatus callback_error,
-      std::unique_ptr<KeyBlobs> key_blobs);
+  void LoadUSSMainKeyAndFsKeyset(const std::string& auth_factor_label,
+                                 std::unique_ptr<AuthSessionPerformanceTimer>
+                                     auth_session_performance_timer,
+                                 StatusCallback on_done,
+                                 CryptoStatus callback_error,
+                                 std::unique_ptr<KeyBlobs> key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
   // credential. Currently, this resets all low entropy credentials. In the
@@ -406,19 +404,13 @@ class AuthSession final {
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       const AuthFactor& auth_factor,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+      StatusCallback on_done);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
-  // TODO(b/232852086) - Once Authentication through AuthSession/
-  // AuthenticateAuthSessionReply is deprecated remove template
-  // AuthenticateReply.
-  template <typename AuthenticateReply>
-  bool AuthenticateViaVaultKeyset(
-      const AuthInput& auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      base::OnceCallback<void(const AuthenticateReply&)> on_done);
+  bool AuthenticateViaVaultKeyset(const AuthInput& auth_input,
+                                  std::unique_ptr<AuthSessionPerformanceTimer>
+                                      auth_session_performance_timer,
+                                  StatusCallback on_done);
 
   // Fetches a valid VaultKeyset for |obfuscated_username_| that matches the
   // label provided by key_data_.label(). The VaultKeyset is loaded and
@@ -426,15 +418,13 @@ class AuthSession final {
   // KeysetManagement::GetValidKeysetWithKeyBlobs(). This function is needed for
   // processing callback results in an asynchronous manner through the |on_done|
   // callback.
-  template <typename AuthenticateReply>
-  void LoadVaultKeysetAndFsKeys(
-      const std::optional<brillo::SecureBlob> passkey,
-      const AuthBlockType& auth_block_type,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      base::OnceCallback<void(const AuthenticateReply&)> on_done,
-      CryptoStatus error,
-      std::unique_ptr<KeyBlobs> key_blobs);
+  void LoadVaultKeysetAndFsKeys(const std::optional<brillo::SecureBlob> passkey,
+                                const AuthBlockType& auth_block_type,
+                                std::unique_ptr<AuthSessionPerformanceTimer>
+                                    auth_session_performance_timer,
+                                StatusCallback on_done,
+                                CryptoStatus error,
+                                std::unique_ptr<KeyBlobs> key_blobs);
 
   // Updates, wraps and resaves |vault_keyset_| and restores on failure.
   // |user_input| is needed to generate the AuthInput used for key blob creation

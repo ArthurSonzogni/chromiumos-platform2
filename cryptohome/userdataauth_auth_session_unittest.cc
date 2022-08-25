@@ -9,6 +9,7 @@
 
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -24,6 +25,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -53,9 +55,12 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
 using base::test::TaskEnvironment;
+using base::test::TestFuture;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using error::CryptohomeMountError;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::OkStatus;
@@ -271,35 +276,30 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // ... ephemeral, ...
-  // Set up expectation in callback for success.
   ExpectVaultKeyset(/*num_of_keysets=*/1);
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done_ephemeral;
-  EXPECT_CALL(on_done_ephemeral, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+  TestFuture<CryptohomeStatus> authenticate_future;
   auth_session->Authenticate(CreateAuthorization(kPassword),
-                             on_done_ephemeral.Get());
+                             authenticate_future.GetCallback());
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // ... or regular.
-  // Set up expectation in callback for success.
-  base::MockCallback<AuthenticateCallback> on_done_regular;
-  EXPECT_CALL(on_done_regular, Run(_)).WillOnce(SaveArg<0>(&reply));
 
   auth_session = auth_session_manager_->CreateAuthSession(kUsername2, 0);
+  TestFuture<CryptohomeStatus> authenticate_regular_future;
   auth_session->Authenticate(CreateAuthorization(kPassword2),
-                             on_done_regular.Get());
+                             authenticate_regular_future.GetCallback());
+  EXPECT_THAT(authenticate_regular_future.Get(), IsOk());
   status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
@@ -409,16 +409,12 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
   ExpectVaultKeyset(/*num_of_keysets=*/1);
 
-  user_data_auth::AuthenticateAuthSessionReply reply3;
-  // Set up expectation in callback for success.
-  base::MockCallback<AuthenticateCallback> on_done_third;
-  EXPECT_CALL(on_done_third, Run(_)).WillOnce(SaveArg<0>(&reply3));
+  TestFuture<CryptohomeStatus> authenticate_third_future;
   auth_session3->Authenticate(CreateAuthorization(kPassword3),
-                              on_done_third.Get());
+                              authenticate_third_future.GetCallback());
+  EXPECT_THAT(authenticate_third_future.Get(), IsOk());
   ASSERT_TRUE(
       PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
-  // Evaluate error returned by callback.
-  ASSERT_THAT(reply3.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 // Test if PreparePersistentVaultImpl can succeed with invalid authSession. It
@@ -584,16 +580,15 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillRepeatedly(Return(true));
 
-  // Set up expectation in callback for success.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
+  // Set up expectations.
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session->Authenticate(CreateAuthorization(kPassword),
+                             authenticate_future.GetCallback());
   // Evaluate error returned by callback.
-  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
 
   // User authed and exists.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
@@ -868,20 +863,17 @@ TEST_F(AuthSessionInterfaceTest, AuthenticateAuthSessionNoLabel) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
 
-  // Set up expectation in callback for failure, no label with the
-  // AuthorizationRequest.
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply));
-
+  // Pass no label in the request.
   AuthorizationRequest auth_req;
   auth_req.mutable_key()->set_secret(kPassword);
   auth_req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
-  auth_session->Authenticate(auth_req, on_done.Get());
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session->Authenticate(auth_req, authenticate_future.GetCallback());
 
   // Evaluate error returned by callback.
-  ASSERT_THAT(reply.error(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
@@ -920,12 +912,11 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretTest) {
       auth_session_manager_->CreateAuthSession(kUsername, 0);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
   ExpectVaultKeyset(/*num_of_keysets=*/1);
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  base::MockCallback<AuthenticateCallback> on_done;
-  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
-  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session->Authenticate(CreateAuthorization(kPassword),
+                             authenticate_future.GetCallback());
   // Evaluate error returned by callback.
-  ASSERT_EQ(reply.error(), MOUNT_ERROR_NONE);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
 
   // Verify that a successfully authenticated session produces a hibernate
   // secret.

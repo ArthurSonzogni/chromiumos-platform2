@@ -285,6 +285,19 @@ bool GetKeyLabels(const KeysetManagement& keyset_management,
   return true;
 }
 
+template <typename AuthenticateReply>
+void ReplyWithAuthenticationResult(
+    const AuthSession* auth_session,
+    base::OnceCallback<void(const AuthenticateReply&)> on_done,
+    CryptohomeStatus status) {
+  DCHECK(auth_session);
+  DCHECK(!on_done.is_null());
+  AuthenticateReply reply;
+  reply.set_authenticated(auth_session->GetStatus() ==
+                          AuthStatus::kAuthStatusAuthenticated);
+  ReplyWithError(std::move(on_done), std::move(reply), status);
+}
+
 }  // namespace
 
 UserDataAuth::UserDataAuth()
@@ -4146,7 +4159,11 @@ void UserDataAuth::AuthenticateAuthSession(
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
-  auth_session->Authenticate(request.authorization(), std::move(on_done));
+  auth_session->Authenticate(
+      request.authorization(),
+      base::BindOnce(&ReplyWithAuthenticationResult<
+                         user_data_auth::AuthenticateAuthSessionReply>,
+                     auth_session, std::move(on_done)));
 }
 
 void UserDataAuth::InvalidateAuthSession(
@@ -4666,7 +4683,11 @@ void UserDataAuth::AuthenticateAuthFactor(
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return;
   }
-  auth_session->AuthenticateAuthFactor(request, std::move(on_done));
+
+  auth_session->AuthenticateAuthFactor(
+      request, base::BindOnce(&ReplyWithAuthenticationResult<
+                                  user_data_auth::AuthenticateAuthFactorReply>,
+                              auth_session, std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactor(

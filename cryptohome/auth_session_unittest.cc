@@ -17,6 +17,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
@@ -49,10 +50,13 @@
 namespace cryptohome {
 namespace {
 
+using base::test::TestFuture;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
@@ -453,23 +457,12 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  auth_session.Authenticate(
-      authorization_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            called = true;
-            error = reply.error();
-            // Evaluate error returned by callback.
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.Authenticate(authorization_request,
+                            authenticate_future.GetCallback());
 
   // Verify.
-  EXPECT_TRUE(called);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
 
   EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
@@ -479,7 +472,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // Cleanup.
   auth_session.timeout_timer_.FireNow();
   EXPECT_THAT(AuthStatus::kAuthStatusTimedOut, auth_session.GetStatus());
-  EXPECT_TRUE(called);
 }
 
 // Test Authenticate() authenticates the existing user with PIN credentials.
@@ -533,23 +525,12 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  auth_session.Authenticate(
-      authorization_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            called = true;
-            error = reply.error();
-            // Evaluate error returned by callback.
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.Authenticate(authorization_request,
+                            authenticate_future.GetCallback());
 
   // Verify.
-  EXPECT_TRUE(called);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
 
   EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
@@ -559,7 +540,6 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   // Cleanup.
   auth_session.timeout_timer_.FireNow();
   EXPECT_THAT(AuthStatus::kAuthStatusTimedOut, auth_session.GetStatus());
-  EXPECT_TRUE(called);
 }
 
 // Test whether PIN is locked out right after the last workable wrong attempt.
@@ -612,23 +592,15 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  auth_session.Authenticate(
-      authorization_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.Authenticate(authorization_request,
+                            authenticate_future.GetCallback());
 
   // Verify.
-  EXPECT_TRUE(called);
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_NE(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
 // Test whether PIN is locked out when TpmLockout action is received.
@@ -676,23 +648,15 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  auth_session.Authenticate(
-      authorization_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.Authenticate(authorization_request,
+                            authenticate_future.GetCallback());
 
   // Verify.
-  EXPECT_TRUE(called);
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK);
   EXPECT_NE(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK);
 }
 
 // AuthSession fails authentication, test for failure reply code
@@ -744,25 +708,15 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  auth_session.Authenticate(
-      authorization_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthSessionReply& reply) {
-            called = true;
-            error = reply.error();
-            // Evaluate error returned by callback.
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
-                      reply.error());
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.Authenticate(authorization_request,
+                            authenticate_future.GetCallback());
 
   // Verify, should not be authenticated and CredentialVerifier should not be
   // set.
-  EXPECT_TRUE(called);
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE);
   ASSERT_FALSE(auth_session.timeout_timer_.IsRunning());
 
   EXPECT_EQ(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -1007,26 +961,12 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
         return true;
       });
 
-  bool called = false;
-  bool authenticated = true;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             bool& authenticated,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-            authenticated = reply.authenticated();
-          },
-          std::ref(called), std::ref(error), std::ref(authenticated))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET, error);
-  EXPECT_TRUE(authenticated);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -1108,22 +1048,12 @@ TEST_F(AuthSessionTest,
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET, error);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -1208,22 +1138,12 @@ TEST_F(AuthSessionTest,
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET, error);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -1293,22 +1213,12 @@ TEST_F(AuthSessionTest,
         return true;
       });
 
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET, error);
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -1553,22 +1463,16 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     request.set_auth_factor_label(kFakeLabel);
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
-    bool called = false;
-    user_data_auth::CryptohomeErrorCode error =
-        user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-    auth_session.AuthenticateAuthFactor(
-        request,
-        base::BindOnce(
-            [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-               const user_data_auth::AuthenticateAuthFactorReply& reply) {
-              called = true;
-              error = reply.error();
-            },
-            std::ref(called), std::ref(error)));
+    TestFuture<CryptohomeStatus> authenticate_future;
+    auth_session.AuthenticateAuthFactor(request,
+                                        authenticate_future.GetCallback());
 
     // Verify.
-    EXPECT_TRUE(called);
-    return error;
+    if (authenticate_future.Get().ok() ||
+        !authenticate_future.Get()->local_legacy_error().has_value()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+    return authenticate_future.Get()->local_legacy_error().value();
   }
 
   user_data_auth::CryptohomeErrorCode UpdatePasswordAuthFactor(
@@ -2163,20 +2067,12 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
@@ -2259,24 +2155,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
-  base::RunLoop run_loop;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](base::RunLoop& run_loop,
-             user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            error = reply.error();
-            run_loop.Quit();
-          },
-          std::ref(run_loop), std::ref(error))));
-
-  // Pump messages until the AuthenticateAuthFactor on_done calls Quit.
-  run_loop.Run();
+      request, authenticate_future.GetCallback()));
 
   // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
@@ -2363,25 +2247,14 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
-  base::RunLoop run_loop;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](base::RunLoop& run_loop,
-             user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            error = reply.error();
-            run_loop.Quit();
-          },
-          std::ref(run_loop), std::ref(error))));
-
-  // Pump messages until the AuthenticateAuthFactor on_done calls Quit.
-  run_loop.Run();
+      request, authenticate_future.GetCallback()));
 
   // Verify.
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
@@ -2458,20 +2331,12 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error))));
+      request, authenticate_future.GetCallback()));
 
   // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
@@ -2661,20 +2526,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   authenticate_request.mutable_auth_input()
       ->mutable_cryptohome_recovery_input()
       ->mutable_recovery_response();
-  bool authenticate_called = false;
-  user_data_auth::CryptohomeErrorCode authenticate_error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<CryptohomeStatus> authenticate_future;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
-      authenticate_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(authenticate_called), std::ref(authenticate_error))));
+      authenticate_request, authenticate_future.GetCallback()));
 
   // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
@@ -2754,19 +2611,13 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   auth_request.set_auth_session_id(auth_session.serialized_token());
   auth_request.set_auth_factor_label(kFakePinLabel);
   auth_request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
-  called = false;
-  auth_session.AuthenticateAuthFactor(
-      auth_request,
-      base::BindOnce(
-          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            called = true;
-            error = reply.error();
-          },
-          std::ref(called), std::ref(error)));
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.AuthenticateAuthFactor(auth_request,
+                                      authenticate_future.GetCallback());
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
 }
 
 // The test adds, removes and adds the same auth factor again.
