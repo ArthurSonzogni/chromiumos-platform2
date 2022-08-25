@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/error/error.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -128,6 +129,10 @@ using CryptohomeStatus =
 template <typename _Et>
 using CryptohomeStatusOr =
     hwsec_foundation::status::StatusChainOr<_Et, error::CryptohomeError>;
+
+// Define an alias for the callback returning CryptohomeStatus in the cryptohome
+// namespace for easier access.
+using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
 
 }  // namespace cryptohome
 

@@ -1117,14 +1117,13 @@ class UserDataAuth {
       base::OnceCallback<void(const AddKeyReply&)> on_done,
       const AddKeyReply& reply);
 
-  // OnUpdateCredentialFinished when AuthSession::UpdateCredentials is finished.
-  // The function will set credential in user_session for user to do unlock. The
-  // credential verifier will be overridden if it is already set once.
-  void OnUpdateCredentialFinished(
-      AuthSession* auth_session,
-      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-          on_done,
-      const user_data_auth::UpdateCredentialReply& reply);
+  // OnUpdateCredentialFinished is called when AuthSession::UpdateCredentials is
+  // finished. The function will set credential in user_session for user to do
+  // unlock. The credential verifier will be overridden if it is already set
+  // once.
+  void OnUpdateCredentialFinished(AuthSession* auth_session,
+                                  StatusCallback on_done,
+                                  CryptohomeStatus status);
 
   // SetCredentialVerifierForUserSession sets credential_verifier derived from
   // AuthSession.

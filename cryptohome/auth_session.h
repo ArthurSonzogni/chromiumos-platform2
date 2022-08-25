@@ -119,10 +119,8 @@ class AuthSession final {
 
   // UpdateCredential is called when an existing user wants to update
   // an existing credential.
-  void UpdateCredential(
-      const user_data_auth::UpdateCredentialRequest& request,
-      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-          on_done);
+  void UpdateCredential(const user_data_auth::UpdateCredentialRequest& request,
+                        StatusCallback on_done);
 
   // AddAuthFactor is called when newly created or existing user wants to add
   // new AuthFactor.
@@ -156,11 +154,8 @@ class AuthSession final {
 
   // UpdateAuthFactor is called when the user wants to update auth factor
   // provided in the `request`. Note: only USS users are supported currently.
-  // TODO(b/239671134): Implement for VaultKeyset users.
-  void UpdateAuthFactor(
-      const user_data_auth::UpdateAuthFactorRequest& request,
-      base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
-          on_done);
+  void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
+                        StatusCallback on_done);
 
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
@@ -315,10 +310,8 @@ class AuthSession final {
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
   // update a VaultKeyset.
-  void CreateKeyBlobsToUpdateKeyset(
-      const Credentials& credentials,
-      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-          on_done);
+  void CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
+                                    StatusCallback on_done);
 
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
@@ -340,16 +333,14 @@ class AuthSession final {
   // corresponding label are updated through the information provided by
   // |key_data|. This function is needed for processing callback results in an
   // asynchronous manner through |on_done| callback.
-  void UpdateVaultKeyset(
-      const KeyData& key_data,
-      AuthInput auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-          on_done,
-      CryptoStatus callback_error,
-      std::unique_ptr<KeyBlobs> key_blobs,
-      std::unique_ptr<AuthBlockState> auth_state);
+  void UpdateVaultKeyset(const KeyData& key_data,
+                         AuthInput auth_input,
+                         std::unique_ptr<AuthSessionPerformanceTimer>
+                             auth_session_performance_timer,
+                         StatusCallback on_done,
+                         CryptoStatus callback_error,
+                         std::unique_ptr<KeyBlobs> key_blobs,
+                         std::unique_ptr<AuthBlockState> auth_state);
 
   // Persists key blocks for a new secret to the USS and onto disk. Upon
   // completion the |on_done| callback will be called. Designed to be used in
@@ -465,8 +456,7 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
-          on_done,
+      StatusCallback on_done,
       CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);

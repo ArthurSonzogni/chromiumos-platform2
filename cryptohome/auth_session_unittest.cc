@@ -19,6 +19,7 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
+#include <base/test/test_future.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -38,6 +39,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
+#include "cryptohome/error/converter.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -845,15 +847,14 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   update_cred_request.set_old_credential_label(kFakeLabel);
 
   // Test.
-  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-      on_done = base::BindLambdaForTesting(
-          [](const user_data_auth::UpdateCredentialReply& reply) {
-            // Evaluate error returned by callback.
-            EXPECT_EQ(
-                user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION,
-                reply.error());
-          });
-  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateCredential(update_cred_request,
+                                update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), NotOk());
+  EXPECT_EQ(update_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
 // Test if AuthSession correctly updates existing credentials for a new user.
@@ -885,16 +886,14 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   update_cred_request.set_old_credential_label(kFakeLabel);
 
   // Test.
-  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-      on_done = base::BindLambdaForTesting(
-          [](const user_data_auth::UpdateCredentialReply& reply) {
-            // Evaluate error returned by callback.
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
-          });
-  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateCredential(update_cred_request,
+                                update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), IsOk());
 }
+
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   // Setup.
@@ -917,14 +916,14 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   update_cred_request.set_old_credential_label("wrong-label");
 
   // Test.
-  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-      on_done = base::BindLambdaForTesting(
-          [](const user_data_auth::UpdateCredentialReply& reply) {
-            // Evaluate error returned by callback.
-            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
-                      reply.error());
-          });
-  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateCredential(update_cred_request,
+                                update_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(update_future.Get(), NotOk());
+  EXPECT_EQ(update_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 // Test that the UserSecretStash isn't created by default when a new user is
@@ -1580,22 +1579,15 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     request.mutable_auth_factor()->mutable_password_metadata();
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         new_password);
-    bool called = false;
-    user_data_auth::CryptohomeErrorCode error =
-        user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-    auth_session.UpdateAuthFactor(
-        request,
-        base::BindOnce(
-            [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-               const user_data_auth::UpdateAuthFactorReply& reply) {
-              called = true;
-              error = reply.error();
-            },
-            std::ref(called), std::ref(error)));
 
-    // Verify.
-    EXPECT_TRUE(called);
-    return error;
+    TestFuture<CryptohomeStatus> update_future;
+    auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
+    if (update_future.Get().ok()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+
+    return update_future.Get()->local_legacy_error().value();
   }
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
@@ -2908,18 +2900,14 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
   request.mutable_auth_factor()->set_label("different new label");
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  bool called = false;
-  auth_session.UpdateAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::UpdateAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  ASSERT_THAT(update_future.Get(), NotOk());
+  EXPECT_EQ(update_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
@@ -2957,18 +2945,14 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_pin_metadata();
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
-  bool called = false;
-  auth_session.UpdateAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::UpdateAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  ASSERT_THAT(update_future.Get(), NotOk());
+  EXPECT_EQ(update_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 TEST_F(AuthSessionWithUssExperimentTest,
@@ -3006,18 +2990,14 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.mutable_auth_factor()->set_label(kFakeLabel);
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  bool called = false;
-  auth_session.UpdateAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::UpdateAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
+
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(request, update_future.GetCallback());
+
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  ASSERT_THAT(update_future.Get(), NotOk());
+  EXPECT_EQ(update_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
 }
 
 }  // namespace cryptohome

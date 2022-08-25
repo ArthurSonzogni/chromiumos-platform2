@@ -96,6 +96,14 @@ constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
 namespace {
 // Some utility functions used by UserDataAuth.
 
+// Wrapper function for the ReplyWithError.
+template <typename ReplyType>
+void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
+                     CryptohomeStatus status) {
+  ReplyType reply;
+  ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+}
+
 // Get the Account ID for an AccountIdentifier proto.
 const std::string& GetAccountId(const AccountIdentifier& id) {
   if (id.has_account_id()) {
@@ -4065,16 +4073,14 @@ void UserDataAuth::OnAddCredentialFinished(
   std::move(on_done).Run(reply);
 }
 
-void UserDataAuth::OnUpdateCredentialFinished(
-    AuthSession* auth_session,
-    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-        on_done,
-    const user_data_auth::UpdateCredentialReply& reply) {
-  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+void UserDataAuth::OnUpdateCredentialFinished(AuthSession* auth_session,
+                                              StatusCallback on_done,
+                                              CryptohomeStatus status) {
+  if (status.ok()) {
     SetCredentialVerifierForUserSession(
         auth_session, /*override_existing_credential_verifier=*/true);
   }
-  std::move(on_done).Run(reply);
+  std::move(on_done).Run(std::move(status));
 }
 
 void UserDataAuth::UpdateCredential(
@@ -4096,13 +4102,14 @@ void UserDataAuth::UpdateCredential(
   }
   // Update credentials using data in AuthorizationRequest and
   // auth_session_token.
-  auto on_update_credential = base::BindOnce(
+  StatusCallback on_update_credential_finished = base::BindOnce(
       &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),
-      auth_session_status.value(), std::move(on_done));
+      auth_session_status.value(),
+      base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateCredentialReply>,
+                     std::move(on_done)));
 
   auth_session_status.value()->UpdateCredential(
-      request, std::move(on_update_credential));
-  return;
+      request, std::move(on_update_credential_finished));
 }
 
 void UserDataAuth::AuthenticateAuthSession(
@@ -4714,7 +4721,12 @@ void UserDataAuth::UpdateAuthFactor(
     return;
   }
 
-  auth_session_status.value()->UpdateAuthFactor(request, std::move(on_done));
+  StatusCallback on_update_auth_factor_finished =
+      base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
+                     std::move(on_done));
+
+  auth_session_status.value()->UpdateAuthFactor(
+      request, std::move(on_update_auth_factor_finished));
 }
 
 void UserDataAuth::RemoveAuthFactor(
