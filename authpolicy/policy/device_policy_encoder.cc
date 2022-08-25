@@ -831,6 +831,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   if (std::optional<std::string> value = EncodeString(key::kDevicePrinters))
     policy->mutable_device_printers()->set_external_policy(value.value());
+  if (std::optional<std::string> value =
+          EncodeString(key::kDevicePrintingClientNameTemplate))
+    policy->mutable_device_printing_client_name_template()->set_value(
+        value.value());
   if (std::optional<int> value = EncodeInteger(key::kDevicePrintersAccessMode))
     policy->mutable_device_printers_access_mode()->set_access_mode(
         static_cast<em::DevicePrintersAccessModeProto_AccessMode>(

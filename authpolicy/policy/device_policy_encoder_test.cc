@@ -578,6 +578,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDevicePrinters, kString);
   EXPECT_EQ(kString, policy.device_printers().external_policy());
 
+  EncodeString(&policy, key::kDevicePrintingClientNameTemplate, kString);
+  EXPECT_EQ(kString, policy.device_printing_client_name_template().value());
+
   // The encoder of this policy converts ints to AccessMode enums.
   EncodeInteger(&policy, key::kDevicePrintersAccessMode,
                 em::DevicePrintersAccessModeProto::ACCESS_MODE_ALLOWLIST);
