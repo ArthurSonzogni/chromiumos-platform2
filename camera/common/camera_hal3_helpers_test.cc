@@ -170,6 +170,9 @@ TEST(Camera3CaptureDescriptor, BasicCaptureRequestCorrectnessTest) {
       camera_metadata_rational_t{1, 3}};
   request_settings.update(ANDROID_CONTROL_AE_COMPENSATION_STEP,
                           ae_comp_step.data(), ae_comp_step.size());
+  std::array<int32_t, 0> faces = {};
+  request_settings.update(ANDROID_STATISTICS_FACE_RECTANGLES, faces.data(),
+                          faces.size());
   std::vector<camera3_stream_buffer_t> output_buffers(2);
 
   constexpr uint32_t kTestFrameNumber = 15;
@@ -245,12 +248,24 @@ TEST(Camera3CaptureDescriptor, BasicCaptureRequestCorrectnessTest) {
     EXPECT_EQ(output_buffers.size(), 3);
   }
 
+  // There should exists faces array, but with zero size, and no landmarks are
+  // available.
+  {
+    EXPECT_EQ(
+        desc.GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES).size(),
+        0);
+    EXPECT_EQ(desc.HasMetadata(ANDROID_STATISTICS_FACE_RECTANGLES), true);
+    EXPECT_EQ(
+        desc.GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_LANDMARKS).size(), 0);
+    EXPECT_EQ(desc.HasMetadata(ANDROID_STATISTICS_FACE_LANDMARKS), false);
+  }
+
   // Finally the locked camera3_capture_request_t should reflect all the changes
   // we made above.
   {
     const camera3_capture_request_t* locked_request = desc.LockForRequest();
     EXPECT_EQ(locked_request->frame_number, kTestFrameNumber);
-    EXPECT_EQ(get_camera_metadata_entry_count(locked_request->settings), 3);
+    EXPECT_EQ(get_camera_metadata_entry_count(locked_request->settings), 4);
     EXPECT_NE(locked_request->input_buffer, nullptr);
     EXPECT_EQ(locked_request->num_output_buffers, 3);
   }

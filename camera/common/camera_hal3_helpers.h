@@ -161,6 +161,9 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   // types defined for Android camera_metadata_entry_t: uint8_t, int32_t, float,
   // double, int64_t, camera_metadata_rational_t.
 
+  // Check the metadata exists with |tag|.
+  bool HasMetadata(uint32_t tag) const;
+
   // Gets the metadata associated with |tag| as span. Returns empty span if
   // there's no metadata associated with |tag|.
   template <typename T>

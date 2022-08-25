@@ -303,6 +303,10 @@ bool Camera3CaptureDescriptor::SetMetadata(const camera_metadata_t* metadata) {
   return !metadata_.isEmpty();
 }
 
+bool Camera3CaptureDescriptor::HasMetadata(uint32_t tag) const {
+  return metadata_.exists(tag);
+}
+
 const camera3_stream_buffer_t* Camera3CaptureDescriptor::GetInputBuffer()
     const {
   return input_buffer_.get();
