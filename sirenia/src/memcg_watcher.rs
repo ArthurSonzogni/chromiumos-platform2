@@ -218,7 +218,7 @@ impl MemcgGroup {
         let new_limit = if delta > 0 {
             self.max_limit_bytes + delta as u64
         } else {
-            self.max_limit_bytes - delta.abs() as u64
+            self.max_limit_bytes - delta.unsigned_abs()
         };
         self.set_max_limit_bytes(new_limit)
     }

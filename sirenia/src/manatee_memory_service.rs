@@ -272,7 +272,7 @@ fn adjust_balloon(client: &mut CrosVmClient, delta: i64) -> i64 {
     let target_size = if delta > 0 {
         client.balloon_size + (delta as u64)
     } else {
-        client.balloon_size.saturating_sub(delta.abs() as u64)
+        client.balloon_size.saturating_sub(delta.unsigned_abs())
     };
     let actual_delta = match sync_balloon_command(
         &mut client.client,
@@ -984,7 +984,7 @@ impl MemcgController for RefCell<MmsState> {
         let actual = adjust_balloon(crosvm_client, delta);
 
         crosvm_client.internal_balloon_allocation = if actual < 0 {
-            crosvm_client.internal_balloon_allocation - (actual.abs() as u64)
+            crosvm_client.internal_balloon_allocation - (actual.unsigned_abs())
         } else {
             crosvm_client.internal_balloon_allocation + (actual as u64)
         };
