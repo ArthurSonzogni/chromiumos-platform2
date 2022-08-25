@@ -240,9 +240,19 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
 }
 
 MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
-  if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
+  // First, try to unmount the mount point in a gentle way.
+  if (umount(mount_path.value().c_str()) == 0) {
     VLOG(1) << "Unmounted " << quote(mount_path);
     return MOUNT_ERROR_NONE;
+  }
+
+  if (errno == EBUSY) {
+    // The filesystem is busy. Try to unmount it in a forceful way.
+    VLOG(1) << "Forcefully unmounting " << quote(mount_path);
+    if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
+      LOG(WARNING) << "Forcefully unmounted " << quote(mount_path);
+      return MOUNT_ERROR_NONE;
+    }
   }
 
   const error_t error = errno;
