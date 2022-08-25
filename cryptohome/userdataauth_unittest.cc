@@ -214,10 +214,14 @@ class UserDataAuthTestBase : public ::testing::Test {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
   }
 
+  void CreateSession() {
+    session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+  }
+
   // This is a utility function for tests to setup a mount for a particular
   // user. After calling this function, |session_| is available for use.
   void SetupMount(const std::string& username) {
-    session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+    CreateSession();
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -2578,7 +2582,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
       .WillOnce(Invoke([this](const std::string&, bool, bool) {
-        SetupMount(kGuestUserName);
+        CreateSession();
         EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
           return OkStatus<CryptohomeMountError>();
         }));
@@ -2643,7 +2647,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
       .WillOnce(Invoke([this](const std::string& username, bool, bool) {
-        SetupMount(kGuestUserName);
+        CreateSession();
         EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([this]() {
           // |this| is captured for kErrorLocationPlaceholder.
           return MakeStatus<CryptohomeMountError>(
