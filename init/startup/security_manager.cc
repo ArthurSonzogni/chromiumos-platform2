@@ -79,7 +79,7 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
   bool pmp_exists = base::PathExists(pmp);
   base::FileEnumerator enumerator(policy_dir, false,
                                   base::FileEnumerator::FileType::FILES);
-  std::string combined_policy;
+  std::vector<std::string> combined_policy;
   for (base::FilePath file = enumerator.Next(); !file.empty();
        file = enumerator.Next()) {
     std::string file_str;
@@ -94,18 +94,21 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
                                        return base::StartsWith(line, "#");
                                      }),
                       split_files.end());
-    combined_policy += base::JoinString(split_files, "\n");
+    combined_policy.push_back(base::JoinString(split_files, "\n"));
   }
+
+  std::string combined_policy_str = base::JoinString(combined_policy, "\n");
+  combined_policy_str.append("\n");
 
   if (pmp_exists) {
     // Don't record GID policies into kProcessMgmtPolicies.
     if (!gid) {
-      if (!base::WriteFile(pmp, combined_policy)) {
+      if (!base::WriteFile(pmp, combined_policy_str)) {
         PLOG(ERROR) << pmp << ": Failed to write file";
       }
     }
   } else {
-    if (!base::WriteFile(output_file, combined_policy)) {
+    if (!base::WriteFile(output_file, combined_policy_str)) {
       PLOG(ERROR) << output_file << ": Failed to write to file";
     }
   }

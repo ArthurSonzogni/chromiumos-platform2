@@ -6,6 +6,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -63,7 +64,7 @@ TEST_F(ConfigProcessManagementTest, Before_v4_4) {
 
   std::string allow;
   base::ReadFileToString(mgmt_policies, &allow);
-  EXPECT_EQ(allow, "254:607\n607:607");
+  EXPECT_EQ(allow, "254:607\n607:607\n");
 }
 
 TEST_F(ConfigProcessManagementTest, After_v4_14) {
@@ -74,7 +75,7 @@ TEST_F(ConfigProcessManagementTest, After_v4_14) {
   ASSERT_TRUE(CreateDirAndWriteFile(mgmt_policies, "#AllowList"));
   base::FilePath allow_1 = policies_dir.Append("allow_1.txt");
   std::string result1 = "254:607\n607:607";
-  std::string full1 = "254:607\n607:607#Comment\n\n#Ignore";
+  std::string full1 = "254:607\n607:607\n#Comment\n\n#Ignore";
   ASSERT_TRUE(CreateDirAndWriteFile(allow_1, full1));
   base::FilePath allow_2 = policies_dir.Append("allow_2.txt");
   std::string result2 = "20104:224\n20104:217\n217:217";
@@ -88,6 +89,14 @@ TEST_F(ConfigProcessManagementTest, After_v4_14) {
 
   EXPECT_NE(allow.find(result1), std::string::npos);
   EXPECT_NE(allow.find(result2), std::string::npos);
+
+  std::vector<std::string> allow_vec = base::SplitString(
+      allow, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  std::vector<std::string> expected = {"254:607", "607:607", "20104:224",
+                                       "20104:217", "217:217"};
+  sort(allow_vec.begin(), allow_vec.end());
+  sort(expected.begin(), expected.end());
+  EXPECT_EQ(allow_vec, expected);
 }
 
 TEST_F(ConfigProcessManagementTest, After_v5_9) {
