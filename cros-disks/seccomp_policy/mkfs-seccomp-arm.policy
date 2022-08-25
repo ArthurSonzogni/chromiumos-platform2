@@ -21,6 +21,7 @@ fstatfs64: 1
 fstatfs: 1
 fsync: 1
 futex: 1
+futex_time64: 1
 getcwd: 1
 getdents64: 1
 getpid: 1
