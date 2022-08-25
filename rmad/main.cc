@@ -37,7 +37,7 @@ void CheckWriteProtectAndEnterMinijail() {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  brillo::FlagHelper::Init(argc, argv, "Chrome OS RMA Daemon");
+  brillo::FlagHelper::Init(argc, argv, "ChromeOS RMA Daemon");
 
   mojo::core::Init();
 
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
   if (pid != 0) {
     // Parent process. Run as RMA daemon.
-    VLOG(1) << "Starting Chrome OS RMA Daemon.";
+    VLOG(1) << "Starting ChromeOS RMA Daemon.";
 
     // Enter sandbox and run as rmad user.
     CheckWriteProtectAndEnterMinijail();
