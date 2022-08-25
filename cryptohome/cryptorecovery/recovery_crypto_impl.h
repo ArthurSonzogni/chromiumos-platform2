@@ -44,13 +44,17 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const override;
 
-  bool GenerateOnboardingMetadata(
-      const AccountIdentifier& account_id,
+  void GenerateOnboardingMetadata(
       const std::string& gaia_id,
       const std::string& user_device_id,
+      const std::string& recovery_id,
       OnboardingMetadata* onboarding_metadata) const;
   // Gets the current serialized value of the Recovery Id from cryptohome or
-  // returns an empty string if it does not exist.
+  // returns an empty string if it does not exist. It should be called by the
+  // client before GenerateOnboardingMetadata in order to get the recovery_id
+  // that will be passed as an argument.
+  std::string LoadStoredRecoveryIdFromFile(
+      const base::FilePath& recovery_id_path) const;
   std::string LoadStoredRecoveryId(const AccountIdentifier& account_id) const;
   // Creates a random seed and computes Recovery Id from it or (if the
   // Recovery Id already exists) re-hashes and persists it in the cryptohome.
@@ -59,6 +63,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // Secrets used to generate Recovery Id are stored in cryptohome but the
   // resulting Recovery Id is part of OnboardingMetadata stored outside of the
   // cryptohome.
+  bool GenerateRecoveryIdToFile(const base::FilePath& recovery_id_path) const;
   bool GenerateRecoveryId(const AccountIdentifier& account_id) const;
 
  private:
@@ -80,13 +85,13 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool RotateRecoveryId(CryptoRecoveryIdContainer* recovery_id_pb) const;
   void GenerateInitialRecoveryId(
       CryptoRecoveryIdContainer* recovery_id_pb) const;
+  void GenerateRecoveryIdProto(CryptoRecoveryIdContainer* recovery_id_pb) const;
   bool LoadPersistedRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       CryptoRecoveryIdContainer* recovery_id_pb) const;
   bool PersistRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       const CryptoRecoveryIdContainer& recovery_id_pb) const;
-  std::string GetRlzCode() const;
 
   hwsec_foundation::EllipticCurve ec_;
   RecoveryCryptoTpmBackend* const tpm_backend_;

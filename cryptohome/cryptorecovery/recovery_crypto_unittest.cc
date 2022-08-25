@@ -501,23 +501,14 @@ TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
   EXPECT_NE(recovery_id, new_recovery_id);
 }
 
-TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFailure) {
-  OnboardingMetadata onboarding_metadata;
-  cryptohome::AccountIdentifier account_id;
-  account_id.set_account_id(kFakeUserId);
-  // No RecoveryId - OnboardingMetadata generation fails.
-  EXPECT_FALSE(recovery_->GenerateOnboardingMetadata(
-      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
-}
-
 TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
   OnboardingMetadata onboarding_metadata;
   cryptohome::AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
-  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
-      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
+  recovery_->GenerateOnboardingMetadata(kFakeGaiaId, kFakeDeviceId, recovery_id,
+                                        &onboarding_metadata);
   EXPECT_EQ(onboarding_metadata.cryptohome_user, kFakeGaiaId);
   EXPECT_EQ(onboarding_metadata.device_user_id, kFakeDeviceId);
   EXPECT_EQ(onboarding_metadata.recovery_id, recovery_id);
@@ -533,8 +524,9 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
       GetRecoveryIdPath(account_id), kCorruptedRecoveryIdContainer,
       kKeyFilePermissions));
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
-  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
-      account_id, kFakeGaiaId, kFakeDeviceId, &onboarding_metadata));
+  std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  recovery_->GenerateOnboardingMetadata(kFakeGaiaId, kFakeDeviceId,
+                                        new_recovery_id, &onboarding_metadata);
   EXPECT_NE(onboarding_metadata.recovery_id, recovery_id);
 }
 
