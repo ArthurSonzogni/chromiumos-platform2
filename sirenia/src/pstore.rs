@@ -15,8 +15,9 @@ use std::str::FromStr;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use crosvm_base::unix::MappedRegion;
-use crosvm_base::unix::MemoryMapping;
+use crosvm_base::MappedRegion;
+use crosvm_base::MemoryMapping;
+use crosvm_base::MemoryMappingBuilder;
 use data_model::volatile_memory::VolatileMemory;
 use data_model::DataInit;
 use libsirenia::linux::kmsg;
@@ -78,7 +79,10 @@ fn mmap_ramoops() -> Result<MemoryMapping> {
         .custom_flags(libc::O_SYNC)
         .open("/dev/mem")
         .context("Failed to open /dev/mem")?;
-    MemoryMapping::from_fd_offset(&devmem, ramoops_len, ramoops_addr)
+    MemoryMappingBuilder::new(ramoops_len)
+        .from_file(&devmem)
+        .offset(ramoops_addr)
+        .build()
         .context("Failed to mmap /dev/mem")
 }
 
@@ -208,8 +212,10 @@ pub fn restore_pstore(pstore_path: &str) -> Result<()> {
     outputf
         .sync_all()
         .context("Failed to sync pstore file after resize")?;
-    let emulated_pstore =
-        MemoryMapping::from_fd(&outputf, ramoops.size()).context("Failed to mmap pstore file")?;
+    let emulated_pstore = MemoryMappingBuilder::new(ramoops.size())
+        .from_file(&outputf)
+        .build()
+        .context("Failed to mmap pstore file")?;
 
     let offsets = RamoopsOffsets::new(ramoops.size());
 
@@ -319,7 +325,7 @@ mod test {
     }
 
     fn create_ramoops(sz: usize, data: &[u8]) -> MemoryMapping {
-        let m = MemoryMapping::new(sz).unwrap();
+        let m = MemoryMappingBuilder::new(sz).build().unwrap();
         let h = RamoopsRegionHeader {
             sig: *b"DBGC",
             start: data.len() as u32,

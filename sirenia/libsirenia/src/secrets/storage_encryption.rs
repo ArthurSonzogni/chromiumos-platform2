@@ -8,12 +8,12 @@ use std::convert::TryFrom;
 
 use base64;
 use base64::encode_config;
-use crosvm_base::unix::rand::rand_vec;
-use crosvm_base::unix::rand::Source;
 use flexbuffers::from_slice;
 use flexbuffers::to_vec;
 use flexbuffers::DeserializationError;
 use flexbuffers::SerializationError;
+use libchromeos::rand::rand_vec;
+use libchromeos::rand::Source;
 use libchromeos::secure_blob::SecureBlob;
 use openssl::error::ErrorStack;
 use openssl::symm::Cipher;
@@ -501,7 +501,6 @@ mod tests {
             )
             .unwrap();
         assert_matches!(ret, Status::Success);
-        drop(ret);
 
         let ret = storage
             .retrieve(

@@ -28,6 +28,7 @@ pub mod chromeos {
     }
 }
 
+pub mod rand;
 pub mod scoped_path;
 pub mod secure_blob;
 pub mod syslog;
