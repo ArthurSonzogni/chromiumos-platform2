@@ -222,7 +222,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   // user. After calling this function, |session_| is available for use.
   void SetupMount(const std::string& username) {
     CreateSession();
-    userdataauth_->set_session_for_user(username, session_.get());
+    EXPECT_TRUE(userdataauth_->AddUserSessionForTest(username, session_));
   }
 
   // This is a helper function that compute the obfuscated username with the
@@ -907,11 +907,11 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
 
   scoped_refptr<NiceMock<MockUserSession>> session1 =
       base::MakeRefCounted<NiceMock<MockUserSession>>();
-  userdataauth_->set_session_for_user(kUsername1, session1.get());
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1, session1));
 
   scoped_refptr<NiceMock<MockUserSession>> session2 =
       base::MakeRefCounted<NiceMock<MockUserSession>>();
-  userdataauth_->set_session_for_user(kUsername2, session2.get());
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2, session2));
 
   InSequence sequence;
   EXPECT_CALL(*session2, IsActive()).WillOnce(Return(true));
@@ -1062,12 +1062,12 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
 
   scoped_refptr<NiceMock<MockUserSession>> session1 =
       base::MakeRefCounted<NiceMock<MockUserSession>>();
-  userdataauth_->set_session_for_user(kUsername1, session1.get());
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1, session1));
   CreatePkcs11TokenInSession(session1);
 
   scoped_refptr<NiceMock<MockUserSession>> session2 =
       base::MakeRefCounted<NiceMock<MockUserSession>>();
-  userdataauth_->set_session_for_user(kUsername2, session2.get());
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2, session2));
   CreatePkcs11TokenInSession(session2);
 
   // Both are uninitialized.
@@ -2605,7 +2605,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_NE(userdataauth_->get_session_for_user(kGuestUserName), nullptr);
+  EXPECT_NE(userdataauth_->FindUserSessionForTest(kGuestUserName), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
@@ -2637,7 +2637,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_EQ(userdataauth_->get_session_for_user(kGuestUserName), nullptr);
+  EXPECT_EQ(userdataauth_->FindUserSessionForTest(kGuestUserName), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountFailed) {

@@ -431,6 +431,7 @@ if (use.test) {
       "user_secret_stash_storage_unittest.cc",
       "user_secret_stash_unittest.cc",
       "user_session/real_user_session_unittest.cc",
+      "user_session/user_session_map_unittest.cc",
       "userdataauth_auth_session_unittest.cc",
       "userdataauth_unittest.cc",
       "uss_experiment_config_fetcher_unittest.cc",

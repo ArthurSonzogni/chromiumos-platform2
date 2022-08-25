@@ -51,6 +51,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
+#include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/uss_experiment_config_fetcher.h"
 
 namespace cryptohome {
@@ -662,16 +663,16 @@ class UserDataAuth {
 
   // Retrieve the session associated with the given user, for testing purpose
   // only.
-  UserSession* get_session_for_user(const std::string& username) {
-    if (sessions_.count(username) == 0)
-      return nullptr;
-    return sessions_[username].get();
+  scoped_refptr<UserSession> FindUserSessionForTest(
+      const std::string& username) {
+    return sessions_.Find(username);
   }
 
   // Associate a particular session object |session| with the username
   // |username| for testing purpose
-  void set_session_for_user(const std::string& username, UserSession* session) {
-    sessions_[username] = session;
+  bool AddUserSessionForTest(const std::string& username,
+                             scoped_refptr<UserSession> session) {
+    return sessions_.Add(username, std::move(session));
   }
 
   void StartAuthSession(
@@ -807,9 +808,6 @@ class UserDataAuth {
   MountStatus AttemptUserMount(AuthSession* auth_session,
                                const MountArgs& mount_args,
                                scoped_refptr<UserSession> user_session);
-
-  // Returns the UserSession object associated with the given username
-  scoped_refptr<UserSession> GetUserSession(const std::string& username);
 
   // Filters out active mounts from |mounts|, populating |active_mounts| set.
   // If |include_busy_mount| is false, then stale mounts with open files and
@@ -1337,14 +1335,8 @@ class UserDataAuth {
   // tests.
   AuthSessionManager* auth_session_manager_;
 
-  // Defines a type for tracking Mount objects for each user by username.
-  typedef std::map<const std::string, scoped_refptr<UserSession>>
-      UserSessionMap;
-
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.
-  // TODO(b/126022424): Verify that this access paradigm doesn't cause
-  // measurable performance impact.
   UserSessionMap sessions_;
 
   // The low_disk_space_handler_ object in normal operation
