@@ -118,6 +118,7 @@ static_library("libsommelier") {
                "wayland-server",
                "xcb",
                "xcb-composite",
+               "xcb-shape",
                "xcb-xfixes",
                "xkbcommon",
              ] + tracing_pkg_deps

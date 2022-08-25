@@ -114,6 +114,7 @@ struct sl_context {
   xcb_connection_t* connection;
   std::unique_ptr<struct wl_event_source> connection_event_source;
   const xcb_query_extension_reply_t* xfixes_extension;
+  const xcb_query_extension_reply_t* xshape_extension;
   xcb_screen_t* screen;
   xcb_window_t window;
   struct wl_list windows, unpaired_windows;
@@ -179,6 +180,7 @@ struct sl_context {
   xcb_colormap_t colormaps[256];
   Timing* timing;
   const char* trace_filename;
+  bool enable_xshape;
   bool trace_system;
   bool use_explicit_fence;
   bool use_virtgpu_channel;

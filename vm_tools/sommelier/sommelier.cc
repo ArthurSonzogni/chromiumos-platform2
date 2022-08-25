@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <wayland-client.h>
 #include <xcb/composite.h>
+#include <xcb/shape.h>
 #include <xcb/xcb.h>
 #include <xcb/xfixes.h>
 #include <xcb/xproto.h>
@@ -2746,6 +2747,7 @@ static void sl_connect(struct sl_context* ctx) {
   xcb_intern_atom_reply_t* atom_reply;
   xcb_depth_iterator_t depth_iterator;
   xcb_xfixes_query_version_reply_t* xfixes_query_version_reply;
+  xcb_shape_query_version_reply_t* xshape_query_version_reply;
   const xcb_query_extension_reply_t* composite_extension;
   unsigned i;
 
@@ -2801,6 +2803,24 @@ static void sl_connect(struct sl_context* ctx) {
       xcb_get_extension_data(ctx->connection, &xcb_composite_id);
   assert(composite_extension->present);
   UNUSED(composite_extension);
+
+  if (ctx->enable_xshape) {
+    xcb_prefetch_extension_data(ctx->connection, &xcb_shape_id);
+
+    ctx->xshape_extension =
+        xcb_get_extension_data(ctx->connection, &xcb_shape_id);
+
+    xshape_query_version_reply = xcb_shape_query_version_reply(
+        ctx->connection, xcb_shape_query_version(ctx->connection), NULL);
+
+    assert(xshape_query_version_reply);
+    assert(xshape_query_version_reply->major_version >=
+           XCB_SHAPE_MAJOR_VERSION);
+    assert(xshape_query_version_reply->minor_version >=
+           XCB_SHAPE_MINOR_VERSION);
+    free(xshape_query_version_reply);
+    xshape_query_version_reply = NULL;
+  }
 
   redirect_subwindows_cookie = xcb_composite_redirect_subwindows_checked(
       ctx->connection, ctx->screen->root, XCB_COMPOSITE_REDIRECT_MANUAL);
@@ -3165,6 +3185,7 @@ static void sl_print_usage() {
       "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
       "  --xwayland-gl-driver-path=PATH\tPath to GL drivers for Xwayland\n"
       "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
+      "  --enable-xshape\t\tEnable X11 XShape extension support\n"
       "  --no-exit-with-child\t\tKeep process alive after child exists\n"
       "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
       "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
@@ -3611,6 +3632,8 @@ int real_main(int argc, char** argv) {
       ctx.timing = new Timing(sl_arg_value(arg));
     } else if (strstr(arg, "--explicit-fence") == arg) {
       ctx.use_explicit_fence = true;
+    } else if (strstr(arg, "--enable-xshape") == arg) {
+      ctx.enable_xshape = true;
     } else if (strstr(arg, "--virtgpu-channel") == arg) {
       ctx.use_virtgpu_channel = true;
 #ifdef PERFETTO_TRACING
