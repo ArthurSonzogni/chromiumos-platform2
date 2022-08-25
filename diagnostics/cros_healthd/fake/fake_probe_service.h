@@ -28,6 +28,10 @@ class FakeProbeService final
                         ProbeProcessInfoCallback callback) override;
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
                           ProbeTelemetryInfoCallback callback) override;
+  void ProbeMultipleProcessInfo(
+      const std::optional<std::vector<uint32_t>>& process_ids,
+      bool ignore_single_process_info,
+      ProbeMultipleProcessInfoCallback callback) override;
 };
 
 }  // namespace diagnostics

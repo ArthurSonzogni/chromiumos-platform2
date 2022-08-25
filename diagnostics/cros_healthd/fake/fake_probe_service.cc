@@ -23,4 +23,11 @@ void FakeProbeService::ProbeTelemetryInfo(
   NOTIMPLEMENTED();
 }
 
+void FakeProbeService::ProbeMultipleProcessInfo(
+    const std::optional<std::vector<uint32_t>>& process_ids,
+    bool ignore_single_process_info,
+    ProbeMultipleProcessInfoCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

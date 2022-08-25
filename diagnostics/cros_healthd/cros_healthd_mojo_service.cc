@@ -98,6 +98,11 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
   return fetch_aggregator_->Run(categories, std::move(callback));
 }
 
+void CrosHealthdMojoService::ProbeMultipleProcessInfo(
+    const std::optional<std::vector<uint32_t>>& process_ids,
+    const bool ignore_single_process_info,
+    ProbeMultipleProcessInfoCallback callback) {}
+
 void CrosHealthdMojoService::GetServiceStatus(
     GetServiceStatusCallback callback) {
   auto response = chromeos::cros_healthd::mojom::ServiceStatus::New();

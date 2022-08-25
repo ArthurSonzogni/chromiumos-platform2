@@ -27,7 +27,12 @@ reality.
     - `ProbeTelemetryInfo(categories)` can grab the data from selected
       `categories` from a single IPC call.
     - `ProbeProcessInfo(process_id)` can retrieve the
-      [process information](#ProcessInfo) for a specific process_id.
+      [process information](#ProcessInfo) for a specific `process_id`.
+    - `ProbeMultipleProcessInfo(process_ids, ignore_single_process_error)` can
+      retrieve the [process information](#ProcessInfo) for the array of
+      `process_ids` and errors if any occurred. Leave `process_ids` null can
+      retrieve all current existing processes on the device; setting
+      `ignore_single_process_error` to true will ignore any errors if occurred.
 - `CrosHealthdEventService` interface
     - `AddBluetoothObserver(observer)` for bluetooth events.
     - `AddLidObserver(observer)` for lid events.
