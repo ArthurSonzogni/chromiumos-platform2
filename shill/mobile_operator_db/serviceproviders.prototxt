@@ -12617,30 +12617,6 @@ mno {
       ip_type: IPV4V6
     }
     mobile_apn {
-      apn : "epc.tmobile.com"
-      localized_name {
-        name : "Internet/WebConnect"
-      }
-    }
-    mobile_apn {
-      apn : "wap.voicestream.com"
-      localized_name {
-        name : "Web2Go/t-zones"
-      }
-    }
-    mobile_apn {
-      apn : "internet2.voicestream.com"
-      localized_name {
-        name : "Internet (old)"
-      }
-    }
-    mobile_apn {
-      apn : "internet3.voicestream.com"
-      localized_name {
-        name : "Internet with VPN (old)"
-      }
-    }
-    mobile_apn {
       apn : "iot.tmowholesale"
       localized_name {
         name : "IOT"
