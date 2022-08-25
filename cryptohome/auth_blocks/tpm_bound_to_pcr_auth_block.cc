@@ -12,6 +12,7 @@
 #include <variant>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -308,46 +309,53 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     const brillo::SecureBlob& salt,
     brillo::SecureBlob* vkk_iv,
     brillo::SecureBlob* vkk_key) const {
-  brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-
-  // Prepare the parameters for scrypt.
-  std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob, vkk_iv};
-  bool derive_result = false;
-
-  base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
-                           base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-  // Derive secrets on scrypt task runner.
-  scrypt_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](const brillo::SecureBlob& passkey, const brillo::SecureBlob& salt,
-             std::vector<brillo::SecureBlob*> gen_secrets, bool* result,
-             base::WaitableEvent* done) {
-            *result =
-                DeriveSecretsScrypt(passkey, salt, std::move(gen_secrets));
-            done->Signal();
-          },
-          vault_key, salt, gen_secrets, &derive_result, &done));
-
   brillo::Blob sealed_data(tpm_key.begin(), tpm_key.end());
-  // Preload the sealed data while deriving secrets in scrypt.
-  hwsec::StatusOr<std::optional<hwsec::ScopedKey>> preload_data =
-      hwsec_->PreloadSealedData(sealed_data);
-  if (!preload_data.ok()) {
-    LOG(ERROR) << "Failed to preload the sealed data: "
-               << preload_data.status();
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockPreloadFailedInDecrypt),
-               ErrorActionSet({ErrorAction::kReboot,
-                               ErrorAction::kDevCheckUnexpectedState}))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(preload_data).status()));
-  }
 
-  // Wait for the scrypt finished.
-  done.Wait();
+  bool derive_result = false;
+  brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
+  std::optional<hwsec::ScopedKey> preload_scoped_key;
+  {
+    // Prepare the parameters for scrypt.
+    std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob, vkk_iv};
+
+    base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
+                             base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+    // Derive secrets on scrypt task runner.
+    scrypt_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](const brillo::SecureBlob& passkey,
+                          const brillo::SecureBlob& salt,
+                          std::vector<brillo::SecureBlob*> gen_secrets,
+                          bool* result, base::WaitableEvent* done) {
+                         *result = DeriveSecretsScrypt(passkey, salt,
+                                                       std::move(gen_secrets));
+                         done->Signal();
+                       },
+                       vault_key, salt, gen_secrets, &derive_result, &done));
+
+    // The scrypt should be finished before exiting this socope.
+    base::ScopedClosureRunner joiner(
+        base::BindOnce([](base::WaitableEvent* done) { done->Wait(); },
+                       base::Unretained(&done)));
+
+    // Preload the sealed data while deriving secrets in scrypt.
+    hwsec::StatusOr<std::optional<hwsec::ScopedKey>> preload_data =
+        hwsec_->PreloadSealedData(sealed_data);
+    if (!preload_data.ok()) {
+      LOG(ERROR) << "Failed to preload the sealed data: "
+                 << preload_data.status();
+      return MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocTpmBoundToPcrAuthBlockPreloadFailedInDecrypt),
+                 ErrorActionSet({ErrorAction::kReboot,
+                                 ErrorAction::kDevCheckUnexpectedState}))
+          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+              std::move(preload_data).status()));
+    }
+
+    preload_scoped_key = std::move(*preload_data);
+  }
 
   if (!derive_result) {
     LOG(ERROR) << "scrypt derivation failed";
@@ -362,8 +370,8 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   // UnsealWithCurrentUser will check the preload_key not containing any
   // value.
   std::optional<hwsec::Key> preload_key;
-  if (preload_data->has_value()) {
-    preload_key = preload_data->value().GetKey();
+  if (preload_scoped_key.has_value()) {
+    preload_key = preload_scoped_key.value().GetKey();
   }
 
   hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();

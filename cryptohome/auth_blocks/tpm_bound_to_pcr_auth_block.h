@@ -58,6 +58,8 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
 
   FRIEND_TEST_ALL_PREFIXES(TPMAuthBlockTest, DecryptBoundToPcrTest);
   FRIEND_TEST_ALL_PREFIXES(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest);
+  FRIEND_TEST_ALL_PREFIXES(TPMAuthBlockTest,
+                           DecryptBoundToPcrPreloadFailedTest);
 };
 
 }  // namespace cryptohome

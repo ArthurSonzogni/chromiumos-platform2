@@ -862,6 +862,31 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
           .ok());
 }
 
+TEST(TPMAuthBlockTest, DecryptBoundToPcrPreloadFailedTest) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob tpm_key(20, 'B');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+
+  brillo::SecureBlob vkk_iv(kDefaultAesKeySize);
+  brillo::SecureBlob vkk_key;
+
+  brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&pass_blob}));
+
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
+  SetupMockHwsec(hwsec);
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  ScopedKeyHandle handle;
+  EXPECT_CALL(hwsec, PreloadSealedData(_))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  TpmBoundToPcrAuthBlock tpm_auth_block(&hwsec, &cryptohome_keys_manager);
+  EXPECT_FALSE(
+      tpm_auth_block
+          .DecryptTpmBoundToPcr(vault_key, tpm_key, salt, &vkk_iv, &vkk_key)
+          .ok());
+}
+
 TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob tpm_key;
