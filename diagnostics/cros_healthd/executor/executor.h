@@ -49,7 +49,7 @@ class Executor final : public mojom::Executor {
   void RunMemtester(uint32_t test_mem_kib,
                     RunMemtesterCallback callback) override;
   void KillMemtester() override;
-  void GetProcessIOContents(const uint32_t pid,
+  void GetProcessIOContents(const std::vector<uint32_t>& pids,
                             GetProcessIOContentsCallback callback) override;
   void ReadMsr(const uint32_t msr_reg,
                uint32_t cpu_index,

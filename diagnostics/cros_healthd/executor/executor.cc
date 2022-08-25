@@ -347,12 +347,22 @@ void Executor::KillMemtester() {
     process->Kill(SIGKILL, kTerminationTimeout.InSeconds());
 }
 
-void Executor::GetProcessIOContents(const uint32_t pid,
+void Executor::GetProcessIOContents(const std::vector<uint32_t>& pids,
                                     GetProcessIOContentsCallback callback) {
-  ReadTrimFileAndReplyCallback(base::FilePath("/proc/")
-                                   .Append(base::StringPrintf("%" PRId32, pid))
-                                   .AppendASCII("io"),
-                               std::move(callback));
+  std::vector<std::pair<uint32_t, std::string>> results;
+
+  for (const auto& pid : pids) {
+    std::string result;
+    if (ReadAndTrimString(base::FilePath("/proc/")
+                              .Append(base::StringPrintf("%" PRId32, pid))
+                              .AppendASCII("io"),
+                          &result)) {
+      results.push_back({pid, result});
+    }
+  }
+
+  std::move(callback).Run(
+      base::flat_map<uint32_t, std::string>{std::move(results)});
 }
 
 void Executor::ReadMsr(const uint32_t msr_reg,

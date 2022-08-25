@@ -74,12 +74,13 @@ interface Executor {
   // executor.
   KillMemtester();
 
-  // Reads the I/O file of a process and returns the raw, trimmed contents with
-  // no parsing.
+  // Reads the I/O file of each process in the array and returns a map of the
+  // raw, trimmed contents with no parsing.
   //
   // The response:
-  // * |contents| - contains contents of the I/O file
-  GetProcessIOContents(uint32 pid) => (string contents);
+  // * |contents| - a map that contains contents of each I/O file with pids as
+  //                keys.
+  GetProcessIOContents(array<uint32> pids) => (map<uint32, string> contents);
 
   // Reads MSR register from /dev/cpu/|cpu_index|/msr file.
   //

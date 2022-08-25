@@ -7,6 +7,7 @@
 
 #include <string>
 #include <gmock/gmock.h>
+#include <vector>
 
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -45,7 +46,7 @@ class MockExecutor final : public mojom::Executor {
   MOCK_METHOD(void, KillMemtester, (), (override));
   MOCK_METHOD(void,
               GetProcessIOContents,
-              (uint32_t pid, GetProcessIOContentsCallback),
+              (const std::vector<uint32_t>& pids, GetProcessIOContentsCallback),
               (override));
   MOCK_METHOD(void,
               ReadMsr,

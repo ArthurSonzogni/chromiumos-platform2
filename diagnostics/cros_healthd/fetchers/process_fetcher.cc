@@ -104,9 +104,10 @@ std::optional<mojom::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
 
 void FinishFetchingProcessInfo(
     base::OnceCallback<void(mojom::ProcessResultPtr)> callback,
-    mojom::ProcessInfo process_info,
-    const std::string& io_contents) {
-  if (io_contents.empty()) {
+    uint32_t process_id,
+    base::flat_map<uint32_t, mojom::ProcessInfoPtr> process_info,
+    const base::flat_map<uint32_t, std::string>& io_contents) {
+  if (io_contents.empty() || !io_contents.contains(process_id)) {
     std::move(callback).Run(mojom::ProcessResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                "Failed to read process IO file")));
@@ -120,10 +121,10 @@ void FinishFetchingProcessInfo(
   std::string physical_bytes_read_str;
   std::string physical_bytes_written_str;
   std::string cancelled_bytes_written_str;
-  if (!RE2::FullMatch(io_contents, kProcessIOFileRegex, &bytes_read_str,
-                      &bytes_written_str, &read_system_calls_str,
-                      &write_system_calls_str, &physical_bytes_read_str,
-                      &physical_bytes_written_str,
+  if (!RE2::FullMatch(io_contents.find(process_id)->second, kProcessIOFileRegex,
+                      &bytes_read_str, &bytes_written_str,
+                      &read_system_calls_str, &write_system_calls_str,
+                      &physical_bytes_read_str, &physical_bytes_written_str,
                       &cancelled_bytes_written_str)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
@@ -131,7 +132,10 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(bytes_read_str, &process_info.bytes_read)) {
+  auto single_process_info_ref = process_info.find(process_id);
+
+  if (!base::StringToUint64(bytes_read_str,
+                            &single_process_info_ref->second->bytes_read)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -139,7 +143,8 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(bytes_written_str, &process_info.bytes_written)) {
+  if (!base::StringToUint64(bytes_written_str,
+                            &single_process_info_ref->second->bytes_written)) {
     std::move(callback).Run(mojom::ProcessResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                "Failed to convert bytes_written to uint64_t: " +
@@ -147,8 +152,9 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(read_system_calls_str,
-                            &process_info.read_system_calls)) {
+  if (!base::StringToUint64(
+          read_system_calls_str,
+          &single_process_info_ref->second->read_system_calls)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -157,8 +163,9 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(write_system_calls_str,
-                            &process_info.write_system_calls)) {
+  if (!base::StringToUint64(
+          write_system_calls_str,
+          &single_process_info_ref->second->write_system_calls)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -167,8 +174,9 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(physical_bytes_read_str,
-                            &process_info.physical_bytes_read)) {
+  if (!base::StringToUint64(
+          physical_bytes_read_str,
+          &single_process_info_ref->second->physical_bytes_read)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -177,8 +185,9 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(physical_bytes_written_str,
-                            &process_info.physical_bytes_written)) {
+  if (!base::StringToUint64(
+          physical_bytes_written_str,
+          &single_process_info_ref->second->physical_bytes_written)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -187,8 +196,9 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  if (!base::StringToUint64(cancelled_bytes_written_str,
-                            &process_info.cancelled_bytes_written)) {
+  if (!base::StringToUint64(
+          cancelled_bytes_written_str,
+          &single_process_info_ref->second->cancelled_bytes_written)) {
     std::move(callback).Run(
         mojom::ProcessResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kParseError,
@@ -197,8 +207,8 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  std::move(callback).Run(
-      mojom::ProcessResult::NewProcessInfo(process_info.Clone()));
+  std::move(callback).Run(mojom::ProcessResult::NewProcessInfo(
+      single_process_info_ref->second.Clone()));
   return;
 }
 
@@ -275,10 +285,13 @@ void ProcessFetcher::FetchProcessInfo(
   base::TrimWhitespaceASCII(process_info.command, base::TRIM_ALL,
                             &process_info.command);
 
+  base::flat_map<uint32_t, mojom::ProcessInfoPtr> process_info_map;
+  process_info_map[process_id_] = process_info.Clone();
+
   context_->executor()->GetProcessIOContents(
-      base::checked_cast<uint32_t>(process_id_),
+      {base::checked_cast<uint32_t>(process_id_)},
       base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
-                     std::move(process_info)));
+                     process_id_, std::move(process_info_map)));
 }
 
 std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(

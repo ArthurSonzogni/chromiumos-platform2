@@ -96,14 +96,18 @@ constexpr char kProcPidStatmContentsOverflowingResidentMemory[] =
     "25648 4294967296 2357 151 0 18632 0";
 
 // Valid fake data for /proc/|kPid|/io.
-constexpr char kFakeProcPidIOContents[] =
+const std::vector<std::string> kFakeProcPidIOContents = {
     "rchar: 44846\n"
     "wchar: 10617\n"
     "syscr: 248\n"
     "syscw: 317\n"
     "read_bytes: 56799232\n"
     "write_bytes: 32768\n"
-    "cancelled_write_bytes: 0";
+    "cancelled_write_bytes: 0"};
+
+// Response of valid /proc/|kPid|/io from executor.
+const base::flat_map<uint32_t, std::string> kFakeProcPidIOContentsResult = {
+    {kPid, kFakeProcPidIOContents[0]}};
 
 // Data parsed from kFakeProcPidIOContents.
 constexpr uint32_t kExpectedBytesRead = 44846;
@@ -115,13 +119,18 @@ constexpr uint32_t kExpectedPhysicalBytesWritten = 32768;
 constexpr uint32_t kExpectedCancelledBytesWritten = 0;
 
 // Invalid /proc/|kPid|/io: not enough fields.
-constexpr char kFakeProcPidIOContentsInsufficientFields[] =
+const std::vector<std::string> kFakeProcPidIOContentsInsufficientFields = {
     "rchar: 44846\n"
     "wchar: 10617\n"
     "syscr: 248\n"
     "read_bytes: 56799232\n"
     "write_bytes: 32768\n"
-    "cancelled_write_bytes: 0";
+    "cancelled_write_bytes: 0"};
+
+// Response of invalid /proc/|kPid|/io from executor.
+const base::flat_map<uint32_t, std::string>
+    kFakeProcPidIOContentsInsufficientFieldsResult = {
+        {kPid, kFakeProcPidIOContentsInsufficientFields[0]}};
 
 // Valid fake data for /proc/|kPid|/status.
 constexpr char kFakeProcPidStatusContents[] =
@@ -178,7 +187,7 @@ class ProcessFetcherTest : public testing::Test {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetProcProcessDirectoryPath(temp_dir_path(), kPid)
             .Append(kProcessIOFile),
-        kFakeProcPidIOContents));
+        kFakeProcPidIOContents[0]));
     // Write /proc/|kPid|/status.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetProcProcessDirectoryPath(temp_dir_path(), kPid)
@@ -227,12 +236,12 @@ class ProcessFetcherTest : public testing::Test {
   }
 
   void ExpectAndSetExecutorGetProcessIOContentsResponse(
-      const std::string& io_contents) {
+      const base::flat_map<uint32_t, std::string>& io_contents) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_context_.mock_executor(), GetProcessIOContents(_, _))
         .WillOnce(WithArg<1>(
             Invoke([=](mojom::Executor::GetProcessIOContentsCallback callback) {
-              std::string content;
+              base::flat_map<uint32_t, std::string> content;
               content = io_contents;
               std::move(callback).Run(content);
             })));
@@ -249,7 +258,8 @@ class ProcessFetcherTest : public testing::Test {
 
 // Test that process info can be read when it exists.
 TEST_F(ProcessFetcherTest, FetchProcessInfo) {
-  ExpectAndSetExecutorGetProcessIOContentsResponse(kFakeProcPidIOContents);
+  ExpectAndSetExecutorGetProcessIOContentsResponse(
+      kFakeProcPidIOContentsResult);
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_process_info());
@@ -343,7 +353,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidIOFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
                            .Append(kProcessIOFile)));
-  ExpectAndSetExecutorGetProcessIOContentsResponse("");
+  ExpectAndSetExecutorGetProcessIOContentsResponse({});
 
   auto process_result = FetchProcessInfo();
 
@@ -515,9 +525,9 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileInvalidResidentMemory) {
 TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokens) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetProcProcessDirectoryPath(temp_dir_path(), kPid).Append(kProcessIOFile),
-      kFakeProcPidIOContentsInsufficientFields));
+      kFakeProcPidIOContentsInsufficientFields[0]));
   ExpectAndSetExecutorGetProcessIOContentsResponse(
-      kFakeProcPidIOContentsInsufficientFields);
+      kFakeProcPidIOContentsInsufficientFieldsResult);
 
   auto process_result = FetchProcessInfo();
 
@@ -613,7 +623,8 @@ class ParseProcessStateTest
 TEST_P(ParseProcessStateTest, ParseState) {
   ASSERT_TRUE(
       WriteProcPidStatData(params().raw_state, ProcPidStatIndices::kState));
-  ExpectAndSetExecutorGetProcessIOContentsResponse(kFakeProcPidIOContents);
+  ExpectAndSetExecutorGetProcessIOContentsResponse(
+      kFakeProcPidIOContentsResult);
 
   auto process_result = FetchProcessInfo();
 
