@@ -28,6 +28,7 @@ getcwd: 1
 getdents64: 1
 geteuid: 1
 getgid: 1
+getitimer: 1
 getpid: 1
 getrandom: 1
 gettid: 1

@@ -44,6 +44,7 @@ getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
+getitimer: 1
 getpeername: 1
 getpid: 1
 getrandom: 1
