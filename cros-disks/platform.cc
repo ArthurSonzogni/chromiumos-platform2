@@ -240,17 +240,35 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
 }
 
 MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
-  // First, try to unmount the mount point in a gentle way.
+  // We take a 2-step approach to unmounting FUSE filesystems. First, we try a
+  // normal unmount. This lets the VFS flush any pending data and lets the
+  // filesystem shut down cleanly.
+  //
+  // However, if the filesystem is currently busy, this fails with an EBUSY
+  // error.
   if (umount(mount_path.value().c_str()) == 0) {
     VLOG(1) << "Unmounted " << quote(mount_path);
     return MOUNT_ERROR_NONE;
   }
 
   if (errno == EBUSY) {
-    // The filesystem is busy. Try to unmount it in a forceful way.
-    VLOG(1) << "Forcefully unmounting " << quote(mount_path);
+    // The normal unmount failed because the filesystem is busy. We now try to
+    // force-unmount the filesystem. This is done because there is no good
+    // recovery path the user can take, and these filesystems are sometimes
+    // unmounted implicitly on login/logout/suspend.
+    //
+    // For FUSE filesystems, MNT_FORCE causes the kernel driver to immediately
+    // close the channel to the user-space driver program and cancel all
+    // outstanding requests. However, if any program was still accessing the
+    // filesystem, the umount2(..., MNT_FORCE) would fail with EBUSY and the
+    // mountpoint would still be attached. Since the mountpoint is no longer
+    // valid, we also use MNT_DETACH to force the mountpoint to be disconnected.
+    //
+    // On a non-FUSE filesystem, MNT_FORCE doesn't have any effect. Only
+    // MNT_DETACH matters in this case, but it's OK to pass MNT_FORCE too.
+    VLOG(1) << "Force-unmounting " << quote(mount_path);
     if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
-      LOG(WARNING) << "Forcefully unmounted " << quote(mount_path);
+      LOG(WARNING) << "Force-unmounted " << quote(mount_path);
       return MOUNT_ERROR_NONE;
     }
   }
@@ -264,7 +282,7 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     case EPERM:
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
-    case EBUSY:
+    case EBUSY:  // This should not happen since we force-unmount
       return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
     default:
       return MOUNT_ERROR_UNKNOWN;
