@@ -24,8 +24,8 @@
 
 using testing::_;
 using testing::Invoke;
-using testing::SaveArg;
 using testing::Test;
+using testing::WithArg;
 
 namespace shill {
 
@@ -94,11 +94,13 @@ class ModemInfoTest : public Test {
   void Connect(const ObjectsWithProperties& expected_objects) {
     ManagedObjectsCallback get_managed_objects_callback;
     EXPECT_CALL(*control_interface_.GetMockProxy(), GetManagedObjects(_, _, _))
-        .WillOnce(SaveArg<1>(&get_managed_objects_callback));
+        .WillOnce(WithArg<1>([&get_managed_objects_callback](auto cb) {
+          get_managed_objects_callback = std::move(cb);
+        }));
 
     modem_info_.Start();
     modem_info_.Connect();
-    get_managed_objects_callback.Run(expected_objects, Error());
+    std::move(get_managed_objects_callback).Run(expected_objects, Error());
   }
 
   ObjectsWithProperties GetModemWithProperties() {
@@ -208,10 +210,13 @@ TEST_F(ModemInfoTest, RestartModemManager) {
   MockDBusObjectManagerProxy* proxy = control_interface_.GetMockProxy();
   ManagedObjectsCallback get_managed_objects_callback;
   EXPECT_CALL(*proxy, GetManagedObjects(_, _, _))
-      .WillOnce(SaveArg<1>(&get_managed_objects_callback));
+      .WillOnce(WithArg<1>([&get_managed_objects_callback](auto cb) {
+        get_managed_objects_callback = std::move(cb);
+      }));
 
   control_interface_.StartService();
-  get_managed_objects_callback.Run(GetModemWithProperties(), Error());
+  std::move(get_managed_objects_callback)
+      .Run(GetModemWithProperties(), Error());
 
   EXPECT_TRUE(modem_info_.service_connected_);
   EXPECT_EQ(1, modem_info_.modems_.size());

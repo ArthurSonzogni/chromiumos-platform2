@@ -4,11 +4,14 @@
 
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 
+#include <utility>
+
+#include <base/callback_helpers.h>
+#include <base/logging.h>
+
 #include "shill/cellular/cellular_error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-
-#include <base/logging.h>
 
 namespace shill {
 
@@ -57,18 +60,20 @@ DBusObjectManagerProxy::DBusObjectManagerProxy(
 
 DBusObjectManagerProxy::~DBusObjectManagerProxy() = default;
 
-void DBusObjectManagerProxy::GetManagedObjects(
-    Error* error, const ManagedObjectsCallback& callback, int timeout) {
+void DBusObjectManagerProxy::GetManagedObjects(Error* error,
+                                               ManagedObjectsCallback callback,
+                                               int timeout) {
   if (!service_available_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Service not available");
     return;
   }
+  auto split_cb = base::SplitOnceCallback(std::move(callback));
   proxy_->GetManagedObjectsAsync(
       base::BindOnce(&DBusObjectManagerProxy::OnGetManagedObjectsSuccess,
-                     weak_factory_.GetWeakPtr(), callback),
+                     weak_factory_.GetWeakPtr(), std::move(split_cb.first)),
       base::BindOnce(&DBusObjectManagerProxy::OnGetManagedObjectsFailure,
-                     weak_factory_.GetWeakPtr(), callback),
+                     weak_factory_.GetWeakPtr(), std::move(split_cb.second)),
       timeout);
 }
 
@@ -128,7 +133,7 @@ void DBusObjectManagerProxy::InterfacesRemoved(
 }
 
 void DBusObjectManagerProxy::OnGetManagedObjectsSuccess(
-    const ManagedObjectsCallback& callback,
+    ManagedObjectsCallback callback,
     const DBusObjectsWithProperties& dbus_objects_with_properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   ObjectsWithProperties objects_with_properties;
@@ -138,14 +143,14 @@ void DBusObjectManagerProxy::OnGetManagedObjectsSuccess(
     objects_with_properties.emplace(object.first.value(),
                                     interface_to_properties);
   }
-  callback.Run(objects_with_properties, Error());
+  std::move(callback).Run(objects_with_properties, Error());
 }
 
 void DBusObjectManagerProxy::OnGetManagedObjectsFailure(
-    const ManagedObjectsCallback& callback, brillo::Error* dbus_error) {
+    ManagedObjectsCallback callback, brillo::Error* dbus_error) {
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(ObjectsWithProperties(), error);
+  std::move(callback).Run(ObjectsWithProperties(), error);
 }
 
 void DBusObjectManagerProxy::ConvertDBusInterfaceProperties(

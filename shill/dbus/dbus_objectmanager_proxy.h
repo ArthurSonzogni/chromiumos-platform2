@@ -33,7 +33,7 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
 
   // Inherited methods from DBusObjectManagerProxyInterface.
   void GetManagedObjects(Error* error,
-                         const ManagedObjectsCallback& callback,
+                         ManagedObjectsCallback callback,
                          int timeout) override;
 
   void set_interfaces_added_callback(
@@ -61,9 +61,9 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
 
   // GetManagedObject method callbacks
   void OnGetManagedObjectsSuccess(
-      const ManagedObjectsCallback& callback,
+      ManagedObjectsCallback callback,
       const DBusObjectsWithProperties& objects_with_properties);
-  void OnGetManagedObjectsFailure(const ManagedObjectsCallback& callback,
+  void OnGetManagedObjectsFailure(ManagedObjectsCallback callback,
                                   brillo::Error* error);
 
   // Called when service appeared or vanished.
