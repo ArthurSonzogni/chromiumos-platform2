@@ -22,7 +22,7 @@ use crate::files::{
     preallocate_kernel_key_file, preallocate_log_file, preallocate_metadata_file,
     preallocate_metrics_file, STATEFUL_DIR,
 };
-use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
+use crate::hiberlog::{redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
     HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_KERNEL_ENCRYPTED, META_FLAG_VALID,
     META_TAG_SIZE,
@@ -258,12 +258,11 @@ impl SuspendConductor {
                 info!("Powering off");
             }
 
-            // Flush out the hibernate log, and instead keep logs in memory.
+            // Flush out the hibernate log, and start keeping logs in memory.
             // Any logs beyond here are lost upon powerdown.
             if let Err(e) = self.metrics.flush() {
                 warn!("Failed to flush suspend metrics {:?}", e);
             }
-            flush_log();
             redirect_log(HiberlogOut::BufferInMemory);
             // Power the thing down.
             if !dry_run {

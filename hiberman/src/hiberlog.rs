@@ -281,16 +281,26 @@ impl Hiberlog {
     }
 }
 
-/// Divert the log to a new output. This does not flush or reset the stream, the
-/// caller must decide what they want to do with buffered output before calling
-/// this.
+/// Divert the log to a new output. If the log was previously pointing to syslog
+/// or a file, those messages are flushed. If the log was previously being
+/// stored in memory, those messages will naturally flush to the given new
+/// destination.
 pub fn redirect_log(out: HiberlogOut) {
     log::logger().flush();
     let mut state = lock!();
     state.to_kmsg = false;
+
+    // Potentially close out the previous log with a flush.
+    match state.out {
+        HiberlogOut::BufferInMemory => {}
+        HiberlogOut::Syslog => state.flush_to_syslog(),
+        HiberlogOut::File(_) => state.flush(),
+    }
+
     match out {
         HiberlogOut::BufferInMemory => {}
-        // If going back to syslog, dump any pending state into syslog.
+        // If going back to syslog, dump any pending state (like from in memory
+        // logs) into syslog.
         HiberlogOut::Syslog => state.flush_to_syslog(),
         HiberlogOut::File(_) => {
             // Any time we're redirecting to a file, also send to kmsg as a
@@ -309,12 +319,6 @@ pub fn redirect_log(out: HiberlogOut) {
 pub fn reset_log() {
     let mut state = lock!();
     state.reset();
-}
-
-/// Flush any pending messages out to the file, and add a terminator.
-pub fn flush_log() {
-    let mut state = lock!();
-    state.flush();
 }
 
 /// Write a newline to the beginning of the given log file so that future

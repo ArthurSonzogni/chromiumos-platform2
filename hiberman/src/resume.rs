@@ -22,7 +22,7 @@ use crate::files::{
     open_header_file, open_hiberfile, open_kernel_key_file, open_log_file, open_metafile,
     open_metrics_file,
 };
-use crate::hiberlog::{flush_log, redirect_log, replay_logs, HiberlogFile, HiberlogOut};
+use crate::hiberlog::{redirect_log, replay_logs, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
     HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_KERNEL_ENCRYPTED, META_FLAG_RESUME_FAILED,
     META_FLAG_RESUME_LAUNCHED, META_FLAG_RESUME_STARTED, META_FLAG_VALID, META_HASH_SIZE,
@@ -90,11 +90,11 @@ impl ResumeConductor {
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
         let result = self.resume_inner(&mut dbus_connection);
-        // Replay earlier logs first. Don't wipe the logs out if this is just a dry
+        // Move pending and future logs to syslog.
+        redirect_log(HiberlogOut::Syslog);
+        // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
         replay_logs(true, !self.options.dry_run);
-        // Then move pending and future logs to syslog.
-        redirect_log(HiberlogOut::Syslog);
         // Allow trunksd to start if not already done.
         self.emit_tpm_done_event()?;
         // Since resume_inner() returned, we are no longer in a viable resume
@@ -270,9 +270,8 @@ impl ResumeConductor {
         }
         if self.options.dry_run {
             info!("Not launching resume image: in a dry run.");
-            // Flush the resume file logs.
-            flush_log();
             // Keep logs in memory, like launch_resume_image() does.
+            // This also closes out the resume log.
             redirect_log(HiberlogOut::BufferInMemory);
             Ok(())
         } else {
@@ -599,9 +598,7 @@ impl ResumeConductor {
         // before control is lost.
         info!("Launching resume image");
 
-        // Flush out any pending resume logs, closing out the resume log file.
-        flush_log();
-        // Keep logs in memory for now.
+        // Keep logs in memory for now, which also closes out the resume log file.
         redirect_log(HiberlogOut::BufferInMemory);
         let snap_dev = frozen_userspace.as_mut();
         let result = snap_dev.atomic_restore();
