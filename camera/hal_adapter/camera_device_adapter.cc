@@ -275,11 +275,19 @@ int32_t CameraDeviceAdapter::Initialize(
     return -ENODEV;
   }
 
-  auto result_callback = base::BindRepeating(
-      &CameraDeviceAdapter::ReturnResultToClient, base::Unretained(this));
-  for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->Initialize(gpu_resources_, static_info_,
-                                   result_callback);
+  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
+    stream_manipulators_[i]->Initialize(
+        gpu_resources_, static_info_,
+        base::BindRepeating(
+            [](CameraDeviceAdapter* self,
+               base::span<std::unique_ptr<StreamManipulator>> upper_sms,
+               Camera3CaptureDescriptor result) {
+              for (auto it = upper_sms.rbegin(); it != upper_sms.rend(); ++it) {
+                (*it)->ProcessCaptureResult(&result);
+              }
+              self->ReturnResultToClient(self, std::move(result));
+            },
+            this, base::make_span(stream_manipulators_.begin(), i)));
   }
 
   base::AutoLock l(callback_ops_delegate_lock_);

@@ -26,6 +26,7 @@ source_set("base") {
   configs += [ ":target_defaults" ]
   deps = [
     "//camera/common:base",
+    "//camera/common/test_support",
     "//camera/features",
     "//camera/features/auto_framing",
     "//camera/gpu:gpu_test_support",

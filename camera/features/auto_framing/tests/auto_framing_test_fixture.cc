@@ -16,6 +16,14 @@ namespace cros::tests {
 
 namespace {
 
+Rect<uint32_t> ToAbsoluteCrop(const Size& size, const Rect<float>& crop) {
+  return Rect<uint32_t>(
+      static_cast<uint32_t>(static_cast<float>(size.width) * crop.left),
+      static_cast<uint32_t>(static_cast<float>(size.height) * crop.top),
+      static_cast<uint32_t>(static_cast<float>(size.width) * crop.width),
+      static_cast<uint32_t>(static_cast<float>(size.height) * crop.height));
+}
+
 bool IsAspectRatioMatched(const Rect<float>& crop,
                           uint32_t src_width,
                           uint32_t src_height,
@@ -42,36 +50,83 @@ bool IsFullCrop(const Rect<float>& rect) {
 }
 
 bool PrepareStaticMetadata(android::CameraMetadata* static_info,
-                           const Size& full_size,
-                           const Size& stream_size,
+                           const Size& full_yuv_size,
+                           const Size& full_blob_size,
+                           const Size& client_yuv_size,
+                           const Size& client_blob_size,
                            float frame_rate) {
-  const int32_t full_width = base::checked_cast<int32_t>(full_size.width);
-  const int32_t full_height = base::checked_cast<int32_t>(full_size.height);
-  const int32_t stream_width = base::checked_cast<int32_t>(stream_size.width);
-  const int32_t stream_height = base::checked_cast<int32_t>(stream_size.height);
+  const int32_t full_yuv_width =
+      base::checked_cast<int32_t>(full_yuv_size.width);
+  const int32_t full_yuv_height =
+      base::checked_cast<int32_t>(full_yuv_size.height);
+  const int32_t full_blob_width =
+      base::checked_cast<int32_t>(full_blob_size.width);
+  const int32_t full_blob_height =
+      base::checked_cast<int32_t>(full_blob_size.height);
+  const int32_t client_yuv_width =
+      base::checked_cast<int32_t>(client_yuv_size.width);
+  const int32_t client_yuv_height =
+      base::checked_cast<int32_t>(client_yuv_size.height);
+  const int32_t client_blob_width =
+      base::checked_cast<int32_t>(client_blob_size.width);
+  const int32_t client_blob_height =
+      base::checked_cast<int32_t>(client_blob_size.height);
   const int64_t frame_duration_ns = static_cast<int32_t>(1e9f / frame_rate);
+  constexpr int64_t k1FpsFrameDurationNs = 1'000'000'000LL;
 
   const int32_t partial_result_count = 1;
-  const int32_t active_array_size[] = {0, 0, full_width, full_height};
+  const int32_t active_array_size[] = {0, 0, full_blob_width, full_blob_height};
   const int32_t available_stream_configurations[] = {
       HAL_PIXEL_FORMAT_YCbCr_420_888,
-      full_width,
-      full_height,
+      full_yuv_width,
+      full_yuv_height,
       ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
       HAL_PIXEL_FORMAT_YCbCr_420_888,
-      stream_width,
-      stream_height,
+      client_yuv_width,
+      client_yuv_height,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+      HAL_PIXEL_FORMAT_YCbCr_420_888,
+      full_blob_width,
+      full_blob_height,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+      HAL_PIXEL_FORMAT_YCbCr_420_888,
+      client_blob_width,
+      client_blob_height,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+      HAL_PIXEL_FORMAT_BLOB,
+      full_blob_width,
+      full_blob_height,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+      HAL_PIXEL_FORMAT_BLOB,
+      client_blob_width,
+      client_blob_height,
       ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
   };
   const int64_t available_min_frame_durations[] = {
       HAL_PIXEL_FORMAT_YCbCr_420_888,
-      full_width,
-      full_height,
+      full_yuv_width,
+      full_yuv_height,
       frame_duration_ns,
       HAL_PIXEL_FORMAT_YCbCr_420_888,
-      full_width,
-      full_height,
+      client_yuv_width,
+      client_yuv_height,
       frame_duration_ns,
+      HAL_PIXEL_FORMAT_YCbCr_420_888,
+      full_blob_width,
+      full_blob_height,
+      k1FpsFrameDurationNs,
+      HAL_PIXEL_FORMAT_YCbCr_420_888,
+      client_blob_width,
+      client_blob_height,
+      k1FpsFrameDurationNs,
+      HAL_PIXEL_FORMAT_BLOB,
+      full_blob_width,
+      full_blob_height,
+      k1FpsFrameDurationNs,
+      HAL_PIXEL_FORMAT_BLOB,
+      client_blob_width,
+      client_blob_height,
+      k1FpsFrameDurationNs,
   };
 
   if (static_info->update(ANDROID_REQUEST_PARTIAL_RESULT_COUNT,
@@ -138,13 +193,30 @@ bool AutoFramingTestFixture::LoadTestImage(const base::FilePath& path) {
 }
 
 bool AutoFramingTestFixture::SetUp(
-    const Size& full_size,
-    const Size& stream_size,
+    const Size& full_yuv_size,
+    const Size& full_blob_size,
+    const Size& client_yuv_size,
+    const Size& client_blob_size,
     float frame_rate,
     std::vector<TestStreamConfig> test_stream_configs,
-    const AutoFramingStreamManipulator::Options& options) {
-  if (!PrepareStaticMetadata(&static_info_, full_size, stream_size,
-                             frame_rate)) {
+    const AutoFramingStreamManipulator::Options& options,
+    std::unique_ptr<StillCaptureProcessor> still_capture_processor) {
+  if (full_yuv_size.width > full_blob_size.width ||
+      full_yuv_size.height > full_blob_size.height ||
+      client_yuv_size.width > full_yuv_size.width ||
+      client_yuv_size.height > full_yuv_size.height ||
+      client_blob_size.width > full_blob_size.width ||
+      client_blob_size.height > full_blob_size.height ||
+      !IsAspectRatioMatched(Rect<float>(0.0f, 0.0f, 1.0f, 1.0f),
+                            full_yuv_size.width, full_yuv_size.height,
+                            full_blob_size.width, full_blob_size.height)) {
+    LOGF(ERROR) << "Invalid size combinations";
+    return false;
+  }
+
+  active_array_size_ = full_blob_size;
+  if (!PrepareStaticMetadata(&static_info_, full_yuv_size, full_blob_size,
+                             client_yuv_size, client_blob_size, frame_rate)) {
     return false;
   }
 
@@ -152,8 +224,9 @@ bool AutoFramingTestFixture::SetUp(
       .auto_framing_state = mojom::CameraAutoFramingState::OFF,
   };
   auto_framing_stream_manipulator_ =
-      std::make_unique<AutoFramingStreamManipulator>(&runtime_options_,
-                                                     base::FilePath(), options);
+      std::make_unique<AutoFramingStreamManipulator>(
+          &runtime_options_, base::FilePath(),
+          std::move(still_capture_processor), options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   if (!locked_static_info) {
@@ -161,7 +234,12 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
   if (!auto_framing_stream_manipulator_->Initialize(
-          nullptr, locked_static_info, /*result_callback=*/base::DoNothing())) {
+          nullptr, locked_static_info,
+          base::BindRepeating(
+              [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
+                event->Signal();
+              },
+              &still_capture_result_received_))) {
     LOGF(ERROR) << "Failed to initialize AutoFramingStreamManipulator";
     return false;
   }
@@ -170,63 +248,90 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
 
-  output_stream_ = camera3_stream_t{
+  client_yuv_stream_ = camera3_stream_t{
       .stream_type = CAMERA3_STREAM_OUTPUT,
-      .width = stream_size.width,
-      .height = stream_size.height,
+      .width = client_yuv_size.width,
+      .height = client_yuv_size.height,
       .format = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
       .usage = 0,
   };
-  output_streams_.push_back(&output_stream_);
+  client_blob_stream_ = camera3_stream_t{
+      .stream_type = CAMERA3_STREAM_OUTPUT,
+      .width = client_blob_size.width,
+      .height = client_blob_size.height,
+      .format = HAL_PIXEL_FORMAT_BLOB,
+      .usage = 0,
+  };
+  client_streams_.push_back(&client_yuv_stream_);
+  client_streams_.push_back(&client_blob_stream_);
   Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
-      .num_streams = 1,
-      .streams = output_streams_.data(),
+      .num_streams = static_cast<uint32_t>(client_streams_.size()),
+      .streams = client_streams_.data(),
       .operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE,
   });
+  LOGF(INFO) << "Configued streams:";
+  for (camera3_stream_t* s : stream_config.GetStreams()) {
+    LOGF(INFO) << "  " << GetDebugString(s);
+  }
+
   if (!auto_framing_stream_manipulator_->ConfigureStreams(&stream_config)) {
     LOGF(ERROR) << "Failed to pre-configure streams";
     return false;
   }
-  for (const camera3_stream_t* s : stream_config.GetStreams()) {
-    if (s->width == full_size.width && s->height == full_size.height &&
-        s->format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
-      if (input_stream_) {
-        LOGF(ERROR) << "Found multiple framing input streams";
-        return false;
-      }
-      input_stream_ = s;
-    }
+  for (camera3_stream_t* s : stream_config.GetStreams()) {
+    s->max_buffers = 1;
+    modified_stream_buffers_[s] = std::vector<ScopedBufferHandle>{};
+  }
+  LOGF(INFO) << "Modified streams:";
+  for (camera3_stream_t* s : stream_config.GetStreams()) {
+    LOGF(INFO) << "  " << GetDebugString(s);
   }
 
   if (!auto_framing_stream_manipulator_->OnConfiguredStreams(&stream_config)) {
     LOGF(ERROR) << "Failed to post-configure streams";
     return false;
   }
-  base::span<const camera3_stream_t* const> client_streams =
-      stream_config.GetStreams();
-  if (client_streams.size() != 1 || client_streams[0] != &output_stream_ ||
-      client_streams[0]->width != stream_size.width ||
-      client_streams[0]->height != stream_size.height) {
-    LOGF(ERROR) << "Invalid post-configued streams";
-    return false;
-  }
 
   test_stream_configs_ = std::move(test_stream_configs);
-  for (size_t i = 0; i < test_stream_configs_.size(); ++i) {
-    input_buffers_.push_back(CreateTestFrameWithFace(
-        input_stream_->width, input_stream_->height, input_stream_->format,
-        input_stream_->usage, test_stream_configs_[i].face_rect));
-    if (!input_buffers_.back()) {
-      LOGF(ERROR) << "Failed to create input frame with face rect: "
-                  << test_stream_configs_[i].face_rect.ToString();
-      return false;
+  for (auto& [stream, buffers] : modified_stream_buffers_) {
+    if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      // Allocate dummy BLOB frames.
+      for (size_t i = 0; i < test_stream_configs_.size(); ++i) {
+        buffers.push_back(CameraBufferManager::AllocateScopedBuffer(
+            stream->width, stream->height, stream->format, stream->usage));
+        if (!buffers.back()) {
+          LOGF(ERROR) << "Failed to allocate BLOB buffer";
+          return false;
+        }
+      }
+    } else {
+      // Create YUV frames with contents.
+      for (auto& cfg : test_stream_configs_) {
+        buffers.push_back(CreateTestFrameWithFace(
+            stream->width, stream->height, stream->format, stream->usage,
+            ToAbsoluteCrop(Size(stream->width, stream->height),
+                           cfg.face_rect)));
+        if (!buffers.back()) {
+          LOGF(ERROR) << "Failed to create YUV frame with face rect: "
+                      << cfg.face_rect.ToString();
+          return false;
+        }
+      }
     }
   }
-  output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-      output_stream_.width, output_stream_.height, output_stream_.format,
-      output_stream_.usage);
-  if (!output_buffer_) {
-    LOGF(ERROR) << "Failed to allocate output buffer";
+
+  client_yuv_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+      client_yuv_stream_.width, client_yuv_stream_.height,
+      client_yuv_stream_.format, client_yuv_stream_.usage);
+  if (!client_yuv_buffer_) {
+    LOGF(ERROR) << "Failed to allocate YUV buffer";
+    return false;
+  }
+  client_blob_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+      client_blob_stream_.width, client_blob_stream_.height,
+      client_blob_stream_.format, client_blob_stream_.usage);
+  if (!client_blob_buffer_) {
+    LOGF(ERROR) << "Failed to allocate BLOB buffer";
     return false;
   }
 
@@ -235,13 +340,22 @@ bool AutoFramingTestFixture::SetUp(
 
 bool AutoFramingTestFixture::ProcessFrame(int64_t sensor_timestamp,
                                           bool is_enabled,
+                                          bool has_yuv,
+                                          bool has_blob,
                                           FramingResult* framing_result) {
   runtime_options_.auto_framing_state =
       is_enabled ? mojom::CameraAutoFramingState::ON_SINGLE
                  : mojom::CameraAutoFramingState::OFF;
   ++frame_number_;
-  return ProcessCaptureRequest() &&
-         ProcessCaptureResult(sensor_timestamp, framing_result);
+  std::vector<camera3_stream_t*> requested_streams;
+  if (!ProcessCaptureRequest(has_yuv, has_blob, &requested_streams)) {
+    return false;
+  }
+  if (!ProcessCaptureResult(has_blob, requested_streams, sensor_timestamp,
+                            framing_result)) {
+    return false;
+  }
+  return true;
 }
 
 ScopedBufferHandle AutoFramingTestFixture::CreateTestFrameWithFace(
@@ -289,37 +403,53 @@ ScopedBufferHandle AutoFramingTestFixture::CreateTestFrameWithFace(
   return buffer;
 }
 
-bool AutoFramingTestFixture::ProcessCaptureRequest() {
-  camera3_stream_buffer_t request_buffer = {
-      .stream = &output_stream_,
-      .buffer = output_buffer_.get(),
-      .status = CAMERA3_BUFFER_STATUS_OK,
-      .acquire_fence = -1,
-      .release_fence = -1,
-  };
+bool AutoFramingTestFixture::ProcessCaptureRequest(
+    bool has_yuv,
+    bool has_blob,
+    std::vector<camera3_stream_t*>* requested_streams) {
+  std::vector<camera3_stream_buffer_t> buffers;
+  if (has_yuv) {
+    buffers.push_back(camera3_stream_buffer_t{
+        .stream = &client_yuv_stream_,
+        .buffer = client_yuv_buffer_.get(),
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
+  }
+  if (has_blob) {
+    buffers.push_back(camera3_stream_buffer_t{
+        .stream = &client_blob_stream_,
+        .buffer = client_blob_buffer_.get(),
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
+    still_capture_result_received_.Reset();
+  }
   Camera3CaptureDescriptor request(camera3_capture_request_t{
       .frame_number = frame_number_,
       .settings = nullptr,
-      .num_output_buffers = 1,
-      .output_buffers = &request_buffer,
+      .num_output_buffers = static_cast<uint32_t>(buffers.size()),
+      .output_buffers = buffers.data(),
   });
   if (!auto_framing_stream_manipulator_->ProcessCaptureRequest(&request)) {
     LOGF(ERROR) << "Failed to process capture request";
     return false;
   }
 
-  base::span<const camera3_stream_buffer_t> hal_buffers =
-      request.GetOutputBuffers();
-  if (hal_buffers.size() != 1 || hal_buffers[0].stream != input_stream_) {
-    LOGF(ERROR) << "Invalid processed capture request";
-    return false;
+  for (auto& b : request.GetOutputBuffers()) {
+    requested_streams->push_back(b.stream);
   }
 
   return true;
 }
 
 bool AutoFramingTestFixture::ProcessCaptureResult(
-    int64_t sensor_timestamp, FramingResult* framing_result) {
+    bool has_blob,
+    base::span<camera3_stream_t*> requested_streams,
+    int64_t sensor_timestamp,
+    FramingResult* framing_result) {
   const size_t frame_index = GetFrameIndex(sensor_timestamp);
   if (!PrepareResultMetadata(
           &result_metadata_, sensor_timestamp,
@@ -333,20 +463,22 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
     LOGF(ERROR) << "Failed to lock result metadata";
     return false;
   }
-  camera3_stream_buffer_t result_buffer = {
-      .stream = const_cast<camera3_stream_t*>(input_stream_),
-      // HACK: The input buffers allocated by the pipeline is replaced by our
-      // pre-filled ones.
-      .buffer = input_buffers_[frame_index].get(),
-      .status = CAMERA3_BUFFER_STATUS_OK,
-      .acquire_fence = -1,
-      .release_fence = -1,
-  };
+  std::vector<camera3_stream_buffer_t> buffers;
+  for (auto* s : requested_streams) {
+    buffers.push_back(camera3_stream_buffer_t{
+        .stream = s,
+        // HACK: Replace the buffer by our pre-filled one.
+        .buffer = modified_stream_buffers_[s][frame_index].get(),
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
+  }
   Camera3CaptureDescriptor result(camera3_capture_result_t{
       .frame_number = frame_number_,
       .result = locked_result_metadata,
-      .num_output_buffers = 1,
-      .output_buffers = &result_buffer,
+      .num_output_buffers = static_cast<uint32_t>(buffers.size()),
+      .output_buffers = buffers.data(),
       .partial_result = 1,
   });
   if (!auto_framing_stream_manipulator_->ProcessCaptureResult(&result)) {
@@ -358,26 +490,29 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
     return false;
   }
 
-  base::span<const camera3_stream_buffer_t> client_buffers =
-      result.GetOutputBuffers();
-  if (client_buffers.size() != 1 ||
-      client_buffers[0].stream != &output_stream_) {
-    LOGF(ERROR) << "Invalid processed capture result";
-    return false;
+  for (auto& b : result.GetOutputBuffers()) {
+    if (b.release_fence != -1) {
+      constexpr int kSyncWaitTimeoutMs = 300;
+      if (sync_wait(b.release_fence, kSyncWaitTimeoutMs) != 0) {
+        LOGF(ERROR) << "sync_wait() timed out";
+        return false;
+      }
+      close(b.release_fence);
+    }
   }
-  if (client_buffers[0].release_fence != -1) {
-    constexpr int kSyncWaitTimeoutMs = 300;
-    if (sync_wait(client_buffers[0].release_fence, kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() timed out";
+
+  if (has_blob) {
+    constexpr base::TimeDelta kMaxShutterLag = base::Seconds(1);
+    if (!still_capture_result_received_.TimedWait(kMaxShutterLag)) {
+      LOGF(ERROR) << "Still capture result is not received";
       return false;
     }
-    close(client_buffers[0].release_fence);
   }
 
   if (!IsAspectRatioMatched(
           auto_framing_stream_manipulator_->active_crop_region(),
-          input_stream_->width, input_stream_->height, output_stream_.width,
-          output_stream_.height)) {
+          active_array_size_.width, active_array_size_.height,
+          client_blob_stream_.width, client_blob_stream_.height)) {
     LOGF(ERROR)
         << "Crop window aspect ratio doesn't match the output: "
         << auto_framing_stream_manipulator_->active_crop_region().ToString();
@@ -385,11 +520,10 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
   }
   if (framing_result != nullptr) {
     *framing_result = FramingResult{
-        .is_face_detected = AreSameRects(
-            auto_framing_stream_manipulator_->region_of_interest(),
-            NormalizeRect(test_stream_configs_[frame_index].face_rect,
-                          Size(input_stream_->width, input_stream_->height)),
-            /*threshold=*/0.05f),
+        .is_face_detected =
+            AreSameRects(auto_framing_stream_manipulator_->region_of_interest(),
+                         test_stream_configs_[frame_index].face_rect,
+                         /*threshold=*/0.05f),
         .is_crop_window_moving =
             last_crop_window_.has_value()
                 ? !AreSameRects(

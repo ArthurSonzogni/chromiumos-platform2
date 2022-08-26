@@ -11,7 +11,6 @@
 #include <base/files/file_util.h>
 
 #include "common/sw_privacy_switch_stream_manipulator.h"
-#include "cros-camera/constants.h"
 #include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 
@@ -88,10 +87,16 @@ void MaybeEnableAutoFramingStreamManipulator(
     StreamManipulator::RuntimeOptions* runtime_options) {
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
+    std::unique_ptr<JpegCompressor> jpeg_compressor =
+        JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+    std::unique_ptr<StillCaptureProcessor> still_capture_processor =
+        std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>(
-            runtime_options, feature_profile.GetConfigFilePath(
-                                 FeatureProfile::FeatureType::kAutoFraming)));
+            runtime_options,
+            feature_profile.GetConfigFilePath(
+                FeatureProfile::FeatureType::kAutoFraming),
+            std::move(still_capture_processor)));
     LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif

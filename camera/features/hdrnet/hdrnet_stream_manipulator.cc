@@ -403,6 +403,8 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 
       // TODO(jcliang): See if we need to use 10-bit YUV (i.e. with format
       // HAL_PIXEL_FORMAT_YCBCR_P010);
+      // TODO(kamesan): Reuse HDRnet stream if there are BLOB and still YUV with
+      // the same resolution.
       HdrNetStreamContext* context =
           CreateHdrNetStreamContext(s, HAL_PIXEL_FORMAT_YCbCr_420_888);
       switch (context->mode) {

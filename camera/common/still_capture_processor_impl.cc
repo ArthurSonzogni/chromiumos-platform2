@@ -470,6 +470,7 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     return;
   }
 
+  VLOGFID(1, frame_number) << "Producing JPEG";
   {
     ScopedMapping result_mapping(*context.client_requested_buffer.buffer);
     uint8_t* dst_start = result_mapping.plane(0).addr;

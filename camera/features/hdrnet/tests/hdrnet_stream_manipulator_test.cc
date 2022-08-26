@@ -29,7 +29,7 @@
 #pragma pop_macro("Bool")
 #include <hardware/camera3.h>
 
-#include "common/still_capture_processor.h"
+#include "common/test_support/fake_still_capture_processor.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_processor.h"
 #include "gpu/gpu_resources.h"
@@ -158,58 +158,6 @@ std::unique_ptr<HdrNetProcessor> CreateMockHdrNetProcessorInstance(
       static_info, task_runner);
 }
 
-class FakeStillCaptureProcessor : public StillCaptureProcessor {
- public:
-  FakeStillCaptureProcessor() = default;
-  ~FakeStillCaptureProcessor() override = default;
-
-  void Initialize(const camera3_stream_t* const still_capture_stream,
-                  CaptureResultCallback result_callback) override {
-    result_callback_ = std::move(result_callback);
-  }
-
-  void Reset() override {}
-
-  void QueuePendingOutputBuffer(
-      int frame_number,
-      camera3_stream_buffer_t output_buffer,
-      const camera_metadata_t* request_settings) override {
-    EXPECT_EQ(result_descriptor_.count(frame_number), 0);
-    result_descriptor_.insert({frame_number, ResultDescriptor()});
-  }
-
-  void QueuePendingAppsSegments(int frame_number,
-                                buffer_handle_t blob_buffer) override {
-    ASSERT_EQ(result_descriptor_.count(frame_number), 1);
-    result_descriptor_[frame_number].has_apps_segments = true;
-    MaybeProduceCaptureResult(frame_number);
-  }
-
-  void QueuePendingYuvImage(int frame_number,
-                            buffer_handle_t yuv_buffer) override {
-    ASSERT_EQ(result_descriptor_.count(frame_number), 1);
-    result_descriptor_[frame_number].has_yuv_buffer = true;
-    MaybeProduceCaptureResult(frame_number);
-  }
-
- private:
-  void MaybeProduceCaptureResult(int frame_number) {
-    if (result_descriptor_[frame_number].has_apps_segments &&
-        result_descriptor_[frame_number].has_yuv_buffer) {
-      result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
-          .frame_number = static_cast<uint32_t>(frame_number)}));
-    }
-  }
-
-  CaptureResultCallback result_callback_;
-
-  struct ResultDescriptor {
-    bool has_apps_segments = false;
-    bool has_yuv_buffer = false;
-  };
-  std::map<int, ResultDescriptor> result_descriptor_;
-};
-
 class HdrNetStreamManipulatorTest : public Test {
  protected:
   HdrNetStreamManipulatorTest()
@@ -234,7 +182,7 @@ class HdrNetStreamManipulatorTest : public Test {
     CHECK(gpu_resources_.Initialize());
     HdrNetConfig::Options test_options = {.hdrnet_enable = true};
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
-        base::FilePath(), std::make_unique<FakeStillCaptureProcessor>(),
+        base::FilePath(), std::make_unique<tests::FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(
         &gpu_resources_, nullptr,

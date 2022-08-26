@@ -20,6 +20,7 @@
 #include "common/camera_buffer_pool.h"
 #include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
+#include "common/still_capture_processor.h"
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
@@ -68,6 +69,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   AutoFramingStreamManipulator(
       RuntimeOptions* runtime_options,
       base::FilePath config_file_path,
+      std::unique_ptr<StillCaptureProcessor> still_capture_processor,
       std::optional<Options> options_override_for_testing = std::nullopt);
   ~AutoFramingStreamManipulator() override;
 
@@ -113,8 +115,14 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   bool SetUpPipelineOnThread(uint32_t target_aspect_ratio_x,
                              uint32_t target_aspect_ratio_y);
+  bool ProcessFullFrameOnThread(CaptureContext* ctx,
+                                camera3_stream_buffer_t* full_frame_buffer,
+                                uint32_t frame_number);
+  bool ProcessStillYuvOnThread(CaptureContext* ctx,
+                               camera3_stream_buffer_t* still_yuv_buffer,
+                               uint32_t frame_number);
+  void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);
-  void HandleFramingErrorOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();
   void UpdateOptionsOnThread(const base::Value& json_values);
   std::pair<State, State> StateTransitionOnThread();
@@ -143,9 +151,13 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   RuntimeOptions* runtime_options_;
 
+  std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
+  CaptureResultCallback result_callback_;
+
   // Determined by static camera metadata and fixed after Initialize().
   Size active_array_dimension_;
   Size full_frame_size_;
+  Size still_size_;
   Rect<float> full_frame_crop_;
   int partial_result_count_ = 0;
 
@@ -154,13 +166,17 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   base::ElapsedTimer state_transition_timer_;
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};
-  const camera3_stream_t* target_output_stream_ = nullptr;
+  const camera3_stream_t* blob_stream_ = nullptr;
+  std::unique_ptr<camera3_stream_t> still_yuv_stream_;
+  const camera3_stream_t* yuv_stream_for_blob_ = nullptr;
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
   int64_t last_timestamp_ = 0;
   int64_t timestamp_offset_ = 0;
 
   AutoFramingClient auto_framing_client_;
   std::unique_ptr<CameraBufferPool> full_frame_buffer_pool_;
+  std::unique_ptr<CameraBufferPool> still_yuv_buffer_pool_;
+  std::unique_ptr<CameraBufferPool> cropped_still_yuv_buffer_pool_;
 
   std::vector<Rect<float>> faces_;
   Rect<float> region_of_interest_ = {0.0f, 0.0f, 1.0f, 1.0f};

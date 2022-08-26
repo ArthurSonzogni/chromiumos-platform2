@@ -54,5 +54,8 @@ executable("hdrnet_stream_manipulator_test") {
   sources =
       [ "//camera/features/hdrnet/tests/hdrnet_stream_manipulator_test.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ "//camera/features/hdrnet" ]
+  deps = [
+    "//camera/common/test_support",
+    "//camera/features/hdrnet",
+  ]
 }

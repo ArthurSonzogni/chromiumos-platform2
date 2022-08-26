@@ -24,6 +24,7 @@
 #include <sys/types.h>
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "gpu/egl/egl_context.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/shared_image.h"
 
@@ -43,37 +44,46 @@ constexpr char kDetectionRateKey[] = "detection_rate";
 constexpr char kEnableDelayKey[] = "enable_delay";
 constexpr char kDisableDelayKey[] = "disable_delay";
 
-constexpr int32_t kRequiredFrameRate = 30;
-constexpr uint32_t kFramingBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
-                                         GRALLOC_USAGE_HW_TEXTURE |
-                                         GRALLOC_USAGE_SW_READ_OFTEN;
+constexpr int32_t kRequiredVideoFrameRate = 30;
+constexpr uint32_t kFullFrameBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
+                                           GRALLOC_USAGE_HW_TEXTURE |
+                                           GRALLOC_USAGE_SW_READ_OFTEN;
+#if USE_IPU6 || USE_IPU6EP
+// On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the camera
+// HAL to process the stream using the still pipe for higher quality output.
+constexpr uint32_t kStillYuvBufferUsage =
+    kFullFrameBufferUsage | GRALLOC_USAGE_PRIVATE_1;
+#else
+constexpr uint32_t kStillYuvBufferUsage = kFullFrameBufferUsage;
+#endif  // USE_IPU6 || USE_IPU6EP
 constexpr int kSyncWaitTimeoutMs = 300;
 
-// Find the largest stream resolution with full FOV and sufficient frame rate to
-// run auto-framing on.
-Size GetFullFrameResolution(const camera_metadata_t* static_info,
-                            const Size& active_array_size,
-                            std::optional<uint32_t> max_width,
-                            std::optional<uint32_t> max_height) {
+// Find the largest (video, still) stream resolutions with full FOV.
+std::pair<Size, Size> GetFullFrameResolutions(
+    const camera_metadata_t* static_info,
+    const Size& active_array_size,
+    std::optional<uint32_t> max_video_width,
+    std::optional<uint32_t> max_video_height) {
   auto stream_configs = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
   if (stream_configs.empty() || stream_configs.size() % 4 != 0) {
     LOGF(ERROR) << "Invalid ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS in "
                    "static metadata";
-    return Size();
+    return {};
   }
   auto frame_durations = GetRoMetadataAsSpan<int64_t>(
       static_info, ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS);
   if (frame_durations.empty() || frame_durations.size() % 4 != 0) {
     LOGF(ERROR) << "Invalid ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS in "
                    "static metadata";
-    return Size();
+    return {};
   }
 
-  auto is_frame_duration_ok = [&](int32_t format, int32_t width,
-                                  int32_t height) -> bool {
+  auto is_frame_duration_ok_for_video = [&](int32_t format, int32_t width,
+                                            int32_t height) -> bool {
     constexpr int64_t kRequiredFrameDurationNs =
-        (1'000'000'000LL + kRequiredFrameRate - 1) / kRequiredFrameRate;
+        (1'000'000'000LL + kRequiredVideoFrameRate - 1) /
+        kRequiredVideoFrameRate;
     for (size_t i = 0; i < frame_durations.size(); i += 4) {
       if (frame_durations[i] == format && frame_durations[i + 1] == width &&
           frame_durations[i + 2] == height) {
@@ -101,7 +111,7 @@ Size GetFullFrameResolution(const camera_metadata_t* static_info,
            std::abs(rhs_aspect_ratio - active_aspect_ratio);
   };
 
-  Size max_size;
+  Size max_video_size, max_still_size;
   for (size_t i = 0; i < stream_configs.size(); i += 4) {
     int32_t format = stream_configs[i];
     int32_t width = stream_configs[i + 1];
@@ -109,29 +119,28 @@ Size GetFullFrameResolution(const camera_metadata_t* static_info,
     int32_t direction = stream_configs[i + 3];
     Size size(base::checked_cast<uint32_t>(width),
               base::checked_cast<uint32_t>(height));
-    if (max_width.has_value() && size.width > *max_width) {
-      continue;
-    }
-    if (max_height.has_value() && size.height > *max_height) {
-      continue;
-    }
     if ((format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
          format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
-        direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT &&
-        is_frame_duration_ok(format, width, height) &&
-        is_larger_or_closer_to_native_aspect_ratio(size, max_size)) {
-      max_size = size;
+        direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT) {
+      if (is_frame_duration_ok_for_video(format, width, height) &&
+          is_larger_or_closer_to_native_aspect_ratio(size, max_video_size) &&
+          (!max_video_width.has_value() || size.width <= *max_video_width) &&
+          (!max_video_height.has_value() || size.height <= *max_video_height)) {
+        max_video_size = size;
+      }
+      if (is_larger_or_closer_to_native_aspect_ratio(size, max_still_size)) {
+        max_still_size = size;
+      }
     }
   }
-  return max_size;
+  return std::make_pair(max_video_size, max_still_size);
 }
 
 bool IsStreamBypassed(camera3_stream_t* stream) {
-  // Ignore input/bidirectional, non-YUV, and ZSL streams.
-  // TODO(kamesan): Handle blob stream.
-  return stream->stream_type != CAMERA3_STREAM_OUTPUT ||
+  return stream->stream_type == CAMERA3_STREAM_INPUT ||
          (stream->format != HAL_PIXEL_FORMAT_YCbCr_420_888 &&
-          stream->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) ||
+          stream->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
+          stream->format != HAL_PIXEL_FORMAT_BLOB) ||
          (stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
              GRALLOC_USAGE_HW_CAMERA_ZSL;
 }
@@ -224,21 +233,27 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
 struct AutoFramingStreamManipulator::CaptureContext {
   uint32_t num_pending_buffers = 0;
   bool metadata_received = false;
+  bool has_pending_blob = false;
   std::vector<camera3_stream_buffer_t> client_buffers;
   std::optional<CameraBufferPool::Buffer> full_frame_buffer;
+  std::optional<CameraBufferPool::Buffer> still_yuv_buffer;
+  std::optional<CameraBufferPool::Buffer> cropped_still_yuv_buffer;
   std::optional<int64_t> timestamp;
   std::optional<std::pair<State, State>> state_transition;
+  std::optional<Rect<float>> crop_region;
 };
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
     RuntimeOptions* runtime_options,
     base::FilePath config_file_path,
+    std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     std::optional<Options> options_override_for_testing)
     : config_(ReloadableConfigFile::Options{
           .default_config_file_path = std::move(config_file_path),
           .override_config_file_path =
               base::FilePath(kOverrideAutoFramingConfigFile)}),
       runtime_options_(runtime_options),
+      still_capture_processor_(std::move(still_capture_processor)),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
       thread_("AutoFramingThread") {
   DCHECK_NE(runtime_options_, nullptr);
@@ -342,6 +357,8 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     CaptureResultCallback result_callback) {
   DCHECK(thread_.IsCurrentThread());
 
+  result_callback_ = result_callback;
+
   std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ = partial_result_count.value_or(1);
@@ -359,15 +376,15 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     return false;
   }
 
-  full_frame_size_ = GetFullFrameResolution(
+  std::tie(full_frame_size_, still_size_) = GetFullFrameResolutions(
       static_info, active_array_dimension_, options_.max_video_width,
       options_.max_video_height);
-  if (!full_frame_size_.is_valid()) {
-    LOGF(ERROR) << "Cannot find a resolution to run auto-framing on";
+  if (!full_frame_size_.is_valid() || !still_size_.is_valid()) {
+    LOGF(ERROR) << "Cannot find suitable full video/still frame resolutions";
     return false;
   }
-  VLOGF(1) << "Full frame size for auto-framing: "
-           << full_frame_size_.ToString();
+  VLOGF(1) << "Full frame sizes: video=" << full_frame_size_.ToString()
+           << ", still=" << still_size_.ToString();
 
   full_frame_crop_ = NormalizeRect(
       GetCenteringFullCrop(active_array_dimension_, full_frame_size_.width,
@@ -393,27 +410,53 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
   std::vector<camera3_stream_t*> hal_streams;
+  Size target_size;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
       hal_streams.push_back(s);
       continue;
     }
+    if (s->format == HAL_PIXEL_FORMAT_BLOB) {
+      // Process the BLOB stream inplace.
+      hal_streams.push_back(s);
+      still_capture_processor_->Initialize(
+          s, base::BindPostTask(
+                 thread_.task_runner(),
+                 base::BindRepeating(&AutoFramingStreamManipulator::
+                                         ReturnStillCaptureResultOnThread,
+                                     base::Unretained(this))));
+      blob_stream_ = s;
+      // Maybe create a still YUV stream for generating higher quality BLOB.
+      if (still_size_.width > full_frame_size_.width ||
+          still_size_.height > full_frame_size_.height) {
+        DCHECK(!still_yuv_stream_);
+        still_yuv_stream_ = std::make_unique<camera3_stream_t>(camera3_stream_t{
+            .stream_type = CAMERA3_STREAM_OUTPUT,
+            .width = still_size_.width,
+            .height = still_size_.height,
+            .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
+            .usage = kStillYuvBufferUsage,
+        });
+        hal_streams.push_back(still_yuv_stream_.get());
+        yuv_stream_for_blob_ = still_yuv_stream_.get();
+      }
+    }
     // Choose the output stream of the largest resolution for matching the crop
     // window aspect ratio. Prefer taller size since extending crop windows
     // horizontally (for other outputs) looks better.
-    if (!target_output_stream_ || s->height > target_output_stream_->height ||
-        (s->height == target_output_stream_->height &&
-         s->width > target_output_stream_->width)) {
-      target_output_stream_ = s;
+    if (!target_size.is_valid() || s->height > target_size.height ||
+        (s->height == target_size.height && s->width > target_size.width)) {
+      target_size = Size(s->width, s->height);
     }
   }
-  if (!target_output_stream_) {
+  if (!target_size.is_valid()) {
     LOGF(ERROR) << "No valid output stream found in stream config";
     return false;
   }
-  VLOGF(1) << "Target output stream: " << GetDebugString(target_output_stream_);
-  auto [target_aspect_ratio_x, target_aspect_ratio_y] = GetAspectRatio(
-      Size(target_output_stream_->width, target_output_stream_->height));
+  auto [target_aspect_ratio_x, target_aspect_ratio_y] =
+      GetAspectRatio(target_size);
+  VLOGF(1) << "Target output aspect ratio: " << target_aspect_ratio_x << ":"
+           << target_aspect_ratio_y;
 
   // Create a stream to run auto-framing on.
   full_frame_stream_ = camera3_stream_t{
@@ -421,10 +464,12 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
       .width = full_frame_size_.width,
       .height = full_frame_size_.height,
       .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
-      .usage = kFramingBufferUsage,
-      .max_buffers = 2,
+      .usage = kFullFrameBufferUsage,
   };
   hal_streams.push_back(&full_frame_stream_);
+  if (!yuv_stream_for_blob_) {
+    yuv_stream_for_blob_ = &full_frame_stream_;
+  }
 
   if (!stream_config->SetStreams(hal_streams)) {
     LOGF(ERROR) << "Failed to manipulate stream config";
@@ -457,21 +502,56 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     }
   }
 
-  if ((full_frame_stream_.usage & kFramingBufferUsage) != kFramingBufferUsage) {
-    LOGF(ERROR) << "Failed to negotiate buffer usage";
+  if ((full_frame_stream_.usage & kFullFrameBufferUsage) !=
+      kFullFrameBufferUsage) {
+    LOGF(ERROR) << "Failed to negotiate buffer usage on full frame stream";
     return false;
   }
-  // Allocate buffers for |full_frame_stream_|.
-  CameraBufferPool::Options buffer_pool_options = {
-      .width = full_frame_stream_.width,
-      .height = full_frame_stream_.height,
-      .format = base::checked_cast<uint32_t>(full_frame_stream_.format),
-      .usage = full_frame_stream_.usage,
-      .max_num_buffers =
-          base::strict_cast<size_t>(full_frame_stream_.max_buffers) + 1,
-  };
   full_frame_buffer_pool_ =
-      std::make_unique<CameraBufferPool>(buffer_pool_options);
+      std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
+          .width = full_frame_stream_.width,
+          .height = full_frame_stream_.height,
+          .format = base::checked_cast<uint32_t>(full_frame_stream_.format),
+          .usage = full_frame_stream_.usage,
+          .max_num_buffers =
+              base::strict_cast<size_t>(full_frame_stream_.max_buffers) + 1,
+      });
+
+  if (blob_stream_) {
+    cropped_still_yuv_buffer_pool_ =
+        std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
+            .width = blob_stream_->width,
+            .height = blob_stream_->height,
+            .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
+            .usage = GRALLOC_USAGE_HW_TEXTURE,
+            .max_num_buffers =
+                base::strict_cast<size_t>(blob_stream_->max_buffers) + 1,
+        });
+  }
+
+  if (still_yuv_stream_) {
+    if ((still_yuv_stream_->usage & kStillYuvBufferUsage) !=
+        kStillYuvBufferUsage) {
+      LOGF(ERROR) << "Failed to negotiate buffer usage on still YUV stream";
+      return false;
+    }
+    still_yuv_buffer_pool_ =
+        std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
+            .width = still_yuv_stream_->width,
+            .height = still_yuv_stream_->height,
+            .format = base::checked_cast<uint32_t>(still_yuv_stream_->format),
+            .usage = still_yuv_stream_->usage,
+            .max_num_buffers =
+                base::strict_cast<size_t>(still_yuv_stream_->max_buffers) + 1,
+        });
+  }
+
+  // Set max buffers for the client streams not passed down.
+  for (auto* s : client_streams_) {
+    if (!IsStreamBypassed(s) && s->format != HAL_PIXEL_FORMAT_BLOB) {
+      s->max_buffers = full_frame_stream_.max_buffers;
+    }
+  }
 
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
@@ -509,6 +589,10 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
+  // Ignore reprocessing requests.
+  if (request->GetInputBuffer()) {
+    return true;
+  }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
     return false;
@@ -520,26 +604,55 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   for (auto& b : request->GetOutputBuffers()) {
     if (IsStreamBypassed(b.stream)) {
       hal_buffers.push_back(b);
+    } else if (b.stream == blob_stream_) {
+      hal_buffers.push_back(b);
+      ctx->has_pending_blob = true;
+      const camera3_capture_request_t* locked_request =
+          request->LockForRequest();
+      still_capture_processor_->QueuePendingOutputBuffer(
+          request->frame_number(), b, locked_request->settings);
+      request->Unlock();
     } else {
       ctx->client_buffers.push_back(b);
     }
   }
-  // Add an output for auto-framing.
-  DCHECK_NE(full_frame_buffer_pool_, nullptr);
-  ctx->full_frame_buffer = full_frame_buffer_pool_->RequestBuffer();
-  if (!ctx->full_frame_buffer) {
-    LOGF(ERROR) << "Failed to allocate buffer for request "
-                << request->frame_number();
-    return false;
+
+  // Add full frame output.
+  if (!ctx->client_buffers.empty() ||
+      (ctx->has_pending_blob && !still_yuv_stream_)) {
+    DCHECK_NE(full_frame_buffer_pool_, nullptr);
+    ctx->full_frame_buffer = full_frame_buffer_pool_->RequestBuffer();
+    if (!ctx->full_frame_buffer) {
+      LOGF(ERROR) << "Failed to allocate full frame buffer for request "
+                  << request->frame_number();
+      return false;
+    }
+    hal_buffers.push_back(camera3_stream_buffer_t{
+        .stream = &full_frame_stream_,
+        .buffer = ctx->full_frame_buffer->handle(),
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
   }
-  camera3_stream_buffer_t full_frame_buffer = {
-      .stream = &full_frame_stream_,
-      .buffer = ctx->full_frame_buffer->handle(),
-      .status = CAMERA3_BUFFER_STATUS_OK,
-      .acquire_fence = -1,
-      .release_fence = -1,
-  };
-  hal_buffers.push_back(full_frame_buffer);
+
+  // Add still YUV output.
+  if (ctx->has_pending_blob && still_yuv_stream_) {
+    DCHECK_NE(still_yuv_buffer_pool_, nullptr);
+    ctx->still_yuv_buffer = still_yuv_buffer_pool_->RequestBuffer();
+    if (!ctx->still_yuv_buffer) {
+      LOGF(ERROR) << "Failed to allocate still YUV buffer for request "
+                  << request->frame_number();
+      return false;
+    }
+    hal_buffers.push_back(camera3_stream_buffer_t{
+        .stream = still_yuv_stream_.get(),
+        .buffer = ctx->still_yuv_buffer->handle(),
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
+  }
 
   request->SetOutputBuffers(hal_buffers);
   ctx->num_pending_buffers = request->num_output_buffers();
@@ -574,7 +687,8 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   ctx->metadata_received |= result->partial_result() == partial_result_count_;
 
   base::ScopedClosureRunner ctx_deleter;
-  if (ctx->num_pending_buffers == 0 && ctx->metadata_received) {
+  if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
+      !ctx->has_pending_blob) {
     ctx_deleter.ReplaceClosure(
         base::BindOnce(&AutoFramingStreamManipulator::RemoveCaptureContext,
                        base::Unretained(this), result->frame_number()));
@@ -603,108 +717,41 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     }
   }
 
-  camera3_stream_buffer_t full_frame_buffer = {};
-  auto hal_buffers = result->GetOutputBuffers();
-  auto it = std::find_if(hal_buffers.begin(), hal_buffers.end(), [&](auto& b) {
-    return b.stream == &full_frame_stream_;
-  });
-  if (it == hal_buffers.end()) {
-    return true;
-  }
-  full_frame_buffer = *it;
-
-  // Now we need to convert |full_frame_buffer| into |ctx->client_buffers|.
-  // Make sure we fill |result| properly when there's error.
-  base::ScopedClosureRunner framing_error_handler(
-      base::BindOnce(&AutoFramingStreamManipulator::HandleFramingErrorOnThread,
-                     base::Unretained(this), result));
-
-  if (full_frame_buffer.status != CAMERA3_BUFFER_STATUS_OK) {
-    VLOGF(1) << "Received buffer with error in result "
-             << result->frame_number();
-    return false;
-  }
-
-  if (!ctx->timestamp.has_value()) {
-    VLOGF(1) << "Sensor timestamp not found for result "
-             << result->frame_number() << "; using last timestamp plus 1";
-    ctx->timestamp = last_timestamp_ + 1;
-    last_timestamp_ = *ctx->timestamp;
-  }
-
-  if (full_frame_buffer.release_fence != -1) {
-    if (sync_wait(full_frame_buffer.release_fence, kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
-                  << result->frame_number();
-      return false;
-    }
-    close(full_frame_buffer.release_fence);
-    full_frame_buffer.release_fence = -1;
-  }
-
-  if (ctx->state_transition->first != State::kOff &&
-      ctx->state_transition->second == State::kOff) {
-    if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
-      LOGF(ERROR) << "Failed to reset crop window at result "
-                  << result->frame_number();
-      return false;
+  std::optional<camera3_stream_buffer_t> full_frame_buffer;
+  std::optional<camera3_stream_buffer_t> still_yuv_buffer;
+  std::optional<camera3_stream_buffer_t> blob_buffer;
+  for (auto& b : result->GetOutputBuffers()) {
+    if (b.stream == &full_frame_stream_) {
+      full_frame_buffer = b;
+    } else if (still_yuv_stream_ && b.stream == still_yuv_stream_.get()) {
+      still_yuv_buffer = b;
+    } else if (blob_stream_ && b.stream == &*blob_stream_) {
+      blob_buffer = b;
     }
   }
-  if (ctx->state_transition->first != State::kOn &&
-      ctx->state_transition->second == State::kOn) {
-    auto_framing_client_.ResetDetectionTimer();
-  }
-  if (!auto_framing_client_.ProcessFrame(
-          *ctx->timestamp, ctx->state_transition->second == State::kOn
-                               ? *full_frame_buffer.buffer
-                               : nullptr)) {
-    LOGF(ERROR) << "Failed to process frame " << result->frame_number();
-    return false;
-  }
-
-  std::optional<Rect<float>> roi =
-      auto_framing_client_.TakeNewRegionOfInterest();
-  if (roi) {
-    region_of_interest_ = *roi;
-  }
-
-  // Crop the full frame into client buffers.
-  active_crop_region_ = auto_framing_client_.GetCropWindow(*ctx->timestamp);
-  for (auto& b : ctx->client_buffers) {
-    Rect<float> crop_region;
-    if (options_.debug) {
-      // In debug mode we draw the crop area on the full frame instead.
-      crop_region =
-          NormalizeRect(GetCenteringFullCrop(full_frame_size_, b.stream->width,
-                                             b.stream->height),
-                        full_frame_size_);
-    } else {
-      crop_region = AdjustCropRectToTargetAspectRatio(
-          active_crop_region_,
-          static_cast<float>(full_frame_size_.height * b.stream->width) /
-              static_cast<float>(full_frame_size_.width * b.stream->height));
-    }
-    base::ScopedFD release_fence = CropBufferOnThread(
-        *full_frame_buffer.buffer,
-        base::ScopedFD(full_frame_buffer.release_fence), *b.buffer,
-        base::ScopedFD(b.acquire_fence), crop_region);
-    full_frame_buffer.release_fence = -1;
-    b.acquire_fence = -1;
-    b.release_fence = release_fence.release();
-  }
-
-  // Done framing.
-  framing_error_handler.ReplaceClosure(base::DoNothing());
 
   std::vector<camera3_stream_buffer_t> result_buffers;
   for (auto& b : result->GetOutputBuffers()) {
-    if (b.stream != &full_frame_stream_) {
+    if (IsStreamBypassed(b.stream)) {
       result_buffers.push_back(b);
     }
   }
-  for (auto& b : ctx->client_buffers) {
-    b.status = CAMERA3_BUFFER_STATUS_OK;
-    result_buffers.push_back(b);
+  if (full_frame_buffer) {
+    const bool ok = ProcessFullFrameOnThread(ctx, &*full_frame_buffer,
+                                             result->frame_number());
+    for (auto& b : ctx->client_buffers) {
+      b.status = ok ? CAMERA3_BUFFER_STATUS_OK : CAMERA3_BUFFER_STATUS_ERROR;
+      result_buffers.push_back(b);
+    }
+  }
+  if (still_yuv_buffer) {
+    // TODO(kamesan): Fail the capture result if processing fails.
+    CHECK(ProcessStillYuvOnThread(ctx, &*still_yuv_buffer,
+                                  result->frame_number()));
+  }
+  if (blob_buffer) {
+    still_capture_processor_->QueuePendingAppsSegments(result->frame_number(),
+                                                       *blob_buffer->buffer);
   }
   result->SetOutputBuffers(result_buffers);
 
@@ -718,13 +765,196 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   return true;
 }
 
+bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
+    CaptureContext* ctx,
+    camera3_stream_buffer_t* full_frame_buffer,
+    uint32_t frame_number) {
+  DCHECK(thread_.IsCurrentThread());
+  DCHECK_NE(ctx, nullptr);
+  DCHECK_NE(full_frame_buffer, nullptr);
+
+  if (full_frame_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
+    VLOGF(1) << "Received full frame buffer with error in result "
+             << frame_number;
+    return false;
+  }
+
+  if (!ctx->timestamp.has_value()) {
+    VLOGF(1) << "Sensor timestamp not found for result " << frame_number
+             << "; using last timestamp plus 1";
+    ctx->timestamp = last_timestamp_ + 1;
+    last_timestamp_ = *ctx->timestamp;
+  }
+
+  if (full_frame_buffer->release_fence != -1) {
+    if (sync_wait(full_frame_buffer->release_fence, kSyncWaitTimeoutMs) != 0) {
+      LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
+                  << frame_number;
+      return false;
+    }
+    close(full_frame_buffer->release_fence);
+    full_frame_buffer->release_fence = -1;
+  }
+
+  if (ctx->state_transition->first != State::kOff &&
+      ctx->state_transition->second == State::kOff) {
+    if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
+      LOGF(ERROR) << "Failed to reset crop window at result " << frame_number;
+      return false;
+    }
+  }
+  if (ctx->state_transition->first != State::kOn &&
+      ctx->state_transition->second == State::kOn) {
+    auto_framing_client_.ResetDetectionTimer();
+  }
+  if (!auto_framing_client_.ProcessFrame(
+          *ctx->timestamp, ctx->state_transition->second == State::kOn
+                               ? *full_frame_buffer->buffer
+                               : nullptr)) {
+    LOGF(ERROR) << "Failed to process frame " << frame_number;
+    return false;
+  }
+
+  std::optional<Rect<float>> roi =
+      auto_framing_client_.TakeNewRegionOfInterest();
+  if (roi) {
+    region_of_interest_ = *roi;
+  }
+
+  // Crop the full frame into client buffers.
+  ctx->crop_region = auto_framing_client_.GetCropWindow(*ctx->timestamp);
+  active_crop_region_ = *ctx->crop_region;
+  for (auto& b : ctx->client_buffers) {
+    Rect<float> adjusted_crop_region;
+    if (options_.debug) {
+      // In debug mode we draw the crop area on the full frame instead.
+      adjusted_crop_region =
+          NormalizeRect(GetCenteringFullCrop(full_frame_size_, b.stream->width,
+                                             b.stream->height),
+                        full_frame_size_);
+    } else {
+      adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
+          *ctx->crop_region,
+          static_cast<float>(full_frame_size_.height * b.stream->width) /
+              static_cast<float>(full_frame_size_.width * b.stream->height));
+    }
+    base::ScopedFD release_fence = CropBufferOnThread(
+        *full_frame_buffer->buffer, base::ScopedFD(), *b.buffer,
+        base::ScopedFD(b.acquire_fence), adjusted_crop_region);
+    b.acquire_fence = -1;
+    b.release_fence = release_fence.release();
+  }
+
+  // Crop the full frame into intermediate buffer for BLOB if an additional
+  // still YUV stream is not used.
+  if (ctx->has_pending_blob && !still_yuv_stream_) {
+    ctx->cropped_still_yuv_buffer =
+        cropped_still_yuv_buffer_pool_->RequestBuffer();
+    if (!ctx->cropped_still_yuv_buffer) {
+      LOGF(ERROR) << "Failed to allocate cropped still YUV buffer on result "
+                  << frame_number;
+      return false;
+    }
+    const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
+        *ctx->crop_region,
+        static_cast<float>(full_frame_size_.height * blob_stream_->width) /
+            static_cast<float>(full_frame_size_.width * blob_stream_->height));
+    base::ScopedFD release_fence =
+        CropBufferOnThread(*full_frame_buffer->buffer, base::ScopedFD(),
+                           *ctx->cropped_still_yuv_buffer->handle(),
+                           base::ScopedFD(), adjusted_crop_region);
+    if (sync_wait(release_fence.get(), kSyncWaitTimeoutMs) != 0) {
+      LOGF(ERROR) << "sync_wait() cropped buffer timed out on capture result "
+                  << frame_number;
+      return false;
+    }
+    still_capture_processor_->QueuePendingYuvImage(
+        frame_number, *ctx->cropped_still_yuv_buffer->handle());
+  }
+
+  ctx->full_frame_buffer = std::nullopt;
+  return true;
+}
+
+bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
+    CaptureContext* ctx,
+    camera3_stream_buffer_t* still_yuv_buffer,
+    uint32_t frame_number) {
+  DCHECK(thread_.IsCurrentThread());
+  DCHECK_NE(ctx, nullptr);
+  DCHECK_NE(still_yuv_buffer, nullptr);
+
+  if (still_yuv_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
+    VLOGF(1) << "Received still YUV buffer with error in result "
+             << frame_number;
+    return false;
+  }
+
+  // Use the latest crop region if we don't process full frame in this request
+  // (e.g. BLOB only requests).
+  if (!ctx->crop_region) {
+    ctx->crop_region = active_crop_region_;
+  }
+
+  ctx->cropped_still_yuv_buffer =
+      cropped_still_yuv_buffer_pool_->RequestBuffer();
+  if (!ctx->cropped_still_yuv_buffer) {
+    LOGF(ERROR) << "Failed to allocate cropped still YUV buffer on result "
+                << frame_number;
+    return false;
+  }
+  const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
+      *ctx->crop_region,
+      static_cast<float>(full_frame_size_.height * blob_stream_->width) /
+          static_cast<float>(full_frame_size_.width * blob_stream_->height));
+  base::ScopedFD release_fence =
+      CropBufferOnThread(*still_yuv_buffer->buffer,
+                         base::ScopedFD(still_yuv_buffer->release_fence),
+                         *ctx->cropped_still_yuv_buffer->handle(),
+                         base::ScopedFD(), adjusted_crop_region);
+  still_yuv_buffer->release_fence = -1;
+  if (sync_wait(release_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "sync_wait() cropped buffer timed out on capture result "
+                << frame_number;
+    return false;
+  }
+  still_capture_processor_->QueuePendingYuvImage(
+      frame_number, *ctx->cropped_still_yuv_buffer->handle());
+
+  ctx->still_yuv_buffer = std::nullopt;
+  return true;
+}
+
+void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
+    Camera3CaptureDescriptor result) {
+  DCHECK(thread_.IsCurrentThread());
+
+  if (VLOG_IS_ON(2)) {
+    VLOGFID(2, result.frame_number()) << "Still capture result:";
+    for (auto& b : result.GetOutputBuffers()) {
+      VLOGF(2) << "  " << GetDebugString(b.stream);
+    }
+  }
+
+  CaptureContext* ctx = GetCaptureContext(result.frame_number());
+  CHECK_NE(ctx, nullptr);
+  ctx->cropped_still_yuv_buffer = std::nullopt;
+  ctx->has_pending_blob = false;
+  if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
+      !ctx->has_pending_blob) {
+    RemoveCaptureContext(result.frame_number());
+  }
+
+  result_callback_.Run(std::move(result));
+}
+
 bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
   DCHECK(thread_.IsCurrentThread());
 
   if (!auto_framing_client_.SetUp(AutoFramingClient::Options{
           .input_size = full_frame_size_,
-          .frame_rate = static_cast<double>(kRequiredFrameRate),
+          .frame_rate = static_cast<double>(kRequiredVideoFrameRate),
           .target_aspect_ratio_x = target_aspect_ratio_x,
           .target_aspect_ratio_y = target_aspect_ratio_y,
           .detection_rate = options_.detection_rate,
@@ -824,39 +1054,22 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
   }
 }
 
-void AutoFramingStreamManipulator::HandleFramingErrorOnThread(
-    Camera3CaptureDescriptor* result) {
-  DCHECK(thread_.IsCurrentThread());
-
-  CaptureContext* ctx = GetCaptureContext(result->frame_number());
-  if (!ctx) {
-    return;
-  }
-
-  std::vector<camera3_stream_buffer_t> result_buffers;
-  for (auto& b : result->GetOutputBuffers()) {
-    if (b.stream != &full_frame_stream_) {
-      result_buffers.push_back(b);
-    }
-  }
-  for (auto& b : ctx->client_buffers) {
-    b.status = CAMERA3_BUFFER_STATUS_ERROR;
-    result_buffers.push_back(b);
-  }
-  result->SetOutputBuffers(result_buffers);
-}
-
 void AutoFramingStreamManipulator::ResetOnThread() {
   DCHECK(thread_.IsCurrentThread());
 
   auto_framing_client_.TearDown();
+  still_capture_processor_->Reset();
 
   state_ = State::kOff;
   client_streams_.clear();
   full_frame_stream_ = {};
-  target_output_stream_ = nullptr;
+  blob_stream_ = nullptr;
+  still_yuv_stream_.reset();
+  yuv_stream_for_blob_ = nullptr;
   capture_contexts_.clear();
   full_frame_buffer_pool_.reset();
+  still_yuv_buffer_pool_.reset();
+  cropped_still_yuv_buffer_pool_.reset();
   last_timestamp_ = 0;
   timestamp_offset_ = 0;
 

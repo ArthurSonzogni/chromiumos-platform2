@@ -21,6 +21,8 @@
 #pragma pop_macro("None")
 #pragma pop_macro("Bool")
 
+#include "common/test_support/fake_still_capture_processor.h"
+
 namespace cros::tests {
 
 namespace {
@@ -39,14 +41,6 @@ std::optional<TimeInterval> Contains(const std::vector<TimeInterval>& intervals,
   return std::nullopt;
 }
 
-Rect<uint32_t> ToAbsoluteCrop(const Size& size, const Rect<float>& crop) {
-  return Rect<uint32_t>(
-      static_cast<uint32_t>(static_cast<float>(size.width) * crop.left),
-      static_cast<uint32_t>(static_cast<float>(size.height) * crop.top),
-      static_cast<uint32_t>(static_cast<float>(size.width) * crop.width),
-      static_cast<uint32_t>(static_cast<float>(size.height) * crop.height));
-}
-
 }  // namespace
 
 base::FilePath g_test_image_path;
@@ -55,21 +49,32 @@ base::TimeDelta g_duration = base::Seconds(4);
 base::TimeDelta g_max_detection_time = base::Seconds(0.3);
 base::TimeDelta g_max_transition_time = base::Seconds(1.1);
 
+struct TestSizes {
+  Size full_yuv;
+  Size full_blob;
+  Size client_yuv;
+  Size client_blob;
+};
+
 void TestAutoFramingPipeline(
-    const Size& full_size,
-    const Size& stream_size,
+    const TestSizes& sizes,
     const std::vector<TestStreamConfig>& test_stream_configs,
     const AutoFramingStreamManipulator::Options& options,
     std::vector<TimeInterval> enabled_intervals,
+    std::optional<base::TimeDelta> still_shot_period,
     std::vector<TimeInterval> expected_face_detected_intervals,
     std::vector<TimeInterval> expected_crop_fixed_intervals,
     std::vector<TimeInterval> expected_crop_full_intervals) {
   const base::TimeDelta frame_duration = base::Seconds(1.0f / g_frame_rate);
+  const int num_still_shots =
+      still_shot_period.has_value() ? g_duration / *still_shot_period : 0;
 
   AutoFramingTestFixture fixture;
   ASSERT_TRUE(fixture.LoadTestImage(g_test_image_path));
-  ASSERT_TRUE(fixture.SetUp(full_size, stream_size, g_frame_rate,
-                            test_stream_configs, options));
+  ASSERT_TRUE(fixture.SetUp(sizes.full_yuv, sizes.full_blob, sizes.client_yuv,
+                            sizes.client_blob, g_frame_rate,
+                            test_stream_configs, options,
+                            std::make_unique<FakeStillCaptureProcessor>()));
 
   std::map<TimeInterval, bool> face_detected;
   for (auto& interval : expected_face_detected_intervals) {
@@ -79,16 +84,26 @@ void TestAutoFramingPipeline(
   base::ElapsedTimer timer;
   base::TimeDelta frame_timestamp = base::Seconds(0);
   base::TimeDelta frame_start = base::Seconds(0);
+  base::TimeDelta last_still_shot = base::Seconds(0);
   for (auto& cfg : test_stream_configs) {
     while (frame_timestamp <= frame_start + cfg.duration) {
       frame_timestamp = timer.Elapsed();
       const bool is_enabled =
           Contains(enabled_intervals, frame_timestamp).has_value();
+      bool is_still_shot = false;
+      if (still_shot_period.has_value() &&
+          frame_timestamp - last_still_shot >= *still_shot_period) {
+        is_still_shot = true;
+        last_still_shot = frame_timestamp;
+      }
       FramingResult result;
       ASSERT_TRUE(fixture.ProcessFrame(frame_timestamp.InNanoseconds(),
-                                       is_enabled, &result));
+                                       is_enabled, /*has_yuv=*/!is_still_shot,
+                                       /*has_blob=*/is_still_shot, &result));
       const base::TimeDelta process_time = timer.Elapsed() - frame_timestamp;
-      EXPECT_LT(process_time, frame_duration);
+      if (!is_still_shot) {
+        EXPECT_LT(process_time, frame_duration);
+      }
 
       const auto fd_interval =
           Contains(expected_face_detected_intervals, frame_timestamp);
@@ -118,36 +133,58 @@ void TestAutoFramingPipeline(
         << "Face not detected in (" << interval.first << ", " << interval.second
         << ")";
   }
+
+  // Wait for the last still capture.
+  if (num_still_shots > 0) {
+    constexpr base::TimeDelta kMaxShutterLag = base::Seconds(1);
+    base::PlatformThread::Sleep(kMaxShutterLag);
+  }
 }
 
-class AutoFramingTest
-    : public ::testing::TestWithParam<std::tuple<Size, Size>> {};
+class AutoFramingTest : public ::testing::TestWithParam<TestSizes> {};
 
-INSTANTIATE_TEST_SUITE_P(
-    ,
-    AutoFramingTest,
-    ::testing::Combine(
-        ::testing::Values(Size(1920, 1080), Size(2592, 1944)),
-        ::testing::Values(Size(320, 240), Size(1280, 720), Size(1920, 1080))),
-    [](const testing::TestParamInfo<std::tuple<Size, Size>>& info) {
-      return std::get<0>(info.param).ToString() + "_" +
-             std::get<1>(info.param).ToString();
-    });
+INSTANTIATE_TEST_SUITE_P(,
+                         AutoFramingTest,
+                         ::testing::Values(
+                             TestSizes{
+                                 .full_yuv = Size(1600, 1200),
+                                 .full_blob = Size(2560, 1920),
+                                 .client_yuv = Size(1600, 1200),
+                                 .client_blob = Size(2560, 1920),
+                             },
+                             TestSizes{
+                                 .full_yuv = Size(1600, 1200),
+                                 .full_blob = Size(2560, 1920),
+                                 .client_yuv = Size(960, 540),
+                                 .client_blob = Size(1280, 720),
+                             },
+                             TestSizes{
+                                 .full_yuv = Size(1920, 1080),
+                                 .full_blob = Size(1920, 1080),
+                                 .client_yuv = Size(1920, 1080),
+                                 .client_blob = Size(1920, 1080),
+                             },
+                             TestSizes{
+                                 .full_yuv = Size(1920, 1080),
+                                 .full_blob = Size(1920, 1080),
+                                 .client_yuv = Size(960, 720),
+                                 .client_blob = Size(1280, 960),
+                             }));
 
 // Checks no-op when auto-framing is disabled.
 TEST_P(AutoFramingTest, Disabled) {
-  const auto& [full_size, stream_size] = GetParam();
+  const TestSizes& sizes = GetParam();
   const std::vector<TestStreamConfig> test_stream_configs = {
       {
           .duration = g_duration,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.4f, 0.12f, 0.2f)),
+          .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
       },
   };
   const AutoFramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
       .enable_delay = base::Seconds(0),
   };
+  const base::TimeDelta still_shot_period = base::Seconds(1);
   const std::vector<TimeInterval> expected_crop_fixed_intervals = {
       {base::Seconds(0), g_duration},
   };
@@ -155,8 +192,8 @@ TEST_P(AutoFramingTest, Disabled) {
       {base::Seconds(0), g_duration},
   };
 
-  TestAutoFramingPipeline(full_size, stream_size, test_stream_configs, options,
-                          /*enabled_intervals=*/{},
+  TestAutoFramingPipeline(sizes, test_stream_configs, options,
+                          /*enabled_intervals=*/{}, still_shot_period,
                           /*expected_face_detected_intervals=*/{},
                           expected_crop_fixed_intervals,
                           expected_crop_full_intervals);
@@ -164,12 +201,11 @@ TEST_P(AutoFramingTest, Disabled) {
 
 // Exercises one-shot framing for OFF->ON and ON->OFF transitions.
 TEST_P(AutoFramingTest, OneShotFraming) {
-  const auto& [full_size, stream_size] = GetParam();
+  const TestSizes& sizes = GetParam();
   const std::vector<TestStreamConfig> test_stream_configs = {
       {
           .duration = g_duration,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.4f, 0.12f, 0.2f)),
+          .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
       },
   };
   const AutoFramingStreamManipulator::Options options = {
@@ -201,26 +237,24 @@ TEST_P(AutoFramingTest, OneShotFraming) {
        g_duration},
   };
 
-  TestAutoFramingPipeline(full_size, stream_size, test_stream_configs, options,
-                          enabled_intervals, expected_face_detected_intervals,
-                          expected_crop_fixed_intervals,
-                          expected_crop_full_intervals);
+  TestAutoFramingPipeline(
+      sizes, test_stream_configs, options, enabled_intervals,
+      /*still_shot_period=*/std::nullopt, expected_face_detected_intervals,
+      expected_crop_fixed_intervals, expected_crop_full_intervals);
 }
 
 // Exercises one-shot framing when toggling the switch ON->OFF->ON quickly to
 // reframe to another face position.
 TEST_P(AutoFramingTest, OneShotReframing) {
-  const auto& [full_size, stream_size] = GetParam();
+  const TestSizes& sizes = GetParam();
   const std::vector<TestStreamConfig> test_stream_configs = {
       {
           .duration = g_duration / 2,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.4f, 0.12f, 0.2f)),
+          .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
       },
       {
           .duration = g_duration / 2,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.7f, 0.7f, 0.144f, 0.24f)),
+          .face_rect = Rect<float>(0.7f, 0.7f, 0.144f, 0.24f),
       },
   };
   const AutoFramingStreamManipulator::Options options = {
@@ -251,21 +285,20 @@ TEST_P(AutoFramingTest, OneShotReframing) {
       {base::Seconds(0), options.enable_delay},
   };
 
-  TestAutoFramingPipeline(full_size, stream_size, test_stream_configs, options,
-                          enabled_intervals, expected_face_detected_intervals,
-                          expected_crop_fixed_intervals,
-                          expected_crop_full_intervals);
+  TestAutoFramingPipeline(
+      sizes, test_stream_configs, options, enabled_intervals,
+      /*still_shot_period=*/std::nullopt, expected_face_detected_intervals,
+      expected_crop_fixed_intervals, expected_crop_full_intervals);
 }
 
 // Exercises continuous framing when the scene contains a face at fixed
 // position.
 TEST_P(AutoFramingTest, ContinuousFramingInStillScene) {
-  const auto& [full_size, stream_size] = GetParam();
+  const TestSizes& sizes = GetParam();
   const std::vector<TestStreamConfig> test_stream_configs = {
       {
           .duration = g_duration,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.3f, 0.45f, 0.06f, 0.1f)),
+          .face_rect = Rect<float>(0.3f, 0.45f, 0.06f, 0.1f),
       },
   };
   const AutoFramingStreamManipulator::Options options = {
@@ -282,35 +315,32 @@ TEST_P(AutoFramingTest, ContinuousFramingInStillScene) {
       {g_max_detection_time + g_max_transition_time, g_duration},
   };
 
-  TestAutoFramingPipeline(full_size, stream_size, test_stream_configs, options,
-                          enabled_intervals, expected_face_detected_intervals,
-                          expected_crop_fixed_intervals,
-                          /*expected_crop_full_intervals=*/{});
+  TestAutoFramingPipeline(
+      sizes, test_stream_configs, options, enabled_intervals,
+      /*still_shot_period=*/std::nullopt, expected_face_detected_intervals,
+      expected_crop_fixed_intervals,
+      /*expected_crop_full_intervals=*/{});
 }
 
 // Exercises continuous framing when the scene contains a face moving around.
 TEST_P(AutoFramingTest, ContinuousFramingInMovingScene) {
-  const auto& [full_size, stream_size] = GetParam();
+  const TestSizes& sizes = GetParam();
   const std::vector<TestStreamConfig> test_stream_configs = {
       {
           .duration = g_duration / 4,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.3f, 0.45f, 0.06f, 0.1f)),
+          .face_rect = Rect<float>(0.3f, 0.45f, 0.06f, 0.1f),
       },
       {
           .duration = g_duration / 4,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.6f, 0.65f, 0.08f, 0.13f)),
+          .face_rect = Rect<float>(0.6f, 0.65f, 0.08f, 0.13f),
       },
       {
           .duration = g_duration / 4,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.5f, 0.65f, 0.09f, 0.15f)),
+          .face_rect = Rect<float>(0.5f, 0.65f, 0.09f, 0.15f),
       },
       {
           .duration = g_duration / 4,
-          .face_rect =
-              ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.6f, 0.07f, 0.12f)),
+          .face_rect = Rect<float>(0.4f, 0.6f, 0.07f, 0.12f),
       },
   };
   const AutoFramingStreamManipulator::Options options = {
@@ -327,20 +357,51 @@ TEST_P(AutoFramingTest, ContinuousFramingInMovingScene) {
       {g_duration / 4 * 3, g_duration / 4 * 3 + g_max_detection_time},
   };
 
-  TestAutoFramingPipeline(full_size, stream_size, test_stream_configs, options,
-                          enabled_intervals, expected_face_detected_intervals,
-                          /*expected_crop_fixed_intervals=*/{},
-                          /*expected_crop_full_intervals=*/{});
+  TestAutoFramingPipeline(
+      sizes, test_stream_configs, options, enabled_intervals,
+      /*still_shot_period=*/std::nullopt, expected_face_detected_intervals,
+      /*expected_crop_fixed_intervals=*/{},
+      /*expected_crop_full_intervals=*/{});
 }
 
+// Exercises taking pictures.
+TEST_P(AutoFramingTest, StillCapture) {
+  const TestSizes& sizes = GetParam();
+  const std::vector<TestStreamConfig> test_stream_configs = {
+      {
+          .duration = g_duration,
+          .face_rect = Rect<float>(0.3f, 0.45f, 0.06f, 0.1f),
+      },
+  };
+  const AutoFramingStreamManipulator::Options options = {
+      .detection_rate = g_frame_rate,
+      .enable_delay = base::Seconds(0),
+  };
+  const std::vector<TimeInterval> enabled_intervals = {
+      {base::Seconds(0), g_duration},
+  };
+  const base::TimeDelta still_shot_period = base::Seconds(1);
+  const std::vector<TimeInterval> expected_face_detected_intervals = {
+      {base::Seconds(0), g_max_detection_time},
+  };
+  const std::vector<TimeInterval> expected_crop_fixed_intervals = {
+      {g_max_detection_time + g_max_transition_time, g_duration},
+  };
+
+  TestAutoFramingPipeline(
+      sizes, test_stream_configs, options, enabled_intervals, still_shot_period,
+      expected_face_detected_intervals, expected_crop_fixed_intervals,
+      /*expected_crop_full_intervals=*/{});
+}
+
+// Exercises out-of-order timestamps for external cameras.
 TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
   const base::TimeDelta frame_duration = base::Seconds(1.0f / g_frame_rate);
   const Size full_size(1280, 720);
-  const Size stream_size(320, 240);
+  const Size client_size(320, 240);
   const TestStreamConfig test_stream_config = {
       .duration = g_duration,
-      .face_rect =
-          ToAbsoluteCrop(full_size, Rect<float>(0.4f, 0.4f, 0.12f, 0.2f)),
+      .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
   };
   const AutoFramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
@@ -348,8 +409,9 @@ TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
 
   AutoFramingTestFixture fixture;
   ASSERT_TRUE(fixture.LoadTestImage(g_test_image_path));
-  ASSERT_TRUE(fixture.SetUp(full_size, stream_size, g_frame_rate,
-                            {test_stream_config}, options));
+  ASSERT_TRUE(fixture.SetUp(full_size, full_size, client_size, client_size,
+                            g_frame_rate, {test_stream_config}, options,
+                            std::make_unique<FakeStillCaptureProcessor>()));
 
   base::ElapsedTimer timer;
   int frame_count = 0;
@@ -359,6 +421,8 @@ TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
     ++frame_count;
     timestamp += frame_count % 10 == 0 ? -step : step;
     ASSERT_TRUE(fixture.ProcessFrame(timestamp, /*is_enabled=*/true,
+                                     /*has_yuv=*/true,
+                                     /*has_blob=*/false,
                                      /*framing_result=*/nullptr));
     base::PlatformThread::Sleep(frame_duration);
   }
