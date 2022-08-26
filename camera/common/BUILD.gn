@@ -112,6 +112,8 @@ source_set("mojo_base") {
   sources = [
     "//camera/common/camera_metrics_impl.cc",
     "//camera/common/camera_mojo_channel_manager_impl.cc",
+    "//camera/common/sensor_hal_client_impl.cc",
+    "//camera/common/sensor_reader.cc",
   ]
   public_configs = [
     ":pkg_config_mojo_base",
@@ -130,21 +132,6 @@ source_set("camera_algo_bridge") {
   sources = [
     "//camera/common/camera_algorithm_bridge_impl.cc",
     "//camera/common/camera_algorithm_callback_ops_impl.cc",
-  ]
-  public_configs = [ ":target_defaults" ]
-
-  # -fPIC needed by the libcros_camera.so shared library.
-  configs += [ "//common-mk:pic" ]
-  public_deps = [
-    ":base",
-    ":mojo_base",
-  ]
-}
-
-source_set("sensor_client") {
-  sources = [
-    "//camera/common/sensor_hal_client_impl.cc",
-    "//camera/common/sensor_reader.cc",
   ]
   public_configs = [ ":target_defaults" ]
 
@@ -242,7 +229,7 @@ source_set("stream_manipulator") {
     ":mojo_base",
   ]
 
-  deps = []
+  deps = [ ":jpeg" ]
   if (use.camera_feature_face_detection) {
     deps += [ "//camera/features/face_detection" ]
   }
@@ -270,7 +257,6 @@ shared_library("libcros_camera") {
     ":face_detection",
     ":jpeg",
     ":mojo_base",
-    ":sensor_client",
     ":stream_manipulator",
     ":v4l2_device",
     "//camera/features",
