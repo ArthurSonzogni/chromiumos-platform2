@@ -136,8 +136,6 @@ class RealUserSession : public UserSession {
                              const brillo::SecureBlob& fnek) override;
 
  private:
-  ~RealUserSession() override;
-
   // Computes a public derivative from |fek| and |fnek|, and store its hash for
   // u2fd to fetch.
   void PrepareWebAuthnSecretHash(const brillo::SecureBlob& fek,

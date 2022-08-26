@@ -5,14 +5,18 @@
 #include "cryptohome/user_session/user_session_map.h"
 
 #include <string>
+#include <utility>
 
+#include <base/check.h>
 #include <base/memory/scoped_refptr.h>
 
 namespace cryptohome {
 
 bool UserSessionMap::Add(const std::string& account_id,
-                         scoped_refptr<UserSession> session) {
-  auto [unused_iter, was_inserted] = storage_.insert({account_id, session});
+                         std::unique_ptr<UserSession> session) {
+  DCHECK(session);
+  auto [unused_iter, was_inserted] =
+      storage_.insert({account_id, std::move(session)});
   return was_inserted;
 }
 
@@ -20,12 +24,12 @@ bool UserSessionMap::Remove(const std::string& account_id) {
   return storage_.erase(account_id) != 0;
 }
 
-scoped_refptr<UserSession> UserSessionMap::Find(const std::string& account_id) {
+UserSession* UserSessionMap::Find(const std::string& account_id) {
   auto iter = storage_.find(account_id);
   if (iter == storage_.end()) {
     return nullptr;
   }
-  return iter->second;
+  return iter->second.get();
 }
 
 }  // namespace cryptohome

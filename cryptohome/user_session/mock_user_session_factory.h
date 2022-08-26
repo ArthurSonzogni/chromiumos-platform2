@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/ref_counted.h>
-
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
 
@@ -20,7 +18,7 @@ class MockUserSessionFactory : public UserSessionFactory {
   MockUserSessionFactory() = default;
   ~MockUserSessionFactory() override = default;
 
-  MOCK_METHOD(scoped_refptr<UserSession>,
+  MOCK_METHOD(std::unique_ptr<UserSession>,
               New,
               (const std::string&, bool, bool),
               (override));

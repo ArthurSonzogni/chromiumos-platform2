@@ -8,9 +8,8 @@
 #include <stddef.h>
 
 #include <map>
+#include <memory>
 #include <string>
-
-#include <base/memory/scoped_refptr.h>
 
 #include "cryptohome/user_session/user_session.h"
 
@@ -22,7 +21,7 @@ class UserSessionMap final {
  private:
   // Declared here in the beginning to allow referring to the storage's
   // `iterator` in the public section.
-  using Storage = std::map<std::string, scoped_refptr<UserSession>>;
+  using Storage = std::map<std::string, std::unique_ptr<UserSession>>;
 
  public:
   using iterator = Storage::iterator;
@@ -41,14 +40,14 @@ class UserSessionMap final {
 
   // Adds the session for the given user. Returns false if the user already has
   // a session.
-  bool Add(const std::string& account_id, scoped_refptr<UserSession> session);
+  bool Add(const std::string& account_id, std::unique_ptr<UserSession> session);
   // Removes the session for the given user. Returns false if there was no
   // session for the user.
   bool Remove(const std::string& account_id);
   // Returns a session for the given user, or null if there's none.
   // TODO(b/243846478): Add a const version after getting rid of ref-counting in
   // `UserSession`.
-  scoped_refptr<UserSession> Find(const std::string& account_id);
+  UserSession* Find(const std::string& account_id);
 
  private:
   Storage storage_;

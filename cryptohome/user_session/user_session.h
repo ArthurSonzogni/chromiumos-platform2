@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/ref_counted.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
@@ -26,9 +25,10 @@
 
 namespace cryptohome {
 
-class UserSession : public base::RefCountedThreadSafe<UserSession> {
+class UserSession {
  public:
   UserSession() = default;
+  virtual ~UserSession() = default;
 
   // Disallow Copy/Move/Assign
   UserSession(const UserSession&) = delete;
@@ -119,10 +119,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // label (stored in RealUserSession::key_data_).
   virtual void RemoveCredentialVerifierForKeyLabel(
       const std::string& key_label) = 0;
-
- protected:
-  friend class base::RefCountedThreadSafe<UserSession>;
-  virtual ~UserSession() = default;
 };
 
 }  // namespace cryptohome

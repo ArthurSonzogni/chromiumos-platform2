@@ -19,7 +19,6 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
-#include <base/test/test_future.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>

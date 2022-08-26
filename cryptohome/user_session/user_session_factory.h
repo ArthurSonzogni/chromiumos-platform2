@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/ref_counted.h>
-
 #include "cryptohome/user_session/user_session.h"
 
 namespace cryptohome {
@@ -19,9 +17,9 @@ class UserSessionFactory {
   UserSessionFactory() = default;
   virtual ~UserSessionFactory() = default;
 
-  virtual scoped_refptr<UserSession> New(const std::string& username,
-                                         bool legacy_mount,
-                                         bool bind_mount_downloads) = 0;
+  virtual std::unique_ptr<UserSession> New(const std::string& username,
+                                           bool legacy_mount,
+                                           bool bind_mount_downloads) = 0;
 };
 
 }  // namespace cryptohome

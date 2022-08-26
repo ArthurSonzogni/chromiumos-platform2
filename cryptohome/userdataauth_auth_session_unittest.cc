@@ -252,14 +252,13 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 namespace {
 
 TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountGuest()).WillOnce(Invoke([]() {
     return OkStatus<CryptohomeMountError>();
   }));
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   // Expect auth and existing cryptohome-dir only for non-ephemeral
   ExpectAuth(kUsername2, brillo::SecureBlob(kPassword2));
@@ -318,10 +317,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   // User authed and exists.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -330,6 +326,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountEphemeral(kUsername))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
 
@@ -367,15 +365,14 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // But a different regular mount succeeds.
-  scoped_refptr<MockUserSession> user_session3 =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _, _))
-      .WillOnce(Return(user_session3));
+  auto user_session3 = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session3, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session3, MountVault(kUsername3, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session3))));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername3, brillo::SecureBlob(kPassword3));
@@ -445,10 +442,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -457,6 +451,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
@@ -491,10 +487,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
       auth_session_manager_->CreateAuthSession(kUsername, 0);
 
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -503,6 +496,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
@@ -543,15 +538,14 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
       auth_session_manager_->CreateAuthSession(kUsername, 0);
 
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillRepeatedly(Return(true));
 
@@ -590,10 +584,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
       auth_session_manager_->CreateAuthSession(kUsername, 0);
 
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -602,6 +593,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
@@ -642,10 +635,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
       auth_session_manager_->CreateAuthSession(kUsername, 0);
 
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+  auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -654,6 +644,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
 
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
@@ -679,10 +671,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   // Second mount should also succeed.
   AuthSession* auth_session2 =
       auth_session_manager_->CreateAuthSession(kUsername2, 0);
-  scoped_refptr<MockUserSession> user_session2 =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _, _))
-      .WillOnce(Return(user_session2));
+  auto user_session2 = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -691,6 +680,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   EXPECT_CALL(*user_session2, SetCredentials(auth_session2));
   EXPECT_CALL(*user_session2, MountVault(kUsername2, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session2))));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername2)))
       .WillRepeatedly(Return(true));
 
@@ -766,10 +757,10 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
 
   // Set UserSession expectations for upcoming mount.
   // Auth and prepare.
-  scoped_refptr<MockUserSession> user_session =
-      base::MakeRefCounted<MockUserSession>();
+  auto owned_user_session = std::make_unique<MockUserSession>();
+  auto* const user_session = owned_user_session.get();
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
-      .WillOnce(Return(user_session));
+      .WillOnce(Return(ByMove(std::move(owned_user_session))));
   EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));

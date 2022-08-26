@@ -214,15 +214,18 @@ class UserDataAuthTestBase : public ::testing::Test {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
   }
 
-  void CreateSession() {
-    session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+  // Create a new session and store an unowned pointer to it in |session_|.
+  std::unique_ptr<NiceMock<MockUserSession>> CreateSessionAndRememberPtr() {
+    auto owned_session = std::make_unique<NiceMock<MockUserSession>>();
+    session_ = owned_session.get();
+    return owned_session;
   }
 
   // This is a utility function for tests to setup a mount for a particular
   // user. After calling this function, |session_| is available for use.
   void SetupMount(const std::string& username) {
-    CreateSession();
-    EXPECT_TRUE(userdataauth_->AddUserSessionForTest(username, session_));
+    EXPECT_TRUE(userdataauth_->AddUserSessionForTest(
+        username, CreateSessionAndRememberPtr()));
   }
 
   // This is a helper function that compute the obfuscated username with the
@@ -335,8 +338,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   // internal use.
   scoped_refptr<NiceMock<dbus::MockBus>> mount_bus_;
 
-  // Session object
-  scoped_refptr<NiceMock<MockUserSession>> session_;
+  // Unowned pointer to the session object.
+  NiceMock<MockUserSession>* session_ = nullptr;
 
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into
@@ -382,19 +385,17 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     }));
   }
 
-  void CreatePkcs11TokenInSession(
-      scoped_refptr<NiceMock<MockUserSession>> session) {
+  void CreatePkcs11TokenInSession(NiceMock<MockUserSession>* session) {
     auto token = std::make_unique<FakePkcs11Token>();
     ON_CALL(*session, GetPkcs11Token()).WillByDefault(Return(token.get()));
     tokens_.insert(std::move(token));
   }
 
-  void InitializePkcs11TokenInSession(
-      scoped_refptr<NiceMock<MockUserSession>> session) {
+  void InitializePkcs11TokenInSession(NiceMock<MockUserSession>* session) {
     // PKCS#11 will initialization works only when it's mounted.
     ON_CALL(*session, IsActive()).WillByDefault(Return(true));
 
-    userdataauth_->InitializePkcs11(session.get());
+    userdataauth_->InitializePkcs11(session);
   }
 
   void TearDown() override {
@@ -905,13 +906,15 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
-  scoped_refptr<NiceMock<MockUserSession>> session1 =
-      base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1, session1));
+  auto owned_session1 = std::make_unique<NiceMock<MockUserSession>>();
+  auto* const session1 = owned_session1.get();
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1,
+                                                   std::move(owned_session1)));
 
-  scoped_refptr<NiceMock<MockUserSession>> session2 =
-      base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2, session2));
+  auto owned_session2 = std::make_unique<NiceMock<MockUserSession>>();
+  auto* const session2 = owned_session2.get();
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2,
+                                                   std::move(owned_session2)));
 
   InSequence sequence;
   EXPECT_CALL(*session2, IsActive()).WillOnce(Return(true));
@@ -1046,7 +1049,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(false));
 
-  userdataauth_->InitializePkcs11(session_.get());
+  userdataauth_->InitializePkcs11(session_);
 
   // Still not ready because already unmounted
   EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
@@ -1060,14 +1063,16 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
-  scoped_refptr<NiceMock<MockUserSession>> session1 =
-      base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1, session1));
+  auto owned_session1 = std::make_unique<NiceMock<MockUserSession>>();
+  auto* const session1 = owned_session1.get();
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername1,
+                                                   std::move(owned_session1)));
   CreatePkcs11TokenInSession(session1);
 
-  scoped_refptr<NiceMock<MockUserSession>> session2 =
-      base::MakeRefCounted<NiceMock<MockUserSession>>();
-  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2, session2));
+  auto owned_session2 = std::make_unique<NiceMock<MockUserSession>>();
+  auto* const session2 = owned_session2.get();
+  EXPECT_TRUE(userdataauth_->AddUserSessionForTest(kUsername2,
+                                                   std::move(owned_session2)));
   CreatePkcs11TokenInSession(session2);
 
   // Both are uninitialized.
@@ -1688,7 +1693,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 
   // Test case for multiple mounts
-  scoped_refptr<NiceMock<MockUserSession>> prev_session = session_;
+  NiceMock<MockUserSession>* const prev_session = session_;
   SetupMount("bar@gmail.com");
 
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
@@ -2124,9 +2129,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   InitializeUserDataAuth();
 
-  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(kUser, _, _))
-      .WillOnce(Return(session_));
+      .WillOnce(Return(ByMove(CreateSessionAndRememberPtr())));
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
@@ -2236,9 +2240,8 @@ TEST_F(UserDataAuthTest,
 
   InitializeUserDataAuth();
 
-  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(kUser, _, _))
-      .WillOnce(Return(session_));
+      .WillOnce(Return(ByMove(CreateSessionAndRememberPtr())));
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
       .WillRepeatedly(Return(true));
@@ -2582,11 +2585,11 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
       .WillOnce(Invoke([this](const std::string&, bool, bool) {
-        CreateSession();
-        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
+        auto session = CreateSessionAndRememberPtr();
+        EXPECT_CALL(*session, MountGuest()).WillOnce(Invoke([]() {
           return OkStatus<CryptohomeMountError>();
         }));
-        return session_;
+        return session;
       }));
 
   bool called = false;
@@ -2647,14 +2650,14 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
       .WillOnce(Invoke([this](const std::string& username, bool, bool) {
-        CreateSession();
-        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([this]() {
+        auto session = CreateSessionAndRememberPtr();
+        EXPECT_CALL(*session, MountGuest()).WillOnce(Invoke([this]() {
           // |this| is captured for kErrorLocationPlaceholder.
           return MakeStatus<CryptohomeMountError>(
               kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
               MOUNT_ERROR_FATAL, std::nullopt);
         }));
-        return session_;
+        return session;
       }));
 
   bool called = false;
@@ -2858,9 +2861,8 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
   mount_req_->mutable_account()->set_account_id(kUser);
   mount_req_->set_public_mount(true);
 
-  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(kUser, _, _))
-      .WillOnce(Return(session_));
+      .WillOnce(Return(ByMove(CreateSessionAndRememberPtr())));
 
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));

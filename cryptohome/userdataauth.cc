@@ -737,9 +737,9 @@ bool UserDataAuth::IsMounted(const std::string& username,
     }
   } else {
     // A username is specified, check the associated mount object.
-    scoped_refptr<UserSession> session = sessions_.Find(username);
+    const UserSession* session = sessions_.Find(username);
 
-    if (session.get()) {
+    if (session) {
       is_mounted = session->IsActive();
       is_ephemeral = is_mounted && session->IsEphemeral();
     }
@@ -757,12 +757,12 @@ bool UserDataAuth::RemoveAllMounts() {
 
   bool success = true;
   while (!sessions_.empty()) {
-    auto [username, session] = *sessions_.begin();
-    if (!sessions_.Remove(username)) {
-      NOTREACHED() << "Failed to remove user session on unmount";
-    }
+    const auto& [username, session] = *sessions_.begin();
     if (session->IsActive() && !session->Unmount()) {
       success = false;
+    }
+    if (!sessions_.Remove(username)) {
+      NOTREACHED() << "Failed to remove user session on unmount";
     }
   }
   return success;
@@ -1131,8 +1131,8 @@ void UserDataAuth::Pkcs11RestoreTpmTokens() {
   AssertOnMountThread();
 
   for (auto& session_pair : sessions_) {
-    scoped_refptr<UserSession> session = session_pair.second;
-    InitializePkcs11(session.get());
+    UserSession* session = session_pair.second.get();
+    InitializePkcs11(session);
   }
 }
 
@@ -1282,19 +1282,20 @@ void UserDataAuth::EnsureBootLockboxFinalized() {
   }
 }
 
-scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
-    const std::string& username) {
+UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
   // This method touches the |sessions_| object so it needs to run on
   // |mount_thread_|
   AssertOnMountThread();
-  scoped_refptr<UserSession> session = sessions_.Find(username);
+  UserSession* session = sessions_.Find(username);
   if (!session) {
     // We don't have a mount associated with |username|, let's create one.
     EnsureBootLockboxFinalized();
-    session = user_session_factory_->New(username, legacy_mount_,
-                                         bind_mount_downloads_);
-    if (!sessions_.Add(username, session)) {
+    std::unique_ptr<UserSession> owned_session = user_session_factory_->New(
+        username, legacy_mount_, bind_mount_downloads_);
+    session = owned_session.get();
+    if (!sessions_.Add(username, std::move(owned_session))) {
       NOTREACHED() << "Failed to add created user session";
+      return nullptr;
     }
   }
   return session;
@@ -1329,8 +1330,7 @@ void UserDataAuth::MountGuest(
   CryptohomeStatus status;
 
   // Create a ref-counted guest mount for async use and then throw it away.
-  scoped_refptr<UserSession> guest_session =
-      GetOrCreateUserSession(guest_user_);
+  UserSession* const guest_session = GetOrCreateUserSession(guest_user_);
   if (!guest_session) {
     LOG(ERROR) << "Failed to create guest session.";
     // This should not happen.
@@ -1992,8 +1992,8 @@ void UserDataAuth::ContinueMountWithCredentials(
       brillo::cryptohome::home::SanitizeUserName(account_id));
 
   // Check if the guest user is mounted, if it is, we can't proceed.
-  scoped_refptr<UserSession> guest_session = sessions_.Find(guest_user_);
-  bool guest_mounted = guest_session.get() && guest_session->IsActive();
+  UserSession* const guest_session = sessions_.Find(guest_user_);
+  bool guest_mounted = guest_session && guest_session->IsActive();
   // TODO(wad,ellyjones) Change this behavior to return failure even
   // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
   if (guest_mounted && !guest_session->Unmount()) {
@@ -2009,7 +2009,7 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  scoped_refptr<UserSession> user_session = GetOrCreateUserSession(account_id);
+  UserSession* const user_session = GetOrCreateUserSession(account_id);
 
   if (!user_session) {
     LOG(ERROR) << "Could not initialize user session.";
@@ -2172,7 +2172,7 @@ void UserDataAuth::ContinueMountWithCredentials(
   keyset_management_->ResetLECredentials(*credentials, obfuscated_username);
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 
-  InitializePkcs11(user_session.get());
+  InitializePkcs11(user_session);
 
   // Step to record metrics for a user's existing VaultKeysets.
   std::string obfuscated = SanitizeUserName(account_id);
@@ -2315,7 +2315,7 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> UserDataAuth::LoadVaultKeyset(
 MountStatus UserDataAuth::AttemptUserMount(
     const Credentials& credentials,
     const UserDataAuth::MountArgs& mount_args,
-    scoped_refptr<UserSession> user_session) {
+    UserSession* user_session) {
   if (user_session->IsActive()) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionActiveInAttemptUserMountCred),
@@ -2403,7 +2403,9 @@ MountStatus UserDataAuth::AttemptUserMount(
 MountStatus UserDataAuth::AttemptUserMount(
     AuthSession* auth_session,
     const UserDataAuth::MountArgs& mount_args,
-    scoped_refptr<UserSession> user_session) {
+    UserSession* user_session) {
+  DCHECK(user_session);
+
   if (user_session->IsActive()) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionActiveInAttemptUserMountAS),
@@ -2624,7 +2626,7 @@ void UserDataAuth::CheckKey(
   const std::string obfuscated_username = credentials.GetObfuscatedUsername();
 
   bool found_valid_credentials = false;
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
+  UserSession* const session = sessions_.Find(account_id);
   if (session) {
     if (session->VerifyCredentials(credentials)) {
       found_valid_credentials = true;
@@ -2705,7 +2707,7 @@ void UserDataAuth::CheckKey(
 
 bool UserDataAuth::PrepareWebAuthnSecret(const std::string& account_id,
                                          const VaultKeyset& vk) {
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
+  UserSession* const session = sessions_.Find(account_id);
   if (!session) {
     return false;
   }
@@ -2788,11 +2790,11 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
 
   std::optional<KeyData> found_session_key_data;
   for (const auto& session_pair : sessions_) {
-    const scoped_refptr<UserSession>& session = session_pair.second;
-    if (session->VerifyUser(obfuscated_username) &&
+    const UserSession& session = *session_pair.second;
+    if (session.VerifyUser(obfuscated_username) &&
         KeyMatchesForLightweightChallengeResponseCheck(
-            authorization.key().data(), *session)) {
-      found_session_key_data = session->key_data();
+            authorization.key().data(), session)) {
+      found_session_key_data = session.key_data();
       break;
     }
   }
@@ -3013,8 +3015,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
       keyset_management_->RemoveKeyset(credentials, request.key().data());
 
   if (result.ok()) {
-    scoped_refptr<UserSession> session = sessions_.Find(account_id);
-    if (session.get()) {
+    UserSession* const session = sessions_.Find(account_id);
+    if (session) {
       session->RemoveCredentialVerifierForKeyLabel(
           request.key().data().label());
     }
@@ -3213,8 +3215,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
     return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
   }
 
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
-  if (session.get()) {
+  UserSession* const session = sessions_.Find(account_id);
+  if (session) {
     session->SetCredentials(credentials);
   }
 
@@ -3270,8 +3272,8 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
 
   std::string obfuscated = SanitizeUserName(account_id);
 
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
-  if (session.get() && session->IsActive()) {
+  const UserSession* const session = sessions_.Find(account_id);
+  if (session && session->IsActive()) {
     // Can't remove active user
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
@@ -3335,8 +3337,8 @@ void UserDataAuth::StartMigrateToDircrypto(
 
   std::string account_id = auth_session ? auth_session->username()
                                         : GetAccountId(request.account_id());
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
-  if (!session.get()) {
+  UserSession* const session = sessions_.Find(account_id);
+  if (!session) {
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to get session.";
     progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
     progress_callback.Run(progress);
@@ -3615,7 +3617,7 @@ user_data_auth::GetWebAuthnSecretReply UserDataAuth::GetWebAuthnSecret(
     return reply;
   }
 
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
+  UserSession* const session = sessions_.Find(account_id);
   std::unique_ptr<brillo::SecureBlob> secret;
   if (session) {
     secret = session->GetWebAuthnSecret();
@@ -3648,7 +3650,7 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
     return reply;
   }
 
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
+  const UserSession* const session = sessions_.Find(account_id);
   brillo::SecureBlob secret_hash;
   if (session) {
     secret_hash = session->GetWebAuthnSecretHash();
@@ -3700,7 +3702,7 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
     return reply;
   }
 
-  scoped_refptr<UserSession> session = sessions_.Find(account_id);
+  UserSession* const session = sessions_.Find(account_id);
   std::unique_ptr<brillo::SecureBlob> secret;
   if (session) {
     secret = session->GetHibernateSecret();
@@ -3791,13 +3793,13 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
   bool success = true;
   for (const auto& session_pair : sessions_) {
-    scoped_refptr<UserSession> session = session_pair.second;
+    const UserSession& session = *session_pair.second;
     const std::string obfuscated_username =
         SanitizeUserName(session_pair.first);
     // Inactive session is not current and ephemerals should not have ts since
     // they do not affect disk space use and do not participate in disk
     // cleaning.
-    if (!session->IsActive() || session->IsEphemeral()) {
+    if (!session.IsActive() || session.IsEphemeral()) {
       continue;
     }
     success &= user_activity_timestamp_manager_->UpdateTimestamp(
@@ -3946,8 +3948,7 @@ void UserDataAuth::StartAuthSession(
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::HandleAddCredentialForEphemeralVault(
     AuthorizationRequest request, const AuthSession* auth_session) {
-  scoped_refptr<UserSession> session =
-      GetOrCreateUserSession(auth_session->username());
+  UserSession* const session = GetOrCreateUserSession(auth_session->username());
   // Check the user is already mounted and the session is ephemeral.
   if (!session->IsActive()) {
     LOG(ERROR) << "AddCredential failed as ephemeral user is not mounted: "
@@ -4026,7 +4027,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     AuthSession* auth_session, bool override_existing_credential_verifier) {
   DCHECK(auth_session);
 
-  scoped_refptr<UserSession> session = sessions_.Find(auth_session->username());
+  UserSession* const session = sessions_.Find(auth_session->username());
   // Ensure valid session.
   if (!session) {
     LOG(WARNING) << "SetCredential failed as user session does not exist";
@@ -4248,14 +4249,14 @@ std::string UserDataAuth::SanitizedUserNameForSession(
   return auth_session->obfuscated_username();
 }
 
-CryptohomeStatusOr<scoped_refptr<UserSession>>
-UserDataAuth::GetMountableUserSession(AuthSession* auth_session) {
+CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(
+    AuthSession* auth_session) {
   AssertOnMountThread();
 
   const std::string& obfuscated_username = auth_session->obfuscated_username();
 
   // Check no guest is mounted.
-  scoped_refptr<UserSession> guest_session = sessions_.Find(guest_user_);
+  UserSession* const guest_session = sessions_.Find(guest_user_);
   if (guest_session && guest_session->IsActive()) {
     LOG(ERROR) << "Can not mount non-anonymous while guest session is active.";
     return MakeStatus<CryptohomeError>(
@@ -4265,8 +4266,7 @@ UserDataAuth::GetMountableUserSession(AuthSession* auth_session) {
   }
 
   // Check the user is not already mounted.
-  scoped_refptr<UserSession> session =
-      GetOrCreateUserSession(auth_session->username());
+  UserSession* const session = GetOrCreateUserSession(auth_session->username());
   if (session->IsActive()) {
     LOG(ERROR) << "User is already mounted: " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
@@ -4302,7 +4302,7 @@ void UserDataAuth::PreMountHook(const std::string& obfuscated_username) {
   }
 }
 
-void UserDataAuth::PostMountHook(scoped_refptr<UserSession> user_session,
+void UserDataAuth::PostMountHook(UserSession* user_session,
                                  const MountStatus& status) {
   AssertOnMountThread();
 
@@ -4311,7 +4311,7 @@ void UserDataAuth::PostMountHook(scoped_refptr<UserSession> user_session,
     return;
   }
   LOG(INFO) << "Mount succeeded.";
-  InitializePkcs11(user_session.get());
+  InitializePkcs11(user_session);
 }
 
 EncryptedContainerType UserDataAuth::DbusEncryptionTypeToContainerType(
@@ -4444,7 +4444,7 @@ CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
-  scoped_refptr<UserSession> session = GetOrCreateUserSession(guest_user_);
+  UserSession* const session = GetOrCreateUserSession(guest_user_);
 
   LOG(INFO) << "Started mounting for guest";
   ReportTimerStart(kMountGuestExTimer);
@@ -4487,7 +4487,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
                    kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault))
         .Wrap(std::move(auth_session_status).status());
   }
-  CryptohomeStatusOr<scoped_refptr<UserSession>> session_status =
+  CryptohomeStatusOr<UserSession*> session_status =
       GetMountableUserSession(auth_session_status.value());
   if (!session_status.ok()) {
     return MakeStatus<CryptohomeError>(
@@ -4545,7 +4545,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
             CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   }
 
-  CryptohomeStatusOr<scoped_refptr<UserSession>> session_status =
+  CryptohomeStatusOr<UserSession*> session_status =
       GetMountableUserSession(auth_session_status.value());
   if (!session_status.ok()) {
     return MakeStatus<CryptohomeError>(

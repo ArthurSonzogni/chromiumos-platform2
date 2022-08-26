@@ -6,6 +6,7 @@
 
 #include "cryptohome/user_session/real_user_session.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -102,7 +103,7 @@ class RealUserSessionTest : public ::testing::Test {
           return std::make_unique<FakePkcs11Token>();
         }));
 
-    session_ = base::MakeRefCounted<RealUserSession>(
+    session_ = std::make_unique<RealUserSession>(
         kUser0, homedirs_.get(), keyset_management_.get(),
         user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
   }
@@ -131,7 +132,7 @@ class RealUserSessionTest : public ::testing::Test {
   std::unique_ptr<UserOldestActivityTimestampManager>
       user_activity_timestamp_manager_;
   std::unique_ptr<HomeDirs> homedirs_;
-  scoped_refptr<RealUserSession> session_;
+  std::unique_ptr<RealUserSession> session_;
   // TODO(dlunev): Replace with real mount when FakePlatform is mature enough
   // to support it mock-less.
   scoped_refptr<MockMount> mount_;
@@ -334,7 +335,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
   };
 
   for (const auto& test_case : test_cases) {
-    auto local_session = base::MakeRefCounted<RealUserSession>(
+    RealUserSession local_session(
         test_case.user, homedirs_.get(), keyset_management_.get(),
         user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
     if (test_case.ok) {
@@ -344,7 +345,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
     }
 
     PreparePolicy(test_case.is_enterprise, test_case.owner);
-    MountStatus status = local_session->MountEphemeral(test_case.user);
+    MountStatus status = local_session.MountEphemeral(test_case.user);
     ASSERT_EQ(status.ok(), test_case.ok) << "Test case: " << test_case.name;
     if (!test_case.ok) {
       ASSERT_EQ(status->mount_error(), test_case.expected_result)
@@ -455,13 +456,12 @@ class RealUserSessionReAuthTest : public ::testing::Test {
 
 TEST_F(RealUserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
-  scoped_refptr<RealUserSession> session =
-      base::MakeRefCounted<RealUserSession>("username", nullptr, nullptr,
-                                            nullptr, nullptr, nullptr);
-  session->SetCredentials(credentials);
+  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
+  session.SetCredentials(credentials);
 
-  EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername()));
-  EXPECT_FALSE(session->VerifyUser("other"));
+  EXPECT_TRUE(session.VerifyUser(credentials.GetObfuscatedUsername()));
+  EXPECT_FALSE(session.VerifyUser("other"));
 }
 
 TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
@@ -470,36 +470,30 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_3("username2", SecureBlob("password2"));
 
   {
-    scoped_refptr<RealUserSession> session =
-        base::MakeRefCounted<RealUserSession>(credentials_1.username(), nullptr,
-                                              nullptr, nullptr, nullptr,
-                                              nullptr);
-    session->SetCredentials(credentials_1);
-    EXPECT_TRUE(session->VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session->VerifyCredentials(credentials_2));
-    EXPECT_FALSE(session->VerifyCredentials(credentials_3));
+    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.SetCredentials(credentials_1);
+    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_3));
   }
 
   {
-    scoped_refptr<RealUserSession> session =
-        base::MakeRefCounted<RealUserSession>(credentials_2.username(), nullptr,
-                                              nullptr, nullptr, nullptr,
-                                              nullptr);
-    session->SetCredentials(credentials_2);
-    EXPECT_FALSE(session->VerifyCredentials(credentials_1));
-    EXPECT_TRUE(session->VerifyCredentials(credentials_2));
-    EXPECT_FALSE(session->VerifyCredentials(credentials_3));
+    RealUserSession session(credentials_2.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.SetCredentials(credentials_2);
+    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
+    EXPECT_TRUE(session.VerifyCredentials(credentials_2));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_3));
   }
 
   {
-    scoped_refptr<RealUserSession> session =
-        base::MakeRefCounted<RealUserSession>(credentials_3.username(), nullptr,
-                                              nullptr, nullptr, nullptr,
-                                              nullptr);
-    session->SetCredentials(credentials_3);
-    EXPECT_FALSE(session->VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session->VerifyCredentials(credentials_2));
-    EXPECT_TRUE(session->VerifyCredentials(credentials_3));
+    RealUserSession session(credentials_3.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.SetCredentials(credentials_3);
+    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
+    EXPECT_TRUE(session.VerifyCredentials(credentials_3));
   }
 }
 
@@ -515,25 +509,23 @@ TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
   credentials_2.set_key_data(key_data2);
 
   {
-    scoped_refptr<RealUserSession> session =
-        base::MakeRefCounted<RealUserSession>(credentials_1.username(), nullptr,
-                                              nullptr, nullptr, nullptr,
-                                              nullptr);
-    session->SetCredentials(credentials_1);
-    EXPECT_TRUE(session->VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session->VerifyCredentials(credentials_2));
+    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.SetCredentials(credentials_1);
+    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
 
     // Removing another label that is not the same as this session was set with.
-    session->RemoveCredentialVerifierForKeyLabel(
+    session.RemoveCredentialVerifierForKeyLabel(
         credentials_2.key_data().label());
     // Verification should still work.
-    EXPECT_TRUE(session->VerifyCredentials(credentials_1));
+    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
 
     // Removing the credential label set in this user session.
-    session->RemoveCredentialVerifierForKeyLabel(
+    session.RemoveCredentialVerifierForKeyLabel(
         credentials_1.key_data().label());
     // Verification should not work.
-    EXPECT_FALSE(session->VerifyCredentials(credentials_1));
+    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
   }
 }
 

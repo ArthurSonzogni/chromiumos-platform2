@@ -9,8 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/memory/ref_counted.h>
-
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
@@ -40,10 +38,10 @@ class RealUserSessionFactory : public UserSessionFactory {
 
   ~RealUserSessionFactory() override = default;
 
-  scoped_refptr<UserSession> New(const std::string& username,
-                                 bool legacy_mount,
-                                 bool bind_mount_downloads) override {
-    return base::MakeRefCounted<RealUserSession>(
+  std::unique_ptr<UserSession> New(const std::string& username,
+                                   bool legacy_mount,
+                                   bool bind_mount_downloads) override {
+    return std::make_unique<RealUserSession>(
         username, homedirs_, keyset_management_,
         user_activity_timestamp_manager_, pkcs11_token_factory_,
         mount_factory_->New(platform_, homedirs_, legacy_mount,

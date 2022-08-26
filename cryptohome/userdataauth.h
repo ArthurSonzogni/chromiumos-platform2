@@ -663,15 +663,14 @@ class UserDataAuth {
 
   // Retrieve the session associated with the given user, for testing purpose
   // only.
-  scoped_refptr<UserSession> FindUserSessionForTest(
-      const std::string& username) {
+  UserSession* FindUserSessionForTest(const std::string& username) {
     return sessions_.Find(username);
   }
 
   // Associate a particular session object |session| with the username
   // |username| for testing purpose
   bool AddUserSessionForTest(const std::string& username,
-                             scoped_refptr<UserSession> session) {
+                             std::unique_ptr<UserSession> session) {
     return sessions_.Add(username, std::move(session));
   }
 
@@ -807,12 +806,12 @@ class UserDataAuth {
   // Performs a single attempt to Mount a non-annonimous user.
   MountStatus AttemptUserMount(const Credentials& credentials,
                                const MountArgs& mount_args,
-                               scoped_refptr<UserSession> user_session);
+                               UserSession* user_session);
 
   // Performs a single attempt to Mount a non-annonimous user with AuthSession
   MountStatus AttemptUserMount(AuthSession* auth_session,
                                const MountArgs& mount_args,
-                               scoped_refptr<UserSession> user_session);
+                               UserSession* user_session);
 
   // Filters out active mounts from |mounts|, populating |active_mounts| set.
   // If |include_busy_mount| is false, then stale mounts with open files and
@@ -857,9 +856,8 @@ class UserDataAuth {
       bool is_ephemeral_mount_requested,
       bool has_create_request) const;
 
-  // Returns either and existing or a newly created UserSession, if not present.
-  scoped_refptr<UserSession> GetOrCreateUserSession(
-      const std::string& username);
+  // Returns either an existing or a newly created UserSession, if not present.
+  UserSession* GetOrCreateUserSession(const std::string& username);
 
   // Calling this method will mount the home directory for guest users.
   // This is usually called by DoMount(). Note that this method is asynchronous,
@@ -1075,7 +1073,7 @@ class UserDataAuth {
   // session is mountable if it is not already mounted, and the guest is not
   // mounted. If user session object doesn't exist, this method will create
   // one.
-  CryptohomeStatusOr<scoped_refptr<UserSession>> GetMountableUserSession(
+  CryptohomeStatusOr<UserSession*> GetMountableUserSession(
       AuthSession* auth_session);
 
   // Pre-mount hook specifies operations that need to be executed before doing
@@ -1086,8 +1084,7 @@ class UserDataAuth {
   // Post-mount hook specifies operations that need to be executed after doing
   // mount. Eventually those actions should be triggered outside of mount code.
   // Not applicable to guest user.
-  void PostMountHook(scoped_refptr<UserSession> user_session,
-                     const MountStatus& error);
+  void PostMountHook(UserSession* user_session, const MountStatus& error);
 
   // Converts the Dbus value for encryption type into internal representation.
   EncryptedContainerType DbusEncryptionTypeToContainerType(

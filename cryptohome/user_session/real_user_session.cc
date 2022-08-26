@@ -51,7 +51,7 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 RealUserSession::RealUserSession() {}
-RealUserSession::~RealUserSession() {}
+
 RealUserSession::RealUserSession(
     const std::string& username,
     HomeDirs* homedirs,
