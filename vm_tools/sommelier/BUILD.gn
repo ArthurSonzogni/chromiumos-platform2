@@ -75,7 +75,10 @@ sommelier_defines = [
 static_library("libgaming") {
   sources = [ "sommelier-gaming.cc" ]
   defines = gaming_defines
-  pkg_deps = [ "libevdev" ]
+  pkg_deps = [
+    "libevdev",
+    "pixman-1",
+  ]
   deps = [ ":sommelier-protocol" ]
 }
 
@@ -104,6 +107,7 @@ static_library("libsommelier") {
     "sommelier-viewporter.cc",
     "sommelier-window.cc",
     "sommelier-xdg-shell.cc",
+    "sommelier-xshape.cc",
     "sommelier.cc",
     "virtualization/virtgpu_channel.cc",
     "virtualization/virtwl_channel.cc",
@@ -138,10 +142,13 @@ if (use.test) {
   executable("sommelier_test") {
     sources = [ "sommelier_test.cc" ]
 
+    pkg_deps = [ "pixman-1" ]
+
     # gnlint: disable=GnLintCommonTesting
     libs = [
       "gmock",
       "gtest",
+      "pixman-1",
     ]
     defines = sommelier_defines
     deps = [ ":libsommelier" ]
@@ -151,6 +158,8 @@ if (use.test) {
 if (use.fuzzer) {
   executable("sommelier_wayland_fuzzer") {
     sources = [ "sommelier-wayland-fuzzer.cc" ]
+    pkg_deps = [ "pixman-1" ]
+    libs = [ "pixman-1" ]
 
     configs += [ "//common-mk/common_fuzzer" ]
 

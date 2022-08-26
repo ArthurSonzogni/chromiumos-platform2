@@ -138,6 +138,7 @@ libsommelier = static_library('sommelier',
     'sommelier-util.cc',
     'sommelier-viewporter.cc',
     'sommelier-xdg-shell.cc',
+    'sommelier-xshape.cc',
     'sommelier.cc',
     'sommelier-window.cc',
     'virtualization/virtwl_channel.cc',
@@ -180,6 +181,7 @@ if get_option('with_tests')
     dependencies: [
       dependency('gtest'),
       dependency('gmock'),
+      dependency('pixman-1')
     ],
     cpp_args: cpp_args + sommelier_defines,
     include_directories: includes,

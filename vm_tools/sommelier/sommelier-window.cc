@@ -37,6 +37,7 @@ sl_window::sl_window(struct sl_context* ctx,
       height(height),
       border_width(border_width) {
   wl_list_insert(&ctx->unpaired_windows, &link);
+  pixman_region32_init(&shape_rectangles);
 }
 
 sl_window::~sl_window() {
@@ -49,6 +50,7 @@ sl_window::~sl_window() {
   free(clazz);
   free(startup_id);
   wl_list_remove(&link);
+  pixman_region32_fini(&shape_rectangles);
 }
 
 void sl_configure_window(struct sl_window* window) {

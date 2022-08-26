@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_
 #define VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_
 
+#include <pixman.h>
 #include <wayland-server-core.h>
 #include <string>
 #include <xcb/xcb.h>
@@ -45,6 +46,7 @@ struct sl_window {
   xcb_window_t frame_id = XCB_WINDOW_NONE;
   uint32_t host_surface_id = 0;
   int unpaired = 1;
+  bool shaped = false;
   int x = 0;
   int y = 0;
   int width = 0;
@@ -81,6 +83,7 @@ struct sl_window {
   struct xdg_popup* xdg_popup = nullptr;
   struct zaura_surface* aura_surface = nullptr;
   struct sl_host_surface* paired_surface = nullptr;
+  struct pixman_region32 shape_rectangles;
   struct wl_list link = {};
 };
 

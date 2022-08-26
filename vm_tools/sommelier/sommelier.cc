@@ -5,6 +5,7 @@
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "sommelier-xshape.h"     // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -876,6 +877,11 @@ void sl_create_window(struct sl_context* ctx,
   values[0] = XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE;
   xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_EVENT_MASK,
                                values);
+
+  // Also enable shape events for this window to come in if the xshape
+  // flag has been enabled
+  if (ctx->enable_xshape)
+    xcb_shape_select_input(ctx->connection, id, 1);
 }
 
 static void sl_destroy_window(struct sl_window* window) {
@@ -2659,6 +2665,21 @@ static int sl_handle_x_connection_event(int fd, uint32_t mask, void* data) {
         sl_handle_xfixes_selection_notify(
             ctx, reinterpret_cast<xcb_xfixes_selection_notify_event_t*>(event));
         break;
+    }
+
+    // Xshape specific events extend the normal event numbers
+    // The first event id is retrieved when querying for xshape
+    // extension information. This can be used to determine
+    // if the event that is received is Xshape specific.
+    if (ctx->enable_xshape) {
+      uint8_t xshape_event_id =
+          event->response_type - ctx->xshape_extension->first_event;
+      switch (xshape_event_id) {
+        case XCB_SHAPE_NOTIFY:
+          sl_handle_shape_notify(
+              ctx, reinterpret_cast<xcb_shape_notify_event_t*>(event));
+          break;
+      }
     }
 
     free(event);
