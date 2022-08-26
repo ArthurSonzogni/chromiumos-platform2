@@ -267,7 +267,7 @@ impl Hiberlog {
                 Ok(v) => v,
                 Err(_) => continue,
             };
-            replay_line(&self.syslogger, s.to_string());
+            replay_line(&self.syslogger, "M", s.to_string());
         }
 
         self.reset();
@@ -365,9 +365,9 @@ pub fn replay_logs(push_resume_logs: bool, clear: bool) {
 /// Helper function to replay the suspend or resume log to the syslogger, and
 /// potentially zero out the log as well.
 fn replay_log(log_file: HiberlogFile, clear: bool) {
-    let name = match log_file {
-        HiberlogFile::Suspend => "suspend log",
-        HiberlogFile::Resume => "resume log",
+    let (name, prefix) = match log_file {
+        HiberlogFile::Suspend => ("suspend log", "S"),
+        HiberlogFile::Resume => ("resume log", "R"),
     };
 
     let mut opened_log = match open_log_file(log_file) {
@@ -378,7 +378,7 @@ fn replay_log(log_file: HiberlogFile, clear: bool) {
         }
     };
 
-    replay_log_file(&mut opened_log, name);
+    replay_log_file(&mut opened_log, prefix, name);
     if clear {
         if let Err(e) = clear_log_file(&mut opened_log) {
             warn!("Failed to clear {}: {}", name, e);
@@ -386,8 +386,8 @@ fn replay_log(log_file: HiberlogFile, clear: bool) {
     }
 }
 
-/// Replay a generic log file to the syslogger..
-fn replay_log_file(file: &mut dyn Read, name: &str) {
+/// Replay a generic log file to the syslogger.
+fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
     // Read the file until the first null byte is found, which signifies the end
     // of the log.
     let mut reader = BufReader::new(file);
@@ -413,7 +413,7 @@ fn replay_log_file(file: &mut dyn Read, name: &str) {
             Err(_) => continue,
         };
 
-        replay_line(&syslogger, line);
+        replay_line(&syslogger, prefix, line);
     }
 
     syslogger.log(
@@ -425,9 +425,9 @@ fn replay_log_file(file: &mut dyn Read, name: &str) {
 }
 
 /// Replay a single log line to the syslogger.
-fn replay_line(syslogger: &BasicLogger, line: String) {
+fn replay_line(syslogger: &BasicLogger, prefix: &str, line: String) {
     // The log lines are in kmsg format, like:
-    // <11>hiberman: [src/hiberman.rs:529] Hello 2004
+    // <11>hiberman: R [src/hiberman.rs:529] Hello 2004
     // Trim off the first colon, everything after is line contents.
     if line.is_empty() {
         return;
@@ -463,7 +463,7 @@ fn replay_line(syslogger: &BasicLogger, line: String) {
     let level = level_from_u8(facprio & 7);
     syslogger.log(
         &Record::builder()
-            .args(format_args!("{}", contents))
+            .args(format_args!("{} {}", prefix, contents))
             .level(level)
             .build(),
     );
