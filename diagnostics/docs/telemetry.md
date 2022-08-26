@@ -836,6 +836,34 @@ event --help`.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | lid_angle | uint16? | Angle between lid and base. |
+| sensors | array&lt;[Sensor](#Sensor)&gt;? | Information about the device's sensors. |
+
+##### Sensor
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| name | string? | The name of sensor. |
+| device_id | int32 | The ID of sensor. |
+| type | [Type](#Type) | The type of sensor. |
+| location | [Location](#Location) | The location of sensor. |
+
+##### Type
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | For mojo backward compatibility, should not be used. |
+| kAccel | Accelerometer. |
+| kLight | Light sensor. |
+| kGyro | Angular velocity sensor, also known as Gyro sensor. |
+| kAngle | Angle sensor. |
+| kGravity | Gravity sensor. |
+
+##### Location
+| Enum | Description |
+| ---- | ----------- |
+| kUnmappedEnumField | For mojo backward compatibility, should not be used. |
+| kUnknown | Unknown location. |
+| kBase | Base. |
+| kLid | Lid. |
+| kCamera | Camera. |
 
 
 ###  Storage

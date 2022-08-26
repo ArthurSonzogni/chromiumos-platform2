@@ -1636,11 +1636,59 @@ union SensorResult {
 
 // Sensor information and related metrics.
 //
-// NextMinVersion: 1, NextIndex: 1
+// NextMinVersion: 2, NextIndex: 2
 [Stable]
 struct SensorInfo {
   // Angle between lid and base.
   NullableUint16? lid_angle@0;
+  // Information about the device's sensors.
+  [MinVersion=1] array<Sensor>? sensors@1;
+};
+
+// Data of a sensor.
+//
+// NextMinVersion: 1, NextIndex: 4
+[Stable]
+struct Sensor {
+  // The name of sensor.
+  string? name@0;
+  // The ID of sensor.
+  int32 device_id@1;
+
+  // The supported sensor types.
+  //
+  // NextMinVersion: 1, NextIndex: 6
+  [Stable, Extensible]
+  enum Type {
+    // For mojo backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // Accelerometer.
+    kAccel = 1,
+    // Light sensor.
+    kLight = 2,
+    // Angular velocity sensor, also known as Gyro sensor.
+    kGyro = 3,
+    // Angle sensor.
+    kAngle = 4,
+    // Gravity sensor.
+    kGravity = 5,
+  };
+  Type type@2;
+
+  // The location of sensor.
+  //
+  // NextMinVersion: 1, NextIndex: 5
+  [Stable, Extensible]
+  enum Location {
+    // For mojo backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // Unknown location.
+    kUnknown = 1,
+    kBase = 2,
+    kLid = 3,
+    kCamera = 4,
+  };
+  Location location@3;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is
@@ -1651,8 +1699,8 @@ struct SensorInfo {
 // attempt to fetch that information, and size zero if cros_healthd did attempt
 // to fetch that information, but was unable to.
 //
-[Stable]
 // NextMinVersion: 6, NextIndex: 22
+[Stable]
 struct TelemetryInfo {
   // Information about the device's main battery. Only present when kBattery was
   // included in the categories input to ProbeTelemetryInfo.
