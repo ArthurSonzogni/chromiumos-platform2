@@ -807,7 +807,7 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
             << ", status: " << status;
 
     payload.AddData(out_response, response_size);
-    payload.AddStatusBytes((status >> 8) & 0xFF, status & 0xFF);
+    payload.AddStatusBytes(status & 0xFF, (status >> 8) & 0xFF);
     if (payload.MorePayloadIncoming()) {
       // Make the next transmit operation be a request for more APDU data
       info->apdu_ = payload.CreateGetMoreCommand(/* is_extended_apdu */ false,
