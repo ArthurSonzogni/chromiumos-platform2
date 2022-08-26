@@ -119,7 +119,7 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   ImageLoaderImpl impl_;
   std::unique_ptr<HelperProcessProxy> helper_process_proxy_;
   brillo::ProcessReaper process_reaper_;
-  base::CancelableClosure shutdown_callback_;
+  base::CancelableOnceClosure shutdown_callback_;
   org::chromium::ImageLoaderInterfaceAdaptor dbus_adaptor_{this};
 
   base::WeakPtrFactory<ImageLoader> weak_factory_{this};

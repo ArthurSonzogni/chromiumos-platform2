@@ -93,7 +93,7 @@ void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 
 void ImageLoader::PostponeShutdown() {
   shutdown_callback_.Reset(
-      base::BindRepeating(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
 }
