@@ -360,8 +360,8 @@ WiFi::WiFi(Manager* manager,
       ScopeLogger::kWiFi, base::Bind(&WiFi::OnWiFiDebugScopeChanged,
                                      weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  netlink_handler_ =
-      base::Bind(&WiFi::HandleNetlinkBroadcast, weak_ptr_factory_.GetWeakPtr());
+  netlink_handler_ = base::BindRepeating(&WiFi::HandleNetlinkBroadcast,
+                                         weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }

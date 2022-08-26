@@ -178,8 +178,8 @@ class NetlinkManagerTest : public Test {
   class MockHandlerNetlink {
    public:
     MockHandlerNetlink()
-        : on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
-                                         base::Unretained(this))) {}
+        : on_netlink_message_(base::BindRepeating(
+              &MockHandlerNetlink::OnNetlinkMessage, base::Unretained(this))) {}
     MockHandlerNetlink(const MockHandlerNetlink&) = delete;
     MockHandlerNetlink& operator=(const MockHandlerNetlink&) = delete;
 

@@ -101,7 +101,8 @@ class SHILL_EXPORT NetlinkManager {
     kTimeoutWaitingForResponse,
     kUnexpectedResponseType
   };
-  using NetlinkMessageHandler = base::Callback<void(const NetlinkMessage&)>;
+  using NetlinkMessageHandler =
+      base::RepeatingCallback<void(const NetlinkMessage&)>;
   using ControlNetlinkMessageHandler =
       base::Callback<void(const ControlNetlinkMessage&)>;
   using Nl80211MessageHandler = base::Callback<void(const Nl80211Message&)>;
