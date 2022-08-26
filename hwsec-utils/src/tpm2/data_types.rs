@@ -71,6 +71,12 @@ pub struct BoardID {
     pub flag: u32,
 }
 
+pub const ERASED_BOARD_ID: BoardID = BoardID {
+    part_1: 0xffffffff,
+    part_2: 0xffffffff,
+    flag: 0xffffffff,
+};
+
 fn hex_decode(s: &str) -> Result<Vec<u8>, ParseIntError> {
     (0..s.len())
         .step_by(2)

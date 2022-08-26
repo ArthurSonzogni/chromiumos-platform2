@@ -8,6 +8,7 @@ use std::process::ExitStatus;
 use std::process::Output;
 
 use crate::command_runner::CommandRunner;
+use crate::cr50::GSCTOOL_CMD_NAME;
 
 // For any member variable x in MockCommandInput:
 // x = Some(_) means that we would check the correspondence;
@@ -87,6 +88,18 @@ impl MockCommandRunner {
     ) {
         self.add_expectation(
             MockCommandInput::new(cmd_name, [&flag[..], &hex_str_tokens[..]].concat()),
+            MockCommandOutput::new(exit_status, out, err),
+        );
+    }
+    pub fn add_gsctool_interaction(
+        &mut self,
+        flag: Vec<&str>,
+        exit_status: i32,
+        out: &str,
+        err: &str,
+    ) {
+        self.add_expectation(
+            MockCommandInput::new(GSCTOOL_CMD_NAME, flag),
             MockCommandOutput::new(exit_status, out, err),
         );
     }

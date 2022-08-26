@@ -43,3 +43,5 @@ pub const GSC_IMAGE_BASE_NAME: &str = "/opt/google/cr50/firmware/cr50.bin";
 pub const GSC_METRICS_PREFIX: &str = "Platform.Ti50";
 #[cfg(not(feature = "ti50_onboard"))]
 pub const GSC_METRICS_PREFIX: &str = "Platform.Cr50";
+
+pub const GSCTOOL_CMD_NAME: &str = "/usr/sbin/gsctool";
