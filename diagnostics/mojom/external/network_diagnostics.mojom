@@ -248,7 +248,7 @@ union RoutineProblems {
 // Result values specific to HttpsLatency routine.
 [Stable]
 struct HttpsLatencyResultValue {
-  mojo_base.mojom.TimeDelta latency;
+  chromeos.cros_healthd.internal.mojo_base.mojom.TimeDelta latency;
 };
 
 // Union of routine specific result values if any.
@@ -265,7 +265,7 @@ struct RoutineResult {
   // The list of detected problems, if any.
   RoutineProblems problems;
   // The timestamp when the routine was completed.
-  mojo_base.mojom.Time timestamp;
+  chromeos.cros_healthd.internal.mojo_base.mojom.Time timestamp;
   // Routine specific result values.
   [MinVersion=1] RoutineResultValue? result_value;
 };
