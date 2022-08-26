@@ -11,10 +11,6 @@ pkg_config("target_defaults") {
     "libcros_camera_android_deps",
     "libsync",
   ]
-  defines = [
-    "USE_IPU6=${use.ipu6}",
-    "USE_IPU6EP=${use.ipu6ep}",
-  ]
 }
 
 source_set("gcam_ae") {
