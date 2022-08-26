@@ -31,7 +31,7 @@ interface ServiceManager {
   // available. If |timeout| is not null and the |receiver| cannot be bound
   // after |timeout|, it will be reset. Callers should set disconnect handler on
   // the corresponding mojo remote of |receiver| to handle errors.
-  Request@1(string service_name, mojo_base.mojom.TimeDelta? timeout,
+  Request@1(string service_name, TimeDelta? timeout,
             handle<message_pipe> receiver);
 
   // Queries the state of a service.

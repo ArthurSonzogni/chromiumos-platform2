@@ -1,6 +1,6 @@
 {
   "c++": {
-    "mojo_base.mojom.TimeDelta": {
+    "chromeos.mojo_service_manager.mojom.TimeDelta": {
       "hashable": false,
       "typename": "base::TimeDelta",
       "forward_declaration": null,

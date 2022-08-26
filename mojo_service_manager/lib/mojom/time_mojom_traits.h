@@ -13,13 +13,15 @@
 namespace mojo {
 
 template <>
-struct StructTraits<mojo_base::mojom::TimeDeltaDataView, base::TimeDelta> {
+struct StructTraits<chromeos::mojo_service_manager::mojom::TimeDeltaDataView,
+                    base::TimeDelta> {
   static int64_t microseconds(const base::TimeDelta& delta) {
     return delta.InMicroseconds();
   }
 
-  static bool Read(mojo_base::mojom::TimeDeltaDataView data,
-                   base::TimeDelta* delta) {
+  static bool Read(
+      chromeos::mojo_service_manager::mojom::TimeDeltaDataView data,
+      base::TimeDelta* delta) {
     *delta = base::Microseconds(data.microseconds());
     return true;
   }

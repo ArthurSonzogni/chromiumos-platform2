@@ -6,10 +6,10 @@
 // we add a copy here as a workaround. Once we fix that, we can remove this copy
 // and use the one in libmojo.
 
-module mojo_base.mojom;
+module chromeos.mojo_service_manager.mojom;
 
 // Maps to the base::TimeDelta.
-[Stable]
+[Stable, RenamedFrom=mojo_base.mojom.TimeDelta]
 struct TimeDelta {
   int64 microseconds;
 };
