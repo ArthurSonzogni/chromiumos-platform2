@@ -9,7 +9,7 @@ use std::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Read, Seek, Seek
 use std::os::unix::fs::OpenOptionsExt;
 
 use anyhow::{Context, Result};
-use log::{debug, error};
+use log::{debug, error, warn};
 
 use crate::fiemap::{Fiemap, FiemapExtent};
 use crate::files::HIBERNATE_DIR;
@@ -225,7 +225,7 @@ impl Read for DiskFile {
         while offset < length {
             // There is no extending the file size.
             if self.current_position >= self.fiemap.file_size {
-                error!(
+                warn!(
                     "DiskFile hit read EOF current_position {:x} file_size {:x}",
                     self.current_position, self.fiemap.file_size
                 );
@@ -253,7 +253,6 @@ impl Read for DiskFile {
             offset += this_io_length;
         }
 
-        assert!(offset != 0);
         Ok(offset)
     }
 }
