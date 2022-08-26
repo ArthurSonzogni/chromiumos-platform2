@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/flat_set.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -215,6 +216,7 @@ AuthSession::~AuthSession() {
 void AuthSession::AuthSessionTimedOut() {
   LOG(INFO) << "AuthSession: timed out.";
   status_ = AuthStatus::kAuthStatusTimedOut;
+  authorized_intents_.clear();
   // After this call back to |UserDataAuth|, |this| object will be deleted.
   std::move(on_timeout_).Run(token_);
 }
@@ -235,6 +237,9 @@ void AuthSession::RecordAuthSessionStart() const {
 void AuthSession::SetAuthSessionAsAuthenticated() {
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
     status_ = AuthStatus::kAuthStatusAuthenticated;
+    authorized_intents_.insert(AuthIntent::kDecrypt);
+    authorized_intents_.insert(AuthIntent::kVerifyOnly);
+
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
     LOG(INFO) << "AuthSession: authenticated.";

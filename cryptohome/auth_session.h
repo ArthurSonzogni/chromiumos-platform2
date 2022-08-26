@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
@@ -53,6 +54,18 @@ enum class AuthStatus {
   // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
 };
 
+// An intent specifies the set of operations that can be performed after
+// successfully authenticating an Auth Session.
+enum class AuthIntent {
+  // Intent to decrypt the user's file system keys. Authorizing for this intent
+  // allows all privileged operations, e.g., preparing user's vault,
+  // adding/updating/removing factors.
+  kDecrypt,
+  // Intent to simply check whether the authentication succeeds. Authorizing for
+  // this intent doesn't allow any privileged operation.
+  kVerifyOnly,
+};
+
 // This class starts a session for the user to authenticate with their
 // credentials.
 class AuthSession final {
@@ -87,6 +100,11 @@ class AuthSession final {
 
   // This function return the current status of this AuthSession.
   const AuthStatus GetStatus() const { return status_; }
+
+  // Returns the intents that the AuthSession has been authorized for.
+  const base::flat_set<AuthIntent>& authorized_intents() const {
+    return authorized_intents_;
+  }
 
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
@@ -469,6 +487,7 @@ class AuthSession final {
   const bool is_ephemeral_user_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
+  base::flat_set<AuthIntent> authorized_intents_;
   base::OneShotTimer timeout_timer_;
   base::TimeTicks timeout_timer_start_time_;
   base::TimeTicks auth_session_creation_time_;
