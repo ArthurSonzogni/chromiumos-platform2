@@ -36,7 +36,7 @@ class of the NetlinkMessage type.  For example:
 You'll want to set values for all the message's attributes.  The message
 object should have all of its legal attributes pre-instantiated so all
 you should have to do is set their values (if an attribute is optional,
-don't set the value -- only the attibutes that have been explicitly
+don't set the value -- only the attributes that have been explicitly
 set will be sent in the message).
 
 A message's attributes are accessed through the message's |attributes|
@@ -284,7 +284,7 @@ But the actual code for reading this array is as follows:
 The message you're handling can either be a broadcast message or a response
 (I've not seen a case where the kernel sends a message directly to us but, I'd
 imagine it's possible.  This case could be handled as a broadcast message
-followed by a hasty name change fot that method).
+followed by a hasty name change for that method).
 
 3.2.1 Install a Broadcast Message Handler.
 
@@ -292,7 +292,7 @@ Broadcast handlers are installed to the NetlinkManager as follows:
 
   NetlinkManager::GetInstance()->AddBroadcastHandler(handler);
 
-Where 'handler' is the handler described, above.  Broadcast messaes just
+Where 'handler' is the handler described above.  Broadcast messages just
 handle generic NetlinkMessages rather than a specific kind.
 
 3.2.2 Install a Unicast (i.e., a Response) Message Handler.
