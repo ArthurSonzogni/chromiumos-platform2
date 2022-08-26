@@ -22,7 +22,6 @@
 #include "shill/store/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
 #include "shill/vpn/ikev2_driver.h"
-#include "shill/vpn/l2tp_ipsec_driver.h"
 #include "shill/vpn/new_l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"

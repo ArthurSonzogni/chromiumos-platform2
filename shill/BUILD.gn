@@ -44,7 +44,6 @@ group("all") {
       deps += [
         ":openvpn_management_server_fuzzer",
         ":vpn_ipsec_connection_fuzzer",
-        ":vpn_l2tp_ipsec_driver_fuzzer",
       ]
     }
   }
@@ -388,7 +387,6 @@ static_library("libshill") {
       "vpn/ikev2_driver.cc",
       "vpn/ipsec_connection.cc",
       "vpn/l2tp_connection.cc",
-      "vpn/l2tp_ipsec_driver.cc",
       "vpn/new_l2tp_ipsec_driver.cc",
       "vpn/openvpn_driver.cc",
       "vpn/openvpn_management_server.cc",
@@ -581,15 +579,6 @@ if (use.fuzzer) {
   }
   executable("vpn_ipsec_connection_fuzzer") {
     sources = [ "vpn/ipsec_connection_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-      ":shill_config",
-    ]
-    deps = [ ":libshill" ]
-  }
-  executable("vpn_l2tp_ipsec_driver_fuzzer") {
-    sources = [ "vpn/l2tp_ipsec_driver_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -809,7 +798,6 @@ if (use.test) {
         "vpn/ikev2_driver_test.cc",
         "vpn/ipsec_connection_test.cc",
         "vpn/l2tp_connection_test.cc",
-        "vpn/l2tp_ipsec_driver_test.cc",
         "vpn/mock_openvpn_management_server.cc",
         "vpn/mock_vpn_driver.cc",
         "vpn/mock_vpn_service.cc",
