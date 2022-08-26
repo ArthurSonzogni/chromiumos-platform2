@@ -60,7 +60,9 @@ For telemetry, we can initiate a request via `cros-health-tool telem
 could be checked via `cros-health-tool telem --help`.
 
 For process, we can initiate a request via `cros-health-tool telem
---process=<process_id>` to retrieve the process information.
+--process=<process_id>,<process_id>,<process_id>` to retrieve single or multiple
+process information or `cros-health-tool telem --process=all` to retrieve all
+current existing processes. Adding `--ignore` can ignore single process errors.
 
 For event, `cros-health-tool event --category=<xx>` where `<xx>` is the event
 category name. The list of category names could be checked via `cros-health-tool

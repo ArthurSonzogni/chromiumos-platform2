@@ -50,6 +50,12 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   chromeos::cros_healthd::mojom::ProcessResultPtr GetProcessInfo(
       pid_t pid) override;
 
+  // Gets information about multiple/ all processes on the device from
+  // cros_healthd.
+  chromeos::cros_healthd::mojom::MultipleProcessResultPtr
+  GetMultipleProcessInfo(const std::optional<std::vector<uint32_t>>& pids,
+                         const bool ignore_single_process_info) override;
+
   // Runs the urandom routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunUrandomRoutine(
       const std::optional<base::TimeDelta>& length_seconds) override;
@@ -332,6 +338,26 @@ CrosHealthdMojoAdapterImpl::GetProcessInfo(pid_t pid) {
       pid, base::BindOnce(&OnMojoResponseReceived<
                               chromeos::cros_healthd::mojom::ProcessResultPtr>,
                           &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::MultipleProcessResultPtr
+CrosHealthdMojoAdapterImpl::GetMultipleProcessInfo(
+    const std::optional<std::vector<uint32_t>>& pids,
+    const bool ignore_single_process_info) {
+  if (!cros_healthd_probe_service_.is_bound())
+    Connect();
+
+  chromeos::cros_healthd::mojom::MultipleProcessResultPtr response;
+  base::RunLoop run_loop;
+  cros_healthd_probe_service_->ProbeMultipleProcessInfo(
+      pids, ignore_single_process_info,
+      base::BindOnce(
+          &OnMojoResponseReceived<
+              chromeos::cros_healthd::mojom::MultipleProcessResultPtr>,
+          &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;

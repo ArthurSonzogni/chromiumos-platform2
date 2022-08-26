@@ -52,6 +52,11 @@ class CrosHealthdMojoAdapter {
   virtual chromeos::cros_healthd::mojom::ProcessResultPtr GetProcessInfo(
       pid_t pid) = 0;
 
+  // Gets information about multiple/ all processes from cros_healthd.
+  virtual chromeos::cros_healthd::mojom::MultipleProcessResultPtr
+  GetMultipleProcessInfo(const std::optional<std::vector<uint32_t>>& pids,
+                         const bool skip_single_process_info) = 0;
+
   // Runs the urandom routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunUrandomRoutine(const std::optional<base::TimeDelta>& length_seconds) = 0;
