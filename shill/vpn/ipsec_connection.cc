@@ -561,7 +561,6 @@ void IPsecConnection::WriteSwanctlConfig() {
       remote->AddKeyValue("id", config_->remote_id.value());
     }
 
-    // TODO(b/165170125): This part is untested.
     if (config_->tunnel_group.has_value()) {
       // Aggressive mode is insecure but required by the legacy Cisco VPN here.
       // See https://crbug.com/199004 .
