@@ -22,7 +22,7 @@
 #include "shill/store/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
 #include "shill/vpn/ikev2_driver.h"
-#include "shill/vpn/new_l2tp_ipsec_driver.h"
+#include "shill/vpn/l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
@@ -228,8 +228,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
   if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
-    driver.reset(
-        new NewL2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderIKEv2) {
     driver.reset(new IKEv2Driver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {

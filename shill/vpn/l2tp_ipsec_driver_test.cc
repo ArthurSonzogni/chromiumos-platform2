@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/vpn/new_l2tp_ipsec_driver.h"
+#include "shill/vpn/l2tp_ipsec_driver.h"
 
 #include <memory>
 #include <optional>
@@ -28,10 +28,10 @@
 
 namespace shill {
 
-class NewL2TPIPsecDriverUnderTest : public NewL2TPIPsecDriver {
+class NewL2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
  public:
   NewL2TPIPsecDriverUnderTest(Manager* manager, ProcessManager* process_manager)
-      : NewL2TPIPsecDriver(manager, process_manager) {}
+      : L2TPIPsecDriver(manager, process_manager) {}
 
   NewL2TPIPsecDriverUnderTest(const NewL2TPIPsecDriverUnderTest&) = delete;
   NewL2TPIPsecDriverUnderTest& operator=(const NewL2TPIPsecDriverUnderTest&) =

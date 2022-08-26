@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/vpn/new_l2tp_ipsec_driver.h"
+#include "shill/vpn/l2tp_ipsec_driver.h"
 
 #include <iterator>
 #include <memory>
@@ -154,7 +154,7 @@ void ReportConnectionEndReason(Metrics* metrics,
 
 }  // namespace
 
-const VPNDriver::Property NewL2TPIPsecDriver::kProperties[] = {
+const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
     {kL2TPIPsecClientCertIdProperty, 0},
     {kL2TPIPsecClientCertSlotProperty, 0},
     {kL2TPIPsecPasswordProperty, Property::kCredential | Property::kWriteOnly},
@@ -178,24 +178,24 @@ const VPNDriver::Property NewL2TPIPsecDriver::kProperties[] = {
     {kL2TPIPsecLcpEchoDisabledProperty, 0},
 };
 
-NewL2TPIPsecDriver::NewL2TPIPsecDriver(Manager* manager,
-                                       ProcessManager* process_manager)
+L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
+                                 ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)) {
 }
 
-NewL2TPIPsecDriver::~NewL2TPIPsecDriver() {}
+L2TPIPsecDriver::~L2TPIPsecDriver() {}
 
-base::TimeDelta NewL2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta L2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
 
-  dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&NewL2TPIPsecDriver::StartIPsecConnection,
-                                weak_factory_.GetWeakPtr()));
+  dispatcher()->PostTask(FROM_HERE,
+                         base::BindOnce(&L2TPIPsecDriver::StartIPsecConnection,
+                                        weak_factory_.GetWeakPtr()));
 
   return base::Seconds(60);
 }
 
-void NewL2TPIPsecDriver::StartIPsecConnection() {
+void L2TPIPsecDriver::StartIPsecConnection() {
   if (ipsec_connection_) {
     LOG(ERROR) << "The previous IPsecConnection is still running.";
     NotifyServiceOfFailure(Service::kFailureInternal);
@@ -215,11 +215,11 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
       manager()->device_info(), manager()->dispatcher(), process_manager());
 
   auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
-      base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,
+      base::BindRepeating(&L2TPIPsecDriver::OnIPsecConnected,
                           weak_factory_.GetWeakPtr()),
-      base::BindOnce(&NewL2TPIPsecDriver::OnIPsecFailure,
+      base::BindOnce(&L2TPIPsecDriver::OnIPsecFailure,
                      weak_factory_.GetWeakPtr()),
-      base::BindOnce(&NewL2TPIPsecDriver::OnIPsecStopped,
+      base::BindOnce(&L2TPIPsecDriver::OnIPsecStopped,
                      weak_factory_.GetWeakPtr()));
 
   ipsec_connection_ = CreateIPsecConnection(
@@ -230,7 +230,7 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
   ipsec_connection_->Connect();
 }
 
-std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateIPsecConnection(
+std::unique_ptr<VPNConnection> L2TPIPsecDriver::CreateIPsecConnection(
     std::unique_ptr<IPsecConnection::Config> config,
     std::unique_ptr<VPNConnection::Callbacks> callbacks,
     std::unique_ptr<VPNConnection> l2tp_connection,
@@ -242,7 +242,7 @@ std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateIPsecConnection(
       device_info, dispatcher, process_manager);
 }
 
-std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateL2TPConnection(
+std::unique_ptr<VPNConnection> L2TPIPsecDriver::CreateL2TPConnection(
     std::unique_ptr<L2TPConnection::Config> config,
     ControlInterface* control_interface,
     DeviceInfo* device_info,
@@ -254,7 +254,7 @@ std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateL2TPConnection(
       dispatcher, process_manager);
 }
 
-void NewL2TPIPsecDriver::Disconnect() {
+void L2TPIPsecDriver::Disconnect() {
   event_handler_ = nullptr;
   ReportConnectionEndReason(metrics(), Service::kFailureDisconnect);
   if (!ipsec_connection_) {
@@ -269,15 +269,15 @@ void NewL2TPIPsecDriver::Disconnect() {
   ipsec_connection_->Disconnect();
 }
 
-IPConfig::Properties NewL2TPIPsecDriver::GetIPProperties() const {
+IPConfig::Properties L2TPIPsecDriver::GetIPProperties() const {
   return ip_properties_;
 }
 
-std::string NewL2TPIPsecDriver::GetProviderType() const {
+std::string L2TPIPsecDriver::GetProviderType() const {
   return kProviderL2tpIpsec;
 }
 
-void NewL2TPIPsecDriver::OnConnectTimeout() {
+void L2TPIPsecDriver::OnConnectTimeout() {
   LOG(INFO) << "Connect timeout";
   if (!ipsec_connection_) {
     LOG(ERROR)
@@ -293,7 +293,7 @@ void NewL2TPIPsecDriver::OnConnectTimeout() {
   NotifyServiceOfFailure(Service::kFailureConnect);
 }
 
-void NewL2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
+void L2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
     NotifyServiceOfFailure(Service::kFailureDisconnect);
@@ -301,7 +301,7 @@ void NewL2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
   callback.Run(Error(Error::kSuccess));
 }
 
-void NewL2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
+void L2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
   if (!ipsec_connection_ || !ipsec_connection_->IsConnectingOrConnected()) {
     return;
@@ -322,8 +322,7 @@ void NewL2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
   }
 }
 
-void NewL2TPIPsecDriver::NotifyServiceOfFailure(
-    Service::ConnectFailure failure) {
+void L2TPIPsecDriver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
   LOG(ERROR) << "Driver failure due to "
              << Service::ConnectFailureToString(failure);
   if (event_handler_) {
@@ -335,7 +334,7 @@ void NewL2TPIPsecDriver::NotifyServiceOfFailure(
   }
 }
 
-void NewL2TPIPsecDriver::OnIPsecConnected(
+void L2TPIPsecDriver::OnIPsecConnected(
     const std::string& link_name,
     int interface_index,
     const IPConfig::Properties& ip_properties) {
@@ -349,15 +348,15 @@ void NewL2TPIPsecDriver::OnIPsecConnected(
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 
-void NewL2TPIPsecDriver::OnIPsecFailure(Service::ConnectFailure failure) {
+void L2TPIPsecDriver::OnIPsecFailure(Service::ConnectFailure failure) {
   NotifyServiceOfFailure(failure);
 }
 
-void NewL2TPIPsecDriver::OnIPsecStopped() {
+void L2TPIPsecDriver::OnIPsecStopped() {
   ipsec_connection_ = nullptr;
 }
 
-KeyValueStore NewL2TPIPsecDriver::GetProvider(Error* error) {
+KeyValueStore L2TPIPsecDriver::GetProvider(Error* error) {
   const bool require_passphrase =
       args()->Lookup<std::string>(kL2TPIPsecPasswordProperty, "").empty();
 
@@ -373,7 +372,7 @@ KeyValueStore NewL2TPIPsecDriver::GetProvider(Error* error) {
   return props;
 }
 
-void NewL2TPIPsecDriver::ReportConnectionMetrics() {
+void L2TPIPsecDriver::ReportConnectionMetrics() {
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
                            Metrics::kVpnDriverL2tpIpsec);
 

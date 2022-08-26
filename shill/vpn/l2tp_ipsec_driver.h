@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_VPN_NEW_L2TP_IPSEC_DRIVER_H_
-#define SHILL_VPN_NEW_L2TP_IPSEC_DRIVER_H_
+#ifndef SHILL_VPN_L2TP_IPSEC_DRIVER_H_
+#define SHILL_VPN_L2TP_IPSEC_DRIVER_H_
 
 #include <memory>
 #include <string>
@@ -19,14 +19,12 @@
 
 namespace shill {
 
-// TODO(b/165170125): Once the current L2TPIPsecDriver is removed, rename this
-// class to L2TPIPsecDriver.
-class NewL2TPIPsecDriver : public VPNDriver {
+class L2TPIPsecDriver : public VPNDriver {
  public:
-  NewL2TPIPsecDriver(Manager* manager, ProcessManager* process_manager);
-  NewL2TPIPsecDriver(const NewL2TPIPsecDriver&) = delete;
-  NewL2TPIPsecDriver& operator=(const NewL2TPIPsecDriver&) = delete;
-  ~NewL2TPIPsecDriver() override;
+  L2TPIPsecDriver(Manager* manager, ProcessManager* process_manager);
+  L2TPIPsecDriver(const L2TPIPsecDriver&) = delete;
+  L2TPIPsecDriver& operator=(const L2TPIPsecDriver&) = delete;
+  ~L2TPIPsecDriver() override;
 
   // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
@@ -84,9 +82,9 @@ class NewL2TPIPsecDriver : public VPNDriver {
   std::unique_ptr<VPNConnection> ipsec_connection_;
   IPConfig::Properties ip_properties_;
 
-  base::WeakPtrFactory<NewL2TPIPsecDriver> weak_factory_{this};
+  base::WeakPtrFactory<L2TPIPsecDriver> weak_factory_{this};
 };
 
 }  // namespace shill
 
-#endif  // SHILL_VPN_NEW_L2TP_IPSEC_DRIVER_H_
+#endif  // SHILL_VPN_L2TP_IPSEC_DRIVER_H_
