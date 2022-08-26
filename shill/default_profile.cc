@@ -15,7 +15,9 @@
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
+#if !defined(DISABLE_WIFI)
 #include "shill/store/property_accessor.h"
+#endif  // DISABLE_WIFI
 #include "shill/store/store_interface.h"
 
 namespace shill {
@@ -28,6 +30,9 @@ const char kStorageConnectionIdSaltDeprecated[] = "ConnectionIdSalt";
 // This was left here to remove ConnectionIdSalt entries from profiles.
 const char kStorageLinkMonitorTechnologiesDeprecated[] =
     "LinkMonitorTechnologies";
+// UseSwanctlDriver was removed in crrev.com/c/3857326.
+// This was left here to remove UseSwanctlDriver entries from profiles.
+constexpr char kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
 }  // namespace
 
 // static
@@ -47,8 +52,6 @@ const char DefaultProfile::kStorageNoAutoConnectTechnologies[] =
 // static
 const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
-// static
-const char DefaultProfile::kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
 // b/221171651: This string must stay consistent with the storage id used
 // previously by DhcpProperties.
 // static
@@ -76,8 +79,6 @@ DefaultProfile::DefaultProfile(Manager* manager,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
                              &manager_props.prohibited_technologies);
-  HelpRegisterConstDerivedBool(kUseSwanctlDriver,
-                               &DefaultProfile::GetUseSwanctlDriver);
 #if !defined(DISABLE_WIFI)
   HelpRegisterConstDerivedBool(kWifiGlobalFTEnabledProperty,
                                &DefaultProfile::GetFTEnabled);
@@ -88,6 +89,7 @@ DefaultProfile::DefaultProfile(Manager* manager,
 
 DefaultProfile::~DefaultProfile() = default;
 
+#if !defined(DISABLE_WIFI)
 void DefaultProfile::HelpRegisterConstDerivedBool(
     const std::string& name, bool (DefaultProfile::*get)(Error*)) {
   this->mutable_store()->RegisterDerivedBool(
@@ -95,11 +97,6 @@ void DefaultProfile::HelpRegisterConstDerivedBool(
                 this, get, nullptr, nullptr)));
 }
 
-bool DefaultProfile::GetUseSwanctlDriver(Error* error) {
-  return manager()->GetUseSwanctlDriver(error);
-}
-
-#if !defined(DISABLE_WIFI)
 bool DefaultProfile::GetFTEnabled(Error* error) {
   return manager()->GetFTEnabled(error);
 }
@@ -142,11 +139,6 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
     manager_props->dhcp_hostname = "";
   }
 
-  bool use_swanctl_driver;
-  if (storage()->GetBool(kStorageId, kStorageUseSwanctlDriver,
-                         &use_swanctl_driver)) {
-    manager_props->use_swanctl_driver = use_swanctl_driver;
-  }
 #if !defined(DISABLE_WIFI)
   bool ft_enabled;
   if (storage()->GetBool(kStorageId, kStorageWifiGlobalFTEnabled,
@@ -176,6 +168,8 @@ bool DefaultProfile::Save() {
   storage()->DeleteKey(kStorageId, kStorageConnectionIdSaltDeprecated);
   // LinkMonitorTechnologies was removed in crrev.com/c/2827849.
   storage()->DeleteKey(kStorageId, kStorageLinkMonitorTechnologiesDeprecated);
+  // UseSwanctlDriver was removed in crrev.com/c/3857326.
+  storage()->DeleteKey(kStorageId, kStorageUseSwanctlDriver);
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
@@ -187,10 +181,6 @@ bool DefaultProfile::Save() {
                        props_.no_auto_connect_technologies);
   storage()->SetString(kStorageId, kStorageProhibitedTechnologies,
                        props_.prohibited_technologies);
-  if (props_.use_swanctl_driver.has_value()) {
-    storage()->SetBool(kStorageId, kStorageUseSwanctlDriver,
-                       props_.use_swanctl_driver.value());
-  }
   if (!props_.dhcp_hostname.empty()) {
     storage()->SetString(kStorageId, kStorageDhcpHostname,
                          props_.dhcp_hostname);

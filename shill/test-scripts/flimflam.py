@@ -17,6 +17,7 @@ import time
 
 import dbus
 
+
 # dbus-python only allows the use of the 'utf8_strings' kwarg in Py2:
 # https://dbus.freedesktop.org/doc/dbus-python/PY3PORT.html#user-visible-changes
 if sys.version_info.major < 3:
@@ -472,13 +473,6 @@ class FlimFlam(object):
 
     def SetArpGateway(self, do_arp_gateway):
         self.manager.SetProperty("ArpGateway", do_arp_gateway)
-
-    def GetUseSwanctlDriver(self):
-        properties = self.manager.GetProperties(**utf8_kwargs)
-        return properties["UseSwanctlDriver"]
-
-    def SetUseSwanctlDriver(self, use_swanctl_driver):
-        self.manager.SetProperty("UseSwanctlDriver", use_swanctl_driver)
 
 
 class DeviceManager(object):

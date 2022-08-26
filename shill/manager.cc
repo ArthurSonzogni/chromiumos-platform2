@@ -275,9 +275,6 @@ Manager::Manager(ControlInterface* control_interface,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);
   store_.RegisterConstString(kSupportedVPNTypesProperty, &supported_vpn_);
-  HelpRegisterDerivedBool(DefaultProfile::kUseSwanctlDriver,
-                          &Manager::GetUseSwanctlDriver,
-                          &Manager::SetUseSwanctlDriver);
   store_.RegisterString(kDhcpPropertyHostnameProperty, &props_.dhcp_hostname);
 
   tethering_manager_->InitPropertyStore(&store_);
@@ -3214,20 +3211,6 @@ void Manager::DetectMultiHomedDevices() {
       device_list.back()->SetIsMultiHomed(false);
     }
   }
-}
-
-bool Manager::GetUseSwanctlDriver(Error* error) {
-  if (props_.use_swanctl_driver.has_value()) {
-    return props_.use_swanctl_driver.value();
-  }
-  // Default is using the new driver.
-  return true;
-}
-
-bool Manager::SetUseSwanctlDriver(const bool& use_swanctl_driver,
-                                  Error* error) {
-  props_.use_swanctl_driver = use_swanctl_driver;
-  return true;
 }
 
 void Manager::StartConnectivityTest(const DeviceRefPtr& device) {

@@ -111,10 +111,6 @@ struct ManagerProperties {
   // servers. This member stores the value set via the DBus
   // |DNSProxyDOHProviders| property.
   KeyValueStore dns_proxy_doh_providers;
-  // b/204261554: Controls if the new swanctl-based L2TPIPsecDriver should be
-  // used instead of the legacy one based on ipsec script and stroke. This
-  // property will be deprecated and removed when the migration is done.
-  std::optional<bool> use_swanctl_driver;
   // Hostname to be used in DHCP request.
   std::string dhcp_hostname;
 
@@ -506,9 +502,6 @@ class Manager {
   bool scan_allow_roam() const { return props_.scan_allow_roam; }
 #endif  // DISABLE_WIFI
 
-  // Returns whether the swanctl-based driver should be used.
-  bool GetUseSwanctlDriver(Error* error);
-
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
@@ -672,7 +665,6 @@ class Manager {
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
   void OnTechnologyProhibited(Technology technology, const Error& error);
-  bool SetUseSwanctlDriver(const bool& use_swanctl_driver, Error* error);
 
   void UseDNSProxy(const std::vector<std::string>& proxy_addrs);
 

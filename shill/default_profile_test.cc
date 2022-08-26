@@ -121,7 +121,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                                PortalDetector::kDefaultFallbackHttpUrls.end()),
       manager_props.portal_fallback_http_urls);
   EXPECT_EQ("", manager_props.prohibited_technologies);
-  EXPECT_FALSE(manager_props.use_swanctl_driver.has_value());
   EXPECT_EQ("", manager_props.dhcp_hostname);
 #if !defined(DISABLE_WIFI)
   EXPECT_FALSE(manager_props.ft_enabled.has_value());
@@ -148,8 +147,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageProhibitedTechnologies,
                      prohibited_technologies);
-  storage->SetBool(DefaultProfile::kStorageId,
-                   DefaultProfile::kStorageUseSwanctlDriver, true);
   const std::string hostname = "chromeos";
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageDhcpHostname, hostname);
@@ -167,8 +164,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
-  EXPECT_TRUE(manager_props.use_swanctl_driver.has_value());
-  EXPECT_TRUE(manager_props.use_swanctl_driver.value());
   EXPECT_EQ(hostname, manager_props.dhcp_hostname);
 #if !defined(DISABLE_WIFI)
   EXPECT_TRUE(manager_props.ft_enabled.has_value());
