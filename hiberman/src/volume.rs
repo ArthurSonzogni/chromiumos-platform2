@@ -30,6 +30,7 @@ use crate::lvm::{
     create_thin_volume, get_active_lvs, get_vg_name, lv_exists, lv_path, thicken_thin_volume,
     ActivatedLogicalVolume,
 };
+use crate::snapwatch::DmSnapshotSpaceMonitor;
 
 /// Define the name of the hibernate logical volume.
 const HIBER_VOLUME_NAME: &str = "hibervol";
@@ -66,21 +67,29 @@ const UNENCRYPTED_SNAPSHOT_SIZE: u64 = 1024 * 1024 * 1024;
 /// complete.
 const MERGE_TIMEOUT_MS: i64 = 1000 * 60 * 20;
 
-/// The pending stateful merge is simply a token object that when dropped will
-/// ask the volume manager to merge the stateful snapshots.
+/// The pending stateful merge is an object that when dropped will ask the
+/// volume manager to merge the stateful snapshots.
 pub struct PendingStatefulMerge<'a> {
     volume_manager: &'a mut VolumeManager,
+    monitors: Vec<DmSnapshotSpaceMonitor>,
 }
 
 impl<'a> PendingStatefulMerge<'a> {
-    pub fn new(volume_manager: &'a mut VolumeManager) -> Self {
-        Self { volume_manager }
+    pub fn new(volume_manager: &'a mut VolumeManager) -> Result<Self> {
+        let monitors = volume_manager.monitor_stateful_snapshots()?;
+        Ok(Self {
+            volume_manager,
+            monitors,
+        })
     }
 }
 
 impl Drop for PendingStatefulMerge<'_> {
     fn drop(&mut self) {
-        if let Err(e) = self.volume_manager.merge_stateful_snapshots() {
+        if let Err(e) = self
+            .volume_manager
+            .merge_stateful_snapshots(&mut self.monitors)
+        {
             error!("Failed to merge stateful snapshots: {:?}", e);
             // If we failed to merge the snapshots, the system is in a bad way.
             // Reboot to try and recover.
@@ -341,7 +350,24 @@ impl VolumeManager {
             .context("Failed to parse blockdev size")
     }
 
-    pub fn merge_stateful_snapshots(&mut self) -> Result<()> {
+    /// Create monitor threads for each dm-snapshot set up by hiberman that
+    /// trigger a resume abort if the snapshot gets too full.
+    pub fn monitor_stateful_snapshots(&self) -> Result<Vec<DmSnapshotSpaceMonitor>> {
+        let mut monitors = vec![];
+        for name in Self::get_snapshot_file_names()? {
+            monitors.push(DmSnapshotSpaceMonitor::new(&format!("{}-rw", name))?);
+        }
+
+        Ok(monitors)
+    }
+
+    /// Kick off merges of all dm-snapshots managed by hiberman, and wait for
+    /// them to complete. Takes in a vector of space monitor threads which will
+    /// be stopped once the merge has commenced.
+    pub fn merge_stateful_snapshots(
+        &mut self,
+        monitors: &mut [DmSnapshotSpaceMonitor],
+    ) -> Result<()> {
         if !snapshot_dir().exists() {
             info!("No snapshot directory, skipping merges");
             return Ok(());
@@ -374,6 +400,15 @@ impl VolumeManager {
             };
 
             snapshots.push(snapshot);
+        }
+
+        // With the merge underway, the snapshots won't get any fuller. Stop the
+        // monitor threads since they're no longer needed, and would start
+        // logging errors if the snapshot devices were deleted out from under
+        // them.
+        debug!("Stopping monitor threads");
+        for monitor in monitors.iter_mut() {
+            monitor.stop();
         }
 
         // Wait for the merges that were successfully started to complete.
@@ -763,7 +798,7 @@ impl Drop for DmSnapshotMerge {
 /// Return the number of data sectors in the snapshot.
 /// See https://www.kernel.org/doc/Documentation/device-mapper/snapshot.txt
 fn get_snapshot_data_sectors(name: &str) -> Result<i64> {
-    let status = get_dm_status(name).context("Failed to get dm status")?;
+    let status = get_dm_status(name).context(format!("Failed to get dm status for {}", name))?;
     let allocated_element =
         get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
 
@@ -773,13 +808,44 @@ fn get_snapshot_data_sectors(name: &str) -> Result<i64> {
 
     let allocated: i64 = allocated
         .parse()
-        .context("Failed to convert dm status allocated to i64")?;
+        .context("Failed to parse dm-snapshot allocated field")?;
 
     let metadata: i64 = metadata
         .parse()
-        .context("Failed to convert dm status metadata to i64")?;
+        .context("Failed to parse dm-snapshot metadata fielf")?;
 
     Ok(allocated - metadata)
+}
+
+/// Return the number of used data sectors, and the total number of data
+/// sectors. See
+/// https://www.kernel.org/doc/Documentation/device-mapper/snapshot.txt
+pub fn get_snapshot_size(name: &str) -> Result<(i64, i64)> {
+    let status = get_dm_status(name).context(format!("Failed to get dm status for {}", name))?;
+    let allocated_element =
+        get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
+
+    // Oops, the snapshot filled fully up and got deactivated by the kernel.
+    if allocated_element == "Invalid" {
+        return Ok((100, 100));
+    }
+
+    let mut slash_elements = allocated_element.split('/');
+    let allocated = slash_elements
+        .next()
+        .context("Failed to get dm-snapshot allocated sectors")?;
+    let total = slash_elements
+        .next()
+        .context("Failed to get dm-snapshot total sectors")?;
+
+    let allocated: i64 = allocated
+        .parse()
+        .context("Failed to parse dm-snapshot allocated field")?;
+
+    let total: i64 = total
+        .parse()
+        .context("Failed to parse dm-snapshot total field")?;
+    Ok((allocated, total))
 }
 
 /// Delete a snapshot

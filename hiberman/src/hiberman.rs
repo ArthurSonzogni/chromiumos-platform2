@@ -25,6 +25,7 @@ mod preloader;
 mod resume;
 mod resume_init;
 mod snapdev;
+mod snapwatch;
 mod splitter;
 mod suspend;
 mod sysfs;

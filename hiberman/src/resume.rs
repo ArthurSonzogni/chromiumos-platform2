@@ -83,7 +83,7 @@ impl ResumeConductor {
         // Create a variable that will merge the stateful snapshots when this
         // function returns one way or another.
         let mut volume_manager = VolumeManager::new()?;
-        let pending_merge = PendingStatefulMerge::new(&mut volume_manager);
+        let pending_merge = PendingStatefulMerge::new(&mut volume_manager)?;
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
