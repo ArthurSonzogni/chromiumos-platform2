@@ -10,32 +10,36 @@ fn main() {
     let result = cr50_read_rma_sn_bits(&mut real_ctx);
     match result {
         Ok(rma_sn_bits) => {
-            let mut ret = String::new();
-            // append sn_data_version
-            for byte in rma_sn_bits.sn_data_version {
-                ret.push_str(&format!("{:02x}", byte));
-            }
-            ret.push(':');
+            let sn_data_version = rma_sn_bits
+                .sn_data_version
+                .iter()
+                .map(|byte| format!("{:02x}", byte))
+                .collect::<String>();
 
-            // append rma_status
-            ret.push_str(&format!("{:02x}", rma_sn_bits.rma_status));
-            ret.push(':');
+            let rma_status = format!("{:02x}", rma_sn_bits.rma_status);
 
-            // append sn_bits
-            for byte in rma_sn_bits.sn_bits {
-                ret.push_str(&format!("{:02x}", byte));
-            }
+            let sn_bits = rma_sn_bits
+                .sn_bits
+                .iter()
+                .map(|byte| format!("{:02x}", byte))
+                .collect::<String>();
 
-            // append standalone_rma_sn_bits if applicable
-            if let Some(standalone_rma_sn_bits) = rma_sn_bits.standalone_rma_sn_bits {
-                ret.push(' ');
-                for byte in standalone_rma_sn_bits {
-                    ret.push_str(&format!("{:02x}", byte));
-                }
-            }
+            let standalone_rma_sn_bits = rma_sn_bits
+                .standalone_rma_sn_bits
+                .map(|bytes| {
+                    bytes
+                        .iter()
+                        .map(|byte| format!("{:02x}", byte))
+                        .collect::<String>()
+                })
+                .unwrap_or("".to_string());
 
-            // display
-            println!("{}", ret);
+            let ret = format!(
+                "{}:{}:{} {}",
+                sn_data_version, rma_status, sn_bits, standalone_rma_sn_bits
+            );
+
+            println!("{}", ret.trim_end());
         }
         Err(e) => eprintln!("{}", e),
     }
