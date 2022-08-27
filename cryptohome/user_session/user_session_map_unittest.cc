@@ -35,6 +35,9 @@ std::vector<std::pair<std::string, const UserSession*>> GetSessionItems(
 
 class UserSessionMapTest : public testing::Test {
  protected:
+  // Returns a const-ref to the test object. Used for testing const methods.
+  const UserSessionMap& const_session_map() const { return session_map_; }
+
   UserSessionMap session_map_;
 };
 
@@ -44,6 +47,8 @@ TEST_F(UserSessionMapTest, InitialEmpty) {
   EXPECT_EQ(session_map_.begin(), session_map_.end());
   EXPECT_EQ(session_map_.Find(kUsername1), nullptr);
   EXPECT_EQ(session_map_.Find(kUsername2), nullptr);
+  EXPECT_EQ(const_session_map().Find(kUsername1), nullptr);
+  EXPECT_EQ(const_session_map().Find(kUsername2), nullptr);
 }
 
 TEST_F(UserSessionMapTest, AddOne) {
@@ -58,6 +63,8 @@ TEST_F(UserSessionMapTest, AddOne) {
               UnorderedElementsAre(Pair(kUsername1, session_ptr)));
   EXPECT_EQ(session_map_.Find(kUsername1), session_ptr);
   EXPECT_EQ(session_map_.Find(kUsername2), nullptr);
+  EXPECT_EQ(const_session_map().Find(kUsername1), session_ptr);
+  EXPECT_EQ(const_session_map().Find(kUsername2), nullptr);
 }
 
 TEST_F(UserSessionMapTest, AddTwo) {
@@ -76,6 +83,8 @@ TEST_F(UserSessionMapTest, AddTwo) {
                                    Pair(kUsername2, session2_ptr)));
   EXPECT_EQ(session_map_.Find(kUsername1), session1_ptr);
   EXPECT_EQ(session_map_.Find(kUsername2), session2_ptr);
+  EXPECT_EQ(const_session_map().Find(kUsername1), session1_ptr);
+  EXPECT_EQ(const_session_map().Find(kUsername2), session2_ptr);
 }
 
 TEST_F(UserSessionMapTest, AddDuplicate) {
@@ -98,6 +107,7 @@ TEST_F(UserSessionMapTest, RemoveSingle) {
 
   EXPECT_EQ(session_map_.size(), 0);
   EXPECT_EQ(session_map_.Find(kUsername1), nullptr);
+  EXPECT_EQ(const_session_map().Find(kUsername1), nullptr);
 }
 
 TEST_F(UserSessionMapTest, RemoveWhenEmpty) {

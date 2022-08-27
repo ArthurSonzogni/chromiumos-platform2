@@ -45,9 +45,8 @@ class UserSessionMap final {
   // session for the user.
   bool Remove(const std::string& account_id);
   // Returns a session for the given user, or null if there's none.
-  // TODO(b/243846478): Add a const version after getting rid of ref-counting in
-  // `UserSession`.
   UserSession* Find(const std::string& account_id);
+  const UserSession* Find(const std::string& account_id) const;
 
  private:
   Storage storage_;

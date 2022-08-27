@@ -32,4 +32,12 @@ UserSession* UserSessionMap::Find(const std::string& account_id) {
   return iter->second.get();
 }
 
+const UserSession* UserSessionMap::Find(const std::string& account_id) const {
+  auto iter = storage_.find(account_id);
+  if (iter == storage_.end()) {
+    return nullptr;
+  }
+  return iter->second.get();
+}
+
 }  // namespace cryptohome
