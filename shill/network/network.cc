@@ -145,7 +145,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   ConfigureStaticIPv6Address();
   event_handler_->OnConnectionUpdated(ipconfig);
 
-  const bool ipconfig_changed = current_ipconfig_ == ipconfig;
+  const bool ipconfig_changed = current_ipconfig_ != ipconfig;
   current_ipconfig_ = ipconfig;
   if (ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
     current_ipconfig_change_handler_.Run();
