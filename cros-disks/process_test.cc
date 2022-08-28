@@ -311,7 +311,7 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
   // Send SIGKILL to child process.
   const pid_t pid = process.pid();
   EXPECT_NE(pid, Process::kInvalidProcessId);
-  LOG(INFO) << "Sending signal to PID " << pid;
+  LOG(INFO) << "Sending SIGKILL to PID " << pid;
   EXPECT_EQ(kill(pid, SIGKILL), 0);
 
   // Wait for child process to finish.
@@ -322,6 +322,8 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
   SandboxedProcess& process = *process_;
+  process.SetKillPidNamespace(true);
+
   process.AddArgument("/bin/bash");
   process.AddArgument("-c");
 
@@ -355,7 +357,7 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
   // Send SIGTERM to child process.
   const pid_t pid = process.pid();
   EXPECT_NE(pid, Process::kInvalidProcessId);
-  LOG(INFO) << "Sending signal to PID " << pid;
+  LOG(INFO) << "Sending SIGTERM to PID " << pid;
   EXPECT_EQ(kill(pid, SIGTERM), 0);
 
   // Wait for child process to finish.
@@ -999,6 +1001,61 @@ TEST(PidNamespaceRunAsRootTest, DeletingProcessObjectDoesNotKillPidNamespace) {
   // Wait for child process to continue and finish.
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "Continue and End\n");
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+}
+
+// Tests that the PID namespace is not killed when its 'init' process receives a
+// SIGTERM and the SetKillPidNamespace() method has not been called.
+TEST(PidNamespaceRunAsRootTest, SigTermDoesNotKillPidNamespace) {
+  SandboxedProcess process;
+  process.NewPidNamespace();
+
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+
+  // Pipe to block the child process.
+  SubprocessPipe to_block(SubprocessPipe::kParentToChild);
+
+  // Pipe to monitor the child process.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process.AddArgument(base::StringPrintf(
+      R"(
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+    )",
+      to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_block.child_fd.get());
+
+  EXPECT_TRUE(process.Start());
+
+  // Close unused pipe ends.
+  to_block.child_fd.reset();
+  to_wait.child_fd.reset();
+
+  // Wait for child process to start.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
+
+  // Send SIGTERM to PID 'init' process.
+  const pid_t pid = process.pid();
+  EXPECT_NE(pid, Process::kInvalidProcessId);
+  LOG(INFO) << "Sending SIGTERM to PID " << pid;
+  EXPECT_EQ(kill(pid, SIGTERM), 0);
+
+  // Wait for longer than the 2-second grace period.
+  sleep(3);
+
+  // Unblock child process.
+  Write(to_block.parent_fd.get(), "Continue");
+  to_block.parent_fd.reset();
+
+  // Wait for child process to continue and finish.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+  EXPECT_EQ(process.Wait(), 42);
 }
 
 #endif

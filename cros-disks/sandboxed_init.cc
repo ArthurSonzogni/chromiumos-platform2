@@ -34,8 +34,14 @@ namespace {
 
 // SIGALRM handler.
 void SigAlarm(const int sig) {
+  const base::ScopedClearLastError guard;
+
+  if (sig != SIGALRM) {
+    RAW_LOG(ERROR, "SIGALRM handler called with sig != SIGALRM");
+    return;
+  }
+
   RAW_LOG(INFO, "The 'init' process's grace period expired");
-  RAW_CHECK(sig == SIGALRM);
   TerminateNow();
 }
 
@@ -43,10 +49,9 @@ void ScheduleTermination() {
   if (getpid() != 1)
     TerminateNow();
 
-  RAW_LOG(INFO, "The 'init' process is preparing to terminate soon...");
-
   // This is running as the 'init' process of a PID namespace.
-  RAW_CHECK(signal(SIGTERM, SIG_IGN) != SIG_ERR);
+  if (signal(SIGTERM, SIG_IGN) == SIG_ERR)
+    RAW_LOG(ERROR, "Cannot reset SIGTERM handler");
 
   // Send SIGTERM to all the processes in the PID namespace.
   RAW_LOG(INFO, "The 'init' process is broadcasting SIGTERM...");
@@ -55,25 +60,47 @@ void ScheduleTermination() {
 
   // Set an alarm to terminate in a couple of seconds.
   RAW_LOG(INFO, "The 'init' process is entering a grace period of 2 seconds");
-  RAW_CHECK(signal(SIGALRM, &SigAlarm) != SIG_ERR);
-  RAW_CHECK(alarm(2) == 0);
+
+  if (signal(SIGALRM, &SigAlarm) == SIG_ERR)
+    RAW_LOG(ERROR, "Cannot set SIGALRM handler");
+
+  if (alarm(2) != 0)
+    RAW_LOG(ERROR, "A previous alarm was already set");
 }
+
+// File descriptor of the termination pipe.
+// Static and volatile since it is accessed from signal handlers.
+static volatile int termination_fd = base::kInvalidFd;
 
 // SIGTERM handler.
 void SigTerm(const int sig) {
   const base::ScopedClearLastError guard;
-  RAW_CHECK(sig == SIGTERM);
+
+  if (sig != SIGTERM) {
+    RAW_LOG(ERROR, "SIGTERM handler called with sig != SIGTERM");
+    return;
+  }
+
   RAW_LOG(INFO, "The 'init' process received SIGTERM");
+
+  // If no termination fd is set, then we shouldn't forcefully terminate.
+  if (termination_fd == base::kInvalidFd) {
+    RAW_LOG(WARNING, "The 'init' process ignored a SIGTERM");
+    return;
+  }
+
   ScheduleTermination();
 }
-
-static int termination_fd = base::kInvalidFd;
 
 // Check if the termination pipe has some data or if its write end has been
 // closed.
 bool ShouldTerminate() {
+  if (termination_fd == base::kInvalidFd)
+    return false;
+
   if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) < 0) {
-    RAW_CHECK(errno == EAGAIN);
+    if (errno != EAGAIN)
+      RAW_LOG(ERROR, "Reading from termination fd returned error != EAGAIN");
     return false;
   }
 
@@ -83,7 +110,12 @@ bool ShouldTerminate() {
 // SIGIO handler.
 void SigIo(const int sig) {
   const base::ScopedClearLastError guard;
-  RAW_CHECK(sig == SIGIO);
+
+  if (sig != SIGIO) {
+    RAW_LOG(ERROR, "SIGIO handler called with sig != SIGIO");
+    return;
+  }
+
   RAW_LOG(INFO, "The 'init' process received SIGIO");
   if (ShouldTerminate())
     ScheduleTermination();
