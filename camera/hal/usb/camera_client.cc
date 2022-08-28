@@ -216,8 +216,20 @@ int CameraClient::ConfigureStreams(
         stream_config->streams[i]->height <= jda_resolution_cap_.height;
     if (!(try_blob && is_jda_capable) &&
         stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
-        stream_config->num_streams > 1)
+        stream_config->num_streams > 1) {
       continue;
+    }
+
+    // Skip resolutions with low fps.
+    constexpr float kMinPreviewFps = 15.0f;
+    const SupportedFormat* format = FindFormatByResolution(
+        qualified_formats_, stream_config->streams[i]->width,
+        stream_config->streams[i]->height);
+    DCHECK_NE(format, nullptr);
+    const float max_fps = GetMaximumFrameRate(*format);
+    if (max_fps != 0.0f && max_fps < kMinPreviewFps) {
+      continue;
+    }
 
     // Find maximum area of stream_config to stream on.
     if (stream_config->streams[i]->width * stream_config->streams[i]->height >
@@ -647,28 +659,20 @@ void CameraClient::RequestHandler::HandleRequest(
   is_video_recording_ = IsVideoRecording(*metadata);
 
   bool stream_resolution_reconfigure = false;
-  Size new_resolution = stream_on_resolution_;
+  Size new_resolution = default_resolution_;
   if (!use_native_sensor_ratio_) {
     // Decide the stream resolution for this request. If resolution change is
     // needed, we don't switch the resolution back in the end of request.
     // We keep the resolution until next request and see whether we need to
     // change current resolution.
-    // (Note: We only support one blob format stream.)
-    bool have_blob_buffer = false;
     for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-      const camera3_stream_buffer_t* buffer = &capture_result.output_buffers[i];
-      if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
-        have_blob_buffer = true;
-        new_resolution.width = buffer->stream->width;
-        new_resolution.height = buffer->stream->height;
-        break;
+      const camera3_stream_t* stream = capture_result.output_buffers[i].stream;
+      const Size stream_size(stream->width, stream->height);
+      if (new_resolution < stream_size) {
+        new_resolution = stream_size;
       }
     }
-    if (!have_blob_buffer) {
-      new_resolution = default_resolution_;
-    }
-    if (new_resolution.width != stream_on_resolution_.width ||
-        new_resolution.height != stream_on_resolution_.height) {
+    if (new_resolution != stream_on_resolution_) {
       stream_resolution_reconfigure = true;
     }
   }
