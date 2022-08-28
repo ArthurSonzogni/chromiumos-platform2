@@ -78,6 +78,9 @@ struct SiblingState {
   // Watches if there is a read event on |fd_in|. Used as a proxy for if the
   // sibling has shutdown.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_in_watcher;
+
+  // Processes for virtio-vhost-user device backend processes.
+  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes_;
 };
 
 // Represents a single instance of a running termina VM.
@@ -314,10 +317,9 @@ class TerminaVm final : public VmBaseImpl {
   bool ResizeDiskImage(uint64_t new_size);
   bool ResizeFilesystem(uint64_t new_size);
 
-  // Starts virtio-vhost-user backends for ManaTEE.
-  bool StartSiblingVvuDevices(std::vector<base::StringPairs> cmds);
   // Starts Termina as a sibling VM on ManaTEE.
-  bool StartSiblingVm(std::vector<std::string> args);
+  bool StartSiblingVm(std::vector<base::StringPairs> vvu_device_cmds,
+                      std::vector<std::string> sibling_vm_args);
   // Sends message to sibling VM to shutdown and waits for it to shutdown.
   // Returns true if a successful VM shutdown was detected and false otherwise.
   bool ShutdownSiblingVm();
@@ -396,9 +398,6 @@ class TerminaVm final : public VmBaseImpl {
 
   // The thread to run D-Bus APIs on.
   base::Thread* dbus_thread_;
-
-  // Processes for virtio-vhost-user device backend processes.
-  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes_;
 
   // Auxiliary state associated with a Termina VM if it's started as a sibling
   // VM.

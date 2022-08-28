@@ -11,7 +11,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
@@ -90,6 +92,35 @@ std::unique_ptr<patchpanel::Subnet> MakeSubnet(
     const patchpanel::IPv4Subnet& subnet) {
   return std::make_unique<patchpanel::Subnet>(
       subnet.base_addr(), subnet.prefix_len(), base::DoNothing());
+}
+
+std::optional<std::vector<std::unique_ptr<brillo::ProcessImpl>>>
+StartSiblingVvuDevices(std::vector<base::StringPairs> vvu_device_cmds) {
+  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes;
+  for (base::StringPairs cmd : vvu_device_cmds) {
+    auto process = std::make_unique<brillo::ProcessImpl>();
+    std::string command_line_for_log{};
+
+    for (std::pair<std::string, std::string>& arg : cmd) {
+      command_line_for_log += arg.first;
+      command_line_for_log += " ";
+
+      process->AddArg(std::move(arg.first));
+      if (!arg.second.empty()) {
+        command_line_for_log += arg.second;
+        command_line_for_log += " ";
+        process->AddArg(std::move(arg.second));
+      }
+    }
+    LOG(INFO) << "Invoking VVU device: " << command_line_for_log;
+    if (!process->Start()) {
+      PLOG(ERROR) << "Failed to start VVU device";
+      return std::nullopt;
+    }
+    vvu_device_processes.push_back(std::move(process));
+  }
+
+  return vvu_device_processes;
 }
 
 }  // namespace
@@ -334,14 +365,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       return false;
     }
 
-    if (!StartSiblingVvuDevices(cmds->vvu_cmds)) {
-      LOG(ERROR) << "Failed to start VVU devices";
-      return false;
-    }
-
     // TODO(b/196186396): There needs to be a way of knowing when the devices
     // have booted up before we start the sibling VM.
-    if (!StartSiblingVm(cmds->sibling_cmd_args)) {
+    if (!StartSiblingVm(cmds->vvu_cmds, cmds->sibling_cmd_args)) {
       LOG(ERROR) << "Failed to start termina as a sibling";
       return false;
     }
@@ -387,36 +413,18 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
   return false;
 }
 
-bool TerminaVm::StartSiblingVvuDevices(std::vector<base::StringPairs> cmds) {
-  for (base::StringPairs cmd : cmds) {
-    auto process = std::make_unique<brillo::ProcessImpl>();
-    std::string command_line_for_log{};
-
-    for (std::pair<std::string, std::string>& arg : cmd) {
-      command_line_for_log += arg.first;
-      command_line_for_log += " ";
-
-      process->AddArg(std::move(arg.first));
-      if (!arg.second.empty()) {
-        command_line_for_log += arg.second;
-        command_line_for_log += " ";
-        process->AddArg(std::move(arg.second));
-      }
-    }
-    LOG(INFO) << "Invoking VVU device: " << command_line_for_log;
-    if (!process->Start()) {
-      PLOG(ERROR) << "Failed to start VVU device";
-      return false;
-    }
-    vvu_device_processes_.push_back(std::move(process));
+bool TerminaVm::StartSiblingVm(std::vector<base::StringPairs> vvu_device_cmds,
+                               std::vector<std::string> sibling_vm_args) {
+  // First start the VVU device backend processes. Without these the VM won't
+  // boot.
+  auto vvu_device_processes = StartSiblingVvuDevices(vvu_device_cmds);
+  if (!vvu_device_processes) {
+    LOG(ERROR) << "Failed to start VVU device processes for the sibling VM";
+    return false;
   }
 
-  return true;
-}
-
-bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
-  std::string sibling_args{};
-  for (std::string arg : args) {
+  std::string sibling_args;
+  for (std::string arg : sibling_vm_args) {
     sibling_args += " " + arg;
   }
   LOG(INFO) << "Send command to start sibling VM: " << sibling_args;
@@ -436,8 +444,8 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
                               "termina", args, false /* allow_unverified */,
                               error_code, fd_in, fd_out, error);
                         },
-                        manatee_client_.get(), args, &error_code, &fd_in,
-                        &fd_out, &error))
+                        manatee_client_.get(), sibling_vm_args, &error_code,
+                        &fd_in, &fd_out, &error))
           .Get()
           .val;
 
@@ -450,7 +458,8 @@ bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
   sibling_state_ = std::make_optional(
       SiblingState{.fd_in = std::move(fd_in),
                    .fd_out = std::move(fd_out),
-                   .fd_in_watcher = std::move(fd_in_watcher)});
+                   .fd_in_watcher = std::move(fd_in_watcher),
+                   .vvu_device_processes_ = std::move(*vvu_device_processes)});
   LOG(INFO) << "Sibling Vm Started: " << vm_started;
   return vm_started;
 }
