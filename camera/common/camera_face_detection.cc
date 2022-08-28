@@ -59,7 +59,6 @@ FaceDetectResult FaceDetector::Detect(
                kCameraTraceKeyHeight, buffer_manager_->GetHeight(buffer));
 
   DCHECK(faces);
-  base::AutoLock l(lock_);
   ScopedMapping mapping(buffer);
   if (!mapping.is_valid()) {
     LOGF(ERROR) << "Failed to map buffer";
