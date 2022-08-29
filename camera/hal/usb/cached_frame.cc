@@ -35,7 +35,7 @@ static bool SetExifTags(const android::CameraMetadata& static_metadata,
                         const FrameBuffer& in_frame,
                         ExifUtils* utils);
 
-static void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size);
+static bool InsertJpegBlob(FrameBuffer& out_frame, uint32_t jpeg_data_size);
 
 static Size CalculateCropSize(const Size& in_size, const Size& out_size) {
   // Crop the input image to the same ratio as the output image.
@@ -131,9 +131,9 @@ int CachedFrame::Convert(
     const android::CameraMetadata& static_metadata,
     const android::CameraMetadata& request_metadata,
     int rotate_degree,
-    const FrameBuffer& in_frame,
+    FrameBuffer& in_frame,
     const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
-    std::vector<int>* out_frame_status,
+    std::vector<int>& out_frame_status,
     std::vector<human_sensing::CrosFace>* faces) {
   //
   // Overview of the conversion graph.
@@ -223,21 +223,17 @@ int CachedFrame::Convert(
 
   // Convert |in_frame| into |nv12_frame|.
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
-    int ret = DecodeToNV12(in_frame, nv12_frame);
+    int ret = DecodeToNV12(in_frame, *nv12_frame);
     if (ret)
       return ret;
   } else {
-    if (nv12_frame->Map()) {
-      LOGF(ERROR) << "Failed to map frame";
-      return -EINVAL;
-    }
-    int ret = image_processor_->ConvertFormat(in_frame, nv12_frame);
+    int ret = image_processor_->ConvertFormat(in_frame, *nv12_frame);
     if (ret)
       return ret;
   }
 
   if (rotate_degree > 0) {
-    int ret = CropRotateScale(rotate_degree, nv12_frame);
+    int ret = CropRotateScale(rotate_degree, *nv12_frame);
     if (ret)
       return ret;
   }
@@ -255,19 +251,14 @@ int CachedFrame::Convert(
   // Convert |nv12_frame| into the output frames. At this time, this
   // function will always return 0 and record the per-output-frame conversion
   // status in |out_frame_status|.
-  out_frame_status->resize(out_frames.size());
+  out_frame_status.resize(out_frames.size());
   for (size_t i = 0; i < out_frames.size(); i++) {
     if (i == nv12_frame_index) {
-      (*out_frame_status)[i] = 0;
+      out_frame_status[i] = 0;
       continue;
     }
-    if (out_frames[i]->Map()) {
-      LOGF(ERROR) << "Failed to map frame";
-      (*out_frame_status)[i] = -EINVAL;
-      continue;
-    }
-    (*out_frame_status)[i] = ConvertFromNV12(static_metadata, request_metadata,
-                                             *nv12_frame, out_frames[i].get());
+    out_frame_status[i] = ConvertFromNV12(static_metadata, request_metadata,
+                                          *nv12_frame, *out_frames[i]);
   }
   return 0;
 }
@@ -275,13 +266,13 @@ int CachedFrame::Convert(
 int CachedFrame::ConvertFromNV12(
     const android::CameraMetadata& static_metadata,
     const android::CameraMetadata& request_metadata,
-    const FrameBuffer& in_frame,
-    FrameBuffer* out_frame) {
+    FrameBuffer& in_frame,
+    FrameBuffer& out_frame) {
   const Size in_size(in_frame.GetWidth(), in_frame.GetHeight());
-  const Size out_size(out_frame->GetWidth(), out_frame->GetHeight());
+  const Size out_size(out_frame.GetWidth(), out_frame.GetHeight());
   const Size crop_size = CalculateCropSize(in_size, out_size);
 
-  const FrameBuffer* src_frame = &in_frame;
+  FrameBuffer* src_frame = &in_frame;
   if (!(in_size == out_size)) {
     // Crop to the same aspect ratio of output size. Also converts format to
     // I420 since libyuv doesn't support NV12 scaling.
@@ -290,36 +281,31 @@ int CachedFrame::ConvertFromNV12(
                                        &temp_i420_frame_)) {
       return -EINVAL;
     }
-    int ret = image_processor_->Crop(in_frame, temp_i420_frame_.get());
+    int ret = image_processor_->Crop(in_frame, *temp_i420_frame_);
     if (ret)
       return ret;
     // Scale to the output size.
     if (!SharedFrameBuffer::Reallocate(
-            out_frame->GetWidth(), out_frame->GetHeight(), V4L2_PIX_FMT_YUV420,
+            out_frame.GetWidth(), out_frame.GetHeight(), V4L2_PIX_FMT_YUV420,
             &temp_i420_frame2_)) {
       return -EINVAL;
     }
-    ret = image_processor_->Scale(*temp_i420_frame_, temp_i420_frame2_.get());
+    ret = image_processor_->Scale(*temp_i420_frame_, *temp_i420_frame2_);
     if (ret)
       return ret;
     src_frame = temp_i420_frame2_.get();
   }
 
   // Output JPEG.
-  if (out_frame->GetFourcc() == V4L2_PIX_FMT_JPEG) {
+  if (out_frame.GetFourcc() == V4L2_PIX_FMT_JPEG) {
     if (src_frame->GetFourcc() != V4L2_PIX_FMT_NV12 &&
         src_frame->GetFourcc() != V4L2_PIX_FMT_NV12M) {
       if (!GrallocFrameBuffer::Reallocate(
-              out_frame->GetWidth(), out_frame->GetHeight(), V4L2_PIX_FMT_NV12,
+              out_frame.GetWidth(), out_frame.GetHeight(), V4L2_PIX_FMT_NV12,
               &temp_nv12_frame2_)) {
         return -EINVAL;
       }
-      if (temp_nv12_frame2_->Map()) {
-        LOGF(ERROR) << "Failed to map frame";
-        return -EINVAL;
-      }
-      int ret =
-          image_processor_->ConvertFormat(*src_frame, temp_nv12_frame2_.get());
+      int ret = image_processor_->ConvertFormat(*src_frame, *temp_nv12_frame2_);
       if (ret)
         return ret;
       src_frame = temp_nv12_frame2_.get();
@@ -331,8 +317,7 @@ int CachedFrame::ConvertFromNV12(
   return image_processor_->ConvertFormat(*src_frame, out_frame);
 }
 
-int CachedFrame::DecodeToNV12(const FrameBuffer& in_frame,
-                              FrameBuffer* out_frame) {
+int CachedFrame::DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame) {
   // Try HW decoding.
   base::ElapsedTimer hw_timer;
   int ret = DecodeByJDA(in_frame, out_frame);
@@ -354,18 +339,13 @@ int CachedFrame::DecodeToNV12(const FrameBuffer& in_frame,
     return -EINVAL;
   }
 
-  // SW decoding. If this fails, the input frame is likely invalid. Return
-  // -EAGAIN so HAL can skip this frame.
-  if (out_frame->Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return -EINVAL;
-  }
+  // SW decoding.
   if (!SharedFrameBuffer::Reallocate(in_frame.GetWidth(), in_frame.GetHeight(),
                                      V4L2_PIX_FMT_YUV420, &temp_i420_frame_)) {
     return -EINVAL;
   }
   base::ElapsedTimer sw_timer;
-  ret = image_processor_->ConvertFormat(in_frame, temp_i420_frame_.get());
+  ret = image_processor_->ConvertFormat(in_frame, *temp_i420_frame_);
   if (ret) {
     LOGF(ERROR) << "Decode JPEG to YU12 failed: " << ret;
     return -EAGAIN;
@@ -383,8 +363,7 @@ int CachedFrame::DecodeToNV12(const FrameBuffer& in_frame,
   return 0;
 }
 
-int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
-                             FrameBuffer* out_frame) {
+int CachedFrame::DecodeByJDA(FrameBuffer& in_frame, FrameBuffer& out_frame) {
   if (!jda_available_)
     return -EINVAL;
 
@@ -400,20 +379,16 @@ int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
   // mapped, unmap it first.
   // TODO(kamesan): simplify the map/unmap logics when we figure out a proper
   // way to sync mapped addresses (probably inside JDA implementation).
-  if (out_frame->Unmap()) {
+  if (out_frame.Unmap()) {
     LOGF(ERROR) << "Failed to unmap frame";
     return -EINVAL;
   }
   // TODO(kamesan): pass the buffer offset from V4L2 to here.
   JpegDecodeAccelerator::Error error = jda_->DecodeSync(
       in_frame.GetFd(), in_frame.GetDataSize(), 0 /* input_buffer_offset */,
-      out_frame->GetBufferHandle());
+      out_frame.GetBufferHandle());
   switch (error) {
     case JpegDecodeAccelerator::Error::NO_ERRORS:
-      if (out_frame->Map()) {
-        LOGF(ERROR) << "Failed to map frame";
-        return -EINVAL;
-      }
       return 0;
     case JpegDecodeAccelerator::Error::PARSE_JPEG_FAILED:
     case JpegDecodeAccelerator::Error::UNSUPPORTED_JPEG:
@@ -432,10 +407,10 @@ int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
   }
 }
 
-int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer* frame) {
-  if (frame->GetHeight() > frame->GetWidth()) {
-    LOGF(ERROR) << "frame is tall frame already: " << frame->GetWidth() << "x"
-                << frame->GetHeight();
+int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer& frame) {
+  if (frame.GetHeight() > frame.GetWidth()) {
+    LOGF(ERROR) << "frame is tall frame already: " << frame.GetWidth() << "x"
+                << frame.GetHeight();
     return -EINVAL;
   }
 
@@ -451,19 +426,19 @@ int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer* frame) {
   // --------------------               --------
   //
   uint32_t cropped_width =
-      frame->GetHeight() * frame->GetHeight() / frame->GetWidth();
+      frame.GetHeight() * frame.GetHeight() / frame.GetWidth();
   if (cropped_width % 2 == 1) {
     // Make cropped_width to the closest even number.
     cropped_width++;
   }
-  int cropped_height = frame->GetHeight();
+  int cropped_height = frame.GetHeight();
   if (!SharedFrameBuffer::Reallocate(cropped_height, cropped_width,
                                      V4L2_PIX_FMT_YUV420, &temp_i420_frame2_)) {
     return -EINVAL;
   }
 
   int ret = image_processor_->ProcessForInsetPortraitMode(
-      *frame, temp_i420_frame2_.get(), rotate_degree);
+      frame, *temp_i420_frame2_, rotate_degree);
   if (ret) {
     LOGF(ERROR) << "Crop and Rotate " << rotate_degree << " degree fails.";
     return ret;
@@ -480,11 +455,11 @@ int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer* frame) {
   //                           |                   |
   //                           ---------------------
   //
-  if (!SharedFrameBuffer::Reallocate(frame->GetWidth(), frame->GetHeight(),
+  if (!SharedFrameBuffer::Reallocate(frame.GetWidth(), frame.GetHeight(),
                                      V4L2_PIX_FMT_YUV420, &temp_i420_frame_)) {
     return -EINVAL;
   }
-  ret = image_processor_->Scale(*temp_i420_frame2_, temp_i420_frame_.get());
+  ret = image_processor_->Scale(*temp_i420_frame2_, *temp_i420_frame_);
   LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
 
   return image_processor_->ConvertFormat(*temp_i420_frame_, frame);
@@ -492,8 +467,8 @@ int CachedFrame::CropRotateScale(int rotate_degree, FrameBuffer* frame) {
 
 int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
                               const android::CameraMetadata& request_metadata,
-                              const FrameBuffer& in_frame,
-                              FrameBuffer* out_frame) {
+                              FrameBuffer& in_frame,
+                              FrameBuffer& out_frame) {
   ExifUtils utils;
   if (!utils.Initialize()) {
     LOGF(ERROR) << "ExifUtils initialization failed.";
@@ -548,8 +523,7 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
           LOGF(ERROR) << "Failed to allocate shared memory buffer";
           return -EINVAL;
         }
-        int ret =
-            image_processor_->ConvertFormat(in_frame, temp_i420_frame_.get());
+        int ret = image_processor_->ConvertFormat(in_frame, *temp_i420_frame_);
         if (ret) {
           LOGF(ERROR) << "Failed to convert frame to I420";
           return ret;
@@ -576,15 +550,26 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
     return -EINVAL;
   }
 
+  // TODO(okuji): Without this Map(),
+  // Camera3FrameTest/Camera3PortraitRotationTest.GetFrame/* does not pass.
+  // Figure out why this is required although CompressImageFromHandle() maps
+  // |out_frame| when it falls back to software encoding.
+  if (out_frame.Map()) {
+    LOGF(ERROR) << "Failed to map frame";
+    return -EINVAL;
+  }
   uint32_t jpeg_data_size = 0;
   if (!jpeg_compressor_->CompressImageFromHandle(
-          in_frame.GetBufferHandle(), out_frame->GetBufferHandle(),
+          in_frame.GetBufferHandle(), out_frame.GetBufferHandle(),
           in_frame.GetWidth(), in_frame.GetHeight(), jpeg_quality,
           utils.GetApp1Buffer(), utils.GetApp1Length(), &jpeg_data_size)) {
     LOGF(ERROR) << "JPEG image compression failed";
     return -EINVAL;
   }
-  InsertJpegBlob(out_frame, jpeg_data_size);
+  if (!InsertJpegBlob(out_frame, jpeg_data_size)) {
+    LOGF(ERROR) << "Inserting JPEG blob failed";
+    return -EINVAL;
+  }
   return 0;
 }
 
@@ -613,12 +598,17 @@ void CachedFrame::DetectFaces(const FrameBuffer& input_nv12_frame,
   *faces = faces_;
 }
 
-static void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size) {
+static bool InsertJpegBlob(FrameBuffer& out_frame, uint32_t jpeg_data_size) {
+  if (out_frame.Map()) {
+    LOGF(ERROR) << "Failed to map frame";
+    return false;
+  }
   camera3_jpeg_blob_t blob;
   blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
   blob.jpeg_size = jpeg_data_size;
-  memcpy(out_frame->GetData() + out_frame->GetBufferSize() - sizeof(blob),
-         &blob, sizeof(blob));
+  memcpy(out_frame.GetData() + out_frame.GetBufferSize() - sizeof(blob), &blob,
+         sizeof(blob));
+  return true;
 }
 
 static bool SetExifTags(const android::CameraMetadata& static_metadata,
