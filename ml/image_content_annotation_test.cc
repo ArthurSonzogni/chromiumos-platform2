@@ -8,25 +8,24 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+
+#include "chrome/knowledge/ica/ica.pb.h"
 
 namespace ml {
 
 TEST(ImageContentAnnotationLibraryTest, CanLoadLibrary) {
   auto* instance = ImageContentAnnotationLibrary::GetInstance();
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
-  ASSERT_TRUE(
-      ImageContentAnnotationLibrary::IsUseImageContentAnnotationEnabled());
 }
 
 TEST(ImageContentAnnotationLibraryTest, AnnotateImage) {
   auto* instance = ImageContentAnnotationLibrary::GetInstance();
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
-  ASSERT_TRUE(
-      ImageContentAnnotationLibrary::IsUseImageContentAnnotationEnabled());
   ImageContentAnnotator* annotator = instance->CreateImageContentAnnotator();
   ASSERT_NE(annotator, nullptr);
   ASSERT_TRUE(instance->InitImageContentAnnotator(annotator, "en-US"));
@@ -44,11 +43,12 @@ TEST(ImageContentAnnotationLibraryTest, AnnotateImage) {
   instance->AnnotateImage(annotator, mat.data, mat.cols, mat.rows, mat.step,
                           &annotation_scores);
 
-  ASSERT_EQ(3, annotation_scores.annotation_size());
+  ASSERT_GE(annotation_scores.annotation_size(), 1);
   EXPECT_EQ(annotation_scores.annotation(0).id(), 335);
-  EXPECT_EQ(annotation_scores.annotation(0).confidence(), 232);
+  EXPECT_GE(annotation_scores.annotation(0).confidence(), 232);
   EXPECT_EQ(annotation_scores.annotation(0).mid(), "/m/06wqb");
-  EXPECT_EQ(annotation_scores.annotation(0).name(), "Space");
+  EXPECT_EQ(base::ToLowerASCII(annotation_scores.annotation(0).name()),
+            "space");
 
   instance->DestroyImageContentAnnotator(annotator);
 }
