@@ -17,6 +17,11 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/platform_handle.h>
+#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#endif
 
 #include "ml/document_scanner_library.h"
 #include "ml/grammar_library.h"
@@ -29,6 +34,7 @@
 #include "ml/mojom/grammar_checker.mojom.h"
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/handwriting_recognizer.mojom.h"
+#include "ml/mojom/image_content_annotation.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/shared_memory.mojom.h"
@@ -212,6 +218,8 @@ using ::chromeos::machine_learning::mojom::HandwritingRecognizer;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizerResult;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizerResultPtr;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizerSpec;
+using ::chromeos::machine_learning::mojom::ImageAnnotationResult;
+using ::chromeos::machine_learning::mojom::ImageAnnotationResultPtr;
 using ::chromeos::machine_learning::mojom::LoadHandwritingModelResult;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::MachineLearningService;
@@ -1716,6 +1724,140 @@ TEST_F(DocumentScannerTest, PostProcessing) {
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
+
+#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
+class ImageContentAnnotationTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    // Sets the mlservice to single process mode for testing here.
+    Process::GetInstance()->SetTypeForTesting(
+        Process::Type::kSingleProcessForTest);
+
+    // Set ml_service.
+    ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(
+        ml_service_.BindNewPipeAndPassReceiver());
+  }
+  void Connect() {
+    auto config =
+        chromeos::machine_learning::mojom::ImageAnnotatorConfig::New();
+
+    bool model_callback_done = false;
+    ml_service_->LoadImageAnnotator(
+        std::move(config), annotator_.BindNewPipeAndPassReceiver(),
+        base::BindOnce(
+            [](bool* model_callback_done, const LoadModelResult result) {
+              ASSERT_EQ(result, LoadModelResult::OK);
+              *model_callback_done = true;
+            },
+            &model_callback_done));
+
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(model_callback_done);
+    ASSERT_TRUE(annotator_.is_bound());
+  }
+
+ protected:
+  std::unique_ptr<MachineLearningServiceImplForTesting> ml_service_impl_;
+  mojo::Remote<MachineLearningService> ml_service_;
+  mojo::Remote<chromeos::machine_learning::mojom::ImageContentAnnotator>
+      annotator_;
+};
+
+TEST_F(ImageContentAnnotationTest, AnnotateRawImage) {
+  Connect();
+
+  std::string image_encoded;
+  ASSERT_TRUE(base::ReadFileToString(
+      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+  auto matrix =
+      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
+                   cv::IMREAD_COLOR);
+  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
+  std::vector<uint8_t> buf;
+  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
+
+  ImageAnnotationResultPtr results;
+  annotator_->AnnotateRawImage(
+      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
+      base::BindOnce([](ImageAnnotationResultPtr* results,
+                        ImageAnnotationResultPtr p) { results->Swap(&p); },
+                     &results));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_NE(results.get(), nullptr);
+  ASSERT_EQ(results->status, ImageAnnotationResult::Status::OK);
+  ASSERT_GE(results->annotations.size(), 1);
+}
+
+TEST_F(ImageContentAnnotationTest, AnnotateRawImageRegionTooSmall) {
+  Connect();
+
+  std::string image_encoded;
+  ASSERT_TRUE(base::ReadFileToString(
+      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+  auto matrix =
+      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
+                   cv::IMREAD_COLOR);
+  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
+  std::vector<uint8_t> buf;
+  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
+  // Truncate buffer so memory region wont fit the provided params.
+  buf.resize(buf.size() / 2);
+
+  ImageAnnotationResultPtr results;
+  annotator_->AnnotateRawImage(
+      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
+      base::BindOnce([](ImageAnnotationResultPtr* results,
+                        ImageAnnotationResultPtr p) { results->Swap(&p); },
+                     &results));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_NE(results.get(), nullptr);
+  ASSERT_EQ(results->status, ImageAnnotationResult::Status::ERROR);
+  ASSERT_EQ(results->annotations.size(), 0);
+}
+
+TEST_F(ImageContentAnnotationTest, AnnotateEncodedImage) {
+  Connect();
+
+  std::string image_encoded;
+  ASSERT_TRUE(base::ReadFileToString(
+      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+  std::vector<uint8_t> buf;
+  buf.assign(image_encoded.begin(), image_encoded.end());
+
+  ImageAnnotationResultPtr results;
+  annotator_->AnnotateEncodedImage(
+      ToSharedMemory(buf),
+      base::BindOnce([](ImageAnnotationResultPtr* results,
+                        ImageAnnotationResultPtr p) { results->Swap(&p); },
+                     &results));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_NE(results.get(), nullptr);
+  ASSERT_EQ(results->status, ImageAnnotationResult::Status::OK);
+  ASSERT_GE(results->annotations.size(), 1);
+}
+
+TEST_F(ImageContentAnnotationTest, AnnotateEncodedImageNonImage) {
+  Connect();
+
+  std::string image_encoded;
+  ASSERT_TRUE(base::ReadFileToString(
+      base::FilePath("/opt/google/chrome/ml_models/ica/libica.so"),
+      &image_encoded));
+  std::vector<uint8_t> buf;
+  buf.assign(image_encoded.begin(), image_encoded.end());
+
+  ImageAnnotationResultPtr results;
+  annotator_->AnnotateEncodedImage(
+      ToSharedMemory(buf),
+      base::BindOnce([](ImageAnnotationResultPtr* results,
+                        ImageAnnotationResultPtr p) { results->Swap(&p); },
+                     &results));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_NE(results.get(), nullptr);
+  ASSERT_EQ(results->status, ImageAnnotationResult::Status::ERROR);
+  ASSERT_EQ(results->annotations.size(), 0);
+}
+#endif
 
 // Tests that the Test model file can be loaded correctly and produces the
 // expected inference result.

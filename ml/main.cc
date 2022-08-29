@@ -21,6 +21,7 @@ constexpr char kAdaptiveChargingTask[] = "adaptive_charging";
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  // DO NOT SUBMIT: remove this logtostderr before submitting.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   // Parses the command line arguments. Shared within the current process.
   base::CommandLine::Init(argc, argv);

@@ -43,6 +43,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
     "mojom/grammar_checker.mojom",
     "mojom/graph_executor.mojom",
     "mojom/handwriting_recognizer.mojom",
+    "mojom/image_content_annotation.mojom",
     "mojom/machine_learning_service.mojom",
     "mojom/model.mojom",
     "mojom/shared_memory.mojom",
@@ -210,8 +211,15 @@ static_library("ml_common") {
     sources += [ "soda_recognizer_impl_fake.cc" ]
   }
   if (use.ondevice_image_content_annotation) {
-    sources += [ "image_content_annotation.cc" ]
+    sources += [
+      "image_content_annotation.cc",
+      "image_content_annotation_impl.cc",
+    ]
     deps += [ ":ml_ica_proto" ]
+
+    pkg_deps += [ "opencv4" ]
+  } else {
+    sources += [ "image_content_annotation_impl_fake.cc" ]
   }
 
   # Enables handwriting for all boards in fuzzer, including those don't support
@@ -327,6 +335,8 @@ if (use.test) {
       "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
       "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
       "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
+      "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
+          "${use.ondevice_image_content_annotation}",
     ]
     deps = [
       ":ml_assist_ranker_proto",
@@ -348,8 +358,6 @@ if (use.test) {
     }
     if (use.ondevice_image_content_annotation) {
       sources += [ "image_content_annotation_test.cc" ]
-      defines += [ "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION" ]
-      include_dirs += [ "${sysroot}/usr/include/opencv4" ]
       pkg_deps += [ "opencv4" ]
     }
     if (use.ml_benchmark_drivers) {
