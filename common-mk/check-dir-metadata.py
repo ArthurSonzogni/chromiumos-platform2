@@ -51,7 +51,6 @@ def GetActiveProjects() -> Generator[Path, None, None]:
 # Legacy projects that don't have a DIR_METADATA file.
 # Someone should claim them :D.
 LEGACYLIST = {
-    "arc",
     "authpolicy",
     "avtest_label_detect",
     "bootid-logger",
