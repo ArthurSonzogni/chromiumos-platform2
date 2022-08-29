@@ -148,7 +148,6 @@ LEGACYLIST = {
     "usb_bouncer",
     "verity",
     "virtual_file_provider",
-    "vm_tools",
     "vpn-manager",
     "webserver",
     "wifi-testbed",
