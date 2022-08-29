@@ -18,6 +18,7 @@
 #include <hardware/camera3.h>
 #include <time.h>
 
+#include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
@@ -196,9 +197,9 @@ class ZslHelper {
   // is called after the attached buffer for |frame_number| is returned. After
   // |release_fence| is signalled, we'll mark the corresponding ZSL buffer as
   // ready.
-  void WaitAttachedFrame(uint32_t frame_number, int release_fence);
+  void WaitAttachedFrame(uint32_t frame_number, base::ScopedFD release_fence);
   void WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
-                                          int release_fence);
+                                          base::ScopedFD release_fence);
 
   // Releases this stream buffer and the buffer handle underneath.
   void ReleaseStreamBuffer(camera3_stream_buffer_t buffer);

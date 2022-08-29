@@ -538,7 +538,8 @@ void ZslHelper::ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
   std::vector<camera3_stream_buffer_t> zsl_detached_output_buffers;
   for (const auto& buffer : result->GetOutputBuffers()) {
     if (buffer.stream == bi_stream_.get()) {
-      WaitAttachedFrame(result->frame_number(), buffer.release_fence);
+      WaitAttachedFrame(result->frame_number(),
+                        base::ScopedFD(buffer.release_fence));
     } else {
       zsl_detached_output_buffers.push_back(buffer);
     }
@@ -580,17 +581,18 @@ void ZslHelper::OnNotifyError(const camera3_error_msg_t& error_msg) {
   }
 }
 
-void ZslHelper::WaitAttachedFrame(uint32_t frame_number, int release_fence) {
+void ZslHelper::WaitAttachedFrame(uint32_t frame_number,
+                                  base::ScopedFD release_fence) {
   fence_sync_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
-                     base::Unretained(this), frame_number, release_fence));
+      FROM_HERE, base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
+                                base::Unretained(this), frame_number,
+                                std::move(release_fence)));
 }
 
-void ZslHelper::WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
-                                                   int release_fence) {
+void ZslHelper::WaitAttachedFrameOnFenceSyncThread(
+    uint32_t frame_number, base::ScopedFD release_fence) {
   if (release_fence != -1 &&
-      sync_wait(release_fence, ZslHelper::kZslSyncWaitTimeoutMs)) {
+      sync_wait(release_fence.get(), ZslHelper::kZslSyncWaitTimeoutMs)) {
     LOGF(WARNING) << "Failed to wait for release fence on attached ZSL buffer";
   } else {
     base::AutoLock ring_buffer_lock(ring_buffer_lock_);
@@ -604,9 +606,9 @@ void ZslHelper::WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
     return;
   }
   fence_sync_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
-                     base::Unretained(this), frame_number, release_fence));
+      FROM_HERE, base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
+                                base::Unretained(this), frame_number,
+                                std::move(release_fence)));
 }
 
 void ZslHelper::ReleaseStreamBuffer(camera3_stream_buffer_t buffer) {
