@@ -103,7 +103,6 @@ LEGACYLIST = {
     "missive",
     "mist",
     "ml_benchmark",
-    "modemfwd",
     "modem-utilities",
     "mojo_service_manager",
     "nnapi",
