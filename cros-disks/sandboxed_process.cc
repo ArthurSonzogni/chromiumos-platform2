@@ -214,7 +214,8 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
       SandboxedInit(
           base::BindOnce(Exec, args, env, simulate_progress_for_testing_),
           std::move(launcher_pipe_.child_fd),
-          std::move(termination_pipe.child_fd))
+          kill_pid_namespace_ ? std::move(termination_pipe.child_fd)
+                              : base::ScopedFD())
           .Run();
       NOTREACHED();
     } else {

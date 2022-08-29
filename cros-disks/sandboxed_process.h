@@ -105,6 +105,11 @@ class SandboxedProcess : public Process {
     simulate_progress_for_testing_ = true;
   }
 
+  // Should the destruction of this SandboxedProcess trigger the destruction of
+  // the PID namespace it manages and all the process that are still running in
+  // it?
+  void SetKillPidNamespace(const bool kill) { kill_pid_namespace_ = kill; }
+
  protected:
   // Process overrides:
   pid_t StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) override;
@@ -116,6 +121,10 @@ class SandboxedProcess : public Process {
 
   // Does this SandboxedProcess use a PID namespace?
   bool use_pid_namespace_ = false;
+
+  // Whether the destruction of this SandboxedProcess triggers the destruction
+  // of the PID namespace and all the process that are still running in it.
+  bool kill_pid_namespace_ = false;
 
   // Should simulate progress and delay the start of the process for testing?
   bool simulate_progress_for_testing_ = false;

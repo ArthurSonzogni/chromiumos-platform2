@@ -40,6 +40,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
       SandboxedExecutable executable,
       OwnerUser run_as,
       bool has_network_access = false,
+      bool kill_pid_namespace = false,
       std::vector<gid_t> supplementary_groups = {},
       std::optional<base::FilePath> mount_namespace = {});
   ~FUSESandboxedProcessFactory() override;
@@ -69,6 +70,9 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
 
   // Whether to leave network accessible from the sandbox.
   const bool has_network_access_;
+
+  // Whether to kill the PID namespace when unmounting the FUSE mount point.
+  const bool kill_pid_namespace_;
 
   // Additional groups to associate with the FUSE daemon process.
   const std::vector<gid_t> supplementary_groups_;

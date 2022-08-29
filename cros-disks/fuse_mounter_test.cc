@@ -194,7 +194,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, NetworkEnabled_Crostini) {
 }
 
 TEST_F(FUSESandboxedProcessFactoryTest, SupplementaryGroups) {
-  FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, false,
+  FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, false, false,
                                       {11, 22, 33});
   MockSandboxedProcess sandbox_;
   EXPECT_TRUE(ApplyConfiguration(factory, &sandbox_));
@@ -202,8 +202,8 @@ TEST_F(FUSESandboxedProcessFactoryTest, SupplementaryGroups) {
 
 TEST_F(FUSESandboxedProcessFactoryTest, MountNamespace) {
   base::FilePath mount_ns(base::StringPrintf("/proc/%d/ns/mnt", getpid()));
-  FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, false, {},
-                                      mount_ns);
+  FUSESandboxedProcessFactory factory(&platform_, {exe_}, run_as_, false, false,
+                                      {}, mount_ns);
   MockSandboxedProcess sandbox_;
   EXPECT_TRUE(ApplyConfiguration(factory, &sandbox_));
 }

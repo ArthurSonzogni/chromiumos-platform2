@@ -72,6 +72,7 @@ FUSESandboxedProcessFactory::FUSESandboxedProcessFactory(
     SandboxedExecutable executable,
     OwnerUser run_as,
     bool has_network_access,
+    bool kill_pid_namespace,
     std::vector<gid_t> supplementary_groups,
     std::optional<base::FilePath> mount_namespace)
     : platform_(platform),
@@ -79,6 +80,7 @@ FUSESandboxedProcessFactory::FUSESandboxedProcessFactory(
       seccomp_policy_(std::move(executable.seccomp_policy)),
       run_as_(std::move(run_as)),
       has_network_access_(has_network_access),
+      kill_pid_namespace_(kill_pid_namespace),
       supplementary_groups_(std::move(supplementary_groups)),
       mount_namespace_(std::move(mount_namespace)) {
   CHECK(executable_.IsAbsolute());
@@ -113,6 +115,8 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   sandbox->NewPidNamespace();
 
   sandbox->NewCgroupNamespace();
+
+  sandbox->SetKillPidNamespace(kill_pid_namespace_);
 
   // Add the sandboxed process to its cgroup that should be setup. Return an
   // error if it's not there.

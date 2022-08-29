@@ -772,6 +772,7 @@ INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
 TEST(PidNamespaceRunAsRootTest, LauncherDoesNotTerminateOnSigTerm) {
   SandboxedProcess process;
   process.NewPidNamespace();
+  process.SetKillPidNamespace(true);
 
   process.AddArgument("/bin/bash");
   process.AddArgument("-c");
@@ -828,6 +829,7 @@ TEST(PidNamespaceRunAsRootTest, LauncherDoesNotTerminateOnSigTerm) {
 TEST(PidNamespaceRunAsRootTest, RepeatedSigTerm) {
   SandboxedProcess process;
   process.NewPidNamespace();
+  process.SetKillPidNamespace(true);
 
   process.AddArgument("/bin/bash");
   process.AddArgument("-c");
@@ -902,10 +904,13 @@ TEST(PidNamespaceRunAsRootTest, SimulatesProgress) {
                             "Simulating progress 99%", "Finished"}));
 }
 
-TEST(ProcessTerminationTest, RunAsRoot_InitTerminatesAfterDestroyingProcess) {
+// Tests that the PID namespace is killed when the SandboxedProcess object is
+// deleted and the SetKillPidNamespace(true) method has been called.
+TEST(PidNamespaceRunAsRootTest, DeletingProcessObjectKillsPidNamespace) {
   std::unique_ptr<SandboxedProcess> process =
       std::make_unique<SandboxedProcess>();
   process->NewPidNamespace();
+  process->SetKillPidNamespace(true);
 
   process->AddArgument("/bin/sh");
   process->AddArgument("-c");
@@ -943,6 +948,59 @@ TEST(ProcessTerminationTest, RunAsRoot_InitTerminatesAfterDestroyingProcess) {
   // Wait for child process to finish.
   EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
 }
+
+// Tests that the PID namespace is not killed when the SandboxedProcess object
+// is deleted and the SetKillPidNamespace() method has not been called.
+TEST(PidNamespaceRunAsRootTest, DeletingProcessObjectDoesNotKillPidNamespace) {
+  std::unique_ptr<SandboxedProcess> process =
+      std::make_unique<SandboxedProcess>();
+  process->NewPidNamespace();
+
+  process->AddArgument("/bin/sh");
+  process->AddArgument("-c");
+
+  // Pipe to block the child process.
+  SubprocessPipe to_block(SubprocessPipe::kParentToChild);
+
+  // Pipe to monitor the child process.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process->AddArgument(base::StringPrintf(
+      R"(
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+    )",
+      to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
+
+  process->PreserveFile(to_wait.child_fd.get());
+  process->PreserveFile(to_block.child_fd.get());
+
+  EXPECT_TRUE(process->Start());
+
+  // Close unused pipe ends.
+  to_block.child_fd.reset();
+  to_wait.child_fd.reset();
+
+  // Wait for child process to start.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
+
+  // Destroy the process object.
+  process.reset();
+
+  // Wait for longer than the 2-second grace period.
+  sleep(3);
+
+  // Unblock child process.
+  Write(to_block.parent_fd.get(), "Continue");
+  to_block.parent_fd.reset();
+
+  // Wait for child process to continue and finish.
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+}
+
 #endif
 
 }  // namespace cros_disks

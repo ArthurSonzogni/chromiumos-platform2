@@ -252,7 +252,8 @@ ArchiveManager::CreateSandboxFactory(SandboxedExecutable executable,
 
   return std::make_unique<FUSESandboxedProcessFactory>(
       platform(), std::move(executable), std::move(run_as),
-      /* has_network_access= */ false, std::move(groups));
+      /* has_network_access= */ false, /* kill_pid_namespace= */ true,
+      std::move(groups));
 }
 
 }  // namespace cros_disks
