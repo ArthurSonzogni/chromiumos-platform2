@@ -129,7 +129,6 @@ LEGACYLIST = {
     "secure_erase_file",
     "secure-wipe",
     "sepolicy",
-    "shill",
     "sirenia",
     "smogcheck",
     "spaced",
@@ -212,7 +211,12 @@ def CheckSubdirs() -> int:
 
     # Make sure the projects have declared how to route bugs.
     result = cros_build_lib.dbg_run(
-        [os.path.join(constants.DEPOT_TOOLS_DIR, "dirmd"), "read"],
+        [
+            os.path.join(constants.DEPOT_TOOLS_DIR, "dirmd"),
+            "read",
+            "-form",
+            "computed",
+        ],
         cwd=TOP_DIR,
         capture_output=True,
         check=True,
