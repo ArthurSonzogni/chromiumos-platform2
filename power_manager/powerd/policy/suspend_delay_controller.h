@@ -100,7 +100,7 @@ class SuspendDelayController {
   // resume. This delay helps for external monitor enumeration when the
   // device dark resumes on hot plug detect.
   static constexpr base::TimeDelta kDarkResumeMinDelayTimeout =
-      base::Seconds(5);
+      base::Seconds(10);
 
   // Returns a substring to use in log messages to describe the types of
   // suspends controlled by this object. If |description_| is non-empty,
