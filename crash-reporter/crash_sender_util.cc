@@ -123,7 +123,7 @@ void ParseCommandLine(int argc,
               "before invoking crash_sender. Therefore, skip the consent "
               "check.");
 
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
+  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
     LOG(ERROR) << "Invalid value for max spread time: "
                << FLAGS_max_spread_time;

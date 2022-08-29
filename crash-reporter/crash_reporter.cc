@@ -330,7 +330,7 @@ int main(int argc, char* argv[]) {
 
   FilePath my_path = util::GetPathToThisBinary(argv);
 
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
+  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Reporter");
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher(task_executor.task_runner());

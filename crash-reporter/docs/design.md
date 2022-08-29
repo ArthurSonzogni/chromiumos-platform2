@@ -1,4 +1,4 @@
-# Chromium OS Crash Reporting
+# ChromiumOS Crash Reporting
 
 *2011-05-15*
 
@@ -75,7 +75,7 @@ reports that contain enough information to provide a stack trace of all threads
 running at the time of the crash.
 [Google Breakpad] does (as of Q1 2010) support ARM but is not yet used in
 production.
-Chrome in Chrome OS currently uses [Google Breakpad] and sends crash reports
+Chrome in ChromeOS currently uses [Google Breakpad] and sends crash reports
 with product ID "Chrome_ChromeOS".
 
 The Canonical Ubuntu Linux project uses [Apport] to handle user space crashes.
@@ -128,7 +128,7 @@ http://www.kerneloops.org/ - Collects crash dumps and provides a dashboard for
 all kernel developers to find crashes common across all versions, as well as
 specific to vendors/distributors.
 Provided they have enough server-side capacity to handle crash dumps from
-Chrome OS scale numbers of machines this is an option.
+ChromeOS scale numbers of machines this is an option.
 kerneloops provides a user space process that runs at startup, prompts the user
 if they want to upload the kernel crash, and uploads an analyzed result.
 
@@ -167,7 +167,7 @@ symbolic information.
 
 We would like to have statistics on how often crashes are occurring in the
 field.
-For every release of Chrome OS on every device we would like to know how
+For every release of ChromeOS on every device we would like to know how
 frequent unclean shutdowns, user space process, and kernel crashes are.
 Ideally we can know information on occurrences per individual user, for
 instance, knowing that 1% of users experience over 5 kernel panics per week.
@@ -227,7 +227,7 @@ be discarded.
     OS's uses.
     [Google Breakpad] is normally linked directly into individual executables
     whose crashes we want to generate diagnostics for.
-    Since Chrome OS has hundreds of these executables, catching signals can
+    Since ChromeOS has hundreds of these executables, catching signals can
     interfere with executables' own code, and some executables are only
     delivered to Google in binary form, we found the conversion of full core
     files from the kernel to minidump files to be a superior way to generate
@@ -270,8 +270,8 @@ be discarded.
 
 ## Termina virtual machine crashes
 
-*   Chrome OS has over time grown a number of virtual machines, including
-    Termina, a VM for running Linux applications the Chrome OS won't support
+*   ChromeOS has over time grown a number of virtual machines, including
+    Termina, a VM for running Linux applications the ChromeOS won't support
     natively. The user space crash handling described above won't catch any
     crashes here.
 *   Inside Termina we gather information about crashes using the normal
@@ -295,7 +295,7 @@ be discarded.
     region of memory called "kcrash" memory.
 *   This memory can be accessed from user space by reading the
     `/sys/kernel/debug/preserved/kcrash` file.
-*   This kcrash memory is handled specially by the Chrome OS firmware when
+*   This kcrash memory is handled specially by the ChromeOS firmware when
     reboots occur.
 *   Upon writing to this memory area, the kernel panic handler causes the system
     to reboot.

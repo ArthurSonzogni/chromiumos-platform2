@@ -112,7 +112,7 @@ constexpr char kInProgressTestName[] = "test-in-prog";
 constexpr char kDeviceCoredumpUploadAllowed[] =
     "device_coredump_upload_allowed";
 
-// Base name of file that contains Chrome OS version info.
+// Base name of file that contains ChromeOS version info.
 constexpr char kLsbRelease[] = "lsb-release";
 
 // Basename of file in the state directory that has the client ID.

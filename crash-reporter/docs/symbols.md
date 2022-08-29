@@ -2,7 +2,7 @@
 
 Our crash reporting system strives to minimize on-device processing to keep the
 runtime as light, fast, and small as possible.
-This means we do quite a lot of work when building Chromium OS, as well as
+This means we do quite a lot of work when building ChromiumOS, as well as
 server processing (such as stack walking).
 A break down in any one of these pieces can easily result in reports not being
 processed correctly which significantly impairs developers.
@@ -41,7 +41,7 @@ The quality of debugging depends quite a bit on this.
 ### Compression
 
 Debug information could be compressed at various points in the process.
-We don't currently utilize this in Chromium OS.
+We don't currently utilize this in ChromiumOS.
 
 ### Compile
 
@@ -62,7 +62,7 @@ There's a few things to keep in mind:
 *   The input objects might not be entirely from the current package.  When
     working with static libraries, many objects might come from other packages
     via those archives (i.e. `libfoo.a`).
-*   In Chromium OS, many packages are only static archives (e.g. protobufs).
+*   In ChromiumOS, many packages are only static archives (e.g. protobufs).
 *   Even if you don't think you're using static libraries, the vast majority of
     the time you actually are.  The toolchain (e.g. glibc & clang/gcc) provide a
     few small static libraries that are always implicitly linked in.  You can

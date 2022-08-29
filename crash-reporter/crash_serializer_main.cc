@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(chunk_size, kDefaultChunkSizeBytes,
                "Approximate maximum size of an individual proto message to "
                "write to stdout.");
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
+  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Sender");
   if (FLAGS_chunk_size < 0 || FLAGS_chunk_size > kMaxChunkSizeBytes) {
     LOG(ERROR) << "Invalid value for max chunk size: " << FLAGS_chunk_size;
     return EXIT_FAILURE;

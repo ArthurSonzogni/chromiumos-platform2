@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(testonly_send_all, false,
               "True iff the anomaly detector should send all reports. "
               "Only use for testing.");
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS Anomaly Detector");
+  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Anomaly Detector");
   // Sim sala bim!  These are needed to send D-Bus signals and receive messages.
   // Even though they are not used directly, they set up some global state
   // needed by the D-Bus library.

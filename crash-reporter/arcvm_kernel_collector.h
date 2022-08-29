@@ -6,7 +6,7 @@
 // ARCVM kernel crashes, it generates the crash log at
 // /sys/fs/pstore/dmesg-ramoops-0 in ARCVM. The content of this file can be
 // obtained from a ring buffer in /home/root/<hash>/crosvm/*.pstore file in
-// Chrome OS. ArcvmKernelCollector receives the content of
+// ChromeOS. ArcvmKernelCollector receives the content of
 // /sys/fs/pstore/dmesg-ramoops-0 and convert it for crash_sender.
 
 #ifndef CRASH_REPORTER_ARCVM_KERNEL_COLLECTOR_H_

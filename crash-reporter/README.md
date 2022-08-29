@@ -1,4 +1,4 @@
-# Chromium OS Crash Reporter
+# ChromiumOS Crash Reporter
 
 This is the project for handling all crash related operations on the device.
 The intention is to be as low-overhead as possible while still maximizing

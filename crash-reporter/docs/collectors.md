@@ -44,7 +44,7 @@ The dump collected might be referred to as `bertdump`.
 
 ## ec_collector
 
-This collects [EC] (Chrome OS Embedded Controller) failures.
+This collects [EC] (ChromeOS Embedded Controller) failures.
 
 The program name is `embedded-controller` and might be referred to as `eccrash`.
 
@@ -168,7 +168,7 @@ Collects crashes of Linux kernel of Android in [ARCVM].
 
 When the ARCVM Linux kernel crashes, it dumps logs to
 `/sys/fs/pstore/dmesg-ramoops-0` in ARCVM.  It's a [pstore] file, so the
-backend exists on Chrome OS as `/home/root/<hash>/crosvm/*.pstore`.
+backend exists on ChromeOS as `/home/root/<hash>/crosvm/*.pstore`.
 [arcvm_kernel_collector] receives the content of this file from
 ArcCrashCollector and ARC bridge via Mojo (or possibly, directly reads the
 ring buffer in pstore file) and processes it.
@@ -206,7 +206,7 @@ Otherwise Chrome coredumps can easily consume 3GB+ of memory!
 This does mean the system may miss crashes if Chrome's handling itself is buggy.
 
 *** aside
-In much older versions of Chrome OS (sometime before R40), Chrome would not only
+In much older versions of ChromeOS (sometime before R40), Chrome would not only
 handle creating its own crash reports, it would also handle uploading them.
 We changed that behavior because Chrome's uploading is not as robust: it starts
 uploading immediately, lacks delays/rate limiting, it tries only once, and if it
