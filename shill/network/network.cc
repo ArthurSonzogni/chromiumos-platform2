@@ -46,6 +46,13 @@ constexpr char kIPFlagDisableIPv6[] = "disable_ipv6";
 constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
 constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
 
+constexpr char kIPFlagArpAnnounce[] = "arp_announce";
+constexpr char kIPFlagArpAnnounceDefault[] = "0";
+constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
+constexpr char kIPFlagArpIgnore[] = "arp_ignore";
+constexpr char kIPFlagArpIgnoreDefault[] = "0";
+constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
+
 }  // namespace
 
 Network::Network(int interface_index,
@@ -541,6 +548,32 @@ void Network::OnIPv6DnsServerAddressesChanged() {
   ip6config()->UpdateDNSServers(std::move(addresses_str));
   event_handler_->OnIPConfigsPropertyUpdated();
   OnIPv6ConfigUpdated();
+}
+
+void Network::SetIsMultiHomed(bool is_multi_homed) {
+  if (is_multi_homed == is_multi_homed_) {
+    return;
+  }
+  LOG(INFO) << interface_name_ << ": multi-home state is now "
+            << is_multi_homed;
+  is_multi_homed_ = is_multi_homed;
+  if (is_multi_homed) {
+    // Enable ARP filtering on the device. Incoming ARP requests are responded
+    // to only by the interface(s) owning the address. Outgoing ARP requests
+    // will contain the best local address for the target.
+    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+              kIPFlagArpAnnounceBestLocal);
+    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+              kIPFlagArpIgnoreLocalOnly);
+  } else {
+    // Disable ARP filtering on the device. The interface will exhibit the
+    // default Linux behavior -- incoming ARP requests are responded to by all
+    // interfaces.  Outgoing ARP requests can contain any local address.
+    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+              kIPFlagArpAnnounceDefault);
+    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+              kIPFlagArpIgnoreDefault);
+  }
 }
 
 bool Network::SetIPFlag(IPAddress::Family family,

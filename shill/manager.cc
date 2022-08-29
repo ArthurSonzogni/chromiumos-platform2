@@ -3147,7 +3147,7 @@ void Manager::DetectMultiHomedDevices() {
       subnet_name = network->GetSubnetName();
     }
     if (subnet_name.empty()) {
-      device->SetIsMultiHomed(false);
+      device->network()->SetIsMultiHomed(false);
     } else {
       subnet_buckets[subnet_name].push_back(device);
     }
@@ -3157,11 +3157,11 @@ void Manager::DetectMultiHomedDevices() {
     const auto& device_list = subnet_bucket.second;
     if (device_list.size() > 1) {
       for (const auto& device : device_list) {
-        device->SetIsMultiHomed(true);
+        device->network()->SetIsMultiHomed(true);
       }
     } else {
       DCHECK_EQ(1U, device_list.size());
-      device_list.back()->SetIsMultiHomed(false);
+      device_list.back()->network()->SetIsMultiHomed(false);
     }
   }
 }

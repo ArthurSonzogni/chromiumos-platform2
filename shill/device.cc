@@ -64,12 +64,6 @@ static std::string ObjectID(const Device* d) {
 
 namespace {
 
-constexpr char kIPFlagArpAnnounce[] = "arp_announce";
-constexpr char kIPFlagArpAnnounceDefault[] = "0";
-constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
-constexpr char kIPFlagArpIgnore[] = "arp_ignore";
-constexpr char kIPFlagArpIgnoreDefault[] = "0";
-constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
 constexpr size_t kHardwareAddressLength = 6;
 
 int PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
@@ -148,7 +142,6 @@ Device::Device(Manager* manager,
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      is_multi_homed_(false),
       traffic_counter_callback_id_(0),
       weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &mac_address_);
@@ -200,7 +193,7 @@ Device::~Device() {
 
 void Device::Initialize() {
   SLOG(this, 2) << "Initialized";
-  DisableArpFiltering();
+  network()->SetIsMultiHomed(false);
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
@@ -267,33 +260,6 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement Reset");
-}
-
-void Device::SetIsMultiHomed(bool is_multi_homed) {
-  if (is_multi_homed == is_multi_homed_) {
-    return;
-  }
-  LOG(INFO) << LoggingTag() << ": multi-home state is now " << is_multi_homed;
-  is_multi_homed_ = is_multi_homed;
-  if (is_multi_homed) {
-    EnableArpFiltering();
-  } else {
-    DisableArpFiltering();
-  }
-}
-
-void Device::DisableArpFiltering() {
-  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-                       kIPFlagArpAnnounceDefault);
-  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-                       kIPFlagArpIgnoreDefault);
-}
-
-void Device::EnableArpFiltering() {
-  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-                       kIPFlagArpAnnounceBestLocal);
-  network()->SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-                       kIPFlagArpIgnoreLocalOnly);
 }
 
 bool Device::IsConnected() const {

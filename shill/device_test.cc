@@ -395,43 +395,6 @@ TEST_F(DeviceTest, StartIPv6) {
   device_->network()->StartIPv6();
 }
 
-TEST_F(DeviceTest, MultiHomed) {
-  auto network = std::make_unique<MockNetwork>(
-      device_->interface_index(), device_->link_name(), device_->technology());
-  auto* network_ptr = network.get();
-  device_->set_network_for_testing(std::move(network));
-
-  // Device should have multi-homing disabled by default.
-  EXPECT_CALL(*network_ptr, SetIPFlag(_, _, _)).Times(0);
-  device_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(device_.get());
-
-  // Disabled -> enabled should change flags on the device.
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv4,
-                                      StrEq("arp_announce"), StrEq("2")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv4,
-                                      StrEq("arp_ignore"), StrEq("1")))
-      .WillOnce(Return(true));
-  device_->SetIsMultiHomed(true);
-  Mock::VerifyAndClearExpectations(device_.get());
-
-  // Enabled -> enabled should be a no-op.
-  EXPECT_CALL(*network_ptr, SetIPFlag(_, _, _)).Times(0);
-  device_->SetIsMultiHomed(true);
-  Mock::VerifyAndClearExpectations(device_.get());
-
-  // Enabled -> disabled should reset the flags back to the default.
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv4,
-                                      StrEq("arp_announce"), StrEq("0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv4,
-                                      StrEq("arp_ignore"), StrEq("0")))
-      .WillOnce(Return(true));
-  device_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(network_ptr);
-}
-
 TEST_F(DeviceTest, Load) {
   device_->enabled_persistent_ = false;
 

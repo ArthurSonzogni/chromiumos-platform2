@@ -177,13 +177,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Geolocation.
   virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
-  // Enable or disable same-net multi-home support for this interface.  When
-  // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
-  // effect where peers may end up with inaccurate IP address mappings due to
-  // the default Linux ARP transmit / reply behavior.  See
-  // http://linux-ip.net/html/ether-arp.html for more details on this effect.
-  mockable void SetIsMultiHomed(bool is_multi_homed);
-
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
@@ -519,16 +512,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // state shouldn't be changed.
   void BringNetworkInterfaceDown();
 
-  // Disable ARP filtering on the device.  The interface will exhibit the
-  // default Linux behavior -- incoming ARP requests are responded to by all
-  // interfaces.  Outgoing ARP requests can contain any local address.
-  void DisableArpFiltering();
-
-  // Enable ARP filtering on the device.  Incoming ARP requests are responded
-  // to only by the interface(s) owning the address.  Outgoing ARP requests
-  // will contain the best local address for the target.
-  void EnableArpFiltering();
-
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
@@ -610,9 +593,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   std::unique_ptr<Network> network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
-  // DNS servers obtained from ipconfig (either from DHCP or static config)
-  // that are not working.
-  std::vector<std::string> config_dns_servers_;
   Technology technology_;
 
   // Maintain a reference to the connected / connecting service
@@ -620,9 +600,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Cache singleton pointers for performance and test purposes.
   RTNLHandler* rtnl_handler_;
-
-  // Track the current same-net multi-home state.
-  bool is_multi_homed_;
 
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 

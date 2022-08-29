@@ -3909,16 +3909,15 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
 
-  // Do not assign a connection to mock_devices_[0].
   for (int i = 0; i <= 5; ++i) {
     manager()->RegisterDevice(mock_devices_[i]);
-    if (i == 0) {
-      mock_networks.push_back(nullptr);
-      continue;
-    }
     auto* network = CreateMockNetwork(mock_devices_[i].get());
     mock_networks.push_back(network);
   }
+
+  // Do not assign a connection to mock_devices_[0].
+  EXPECT_CALL(*mock_networks[0], HasConnectionObject())
+      .WillRepeatedly(Return(false));
 
   EXPECT_CALL(*mock_networks[1], GetSubnetName()).WillOnce(Return("1"));
   EXPECT_CALL(*mock_networks[2], GetSubnetName()).WillOnce(Return("2"));
@@ -3926,12 +3925,12 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
   EXPECT_CALL(*mock_networks[4], GetSubnetName()).WillOnce(Return(""));
   EXPECT_CALL(*mock_networks[5], GetSubnetName()).WillOnce(Return(""));
 
-  EXPECT_CALL(*mock_devices_[0], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_devices_[1], SetIsMultiHomed(true));
-  EXPECT_CALL(*mock_devices_[2], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_devices_[3], SetIsMultiHomed(true));
-  EXPECT_CALL(*mock_devices_[4], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_devices_[5], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_networks[0], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_networks[1], SetIsMultiHomed(true));
+  EXPECT_CALL(*mock_networks[2], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_networks[3], SetIsMultiHomed(true));
+  EXPECT_CALL(*mock_networks[4], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_networks[5], SetIsMultiHomed(false));
   manager()->DetectMultiHomedDevices();
 }
 

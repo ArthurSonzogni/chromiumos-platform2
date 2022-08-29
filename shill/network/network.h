@@ -180,13 +180,12 @@ class Network {
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
 
-  // Set an IP configuration flag on the device. |family| should be "ipv6" or
-  // "ipv4". |flag| should be the name of the flag to be set and |value| is
-  // what this flag should be set to. Overridden by unit tests to pretend
-  // writing to procfs.
-  mockable bool SetIPFlag(IPAddress::Family family,
-                          const std::string& flag,
-                          const std::string& value);
+  // Enable or disable same-net multi-home support for this interface.  When
+  // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
+  // effect where peers may end up with inaccurate IP address mappings due to
+  // the default Linux ARP transmit / reply behavior.  See
+  // http://linux-ip.net/html/ether-arp.html for more details on this effect.
+  mockable void SetIsMultiHomed(bool is_multi_homed);
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -262,6 +261,14 @@ class Network {
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
 
+  // Set an IP configuration flag on the device. |family| should be "ipv6" or
+  // "ipv4". |flag| should be the name of the flag to be set and |value| is
+  // what this flag should be set to. Overridden by unit tests to pretend
+  // writing to procfs.
+  mockable bool SetIPFlag(IPAddress::Family family,
+                          const std::string& flag,
+                          const std::string& value);
+
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
@@ -314,6 +321,9 @@ class Network {
 
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableOnceClosure ipv6_dns_server_expired_callback_;
+
+  // Track the current same-net multi-home state.
+  bool is_multi_homed_ = false;
 
   // Remember which flag files were previously successfully written. Only used
   // in SetIPFlag().

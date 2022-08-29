@@ -30,12 +30,40 @@ constexpr int kTestIfindex = 123;
 constexpr char kTestIfname[] = "eth_test";
 constexpr auto kTestTechnology = Technology::kUnknown;
 
+// Allows us to fake/mock some functions in this test.
+class NetworkInTest : public Network {
+ public:
+  NetworkInTest(int interface_index,
+                const std::string& interface_name,
+                Technology technology,
+                bool fixed_ip_params,
+                EventHandler* event_handler,
+                ControlInterface* control_interface,
+                DeviceInfo* device_info,
+                EventDispatcher* dispatcher)
+      : Network(interface_index,
+                interface_name,
+                technology,
+                fixed_ip_params,
+                event_handler,
+                control_interface,
+                device_info,
+                dispatcher) {
+    ON_CALL(*this, SetIPFlag(_, _, _)).WillByDefault(Return(true));
+  }
+
+  MOCK_METHOD(bool,
+              SetIPFlag,
+              (IPAddress::Family, const std::string&, const std::string&),
+              (override));
+};
+
 class NetworkTest : public ::testing::Test {
  public:
   NetworkTest()
       : manager_(&control_interface_, &dispatcher_, nullptr),
         device_info_(&manager_) {
-    network_ = std::make_unique<Network>(
+    network_ = std::make_unique<NetworkInTest>(
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &event_handler_, &control_interface_,
         &device_info_, &dispatcher_);
@@ -67,7 +95,7 @@ class NetworkTest : public ::testing::Test {
   MockDHCPProvider dhcp_provider_;
   MockNetworkEventHandler event_handler_;
 
-  std::unique_ptr<Network> network_;
+  std::unique_ptr<NetworkInTest> network_;
 
   // Owned by |network_|. Not guaranteed valid even if it's not null.
   MockDHCPController* dhcp_controller_ = nullptr;
@@ -109,6 +137,34 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
   EXPECT_CALL(event_handler_, OnNetworkStopped(true)).Times(1);
   ASSERT_NE(dhcp_controller_, nullptr);
   dhcp_controller_->TriggerFailureCallback();
+}
+
+TEST_F(NetworkTest, MultiHomed) {
+  // Device should have multi-homing disabled by default.
+  EXPECT_CALL(*network_, SetIPFlag(_, _, _)).Times(0);
+  network_->SetIsMultiHomed(false);
+  Mock::VerifyAndClearExpectations(network_.get());
+
+  // Disabled -> enabled should change flags on the device.
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "2"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "1"))
+      .WillOnce(Return(true));
+  network_->SetIsMultiHomed(true);
+  Mock::VerifyAndClearExpectations(network_.get());
+
+  // Enabled -> enabled should be a no-op.
+  EXPECT_CALL(*network_, SetIPFlag(_, _, _)).Times(0);
+  network_->SetIsMultiHomed(true);
+  Mock::VerifyAndClearExpectations(network_.get());
+
+  // Enabled -> disabled should reset the flags back to the default.
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "0"))
+      .WillOnce(Return(true));
+  network_->SetIsMultiHomed(false);
+  Mock::VerifyAndClearExpectations(network_.get());
 }
 
 }  // namespace
