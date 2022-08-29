@@ -37,25 +37,25 @@ class CachedFrame {
   int Convert(const android::CameraMetadata& static_metadata,
               const android::CameraMetadata& request_metadata,
               int rotate_degree,
-              const FrameBuffer& in_frame,
+              FrameBuffer& in_frame,
               const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
-              std::vector<int>* out_frame_status,
+              std::vector<int>& out_frame_status,
               std::vector<human_sensing::CrosFace>* faces);
 
  private:
   int ConvertFromNV12(const android::CameraMetadata& static_metadata,
                       const android::CameraMetadata& request_metadata,
-                      const FrameBuffer& in_frame,
-                      FrameBuffer* out_frame);
+                      FrameBuffer& in_frame,
+                      FrameBuffer& out_frame);
 
-  int DecodeToNV12(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+  int DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame);
 
-  int DecodeByJDA(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+  int DecodeByJDA(FrameBuffer& in_frame, FrameBuffer& out_frame);
 
   int CompressNV12(const android::CameraMetadata& static_metadata,
                    const android::CameraMetadata& request_metadata,
-                   const FrameBuffer& in_frame,
-                   FrameBuffer* out_frame);
+                   FrameBuffer& in_frame,
+                   FrameBuffer& out_frame);
 
   // |faces| stores the detected results. It will be empty if error.
   void DetectFaces(const FrameBuffer& input_nv12_frame,
@@ -68,7 +68,7 @@ class CachedFrame {
   // CameraInfo.orientation. Instead, framework would fake the
   // CameraInfo.orientation. Framework would then tell HAL how much the frame
   // needs to rotate clockwise by |rotate_degree|.
-  int CropRotateScale(int rotate_degree, FrameBuffer* frame);
+  int CropRotateScale(int rotate_degree, FrameBuffer& frame);
 
   // Cached temporary buffers for the capture pipeline. We use SHM buffer for
   // I420 format since it can be resized, and Gralloc buffer for NV12 format
