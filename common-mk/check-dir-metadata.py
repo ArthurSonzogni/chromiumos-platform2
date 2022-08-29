@@ -132,7 +132,6 @@ LEGACYLIST = {
     "st_flash",
     "storage_info",
     "syslog-cat",
-    "system_api",
     "system-proxy",
     "timberslide",
     "touch_firmware_calibration",
