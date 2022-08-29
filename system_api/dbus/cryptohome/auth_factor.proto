@@ -25,6 +25,18 @@ enum AuthFactorType {
   AUTH_FACTOR_TYPE_SMART_CARD = 5;
 }
 
+// Enum to define the purpose of AuthFactor preparation. This would be used
+// in PrepareAsyncAuthFactorRequest.
+enum AuthFactorPreparePurpose {
+  PURPOSE_UNSPECIFIED = 0;
+  // For adding a new auth factor. Usually it indicates PrepareAsynAuthFactor()
+  // runs an auth factor enrollment process (based on user input collection).
+  ADD_AUTH_FACTOR = 1;
+  // For authenticating an existing async auth factor. Usually this indicates
+  // PrepareAsyncAuthFactor() runs an user input collection process.
+  AUTHENTICATE_AUTH_FACTOR = 2;
+}
+
 // Cryptographic signature algorithm type for smart card requests. Used with
 // SmartCardAuthInput.
 enum SmartCardSignatureAlgorithm {

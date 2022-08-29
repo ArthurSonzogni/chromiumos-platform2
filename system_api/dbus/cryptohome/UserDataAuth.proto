@@ -1625,3 +1625,24 @@ message GetRecoveryRequestReply {
   // to the recovery server.
   bytes recovery_request = 3;
 }
+
+message PrepareAsyncAuthFactorRequest {
+  // The id of a running AuthSession.
+  // Async AuthFactor preparation must be associated with an ongoing
+  // AuthSession.
+  bytes auth_session_id = 1;
+  // The type of the asynchronous AuthFactor.
+  AuthFactorType auth_factor_type = 2;
+  // Specify the purpose such as adding/enrolling a new auth factor
+  // or authentication an existing factor.
+  AuthFactorPreparePurpose purpose = 3;
+}
+
+message PrepareAsyncAuthFactorReply {
+  CryptohomeErrorCode error = 1;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+}
