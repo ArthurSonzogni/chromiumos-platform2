@@ -47,7 +47,6 @@ template("generate_ebpf_skeletons") {
       "--include",
       "${platform2_root}",
       "${root_gen_dir}",
-      "--sysroot=${sysroot}",
     ]
   }
 }

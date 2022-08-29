@@ -39,7 +39,6 @@ def do_gen_bpf_skeleton(args):
     """
     out = args.out
     source = args.source
-    sysroot = args.sysroot
     arch = args.arch
     includes = args.includes
     clang = args.clang
@@ -54,25 +53,18 @@ def do_gen_bpf_skeleton(args):
         + [f"-I{x}" for x in includes]
         + [f"-D__TARGET__ARCH_{arch}".upper(), "-c", source, "-o", obj]
     )
-    gen_skeleton = [f"{sysroot}/usr/sbin/bpftool", "gen", "skeleton", obj]
+    gen_skeleton = [f"/usr/sbin/bpftool", "gen", "skeleton", obj]
     strip_dwarf = ["llvm-strip", "-g", obj]
 
-    try:
-        # Compile the BPF C application.
-        _run_command(call_clang)
-        # Strip useless dwarf information.
-        _run_command(strip_dwarf)
-        # Use bpftools to generate skeletons from the BPF object files.
-        bpftool_proc = _run_command(gen_skeleton)
-        with open(out, "w", encoding="utf-8") as bpf_skeleton:
-            bpf_skeleton.write(bpftool_proc.stdout)
+    # Compile the BPF C application.
+    _run_command(call_clang)
+    # Strip useless dwarf information.
+    _run_command(strip_dwarf)
+    # Use bpftools to generate skeletons from the BPF object files.
+    bpftool_proc = _run_command(gen_skeleton)
+    with open(out, "w", encoding="utf-8") as bpf_skeleton:
+        bpf_skeleton.write(bpftool_proc.stdout)
 
-    except subprocess.CalledProcessError as error:
-        print(
-            f'cmd={" ".join(error.cmd)}\nstderr={error.stderr}\n'
-            f"stdout={error.stdout}\nretcode={error.returncode}\n"
-        )
-        raise error
     return 0
 
 
@@ -84,7 +76,7 @@ def do_gen_vmlinux(args):
     sysroot = args.sysroot
     vmlinux_out = args.out
     gen_vmlinux = [
-        f"{sysroot}/usr/sbin/bpftool",
+        f"/usr/sbin/bpftool",
         "btf",
         "dump",
         "file",
@@ -95,6 +87,7 @@ def do_gen_vmlinux(args):
     vmlinux_cmd = _run_command(gen_vmlinux)
     with open(f"{vmlinux_out}", "w", encoding="utf-8") as vmlinux:
         vmlinux.write(vmlinux_cmd.stdout)
+    return 0
 
 
 def main(argv: typing.List[str]) -> int:
@@ -125,11 +118,6 @@ def main(argv: typing.List[str]) -> int:
         nargs="+",
         help="Additional include directories.",
     )
-    gen_skel.add_argument(
-        "--sysroot",
-        required=True,
-        help="The path that should be treated as the root directory.",
-    )
     gen_skel.set_defaults(func=do_gen_bpf_skeleton)
 
     gen_vmlinux = subparsers.add_parser("gen_vmlinux")
@@ -143,7 +131,15 @@ def main(argv: typing.List[str]) -> int:
     )
     gen_vmlinux.set_defaults(func=do_gen_vmlinux)
     args = parser.parse_args(argv)
-    args.func(args)
+
+    try:
+        return args.func(args)
+    except subprocess.CalledProcessError as error:
+        print(
+            f'cmd={" ".join(error.cmd)}\nstderr={error.stderr}\n'
+            f"stdout={error.stdout}\nretcode={error.returncode}\n"
+        )
+        return -1
 
 
 if __name__ == "__main__":
