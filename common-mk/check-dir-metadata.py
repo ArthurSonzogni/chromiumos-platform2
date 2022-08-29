@@ -78,7 +78,6 @@ LEGACYLIST = {
     "goldfishd",
     "hammerd",
     "hardware_verifier",
-    "hermes",
     "hiberman",
     "iioservice",
     "image-burner",
