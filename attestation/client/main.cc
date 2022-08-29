@@ -176,6 +176,9 @@ std::optional<CertificateProfile> ToCertificateProfile(
   if (profile == "gfsc") {
     return GFSC_CERTIFICATE;
   }
+  if (profile == "vtpm_ek" || profile == "vtpm") {
+    return ENTERPRISE_VTPM_EK_CERTIFICATE;
+  }
   return std::nullopt;
 }
 
