@@ -61,13 +61,15 @@ class StillCaptureProcessor {
   // Queues the pending APPs segments for result |frame_number|, in
   // |blob_buffer|.
   virtual void QueuePendingAppsSegments(int frame_number,
-                                        buffer_handle_t blob_buffer) = 0;
+                                        buffer_handle_t blob_buffer,
+                                        base::ScopedFD release_fence) = 0;
 
   // Queues the pending YUV image data for result |frame_number|, in
   // |yuv_buffer|.  The |yuv_buffer| will be encoded to produce the compressed
   // image data, and also the thumbnail is requested.
   virtual void QueuePendingYuvImage(int frame_number,
-                                    buffer_handle_t yuv_buffer) = 0;
+                                    buffer_handle_t yuv_buffer,
+                                    base::ScopedFD release_fence) = 0;
 };
 
 }  // namespace cros

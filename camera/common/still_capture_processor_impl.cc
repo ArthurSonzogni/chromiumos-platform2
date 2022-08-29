@@ -12,6 +12,7 @@
 
 #include <libyuv/scale.h>
 #include <linux/videodev2.h>
+#include <sync/sync.h>
 
 #include "common/tracing.h"
 #include "cros-camera/camera_metadata_utils.h"
@@ -309,15 +310,19 @@ void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
 }
 
 void StillCaptureProcessorImpl::QueuePendingAppsSegments(
-    int frame_number, buffer_handle_t blob_buffer) {
+    int frame_number,
+    buffer_handle_t blob_buffer,
+    base::ScopedFD release_fence) {
   VLOGFID(1, frame_number) << "APPs segments queued";
 
   std::vector<uint8_t> apps_segments_buffer;
   std::map<uint16_t, base::span<uint8_t>> apps_segments_index;
   // We can't assume anything on the life-time of |blob_buffer|, so we need to
   // copy the data out from the buffer.
-  if (!ExtractAppSections(blob_buffer, &apps_segments_buffer,
-                          &apps_segments_index)) {
+  if (sync_wait(release_fence.get(), 300) != 0) {
+    LOGF(ERROR) << "sync_wait timeout on BLOB buffer";
+  } else if (!ExtractAppSections(blob_buffer, &apps_segments_buffer,
+                                 &apps_segments_index)) {
     LOGF(ERROR) << "Cannot extract JPEG APPs segments";
     apps_segments_buffer.clear();
     apps_segments_index.clear();
@@ -332,12 +337,15 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegments(
 }
 
 void StillCaptureProcessorImpl::QueuePendingYuvImage(
-    int frame_number, buffer_handle_t yuv_buffer) {
+    int frame_number,
+    buffer_handle_t yuv_buffer,
+    base::ScopedFD release_fence) {
   VLOGFID(1, frame_number) << "YUV image queued";
   thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&StillCaptureProcessorImpl::QueuePendingYuvImageOnThread,
-                     base::Unretained(this), frame_number, yuv_buffer));
+                     base::Unretained(this), frame_number, yuv_buffer,
+                     std::move(release_fence)));
 }
 
 void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
@@ -372,7 +380,9 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
 }
 
 void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
-    int frame_number, buffer_handle_t yuv_buffer) {
+    int frame_number,
+    buffer_handle_t yuv_buffer,
+    base::ScopedFD release_fence) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   TRACE_COMMON(kCameraTraceKeyFrameNumber, frame_number);
 
@@ -388,6 +398,11 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
                 "EncodeJPEG",
                 kCameraTraceKeyFrameNumber, frame_number);
 
+    if (sync_wait(release_fence.get(), 1000) != 0) {
+      LOGF(ERROR) << "sync_wait timeout on YUV buffer";
+      // TODO(jcliang): Notify buffer error here.
+      return;
+    }
     if (!jpeg_compressor_->CompressImageFromHandle(
             yuv_buffer, *context.jpeg_blob, blob_stream_->width,
             blob_stream_->height, context.jpeg_quality, nullptr, 0,

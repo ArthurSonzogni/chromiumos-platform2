@@ -862,7 +862,13 @@ void HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
         DCHECK_EQ(associated_stream_context->mode,
                   HdrNetStreamContext::Mode::kAppendWithBlob);
         still_capture_processor_->QueuePendingAppsSegments(
-            frame_number, *hal_result_buffer.buffer);
+            frame_number, *hal_result_buffer.buffer,
+            base::ScopedFD(hal_result_buffer.release_fence));
+        // TODO(kamesan): We have consumed |hal_result_buffer.release_fence|
+        // here but it's unclear to the caller of this function. Have a way to
+        // make it safer.
+        // This is safe now since we are not adding |hal_result_buffer| to
+        // |output_buffers_to_client| which will be set to the result.
         request_info->blob_result_pending = false;
         continue;
       }
@@ -977,7 +983,8 @@ void HdrNetStreamManipulator::OnBuffersRendered(
       // The JPEG result buffer will be produced by
       // |still_capture_processor_| asynchronously.
       still_capture_processor_->QueuePendingYuvImage(
-          frame_number, *stream_context->still_capture_intermediate);
+          frame_number, *stream_context->still_capture_intermediate,
+          std::move(request_buffer_info->release_fence));
       request_buffer_info->blob_intermediate_yuv_pending = false;
       break;
   }

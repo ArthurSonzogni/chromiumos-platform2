@@ -4,6 +4,8 @@
  * found in the LICENSE file.
  */
 
+#include <sync/sync.h>
+
 #include <utility>
 
 #include "common/test_support/fake_still_capture_processor.h"
@@ -27,15 +29,25 @@ void FakeStillCaptureProcessor::QueuePendingOutputBuffer(
 }
 
 void FakeStillCaptureProcessor::QueuePendingAppsSegments(
-    int frame_number, buffer_handle_t blob_buffer) {
+    int frame_number,
+    buffer_handle_t blob_buffer,
+    base::ScopedFD release_fence) {
   ASSERT_EQ(result_descriptor_.count(frame_number), 1);
+  if (release_fence.is_valid()) {
+    ASSERT_EQ(sync_wait(release_fence.get(), 300), 0);
+  }
   result_descriptor_[frame_number].has_apps_segments = true;
   MaybeProduceCaptureResult(frame_number);
 }
 
 void FakeStillCaptureProcessor::QueuePendingYuvImage(
-    int frame_number, buffer_handle_t yuv_buffer) {
+    int frame_number,
+    buffer_handle_t yuv_buffer,
+    base::ScopedFD release_fence) {
   ASSERT_EQ(result_descriptor_.count(frame_number), 1);
+  if (release_fence.is_valid()) {
+    ASSERT_EQ(sync_wait(release_fence.get(), 1000), 0);
+  }
   result_descriptor_[frame_number].has_yuv_buffer = true;
   MaybeProduceCaptureResult(frame_number);
 }

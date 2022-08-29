@@ -749,8 +749,10 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
                                   result->frame_number()));
   }
   if (blob_buffer) {
-    still_capture_processor_->QueuePendingAppsSegments(result->frame_number(),
-                                                       *blob_buffer->buffer);
+    still_capture_processor_->QueuePendingAppsSegments(
+        result->frame_number(), *blob_buffer->buffer,
+        base::ScopedFD(blob_buffer->release_fence));
+    blob_buffer->release_fence = -1;
   }
   result->SetOutputBuffers(result_buffers);
 
@@ -862,13 +864,9 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
         CropBufferOnThread(*full_frame_buffer->buffer, base::ScopedFD(),
                            *ctx->cropped_still_yuv_buffer->handle(),
                            base::ScopedFD(), adjusted_crop_region);
-    if (sync_wait(release_fence.get(), kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() cropped buffer timed out on capture result "
-                  << frame_number;
-      return false;
-    }
     still_capture_processor_->QueuePendingYuvImage(
-        frame_number, *ctx->cropped_still_yuv_buffer->handle());
+        frame_number, *ctx->cropped_still_yuv_buffer->handle(),
+        std::move(release_fence));
   }
 
   ctx->full_frame_buffer = std::nullopt;
@@ -912,13 +910,9 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
                          *ctx->cropped_still_yuv_buffer->handle(),
                          base::ScopedFD(), adjusted_crop_region);
   still_yuv_buffer->release_fence = -1;
-  if (sync_wait(release_fence.get(), kSyncWaitTimeoutMs) != 0) {
-    LOGF(ERROR) << "sync_wait() cropped buffer timed out on capture result "
-                << frame_number;
-    return false;
-  }
   still_capture_processor_->QueuePendingYuvImage(
-      frame_number, *ctx->cropped_still_yuv_buffer->handle());
+      frame_number, *ctx->cropped_still_yuv_buffer->handle(),
+      std::move(release_fence));
 
   ctx->still_yuv_buffer = std::nullopt;
   return true;

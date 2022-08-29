@@ -7,7 +7,10 @@ pkg_config("target_defaults") {
     "//camera/build:cros_camera_common",
     "//common-mk:test",
   ]
-  pkg_deps = [ "libcros_camera_android_deps" ]
+  pkg_deps = [
+    "libcros_camera_android_deps",
+    "libsync",
+  ]
 }
 
 source_set("test_support") {

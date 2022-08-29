@@ -40,9 +40,11 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
       camera3_stream_buffer_t output_buffer,
       const camera_metadata_t* request_settings) override;
   void QueuePendingAppsSegments(int frame_number,
-                                buffer_handle_t blob_buffer) override;
+                                buffer_handle_t blob_buffer,
+                                base::ScopedFD release_fence) override;
   void QueuePendingYuvImage(int frame_number,
-                            buffer_handle_t yuv_buffer) override;
+                            buffer_handle_t yuv_buffer,
+                            base::ScopedFD release_fence) override;
 
  private:
   struct RequestContext {
@@ -71,7 +73,8 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
       std::vector<uint8_t> apps_segments_buffer,
       std::map<uint16_t, base::span<uint8_t>> apps_segments_index);
   void QueuePendingYuvImageOnThread(int frame_number,
-                                    buffer_handle_t yuv_buffer);
+                                    buffer_handle_t yuv_buffer,
+                                    base::ScopedFD release_fence);
   void MaybeProduceCaptureResultOnThread(int frame_number);
 
   base::Thread thread_;
