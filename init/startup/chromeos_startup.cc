@@ -27,6 +27,11 @@ namespace {
 
 constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
 
+// The "/." ensures we trigger the automount, instead of just examining the
+// mount point.
+// TODO(b/244186883): remove this.
+constexpr char kSysKernelDebugTracingDir[] = "sys/kernel/debug/tracing/.";
+
 constexpr char kRunNamespaces[] = "run/namespaces";
 constexpr char kSysKernelConfig[] = "sys/kernel/config";
 constexpr char kSysKernelDebug[] = "sys/kernel/debug";
@@ -104,12 +109,6 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
       platform_(std::move(platform)) {}
 
 void ChromeosStartup::EarlySetup() {
-  const base::FilePath tracefs = root_.Append(kSysKernelTracing);
-  if (!platform_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags, "")) {
-    // TODO(b/232901639): Improve failure reporting.
-    PLOG(WARNING) << "Unable to mount " << tracefs.value();
-  }
-
   gid_t debugfs_grp;
   if (!brillo::userdb::GetGroupInfo(kDebugfsAccessGrp, &debugfs_grp)) {
     PLOG(WARNING) << "Can't get gid for " << kDebugfsAccessGrp;
@@ -124,6 +123,28 @@ void ChromeosStartup::EarlySetup() {
     }
   }
 
+  // HACK(b/244186883): ensure we trigger the /sys/kernel/debug/tracing
+  // automount now (before we set 0755 below), because otherwise the kernel may
+  // change its permissions whenever it eventually does get automounted.
+  // TODO(b/244186883): remove this.
+  struct stat st;
+  const base::FilePath debug_tracing = root_.Append(kSysKernelDebugTracingDir);
+  // Ignore errors.
+  platform_->Stat(debug_tracing, &st);
+
+  // Mount tracefs at /sys/kernel/tracing. On older kernels, tracing was part
+  // of debugfs and was present at /sys/kernel/debug/tracing. Newer kernels
+  // continue to automount it there when accessed via
+  // /sys/kernel/debug/tracing/, but we avoid that where possible, to limit our
+  // dependence on debugfs.
+  const base::FilePath tracefs = root_.Append(kSysKernelTracing);
+  // All users may need to access the tracing directory.
+  if (!platform_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags,
+                        "mode=0755")) {
+    // TODO(b/232901639): Improve failure reporting.
+    PLOG(WARNING) << "Unable to mount " << tracefs.value();
+  }
+
   // /sys/kernel/tracing/tracing_on is 1 right after tracefs is initialized in
   // the kernel. Set it to a reasonable initial state of 0 after debugfs is
   // mounted. This needs to be done early during boot to avoid interference
@@ -131,7 +152,6 @@ void ChromeosStartup::EarlySetup() {
   // the block cache. Android's init running in the ARC++ container sets this
   // file to 0, and we set it to 0 here so the the initial state of tracing_on
   // is always 0 regardless of ARC++.
-  struct stat st;
   const base::FilePath tracing = root_.Append(kTracingOn);
   if (platform_->Stat(tracing, &st) && S_ISREG(st.st_mode)) {
     if (!base::WriteFile(tracing, "0")) {
