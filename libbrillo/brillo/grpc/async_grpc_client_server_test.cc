@@ -345,6 +345,18 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
         task_executor_.task_runner(), GetDomainSocketAddress());
   }
 
+  // Create an AsyncGrpcClient using the constructor that takes in a stub.
+  void CreateClientConstructorFromStub() {
+    grpc::ChannelArguments arguments;
+    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+        GetDomainSocketAddress(), grpc::InsecureChannelCredentials(),
+        arguments);
+    std::unique_ptr<test_rpcs::ExampleService::Stub> stub =
+        test_rpcs::ExampleService::NewStub(channel);
+    client_ = std::make_unique<AsyncGrpcClient<test_rpcs::ExampleService>>(
+        task_executor_.task_runner(), std::move(stub));
+  }
+
   // Create the second AsyncGrpcClient using the same socket, which has to be
   // shutdown by ShutDownSecondClient.
   void CreateSecondClient() {
@@ -410,6 +422,12 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
 TEST_F(AsyncGrpcClientServerTest, NoRpcs) {
   StartManualService();
   CreateClient();
+}
+
+// Start and shutdown a server and a client using an alternate constructor.
+TEST_F(AsyncGrpcClientServerTest, NoRpcsConstructedFromStub) {
+  StartManualService();
+  CreateClientConstructorFromStub();
 }
 
 // Send one RPC and verify that the response arrives at the client.

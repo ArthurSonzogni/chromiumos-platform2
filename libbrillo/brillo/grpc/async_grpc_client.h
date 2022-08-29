@@ -86,10 +86,14 @@ template <typename ServiceType>
 class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
  public:
   AsyncGrpcClient(scoped_refptr<base::SequencedTaskRunner> task_runner,
-                  const std::string& target_uri)
+                  std::unique_ptr<typename ServiceType::Stub> stub)
       : AsyncGrpcClientBase(task_runner) {
-    stub_ = ServiceType::NewStub(CreateGrpcChannel(target_uri));
+    stub_ = std::move(stub);
   }
+  AsyncGrpcClient(scoped_refptr<base::SequencedTaskRunner> task_runner,
+                  const std::string& target_uri)
+      : AsyncGrpcClient(task_runner,
+                        ServiceType::NewStub(CreateGrpcChannel(target_uri))) {}
   AsyncGrpcClient(const AsyncGrpcClient&) = delete;
   AsyncGrpcClient& operator=(const AsyncGrpcClient&) = delete;
 
