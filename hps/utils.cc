@@ -75,6 +75,14 @@ const char* HpsRegToString(const HpsReg reg) {
       return "kDebugVal";
     case HpsReg::kCameraConfig:
       return "kCameraConfig";
+    case HpsReg::kStartCameraTest:
+      return "kStartCameraTest";
+    case HpsReg::kOptionBytesConfig:
+      return "kOptionBytesConfig";
+    case HpsReg::kPartIds:
+      return "kPartIds";
+    case HpsReg::kPreviousCrashMessage:
+      return "kPreviousCrashMessage";
 
     case HpsReg::kMax:
       return "kMax";
@@ -224,6 +232,10 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
     case HpsReg::kDebugIdx:
     case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
+    case HpsReg::kStartCameraTest:
+    case HpsReg::kOptionBytesConfig:
+    case HpsReg::kPartIds:
+    case HpsReg::kPreviousCrashMessage:
       return "";
   }
 }

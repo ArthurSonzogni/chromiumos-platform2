@@ -42,7 +42,11 @@ enum class HpsReg : uint8_t {
   kDebugIdx = 16,
   kDebugVal = 17,
   kCameraConfig = 18,
-  kLargestRegister = kCameraConfig,  // keep this in sync
+  kStartCameraTest = 19,
+  kOptionBytesConfig = 20,
+  kPartIds = 21,
+  kPreviousCrashMessage = 22,
+  kLargestRegister = kPreviousCrashMessage,  // keep this in sync
   kMax = 127,
 };
 

@@ -195,6 +195,10 @@ std::optional<uint16_t> FakeDev::ReadRegister(HpsReg reg) {
     case HpsReg::kDebugIdx:
     case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
+    case HpsReg::kStartCameraTest:
+    case HpsReg::kOptionBytesConfig:
+    case HpsReg::kPartIds:
+    case HpsReg::kPreviousCrashMessage:
     case HpsReg::kMax:
       break;
   }
@@ -269,6 +273,10 @@ bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kDebugIdx:
     case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
+    case HpsReg::kStartCameraTest:
+    case HpsReg::kOptionBytesConfig:
+    case HpsReg::kPartIds:
+    case HpsReg::kPreviousCrashMessage:
     case HpsReg::kMax:
       break;
   }
