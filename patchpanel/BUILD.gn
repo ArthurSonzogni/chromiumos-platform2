@@ -37,7 +37,6 @@ pkg_config("target_defaults") {
     "libmetrics",
     "libshill-client",
     "libshill-net",
-    "protobuf-lite",
     "re2",
     "system_api",
     "vboot_host",
@@ -47,14 +46,12 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
-  defines = [ "USE_ARCVM=${use.arcvm}" ]
 }
 
-proto_library("protos") {
+proto_library("patchpanel_ipc_protos") {
   proto_in_dir = "."
   proto_out_dir = "include/patchpanel"
   sources = [ "${proto_in_dir}/ipc.proto" ]
-  configs = [ ":target_defaults" ]
 }
 
 util_sources = [
@@ -104,29 +101,9 @@ shared_library("libpatchpanel-util") {
     "libchrome",
     "libshill-client",
     "libshill-net",
-    "protobuf-lite",
     "re2",
   ]
   libs = [ "system_api" ]
-  if (use.fuzzer) {
-    pkg_deps += [ "protobuf" ]
-  } else {
-    pkg_deps += [ "protobuf-lite" ]
-  }
-  defines = [
-    "USE_ARCVM=${use.arcvm}",
-    "USE_JETSTREAM_ROUTING=${use.jetstream_routing}",
-  ]
-}
-
-static_library("libpatchpanel_test") {
-  sources = libpatchpanel_sources + util_sources
-  configs += [ ":target_defaults" ]
-  all_dependent_pkg_deps = [
-    "protobuf",
-    "system_api",
-  ]
-  deps = [ ":protos" ]
 }
 
 static_library("libpatchpanel") {
@@ -136,7 +113,8 @@ static_library("libpatchpanel") {
     "protobuf",
     "system_api",
   ]
-  deps = [ ":protos" ]
+  deps = [ ":patchpanel_ipc_protos" ]
+  defines = [ "USE_ARCVM=${use.arcvm}" ]
 }
 
 executable("patchpaneld") {
@@ -283,8 +261,7 @@ if (use.test) {
     ]
     defines = [ "UNIT_TEST" ]
     deps = [
-      ":libpatchpanel-util",
-      ":libpatchpanel_test",
+      ":libpatchpanel",
       "//common-mk/testrunner",
     ]
   }

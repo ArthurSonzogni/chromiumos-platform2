@@ -9,7 +9,26 @@ group("all") {
   deps = [ ":mcastd" ]
 }
 
-pkg_config("target_defaults") {
+proto_library("patchpanel_ipc_protos") {
+  proto_in_dir = ".."
+  proto_out_dir = "include/patchpanel"
+  sources = [ "${proto_in_dir}/ipc.proto" ]
+}
+
+executable("mcastd") {
+  sources = [
+    "../dns/big_endian.cc",
+    "../dns/dns_query.cc",
+    "../dns/dns_response.cc",
+    "../dns/dns_util.cc",
+    "../dns/io_buffer.cc",
+    "../multicast_forwarder.cc",
+    "../net_util.cc",
+    "../socket.cc",
+    "main.cc",
+  ]
+  install_path = "bin"
+  deps = [ ":patchpanel_ipc_protos" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -19,25 +38,4 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
-}
-
-proto_library("protos") {
-  proto_in_dir = ".."
-  proto_out_dir = "include/patchpanel"
-  sources = [ "${proto_in_dir}/ipc.proto" ]
-  configs = [ ":target_defaults" ]
-}
-
-executable("mcastd") {
-  sources = [
-    "../dns/dns_response.cc",
-    "../dns/io_buffer.cc",
-    "../multicast_forwarder.cc",
-    "../net_util.cc",
-    "../socket.cc",
-    "main.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  install_path = "bin"
-  deps = [ ":protos" ]
 }
