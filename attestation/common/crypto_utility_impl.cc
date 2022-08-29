@@ -1021,12 +1021,33 @@ bool CryptoUtilityImpl::GetCertificateIssuerName(const std::string& certificate,
     return false;
   }
   char issuer_buf[100];  // A longer CN will truncate.
-  if (X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()),
-                                NID_commonName, issuer_buf,
+  X509_NAME* x509_name = X509_get_issuer_name(x509.get());
+
+  if (X509_NAME_get_text_by_NID(x509_name, NID_commonName, issuer_buf,
                                 std::size(issuer_buf)) == -1) {
-    LOG(ERROR) << __func__ << ": Failed to get the issuer name text by NID";
-    return false;
+    LOG(WARNING) << __func__ << ": Failed to get the issuer name text by NID";
+
+    // A workaround for misconfigured certificate issuer field found in early
+    // samples of the Dauntless chip.
+    //
+    // Retrieve the text representation of the issuer name, and, if it matches
+    // the misconfigured value, replace it with the expected value, hardcoded
+    // to "CROS D2 CIK".
+    if (!X509_NAME_oneline(x509_name, issuer_buf, sizeof(issuer_buf))) {
+      LOG(ERROR) << __func__ << ": Failed to retrieve alt name";
+      return false;
+    }
+
+    if (strcmp(issuer_buf,
+               "/C=US/ST=California/O=Google Inc./OU=Engineering")) {
+      LOG(ERROR) << __func__ << ": Alt name is ^" << issuer_buf << "^";
+      return false;
+    }
+
+    strncpy(issuer_buf, "CROS D2 CIK", sizeof(issuer_buf));
+    LOG(WARNING) << __func__ << ": Substituted issuer name with " << issuer_buf;
   }
+
   issuer_name->assign(issuer_buf);
   return true;
 }
