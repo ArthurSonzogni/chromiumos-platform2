@@ -830,18 +830,6 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionFailureReasonMax
   };
 
-  // Network connection IP type.
-  enum NetworkConnectionIPType {
-    kNetworkConnectionIPTypeIPv4 = 0,
-    kNetworkConnectionIPTypeIPv6 = 1,
-    kNetworkConnectionIPTypeMax
-  };
-  static constexpr EnumMetric<NameByTechnology> kMetricNetworkConnectionIPType =
-      {
-          .n = NameByTechnology{"NetworkConnectionIPType"},
-          .max = kNetworkConnectionIPTypeMax,
-      };
-
   // IPv6 connectivity status.
   enum IPv6ConnectivityStatus {
     kIPv6ConnectivityStatusNo = 0,

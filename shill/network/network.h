@@ -46,6 +46,8 @@ class Network {
     // When this callback is called, the Network must be in a connected state,
     // but this signal does not always indicate a change from a non-connected
     // state to a connected state.
+    // TODO(b/232177767): Currently this function will not be called if there is
+    // an IPv6 update when IPv4 is working.
     virtual void OnConnectionUpdated() = 0;
 
     // Called when the Network becomes idle from a non-idle state (configuring
@@ -198,7 +200,6 @@ class Network {
   mockable void SetUseDNS(bool enable);
   void UpdateRoutingPolicy();
   mockable std::string GetSubnetName() const;
-  bool IsIPv6() const;
 
   // TODO(b/232177767): Getters for access members in Connection. This is a
   // temporary solution. The caller should guarantee there is a Connection

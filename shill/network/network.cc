@@ -632,11 +632,6 @@ std::string Network::GetSubnetName() const {
   return connection_->GetSubnetName();
 }
 
-bool Network::IsIPv6() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  return connection_->IsIPv6();
-}
-
 const std::vector<std::string>& Network::dns_servers() const {
   CHECK(connection_) << __func__ << " called but no connection exists";
   return connection_->dns_servers();

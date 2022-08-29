@@ -430,14 +430,9 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
 }
 
 void Device::OnConnectionUpdated() {
-  // Report connection type.
-  Metrics::NetworkConnectionIPType ip_type =
-      network_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
-                         : Metrics::kNetworkConnectionIPTypeIPv4;
-  metrics()->SendEnumToUMA(Metrics::kMetricNetworkConnectionIPType, technology_,
-                           ip_type);
-
-  // Report if device have IPv6 connectivity
+  // Report if device have IPv6 connectivity. Note that since currently this
+  // function may not be called is IPv6 is provisioned after IPv4, its result
+  // might be biased.
   auto ipv6_status =
       (ip6config() && ip6config()->properties().HasIPAddressAndDNS())
           ? Metrics::kIPv6ConnectivityStatusYes
