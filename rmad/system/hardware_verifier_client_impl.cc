@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -59,15 +60,14 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
     const hardware_verifier::ComponentInfo& info =
         report.found_component_infos(i);
     if (info.qualification_status() == hardware_verifier::UNQUALIFIED ||
-        info.qualification_status() == hardware_verifier::REJECTED) {
-      error_str += "Unqualified: ";
-      error_str += GetComponentFieldsIdentifier(info.component_fields());
-      error_str += "\n";
-    } else if (info.qualification_status() == hardware_verifier::NO_MATCH) {
-      error_str += "Missing: ";
-      error_str += runtime_probe::ProbeRequest_SupportCategory_Name(
-          info.component_category());
-      error_str += "\n";
+        info.qualification_status() == hardware_verifier::REJECTED ||
+        info.qualification_status() == hardware_verifier::NO_MATCH) {
+      error_str += base::StringPrintf(
+          "Unqualified %s: %s\n",
+          runtime_probe::ProbeRequest_SupportCategory_Name(
+              info.component_category())
+              .c_str(),
+          GetComponentFieldsIdentifier(info.component_fields()).c_str());
     }
   }
   result->set_error_str(error_str);

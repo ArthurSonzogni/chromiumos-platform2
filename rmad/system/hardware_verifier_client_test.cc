@@ -91,9 +91,9 @@ const char kVerifyComponentsReplyNotCompliant[] = R"(
 )";
 
 const char kVerifyComponentsErrorStrNotCompliant[] =
-    R"(Unqualified: battery_ABC_abc
-Unqualified: camera_000a_000b
-Missing: dram
+    R"(Unqualified battery: battery_ABC_abc
+Unqualified camera: camera_000a_000b
+Unqualified dram: unknown_component
 )";
 
 const char kVerifyComponentsReplyError[] = R"(
