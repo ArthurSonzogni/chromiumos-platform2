@@ -113,7 +113,6 @@ LEGACYLIST = {
     "oobe_config",
     "os_install_service",
     "p2p",
-    "patchpanel",
     "pciguard",
     "perfetto_simple_producer",
     "permission_broker",
