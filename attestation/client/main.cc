@@ -149,6 +149,36 @@ Commands:
       key, eg "attest-ent-machine".
 )";
 
+std::optional<CertificateProfile> ToCertificateProfile(
+    const std::string& profile) {
+  if (profile.empty() || profile == "enterprise_user" || profile == "user" ||
+      profile == "u") {
+    return ENTERPRISE_USER_CERTIFICATE;
+  }
+  if (profile == "enterprise_machine" || profile == "machine" ||
+      profile == "m") {
+    return ENTERPRISE_MACHINE_CERTIFICATE;
+  }
+  if (profile == "enterprise_enrollment" || profile == "enrollment" ||
+      profile == "e") {
+    return ENTERPRISE_ENROLLMENT_CERTIFICATE;
+  }
+  if (profile == "content_protection" || profile == "content" ||
+      profile == "c") {
+    return CONTENT_PROTECTION_CERTIFICATE;
+  }
+  if (profile == "content_protection_with_stable_id" || profile == "cpsi") {
+    return CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
+  }
+  if (profile == "cast") {
+    return CAST_CERTIFICATE;
+  }
+  if (profile == "gfsc") {
+    return GFSC_CERTIFICATE;
+  }
+  return std::nullopt;
+}
+
 // The Daemon class works well as a client loop as well.
 using ClientLoopBase = brillo::Daemon;
 
@@ -398,33 +428,14 @@ class ClientLoop : public ClientLoopBase {
       if (status != EX_OK) {
         return status;
       }
-      std::string profile_str = command_line->GetSwitchValueASCII("profile");
-      CertificateProfile profile;
-      if (profile_str.empty() || profile_str == "enterprise_user" ||
-          profile_str == "user" || profile_str == "u") {
-        profile = ENTERPRISE_USER_CERTIFICATE;
-      } else if (profile_str == "enterprise_machine" ||
-                 profile_str == "machine" || profile_str == "m") {
-        profile = ENTERPRISE_MACHINE_CERTIFICATE;
-      } else if (profile_str == "enterprise_enrollment" ||
-                 profile_str == "enrollment" || profile_str == "e") {
-        profile = ENTERPRISE_ENROLLMENT_CERTIFICATE;
-      } else if (profile_str == "content_protection" ||
-                 profile_str == "content" || profile_str == "c") {
-        profile = CONTENT_PROTECTION_CERTIFICATE;
-      } else if (profile_str == "content_protection_with_stable_id" ||
-                 profile_str == "cpsi") {
-        profile = CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
-      } else if (profile_str == "cast") {
-        profile = CAST_CERTIFICATE;
-      } else if (profile_str == "gfsc") {
-        profile = GFSC_CERTIFICATE;
-      } else {
+      std::optional<CertificateProfile> profile =
+          ToCertificateProfile(command_line->GetSwitchValueASCII("profile"));
+      if (!profile.has_value()) {
         return EX_USAGE;
       }
       task = base::BindOnce(
           &ClientLoop::CallCreateCertRequest, weak_factory_.GetWeakPtr(),
-          aca_type, profile, command_line->GetSwitchValueASCII("user"),
+          aca_type, *profile, command_line->GetSwitchValueASCII("user"),
           command_line->GetSwitchValueASCII("origin"), key_type);
     } else if (args.front() == kFinishCertRequestCommand) {
       if (!command_line->HasSwitch("input")) {
@@ -451,35 +462,15 @@ class ClientLoop : public ClientLoopBase {
       if (status != EX_OK) {
         return status;
       }
-      std::string profile_str = command_line->GetSwitchValueASCII("profile");
-      CertificateProfile profile;
-      if (profile_str.empty() || profile_str == "enterprise_user" ||
-          profile_str == "user" || profile_str == "u") {
-        profile = ENTERPRISE_USER_CERTIFICATE;
-      } else if (profile_str == "enterprise_machine" ||
-                 profile_str == "machine" || profile_str == "m") {
-        profile = ENTERPRISE_MACHINE_CERTIFICATE;
-      } else if (profile_str == "enterprise_enrollment" ||
-                 profile_str == "enrollment" || profile_str == "e") {
-        profile = ENTERPRISE_ENROLLMENT_CERTIFICATE;
-      } else if (profile_str == "content_protection" ||
-                 profile_str == "content" || profile_str == "c") {
-        profile = CONTENT_PROTECTION_CERTIFICATE;
-      } else if (profile_str == "content_protection_with_stable_id" ||
-                 profile_str == "cpsi") {
-        profile = CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
-      } else if (profile_str == "cast") {
-        profile = CAST_CERTIFICATE;
-      } else if (profile_str == "gfsc") {
-        profile = GFSC_CERTIFICATE;
-      } else {
+      std::optional<CertificateProfile> profile =
+          ToCertificateProfile(command_line->GetSwitchValueASCII("profile"));
+      if (!profile.has_value()) {
         return EX_USAGE;
       }
-
       bool forced = command_line->HasSwitch("forced");
       bool shall_trigger_enrollment = command_line->HasSwitch("enroll");
       task = base::BindOnce(&ClientLoop::CallGetCert,
-                            weak_factory_.GetWeakPtr(), aca_type, profile,
+                            weak_factory_.GetWeakPtr(), aca_type, *profile,
                             command_line->GetSwitchValueASCII("label"),
                             command_line->GetSwitchValueASCII("user"),
                             command_line->GetSwitchValueASCII("origin"),
