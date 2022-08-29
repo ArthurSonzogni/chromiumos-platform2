@@ -569,12 +569,11 @@ class StorageQueueTest
                                                  sequencing_ids);
   }
 
-  QueueOptions BuildStorageQueueOptionsImmediate(
-      base::TimeDelta upload_retry_delay = base::Seconds(1)) const {
+  QueueOptions BuildStorageQueueOptionsImmediate() const {
     return QueueOptions(options_)
         .set_subdirectory("D1")
         .set_file_prefix("F0001")
-        .set_upload_retry_delay(upload_retry_delay)
+        .set_upload_retry_delay(base::TimeDelta())  // No retry by default.
         .set_max_single_file_size(testing::get<0>(GetParam()));
   }
 
@@ -1553,7 +1552,9 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
 }
 
 TEST_P(StorageQueueTest, WriteAndImmediateUploadWithFailure) {
-  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsImmediate());
+  CreateTestStorageQueueOrDie(
+      BuildStorageQueueOptionsImmediate().set_upload_retry_delay(
+          base::Seconds(1)));
 
   // Write a record as Immediate, initiating an upload which fails
   // and then restarts.
@@ -1582,7 +1583,9 @@ TEST_P(StorageQueueTest, WriteAndImmediateUploadWithFailure) {
 }
 
 TEST_P(StorageQueueTest, WriteAndImmediateUploadWithoutConfirmation) {
-  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsImmediate());
+  CreateTestStorageQueueOrDie(
+      BuildStorageQueueOptionsImmediate().set_upload_retry_delay(
+          base::Seconds(1)));
 
   // Write a record as Immediate, initiating an upload which fails
   // and then restarts.
@@ -1771,9 +1774,8 @@ TEST_P(StorageQueueTest, WriteRecordWithWriteBlockFailures) {
 }
 
 TEST_P(StorageQueueTest, WriteRecordWithInvalidFilePrefix) {
-  QueueOptions options = BuildStorageQueueOptionsPeriodic();
-  options.set_file_prefix(kInvalidFilePrefix);
-  CreateTestStorageQueueOrDie(options);
+  CreateTestStorageQueueOrDie(
+      BuildStorageQueueOptionsPeriodic().set_file_prefix(kInvalidFilePrefix));
   Status write_result = WriteString(kData[0]);
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::ALREADY_EXISTS);
@@ -1814,7 +1816,9 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
 }
 
 TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
-  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+  CreateTestStorageQueueOrDie(
+      BuildStorageQueueOptionsPeriodic().set_upload_retry_delay(
+          base::Seconds(1)));
   WriteStringOrDie(kData[0]);
 
   const auto original_total_memory = options_.memory_resource()->GetTotal();

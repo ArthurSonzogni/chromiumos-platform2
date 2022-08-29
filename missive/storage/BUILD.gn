@@ -21,6 +21,10 @@ pkg_config("target_defaults") {
 static_library("storage_configuration") {
   sources = [ "storage_configuration.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [
+    "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/resources:resource_interface",
+  ]
 }
 
 static_library("storage_uploader_interface") {

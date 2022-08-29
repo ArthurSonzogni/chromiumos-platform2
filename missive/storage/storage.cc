@@ -49,83 +49,8 @@
 namespace reporting {
 
 namespace {
-
-// Parameters of individual queues.
-// TODO(b/159352842): Deliver space and upload parameters from outside.
-
-constexpr char kSecurityQueueSubdir[] = "Security";
-constexpr char kSecurityQueuePrefix[] = "P_Security";
-
-constexpr char kImmediateQueueSubdir[] = "Immediate";
-constexpr char kImmediateQueuePrefix[] = "P_Immediate";
-
-constexpr char kFastBatchQueueSubdir[] = "FastBatch";
-constexpr char kFastBatchQueuePrefix[] = "P_FastBatch";
-constexpr base::TimeDelta kFastBatchUploadPeriod = base::Seconds(1);
-
-constexpr char kSlowBatchQueueSubdir[] = "SlowBatch";
-constexpr char kSlowBatchQueuePrefix[] = "P_SlowBatch";
-constexpr base::TimeDelta kSlowBatchUploadPeriod = base::Seconds(20);
-
-constexpr char kBackgroundQueueSubdir[] = "Background";
-constexpr char kBackgroundQueuePrefix[] = "P_Background";
-constexpr base::TimeDelta kBackgroundQueueUploadPeriod = base::Minutes(1);
-
-constexpr char kManualQueueSubdir[] = "Manual";
-constexpr char kManualQueuePrefix[] = "P_Manual";
-constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
-
 constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
 constexpr int32_t kEncryptionKeyMaxFileSize = 256;
-constexpr uint64_t kQueueSize = 2UL * 1024UL * 1024UL;
-
-// Failed upload retry delay: if an upload fails and there are no more incoming
-// events, collected events will not get uploaded for an indefinite time (see
-// b/192666219).
-constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
-
-// Returns vector of <priority, queue_options> for all expected queues in
-// Storage. Queues are all located under the given root directory.
-std::vector<std::pair<Priority, QueueOptions>> ExpectedQueues(
-    const StorageOptions& options) {
-  return {
-      std::make_pair(SECURITY,
-                     QueueOptions(options)
-                         .set_subdirectory(kSecurityQueueSubdir)
-                         .set_file_prefix(kSecurityQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)
-                         .set_max_single_file_size(kQueueSize)),
-      std::make_pair(IMMEDIATE,
-                     QueueOptions(options)
-                         .set_subdirectory(kImmediateQueueSubdir)
-                         .set_file_prefix(kImmediateQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)
-                         .set_max_single_file_size(kQueueSize)),
-      std::make_pair(FAST_BATCH, QueueOptions(options)
-                                     .set_subdirectory(kFastBatchQueueSubdir)
-                                     .set_file_prefix(kFastBatchQueuePrefix)
-                                     .set_upload_period(kFastBatchUploadPeriod)
-                                     .set_max_single_file_size(kQueueSize)),
-      std::make_pair(SLOW_BATCH, QueueOptions(options)
-                                     .set_subdirectory(kSlowBatchQueueSubdir)
-                                     .set_file_prefix(kSlowBatchQueuePrefix)
-                                     .set_upload_period(kSlowBatchUploadPeriod)
-                                     .set_max_single_file_size(kQueueSize)),
-      std::make_pair(BACKGROUND_BATCH,
-                     QueueOptions(options)
-                         .set_subdirectory(kBackgroundQueueSubdir)
-                         .set_file_prefix(kBackgroundQueuePrefix)
-                         .set_upload_period(kBackgroundQueueUploadPeriod)
-                         .set_max_single_file_size(kQueueSize)),
-      std::make_pair(MANUAL_BATCH,
-                     QueueOptions(options)
-                         .set_subdirectory(kManualQueueSubdir)
-                         .set_file_prefix(kManualQueuePrefix)
-                         .set_upload_period(kManualUploadPeriod)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)
-                         .set_max_single_file_size(kQueueSize)),
-  };
-}
 }  // namespace
 
 // Uploader interface adaptor for individual queue.
@@ -283,8 +208,8 @@ class Storage::KeyDelivery {
 
 class Storage::KeyInStorage {
  public:
-  explicit KeyInStorage(base::StringPiece signature_verification_public_key,
-                        const base::FilePath& directory)
+  KeyInStorage(base::StringPiece signature_verification_public_key,
+               const base::FilePath& directory)
       : verifier_(signature_verification_public_key), directory_(directory) {}
   ~KeyInStorage() = default;
 
@@ -552,7 +477,7 @@ void Storage::Create(
       : public TaskRunnerContext<StatusOr<scoped_refptr<Storage>>> {
    public:
     StorageInitContext(
-        const std::vector<std::pair<Priority, QueueOptions>>& queues_options,
+        const StorageOptions::QueuesOptionsList& queues_options,
         scoped_refptr<Storage> storage,
         base::OnceCallback<void(StatusOr<scoped_refptr<Storage>>)> callback)
         : TaskRunnerContext<StatusOr<scoped_refptr<Storage>>>(
@@ -666,8 +591,8 @@ void Storage::Create(
       Response(std::move(storage_));
     }
 
-    const std::vector<std::pair<Priority, QueueOptions>> queues_options_;
-    scoped_refptr<Storage> storage_;
+    const StorageOptions::QueuesOptionsList queues_options_;
+    const scoped_refptr<Storage> storage_;
     int32_t count_ = 0;
     Status final_status_;
   };
@@ -679,8 +604,8 @@ void Storage::Create(
                   std::move(async_start_upload_cb)));
 
   // Asynchronously run initialization.
-  Start<StorageInitContext>(ExpectedQueues(storage->options_),
-                            std::move(storage), std::move(completion_cb));
+  Start<StorageInitContext>(options.ProduceQueuesOptions(), std::move(storage),
+                            std::move(completion_cb));
 }
 
 Storage::Storage(const StorageOptions& options,
