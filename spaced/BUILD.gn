@@ -12,6 +12,7 @@ group("all") {
     ":install_dbus_config",
     ":install_headers",
     ":install_init",
+    ":libspaced_pc",
     ":spaced",
     ":spaced_cli",
   ]
@@ -46,6 +47,15 @@ generate_dbus_proxies("spaced_proxy") {
   mock_output_file = "include/spaced/dbus-proxy-mocks.h"
   proxy_path_in_mocks = "spaced/dbus-proxies.h"
   sources = [ "dbus_bindings/org.chromium.Spaced.xml" ]
+}
+
+generate_pkg_config("libspaced_pc") {
+  name = "libspaced"
+  description = "Library for disk usage introspection"
+  version = getenv("PV")
+  cflags = [ "-I/usr/include/spaced-client" ]
+  libs = [ "-lspaced" ]
+  install = true
 }
 
 shared_library("libspaced") {
