@@ -53,10 +53,12 @@ using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
+using ::testing::UnorderedElementsAre;
 
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
@@ -71,6 +73,8 @@ using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
+using user_data_auth::AUTH_INTENT_DECRYPT;
+using user_data_auth::AUTH_INTENT_VERIFY_ONLY;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 using AuthenticateCallback = base::OnceCallback<void(
@@ -1075,6 +1079,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_TRUE(reply.authenticated());
+  EXPECT_THAT(
+      reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
 }
 
 // Test that AuthenticateAuthFactor fails in case the VaultKeyset decryption
@@ -1113,6 +1120,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is missing.
@@ -1134,6 +1142,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is invalid.
@@ -1156,6 +1165,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession is expired.
@@ -1183,6 +1193,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails in case the user doesn't exist.
@@ -1207,6 +1218,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails in case the user has no keys (because
@@ -1222,6 +1234,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   ASSERT_TRUE(auth_session);
   EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -1234,6 +1249,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_TRUE(reply.authenticated());
+  EXPECT_THAT(
+      reply.authorized_for(),
+      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
 }
 
 // Test that AuthenticateAuthFactor fails when a non-existing key label is
@@ -1270,6 +1288,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails when no AuthInput is provided.
@@ -1302,6 +1321,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
 }  // namespace

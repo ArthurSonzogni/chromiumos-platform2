@@ -368,6 +368,7 @@ static_library("libcrostpm") {
     "../auth_factor_vault_keyset_converter.cc",
     "../auth_session.cc",
     "../auth_session_manager.cc",
+    "../auth_session_proto_utils.cc",
     "../crc8.c",
     "../crypto.cc",
     "../crypto_error.cc",

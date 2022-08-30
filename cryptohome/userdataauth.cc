@@ -40,6 +40,7 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
+#include "cryptohome/auth_session_proto_utils.h"
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
@@ -293,16 +294,32 @@ bool GetKeyLabels(const KeysetManagement& keyset_management,
   return true;
 }
 
-template <typename AuthenticateReply>
-void ReplyWithAuthenticationResult(
+void ReplyWithLegacyAuthenticationResult(
     const AuthSession* auth_session,
-    base::OnceCallback<void(const AuthenticateReply&)> on_done,
+    base::OnceCallback<
+        void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done,
     CryptohomeStatus status) {
   DCHECK(auth_session);
   DCHECK(!on_done.is_null());
-  AuthenticateReply reply;
+  user_data_auth::AuthenticateAuthSessionReply reply;
   reply.set_authenticated(auth_session->GetStatus() ==
                           AuthStatus::kAuthStatusAuthenticated);
+  ReplyWithError(std::move(on_done), std::move(reply), status);
+}
+
+void ReplyWithAuthenticationResult(
+    const AuthSession* auth_session,
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done,
+    CryptohomeStatus status) {
+  DCHECK(auth_session);
+  DCHECK(!on_done.is_null());
+  user_data_auth::AuthenticateAuthFactorReply reply;
+  reply.set_authenticated(auth_session->GetStatus() ==
+                          AuthStatus::kAuthStatusAuthenticated);
+  for (AuthIntent auth_intent : auth_session->authorized_intents()) {
+    reply.add_authorized_for(AuthIntentToProto(auth_intent));
+  }
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
@@ -4156,9 +4173,8 @@ void UserDataAuth::AuthenticateAuthSession(
   // auth_session_token.
   auth_session->Authenticate(
       request.authorization(),
-      base::BindOnce(&ReplyWithAuthenticationResult<
-                         user_data_auth::AuthenticateAuthSessionReply>,
-                     auth_session, std::move(on_done)));
+      base::BindOnce(&ReplyWithLegacyAuthenticationResult, auth_session,
+                     std::move(on_done)));
 }
 
 void UserDataAuth::InvalidateAuthSession(
@@ -4703,9 +4719,8 @@ void UserDataAuth::AuthenticateAuthFactor(
   }
 
   auth_session->AuthenticateAuthFactor(
-      request, base::BindOnce(&ReplyWithAuthenticationResult<
-                                  user_data_auth::AuthenticateAuthFactorReply>,
-                              auth_session, std::move(on_done)));
+      request, base::BindOnce(&ReplyWithAuthenticationResult, auth_session,
+                              std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactor(

@@ -1,0 +1,18 @@
+// Copyright 2022 The ChromiumOS Authors.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CRYPTOHOME_AUTH_SESSION_PROTO_UTILS_H_
+#define CRYPTOHOME_AUTH_SESSION_PROTO_UTILS_H_
+
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+
+#include "cryptohome/auth_session.h"
+
+namespace cryptohome {
+
+user_data_auth::AuthIntent AuthIntentToProto(AuthIntent auth_intent);
+
+}  // namespace cryptohome
+
+#endif  // CRYPTOHOME_AUTH_SESSION_PROTO_UTILS_H_
