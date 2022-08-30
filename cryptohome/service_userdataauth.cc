@@ -548,6 +548,35 @@ void UserDataAuthAdaptor::DoListAuthFactors(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::PrepareAsyncAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareAsyncAuthFactorReply>> response,
+    const user_data_auth::PrepareAsyncAuthFactorRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoPrepareAsyncAuthFactor,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::PrepareAsyncAuthFactorReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoPrepareAsyncAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareAsyncAuthFactorReply>> response,
+    const user_data_auth::PrepareAsyncAuthFactorRequest& in_request) {
+  service_->PrepareAsyncAuthFactor(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::PrepareAsyncAuthFactorReply>> local_response,
+             const user_data_auth::PrepareAsyncAuthFactorReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::GetRecoveryRequest(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetRecoveryRequestReply>> response,

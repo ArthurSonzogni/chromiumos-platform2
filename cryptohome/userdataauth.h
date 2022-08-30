@@ -755,6 +755,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::ListAuthFactorsReply&)>
           on_done);
 
+  void PrepareAsyncAuthFactor(
+      user_data_auth::PrepareAsyncAuthFactorRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PrepareAsyncAuthFactorReply&)> on_done);
+
   void GetAuthSessionStatus(
       user_data_auth::GetAuthSessionStatusRequest request,
       base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
