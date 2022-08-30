@@ -13,6 +13,10 @@
 
 // Note that this file is not the only entrypoint for including pkcs11.h.
 // chaps.cc also includes pkcs11f.h.
+// Return values defined in pkcs11.h are persisted to logs and should not
+// be renumbered and numeric values should never be reused.
+// Please keep in sync with "ChapsSessionStatus" in
+// tools/metrics/histograms/enums.xml in the Chromium repo.
 #include <nss/pkcs11.h>
 
 // Below are some workaround due to problems in the copy of pkcs11.h that we

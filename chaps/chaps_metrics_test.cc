@@ -10,6 +10,9 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "chaps/chaps.h"
+#include "pkcs11/cryptoki.h"
+
 namespace chaps {
 
 namespace {
@@ -78,6 +81,50 @@ TEST_F(ChapsMetricsTest, ReportCrosEvent) {
   EXPECT_CALL(mock_metrics_library_, SendCrosEventToUMA(kDatabaseCreateFailure))
       .WillOnce(Return(true));
   chaps_metrics_.ReportCrosEvent(kDatabaseCreateFailure);
+}
+
+TEST_F(ChapsMetricsTest, ReportChapsTokenManagerStatus) {
+  // Tests the enums to see if the parameters are correctly passed.
+  const TokenManagerStatus statuses[]{
+      TokenManagerStatus::kCommandSuccess,
+      TokenManagerStatus::kInitStage2Failed,
+      TokenManagerStatus::kInvalidIsolateCredential,
+      TokenManagerStatus::kLoadExistingToken,
+      TokenManagerStatus::kFailedToLoadSoftwareToken,
+      TokenManagerStatus::kUnknownPath,
+      TokenManagerStatus::kIncorrectOldAuthorizationData,
+      TokenManagerStatus::kFailedToChangeAuthData,
+      TokenManagerStatus::kFailedToWriteAuthKeyBlob,
+      TokenManagerStatus::kFailedToWriteAuthDataHashBlob,
+      TokenManagerStatus::kTokenNotInitialized,
+      TokenManagerStatus::kFailedToDecryptRootKey,
+      TokenManagerStatus::kFailedToEncryptRootKey,
+      TokenManagerStatus::kFailedToWriteRootKeyBlob,
+  };
+  constexpr auto max_value = static_cast<int>(TokenManagerStatus::kMaxValue);
+  const std::string histogram =
+      std::string(kChapsTokenManagerHistogramPrefix) + ".FakeCommand";
+  for (auto status : statuses) {
+    EXPECT_CALL(mock_metrics_library_,
+                SendEnumToUMA(histogram, static_cast<int>(status), max_value))
+        .WillOnce(Return(true));
+    chaps_metrics_.ReportChapsTokenManagerStatus("FakeCommand", status);
+  }
+}
+
+TEST_F(ChapsMetricsTest, ReportChapsSessionStatus) {
+  // Tests the min and max value to see if the parameters are correctly passed.
+  const int statuses[]{
+      static_cast<int>(CKR_OK),
+      static_cast<int>(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS),
+  };
+  const std::string histogram =
+      std::string(kChapsSessionHistogramPrefix) + ".FakeCommand";
+  for (auto status : statuses) {
+    EXPECT_CALL(mock_metrics_library_, SendSparseToUMA(histogram, status))
+        .WillOnce(Return(true));
+    chaps_metrics_.ReportChapsSessionStatus("FakeCommand", status);
+  }
 }
 
 }  // namespace chaps

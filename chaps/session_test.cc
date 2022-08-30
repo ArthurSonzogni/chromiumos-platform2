@@ -17,6 +17,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -114,6 +115,12 @@ std::string GetRSAPSSParam(CK_MECHANISM_TYPE hashAlg,
 
 namespace chaps {
 
+const char kChapsSessionDecrypt[] = "Platform.Chaps.Session.Decrypt";
+const char kChapsSessionDigest[] = "Platform.Chaps.Session.Digest";
+const char kChapsSessionEncrypt[] = "Platform.Chaps.Session.Encrypt";
+const char kChapsSessionSign[] = "Platform.Chaps.Session.Sign";
+const char kChapsSessionVerify[] = "Platform.Chaps.Session.Verify";
+
 // Test fixture for an initialized SessionImpl instance.
 class TestSession : public ::testing::Test {
  public:
@@ -127,8 +134,9 @@ class TestSession : public ::testing::Test {
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {
+    chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
     session_.reset(new SessionImpl(1, &token_pool_, &tpm_, &factory_,
-                                   &handle_generator_, false));
+                                   &handle_generator_, false, &chaps_metrics_));
   }
   void GenerateSecretKey(CK_MECHANISM_TYPE mechanism,
                          CK_ULONG size,
@@ -281,6 +289,8 @@ class TestSession : public ::testing::Test {
   StrictMock<TPMUtilityMock> tpm_;
   HandleGeneratorMock handle_generator_;
   std::unique_ptr<SessionImpl> session_;
+  StrictMock<MetricsLibraryMock> mock_metrics_library_;
+  ChapsMetrics chaps_metrics_;
 };
 
 // Session Test that uses real Object implementation (ObjectImpl)
@@ -310,18 +320,23 @@ TEST(DeathTest, InvalidInit) {
   TPMUtilityMock tpm;
   HandleGeneratorMock handle_generator;
   SessionImpl* session;
+  ChapsMetrics chaps_metrics;
   EXPECT_CALL(factory, CreateObjectPool(_, _, _)).Times(AnyNumber());
-  EXPECT_DEATH_IF_SUPPORTED(session = new SessionImpl(1, NULL, &tpm, &factory,
-                                                      &handle_generator, false),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session = new SessionImpl(1, &pool, NULL, &factory,
-                                                      &handle_generator, false),
-                            "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, NULL, &handle_generator, false),
+      session = new SessionImpl(1, NULL, &tpm, &factory, &handle_generator,
+                                false, &chaps_metrics),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, &factory, NULL, false),
+      session = new SessionImpl(1, &pool, NULL, &factory, &handle_generator,
+                                false, &chaps_metrics),
+      "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session = new SessionImpl(1, &pool, &tpm, NULL, &handle_generator, false,
+                                &chaps_metrics),
+      "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session = new SessionImpl(1, &pool, &tpm, &factory, NULL, false,
+                                &chaps_metrics),
       "Check failed");
   (void)session;
 }
@@ -351,6 +366,9 @@ TEST_F(TestSession_DeathTest, InvalidArgs) {
   string s;
   const Object* o;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &o);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt, static_cast<int>(CKR_OK)))
+      .WillOnce(Return(true));
   ASSERT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_AES_ECB, "", o));
   EXPECT_DEATH_IF_SUPPORTED(session_->OperationUpdate(invalid_op, "", &i, &s),
                             "Check failed");
@@ -375,12 +393,14 @@ TEST(DeathTest, OutOfMemoryInit) {
   ChapsFactoryMock factory;
   HandleGeneratorMock handle_generator;
   ObjectPool* null_pool = NULL;
+  ChapsMetrics chaps_metrics;
   EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   Session* session;
-  EXPECT_DEATH_IF_SUPPORTED(session = new SessionImpl(1, &pool, &tpm, &factory,
-                                                      &handle_generator, false),
-                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session = new SessionImpl(1, &pool, &tpm, &factory, &handle_generator,
+                                false, &chaps_metrics),
+      "Check failed");
   (void)session;
 }
 
@@ -458,11 +478,18 @@ TEST_F(TestSession, Objects) {
 TEST_F(TestSession, Cipher) {
   const Object* key_object = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &key_object);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt, static_cast<int>(CKR_OK)))
+      .Times(3);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_AES_CBC_PAD,
                                             string(16, 'A'), key_object));
   string in(22, 'B');
   string out, tmp;
   int maxlen = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(2);
   // Check buffer-too-small semantics (and for each call following).
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationUpdate(kEncrypt, in, &maxlen, &tmp));
@@ -477,10 +504,17 @@ TEST_F(TestSession, Cipher) {
   out += tmp;
   // Check that we've received the final block.
   EXPECT_EQ(32, out.length());
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDecrypt, static_cast<int>(CKR_OK)))
+      .Times(2);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDecrypt, CKM_AES_CBC_PAD,
                                             string(16, 'A'), key_object));
   string in2;
   maxlen = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDecrypt,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationSinglePart(kDecrypt, out, &maxlen, &in2));
   EXPECT_EQ(CKR_OK,
@@ -493,6 +527,9 @@ TEST_F(TestSession, Cipher) {
 // Test multi-part and single-part digest operations.
 TEST_F(TestSession, Digest) {
   string in(30, 'A');
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
+      .Times(7);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
   EXPECT_EQ(CKR_OK,
             session_->OperationUpdate(kDigest, in.substr(0, 10), NULL, NULL));
@@ -502,6 +539,10 @@ TEST_F(TestSession, Digest) {
             session_->OperationUpdate(kDigest, in.substr(20, 10), NULL, NULL));
   int len = 0;
   string out;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(2);
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationFinal(kDigest, &len, &out));
   EXPECT_EQ(20, len);
@@ -522,6 +563,9 @@ TEST_F(TestSession, HMAC) {
   const Object* key_object = NULL;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 32, &key_object);
   string in(30, 'A');
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .Times(5);
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kSign, CKM_SHA256_HMAC, "", key_object));
   EXPECT_EQ(CKR_OK,
@@ -532,8 +576,15 @@ TEST_F(TestSession, HMAC) {
             session_->OperationUpdate(kSign, in.substr(20, 10), NULL, NULL));
   int len = 0;
   string out;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &out));
   EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &out));
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionVerify, static_cast<int>(CKR_OK)))
+      .Times(3);
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_HMAC, "", key_object));
   EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
@@ -543,6 +594,9 @@ TEST_F(TestSession, HMAC) {
 
 // Test empty multi-part operation.
 TEST_F(TestSession, FinalWithNoUpdate) {
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
+      .Times(2);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
   int len = 20;
   string out;
@@ -553,32 +607,56 @@ TEST_F(TestSession, FinalWithNoUpdate) {
 // Test multi-part and single-part operations inhibit each other.
 TEST_F(TestSession, UpdateOperationPreventsSinglePart) {
   string in(30, 'A');
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
+      .Times(2);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
   EXPECT_EQ(CKR_OK,
             session_->OperationUpdate(kDigest, in.substr(0, 10), NULL, NULL));
   int len = 0;
   string out;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_ACTIVE)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OPERATION_ACTIVE, session_->OperationSinglePart(
                                       kDigest, in.substr(10, 20), &len, &out));
 
   // The error also terminates the operation.
   len = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_NOT_INITIALIZED)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
             session_->OperationFinal(kDigest, &len, &out));
 }
 
 TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
   string in(30, 'A');
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
   string out;
   int len = 0;
   // Perform a single part operation but leave the output to be collected.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationSinglePart(kDigest, in, &len, &out));
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_ACTIVE)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OPERATION_ACTIVE,
             session_->OperationUpdate(kDigest, in.substr(10, 10), NULL, NULL));
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_NOT_INITIALIZED)))
+      .WillOnce(Return(true));
   // The error also terminates the operation.
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
             session_->OperationSinglePart(kDigest, in, &len, &out));
@@ -586,17 +664,31 @@ TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
 
 TEST_F(TestSession, SinglePartOperationPreventsFinal) {
   string in(30, 'A');
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
   string out;
   int len = 0;
   // Perform a single part operation but leave the output to be collected.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationSinglePart(kDigest, in, &len, &out));
 
   len = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_ACTIVE)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_OPERATION_ACTIVE,
             session_->OperationFinal(kDigest, &len, &out));
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_OPERATION_NOT_INITIALIZED)))
+      .WillOnce(Return(true));
   // The error also terminates the operation.
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
             session_->OperationSinglePart(kDigest, in, &len, &out));
@@ -607,19 +699,32 @@ TEST_F(TestSession, RSAEncrypt) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateRSAKeyPair(false, 1024, &pub, &priv);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt, static_cast<int>(CKR_OK)))
+      .Times(2);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_RSA_PKCS, "", pub));
   string in(100, 'A');
   int len = 0;
   string out;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationSinglePart(kEncrypt, in, &len, &out));
   EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kEncrypt, in, &len, &out));
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDecrypt, static_cast<int>(CKR_OK)))
+      .Times(3);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kDecrypt, CKM_RSA_PKCS, "", priv));
   len = 0;
   string in2 = out;
   string out2;
   EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDecrypt, in2, &len, &out2));
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDecrypt,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationFinal(kDecrypt, &len, &out2));
   EXPECT_EQ(CKR_OK, session_->OperationFinal(kDecrypt, &len, &out2));
@@ -633,7 +738,16 @@ TEST_F(TestSession, RsaSign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(4);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .Times(12);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionVerify, static_cast<int>(CKR_OK)))
+      .Times(14);
   // Test the generic RSA mechanism.
   TestSignVerify(pub, priv, 100, CKM_RSA_PKCS, "");
 
@@ -646,7 +760,16 @@ TEST_F(TestSession, RsaPSSSign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(4);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .Times(12);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionVerify, static_cast<int>(CKR_OK)))
+      .Times(14);
   // Test the generic RSA PSS mechanism.
   TestSignVerify(pub, priv, 20, CKM_RSA_PKCS_PSS,
                  GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20));
@@ -661,7 +784,16 @@ TEST_F(TestSession, EcdsaSign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateECCKeyPair(false, false, &pub, &priv);
-
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(4);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .Times(12);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionVerify, static_cast<int>(CKR_OK)))
+      .Times(14);
   // Test the generic ECDSA.
   TestSignVerify(pub, priv, 100, CKM_ECDSA, "");
 
@@ -675,12 +807,24 @@ TEST_F(TestSession, MechanismInvalid) {
   // Use a valid key so that key errors don't mask mechanism errors.
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // We don't support IDEA.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kEncrypt, CKM_IDEA_CBC, "", key));
   // We don't support SHA-224.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kSign, CKM_SHA224_RSA_PKCS, "", key));
   // We don't support MD2.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kDigest, CKM_MD2, "", NULL));
 }
@@ -692,15 +836,27 @@ TEST_F(TestSession, MechanismMismatch) {
   const Object* aes = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
   // Encrypt with a sign/verify mechanism.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kEncrypt, CKM_SHA_1_HMAC, "", hmac));
   // Sign with an encryption mechanism.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .Times(2);
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kSign, CKM_AES_CBC_PAD, "", aes));
   // Sign with a digest-only mechanism.
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kSign, CKM_SHA_1, "", hmac));
   // Digest with a sign+digest mechanism.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDigest,
+                              static_cast<int>(CKR_MECHANISM_INVALID)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
             session_->OperationInit(kDigest, CKM_SHA1_RSA_PKCS, "", NULL));
 }
@@ -712,12 +868,20 @@ TEST_F(TestSession, KeyTypeMismatch) {
   const Object* rsapub = NULL;
   const Object* rsapriv = NULL;
   GenerateRSAKeyPair(true, 512, &rsapub, &rsapriv);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_KEY_TYPE_INCONSISTENT)))
+      .Times(2);
   // DES3 with an AES key.
   EXPECT_EQ(CKR_KEY_TYPE_INCONSISTENT,
             session_->OperationInit(kEncrypt, CKM_DES3_CBC, "", aes));
   // AES with an RSA key.
   EXPECT_EQ(CKR_KEY_TYPE_INCONSISTENT,
             session_->OperationInit(kEncrypt, CKM_AES_CBC, "", rsapriv));
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_KEY_TYPE_INCONSISTENT)))
+      .Times(2);
   // HMAC with an RSA key.
   EXPECT_EQ(CKR_KEY_TYPE_INCONSISTENT,
             session_->OperationInit(kSign, CKM_SHA_1_HMAC, "", rsapriv));
@@ -735,9 +899,17 @@ TEST_F(TestSession, KeyFunctionPermission) {
   const Object* sigpriv = NULL;
   GenerateRSAKeyPair(true, 512, &sigpub, &sigpriv);
   // Try decrypting with a sign-only key.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDecrypt,
+                              static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
             session_->OperationInit(kDecrypt, CKM_RSA_PKCS, "", sigpriv));
   // Try signing with a decrypt-only key.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign,
+                              static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
             session_->OperationInit(kSign, CKM_RSA_PKCS, "", encpriv));
 }
@@ -752,6 +924,10 @@ TEST_F(TestSession, BadIV) {
   GenerateSecretKey(CKM_DES3_KEY_GEN, 16, &des3);
   // AES expects 16 bytes and DES/DES3 expects 8 bytes.
   string bad_iv(7, 0);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_MECHANISM_PARAM_INVALID)))
+      .Times(3);
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
             session_->OperationInit(kEncrypt, CKM_AES_CBC, bad_iv, aes));
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
@@ -766,6 +942,10 @@ TEST_F(TestSession, BadKeySize) {
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // AES keys can be 16, 24, or 32 bytes in length.
   const_cast<Object*>(key)->SetAttributeString(CKA_VALUE, string(33, 0));
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionEncrypt,
+                              static_cast<int>(CKR_KEY_SIZE_RANGE)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kEncrypt, CKM_AES_ECB, "", key));
   const Object* pub = NULL;
@@ -773,6 +953,10 @@ TEST_F(TestSession, BadKeySize) {
   GenerateRSAKeyPair(true, 512, &pub, &priv);
   // RSA keys can have a modulus size no smaller than 512.
   const_cast<Object*>(priv)->SetAttributeString(CKA_MODULUS, string(32, 0));
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_KEY_SIZE_RANGE)))
+      .WillOnce(Return(true));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kSign, CKM_RSA_PKCS, "", priv));
 }
@@ -834,6 +1018,9 @@ TEST_F(TestSession, BadSignature) {
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 32, &hmac);
   const Object *rsapub, *rsapriv;
   GenerateRSAKeyPair(true, 1024, &rsapub, &rsapriv);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionVerify, static_cast<int>(CKR_OK)))
+      .Times(12);
   // HMAC with bad signature length.
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_HMAC, "", hmac));
@@ -1139,6 +1326,9 @@ TEST_F(TestSession, EcdsaSignWithTPM) {
   const Object* priv = NULL;
   GenerateECCKeyPair(true, true, &pub, &priv);
 
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .Times(2);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
   string in(100, 'A');
   int len = 0;

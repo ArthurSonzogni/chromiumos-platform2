@@ -40,7 +40,7 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
                                          HandleGenerator* handle_generator,
                                          bool is_read_only) {
   return new SessionImpl(slot_id, token_object_pool, tpm_utility, this,
-                         handle_generator, is_read_only);
+                         handle_generator, is_read_only, chaps_metrics_);
 }
 
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(

@@ -17,6 +17,7 @@
 #include <openssl/hmac.h>
 
 #include "chaps/chaps_factory.h"
+#include "chaps/chaps_metrics.h"
 #include "chaps/object.h"
 #include "chaps/object_pool.h"
 #include "chaps/tpm_utility.h"
@@ -67,7 +68,8 @@ class SessionImpl : public Session {
               TPMUtility* tpm_utility,
               ChapsFactory* factory,
               HandleGenerator* handle_generator,
-              bool is_read_only);
+              bool is_read_only,
+              ChapsMetrics* chaps_metrics);
   SessionImpl(const SessionImpl&) = delete;
   SessionImpl& operator=(const SessionImpl&) = delete;
 
@@ -142,6 +144,24 @@ class SessionImpl : public Session {
                                 int* required_out_length,
                                 std::string* data_out);
   CK_RV OperationFinalInternal(OperationType operation,
+                               int* required_out_length,
+                               std::string* data_out);
+  // An extra layer of raw functions are added to simplify the  UMA report code.
+  // These raw functions should not call ReportChapsSessionStatus(), otherwise
+  // the status will be double counted.
+  CK_RV OperationInitRaw(OperationType operation,
+                         CK_MECHANISM_TYPE mechanism,
+                         const std::string& mechanism_parameter,
+                         const Object* key);
+  CK_RV OperationUpdateRaw(OperationType operation,
+                           const std::string& data_in,
+                           int* required_out_length,
+                           std::string* data_out);
+  CK_RV OperationFinalRaw(OperationType operation,
+                          int* required_out_length,
+                          std::string* data_out);
+  CK_RV OperationSinglePartRaw(OperationType operation,
+                               const std::string& data_in,
                                int* required_out_length,
                                std::string* data_out);
   CK_RV CipherInit(bool is_encrypt,
@@ -231,6 +251,7 @@ class SessionImpl : public Session {
   std::unique_ptr<ObjectPool> session_object_pool_;
   ObjectPool* token_object_pool_;
   TPMUtility* tpm_utility_;
+  ChapsMetrics* chaps_metrics_;
 };
 
 }  // namespace chaps

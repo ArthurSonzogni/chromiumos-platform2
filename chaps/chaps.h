@@ -13,7 +13,10 @@
 // Chaps-specific return values:
 #define CKR_CHAPS_SPECIFIC_FIRST (CKR_VENDOR_DEFINED + 0x47474c00)
 // Error code returned in case if the operation would block waiting
-// for private objects to load for the token.
+// for private objects to load for the token. This value is persisted to logs
+// and should not be renumbered and numeric values should never be reused.
+// Please keep in sync with "ChapsSessionStatus" in
+// tools/metrics/histograms/enums.xml in the Chromium repo.
 #define CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS (CKR_CHAPS_SPECIFIC_FIRST + 0)
 
 namespace chaps {

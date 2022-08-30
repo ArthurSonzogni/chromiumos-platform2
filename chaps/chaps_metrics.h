@@ -28,6 +28,11 @@ inline constexpr char kDatabaseOpenedSuccessfully[] =
 
 inline constexpr char kDatabaseOpenAttempt[] = "Chaps.DatabaseOpenAttempt";
 
+inline constexpr char kChapsSessionHistogramPrefix[] = "Platform.Chaps.Session";
+
+inline constexpr char kChapsTokenManagerHistogramPrefix[] =
+    "Platform.Chaps.TokenManager";
+
 // List of reasons to initializing token. These entries
 // should not be renumbered and numeric values should never be reused.
 // These values are persisted to logs.
@@ -45,6 +50,28 @@ enum class ReinitializingTokenStatus {
 enum class TPMAvailabilityStatus {
   kTPMAvailable = 0,
   kTPMUnavailable = 1,
+  kMaxValue
+};
+
+// The token manager command execution status. These values are persisted to
+// logs. Entries should not be renumbered and numeric values should never be
+// reused. Please keep in sync with "TokenManagerStatus" in
+// tools/metrics/histograms/enums.xml in the Chromium repo.
+enum class TokenManagerStatus {
+  kCommandSuccess = 0,
+  kInitStage2Failed = 1,
+  kInvalidIsolateCredential = 2,
+  kLoadExistingToken = 3,
+  kFailedToLoadSoftwareToken = 4,
+  kUnknownPath = 5,
+  kIncorrectOldAuthorizationData = 6,
+  kFailedToChangeAuthData = 7,
+  kFailedToWriteAuthKeyBlob = 8,
+  kFailedToWriteAuthDataHashBlob = 9,
+  kTokenNotInitialized = 10,
+  kFailedToDecryptRootKey = 11,
+  kFailedToEncryptRootKey = 12,
+  kFailedToWriteRootKeyBlob = 13,
   kMaxValue
 };
 
@@ -71,6 +98,16 @@ class ChapsMetrics : private MetricsLibrary {
   // "Platform.CrOSEvent" enum histogram. The |event| string must be registered
   // in metrics/metrics_library.cc:kCrosEventNames.
   virtual void ReportCrosEvent(const std::string& event);
+
+  // The |operation| and |status| value is reported to the
+  // "Platform.Chaps.Session" enum histogram.
+  virtual void ReportChapsSessionStatus(const std::string& operation,
+                                        int status);
+
+  // The |operation| and |status| value is reported to the
+  // "Platform.Chaps.TokenManager" enum histogram.
+  virtual void ReportChapsTokenManagerStatus(const std::string& operation,
+                                             TokenManagerStatus status);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {

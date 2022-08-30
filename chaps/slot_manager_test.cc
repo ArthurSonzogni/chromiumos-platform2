@@ -48,6 +48,11 @@ const char kDefaultPubExp[] = {1, 0, 1};
 const int kDefaultPubExpSize = 3;
 const char kTokenLabel[] = "test_label";
 
+const char kChapsTokenManagerLoadToken[] =
+    "Platform.Chaps.TokenManager.LoadToken";
+const char kChapsTokenManagerUnloadToken[] =
+    "Platform.Chaps.TokenManager.UnloadToken";
+
 SecureBlob MakeBlob(const char* auth_data_str) {
   return Sha1(SecureBlob(auth_data_str));
 }
@@ -317,6 +322,12 @@ TEST_F(TestSlotManager, TestSessions) {
 TEST_F(TestSlotManager, TestLoadTokenEvents) {
   InsertToken();
   int slot_id;
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendEnumToUMA(kChapsTokenManagerLoadToken,
+                    static_cast<int>(TokenManagerStatus::kLoadExistingToken),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .WillOnce(Return(true));
   EXPECT_TRUE(slot_manager_->LoadToken(
       ic_, FilePath("some_path"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
@@ -330,6 +341,11 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
   // Logout with an unknown path.
+  EXPECT_CALL(mock_metrics_library_,
+              SendEnumToUMA(kChapsTokenManagerUnloadToken,
+                            static_cast<int>(TokenManagerStatus::kUnknownPath),
+                            static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .WillOnce(Return(true));
   EXPECT_FALSE(
       slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path")));
   EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath("some_path")));
@@ -481,13 +497,13 @@ TEST_F(TestSlotManager, SRKNotReady) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
-  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
   EXPECT_CALL(
       mock_metrics_library,
       SendEnumToUMA(kTPMAvailability,
                     static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
                     static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
   slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
                                           false, nullptr, &chaps_metrics));
   ASSERT_TRUE(slot_manager_->Init());
@@ -495,6 +511,13 @@ TEST_F(TestSlotManager, SRKNotReady) {
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
   int slot_id = 0;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(
+      mock_metrics_library,
+      SendEnumToUMA(kChapsTokenManagerLoadToken,
+                    static_cast<int>(TokenManagerStatus::kInitStage2Failed),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .WillOnce(Return(true));
   EXPECT_FALSE(slot_manager_->LoadToken(
       ic_, FilePath("test_token"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
@@ -727,6 +750,12 @@ TEST_F(SoftwareOnlyTest, CorruptRootKey) {
 TEST_F(SoftwareOnlyTest, CreateNewWriteFailure) {
   pool_write_result_ = false;
   int slot_id = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendEnumToUMA(kChapsTokenManagerLoadToken,
+                            static_cast<int>(
+                                TokenManagerStatus::kFailedToLoadSoftwareToken),
+                            static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .WillOnce(Return(true));
   EXPECT_FALSE(slot_manager_->LoadToken(
       ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));
@@ -736,6 +765,12 @@ TEST_F(SoftwareOnlyTest, LoadExistingWriteFailure) {
   InitializeObjectPoolBlobs();
   pool_write_result_ = false;
   int slot_id = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendEnumToUMA(kChapsTokenManagerLoadToken,
+                            static_cast<int>(
+                                TokenManagerStatus::kFailedToLoadSoftwareToken),
+                            static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .WillOnce(Return(true));
   EXPECT_FALSE(slot_manager_->LoadToken(
       ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));

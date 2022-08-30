@@ -34,4 +34,24 @@ void ChapsMetrics::ReportCrosEvent(const std::string& event) {
 #endif
 }
 
+void ChapsMetrics::ReportChapsSessionStatus(const std::string& operation,
+                                            int status) {
+#ifndef NO_METRICS
+  const std::string histogram =
+      std::string(kChapsSessionHistogramPrefix) + "." + operation;
+  metrics_library_->SendSparseToUMA(histogram, status);
+#endif
+}
+
+void ChapsMetrics::ReportChapsTokenManagerStatus(const std::string& operation,
+                                                 TokenManagerStatus status) {
+#ifndef NO_METRICS
+  const std::string histogram =
+      std::string(kChapsTokenManagerHistogramPrefix) + "." + operation;
+  constexpr auto max_value = static_cast<int>(TokenManagerStatus::kMaxValue);
+  metrics_library_->SendEnumToUMA(histogram, static_cast<int>(status),
+                                  max_value);
+#endif
+}
+
 }  // namespace chaps

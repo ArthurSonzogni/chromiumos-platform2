@@ -494,8 +494,11 @@ bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
                                 const SecureBlob& auth_data,
                                 const string& label,
                                 int* slot_id) {
-  if (!InitStage2())
+  if (!InitStage2()) {
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "LoadToken", TokenManagerStatus::kInitStage2Failed);
     return false;
+  }
   return LoadTokenInternal(isolate_credential, path, auth_data, label, slot_id);
 }
 
@@ -508,6 +511,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   VLOG(1) << "SlotManagerImpl::LoadToken enter";
   if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
     LOG(ERROR) << "Invalid isolate credential for LoadToken.";
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "LoadToken", TokenManagerStatus::kInvalidIsolateCredential);
     return false;
   }
   Isolate& isolate = isolate_map_[isolate_credential];
@@ -518,6 +523,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
     // isolates.
     LOG(WARNING) << "Load token event received for existing token.";
     *slot_id = path_slot_map_[path];
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "LoadToken", TokenManagerStatus::kLoadExistingToken);
     return true;
   }
 
@@ -542,6 +549,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
     // Load a software-only token.
     LOG(WARNING) << "No TPM is available. Loading a software-only token.";
     if (!LoadSoftwareToken(auth_data, object_pool.get())) {
+      chaps_metrics_->ReportChapsTokenManagerStatus(
+          "LoadToken", TokenManagerStatus::kFailedToLoadSoftwareToken);
       return false;
     }
   }
@@ -878,6 +887,8 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   VLOG(1) << "SlotManagerImpl::UnloadToken";
   if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
     LOG(WARNING) << "Invalid isolate credential for UnloadToken.";
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "UnloadToken", TokenManagerStatus::kInvalidIsolateCredential);
     return false;
   }
   Isolate& isolate = isolate_map_[isolate_credential];
@@ -886,11 +897,15 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     LOG(WARNING) << "Unload Token event received for unknown path: "
                  << path.value();
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "UnloadToken", TokenManagerStatus::kUnknownPath);
     return false;
   }
   int slot_id = path_slot_map_[path];
   if (!IsTokenAccessible(isolate_credential, slot_id)) {
     LOG(WARNING) << "Attempted to unload token with invalid isolate credential";
+    chaps_metrics_->ReportChapsTokenManagerStatus(
+        "UnloadToken", TokenManagerStatus::kInvalidIsolateCredential);
     return false;
   }
 

@@ -74,6 +74,24 @@ CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
   }
 }
 
+const char* OperationToString(OperationType operation) {
+  switch (operation) {
+    case kEncrypt:
+      return "Encrypt";
+    case kDecrypt:
+      return "Decrypt";
+    case kDigest:
+      return "Digest";
+    case kSign:
+      return "Sign";
+    case kVerify:
+      return "Verify";
+    case kNumOperationTypes:
+    default:
+      return "Unknown";
+  }
+}
+
 bool IsSuccess(chaps::ObjectPool::Result result) {
   return result == chaps::ObjectPool::Result::Success;
 }
@@ -631,16 +649,19 @@ SessionImpl::SessionImpl(int slot_id,
                          TPMUtility* tpm_utility,
                          ChapsFactory* factory,
                          HandleGenerator* handle_generator,
-                         bool is_read_only)
+                         bool is_read_only,
+                         ChapsMetrics* chaps_metrics)
     : factory_(factory),
       find_results_valid_(false),
       is_read_only_(is_read_only),
       slot_id_(slot_id),
       token_object_pool_(token_object_pool),
-      tpm_utility_(tpm_utility) {
+      tpm_utility_(tpm_utility),
+      chaps_metrics_(chaps_metrics) {
   CHECK(token_object_pool_);
   CHECK(tpm_utility_);
   CHECK(factory_);
+  CHECK(chaps_metrics_);
   session_object_pool_.reset(
       factory_->CreateObjectPool(handle_generator, nullptr, nullptr));
   CHECK(session_object_pool_.get());
@@ -778,6 +799,19 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
                                  const string& mechanism_parameter,
                                  const Object* key) {
   CHECK(operation < kNumOperationTypes);
+  CK_RV result =
+      OperationInitRaw(operation, mechanism, mechanism_parameter, key);
+  chaps_metrics_->ReportChapsSessionStatus(OperationToString(operation),
+                                           static_cast<int>(result));
+
+  return result;
+}
+
+CK_RV SessionImpl::OperationInitRaw(OperationType operation,
+                                    CK_MECHANISM_TYPE mechanism,
+                                    const string& mechanism_parameter,
+                                    const Object* key) {
+  CHECK(operation < kNumOperationTypes);
 
   OperationContext* context = &operation_context_[operation];
   if (context->is_valid_) {
@@ -866,9 +900,20 @@ CK_RV SessionImpl::OperationUpdate(OperationType operation,
                                    int* required_out_length,
                                    string* data_out) {
   CHECK(operation < kNumOperationTypes);
+  CK_RV result =
+      OperationUpdateRaw(operation, data_in, required_out_length, data_out);
+  chaps_metrics_->ReportChapsSessionStatus(OperationToString(operation),
+                                           static_cast<int>(result));
+  return result;
+}
+
+CK_RV SessionImpl::OperationUpdateRaw(OperationType operation,
+                                      const string& data_in,
+                                      int* required_out_length,
+                                      string* data_out) {
+  CHECK(operation < kNumOperationTypes);
   OperationContext* context = &operation_context_[operation];
   if (!context->is_valid_) {
-    LOG(ERROR) << "Operation is not initialized.";
     return CKR_OPERATION_NOT_INITIALIZED;
   }
   if (context->is_finished_) {
@@ -921,6 +966,18 @@ void SessionImpl::OperationCancel(OperationType operation) {
 CK_RV SessionImpl::OperationFinal(OperationType operation,
                                   int* required_out_length,
                                   string* data_out) {
+  CHECK(required_out_length);
+  CHECK(data_out);
+  CHECK(operation < kNumOperationTypes);
+  CK_RV result = OperationFinalRaw(operation, required_out_length, data_out);
+  chaps_metrics_->ReportChapsSessionStatus(OperationToString(operation),
+                                           static_cast<int>(result));
+  return result;
+}
+
+CK_RV SessionImpl::OperationFinalRaw(OperationType operation,
+                                     int* required_out_length,
+                                     string* data_out) {
   CHECK(required_out_length);
   CHECK(data_out);
   CHECK(operation < kNumOperationTypes);
@@ -1032,6 +1089,18 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
                                        int* required_out_length,
                                        string* data_out) {
   CHECK(operation < kNumOperationTypes);
+  CK_RV result =
+      OperationSinglePartRaw(operation, data_in, required_out_length, data_out);
+  chaps_metrics_->ReportChapsSessionStatus(OperationToString(operation),
+                                           static_cast<int>(result));
+  return result;
+}
+
+CK_RV SessionImpl::OperationSinglePartRaw(OperationType operation,
+                                          const string& data_in,
+                                          int* required_out_length,
+                                          string* data_out) {
+  CHECK(operation < kNumOperationTypes);
   OperationContext* context = &operation_context_[operation];
   if (!context->is_valid_) {
     LOG(ERROR) << "Operation is not initialized.";
@@ -1047,12 +1116,14 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
     string update, final;
     int max = std::numeric_limits<int>::max();
     result = OperationUpdateInternal(operation, data_in, &max, &update);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       return result;
+    }
     max = std::numeric_limits<int>::max();
     result = OperationFinalInternal(operation, &max, &final);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       return result;
+    }
     context->data_ = update + final;
     context->is_finished_ = true;
   }
