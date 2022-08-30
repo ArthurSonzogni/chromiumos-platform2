@@ -157,6 +157,21 @@ BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
 // invalid, returns AF_UNSPEC (0).
 BRILLO_EXPORT sa_family_t GetIpFamily(const std::string& ip_address);
 
+// Simple wrappers around if_nametoindex which returns a signed int instead
+// of an unsigned int to avoid static casts.
+BRILLO_EXPORT int IfNametoindex(const char* ifname);
+
+// Overload that takes a constant reference to a c++ string.
+BRILLO_EXPORT int IfNametoindex(const std::string& ifname);
+
+// Simple wrapper around if_indextoname which takes as an argument a signed
+// int instead of an unsigned int to avoid static casts.
+BRILLO_EXPORT char* IfIndextoname(int ifindex, char* ifname);
+
+// Overload that directly returns a c++ string. Returns an empty string if an
+// error happens.
+BRILLO_EXPORT std::string IfIndextoname(int ifindex);
+
 }  // namespace patchpanel
 
 #endif  // PATCHPANEL_NET_UTIL_H_

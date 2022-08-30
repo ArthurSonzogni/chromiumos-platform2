@@ -147,7 +147,7 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
     return base::ScopedFD();
   }
 
-  int ifindex = if_nametoindex(ifname.c_str());
+  int ifindex = IfNametoindex(ifname);
   if (ifindex == 0) {
     PLOG(ERROR) << "Could not obtain interface index of " << ifname << " for "
                 << mcast_addr << ":" << port_;

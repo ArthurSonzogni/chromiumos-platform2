@@ -4,6 +4,7 @@
 
 #include "patchpanel/net_util.h"
 
+#include <errno.h>
 #include <net/if.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -422,6 +423,33 @@ sa_family_t GetIpFamily(const std::string& ip_address) {
   if (inet_pton(AF_INET6, ip_address.c_str(), &addr.s6_addr) == 1)
     return AF_INET6;
   return AF_UNSPEC;
+}
+
+int IfNametoindex(const char* ifname) {
+  uint32_t ifindex = if_nametoindex(ifname);
+  if (ifindex > INT_MAX) {
+    errno = EINVAL;
+    return 0;
+  }
+  return static_cast<int>(ifindex);
+}
+
+int IfNametoindex(const std::string& ifname) {
+  return IfNametoindex(ifname.c_str());
+}
+
+char* IfIndextoname(int ifindex, char* ifname) {
+  if (ifindex < 0) {
+    errno = EINVAL;
+    return nullptr;
+  }
+  return if_indextoname(static_cast<uint32_t>(ifindex), ifname);
+}
+
+std::string IfIndextoname(int ifindex) {
+  char ifname[IFNAMSIZ] = {};
+  IfIndextoname(ifindex, ifname);
+  return ifname;
 }
 
 }  // namespace patchpanel

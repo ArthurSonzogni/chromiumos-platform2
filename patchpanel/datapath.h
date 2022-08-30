@@ -468,16 +468,6 @@ class Datapath {
   FRIEND_TEST(DatapathTest, RemoveOutboundIPv4SNATMark);
   FRIEND_TEST(DatapathTest, ToggleInterface);
 
-  // A map used for remembering the interface index of an interface. This
-  // information is necessary when cleaning up iptables fwmark rules that
-  // directly references the interface index. When removing these rules on
-  // an RTM_DELLINK event, the interface index cannot be retrieved anymore.
-  // A new entry is only added when a new upstream network interface appears,
-  // and entries are not removed.
-  // TODO(b/161507671) Rely on RoutingService to obtain this information once
-  // shill/routing_table.cc has been migrated to patchpanel.
-  std::map<std::string, int> if_nametoindex_;
-
   // A map used for tracking the primary IPv4 dns address associated to a given
   // Shill Device known by its interface name. This is used for redirecting
   // DNS queries of system services when a VPN is connected.

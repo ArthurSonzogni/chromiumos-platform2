@@ -65,10 +65,14 @@ class System {
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
   // Return the interface name of the network interface with index |ifindex|, or
-  // empty string if it fails.
+  // empty string if it fails. This function is equivalent to net_util's
+  // IfIndextoname but can be mocked in unit tests.
   virtual std::string IfIndextoname(int ifindex);
   // Return the index of the interface with name |ifname|, or 0 if it fails.
-  virtual uint32_t IfNametoindex(const std::string& ifname);
+  // Compared to net_util's IfNametoindex, this function can be mocked in unit
+  // tests and an internal cache to remember the ifindex -> ifname mapping even
+  // after the interface has been removed.
+  virtual int IfNametoindex(const std::string& ifname);
 
   static bool Write(const std::string& path, const std::string& content);
 

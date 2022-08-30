@@ -4,9 +4,10 @@
 
 #include "patchpanel/network_monitor_service.h"
 
-#include <memory>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
+
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
@@ -16,6 +17,8 @@
 #include <base/logging.h>
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
+
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -397,7 +400,7 @@ void NetworkMonitorService::OnShillDevicesChanged(
       continue;
     }
 
-    int ifindex = if_nametoindex(device_props.ifname.c_str());
+    int ifindex = IfNametoindex(device_props.ifname);
     if (ifindex == 0) {
       PLOG(ERROR) << "Could not obtain interface index for "
                   << device_props.ifname;

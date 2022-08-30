@@ -10,7 +10,9 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+
 #include "patchpanel/ipc.pb.h"
+#include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -54,13 +56,13 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                                        bool downlink_is_tethering) {
   LOG(INFO) << "Starting IPv6 forwarding between uplink: " << ifname_uplink
             << ", downlink: " << ifname_downlink;
-  int if_id_uplink = if_nametoindex(ifname_uplink.c_str());
+  int if_id_uplink = IfNametoindex(ifname_uplink);
   if (if_id_uplink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_uplink;
     return;
   }
   if_cache_[ifname_uplink] = if_id_uplink;
-  int if_id_downlink = if_nametoindex(ifname_downlink.c_str());
+  int if_id_downlink = IfNametoindex(ifname_downlink);
   if (if_id_downlink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_downlink;
     return;

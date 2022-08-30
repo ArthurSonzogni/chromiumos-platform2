@@ -13,6 +13,8 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
+#include "patchpanel/net_util.h"
+
 namespace patchpanel {
 
 namespace {
@@ -43,6 +45,14 @@ constexpr const char kSysNetIPv6ConfPrefix[] = "/proc/sys/net/ipv6/conf/";
 // Suffix for accepting Router Advertisements on an interface and
 // autoconfiguring it with IPv6 parameters.
 constexpr const char kSysNetIPv6AcceptRaSuffix[] = "/accept_ra";
+
+int net_util_IfNametoindex(const std::string& ifname) {
+  return IfNametoindex(ifname);
+}
+
+std::string net_util_IfIndextoname(int ifindex) {
+  return IfIndextoname(ifindex);
+}
 
 }  // namespace
 
@@ -103,15 +113,11 @@ bool System::SysNetSet(SysNet target,
 }
 
 std::string System::IfIndextoname(int ifindex) {
-  char ifname[IFNAMSIZ];
-  if (if_indextoname(ifindex, ifname) == nullptr) {
-    return "";
-  }
-  return ifname;
+  return net_util_IfIndextoname(ifindex);
 }
 
-uint32_t System::IfNametoindex(const std::string& ifname) {
-  uint32_t ifindex = if_nametoindex(ifname.c_str());
+int System::IfNametoindex(const std::string& ifname) {
+  int ifindex = net_util_IfNametoindex(ifname);
   if (ifindex > 0) {
     if_nametoindex_[ifname] = ifindex;
     return ifindex;

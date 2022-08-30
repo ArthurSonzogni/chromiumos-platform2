@@ -11,6 +11,7 @@
 #include <brillo/daemons/daemon.h>
 
 #include "patchpanel/multicast_forwarder.h"
+#include "patchpanel/net_util.h"
 
 // Stand-alone daemon to proxy mDNS and SSDP packets between a pair of
 // interfaces. Usage: mcastd $physical_ifname $guest_ifname
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]) {
     if (i != 0) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
     }
-    int ifid_guest = if_nametoindex(args[1].c_str());
+    int ifid_guest = patchpanel::IfNametoindex(args[1]);
     if (ifid_guest == 0) {
       // Guest bridge doesn't exist yet, try again later.
       continue;

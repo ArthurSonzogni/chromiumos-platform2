@@ -1,8 +1,8 @@
 // Copyright 2020 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <unistd.h>
 
+#include <unistd.h>
 #include <net/if.h>
 
 #include <base/bind.h>
@@ -13,6 +13,7 @@
 
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/ndproxy.h"
+#include "patchpanel/net_util.h"
 #include "patchpanel/system.h"
 
 void OnSocketReadReady(patchpanel::NDProxy* proxy, int fd) {
@@ -55,7 +56,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  int ifid_host = if_nametoindex(args[0].c_str());
+  int ifid_host = patchpanel::IfNametoindex(args[0]);
   if (ifid_host == 0) {
     LOG(ERROR) << "Host-bound network interface " << args[0]
                << " does not exist.";
@@ -69,7 +70,7 @@ int main(int argc, char* argv[]) {
     if (i != 0) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
     }
-    ifid_guest = if_nametoindex(args[1].c_str());
+    ifid_guest = patchpanel::IfNametoindex(args[1]);
     if (ifid_guest == 0) {
       // Guest bridge doesn't exist yet, try again later.
       continue;

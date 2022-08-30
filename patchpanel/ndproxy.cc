@@ -344,12 +344,9 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     if (guest_address &&
         ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
          (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
-      char ifname[IFNAMSIZ];
-      if_indextoname(dst_addr.sll_ifindex, ifname);
-      char ipv6_addr_str[INET6_ADDRSTRLEN];
-      inet_ntop(AF_INET6, guest_address, ipv6_addr_str, INET6_ADDRSTRLEN);
-      guest_discovery_handler_.Run(std::string(ifname),
-                                   std::string(ipv6_addr_str));
+      std::string ifname = IfIndextoname(dst_addr.sll_ifindex);
+      std::string ipv6_addr_str = IPv6AddressToString(*guest_address);
+      guest_discovery_handler_.Run(ifname, ipv6_addr_str);
     }
   }
 
@@ -838,8 +835,7 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
       proxy_.StopProxy(msg.if_id_primary(), msg.if_id_secondary());
       for (const auto& if_id : {msg.if_id_primary(), msg.if_id_secondary()}) {
         if (guest_if_addrs_.find(if_id) != guest_if_addrs_.end()) {
-          char ifname[IFNAMSIZ];
-          if_indextoname(if_id, ifname);
+          std::string ifname = IfIndextoname(if_id);
           SendMessage(NDProxyMessage::DEL_ADDR, ifname, guest_if_addrs_[if_id]);
           guest_if_addrs_.erase(if_id);
         }
@@ -858,9 +854,8 @@ void NDProxyDaemon::OnGuestIpDiscovery(const std::string& ifname,
 }
 
 void NDProxyDaemon::OnRouterDiscovery(int if_id, const std::string& ip6addr) {
-  char ifname[IFNAMSIZ];
-  if_indextoname(if_id, ifname);
-  std::string current_addr = guest_if_addrs_[if_id];
+  std::string ifname = IfIndextoname(if_id);
+  const std::string& current_addr = guest_if_addrs_[if_id];
   if (current_addr == ip6addr)
     return;
   if (!current_addr.empty()) {
