@@ -228,8 +228,8 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   args.Set<std::string>(kTypeProperty, kTypeCellular);
   args.Set<std::string>(CellularService::kStorageIccid, iccid);
   std::set<std::string> groups = storage->GetGroupsWithProperties(args);
-
-  LOG(INFO) << __func__ << ": " << iccid << ": Groups: " << groups.size();
+  SLOG(this, 2) << __func__ << ": " << iccid;
+  LOG(INFO) << __func__ << ": Groups: " << groups.size();
   CellularServiceRefPtr active_service = nullptr;
   for (const std::string& group : groups) {
     std::string service_imsi, service_iccid, service_eid;

@@ -244,10 +244,12 @@ std::string Cellular::GetStorageIdentifier() const {
 
 bool Cellular::Load(const StoreInterface* storage) {
   std::string id = GetStorageIdentifier();
+  SLOG(this, 2) << __func__ << "Device ID: " << id;
   if (!storage->ContainsGroup(id)) {
     id = "device_" + GetLegacyEquipmentIdentifier();
     if (!storage->ContainsGroup(id)) {
-      LOG(WARNING) << "Device is not available in the persistent store: " << id;
+      LOG(WARNING) << __func__
+                   << "Device is not available in the persistent store";
       return false;
     }
     legacy_storage_id_ = id;
@@ -255,10 +257,9 @@ bool Cellular::Load(const StoreInterface* storage) {
   storage->GetBool(id, kAllowRoaming, &allow_roaming_);
   storage->GetBool(id, kPolicyAllowRoaming, &policy_allow_roaming_);
   storage->GetBool(id, kUseAttachApn, &use_attach_apn_);
-  LOG(INFO) << __func__ << " id:" << id << " " << kAllowRoaming << ":"
-            << allow_roaming_ << " " << kPolicyAllowRoaming << ":"
-            << policy_allow_roaming_ << " " << kUseAttachApn << ":"
-            << use_attach_apn_ << " ";
+  LOG(INFO) << __func__ << " " << kAllowRoaming << ":" << allow_roaming_ << " "
+            << kPolicyAllowRoaming << ":" << policy_allow_roaming_ << " "
+            << kUseAttachApn << ":" << use_attach_apn_ << " ";
   return Device::Load(storage);
 }
 
@@ -268,12 +269,13 @@ bool Cellular::Save(StoreInterface* storage) {
   storage->SetBool(id, kPolicyAllowRoaming, policy_allow_roaming_);
   storage->SetBool(id, kUseAttachApn, use_attach_apn_);
   bool result = Device::Save(storage);
-  LOG(INFO) << __func__ << " id: " << id << ": " << result;
-  // TODO(b/181843251): Remove after M94.
+  SLOG(this, 2) << __func__ << "Device ID: " << id;
+  LOG(INFO) << __func__ << ": " << result;
+  // TODO(b/181843251): Remove when number of users on M92 are negligible.
   if (result && !legacy_storage_id_.empty() &&
       storage->ContainsGroup(legacy_storage_id_)) {
-    LOG(INFO) << __func__
-              << ": Deleting legacy storage id: " << legacy_storage_id_;
+    SLOG(this, 2) << __func__
+                  << ": Deleting legacy storage id: " << legacy_storage_id_;
     storage->DeleteGroup(legacy_storage_id_);
     legacy_storage_id_.clear();
   }
