@@ -922,7 +922,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         SetShillDNSProxyAddresses(
             patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
             ns_peer_ipv6_address_);
-        StopDnsRedirection("" /* ifname */, AF_INET6);
+        StartDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;
     }

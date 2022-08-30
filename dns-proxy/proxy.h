@@ -243,6 +243,8 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled);
   FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted);

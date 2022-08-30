@@ -1434,6 +1434,65 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 }
 
+TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
+              ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+
+  std::string peer_ipv6_addr = "::1";
+  struct in6_addr ipv6_addr;
+  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
+
+  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                 "2001:4860:4860::8844"};
+  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
+                  _, "::1", _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+
+  // Proxy's ConnectedNamespace peer interface name is set to empty and
+  // RTNL message's interface index is set to 0 in order to match.
+  // if_nametoindex which is used to get the interface index will return 0 on
+  // error.
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  msg.SetAttribute(IFA_ADDRESS,
+                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg);
+}
+
+TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
+              ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+
+  proxy.lifeline_fds_.emplace(std::make_pair("", AF_INET6),
+                              base::ScopedFD(make_fd()));
+
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  proxy.RTNLMessageHandler(msg);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+}
+
 TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
@@ -1518,7 +1577,6 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
                                                  "2001:4860:4860::8844"};
   proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
-  proxy.device_.reset(new shill::Client::Device{});
 
   EXPECT_CALL(*mock_client, GetDevices())
       .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
@@ -1554,7 +1612,6 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   proxy.ns_.set_peer_ifname("");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  proxy.device_.reset(new shill::Client::Device{});
   proxy.lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                               base::ScopedFD(make_fd()));
   proxy.lifeline_fds_.emplace(std::make_pair("vmtap0", AF_INET6),
