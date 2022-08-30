@@ -125,6 +125,8 @@ message Battery {
     // /sys/class/power_supply/<supply_name>/technology section in
     // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-power.
     string technology = 15;
+    // DeviceChemistry (0x22) in Smart Battery Data Specification.
+    string chemistry = 16;
   }
   // Component alias.
   string name = 1;

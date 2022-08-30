@@ -5,6 +5,9 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_GENERIC_BATTERY_H_
 #define RUNTIME_PROBE_FUNCTIONS_GENERIC_BATTERY_H_
 
+#include <string>
+#include <vector>
+
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
@@ -15,6 +18,8 @@ class GenericBattery final : public PrivilegedProbeFunction {
 
  public:
   NAME_PROBE_FUNCTION("generic_battery");
+
+  void PostHelperEvalImpl(DataType* result) const final;
 
  private:
   DataType EvalImpl() const override;
