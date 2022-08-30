@@ -14,44 +14,20 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
-#include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "rmad/daemon/daemon_callback.h"
+#include "rmad/daemon/dbus_data_serialization.h"
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/interface/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
-
-namespace brillo {
-namespace dbus_utils {
-
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const rmad::HardwareVerificationResult& value);
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const rmad::CalibrationComponentStatus& value);
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const rmad::ProvisionStatus& value);
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const rmad::FinalizeStatus& value);
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        rmad::HardwareVerificationResult* value);
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        rmad::CalibrationComponentStatus* value);
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        rmad::ProvisionStatus* value);
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        rmad::FinalizeStatus* value);
-
-}  // namespace dbus_utils
-}  // namespace brillo
 
 namespace rmad {
 

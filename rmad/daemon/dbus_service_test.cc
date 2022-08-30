@@ -382,10 +382,17 @@ TEST_F(DBusServiceTest, SignalError) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "Error");
+        EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        int error;
-        EXPECT_TRUE(reader.PopInt32(&error));
-        EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
+        bool called = false;
+        auto callback = [&called](RmadErrorCode error) {
+          EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, error);
+          called = true;
+        };
+        EXPECT_TRUE(
+            (brillo::dbus_utils::DBusParamReader<false, RmadErrorCode>::Invoke(
+                callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalError(RMAD_ERROR_RMA_NOT_REQUIRED);
 }
@@ -396,11 +403,19 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "HardwareVerificationResult");
+        EXPECT_EQ("(bs)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        HardwareVerificationResult result;
-        EXPECT_TRUE(PopValueFromReader(&reader, &result));
-        EXPECT_EQ(result.is_compliant(), true);
-        EXPECT_EQ(result.error_str(), "test_error_string");
+        bool called = false;
+        auto callback = [&called](HardwareVerificationResult result) {
+          EXPECT_TRUE(result.is_compliant());
+          EXPECT_EQ("test_error_string", result.error_str());
+          called = true;
+        };
+        EXPECT_TRUE(
+            (brillo::dbus_utils::DBusParamReader<
+                false, HardwareVerificationResult>::Invoke(callback, &reader,
+                                                           nullptr)));
+        EXPECT_TRUE(called);
       }));
   HardwareVerificationResult result;
   result.set_is_compliant(true);
@@ -414,10 +429,17 @@ TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "UpdateRoFirmwareStatus");
+        EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        int error;
-        EXPECT_TRUE(reader.PopInt32(&error));
-        EXPECT_EQ(error, RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
+        bool called = false;
+        auto callback = [&called](UpdateRoFirmwareStatus status) {
+          EXPECT_EQ(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB, status);
+          called = true;
+        };
+        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<
+                     false, UpdateRoFirmwareStatus>::Invoke(callback, &reader,
+                                                            nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalUpdateRoFirmwareStatus(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
 }
@@ -428,11 +450,17 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "CalibrationOverall");
+        EXPECT_EQ("i", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        int overall_status;
-        EXPECT_TRUE(reader.PopInt32(&overall_status));
-        EXPECT_EQ(overall_status,
-                  RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
+        bool called = false;
+        auto callback = [&called](CalibrationOverallStatus status) {
+          EXPECT_EQ(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE, status);
+          called = true;
+        };
+        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<
+                     false, CalibrationOverallStatus>::Invoke(callback, &reader,
+                                                              nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalCalibrationOverall(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 }
@@ -443,14 +471,22 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "CalibrationProgress");
+        EXPECT_EQ("(iid)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        CalibrationComponentStatus calibration_status;
-        EXPECT_TRUE(PopValueFromReader(&reader, &calibration_status));
-        EXPECT_EQ(calibration_status.component(),
-                  RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
-        EXPECT_EQ(calibration_status.status(),
-                  CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
-        EXPECT_EQ(calibration_status.progress(), 0.3);
+        bool called = false;
+        auto callback = [&called](CalibrationComponentStatus status) {
+          EXPECT_EQ(RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER,
+                    status.component());
+          EXPECT_EQ(CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS,
+                    status.status());
+          EXPECT_DOUBLE_EQ(0.3, status.progress());
+          called = true;
+        };
+        EXPECT_TRUE(
+            (brillo::dbus_utils::DBusParamReader<
+                false, CalibrationComponentStatus>::Invoke(callback, &reader,
+                                                           nullptr)));
+        EXPECT_TRUE(called);
       }));
   CalibrationComponentStatus component_status;
   component_status.set_component(
@@ -467,14 +503,21 @@ TEST_F(DBusServiceTest, SignalProvision) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
+        EXPECT_EQ("(idi)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        ProvisionStatus status;
-        EXPECT_TRUE(PopValueFromReader(&reader, &status));
-        EXPECT_EQ(status.status(),
-                  ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
-        EXPECT_EQ(status.progress(), 0.5);
-        EXPECT_EQ(status.error(),
-                  ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+        bool called = false;
+        auto callback = [&called](ProvisionStatus status) {
+          EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+                    status.status());
+          EXPECT_DOUBLE_EQ(0.5, status.progress());
+          EXPECT_EQ(ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL,
+                    status.error());
+          called = true;
+        };
+        EXPECT_TRUE((
+            brillo::dbus_utils::DBusParamReader<false, ProvisionStatus>::Invoke(
+                callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   ProvisionStatus status;
   status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
@@ -489,13 +532,21 @@ TEST_F(DBusServiceTest, SignalFinalize) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "FinalizeProgress");
+        EXPECT_EQ("(idi)", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        FinalizeStatus status;
-        EXPECT_TRUE(PopValueFromReader(&reader, &status));
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
-        EXPECT_EQ(status.progress(), 0.5);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
+        bool called = false;
+        auto callback = [&called](FinalizeStatus status) {
+          EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS,
+                    status.status());
+          EXPECT_DOUBLE_EQ(0.5, status.progress());
+          EXPECT_EQ(FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL,
+                    status.error());
+          called = true;
+        };
+        EXPECT_TRUE(
+            (brillo::dbus_utils::DBusParamReader<false, FinalizeStatus>::Invoke(
+                callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   FinalizeStatus status;
   status.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
@@ -510,10 +561,16 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "HardwareWriteProtectionState");
+        EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool enabled;
-        EXPECT_TRUE(reader.PopBool(&enabled));
-        EXPECT_TRUE(enabled);
+        bool called = false;
+        auto callback = [&called](bool wp_status) {
+          EXPECT_TRUE(wp_status);
+          called = true;
+        };
+        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
+            callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalHardwareWriteProtection(true);
 }
@@ -524,10 +581,16 @@ TEST_F(DBusServiceTest, SignalPowerCableState) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "PowerCableState");
+        EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool plugged_in;
-        EXPECT_TRUE(reader.PopBool(&plugged_in));
-        EXPECT_TRUE(plugged_in);
+        bool called = false;
+        auto callback = [&called](bool power_cable_status) {
+          EXPECT_TRUE(power_cable_status);
+          called = true;
+        };
+        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
+            callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalPowerCableState(true);
 }
@@ -538,10 +601,16 @@ TEST_F(DBusServiceTest, SignalExternalDisk) {
       .WillOnce(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "ExternalDiskDetected");
+        EXPECT_EQ("b", signal->GetSignature());
         dbus::MessageReader reader(signal);
-        bool detected;
-        EXPECT_TRUE(reader.PopBool(&detected));
-        EXPECT_TRUE(detected);
+        bool called = false;
+        auto callback = [&called](bool external_disk_status) {
+          EXPECT_TRUE(external_disk_status);
+          called = true;
+        };
+        EXPECT_TRUE((brillo::dbus_utils::DBusParamReader<false, bool>::Invoke(
+            callback, &reader, nullptr)));
+        EXPECT_TRUE(called);
       }));
   SignalExternalDisk(true);
 }
