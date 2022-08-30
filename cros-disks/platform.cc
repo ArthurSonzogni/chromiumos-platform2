@@ -268,7 +268,7 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
     // MNT_DETACH matters in this case, but it's OK to pass MNT_FORCE too.
     VLOG(1) << "Force-unmounting " << quote(mount_path);
     if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
-      LOG(WARNING) << "Force-unmounted " << quote(mount_path);
+      LOG(WARNING) << "Force-unmounted " << redact(mount_path);
       return MOUNT_ERROR_NONE;
     }
   }
