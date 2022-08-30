@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include <memory>
-#include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -149,18 +149,13 @@ void ChromeosStartup::EarlySetup() {
     }
   }
 
-  const base::FilePath disable_sec_hard =
-      root_.Append(kDisableStatefulSecurityHard);
-  disable_stateful_security_hardening_ = base::PathExists(disable_sec_hard);
 
   // Mount securityfs as it is used to configure inode security policies below.
-  if (!disable_stateful_security_hardening_) {
-    const base::FilePath sys_security = root_.Append(kSysKernelSecurity);
-    if (!platform_->Mount("securityfs", sys_security, "securityfs",
-                          kCommonMountFlags, "")) {
-      // TODO(b/232901639): Improve failure reporting.
-      PLOG(WARNING) << "Unable to mount " << sys_security.value();
-    }
+  const base::FilePath sys_security = root_.Append(kSysKernelSecurity);
+  if (!platform_->Mount("securityfs", sys_security, "securityfs",
+                        kCommonMountFlags, "")) {
+    // TODO(b/232901639): Improve failure reporting.
+    PLOG(WARNING) << "Unable to mount " << sys_security.value();
   }
 
   // Initialize kernel sysctl settings early so that they take effect for boot
@@ -174,7 +169,10 @@ void ChromeosStartup::EarlySetup() {
     PLOG(WARNING) << "Unable to mount " << namespaces.value();
   }
 
-  if (!ConfigureProcessMgmtSecurity(root_)) {
+  const base::FilePath disable_sec_hard =
+      root_.Append(kDisableStatefulSecurityHard);
+  if (base::PathExists(disable_sec_hard) &&
+      !ConfigureProcessMgmtSecurity(root_)) {
     PLOG(WARNING) << "Failed to configure process management security.";
   }
 }
@@ -196,13 +194,11 @@ int ChromeosStartup::Run() {
     PLOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
   }
 
-  if (!disable_stateful_security_hardening_) {
-    // Unmount securityfs so that further modifications to inode security
-    // policies are not possible
-    const base::FilePath kernel_sec = root_.Append(kSysKernelSecurity);
-    if (!platform_->Umount(kernel_sec)) {
-      PLOG(WARNING) << "Failed to umount: " << kernel_sec;
-    }
+  // Unmount securityfs so that further modifications to inode security
+  // policies are not possible
+  const base::FilePath kernel_sec = root_.Append(kSysKernelSecurity);
+  if (!platform_->Umount(kernel_sec)) {
+    PLOG(WARNING) << "Failed to umount: " << kernel_sec;
   }
 
   bootstat_.LogEvent("post-startup");
