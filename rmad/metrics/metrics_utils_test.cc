@@ -4,21 +4,25 @@
 
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/metrics/metrics_utils_impl.h"
+#include "rmad/metrics/mock_metrics_utils.h"
 
 #include <map>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
+
+using testing::_;
+using testing::Return;
 
 namespace {
 
@@ -403,101 +407,240 @@ class MetricsUtilsImplTest : public testing::Test {
  public:
   MetricsUtilsImplTest() = default;
 
+  void SetupShimlessRmaReportValues(bool first_timestamp = true,
+                                    bool timestamp = true,
+                                    bool is_complete = true,
+                                    bool ro_verified = true,
+                                    bool returning_owner = true,
+                                    bool mlb_replacement = true,
+                                    bool wp_method = true) {
+    double current_timestamp = base::Time::Now().ToDoubleT();
+    if (first_timestamp) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsFirstSetupTimestamp, current_timestamp));
+    }
+
+    if (timestamp) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsSetupTimestamp, current_timestamp));
+    }
+
+    if (is_complete) {
+      EXPECT_TRUE(
+          MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true));
+    }
+
+    if (ro_verified) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsRoFirmwareVerified,
+          RoVerification_Name(RMAD_RO_VERIFICATION_PASS)));
+    }
+
+    if (returning_owner) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsReturningOwner,
+          ReturningOwner_Name(
+              ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER)));
+    }
+
+    if (mlb_replacement) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
+                                                kMetricsMlbReplacement, true));
+    }
+
+    if (wp_method) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsWpDisableMethod,
+          WpDisableMethod_Name(WpDisableMethod::RMAD_WP_DISABLE_METHOD_RSU)));
+    }
+  }
+
+  void SetupMetricsValues(bool is_report_valid = true,
+                          bool is_replaced_components_valid = true,
+                          bool is_occurred_errors_valid = true,
+                          bool is_additional_activities_valid = true,
+                          bool is_state_reports_valid = true) {
+    if (is_report_valid) {
+      SetupShimlessRmaReportValues();
+    } else {
+      SetupShimlessRmaReportValues(false);
+    }
+
+    if (is_replaced_components_valid) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsReplacedComponents,
+          std::vector<std::string>(
+              {RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
+               RmadComponent_Name(RMAD_COMPONENT_BATTERY)})));
+    } else {
+      EXPECT_TRUE(
+          MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
+                                        std::vector<std::string>({"test"})));
+    }
+
+    if (is_occurred_errors_valid) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsOccurredErrors,
+          std::vector<std::string>(
+              {RmadErrorCode_Name(RMAD_ERROR_CANNOT_CANCEL_RMA),
+               RmadErrorCode_Name(RMAD_ERROR_CANNOT_GET_LOG)})));
+    } else {
+      EXPECT_TRUE(
+          MetricsUtils::SetMetricsValue(json_store_, kMetricsOccurredErrors,
+                                        std::vector<std::string>({"test"})));
+    }
+
+    if (is_additional_activities_valid) {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsAdditionalActivities,
+          std::vector<std::string>(
+              {AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_REBOOT),
+               AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN)})));
+    } else {
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsAdditionalActivities,
+          std::vector<std::string>({"test"})));
+    }
+
+    if (is_state_reports_valid) {
+      std::map<int, StateMetricsData> test_data;
+      test_data[1] = StateMetricsData();
+      // The transition count is always >= 1.
+      test_data[1].transition_count = 1;
+      EXPECT_TRUE(
+          MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+    } else {
+      std::map<int, StateMetricsData> test_data;
+      test_data[1] = StateMetricsData();
+      // The transition count should be >= 1.
+      test_data[1].transition_count = 0;
+      EXPECT_TRUE(
+          MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+    }
+  }
+
  protected:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base::FilePath file_path =
         temp_dir_.GetPath().AppendASCII(kTestJsonStoreFilename);
     json_store_ = base::MakeRefCounted<JsonStore>(file_path);
-    double current_timestamp = base::Time::Now().ToDoubleT();
-    EXPECT_TRUE(MetricsUtils::SetMetricsValue(
-        json_store_, kMetricsFirstSetupTimestamp, current_timestamp));
-    EXPECT_TRUE(MetricsUtils::SetMetricsValue(
-        json_store_, kMetricsSetupTimestamp, current_timestamp));
   }
 
   base::ScopedTempDir temp_dir_;
   scoped_refptr<JsonStore> json_store_;
 };
 
-TEST_F(MetricsUtilsImplTest, Record_Success) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  double current_timestamp = base::Time::Now().ToDoubleT();
+  SetupShimlessRmaReportValues();
+
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest,
+       RecordShimlessRmaReport_FirstSetupTimestampMissed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupShimlessRmaReportValues(false);
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_SetupTimestampMissed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupShimlessRmaReportValues(true, false);
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_Abort_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupShimlessRmaReportValues(true, true, false);
+
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest,
+       RecordShimlessRmaReport_RoVerifiedUnsupported_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupShimlessRmaReportValues();
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
-      json_store_, kMetricsFirstSetupTimestamp, current_timestamp));
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
-                                            current_timestamp));
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
+      json_store_, kMetricsRoFirmwareVerified,
+      RoVerification_Name(RMAD_RO_VERIFICATION_UNSUPPORTED)));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_RoUnsupportedSuccess) {
+TEST_F(MetricsUtilsImplTest,
+       RecordShimlessRmaReport_UnknownRoVerified_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, false));
+  SetupShimlessRmaReportValues(true, true, true, false);
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_RoUnknownSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_SameOnwer_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupShimlessRmaReportValues();
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsReturningOwner,
+      ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER)));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_AbortSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_DifferentOnwer_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
+  SetupShimlessRmaReportValues();
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsReturningOwner,
+      ReturningOwner_Name(
+          ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER)));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, false));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_SameOnwerSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_UnknownOnwer_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
+  SetupShimlessRmaReportValues(true, true, true, true, false);
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_DifferentOnwerSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_MlbReplaced_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
+  SetupShimlessRmaReportValues();
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsMlbReplacement,
+      MainboardReplacement_Name(
+          MainboardReplacement::RMAD_MLB_REPLACEMENT_REPLACED)));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_MainboardReplacedSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_MlbOriginal_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kMlbRepair, true));
+  SetupShimlessRmaReportValues();
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsMlbReplacement,
+      MainboardReplacement_Name(
+          MainboardReplacement::RMAD_MLB_REPLACEMENT_ORIGINAL)));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_MainboardOriginalSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_MlbUnknown_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(kMlbRepair, false));
+  SetupShimlessRmaReportValues(true, true, true, true, true, false);
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaReport_WpDisableMethod_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-
+  SetupShimlessRmaReportValues(true, true, true, true, true, true, false);
   // The write protect disable method hasn't been set yet.
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 
   std::array<WpDisableMethod, 5> methods = {
       RMAD_WP_DISABLE_METHOD_UNKNOWN, RMAD_WP_DISABLE_METHOD_SKIPPED,
@@ -508,66 +651,168 @@ TEST_F(MetricsUtilsImplTest, Record_WriteProtectDisableSuccess) {
     EXPECT_TRUE(
         MetricsUtils::SetMetricsValue(json_store_, kMetricsWpDisableMethod,
                                       WpDisableMethod_Name(wp_disable_method)));
-    EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+    EXPECT_TRUE(
+        MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true));
+    EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
   }
 }
 
-TEST_F(MetricsUtilsImplTest, Record_ReplacedComponentsSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordReplacedComponents_Success) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(
-      kReplacedComponentNames,
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsReplacedComponents,
       std::vector<std::string>({RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
                                 RmadComponent_Name(RMAD_COMPONENT_BATTERY)})));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordReplacedComponents(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_OccurredErrorsSuccess) {
+TEST_F(MetricsUtilsImplTest,
+       RecordReplacedComponents_UnknownReplacedComponent) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-  EXPECT_TRUE(json_store_->SetValue(
-      kMetricsOccurredErrors,
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
+                                    std::vector<std::string>({"test"})));
+
+  EXPECT_FALSE(metrics_utils->RecordReplacedComponents(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordOccurredErrors_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsOccurredErrors,
       std::vector<std::string>(
           {RmadErrorCode_Name(RMAD_ERROR_CANNOT_CANCEL_RMA),
            RmadErrorCode_Name(RMAD_ERROR_CANNOT_GET_LOG)})));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordOccurredErrors(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_AdditionalActivitiesSuccess) {
+TEST_F(MetricsUtilsImplTest, RecordOccurredErrors_UnknownOccurredError) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsOccurredErrors, std::vector<std::string>({"test"})));
+
+  EXPECT_FALSE(metrics_utils->RecordOccurredErrors(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAdditionalActivities_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kMetricsAdditionalActivities,
       std::vector<std::string>(
           {AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_REBOOT),
            AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN)})));
 
-  EXPECT_TRUE(metrics_utils->Record(json_store_, true));
+  EXPECT_TRUE(metrics_utils->RecordAdditionalActivities(json_store_));
 }
 
-TEST_F(MetricsUtilsImplTest, Record_OverallTimeFailed) {
-  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsFirstSetupTimestamp, ""));
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
-
-  EXPECT_FALSE(metrics_utils->Record(json_store_, true));
-}
-
-TEST_F(MetricsUtilsImplTest, Record_RunningTimeFailed) {
+TEST_F(MetricsUtilsImplTest,
+       RecordAdditionalActivities_UnknownAdditionalActivity) {
   auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
   EXPECT_TRUE(
-      MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp, ""));
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_,
-                                            kMetricsRoFirmwareVerified, true));
+      MetricsUtils::SetMetricsValue(json_store_, kMetricsAdditionalActivities,
+                                    std::vector<std::string>({"test"})));
 
-  EXPECT_FALSE(metrics_utils->Record(json_store_, true));
+  EXPECT_FALSE(metrics_utils->RecordAdditionalActivities(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaStateReport_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  std::map<int, StateMetricsData> test_data;
+  // The transition count should be >= 1.
+  test_data[1] = {.transition_count = 1};
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+
+  EXPECT_TRUE(metrics_utils->RecordShimlessRmaStateReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaStateReport_WrongOverallTime) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  std::map<int, StateMetricsData> test_data;
+  // The transition count should be >= 1; The overall time should be >= 0.
+  test_data[1] = {.overall_time = -1, .transition_count = 1};
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaStateReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest,
+       RecordShimlessRmaStateReport_WrongTransitionCount) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  std::map<int, StateMetricsData> test_data;
+  // The transition count should be >= 1.
+  test_data[1] = {.transition_count = 0};
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaStateReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaStateReport_WrongGetLogCount) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  std::map<int, StateMetricsData> test_data;
+  // The transition count should be >= 1; The get log count should be >= 0.
+  test_data[1] = {.transition_count = 1, .get_log_count = -1};
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaStateReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordShimlessRmaStateReport_WrongSaveLogCount) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  std::map<int, StateMetricsData> test_data;
+  // The transition count should be >= 1; The save log count should be >= 0.
+  test_data[1] = {.transition_count = 1, .save_log_count = -1};
+  EXPECT_TRUE(
+      MetricsUtils::SetMetricsValue(json_store_, kStateMetrics, test_data));
+
+  EXPECT_FALSE(metrics_utils->RecordShimlessRmaStateReport(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_Success) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues();
+
+  EXPECT_TRUE(metrics_utils->RecordAll(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_RecordShimleeRmaReportFailed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues(false);
+
+  EXPECT_FALSE(metrics_utils->RecordAll(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_RecordReplacedComponentsFailed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues(true, false);
+
+  EXPECT_FALSE(metrics_utils->RecordAll(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_RecordOccurredErrorsFailed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues(true, true, false);
+
+  EXPECT_FALSE(metrics_utils->RecordAll(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_RecordAdditionalActivitiesFailed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues(true, true, true, false);
+
+  EXPECT_FALSE(metrics_utils->RecordAll(json_store_));
+}
+
+TEST_F(MetricsUtilsImplTest, RecordAll_RecordShimlessRmaStateReportFailed) {
+  auto metrics_utils = std::make_unique<MetricsUtilsImpl>(false);
+  SetupMetricsValues(true, true, true, true, false);
+
+  EXPECT_FALSE(metrics_utils->RecordAll(json_store_));
 }
 
 }  // namespace rmad

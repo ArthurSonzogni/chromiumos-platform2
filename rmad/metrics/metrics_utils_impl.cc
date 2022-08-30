@@ -33,20 +33,8 @@ namespace rmad {
 MetricsUtilsImpl::MetricsUtilsImpl(bool record_to_system)
     : record_to_system_(record_to_system) {}
 
-bool MetricsUtilsImpl::Record(scoped_refptr<JsonStore> json_store,
-                              bool is_complete) {
-  if (!RecordShimlessRmaReport(json_store, is_complete) ||
-      !RecordOccurredErrors(json_store) ||
-      !RecordReplacedComponents(json_store) ||
-      !RecordAdditionalActivities(json_store) ||
-      !RecordShimlessRmaStateReport(json_store)) {
-    return false;
-  }
-  return true;
-}
-
 bool MetricsUtilsImpl::RecordShimlessRmaReport(
-    scoped_refptr<JsonStore> json_store, bool is_complete) {
+    scoped_refptr<JsonStore> json_store) {
   auto report = StructuredShimlessRmaReport();
   double current_timestamp = base::Time::Now().ToDoubleT();
   double first_setup_timestamp;
@@ -251,6 +239,14 @@ bool MetricsUtilsImpl::RecordShimlessRmaStateReport(
   }
 
   return true;
+}
+
+bool MetricsUtilsImpl::RecordAll(scoped_refptr<JsonStore> json_store) {
+  return RecordShimlessRmaReport(json_store) &&
+         RecordOccurredErrors(json_store) &&
+         RecordReplacedComponents(json_store) &&
+         RecordAdditionalActivities(json_store) &&
+         RecordShimlessRmaStateReport(json_store);
 }
 
 }  // namespace rmad

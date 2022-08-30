@@ -96,7 +96,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
 
     // Mock |MetricsUtils|.
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
-    ON_CALL(*mock_metrics_utils, Record(_, _))
+    ON_CALL(*mock_metrics_utils, RecordAll(_))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
 
@@ -284,6 +284,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
   EXPECT_TRUE(reboot_called);
+  EXPECT_TRUE(metrics_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 }

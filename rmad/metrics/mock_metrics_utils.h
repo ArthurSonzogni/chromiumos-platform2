@@ -19,7 +19,27 @@ class MockMetricsUtils : public MetricsUtils {
   MockMetricsUtils() = default;
   ~MockMetricsUtils() override = default;
 
-  MOCK_METHOD(bool, Record, (scoped_refptr<JsonStore>, bool), (override));
+  MOCK_METHOD(bool, RecordAll, (scoped_refptr<JsonStore>), (override));
+  MOCK_METHOD(bool,
+              RecordShimlessRmaReport,
+              (scoped_refptr<JsonStore>),
+              (override));
+  MOCK_METHOD(bool,
+              RecordReplacedComponents,
+              (scoped_refptr<JsonStore>),
+              (override));
+  MOCK_METHOD(bool,
+              RecordOccurredErrors,
+              (scoped_refptr<JsonStore>),
+              (override));
+  MOCK_METHOD(bool,
+              RecordAdditionalActivities,
+              (scoped_refptr<JsonStore>),
+              (override));
+  MOCK_METHOD(bool,
+              RecordShimlessRmaStateReport,
+              (scoped_refptr<JsonStore>),
+              (override));
 };
 
 }  // namespace rmad

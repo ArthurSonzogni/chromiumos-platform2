@@ -372,7 +372,7 @@ class RmadInterfaceImplTest : public testing::Test {
 
   std::unique_ptr<MetricsUtils> CreateMetricsUtils(bool success) {
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
-    ON_CALL(*mock_metrics_utils, Record(_, _)).WillByDefault(Return(success));
+    ON_CALL(*mock_metrics_utils, RecordAll(_)).WillByDefault(Return(success));
     return mock_metrics_utils;
   }
 

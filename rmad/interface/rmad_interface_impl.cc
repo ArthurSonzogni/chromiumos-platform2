@@ -482,7 +482,7 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
       //                  in |json_store| -> |metrics| -> |state_metrics|.
       LOG(ERROR) << "AbortRma: Failed to update state metrics.";
     }
-    if (!metrics_utils_->Record(json_store_, false)) {
+    if (!metrics_utils_->RecordAll(json_store_)) {
       // TODO(genechang): Add error replies when failed to record metrics.
       LOG(ERROR) << "AbortRma: Failed to generate and record metrics.";
     }

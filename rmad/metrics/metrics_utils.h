@@ -44,9 +44,26 @@ class MetricsUtils {
   MetricsUtils() = default;
   virtual ~MetricsUtils() = default;
 
-  // Record the metrics to the event-based metrics file, and wait for upload.
-  virtual bool Record(scoped_refptr<JsonStore> json_store,
-                      bool is_complete) = 0;
+  // Record all metrics to the event-based metrics file, and wait for upload.
+  virtual bool RecordAll(scoped_refptr<JsonStore> json_store) = 0;
+
+  // Record a Shimless report to the event-based metrics, and wait for upload.
+  virtual bool RecordShimlessRmaReport(scoped_refptr<JsonStore> json_store) = 0;
+
+  // Record replaced components to the event-based metrics, and wait for upload.
+  virtual bool RecordReplacedComponents(
+      scoped_refptr<JsonStore> json_store) = 0;
+
+  // Record occurred errors to the event-based metrics, and wait for upload.
+  virtual bool RecordOccurredErrors(scoped_refptr<JsonStore> json_store) = 0;
+
+  // Record activities to the event-based metrics, and wait for upload.
+  virtual bool RecordAdditionalActivities(
+      scoped_refptr<JsonStore> json_store) = 0;
+
+  // Record reports for states to the event-based metrics, and wait for upload.
+  virtual bool RecordShimlessRmaStateReport(
+      scoped_refptr<JsonStore> json_store) = 0;
 
   template <typename T>
   static bool GetMetricsValue(scoped_refptr<JsonStore> json_store,
