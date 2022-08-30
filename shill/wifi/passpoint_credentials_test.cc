@@ -154,22 +154,6 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
       nullptr);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
 
-  // No CA cert and only a domain suffix name match list
-  error.Reset();
-  properties.Clear();
-  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
-  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  properties.Set(kEapMethodProperty, kMethodTTLS);
-  properties.Set(kEapPhase2AuthProperty,
-                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
-  properties.Set(kEapIdentityProperty, kUser);
-  properties.Set(kEapPasswordProperty, kPassword);
-  properties.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
-  EXPECT_EQ(
-      PasspointCredentials::CreatePasspointCredentials(properties, &error),
-      nullptr);
-  EXPECT_EQ(error.type(), Error::kInvalidArguments);
-
   // Incorrect home OIs
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
@@ -338,8 +322,8 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_TRUE(creds->eap().IsConnectable());
   EXPECT_TRUE(creds->eap().use_system_cas());
 
-  // Verify Passpoint+EAP-TTLS without CA cert and with domain suffix name match
-  // list
+  // Verify Passpoint+EAP-TTLS without CA cert and with subject alternative name
+  // match list.
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
@@ -355,7 +339,38 @@ TEST_F(PasspointCredentialsTest, Create) {
                  std::string(kEapPhase2AuthTTLSMSCHAPV2));
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
-  properties.Set(kEapSubjectMatchProperty, kSubjectNameMatch);
+  properties.Set(kEapSubjectAlternativeNameMatchProperty,
+                 kAlternativeNameMatchList);
+
+  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds);
+  EXPECT_EQ(kValidFQDNs, creds->domains());
+  EXPECT_EQ(kValidFQDN, creds->realm());
+  EXPECT_EQ(kOIs, creds->home_ois());
+  EXPECT_EQ(kOIs, creds->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
+  EXPECT_TRUE(creds->metered_override());
+  EXPECT_EQ(kPackageName, creds->android_package_name());
+  EXPECT_TRUE(creds->eap().IsConnectable());
+  EXPECT_TRUE(creds->eap().use_system_cas());
+
+  // Verify Passpoint+EAP-TTLS without CA cert and with domain suffix name match
+  // list.
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty,
+                 toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
+                 toStringList(kRoamingConsortia));
+  properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
+  properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
   properties.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
 
   creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
