@@ -430,46 +430,38 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
 }
 
 void Device::OnConnectionUpdated() {
-  // Report if device have IPv6 connectivity. Note that since currently this
-  // function may not be called is IPv6 is provisioned after IPv4, its result
-  // might be biased.
-  auto ipv6_status =
-      (ip6config() && ip6config()->properties().HasIPAddressAndDNS())
-          ? Metrics::kIPv6ConnectivityStatusYes
-          : Metrics::kIPv6ConnectivityStatusNo;
-  metrics()->SendEnumToUMA(Metrics::kMetricIPv6ConnectivityStatus, technology_,
-                           ipv6_status);
-
-  if (selected_service_) {
-    // If the service is already in a Connected state (this happens during a
-    // roam or DHCP renewal), transitioning back to Connected isn't productive.
-    // Avoid this transition entirely and wait for portal detection to
-    // transition us to a more informative state (either Online or some
-    // portalled state). Instead, set RoamState so that clients that care about
-    // the Service's state are still able to track it.
-    if (!selected_service_->IsConnected()) {
-      // Setting Service.State to Connected resets RoamState.
-      SetServiceState(Service::kStateConnected);
-    } else {
-      // We set RoamState here to reflect the actual state of the Service during
-      // a roam. This way, we can keep Service.State at Online or a portalled
-      // state to preserve the service sort order. Note that this can be
-      // triggered by a DHCP renewal that's not a result of a roam as well, but
-      // it won't do anything in non-WiFi Services.
-      selected_service_->SetRoamState(Service::kRoamStateConnected);
-    }
-    OnConnected();
-
-    // Subtle: Start portal detection after transitioning the service
-    // to the Connected state because this call may immediately transition
-    // to the Online state. Always ignore any on-going portal detection such
-    // that the latest network layer properties are used to restart portal
-    // detection. This ensures that network validation over IPv4 is prioritized
-    // on dual stack networks when IPv4 provisioning completes after IPv6
-    // provisioning. Note that currently SetupConnection() is never called a
-    // second time if IPv6 provisioning completes after IPv4 provisioning.
-    UpdatePortalDetector(/*restart=*/true);
+  if (!selected_service_) {
+    return;
   }
+
+  // If the service is already in a Connected state (this happens during a roam
+  // or DHCP renewal), transitioning back to Connected isn't productive. Avoid
+  // this transition entirely and wait for portal detection to transition us to
+  // a more informative state (either Online or some portalled state). Instead,
+  // set RoamState so that clients that care about the Service's state are still
+  // able to track it.
+  if (!selected_service_->IsConnected()) {
+    // Setting Service.State to Connected resets RoamState.
+    SetServiceState(Service::kStateConnected);
+  } else {
+    // We set RoamState here to reflect the actual state of the Service during a
+    // roam. This way, we can keep Service.State at Online or a portalled state
+    // to preserve the service sort order. Note that this can be triggered by a
+    // DHCP renewal that's not a result of a roam as well, but it won't do
+    // anything in non-WiFi Services.
+    selected_service_->SetRoamState(Service::kRoamStateConnected);
+  }
+  OnConnected();
+
+  // Subtle: Start portal detection after transitioning the service to the
+  // Connected state because this call may immediately transition to the Online
+  // state. Always ignore any on-going portal detection such that the latest
+  // network layer properties are used to restart portal detection. This ensures
+  // that network validation over IPv4 is prioritized on dual stack networks
+  // when IPv4 provisioning completes after IPv6 provisioning. Note that
+  // currently SetupConnection() is never called a second time if IPv6
+  // provisioning completes after IPv4 provisioning.
+  UpdatePortalDetector(/*restart=*/true);
 }
 
 void Device::OnNetworkStopped(bool is_failure) {

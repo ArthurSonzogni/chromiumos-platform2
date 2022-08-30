@@ -830,18 +830,6 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionFailureReasonMax
   };
 
-  // IPv6 connectivity status.
-  enum IPv6ConnectivityStatus {
-    kIPv6ConnectivityStatusNo = 0,
-    kIPv6ConnectivityStatusYes = 1,
-    kIPv6ConnectivityStatusMax
-  };
-  static constexpr EnumMetric<NameByTechnology> kMetricIPv6ConnectivityStatus =
-      {
-          .n = NameByTechnology{"IPv6ConnectivityStatus"},
-          .max = kIPv6ConnectivityStatusMax,
-      };
-
   // Device presence.
   enum DevicePresenceStatus {
     kDevicePresenceStatusNo = 0,
