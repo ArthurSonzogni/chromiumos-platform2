@@ -4107,7 +4107,6 @@ void UserDataAuth::UpdateCredential(
       auth_session_status.value(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateCredentialReply>,
                      std::move(on_done)));
-
   auth_session_status.value()->UpdateCredential(
       request, std::move(on_update_credential_finished));
 }
@@ -4721,10 +4720,11 @@ void UserDataAuth::UpdateAuthFactor(
     return;
   }
 
-  StatusCallback on_update_auth_factor_finished =
+  StatusCallback on_update_auth_factor_finished = base::BindOnce(
+      &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),
+      auth_session_status.value(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
-                     std::move(on_done));
-
+                     std::move(on_done)));
   auth_session_status.value()->UpdateAuthFactor(
       request, std::move(on_update_auth_factor_finished));
 }
