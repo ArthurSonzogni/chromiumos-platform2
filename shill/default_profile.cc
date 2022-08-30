@@ -15,9 +15,7 @@
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
-#if !defined(DISABLE_WIFI)
 #include "shill/store/property_accessor.h"
-#endif  // DISABLE_WIFI
 #include "shill/store/store_interface.h"
 
 namespace shill {
@@ -56,11 +54,9 @@ const char DefaultProfile::kStorageProhibitedTechnologies[] =
 // previously by DhcpProperties.
 // static
 const char DefaultProfile::kStorageDhcpHostname[] = "Hostname";
-#if !defined(DISABLE_WIFI)
 // static
 const char DefaultProfile::kStorageWifiGlobalFTEnabled[] =
     "WiFi.GlobalFTEnabled";
-#endif  // DISABLE_WIFI
 
 DefaultProfile::DefaultProfile(Manager* manager,
                                const base::FilePath& storage_directory,
@@ -79,17 +75,14 @@ DefaultProfile::DefaultProfile(Manager* manager,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
                              &manager_props.prohibited_technologies);
-#if !defined(DISABLE_WIFI)
   HelpRegisterConstDerivedBool(kWifiGlobalFTEnabledProperty,
                                &DefaultProfile::GetFTEnabled);
-#endif  // DISABLE_WIFI
   set_persistent_profile_path(
       GetFinalStoragePath(storage_directory, Identifier(profile_id)));
 }
 
 DefaultProfile::~DefaultProfile() = default;
 
-#if !defined(DISABLE_WIFI)
 void DefaultProfile::HelpRegisterConstDerivedBool(
     const std::string& name, bool (DefaultProfile::*get)(Error*)) {
   this->mutable_store()->RegisterDerivedBool(
@@ -100,7 +93,6 @@ void DefaultProfile::HelpRegisterConstDerivedBool(
 bool DefaultProfile::GetFTEnabled(Error* error) {
   return manager()->GetFTEnabled(error);
 }
-#endif  // DISABLE_WIFI
 
 void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
@@ -139,13 +131,11 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
     manager_props->dhcp_hostname = "";
   }
 
-#if !defined(DISABLE_WIFI)
   bool ft_enabled;
   if (storage()->GetBool(kStorageId, kStorageWifiGlobalFTEnabled,
                          &ft_enabled)) {
     manager_props->ft_enabled = ft_enabled;
   }
-#endif  // DISABLE_WIFI
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
@@ -185,12 +175,10 @@ bool DefaultProfile::Save() {
     storage()->SetString(kStorageId, kStorageDhcpHostname,
                          props_.dhcp_hostname);
   }
-#if !defined(DISABLE_WIFI)
   if (props_.ft_enabled.has_value()) {
     storage()->SetBool(kStorageId, kStorageWifiGlobalFTEnabled,
                        props_.ft_enabled.value());
   }
-#endif  // DISABLE_WIFI
   return Profile::Save();
 }
 

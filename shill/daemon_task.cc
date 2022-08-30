@@ -19,16 +19,13 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/process_manager.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
-
-#if !defined(DISABLE_WIFI)
-#include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
-#endif  // !defined(DISABLE_WIFI)
 
 namespace shill {
 
@@ -45,9 +42,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
       rtnl_handler_(nullptr),
       routing_table_(nullptr),
       dhcp_provider_(nullptr),
-#if !defined(DISABLE_WIFI)
       netlink_manager_(nullptr),
-#endif  // !defined(DISABLE_WIFI)
       process_manager_(nullptr) {
 }
 
@@ -90,9 +85,7 @@ void DaemonTask::Init() {
   routing_table_ = RoutingTable::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = ProcessManager::GetInstance();
-#if !defined(DISABLE_WIFI)
   netlink_manager_ = NetlinkManager::GetInstance();
-#endif  // !defined(DISABLE_WIFI)
   manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
                              config_->GetRunDirectory(),
                              config_->GetStorageDirectory(),
@@ -148,7 +141,6 @@ void DaemonTask::Start() {
   // Note that NetlinkManager initialization is not necessarily
   // WiFi-specific. It just happens that we currently only use NetlinkManager
   // for WiFi.
-#if !defined(DISABLE_WIFI)
   if (netlink_manager_) {
     netlink_manager_->Init();
     uint16_t nl80211_family_id =
@@ -160,7 +152,6 @@ void DaemonTask::Start() {
     Nl80211Message::SetMessageType(nl80211_family_id);
     netlink_manager_->Start();
   }
-#endif  // !defined(DISABLE_WIFI)
   manager_->Start();
 }
 

@@ -51,25 +51,19 @@ class EthernetProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class Resolver;
-class VPNProvider;
+class SupplicantManager;
 class Throttler;
+class VPNProvider;
+class WiFiProvider;
 
 #if !defined(DISABLE_CELLULAR)
 class CellularServiceProvider;
 class ModemInfo;
 #endif
 
-#if !defined(DISABLE_WIFI)
-class WiFiProvider;
-#endif  // DISABLE_WIFI
-
 #if !defined(DISABLE_WIRED_8021X)
 class EthernetEapProvider;
 #endif  // DISABLE_WIRED_8021X
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-class SupplicantManager;
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
 // Helper class for storing in memory the set of shill Manager DBUS R or RW
 // DBus properties.
@@ -113,11 +107,8 @@ struct ManagerProperties {
   KeyValueStore dns_proxy_doh_providers;
   // Hostname to be used in DHCP request.
   std::string dhcp_hostname;
-
-#if !defined(DISABLE_WIFI)
   std::optional<bool> ft_enabled;
   bool scan_allow_roam = true;
-#endif  // !DISABLE_WIFI
 };
 
 class Manager {
@@ -401,9 +392,7 @@ class Manager {
   }
 #endif  // DISABLE_WIRED_8021X
   VPNProvider* vpn_provider() const { return vpn_provider_.get(); }
-#if !defined(DISABLE_WIFI)
   WiFiProvider* wifi_provider() const { return wifi_provider_.get(); }
-#endif  // DISABLE_WIFI
   PropertyStore* mutable_store() { return &store_; }
   virtual const PropertyStore& store() const { return store_; }
   virtual const base::FilePath& run_path() const { return run_path_; }
@@ -497,19 +486,15 @@ class Manager {
   // on the system e.g. eth0, wlan0.
   virtual std::vector<std::string> GetDeviceInterfaceNames();
 
-#if !defined(DISABLE_WIFI)
   bool GetFTEnabled(Error* error);
   bool scan_allow_roam() const { return props_.scan_allow_roam; }
-#endif  // DISABLE_WIFI
 
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   SupplicantManager* supplicant_manager() const {
     return supplicant_manager_.get();
   }
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
   void set_patchpanel_client_for_testing(
       std::unique_ptr<patchpanel::Client> patchpanel_client) {
     patchpanel_client_ = std::move(patchpanel_client);
@@ -658,12 +643,10 @@ class Manager {
   bool IsTechnologyInList(const std::string& technology_list,
                           Technology tech) const;
   void EmitDeviceProperties();
-#if !defined(DISABLE_WIFI)
   bool SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error);
   bool GetDisableWiFiVHT(Error* error);
 
   bool SetFTEnabled(const bool& ft_enabled, Error* error);
-#endif  // DISABLE_WIFI
   bool SetProhibitedTechnologies(const std::string& prohibited_technologies,
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
@@ -813,12 +796,8 @@ class Manager {
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X
   std::unique_ptr<VPNProvider> vpn_provider_;
-#if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
-#endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<SupplicantManager> supplicant_manager_;
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
   // For communication with patchpanel.
   std::unique_ptr<patchpanel::Client> patchpanel_client_;
 

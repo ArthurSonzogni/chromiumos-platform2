@@ -58,31 +58,25 @@
 #include "shill/result_aggregator.h"
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/technology.h"
 #include "shill/throttler.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/wifi/passpoint_credentials.h"
+#include "shill/wifi/wifi.h"
+#include "shill/wifi/wifi_provider.h"
+#include "shill/wifi/wifi_service.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/modem_info.h"
 #endif  // DISABLE_CELLULAR
 
-#if !defined(DISABLE_WIFI)
-#include "shill/wifi/passpoint_credentials.h"
-#include "shill/wifi/wifi.h"
-#include "shill/wifi/wifi_provider.h"
-#include "shill/wifi/wifi_service.h"
-#endif  // DISABLE_WIFI
-
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/ethernet/ethernet_eap_service.h"
 #endif  // DISABLE_WIRED_8021X
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-#include "shill/supplicant/supplicant_manager.h"
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
 namespace shill {
 
@@ -183,12 +177,8 @@ Manager::Manager(ControlInterface* control_interface,
       ethernet_eap_provider_(new EthernetEapProvider(this)),
 #endif  // DISABLE_WIRED_8021X
       vpn_provider_(new VPNProvider(this)),
-#if !defined(DISABLE_WIFI)
       wifi_provider_(new WiFiProvider(this)),
-#endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
       supplicant_manager_(new SupplicantManager(this)),
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
       throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
@@ -232,13 +222,11 @@ Manager::Manager(ControlInterface* control_interface,
       kDefaultServiceProperty, &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
-#if !defined(DISABLE_WIFI)
   HelpRegisterDerivedBool(kDisableWiFiVHTProperty, &Manager::GetDisableWiFiVHT,
                           &Manager::SetDisableWiFiVHT);
   HelpRegisterDerivedBool(kWifiGlobalFTEnabledProperty, &Manager::GetFTEnabled,
                           &Manager::SetFTEnabled);
   store_.RegisterBool(kWifiScanAllowRoamProperty, &props_.scan_allow_roam);
-#endif  // DISABLE_WIFI
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
@@ -328,13 +316,8 @@ void Manager::SetAllowedDevices(
 
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   supplicant_manager_->Start();
-#endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
-
   tethering_manager_->Start();
-
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(
       kTerminationActionsTimeout,
@@ -549,10 +532,7 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
   }
 
   profiles_.push_back(profile);
-
-#if !defined(DISABLE_WIFI)
   wifi_provider_->LoadCredentialsFromProfile(profile);
-#endif  // !DISABLE_WIFI
 
   for (ServiceRefPtr& service : services_) {
     service->ClearExplicitlyDisconnected();
@@ -657,11 +637,8 @@ void Manager::PopProfileInternal() {
     // Service was totally unloaded. No advance of iterator in this
     // case, as UnloadService has updated the iterator for us.
   }
-
-#if !defined(DISABLE_WIFI)
   // Remove Passpoint credentials attached to this profile.
   wifi_provider_->UnloadCredentialsFromProfile(active_profile);
-#endif  // !DISABLE_WIFI
 
   SortServices();
   OnProfilesChanged();
@@ -1074,9 +1051,7 @@ bool Manager::IsTechnologyProhibited(Technology technology) const {
 }
 
 void Manager::OnProfileStorageInitialized(Profile* profile) {
-#if !defined(DISABLE_WIFI)
   wifi_provider_->UpdateStorage(profile);
-#endif  // DISABLE_WIFI
 }
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
@@ -1357,7 +1332,6 @@ RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
   return device_rpc_ids;
 }
 
-#if !defined(DISABLE_WIFI)
 bool Manager::SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error) {
   if (disable_wifi_vht == wifi_provider_->disable_vht()) {
     return false;
@@ -1381,7 +1355,6 @@ bool Manager::GetFTEnabled(Error* error) {
   }
   return true;
 }
-#endif  // DISABLE_WIFI
 
 bool Manager::SetProhibitedTechnologies(
     const std::string& prohibited_technologies, Error* error) {
@@ -2120,16 +2093,12 @@ void Manager::AutoConnect() {
                     << " sorted: " << compare_reason;
     }
   }
-
-#if !defined(DISABLE_WIFI)
   // Report the number of auto-connectable wifi services available when wifi is
   // idle (no active or pending connection), which will trigger auto connect
   // for wifi services.
   if (IsWifiIdle()) {
     wifi_provider_->ReportAutoConnectableServices();
   }
-#endif  // DISABLE_WIFI
-
   // Perform auto-connect.
   for (const auto& service : services_) {
     if (service->auto_connect()) {
@@ -2139,13 +2108,11 @@ void Manager::AutoConnect() {
 }
 
 void Manager::ScanAndConnectToBestServices(Error* error) {
-#if !defined(DISABLE_WIFI)
   DeviceRefPtr device = GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (device) {
     static_cast<WiFi*>(device.get())->EnsureScanAndConnectToBestService(error);
     return;
   }
-#endif  // DISABLE_WIFI
   ConnectToBestServices(error);
 }
 
@@ -2849,9 +2816,7 @@ void Manager::UpdateProviderMapping() {
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
 #endif  // DISABLE_WIRED_8021X
   providers_[Technology::kVPN] = vpn_provider_.get();
-#if !defined(DISABLE_WIFI)
   providers_[Technology::kWiFi] = wifi_provider_.get();
-#endif  // DISABLE_WIFI
 }
 
 std::vector<std::string> Manager::GetDeviceInterfaceNames() {
@@ -3074,7 +3039,6 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
   if (error)
     error->Reset();
 
-#if !defined(DISABLE_WIFI)
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
@@ -3110,11 +3074,6 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
   }
 
   return true;
-#else
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
-                        "Passpoint requires Wi-Fi support");
-  return false;
-#endif  // !DISABLE_WIFI
 }
 
 bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
@@ -3123,7 +3082,6 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
   if (error)
     error->Reset();
 
-#if !defined(DISABLE_WIFI)
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
@@ -3142,11 +3100,6 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
   return true;
-#else
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
-                        "Passpoint requires Wi-Fi support");
-  return false;
-#endif  // !DISABLE_WIFI
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,

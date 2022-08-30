@@ -21,6 +21,10 @@
 #include "shill/dbus/profile_dbus_adaptor.h"
 #include "shill/dbus/rpc_task_dbus_adaptor.h"
 #include "shill/dbus/service_dbus_adaptor.h"
+#include "shill/dbus/supplicant_bss_proxy.h"
+#include "shill/dbus/supplicant_interface_proxy.h"
+#include "shill/dbus/supplicant_network_proxy.h"
+#include "shill/dbus/supplicant_process_proxy.h"
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
 
@@ -35,16 +39,6 @@
 #include "shill/dbus/mm1_modem_simple_proxy.h"
 #include "shill/dbus/mm1_sim_proxy.h"
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIFI)
-#include "shill/dbus/supplicant_bss_proxy.h"
-#endif  // DISABLE_WIFI
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-#include "shill/dbus/supplicant_interface_proxy.h"
-#include "shill/dbus/supplicant_network_proxy.h"
-#include "shill/dbus/supplicant_process_proxy.h"
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #include "shill/manager.h"
 
@@ -158,7 +152,6 @@ DBusControl::CreatePowerManagerProxy(
                                              service_vanished_callback);
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 std::unique_ptr<SupplicantProcessProxyInterface>
 DBusControl::CreateSupplicantProcessProxy(
     const base::RepeatingClosure& service_appeared_callback,
@@ -180,16 +173,13 @@ std::unique_ptr<SupplicantNetworkProxyInterface>
 DBusControl::CreateSupplicantNetworkProxy(const RpcIdentifier& object_path) {
   return std::make_unique<SupplicantNetworkProxy>(proxy_bus_, object_path);
 }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIFI)
 std::unique_ptr<SupplicantBSSProxyInterface>
 DBusControl::CreateSupplicantBSSProxy(WiFiEndpoint* wifi_endpoint,
                                       const RpcIdentifier& object_path) {
   return std::make_unique<SupplicantBSSProxy>(proxy_bus_, object_path,
                                               wifi_endpoint);
 }
-#endif  // DISABLE_WIFI
 
 std::unique_ptr<DHCPCDListenerInterface> DBusControl::CreateDHCPCDListener(
     DHCPProvider* provider) {

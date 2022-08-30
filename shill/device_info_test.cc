@@ -41,20 +41,17 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/ip_address.h"
+#include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
+#include "shill/net/netlink_attribute.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
-
-#if !defined(DISABLE_WIFI)
-#include "shill/net/mock_netlink_manager.h"
-#include "shill/net/netlink_attribute.h"
-#include "shill/net/nl80211_message.h"
-#endif  // DISABLE_WIFI
 
 using testing::_;
 using testing::AnyNumber;
@@ -82,9 +79,7 @@ class DeviceInfoTest : public Test {
   void SetUp() override {
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.routing_table_ = &routing_table_;
-#if !defined(DISABLE_WIFI)
     device_info_.netlink_manager_ = &netlink_manager_;
-#endif  // DISABLE_WIFI
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
     patchpanel_client_ = new patchpanel::FakeClient();
@@ -202,9 +197,7 @@ class DeviceInfoTest : public Test {
   DeviceInfo device_info_;
   EventDispatcherForTest dispatcher_;
   MockRoutingTable routing_table_;
-#if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
-#endif  // DISABLE_WIFI
   StrictMock<MockRTNLHandler> rtnl_handler_;
   MockSockets* mock_sockets_;  // Owned by DeviceInfo.
   MockTime time_;
@@ -548,7 +541,6 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 }
 
-#if !defined(DISABLE_WIFI)
 MATCHER_P(IsGetInterfaceMessage, index, "") {
   if (arg->message_type() != Nl80211Message::GetMessageType()) {
     return false;
@@ -585,7 +577,6 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kWiFi));
 }
-#endif  // DISABLE_WIFI
 
 class MockLinkReadyListener {
  public:
@@ -1973,11 +1964,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
 
   void EnsureNoDelayedDevice() { EXPECT_TRUE(GetDelayedDevices().empty()); }
 
-#if !defined(DISABLE_WIFI)
   void TriggerOnWiFiInterfaceInfoReceived(const Nl80211Message& message) {
     test_device_info_.OnWiFiInterfaceInfoReceived(message);
   }
-#endif  // DISABLE_WIFI
 
  protected:
   DeviceInfoForDelayedCreationTest test_device_info_;
@@ -2031,7 +2020,6 @@ TEST_F(DeviceInfoDelayedCreationTest, EthernetInterface) {
   EnsureNoDelayedDevice();
 }
 
-#if !defined(DISABLE_WIFI)
 TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -2091,7 +2079,5 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
                        HasSubstr("Device already created for interface")));
   TriggerOnWiFiInterfaceInfoReceived(message);
 }
-
-#endif  // DISABLE_WIFI
 
 }  // namespace shill

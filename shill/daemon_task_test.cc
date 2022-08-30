@@ -23,16 +23,13 @@
 #include "shill/mock_process_manager.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/io_handler.h"
+#include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/ndisc.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/shill_test_config.h"
 #include "shill/test_event_dispatcher.h"
-
-#if !defined(DISABLE_WIFI)
-#include "shill/net/mock_netlink_manager.h"
-#include "shill/net/nl80211_message.h"
-#endif  // !defined(DISABLE_WIFI)
 
 using ::testing::_;
 using ::testing::Expectation;
@@ -86,10 +83,7 @@ class DaemonTaskTest : public Test {
     daemon_.manager_.reset(manager_);        // Passes ownership
     daemon_.control_.reset(control_);        // Passes ownership
     daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
-
-#if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
-#endif  // !defined(DISABLE_WIFI)
   }
   void StartDaemon() { daemon_.Start(); }
 
@@ -116,9 +110,7 @@ class DaemonTaskTest : public Test {
   MockControl* control_;
   MockMetrics* metrics_;
   MockManager* manager_;
-#if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
-#endif  // !defined(DISABLE_WIFI)
   DeviceInfo device_info_;
 };
 
@@ -137,14 +129,12 @@ TEST_F(DaemonTaskTest, StartStop) {
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _));
   EXPECT_CALL(process_manager_, Init(_));
-#if !defined(DISABLE_WIFI)
   EXPECT_CALL(netlink_manager_, Init());
   const uint16_t kNl80211MessageType = 42;  // Arbitrary.
   EXPECT_CALL(netlink_manager_,
               GetFamily(Nl80211Message::kMessageTypeString, _))
       .WillOnce(Return(kNl80211MessageType));
   EXPECT_CALL(netlink_manager_, Start());
-#endif  // !defined(DISABLE_WIFI)
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
   Mock::VerifyAndClearExpectations(manager_);

@@ -16,41 +16,34 @@
 
 namespace shill {
 
+class DBusObjectManagerProxyInterface;
+class DBusPropertiesProxy;
 class Device;
 class DeviceAdaptorInterface;
+class DHCPCDListenerInterface;
+class DHCPProvider;
+class DHCPProxyInterface;
 class IPConfig;
 class IPConfigAdaptorInterface;
 class Manager;
 class ManagerAdaptorInterface;
+class PowerManagerProxyDelegate;
+class PowerManagerProxyInterface;
 class Profile;
 class ProfileAdaptorInterface;
 class RpcTask;
 class RpcTaskAdaptorInterface;
 class Service;
 class ServiceAdaptorInterface;
-class ThirdPartyVpnDriver;
-class ThirdPartyVpnAdaptorInterface;
-
-class DBusObjectManagerProxyInterface;
-class DBusPropertiesProxy;
-class DHCPCDListenerInterface;
-class DHCPProvider;
-class DHCPProxyInterface;
-class PowerManagerProxyDelegate;
-class PowerManagerProxyInterface;
-class UpstartProxyInterface;
-
-#if !defined(DISABLE_WIFI)
 class SupplicantBSSProxyInterface;
-class WiFiEndpoint;
-#endif  // DISABLE_WIFI
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class SupplicantEventDelegateInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantNetworkProxyInterface;
 class SupplicantProcessProxyInterface;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+class ThirdPartyVpnDriver;
+class ThirdPartyVpnAdaptorInterface;
+class UpstartProxyInterface;
+class WiFiEndpoint;
 
 namespace mm1 {
 
@@ -95,7 +88,6 @@ class ControlInterface {
       const base::RepeatingClosure& service_appeared_callback,
       const base::RepeatingClosure& service_vanished_callback) = 0;
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   virtual std::unique_ptr<SupplicantProcessProxyInterface>
   CreateSupplicantProcessProxy(
       const base::RepeatingClosure& service_appeared_callback,
@@ -107,13 +99,10 @@ class ControlInterface {
 
   virtual std::unique_ptr<SupplicantNetworkProxyInterface>
   CreateSupplicantNetworkProxy(const RpcIdentifier& object_path) = 0;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) = 0;
-#endif  // DISABLE_WIFI
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 

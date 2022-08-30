@@ -50,6 +50,9 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/ndisc.h"
+#include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_listener.h"
@@ -59,17 +62,11 @@
 #include "shill/power_manager.h"
 #include "shill/routing_table.h"
 #include "shill/vpn/vpn_provider.h"
+#include "shill/wifi/wifi.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/modem_info.h"
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIFI)
-#include "shill/net/netlink_attribute.h"
-#include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
-#include "shill/wifi/wifi.h"
-#endif  // DISABLE_WIFI
 
 namespace shill {
 
@@ -226,9 +223,7 @@ DeviceInfo::DeviceInfo(Manager* manager)
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-#if !defined(DISABLE_WIFI)
       netlink_manager_(NetlinkManager::GetInstance()),
-#endif  // DISABLE_WIFI
       sockets_(new Sockets()),
       time_(Time::GetInstance()) {
   if (manager) {
@@ -654,16 +649,10 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       device->network()->EnableIPv6Privacy();
       break;
     case Technology::kWiFi:
-#if defined(DISABLE_WIFI)
-      LOG(WARNING) << "WiFi support is not implemented. Ignore WiFi link "
-                   << link_name << " at index " << interface_index << ".";
-      return nullptr;
-#else
       // Defer creating this device until we get information about the
       // type of WiFi interface.
       GetWiFiInterfaceInfo(interface_index);
       break;
-#endif  // DISABLE_WIFI
     case Technology::kArcBridge:
       // Shill doesn't touch the IP configuration for the ARC bridge.
       flush = false;
@@ -1539,13 +1528,11 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
   infos_[interface_index].rx_bytes = stats.rx_bytes;
   infos_[interface_index].tx_bytes = stats.tx_bytes;
 
-#if !defined(DISABLE_WIFI)
   DeviceRefPtr device = GetDevice(interface_index);
   if (device && device->technology() == Technology::kWiFi) {
     (reinterpret_cast<WiFi*>(device.get()))
         ->OnReceivedRtnlLinkStatistics(stats);
   }
-#endif  // !DISABLE_WIFI
 }
 
 void DeviceInfo::RequestLinkStatistics() {
@@ -1555,7 +1542,6 @@ void DeviceInfo::RequestLinkStatistics() {
                                kRequestLinkStatisticsInterval);
 }
 
-#if !defined(DISABLE_WIFI)
 void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
   GetInterfaceMessage msg;
   if (!msg.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
@@ -1628,8 +1614,6 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 void DeviceInfo::RecordDarkResumeWakeReason(const std::string& wake_reason) {
   manager_->power_manager()->RecordDarkResumeWakeReason(wake_reason);
 }
-
-#endif  // DISABLE_WIFI
 
 // Verifies if a device is guest by checking if the owner of the device
 // identified by |interface_name| has the same UID as the user that runs the

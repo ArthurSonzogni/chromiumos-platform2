@@ -62,7 +62,6 @@ class MockMetrics : public Metrics {
               NotifyServiceStateChanged,
               (const Service&, Service::ConnectState),
               (override));
-#if !defined(DISABLE_WIFI)
   MOCK_METHOD(void,
               Notify80211Disconnect,
               (WiFiDisconnectByWhom, IEEE_80211::WiFiReasonCode),
@@ -83,7 +82,6 @@ class MockMetrics : public Metrics {
               NotifyWiFiAdapterStateChanged,
               (bool, const WiFiAdapterInfo&),
               (override));
-#endif  // DISABLE_WIFI
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
   MOCK_METHOD(void,
               SendEnumToUMA,

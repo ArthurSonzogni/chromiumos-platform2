@@ -33,16 +33,13 @@ namespace shill {
 class EventDispatcher;
 class Manager;
 class Metrics;
+class NetlinkManager;
+class Nl80211Message;
 class RoutingTable;
 class RTNLHandler;
 class RTNLListener;
 class RTNLMessage;
 class Sockets;
-
-#if !defined(DISABLE_WIFI)
-class NetlinkManager;
-class Nl80211Message;
-#endif  // DISABLE_WIFI
 
 class DeviceInfo {
  public:
@@ -302,12 +299,10 @@ class DeviceInfo {
   void RetrieveLinkStatistics(int interface_index, const RTNLMessage& msg);
   void RequestLinkStatistics();
 
-#if !defined(DISABLE_WIFI)
   // Use nl80211 to get information on |interface_index|.
   void GetWiFiInterfaceInfo(int interface_index);
   void OnWiFiInterfaceInfoReceived(const Nl80211Message& message);
   void RecordDarkResumeWakeReason(const std::string& wake_reason);
-#endif  // DISABLE_WIFI
 
   // Returns whether a device with name |interface_name| is guest.
   bool IsGuestDevice(const std::string& interface_name) const;
@@ -356,9 +351,7 @@ class DeviceInfo {
   // Cache copy of singleton pointers.
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
-#if !defined(DISABLE_WIFI)
   NetlinkManager* netlink_manager_;
-#endif  // DISABLE_WIFI
 
   // A member of the class so that a mock can be injected for testing.
   std::unique_ptr<Sockets> sockets_;

@@ -21,13 +21,10 @@ class DHCPProvider;
 class Error;
 class Manager;
 class Metrics;
+class NetlinkManager;
 class ProcessManager;
 class RoutingTable;
 class RTNLHandler;
-
-#if !defined(DISABLE_WIFI)
-class NetlinkManager;
-#endif  // !defined(DISABLE_WIFI)
 
 // DaemonTask contains most of the logic used in ShillDaemon (e.g.
 // init/shutdown, start/stop). This class is kept separate from ShillDaemon to
@@ -97,9 +94,7 @@ class DaemonTask {
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
   DHCPProvider* dhcp_provider_;
-#if !defined(DISABLE_WIFI)
   NetlinkManager* netlink_manager_;
-#endif  // !defined(DISABLE_WIFI)
   ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
   base::OnceClosure termination_completed_callback_;

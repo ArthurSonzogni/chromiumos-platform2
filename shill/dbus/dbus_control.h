@@ -50,7 +50,6 @@ class DBusControl : public ControlInterface {
       const base::RepeatingClosure& service_appeared_callback,
       const base::RepeatingClosure& service_vanished_callback) override;
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
       const base::RepeatingClosure& service_appeared_callback,
       const base::RepeatingClosure& service_vanished_callback) override;
@@ -61,13 +60,10 @@ class DBusControl : public ControlInterface {
 
   std::unique_ptr<SupplicantNetworkProxyInterface> CreateSupplicantNetworkProxy(
       const RpcIdentifier& object_path) override;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) override;
-#endif  // DISABLE_WIFI
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
 

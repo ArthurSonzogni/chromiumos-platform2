@@ -33,15 +33,12 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, OnVisibilityChanged, (), (override));
   MOCK_METHOD(Technology, technology, (), (const, override));
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
   MOCK_METHOD(bool,
               AddEAPCertification,
               (const std::string&, size_t),
               (override));
   MOCK_METHOD(void, ClearEAPCertification, (), (override));
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 };
 
 }  // namespace shill

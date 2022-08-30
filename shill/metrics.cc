@@ -30,10 +30,8 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
-#if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
-#endif  // DISABLE_WIFI
 
 namespace shill {
 
@@ -56,14 +54,7 @@ constexpr int kPseudoTagSaltLen = 32;
 constexpr int kPseudoTagHashLen = 8;
 
 bool IsInvalidTag(uint64_t tag) {
-#if !defined(DISABLE_WIFI)
   return tag == WiFiService::kSessionTagInvalid;
-#else   // DISABLE_WIFI
-  // Tags aren't currently used outside of the context of WiFi. In case that
-  // ever changes, trigger a loud-and-clear error in the default case to make
-  // sure that the change is done carefully.
-  return true;
-#endif  // DISABLE_WIFI
 }
 
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
@@ -99,7 +90,6 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
   }
 }
 
-#if !defined(DISABLE_WIFI)
 // List of WiFi adapters that have been added to AVL.
 // TODO(b/229020553): Instead of hardcoding the list here and in other places
 // (e.g. Tast), use a single source of truth.
@@ -175,7 +165,6 @@ bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {
   }
   return false;
 }
-#endif  // DISABLE_WIFI
 }  // namespace
 
 Metrics::Metrics()
@@ -752,7 +741,6 @@ void Metrics::NotifyAp80211vBSSTransitionSupport(
   SendBoolToUMA(kMetricAp80211vBSSTransitionSupport, bss_transition_supported);
 }
 
-#if !defined(DISABLE_WIFI)
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
   EnumMetric<FixedName> metric_disconnect_reason;
@@ -784,7 +772,6 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
   SendEnumToUMA(metric_disconnect_reason, reason);
   SendEnumToUMA(metric_disconnect_type, type);
 }
-#endif  // DISABLE_WIFI
 
 void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
@@ -1271,7 +1258,6 @@ void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
   SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds);
 }
 
-#if !defined(DISABLE_WIFI)
 void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
                                             const WiFiAdapterInfo& info) {
   int64_t usecs;
@@ -1430,7 +1416,6 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
       .SetDisconnectionReasonCode(reason)
       .Record();
 }
-#endif  // DISABLE_WIFI
 
 // static
 int Metrics::GetRegulatoryDomainValue(std::string country_code) {

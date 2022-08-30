@@ -64,17 +64,13 @@ class MockService : public Service {
               DoPropertiesMatch,
               (const KeyValueStore&),
               (const, override));
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
   MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MOCK_METHOD(Technology, technology, (), (const, override));
   MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));

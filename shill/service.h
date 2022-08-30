@@ -36,6 +36,7 @@
 namespace shill {
 
 class ControlInterface;
+class EapCredentials;
 class Error;
 class EventDispatcher;
 class KeyValueStore;
@@ -45,10 +46,6 @@ class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;
 class StoreInterface;
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-class EapCredentials;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 // A Service is a uniquely named entity, which the system can
 // connect in order to begin sending and receiving network traffic.
@@ -409,7 +406,6 @@ class Service : public base::RefCounted<Service> {
   // will return a Device pointer only for a connected VPN service.
   virtual VirtualDeviceRefPtr GetVirtualDevice() const;
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
   mockable bool Is8021xConnectable() const;
@@ -419,7 +415,6 @@ class Service : public base::RefCounted<Service> {
   mockable bool AddEAPCertification(const std::string& name, size_t depth);
   // Clear all EAP certification elements.
   mockable void ClearEAPCertification();
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
@@ -479,10 +474,8 @@ class Service : public base::RefCounted<Service> {
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyName() const;
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   mockable const EapCredentials* eap() const { return eap_.get(); }
   void SetEapCredentials(EapCredentials* eap);
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   std::string GetEapPassphrase(Error* error);
 
   //  Implements Service.RequestPortalDetection.
@@ -575,9 +568,7 @@ class Service : public base::RefCounted<Service> {
   // disconnected.
   mockable void ClearExplicitlyDisconnected();
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EapCredentials* mutable_eap() { return eap_.get(); }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
@@ -717,9 +708,7 @@ class Service : public base::RefCounted<Service> {
 
   ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   void UnloadEapCredentials();
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Ignore |parameter| when performing a Configure() operation.
   void IgnoreParameterForConfigure(const std::string& parameter);
@@ -738,10 +727,8 @@ class Service : public base::RefCounted<Service> {
   void ClearAutoConnect(Error* error);
 
   // Property accessors reserved for subclasses
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   const std::string& GetEAPKeyManagement() const;
   virtual void SetEAPKeyManagement(const std::string& key_management);
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   EventDispatcher* dispatcher() const;
   Metrics* metrics() const;
@@ -871,10 +858,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
   FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   static const size_t kEAPMaxCertificationElements;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-
   static const base::TimeDelta kMinAutoConnectCooldownTime;
   static const base::TimeDelta kMaxAutoConnectCooldownTime;
   static const uint64_t kAutoConnectCooldownBackoffFactor;
@@ -1023,9 +1007,7 @@ class Service : public base::RefCounted<Service> {
   // If this is nullopt, try to infer whether or not this service is metered
   // by e.g. technology type.
   std::optional<bool> metered_override_;
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EapCredentials> eap_;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   Technology technology_;
   // The time of the most recent failure. Value is null if the service is not
   // currently failed.

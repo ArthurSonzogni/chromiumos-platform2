@@ -122,9 +122,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
       manager_props.portal_fallback_http_urls);
   EXPECT_EQ("", manager_props.prohibited_technologies);
   EXPECT_EQ("", manager_props.dhcp_hostname);
-#if !defined(DISABLE_WIFI)
   EXPECT_FALSE(manager_props.ft_enabled.has_value());
-#endif  // DISABLE_WIFI
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
@@ -150,10 +148,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   const std::string hostname = "chromeos";
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageDhcpHostname, hostname);
-#if !defined(DISABLE_WIFI)
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageWifiGlobalFTEnabled, true);
-#endif  // DISABLE_WIFI
   profile_->SetStorageForTest(std::move(owned_storage));
   ManagerProperties manager_props;
 
@@ -165,10 +161,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
   EXPECT_EQ(hostname, manager_props.dhcp_hostname);
-#if !defined(DISABLE_WIFI)
   EXPECT_TRUE(manager_props.ft_enabled.has_value());
   EXPECT_TRUE(manager_props.ft_enabled.value());
-#endif  // DISABLE_WIFI
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

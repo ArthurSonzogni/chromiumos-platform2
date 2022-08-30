@@ -14,15 +14,12 @@
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
 #include "shill/test_event_dispatcher.h"
-
-#if !defined(DISABLE_WIFI)
-#include "shill/mock_eap_credentials.h"
 #include "shill/wifi/mock_wifi_service.h"
-#endif  // DISABLE_WIFI
 
 using testing::_;
 using testing::DoAll;
@@ -38,7 +35,6 @@ class MetricsTest : public Test {
  public:
   MetricsTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-#if !defined(DISABLE_WIFI)
         open_wifi_service_(new MockWiFiService(&manager_,
                                                manager_.wifi_provider(),
                                                ssid_,
@@ -61,7 +57,6 @@ class MetricsTest : public Test {
                                               WiFiSecurity::kWpa2Enterprise,
                                               false)),
         eap_(new MockEapCredentials()),
-#endif  // DISABLE_WIFI
         service_(new MockService(&manager_)) {
   }
 
@@ -69,9 +64,7 @@ class MetricsTest : public Test {
 
   void SetUp() override {
     metrics_.SetLibraryForTesting(&library_);
-#if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
-#endif                                    // DISABLE_WIFI
   }
 
  protected:
@@ -97,13 +90,11 @@ class MetricsTest : public Test {
   MockManager manager_;
   Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;
-#if !defined(DISABLE_WIFI)
   const std::vector<uint8_t> ssid_;
   scoped_refptr<MockWiFiService> open_wifi_service_;
   scoped_refptr<MockWiFiService> wep_wifi_service_;
   scoped_refptr<MockWiFiService> eap_wifi_service_;
   MockEapCredentials* eap_;  // Owned by |eap_wifi_service_|.
-#endif                       // DISABLE_WIFI
   scoped_refptr<MockService> service_;
 };
 
@@ -215,7 +206,6 @@ TEST_F(MetricsTest, ServiceFailure) {
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
-#if !defined(DISABLE_WIFI)
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
@@ -293,7 +283,6 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   metrics_.NotifyServiceStateChanged(*eap_wifi_service_,
                                      Service::kStateConnected);
 }
-#endif  // DISABLE_WIFI
 
 TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(2411));

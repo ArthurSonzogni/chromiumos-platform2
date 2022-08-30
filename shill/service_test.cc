@@ -30,6 +30,7 @@
 #include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_log.h"
@@ -44,10 +45,6 @@
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/testing.h"
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-#include "shill/mock_eap_credentials.h"
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 using testing::_;
 using testing::AnyNumber;
@@ -111,9 +108,7 @@ class ServiceTest : public PropertyStoreTest {
     service_->disconnects_.time_ = &time_;
     service_->misconnects_.time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
     service_->eap_.reset(new NiceMock<MockEapCredentials>());
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
@@ -374,7 +369,6 @@ TEST_F(ServiceTest, SetProperty) {
     EXPECT_TRUE(
         SetAnyPropertyAndEnsureSuccess(kGuidProperty, brillo::Any(guid)));
   }
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Ensure that EAP properties cannot be set on services with no EAP
   // credentials.  Use service2_ here since we're have some code in
   // ServiceTest::SetUp() that fiddles with service_->eap_.
@@ -394,7 +388,6 @@ TEST_F(ServiceTest, SetProperty) {
                                                brillo::Any(eap), &error);
     EXPECT_TRUE(error.IsSuccess());
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     Error error;
@@ -444,7 +437,6 @@ TEST_F(ServiceTest, IsLoadableFrom) {
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
  public:
   ServiceWithOnEapCredentialsChangedOverride(Manager* manager,
@@ -456,7 +448,6 @@ class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
     SetHasEverConnected(false);
   }
 };
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, LoadTrafficCounters) {
   FakeStore storage;
@@ -523,7 +514,6 @@ TEST_F(ServiceTest, Load) {
   EXPECT_EQ("", service_->ui_data_);
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 TEST_F(ServiceTest, LoadEap) {
   FakeStore storage;
 
@@ -566,7 +556,6 @@ TEST_F(ServiceTest, GetEapPassphraseNonEap) {
   EXPECT_TRUE(password.empty());
   EXPECT_FALSE(error.IsSuccess());
 }
-#endif
 
 TEST_F(ServiceTest, LoadFail) {
   FakeStore storage;
@@ -654,7 +643,6 @@ TEST_F(ServiceTest, Save) {
   EXPECT_EQ(type, service_->GetTechnologyName());
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 TEST_F(ServiceTest, SaveEap) {
   FakeStore storage;
   const char kIdentity[] = "identity";
@@ -670,7 +658,6 @@ TEST_F(ServiceTest, SaveEap) {
       storage_id_, EapCredentials::kStorageCredentialEapIdentity, &identity));
   EXPECT_EQ(identity, kIdentity);
 }
-#endif
 
 TEST_F(ServiceTest, RetainAutoConnect) {
   FakeStore storage;
@@ -1197,7 +1184,6 @@ TEST_F(ServiceTest, ConfigureStringsProperty) {
   EXPECT_EQ(kStrings1, service_->strings());
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 TEST_F(ServiceTest, ConfigureEapStringProperty) {
   MockEapCredentials* eap = new NiceMock<MockEapCredentials>();
   service2_->SetEapCredentials(eap);  // Passes ownership.
@@ -1215,7 +1201,6 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   service2_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
 }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, ConfigureIntProperty) {
   const int kPriority0 = 100;
@@ -1552,7 +1537,6 @@ TEST_F(ServiceTest, SetConnectableFull) {
   EXPECT_TRUE(service_->connectable());
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class WriteOnlyServicePropertyTest : public ServiceTest {};
 TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
   // Use a real EapCredentials instance since the base Service class
@@ -1570,7 +1554,6 @@ INSTANTIATE_TEST_SUITE_P(
     WriteOnlyServicePropertyTestInstance,
     WriteOnlyServicePropertyTest,
     Values(brillo::Any(std::string(kEapPasswordProperty))));
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   const std::string kIfName = "test_ifname";
@@ -1606,7 +1589,6 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   }
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnEapCredentialsChanged(Manager* manager)
@@ -1716,7 +1698,6 @@ TEST_F(ServiceTest, Certification) {
   service_->ClearEAPCertification();
   EXPECT_TRUE(service_->remote_certification_.empty());
 }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, NoteFailureEventIdle) {
   Timestamp timestamp;

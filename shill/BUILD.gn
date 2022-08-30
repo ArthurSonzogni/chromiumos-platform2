@@ -88,10 +88,6 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_WAKE_ON_WIFI" ]
   }
 
-  if (!use.wifi) {
-    defines += [ "DISABLE_WIFI" ]
-  }
-
   if (!use.wired_8021x) {
     defines += [ "DISABLE_WIRED_8021X" ]
   }
@@ -249,6 +245,10 @@ static_library("libshill") {
     "dbus/profile_dbus_adaptor.cc",
     "dbus/rpc_task_dbus_adaptor.cc",
     "dbus/service_dbus_adaptor.cc",
+    "dbus/supplicant_bss_proxy.cc",
+    "dbus/supplicant_interface_proxy.cc",
+    "dbus/supplicant_network_proxy.cc",
+    "dbus/supplicant_process_proxy.cc",
     "dbus/third_party_vpn_dbus_adaptor.cc",
     "dbus/upstart_proxy.cc",
     "default_profile.cc",
@@ -258,6 +258,7 @@ static_library("libshill") {
     "device_info.cc",
     "dns_client.cc",
     "dns_util.cc",
+    "eap_credentials.cc",
     "ephemeral_profile.cc",
     "error.cc",
     "ethernet/ethernet.cc",
@@ -305,6 +306,9 @@ static_library("libshill") {
     "store/key_value_store.cc",
     "store/pkcs11_data_store.cc",
     "store/property_store.cc",
+    "supplicant/supplicant_eap_state_handler.cc",
+    "supplicant/supplicant_manager.cc",
+    "supplicant/wpa_supplicant.cc",
     "technology.cc",
     "tethering.cc",
     "tethering_manager.cc",
@@ -314,6 +318,14 @@ static_library("libshill") {
     "vpn/vpn_driver.cc",
     "vpn/vpn_provider.cc",
     "vpn/vpn_service.cc",
+    "wifi/passpoint_credentials.cc",
+    "wifi/wake_on_wifi.cc",
+    "wifi/wifi.cc",
+    "wifi/wifi_cqm.cc",
+    "wifi/wifi_endpoint.cc",
+    "wifi/wifi_provider.cc",
+    "wifi/wifi_security.cc",
+    "wifi/wifi_service.cc",
   ]
   configs += [
     ":libshill_config",
@@ -334,6 +346,7 @@ static_library("libshill") {
   ]
   deps = [
     ":generate_dhcpcd_proxies",
+    ":generate_supplicant_proxies",
     ":generate_upstart_proxies",
     ":mobile_operator_db",
     ":shill-chromeos-dbus-adaptors",
@@ -395,33 +408,6 @@ static_library("libshill") {
       "vpn/vpn_util.cc",
       "vpn/wireguard_driver.cc",
     ]
-  }
-
-  if (use.wifi) {
-    sources += [
-      "wifi/passpoint_credentials.cc",
-      "wifi/wake_on_wifi.cc",
-      "wifi/wifi.cc",
-      "wifi/wifi_cqm.cc",
-      "wifi/wifi_endpoint.cc",
-      "wifi/wifi_provider.cc",
-      "wifi/wifi_security.cc",
-      "wifi/wifi_service.cc",
-    ]
-  }
-
-  if (use.wifi || use.wired_8021x) {
-    sources += [
-      "dbus/supplicant_bss_proxy.cc",
-      "dbus/supplicant_interface_proxy.cc",
-      "dbus/supplicant_network_proxy.cc",
-      "dbus/supplicant_process_proxy.cc",
-      "eap_credentials.cc",
-      "supplicant/supplicant_eap_state_handler.cc",
-      "supplicant/supplicant_manager.cc",
-      "supplicant/wpa_supplicant.cc",
-    ]
-    deps += [ ":generate_supplicant_proxies" ]
   }
 
   if (use.wired_8021x) {
@@ -648,6 +634,7 @@ if (use.test) {
       "device_test.cc",
       "dns_client_test.cc",
       "dns_util_test.cc",
+      "eap_credentials_test.cc",
       "error_test.cc",
       "ethernet/ethernet_provider.cc",
       "ethernet/ethernet_provider_test.cc",
@@ -675,6 +662,7 @@ if (use.test) {
       "mock_device.cc",
       "mock_device_info.cc",
       "mock_dns_client.cc",
+      "mock_eap_credentials.cc",
       "mock_event_dispatcher.cc",
       "mock_external_task.cc",
       "mock_icmp.cc",
@@ -722,6 +710,14 @@ if (use.test) {
       "store/pkcs11_data_store_test.cc",
       "store/property_accessor_test.cc",
       "store/property_store_test.cc",
+      "supplicant/mock_supplicant_bss_proxy.cc",
+      "supplicant/mock_supplicant_eap_state_handler.cc",
+      "supplicant/mock_supplicant_interface_proxy.cc",
+      "supplicant/mock_supplicant_network_proxy.cc",
+      "supplicant/mock_supplicant_process_proxy.cc",
+      "supplicant/supplicant_eap_state_handler_test.cc",
+      "supplicant/supplicant_manager_test.cc",
+      "supplicant/wpa_supplicant_test.cc",
       "technology_test.cc",
       "testrunner.cc",
       "tethering_manager_test.cc",
@@ -732,6 +728,18 @@ if (use.test) {
       "upstart/upstart_test.cc",
       "virtual_device_test.cc",
       "vpn/mock_vpn_provider.cc",
+      "wifi/mock_wake_on_wifi.cc",
+      "wifi/mock_wifi.cc",
+      "wifi/mock_wifi_provider.cc",
+      "wifi/mock_wifi_service.cc",
+      "wifi/passpoint_credentials_test.cc",
+      "wifi/wake_on_wifi_test.cc",
+      "wifi/wifi_cqm_test.cc",
+      "wifi/wifi_endpoint_test.cc",
+      "wifi/wifi_provider_test.cc",
+      "wifi/wifi_security_test.cc",
+      "wifi/wifi_service_test.cc",
+      "wifi/wifi_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -812,38 +820,6 @@ if (use.test) {
         "vpn/vpn_provider_test.cc",
         "vpn/vpn_service_test.cc",
         "vpn/wireguard_driver_test.cc",
-      ]
-    }
-
-    if (use.wifi) {
-      sources += [
-        "supplicant/mock_supplicant_bss_proxy.cc",
-        "wifi/mock_wake_on_wifi.cc",
-        "wifi/mock_wifi.cc",
-        "wifi/mock_wifi_provider.cc",
-        "wifi/mock_wifi_service.cc",
-        "wifi/passpoint_credentials_test.cc",
-        "wifi/wake_on_wifi_test.cc",
-        "wifi/wifi_cqm_test.cc",
-        "wifi/wifi_endpoint_test.cc",
-        "wifi/wifi_provider_test.cc",
-        "wifi/wifi_security_test.cc",
-        "wifi/wifi_service_test.cc",
-        "wifi/wifi_test.cc",
-      ]
-    }
-
-    if (use.wifi || use.wired_8021x) {
-      sources += [
-        "eap_credentials_test.cc",
-        "mock_eap_credentials.cc",
-        "supplicant/mock_supplicant_eap_state_handler.cc",
-        "supplicant/mock_supplicant_interface_proxy.cc",
-        "supplicant/mock_supplicant_network_proxy.cc",
-        "supplicant/mock_supplicant_process_proxy.cc",
-        "supplicant/supplicant_eap_state_handler_test.cc",
-        "supplicant/supplicant_manager_test.cc",
-        "supplicant/wpa_supplicant_test.cc",
       ]
     }
 

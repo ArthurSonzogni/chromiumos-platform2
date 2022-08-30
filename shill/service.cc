@@ -27,6 +27,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/dbus/dbus_control.h"
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -36,10 +37,6 @@
 #include "shill/refptr_types.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-#include "shill/eap_credentials.h"
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 namespace shill {
 
@@ -110,9 +107,7 @@ const char Service::kAutoConnMediumUnavailable[] =
 const char Service::kAutoConnRecentBadPassphraseFailure[] =
     "recent bad passphrase failure";
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const size_t Service::kEAPMaxCertificationElements = 10;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
@@ -230,10 +225,8 @@ Service::Service(Manager* manager, Technology technology)
   store_.RegisterConstBool(kConnectableProperty, &connectable_);
   HelpRegisterConstDerivedRpcIdentifier(kDeviceProperty,
                                         &Service::GetDeviceRpcId);
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   store_.RegisterConstStrings(kEapRemoteCertificationProperty,
                               &remote_certification_);
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   HelpRegisterDerivedString(kGuidProperty, &Service::GetGuid,
                             &Service::SetGuid);
 
@@ -766,14 +759,12 @@ bool Service::Load(const StoreInterface* storage) {
     NotifyStaticIPConfigChanged();
   }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Call OnEapCredentialsChanged with kReasonCredentialsLoaded to avoid
   // resetting the has_ever_connected value.
   if (mutable_eap()) {
     mutable_eap()->Load(storage, id);
     OnEapCredentialsChanged(kReasonCredentialsLoaded);
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   ClearExplicitlyDisconnected();
 
@@ -818,11 +809,9 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   // TODO(b/182744859): Remove code after M93.
   storage->DeleteKey(id, "DNSAutoFallback");
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (eap()) {
     eap()->MigrateDeprecatedStorage(storage, id);
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Prior to M91, Chrome did not tell us the source directly. We derive it
   // from UIData for old services. Remove this migration code in M97+.
@@ -850,12 +839,10 @@ bool Service::Unload() {
   link_monitor_disabled_ = false;
   managed_credentials_ = false;
   source_ = ONCSource::kONCSourceUnknown;
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
   ClearEAPCertification();
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   if (IsActive(nullptr)) {
     Error error;  // Ignored.
     Disconnect(&error, __func__);
@@ -912,11 +899,9 @@ bool Service::Save(StoreInterface* storage) {
   }
 
   static_ip_parameters_.Save(storage, id);
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (eap()) {
     eap()->Save(storage, id, save_credentials_);
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   for (patchpanel::TrafficCounter::Source source =
            patchpanel::TrafficCounter::Source_MIN;
@@ -1143,7 +1128,6 @@ VirtualDeviceRefPtr Service::GetVirtualDevice() const {
   return nullptr;
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 bool Service::Is8021xConnectable() const {
   return eap() && eap()->IsConnectable();
 }
@@ -1178,14 +1162,11 @@ void Service::SetEapCredentials(EapCredentials* eap) {
   eap_.reset(eap);
   eap_->InitPropertyStore(mutable_store());
 }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 std::string Service::GetEapPassphrase(Error* error) {
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (eap()) {
     return eap()->GetEapPassword(error);
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
                         "Cannot retrieve EAP passphrase from non-EAP network.");
   return std::string();
@@ -1642,11 +1623,9 @@ void Service::SetProfile(const ProfileRefPtr& p) {
 
 void Service::OnPropertyChanged(const std::string& property) {
   SLOG(this, 1) << __func__ << " " << property;
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);
   }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   SaveToProfile();
   if (property == kStaticIPConfigProperty) {
     NotifyStaticIPConfigChanged();
@@ -1942,7 +1921,6 @@ void Service::IgnoreParameterForConfigure(const std::string& parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }
 
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const std::string& Service::GetEAPKeyManagement() const {
   CHECK(eap());
   return eap()->key_management();
@@ -1952,7 +1930,6 @@ void Service::SetEAPKeyManagement(const std::string& key_management) {
   CHECK(mutable_eap());
   mutable_eap()->SetKeyManagement(key_management, nullptr);
 }
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 bool Service::GetAutoConnect(Error* /*error*/) {
   return auto_connect();

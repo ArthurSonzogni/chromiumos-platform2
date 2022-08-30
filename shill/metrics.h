@@ -19,15 +19,12 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
+#include "shill/net/ieee80211.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-
-#if !defined(DISABLE_WIFI)
-#include "shill/net/ieee80211.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_security.h"
-#endif  // DISABLE_WIFI
 
 namespace shill {
 
@@ -1164,8 +1161,6 @@ class Metrics : public DefaultServiceObserver {
       "Network.Shill.WiFi.Ap80211vBSSMaxIdlePeriodSupport";
   static constexpr char kMetricAp80211vBSSTransitionSupport[] =
       "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
-
-#if !defined(DISABLE_WIFI)
   static constexpr EnumMetric<FixedName> kMetricLinkApDisconnectReason = {
       .n = FixedName{"Network.Shill.WiFi.ApDisconnectReason"},
       .max = IEEE_80211::kReasonCodeMax,
@@ -1174,7 +1169,6 @@ class Metrics : public DefaultServiceObserver {
       .n = FixedName{"Network.Shill.WiFi.ClientDisconnectReason"},
       .max = IEEE_80211::kReasonCodeMax,
   };
-#endif  // DISABLE_WIFI
 
   // 802.11 Status Codes for auth/assoc failures
   static constexpr char kMetricWiFiAssocFailureType[] =
@@ -1442,13 +1436,11 @@ class Metrics : public DefaultServiceObserver {
   // BSS Transition support.
   void NotifyAp80211vBSSTransitionSupport(bool bss_transition_supported);
 
-#if !defined(DISABLE_WIFI)
   // Notifies this object of WiFi disconnect.
   // TODO(b/234176329): Deprecate those metrics once
   // go/cros-wifi-structured-metrics-dd has fully landed.
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
-#endif  // DISABLE_WIFI
 
   // Notifies this object that an AP has switched channels.
   void NotifyApChannelSwitch(uint16_t frequency, uint16_t new_frequency);
@@ -1564,7 +1556,6 @@ class Metrics : public DefaultServiceObserver {
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
 
-#if !defined(DISABLE_WIFI)
   // Emits the |WiFiAdapterStateChanged| structured event that notifies that
   // the WiFi adapter has been enabled or disabled. Includes the IDs describing
   // the type of the adapter (e.g. PCI IDs).
@@ -1641,7 +1632,6 @@ class Metrics : public DefaultServiceObserver {
   virtual void NotifyWiFiDisconnection(WiFiDisconnectionType type,
                                        IEEE_80211::WiFiReasonCode reason,
                                        uint64_t session_tag);
-#endif  // DISABLE_WIFI
 
   // Returns a persistent hash to be used to uniquely identify an APN.
   static int64_t HashApn(const std::string& uuid,

@@ -15,6 +15,11 @@
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
+#include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/supplicant_bss_proxy_interface.h"
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_network_proxy_interface.h"
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
 #if !defined(DISABLE_CELLULAR)
@@ -28,17 +33,6 @@
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIFI)
-#include "shill/supplicant/supplicant_bss_proxy_interface.h"
-#endif  // DISABLE_WIFI
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-#include "shill/supplicant/mock_supplicant_process_proxy.h"
-#include "shill/supplicant/supplicant_interface_proxy_interface.h"
-#include "shill/supplicant/supplicant_network_proxy_interface.h"
-#include "shill/supplicant/supplicant_process_proxy_interface.h"
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
@@ -80,7 +74,6 @@ class MockControl : public ControlInterface {
                const base::RepeatingClosure&,
                const base::RepeatingClosure&),
               (override));
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
       const base::RepeatingClosure&, const base::RepeatingClosure&) override;
   MOCK_METHOD(std::unique_ptr<SupplicantInterfaceProxyInterface>,
@@ -93,13 +86,10 @@ class MockControl : public ControlInterface {
               (override));
   const base::RepeatingClosure& supplicant_appear() const;
   const base::RepeatingClosure& supplicant_vanish() const;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-#if !defined(DISABLE_WIFI)
   MOCK_METHOD(std::unique_ptr<SupplicantBSSProxyInterface>,
               CreateSupplicantBSSProxy,
               (WiFiEndpoint*, const RpcIdentifier&),
               (override));
-#endif  // DISABLE_WIFI
   MOCK_METHOD(std::unique_ptr<DHCPCDListenerInterface>,
               CreateDHCPCDListener,
               (DHCPProvider*),
@@ -159,11 +149,8 @@ class MockControl : public ControlInterface {
 
  private:
   RpcIdentifier null_identifier_;
-
-#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   base::RepeatingClosure supplicant_appear_;
   base::RepeatingClosure supplicant_vanish_;
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 };
 
 }  // namespace shill

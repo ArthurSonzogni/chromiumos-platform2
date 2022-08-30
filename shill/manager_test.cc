@@ -55,12 +55,9 @@
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/vpn/mock_vpn_service.h"
-
-#if !defined(DISABLE_WIFI)
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
-#endif  // DISABLE_WIFI
 
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
@@ -111,9 +108,7 @@ class ManagerTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
 #endif  // DISABLE_WIRED_8021X
-#if !defined(DISABLE_WIFI)
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
-#endif  // DISABLE_WIFI
         throttler_(new StrictMock<MockThrottler>()),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
@@ -133,11 +128,9 @@ class ManagerTest : public PropertyStoreTest {
     manager()->ethernet_eap_provider_.reset(ethernet_eap_provider_);
 #endif  // DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIFI)
     // Replace the manager's WiFi provider with our mock.  Passes
     // ownership.
     manager()->wifi_provider_.reset(wifi_provider_);
-#endif  // DISABLE_WIFI
 
     // Replace the manager's throttler with our mock.
     manager()->throttler_.reset(throttler_);
@@ -344,14 +337,12 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->SetDNSProxyDOHProviders(providers, error);
   }
 
-#if !defined(DISABLE_WIFI)
   WiFiServiceRefPtr ReleaseTempMockService() {
     // Take a reference to hold during this function.
     WiFiServiceRefPtr temp_service = temp_mock_service_;
     temp_mock_service_ = nullptr;
     return temp_service;
   }
-#endif  // DISABLE_WIFI
 
   void VerifyPassiveMode() {
     EXPECT_NE(nullptr, manager()->device_claimer_);
@@ -530,12 +521,10 @@ class ManagerTest : public PropertyStoreTest {
   std::vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
 
-#if !defined(DISABLE_WIFI)
   // This service is held for the manager, and given ownership in a mock
   // function.  This ensures that when the Manager takes ownership, there
   // is only one reference left.
   scoped_refptr<MockWiFiService> temp_mock_service_;
-#endif  // DISABLE_WIFI
 
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
@@ -544,9 +533,7 @@ class ManagerTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider* ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X
-#if !defined(DISABLE_WIFI)
   MockWiFiProvider* wifi_provider_;
-#endif  // DISABLE_WIFI
   MockThrottler* throttler_;
   MockUpstart* upstart_;
   NiceMock<MockResolver> resolver_;
@@ -1593,7 +1580,6 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
 }
 #endif  // DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
@@ -1604,7 +1590,6 @@ TEST_F(ManagerTest, GetServiceWifi) {
   manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
 }
-#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
@@ -1643,7 +1628,6 @@ TEST_F(ManagerTest, ConfigureServiceWithGetServiceFailure) {
   EXPECT_EQ("must specify service type", error.message());
 }
 
-#if !defined(DISABLE_WIFI)
 // TODO(zqiu): Consider creating a TestProvider to provide generic services,
 // (MockService) instead of using technology specific (wifi) services. This
 // will remove the dependency for wifi from ConfigureXXX tests.
@@ -2087,7 +2071,6 @@ TEST_F(ManagerTest,
   EXPECT_EQ(nullptr, service);
   EXPECT_EQ(profile1, matching_service->profile());
 }
-#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, FindMatchingService) {
   KeyValueStore args;
@@ -3611,7 +3594,6 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
 
-#if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -3653,7 +3635,6 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   manager.InitializeProfiles();
   Mock::VerifyAndClearExpectations(wifi_provider);
 }
-#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   base::ScopedTempDir temp_dir;
@@ -4459,7 +4440,6 @@ TEST_F(ManagerTest, SetDNSProxyDOHProviders) {
   EXPECT_FALSE(err.IsFailure());
 }
 
-#if !defined(DISABLE_WIRED_8021X) && !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, AddPasspointCredentials) {
   Error err;
   KeyValueStore properties;
@@ -4510,6 +4490,5 @@ TEST_F(ManagerTest, AddPasspointCredentials) {
   manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
   EXPECT_TRUE(err.IsSuccess());
 }
-#endif  // !DISABLE_WIRED_8021X && !DISABLE_WIFI
 
 }  // namespace shill
