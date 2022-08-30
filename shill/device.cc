@@ -193,7 +193,6 @@ Device::~Device() {
 
 void Device::Initialize() {
   SLOG(this, 2) << "Initialized";
-  network()->SetIsMultiHomed(false);
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {

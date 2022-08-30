@@ -90,9 +90,6 @@ class Connection {
   // sort ranking is respected.
   virtual void UpdateRoutingPolicy();
 
-  // Return the subnet name for this connection.
-  virtual std::string GetSubnetName() const;
-
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
 

@@ -139,32 +139,13 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
   dhcp_controller_->TriggerFailureCallback();
 }
 
-TEST_F(NetworkTest, MultiHomed) {
-  // Device should have multi-homing disabled by default.
-  EXPECT_CALL(*network_, SetIPFlag(_, _, _)).Times(0);
-  network_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(network_.get());
-
-  // Disabled -> enabled should change flags on the device.
+TEST_F(NetworkTest, EnableARPFilteringOnStart) {
+  ExpectCreateDHCPController(true);
   EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "2"))
       .WillOnce(Return(true));
   EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "1"))
       .WillOnce(Return(true));
-  network_->SetIsMultiHomed(true);
-  Mock::VerifyAndClearExpectations(network_.get());
-
-  // Enabled -> enabled should be a no-op.
-  EXPECT_CALL(*network_, SetIPFlag(_, _, _)).Times(0);
-  network_->SetIsMultiHomed(true);
-  Mock::VerifyAndClearExpectations(network_.get());
-
-  // Enabled -> disabled should reset the flags back to the default.
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "0"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "0"))
-      .WillOnce(Return(true));
-  network_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(network_.get());
+  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
 }  // namespace

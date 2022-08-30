@@ -3902,38 +3902,6 @@ TEST_F(ManagerTest, IsWifiIdle) {
   EXPECT_FALSE(manager()->IsWifiIdle());
 }
 
-TEST_F(ManagerTest, DetectMultiHomedDevices) {
-  std::vector<MockNetwork*> mock_networks;
-  mock_devices_.push_back(
-      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
-  mock_devices_.push_back(
-      new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
-
-  for (int i = 0; i <= 5; ++i) {
-    manager()->RegisterDevice(mock_devices_[i]);
-    auto* network = CreateMockNetwork(mock_devices_[i].get());
-    mock_networks.push_back(network);
-  }
-
-  // Do not assign a connection to mock_devices_[0].
-  EXPECT_CALL(*mock_networks[0], HasConnectionObject())
-      .WillRepeatedly(Return(false));
-
-  EXPECT_CALL(*mock_networks[1], GetSubnetName()).WillOnce(Return("1"));
-  EXPECT_CALL(*mock_networks[2], GetSubnetName()).WillOnce(Return("2"));
-  EXPECT_CALL(*mock_networks[3], GetSubnetName()).WillOnce(Return("1"));
-  EXPECT_CALL(*mock_networks[4], GetSubnetName()).WillOnce(Return(""));
-  EXPECT_CALL(*mock_networks[5], GetSubnetName()).WillOnce(Return(""));
-
-  EXPECT_CALL(*mock_networks[0], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_networks[1], SetIsMultiHomed(true));
-  EXPECT_CALL(*mock_networks[2], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_networks[3], SetIsMultiHomed(true));
-  EXPECT_CALL(*mock_networks[4], SetIsMultiHomed(false));
-  EXPECT_CALL(*mock_networks[5], SetIsMultiHomed(false));
-  manager()->DetectMultiHomedDevices();
-}
-
 TEST_F(ManagerTest, IsTechnologyProhibited) {
   // Test initial state.
   EXPECT_EQ("", manager()->props_.prohibited_technologies);

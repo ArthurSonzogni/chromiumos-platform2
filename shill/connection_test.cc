@@ -1016,17 +1016,6 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   EXPECT_TRUE(gateway.IsDefault());
 }
 
-TEST_F(ConnectionTest, GetSubnetName) {
-  auto device = CreateDevice(Technology::kUnknown);
-  connection_ = CreateConnection(device);
-
-  EXPECT_EQ("", connection_->GetSubnetName());
-  IPAddress local("1.2.3.4");
-  local.set_prefix(24);
-  SetLocal(local);
-  EXPECT_EQ("1.2.3.0/24", connection_->GetSubnetName());
-}
-
 TEST_F(ConnectionTest, SetMTU) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);

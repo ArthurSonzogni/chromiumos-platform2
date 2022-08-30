@@ -47,10 +47,8 @@ constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
 constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
 
 constexpr char kIPFlagArpAnnounce[] = "arp_announce";
-constexpr char kIPFlagArpAnnounceDefault[] = "0";
 constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
 constexpr char kIPFlagArpIgnore[] = "arp_ignore";
-constexpr char kIPFlagArpIgnoreDefault[] = "0";
 constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
 
 }  // namespace
@@ -83,6 +81,8 @@ void Network::Start(const Network::StartOptions& opts) {
                  "new options";
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
+
+  EnableARPFiltering();
 
   // If the execution of this function fails, StopInternal() will be called and
   // turn this variable to false.
@@ -550,30 +550,11 @@ void Network::OnIPv6DnsServerAddressesChanged() {
   OnIPv6ConfigUpdated();
 }
 
-void Network::SetIsMultiHomed(bool is_multi_homed) {
-  if (is_multi_homed == is_multi_homed_) {
-    return;
-  }
-  LOG(INFO) << interface_name_ << ": multi-home state is now "
-            << is_multi_homed;
-  is_multi_homed_ = is_multi_homed;
-  if (is_multi_homed) {
-    // Enable ARP filtering on the device. Incoming ARP requests are responded
-    // to only by the interface(s) owning the address. Outgoing ARP requests
-    // will contain the best local address for the target.
-    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-              kIPFlagArpAnnounceBestLocal);
-    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-              kIPFlagArpIgnoreLocalOnly);
-  } else {
-    // Disable ARP filtering on the device. The interface will exhibit the
-    // default Linux behavior -- incoming ARP requests are responded to by all
-    // interfaces.  Outgoing ARP requests can contain any local address.
-    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-              kIPFlagArpAnnounceDefault);
-    SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-              kIPFlagArpIgnoreDefault);
-  }
+void Network::EnableARPFiltering() {
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+            kIPFlagArpAnnounceBestLocal);
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+            kIPFlagArpIgnoreLocalOnly);
 }
 
 bool Network::SetIPFlag(IPAddress::Family family,
@@ -625,11 +606,6 @@ void Network::SetUseDNS(bool enable) {
 void Network::UpdateRoutingPolicy() {
   CHECK(connection_) << __func__ << " called but no connection exists";
   connection_->UpdateRoutingPolicy();
-}
-
-std::string Network::GetSubnetName() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
-  return connection_->GetSubnetName();
 }
 
 const std::vector<std::string>& Network::dns_servers() const {

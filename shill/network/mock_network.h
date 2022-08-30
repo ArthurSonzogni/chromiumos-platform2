@@ -44,8 +44,6 @@ class MockNetwork : public Network {
   MOCK_METHOD(void, OnIPv6AddressChanged, (const IPAddress*), (override));
   MOCK_METHOD(void, OnIPv6DnsServerAddressesChanged, (), (override));
 
-  MOCK_METHOD(void, SetIsMultiHomed, (bool), (override));
-
   MOCK_METHOD(bool,
               SetIPFlag,
               (IPAddress::Family, const std::string&, const std::string&),
@@ -54,7 +52,6 @@ class MockNetwork : public Network {
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));
-  MOCK_METHOD(std::string, GetSubnetName, (), (const, override));
 
   MOCK_METHOD(const std::vector<std::string>&,
               dns_servers,

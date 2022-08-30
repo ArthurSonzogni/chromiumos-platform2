@@ -182,13 +182,6 @@ class Network {
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
 
-  // Enable or disable same-net multi-home support for this interface.  When
-  // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
-  // effect where peers may end up with inaccurate IP address mappings due to
-  // the default Linux ARP transmit / reply behavior.  See
-  // http://linux-ip.net/html/ether-arp.html for more details on this effect.
-  mockable void SetIsMultiHomed(bool is_multi_homed);
-
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
@@ -199,7 +192,6 @@ class Network {
   mockable bool IsDefault() const;
   mockable void SetUseDNS(bool enable);
   void UpdateRoutingPolicy();
-  mockable std::string GetSubnetName() const;
 
   // TODO(b/232177767): Getters for access members in Connection. This is a
   // temporary solution. The caller should guarantee there is a Connection
@@ -261,6 +253,11 @@ class Network {
   void ConfigureStaticIPv6Address();
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
+
+  // Enable ARP filtering on the interface. Incoming ARP requests are responded
+  // to only by the interface(s) owning the address. Outgoing ARP requests will
+  // contain the best local address for the target.
+  void EnableARPFiltering();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is

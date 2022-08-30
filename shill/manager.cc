@@ -1845,7 +1845,6 @@ void Manager::SortServicesTask() {
                               DefaultTechnology(&error));
   UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
-  DetectMultiHomedDevices();
   if (ethernet_provider_)
     ethernet_provider_->RefreshGenericEthernetService();
 
@@ -3136,34 +3135,6 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
     }
   }
   return nullptr;
-}
-
-void Manager::DetectMultiHomedDevices() {
-  std::map<std::string, std::vector<DeviceRefPtr>> subnet_buckets;
-  for (const auto& device : devices_) {
-    Network* network = device->network();
-    std::string subnet_name;
-    if (network->HasConnectionObject()) {
-      subnet_name = network->GetSubnetName();
-    }
-    if (subnet_name.empty()) {
-      device->network()->SetIsMultiHomed(false);
-    } else {
-      subnet_buckets[subnet_name].push_back(device);
-    }
-  }
-
-  for (const auto& subnet_bucket : subnet_buckets) {
-    const auto& device_list = subnet_bucket.second;
-    if (device_list.size() > 1) {
-      for (const auto& device : device_list) {
-        device->network()->SetIsMultiHomed(true);
-      }
-    } else {
-      DCHECK_EQ(1U, device_list.size());
-      device_list.back()->network()->SetIsMultiHomed(false);
-    }
-  }
 }
 
 void Manager::StartConnectivityTest(const DeviceRefPtr& device) {

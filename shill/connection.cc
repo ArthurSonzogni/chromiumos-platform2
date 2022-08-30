@@ -481,14 +481,6 @@ void Connection::PushDNSConfig() {
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
 }
 
-std::string Connection::GetSubnetName() const {
-  if (!local().IsValid()) {
-    return "";
-  }
-  return base::StringPrintf(
-      "%s/%d", local().GetNetworkPart().ToString().c_str(), local().prefix());
-}
-
 bool Connection::FixGatewayReachability(const IPAddress& local,
                                         IPAddress* peer,
                                         IPAddress* gateway) {

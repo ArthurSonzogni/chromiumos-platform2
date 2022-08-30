@@ -41,7 +41,6 @@ class MockConnection : public Connection {
               (const std::vector<std::string>&),
               (override));
   MOCK_METHOD(bool, IsIPv6, (), (override));
-  MOCK_METHOD(std::string, GetSubnetName, (), (const, override));
 };
 
 }  // namespace shill

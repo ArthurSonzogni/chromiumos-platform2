@@ -565,7 +565,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
-  FRIEND_TEST(ManagerTest, DetectMultiHomedDevices);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
@@ -655,10 +654,6 @@ class Manager {
   void UseDNSProxy(const std::vector<std::string>& proxy_addrs);
 
   KeyValueStore GetDNSProxyDOHProviders(Error* error);
-
-  // For every device instance that is sharing the same connectivity with
-  // another device, enable the multi-home flag.
-  void DetectMultiHomedDevices();
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
