@@ -1655,6 +1655,7 @@ bool Service::Init(
       {kDetachUsbFromContainerMethod, &Service::DetachUsbFromContainer},
       {kListRunningContainersMethod, &Service::ListRunningContainers},
       {kGetGarconSessionInfoMethod, &Service::GetGarconSessionInfo},
+      {kUpdateContainerDevicesMethod, &Service::UpdateContainerDevices},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -2653,7 +2654,7 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
   }
   VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
       container_name, container_private_key, host_public_key, container_token,
-      *privilege_level, &error_msg);
+      *privilege_level, request.disable_audio_capture(), &error_msg);
 
   switch (status) {
     case VirtualMachine::StartLxdContainerStatus::UNKNOWN:
@@ -3986,6 +3987,58 @@ std::unique_ptr<dbus::Response> Service::GetGarconSessionInfo(
   } else {
     response.set_status(GetGarconSessionInfoResponse::FAILED);
   }
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::UpdateContainerDevices(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received UpdateContainerDevices request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  UpdateContainerDevicesRequest request;
+  UpdateContainerDevicesResponse response;
+  response.set_status(UpdateContainerDevicesResponse::UNKNOWN);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse UpdateContainerDevices from message";
+    response.set_failure_reason("unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("requested VM does not exist");
+    response.set_status(UpdateContainerDevicesResponse::NO_SUCH_CONTAINER);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: "
+               << request.container_name();
+    response.set_failure_reason("requested container does not exist");
+    response.set_status(UpdateContainerDevicesResponse::NO_SUCH_CONTAINER);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  VirtualMachine::UpdateContainerDevicesStatus status =
+      vm->UpdateContainerDevices(container, request.updates(),
+                                 response.mutable_results(),
+                                 response.mutable_failure_reason());
+  if (UpdateContainerDevicesResponse::Status_IsValid(
+          static_cast<int>(status))) {
+    response.set_status(
+        static_cast<UpdateContainerDevicesResponse::Status>(status));
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

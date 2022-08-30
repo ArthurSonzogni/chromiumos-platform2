@@ -75,6 +75,7 @@ enum ChromeOSError {
     FailedStartLxdProgressSignal(StartLxdProgressSignal_Status, String),
     FailedStartLxdStatus(StartLxdResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
+    FailedUpdateContainerDevices(String),
     InvalidExportPath,
     InvalidImportPath,
     InvalidSourcePath,
@@ -176,6 +177,9 @@ impl fmt::Display for ChromeOSError {
             ),
             FailedStopVm { vm_name, reason } => {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
+            }
+            FailedUpdateContainerDevices(reason) => {
+                write!(f, "Failed to update container devices: {}", reason)
             }
             InvalidExportPath => write!(f, "disk export path is invalid"),
             InvalidImportPath => write!(f, "disk import path is invalid"),
@@ -1780,6 +1784,39 @@ impl Methods {
         }
     }
 
+    fn update_container_devices(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        container_name: &str,
+        updates: &HashMap<String, VmDeviceAction>,
+    ) -> Result<String, Box<dyn Error>> {
+        let mut request = UpdateContainerDevicesRequest::new();
+        request.vm_name = vm_name.to_owned();
+        request.owner_id = user_id_hash.to_owned();
+        request.container_name = container_name.to_owned();
+        request.updates = updates.to_owned();
+
+        let response: UpdateContainerDevicesResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_CICERONE_SERVICE_NAME,
+                VM_CICERONE_SERVICE_PATH,
+                VM_CICERONE_INTERFACE,
+                UPDATE_CONTAINER_DEVICES_METHOD,
+            )?,
+            &request,
+        )?;
+        use self::UpdateContainerDevicesResponse_Status::*;
+        match response.status {
+            OK => Ok(format!("Results: {:?}", response.results)),
+            _ => Err(FailedUpdateContainerDevices(format!(
+                "{} . Results: {:?}",
+                response.failure_reason, response.results
+            ))
+            .into()),
+        }
+    }
+
     fn attach_usb(
         &mut self,
         vm_name: &str,
@@ -2383,6 +2420,21 @@ impl Methods {
         }
 
         self.setup_container_user(vm_name, user_id_hash, container_name, username)
+    }
+
+    pub fn container_update_devices(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        container_name: &str,
+        updates: &HashMap<String, VmDeviceAction>,
+    ) -> Result<String, Box<dyn Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        if self.is_plugin_vm(vm_name, user_id_hash)? {
+            return Err(NotAvailableForPluginVm.into());
+        }
+
+        self.update_container_devices(vm_name, user_id_hash, container_name, updates)
     }
 
     pub fn usb_attach(

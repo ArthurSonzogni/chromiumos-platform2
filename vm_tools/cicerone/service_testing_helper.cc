@@ -544,6 +544,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kListRunningContainersMethod;
   dbus_callbacks_[kGetGarconSessionInfo].method_name =
       kGetGarconSessionInfoMethod;
+  dbus_callbacks_[kUpdateContainerDevices].method_name =
+      kUpdateContainerDevicesMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {

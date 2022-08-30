@@ -760,6 +760,10 @@ class Service final {
   std::unique_ptr<dbus::Response> GetGarconSessionInfo(
       dbus::MethodCall* method_call);
 
+  // Handles a request to update the devices available to a container.
+  std::unique_ptr<dbus::Response> UpdateContainerDevices(
+      dbus::MethodCall* method_call);
+
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,

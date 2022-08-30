@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -15,6 +16,8 @@ use super::Frontend;
 use crate::disk::DiskOpType;
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
 use crate::proto::system_api::cicerone_service::StartLxdContainerRequest_PrivilegeLevel;
+use crate::proto::system_api::cicerone_service::VmDeviceAction;
+
 use crate::EnvMap;
 
 enum VmcError {
@@ -37,10 +40,13 @@ enum VmcError {
     ExpectedVmAndPath,
     ExpectedVmAndSize,
     ExpectedVmBusDevice,
+    ExpectedVmDeviceUpdates,
     ExpectedVmPort,
     UnexpectedSizeWithPluginVm,
     InvalidEmail,
     InvalidPath(std::ffi::OsString),
+    InvalidVmDevice(String),
+    InvalidVmDeviceAction(String),
     MissingActiveSession,
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
@@ -138,12 +144,15 @@ impl fmt::Display for VmcError {
             ExpectedU8Device => write!(f, "expected <device> to fit into an 8-bit integer"),
             ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
             ExpectedUUID => write!(f, "expected <command UUID>"),
+            ExpectedVmDeviceUpdates => write!(f, "expected args `<device>:<enable|disable>`"),
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
             UnexpectedSizeWithPluginVm => {
                 write!(f, "unexpected --size parameter; -p doesn't support --size")
             }
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
+            InvalidVmDevice(v) => write!(f, "invalid vm device {}", v),
+            InvalidVmDeviceAction(a) => write!(f, "invalid vm device action {}", a),
             MissingActiveSession => write!(
                 f,
                 "missing active session corresponding to $CROS_USER_ID_HASH"
@@ -856,6 +865,42 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn update_container_devices(&mut self) -> VmcResult {
+        let (vm_name, container_name) = match self.args.len() {
+            0 | 1 => return Err(ExpectedVmAndPath.into()),
+            2 => return Err(ExpectedVmDeviceUpdates.into()),
+            _ => (self.args[0], self.args[1]),
+        };
+
+        let user_id_hash = get_user_hash(self.environ)?;
+        let mut updates = HashMap::<String, VmDeviceAction>::new();
+
+        for u in &self.args[2..] {
+            let update_parts: Vec<&str> = u.splitn(2, ':').collect();
+            match update_parts.len() {
+                2 => {
+                    println!("{:?}", update_parts);
+                    match (update_parts[0], update_parts[1]) {
+                        ("", &_) => return Err(InvalidVmDevice("<empty>".to_string()).into()),
+                        (d, "enable") => updates.insert(d.to_string(), VmDeviceAction::ENABLE),
+                        (d, "disable") => updates.insert(d.to_string(), VmDeviceAction::DISABLE),
+                        (_, a) => return Err(InvalidVmDeviceAction(a.to_string()).into()),
+                    }
+                }
+                _ => return Err(InvalidVmDeviceAction(u.to_string()).into()),
+            };
+        }
+
+        let res = try_command!(self.methods.container_update_devices(
+            vm_name,
+            &user_id_hash,
+            container_name,
+            &updates
+        ));
+        println!("{}", res);
+        Ok(())
+    }
+
     fn usb_attach(&mut self) -> VmcResult {
         let (vm_name, bus_device, container_name) = match self.args.len() {
             3 => (self.args[0], self.args[1], Some(self.args[2])),
@@ -975,7 +1020,7 @@ const USAGE: &str = r#"
    [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
-     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters]
+     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters] |
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
      adjust <name> <operation> [additional parameters] |
      destroy [-y] <name> |
@@ -987,7 +1032,8 @@ const USAGE: &str = r#"
      logs <vm name> |
      share <vm name> <path> |
      unshare <vm name> <path> |
-     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM]
+     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM] |
+     update-container-devices <vm_name> <container_name> (<vm device>:<enable/disable>)... |
      usb-attach <vm name> <bus>:<device> [<container name>] |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
@@ -1049,6 +1095,7 @@ impl Frontend for Vmc {
             "share" => command.share(),
             "unshare" => command.unshare(),
             "container" => command.container(),
+            "update-container-devices" => command.update_container_devices(),
             "usb-attach" => command.usb_attach(),
             "usb-detach" => command.usb_detach(),
             "usb-list" => command.usb_list(),
@@ -1264,6 +1311,21 @@ mod tests {
                 "--removable-media",
                 "'USB Drive/foo.img'",
             ],
+            &[
+                "vmc",
+                "update-container-devices",
+                "termina",
+                "penguin",
+                "microphone:disable",
+            ],
+            &[
+                "vmc",
+                "update-container-devices",
+                "termina",
+                "penguin",
+                "microphone:enable",
+                "camera:disable",
+            ],
             &["vmc", "adjust", "termina", "op"],
             &["vmc", "adjust", "termina", "op", "param"],
             &["vmc", "destroy", "termina"],
@@ -1372,6 +1434,28 @@ mod tests {
             &["vmc", "create-extra-disk", "--size", "1G"],
             &["vmc", "create-extra-disk", "--size", "foo.img"],
             &["vmc", "create-extra-disk", "--size=1G", "--removable-media"],
+            &[
+                "vmc",
+                "update-container-devices",
+                "termina",
+                "penguin",
+                "microphone:eat",
+                "camera:enable",
+            ],
+            &[
+                "vmc",
+                "update-container-devices",
+                "termina",
+                "penguin",
+                ":enable",
+            ],
+            &[
+                "vmc",
+                "update-container-devices",
+                "termina",
+                "penguin",
+                "enable:",
+            ],
             &["vmc", "adjust"],
             &["vmc", "adjust", "termina"],
             &["vmc", "destroy"],

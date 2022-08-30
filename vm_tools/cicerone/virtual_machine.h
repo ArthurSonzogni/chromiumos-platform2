@@ -147,6 +147,13 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class UpdateContainerDevicesStatus {
+    UNKNOWN,
+    OK,
+    NO_SUCH_CONTAINER,
+    FAILED,
+  };
+
   // Info about the LXD container.
   struct LxdContainerInfo {
     // The IPv4 address of the container in network byte order.
@@ -291,6 +298,7 @@ class VirtualMachine {
       const std::string& host_public_key,
       const std::string& token,
       tremplin::StartContainerRequest::PrivilegeLevel privilege_level,
+      bool disable_audio_capture,
       std::string* out_error);
 
   // Stop an LXD container.
@@ -352,6 +360,14 @@ class VirtualMachine {
   // Detaches a USB device on a given port from a container.
   DetachUsbFromContainerStatus DetachUsbFromContainer(uint32_t port_num,
                                                       std::string* out_error);
+
+  UpdateContainerDevicesStatus UpdateContainerDevices(
+      Container* container,
+      const google::protobuf::Map<std::string, VmDeviceAction>& updates,
+      google::protobuf::Map<std::string,
+                            UpdateContainerDevicesResponse::UpdateResult>*
+          results,
+      std::string* out_error);
 
   // Tells Tremplin to start LXD.
   StartLxdStatus StartLxd(bool reset_lxd_db, std::string* out_error);

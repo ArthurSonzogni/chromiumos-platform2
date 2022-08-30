@@ -50,6 +50,7 @@ const char kAttachUsbToContainerMethod[] = "AttachUsbToContainer";
 const char kDetachUsbFromContainerMethod[] = "DetachUsbFromContainer";
 const char kListRunningContainersMethod[] = "ListRunningContainers";
 const char kGetGarconSessionInfoMethod[] = "GetGarconSessionInfo";
+const char kUpdateContainerDevicesMethod[] = "UpdateContainerDevices";
 
 // Methods to be called from chunneld.
 const char kConnectChunnelMethod[] = "ConnectChunnel";

@@ -83,6 +83,7 @@ class ServiceTestingHelper {
     kDetachUsbFromContainer,
     kListRunningContainers,
     kGetGarconSessionInfo,
+    kUpdateContainerDevices,
 
     kNumDbusCalls
   };

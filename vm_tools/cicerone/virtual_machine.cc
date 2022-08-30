@@ -367,6 +367,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     const std::string& host_public_key,
     const std::string& token,
     tremplin::StartContainerRequest::PrivilegeLevel privilege_level,
+    bool disable_audio_capture,
     std::string* out_error) {
   DCHECK(out_error);
   if (!tremplin_stub_) {
@@ -382,6 +383,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   request.set_host_public_key(host_public_key);
   request.set_token(token);
   request.set_privilege_level(privilege_level);
+  request.set_disable_audio_capture(disable_audio_capture);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(ToGprDeadline(kLongOperationTimeoutSeconds));
@@ -890,9 +892,7 @@ VirtualMachine::AttachUsbToContainerStatus VirtualMachine::AttachUsbToContainer(
   request.set_port_num(port_num);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->AttachUsbToContainer(&ctx, request, &response);
@@ -936,9 +936,7 @@ VirtualMachine::DetachUsbFromContainer(uint32_t port_num,
   request.set_port_num(port_num);
 
   grpc::ClientContext ctx;
-  ctx.set_deadline(gpr_time_add(
-      gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
 
   grpc::Status status =
       tremplin_stub_->DetachUsbFromContainer(&ctx, request, &response);
@@ -958,6 +956,75 @@ VirtualMachine::DetachUsbFromContainer(uint32_t port_num,
       return VirtualMachine::DetachUsbFromContainerStatus::FAILED;
     default:
       return VirtualMachine::DetachUsbFromContainerStatus::UNKNOWN;
+  }
+}
+
+namespace {
+template <typename key_t, typename src_value_t, typename dst_value_t>
+void ConvertProtoMap(const google::protobuf::Map<key_t, src_value_t>& src,
+                     google::protobuf::Map<key_t, dst_value_t>* dst,
+                     bool (*is_valid)(int)) {
+  for (const auto& iter : src) {
+    if (is_valid(static_cast<int>(iter.second))) {
+      (*dst)[iter.first] =
+          static_cast<dst_value_t>(static_cast<int>(iter.second));
+    }
+  }
+}
+
+}  // namespace
+
+VirtualMachine::UpdateContainerDevicesStatus
+VirtualMachine::UpdateContainerDevices(
+    Container* container,
+    const google::protobuf::Map<std::string, VmDeviceAction>& updates,
+    google::protobuf::Map<std::string,
+                          UpdateContainerDevicesResponse::UpdateResult>*
+        results,
+    std::string* out_error) {
+  DCHECK(container);
+  DCHECK(out_error);
+
+  if (IsContainerless()) {
+    *out_error = "VM does not host containers";
+    return VirtualMachine::UpdateContainerDevicesStatus::NO_SUCH_CONTAINER;
+  } else if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::UpdateContainerDevicesStatus::FAILED;
+  }
+
+  vm_tools::tremplin::UpdateContainerDevicesRequest request;
+  vm_tools::tremplin::UpdateContainerDevicesResponse response;
+
+  request.set_container_name(container->name());
+  ConvertProtoMap(updates, request.mutable_updates(),
+                  &vm_tools::tremplin::VmDeviceAction_IsValid);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));
+
+  grpc::Status status =
+      tremplin_stub_->UpdateContainerDevices(&ctx, request, &response);
+
+  if (!status.ok()) {
+    LOG(ERROR) << "UpdateContainerDevices RPC failed: "
+               << status.error_message() << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::UpdateContainerDevicesStatus::FAILED;
+  }
+  out_error->assign(response.failure_reason());
+  ConvertProtoMap(response.results(), results,
+                  &UpdateContainerDevicesResponse::UpdateResult_IsValid);
+
+  switch (response.status()) {
+    case tremplin::UpdateContainerDevicesResponse::UNKNOWN:
+      return VirtualMachine::UpdateContainerDevicesStatus::UNKNOWN;
+    case tremplin::UpdateContainerDevicesResponse::OK:
+      return VirtualMachine::UpdateContainerDevicesStatus::OK;
+    case tremplin::UpdateContainerDevicesResponse::NO_SUCH_CONTAINER:
+      return VirtualMachine::UpdateContainerDevicesStatus::NO_SUCH_CONTAINER;
+    default:
+      return VirtualMachine::UpdateContainerDevicesStatus::UNKNOWN;
   }
 }
 

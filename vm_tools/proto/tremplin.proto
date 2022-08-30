@@ -957,19 +957,20 @@ enum VmDevice {
   CAMERA = 1;
 }
 
+enum VmDeviceAction {
+  // VmDevice should be enabled.
+  ENABLE = 0;
+  // VmDevice should be disabled.
+  DISABLE = 1;
+}
+
 message UpdateContainerDevicesRequest {
-  enum Action {
-    // VmDevice should be enabled.
-    ENABLE = 0;
-    // VmDevice should be disabled.
-    DISABLE = 1;
-  }
   // Name of the container of the VmDevices.
   string container_name = 1;
 
   // Actions to take per VmDevice.
   // The keys are really VmDevice, but proto doesn't allow enum keys.
-  map<int32, Action> updates = 2;
+  map<string, VmDeviceAction> updates = 2;
 }
 
 message UpdateContainerDevicesResponse {
@@ -982,6 +983,9 @@ message UpdateContainerDevicesResponse {
 
     // The requested container wasn't found.
     NO_SUCH_CONTAINER = 2;
+
+    // The actions could not be applied.
+    FAILED = 3;
   }
 
   enum UpdateResult {
@@ -992,7 +996,7 @@ message UpdateContainerDevicesResponse {
     NO_SUCH_VM_DEVICE = 1;
 
     // The action could not be applied to the VmDevice.
-    FAILED = 2;
+    UPDATE_FAILED = 2;
   }
 
   // Status of the entire operation. Individual results should be checked even
@@ -1004,7 +1008,7 @@ message UpdateContainerDevicesResponse {
 
   // Results of actions per VmDevice.
   // The keys are really VmDevice, but proto doesn't allow enum keys.
-  map<int32, UpdateResult> results = 3;
+  map<string, UpdateResult> results = 3;
 }
 
 // Tremplin service methods.
