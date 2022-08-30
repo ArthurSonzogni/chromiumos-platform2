@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/strings/string_util.h>
 
 #include "rmad/constants.h"
@@ -122,16 +123,11 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Inject rma-mode powerwash if it is not disabled.
-  if (!IsPowerwashDisabled(working_dir_path_) &&
-      !RequestPowerwash(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request powerwash";
-    return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
-  }
-
   // Schedule a reboot after |kRebootDelay| seconds and return.
-  timer_.Start(FROM_HERE, kRebootDelay, this,
-               &WriteProtectDisableRsuStateHandler::Reboot);
+  timer_.Start(FROM_HERE, kRebootDelay,
+               base::BindOnce(&WriteProtectDisableRsuStateHandler::Reboot,
+                              base::Unretained(this),
+                              !IsPowerwashDisabled(working_dir_path_)));
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                               RMAD_ADDITIONAL_ACTIVITY_REBOOT);
@@ -150,7 +146,11 @@ bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   return factory_mode_enabled && (hwwp_status == 0);
 }
 
-void WriteProtectDisableRsuStateHandler::Reboot() {
+void WriteProtectDisableRsuStateHandler::Reboot(bool powerwash_required) {
+  // Inject rma-mode powerwash if required.
+  if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
+    LOG(ERROR) << "Failed to request powerwash";
+  }
   LOG(INFO) << "Rebooting after RSU";
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";

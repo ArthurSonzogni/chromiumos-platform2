@@ -203,17 +203,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
   // Third call to |mock_crossystem_utils_| during polling, get 0.
-  // Try to enable factory mode, request a powerwash and send the signal.
+  // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(signal_sent);
   EXPECT_FALSE(reboot_toggled);
-  // Reboot after a delay.
+  // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(reboot_toggled);
 }
 
@@ -243,17 +243,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
   // Call to |mock_crossystem_utils_| during polling, get 0.
-  // Try to enable factory mode, request a powerwash and send the signal.
+  // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
-  EXPECT_FALSE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(signal_sent);
   EXPECT_FALSE(reboot_toggled);
-  // Reboot after a delay.
+  // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(reboot_toggled);
 }
 
@@ -283,17 +283,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
   // Call to |mock_crossystem_utils_| during polling, get 0.
-  // Try to enable factory mode, request a powerwash and send the signal.
+  // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(signal_sent);
   EXPECT_FALSE(reboot_toggled);
-  // Reboot after a delay.
+  // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(reboot_toggled);
 }
 
@@ -331,17 +331,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
   // Third call to |mock_crossystem_utils_| during polling, get 0.
-  // Try to enable factory mode, request a powerwash and send the signal.
+  // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(signal_sent);
   EXPECT_FALSE(reboot_toggled);
-  // Reboot after a delay.
+  // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
   EXPECT_TRUE(reboot_toggled);
 }
 

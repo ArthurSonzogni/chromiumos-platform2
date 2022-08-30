@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/logging.h>
 
 #include "rmad/constants.h"
@@ -136,27 +137,33 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
   // Sync state file.
   // TODO(chenghan): Do we still need this after we can trigger the reboot?
   json_store_->Sync();
+
+  bool powerwash_required = false;
   if (!CanSkipEnablingFactoryMode()) {
     // Enable cr50 factory mode. This no longer reboots the device, so we need
     // to trigger a reboot ourselves.
     if (!cr50_utils_->EnableFactoryMode()) {
       LOG(ERROR) << "Failed to enable factory mode.";
     }
-    // Inject rma-mode powerwash if it is not disabled.
-    if (!IsPowerwashDisabled(working_dir_path_) &&
-        !RequestPowerwash(working_dir_path_)) {
-      LOG(ERROR) << "Failed to request powerwash";
+    if (!IsPowerwashDisabled(working_dir_path_)) {
+      powerwash_required = true;
     }
   }
   // Chrome picks up the signal and shows the "Preparing to reboot" message.
   daemon_callback_->GetWriteProtectSignalCallback().Run(false);
   // Reboot even when we don't enable factory mode to keep the user flow
   // consistent.
-  reboot_timer_.Start(FROM_HERE, kRebootDelay, this,
-                      &WriteProtectDisablePhysicalStateHandler::Reboot);
+  reboot_timer_.Start(
+      FROM_HERE, kRebootDelay,
+      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::Reboot,
+                     base::Unretained(this), powerwash_required));
 }
 
-void WriteProtectDisablePhysicalStateHandler::Reboot() {
+void WriteProtectDisablePhysicalStateHandler::Reboot(bool powerwash_required) {
+  // Inject rma-mode powerwash if required.
+  if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
+    LOG(ERROR) << "Failed to request powerwash";
+  }
   LOG(INFO) << "Rebooting after physically removing WP";
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";
