@@ -66,9 +66,12 @@ void WriteProtectDisablePhysicalStateHandler::RunState() {
   if (signal_timer_.IsRunning()) {
     signal_timer_.Stop();
   }
-  signal_timer_.Start(
-      FROM_HERE, kPollInterval, this,
-      &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
+  // Only poll WP status if we're not ready for the transition.
+  if (!IsReadyForTransition()) {
+    signal_timer_.Start(
+        FROM_HERE, kPollInterval, this,
+        &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
+  }
 }
 
 void WriteProtectDisablePhysicalStateHandler::CleanUpState() {
@@ -85,26 +88,28 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |physical write protection| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
+  if (!IsReadyForTransition()) {
+    // Wait for the polling loop to perform tasks.
+    return NextStateCaseWrapper(RMAD_ERROR_WAIT);
+  }
 
+  if (cr50_utils_->IsFactoryModeEnabled()) {
+    MetricsUtils::SetMetricsValue(
+        json_store_, kWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
+  } else {
+    MetricsUtils::SetMetricsValue(
+        json_store_, kWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
+  }
+  return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
+}
+
+bool WriteProtectDisablePhysicalStateHandler::IsReadyForTransition() const {
   // To transition to next state, HWWP should be disabled, and we can skip
   // enabling factory mode (either factory mode is already enabled, or we want
   // to keep the device open).
-  if (CanSkipEnablingFactoryMode() && IsHwwpDisabled()) {
-    if (cr50_utils_->IsFactoryModeEnabled()) {
-      MetricsUtils::SetMetricsValue(
-          json_store_, kWpDisableMethod,
-          WpDisableMethod_Name(
-              RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
-    } else {
-      MetricsUtils::SetMetricsValue(
-          json_store_, kWpDisableMethod,
-          WpDisableMethod_Name(
-              RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
-    }
-    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
-  }
-  // Wait for HWWP being disabled, or the follow-up preparations are done.
-  return NextStateCaseWrapper(RMAD_ERROR_WAIT);
+  return CanSkipEnablingFactoryMode() && IsHwwpDisabled();
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
@@ -123,35 +128,39 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 
   if (IsHwwpDisabled()) {
     signal_timer_.Stop();
-    if (CanSkipEnablingFactoryMode()) {
-      daemon_callback_->GetWriteProtectSignalCallback().Run(false);
-    } else {
-      EnableFactoryMode();
-    }
+    OnWriteProtectDisabled();
   }
 }
 
-void WriteProtectDisablePhysicalStateHandler::EnableFactoryMode() {
+void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
   // Sync state file.
   // TODO(chenghan): Do we still need this after we can trigger the reboot?
   json_store_->Sync();
-  // Enable cr50 factory mode. This no longer reboots the device, so we need to
-  // trigger a reboot ourselves.
-  if (!cr50_utils_->EnableFactoryMode()) {
-    LOG(ERROR) << "Failed to enable factory mode.";
+  if (!CanSkipEnablingFactoryMode()) {
+    // Enable cr50 factory mode. This no longer reboots the device, so we need
+    // to trigger a reboot ourselves.
+    if (!cr50_utils_->EnableFactoryMode()) {
+      LOG(ERROR) << "Failed to enable factory mode.";
+    }
+    // Inject rma-mode powerwash if it is not disabled.
+    if (!IsPowerwashDisabled(working_dir_path_) &&
+        !RequestPowerwash(working_dir_path_)) {
+      LOG(ERROR) << "Failed to request powerwash";
+    }
   }
-  // Inject rma-mode powerwash if it is not disabled.
-  if (!IsPowerwashDisabled(working_dir_path_) &&
-      !RequestPowerwash(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request powerwash";
-  }
-  // Reboot.
+  // Chrome picks up the signal and shows the "Preparing to reboot" message.
+  daemon_callback_->GetWriteProtectSignalCallback().Run(false);
+  // Reboot even when we don't enable factory mode to keep the user flow
+  // consistent.
   reboot_timer_.Start(FROM_HERE, kRebootDelay, this,
                       &WriteProtectDisablePhysicalStateHandler::Reboot);
 }
 
 void WriteProtectDisablePhysicalStateHandler::Reboot() {
-  power_manager_client_->Restart();
+  LOG(INFO) << "Rebooting after physically removing WP";
+  if (!power_manager_client_->Restart()) {
+    LOG(ERROR) << "Failed to reboot";
+  }
 }
 
 }  // namespace rmad

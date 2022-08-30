@@ -65,10 +65,11 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   ~WriteProtectDisablePhysicalStateHandler() override = default;
 
  private:
+  bool IsReadyForTransition() const;
   bool IsHwwpDisabled() const;
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
-  void EnableFactoryMode();
+  void OnWriteProtectDisabled();
   void Reboot();
 
   base::FilePath working_dir_path_;
