@@ -1129,6 +1129,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManInvalidMetadataInGetDelayInSeconds = 652,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault = 653,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

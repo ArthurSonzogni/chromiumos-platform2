@@ -358,39 +358,15 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
-  // But ephemeral succeeds ...
+  // And so does ephemeral
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  scoped_refptr<MockUserSession> user_session2 =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(kUsername2, _, _))
-      .WillOnce(Return(user_session2));
-  EXPECT_CALL(*user_session2, IsActive())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*user_session2, SetCredentials(An<const Credentials&>()))
-      .Times(1);
-  EXPECT_CALL(*user_session2, GetPkcs11Token()).WillRepeatedly(nullptr);
-  EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
-      .WillOnce(ReturnError<CryptohomeMountError>());
+  status = PrepareEphemeralVaultImpl(auth_session2->serialized_token());
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
-  ASSERT_TRUE(
-      PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
-  // Set up expectation in callback for success.
-  user_data_auth::AddCredentialsRequest request2;
-  user_data_auth::AddCredentialsReply reply2;
-
-  request2.set_auth_session_id(auth_session2->serialized_token());
-  AuthorizationRequest auth_req2 = CreateAuthorization(kPassword2);
-  request2.mutable_authorization()->Swap(&auth_req2);
-
-  EXPECT_CALL(on_done, Run(_)).WillOnce(SaveArg<0>(&reply2));
-  AddCredentials(request2, on_done.Get());
-
-  ASSERT_THAT(reply2.error(), Eq(MOUNT_ERROR_NONE));
-
-  // ... and so regular.
+  // But a different regular mount succeeds.
   scoped_refptr<MockUserSession> user_session3 =
       base::MakeRefCounted<MockUserSession>();
   EXPECT_CALL(user_session_factory_, New(_, _, _))
@@ -648,21 +624,14 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   ASSERT_TRUE(
       PreparePersistentVaultImpl(auth_session->serialized_token(), {}).ok());
 
-  // Setup ephemeral user. This is supported and should succeed.
-  scoped_refptr<MockUserSession> user_session2 =
-      base::MakeRefCounted<MockUserSession>();
-  EXPECT_CALL(user_session_factory_, New(_, _, _))
-      .WillOnce(Return(user_session2));
-  EXPECT_CALL(*user_session2, IsActive())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
-      .WillOnce(ReturnError<CryptohomeMountError>());
+  // Setup ephemeral user. This should fail.
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-
-  ASSERT_TRUE(
-      PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
+  CryptohomeStatus status =
+      PrepareEphemeralVaultImpl(auth_session2->serialized_token());
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 }
 
 // Test to check if PreparePersistentVaultImpl will succeed, call required

@@ -4433,7 +4433,9 @@ void UserDataAuth::CreatePersistentUser(
 CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
   AssertOnMountThread();
 
-  if (sessions_.size() != 0) {
+  // If there are no active sessions, attempt to account for cryptohome restarts
+  // after crashing.
+  if (sessions_.size() != 0 || CleanUpStaleMounts(false)) {
     LOG(ERROR) << "Can not mount guest while other sessions are active.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
@@ -4464,6 +4466,18 @@ CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
 CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     const std::string& auth_session_id) {
   AssertOnMountThread();
+
+  // If there are no active sessions, attempt to account for cryptohome restarts
+  // after crashing.
+  if (sessions_.size() != 0 || CleanUpStaleMounts(false)) {
+    LOG(ERROR) << "Can not mount ephemeral while other sessions are active.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault),
+        ErrorActionSet({ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  }
 
   CryptohomeStatusOr<AuthSession*> auth_session_status =
       GetAuthenticatedAuthSession(auth_session_id);
@@ -4503,6 +4517,12 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     const std::string& auth_session_id,
     const CryptohomeVault::Options& vault_options) {
   AssertOnMountThread();
+
+  // If there are no active sessions, attempt to account for cryptohome restarts
+  // after crashing.
+  if (sessions_.empty()) {
+    CleanUpStaleMounts(false);
+  }
 
   CryptohomeStatusOr<AuthSession*> auth_session_status =
       GetAuthenticatedAuthSession(auth_session_id);
