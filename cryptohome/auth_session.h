@@ -122,10 +122,8 @@ class AuthSession final {
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
-  void AddCredentials(
-      const user_data_auth::AddCredentialsRequest& request,
-      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-          on_done);
+  void AddCredentials(const user_data_auth::AddCredentialsRequest& request,
+                      StatusCallback on_done);
 
   // UpdateCredential is called when an existing user wants to update
   // an existing credential.
@@ -134,10 +132,8 @@ class AuthSession final {
 
   // AddAuthFactor is called when newly created or existing user wants to add
   // new AuthFactor.
-  void AddAuthFactor(
-      const user_data_auth::AddAuthFactorRequest& request,
-      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-          on_done);
+  void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
+                     StatusCallback on_done);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
@@ -308,7 +304,6 @@ class AuthSession final {
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
-  template <typename AddKeyReply>
   void CreateKeyBlobsToAddKeyset(
       const cryptohome::AuthorizationRequest& authorization,
       AuthInput auth_input,
@@ -316,7 +311,7 @@ class AuthSession final {
       bool initial_keyset,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
-      base::OnceCallback<void(const AddKeyReply&)> on_done);
+      StatusCallback on_done);
 
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
@@ -329,12 +324,11 @@ class AuthSession final {
   // based on whether any keyset is generated for the user or not. This function
   // is needed for processing callback results in an asynchronous manner through
   // |on_done| callback.
-  template <typename AddKeyReply>
   void AddVaultKeyset(const KeyData& key_data,
                       AuthInput auth_input,
                       std::unique_ptr<AuthSessionPerformanceTimer>
                           auth_session_performance_timer,
-                      base::OnceCallback<void(const AddKeyReply&)> on_done,
+                      StatusCallback on_done,
                       CryptoStatus callback_error,
                       std::unique_ptr<KeyBlobs> key_blobs,
                       std::unique_ptr<AuthBlockState> auth_state);
@@ -364,8 +358,7 @@ class AuthSession final {
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
-      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-          on_done,
+      StatusCallback on_done,
       CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
@@ -385,19 +378,16 @@ class AuthSession final {
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
-      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-          on_done);
+      StatusCallback on_done);
 
   // Adds a new VaultKeyset for the |obfuscated_username_| and persists it to
   // disk.
-  void AddAuthFactorViaVaultKeyset(
-      AuthFactorType auth_factor_type,
-      const std::string& auth_factor_label,
-      AuthInput auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-          on_done);
+  void AddAuthFactorViaVaultKeyset(AuthFactorType auth_factor_type,
+                                   const std::string& auth_factor_label,
+                                   AuthInput auth_input,
+                                   std::unique_ptr<AuthSessionPerformanceTimer>
+                                       auth_session_performance_timer,
+                                   StatusCallback on_done);
 
   // Loads and decrypts the USS payload with |auth_factor_label| using the
   // given KeyBlobs. Designed to be used in conjunction with an async

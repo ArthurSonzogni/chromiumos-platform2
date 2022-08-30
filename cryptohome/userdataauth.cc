@@ -4049,15 +4049,17 @@ void UserDataAuth::AddCredentials(
     reply.set_error(HandleAddCredentialForEphemeralVault(
         request.authorization(), auth_session));
     std::move(on_done).Run(reply);
-  } else {
-    // Add credentials using data in AuthorizationRequest and
-    // auth_session_token.
-    auto on_add_credential = base::BindOnce(
-        &UserDataAuth::OnAddCredentialFinished<
-            user_data_auth::AddCredentialsReply>,
-        base::Unretained(this), auth_session, std::move(on_done));
-    auth_session->AddCredentials(request, std::move(on_add_credential));
+    return;
   }
+
+  // Add credentials using data in AuthorizationRequest and
+  // auth_session_token.
+  StatusCallback on_add_credential_finished = base::BindOnce(
+      &UserDataAuth::OnAddCredentialFinished, base::Unretained(this),
+      auth_session,
+      base::BindOnce(&ReplyWithStatus<user_data_auth::AddCredentialsReply>,
+                     std::move(on_done)));
+  auth_session->AddCredentials(request, std::move(on_add_credential_finished));
 }
 
 void UserDataAuth::SetCredentialVerifierForUserSession(
@@ -4099,16 +4101,14 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
   }
 }
 
-template <typename AddKeyReply>
-void UserDataAuth::OnAddCredentialFinished(
-    AuthSession* auth_session,
-    base::OnceCallback<void(const AddKeyReply&)> on_done,
-    const AddKeyReply& reply) {
-  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+void UserDataAuth::OnAddCredentialFinished(AuthSession* auth_session,
+                                           StatusCallback on_done,
+                                           CryptohomeStatus status) {
+  if (status.ok()) {
     SetCredentialVerifierForUserSession(
         auth_session, /*override_existing_credential_verifier=*/false);
   }
-  std::move(on_done).Run(reply);
+  std::move(on_done).Run(std::move(status));
 }
 
 void UserDataAuth::OnUpdateCredentialFinished(AuthSession* auth_session,
@@ -4710,7 +4710,10 @@ void UserDataAuth::AddAuthFactor(
     return;
   }
 
-  auth_session_status.value()->AddAuthFactor(request, std::move(on_done));
+  StatusCallback on_add_auth_factor_finished = base::BindOnce(
+      &ReplyWithStatus<user_data_auth::AddAuthFactorReply>, std::move(on_done));
+  auth_session_status.value()->AddAuthFactor(
+      request, std::move(on_add_auth_factor_finished));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
