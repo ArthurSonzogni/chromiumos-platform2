@@ -471,6 +471,11 @@ void DlpAdaptor::ProcessFileOpenRequest(
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
   request.set_source_url(file_entry.source_url());
+  request.mutable_file_metadata()->set_inode(inode);
+  request.mutable_file_metadata()->set_source_url(file_entry.source_url());
+  // TODO(crbug.com/1357967)
+  // request.mutable_file_metadata()->set_path();
+
   std::pair<base::OnceCallback<void(bool)>, base::OnceCallback<void(bool)>>
       callbacks = base::SplitOnceCallback(std::move(callback));
   dlp_files_policy_service_->IsDlpPolicyMatchedAsync(
