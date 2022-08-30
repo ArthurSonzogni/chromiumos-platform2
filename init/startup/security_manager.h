@@ -10,6 +10,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
+#include "init/startup/platform_impl.h"
+
 namespace startup {
 
 bool AccumulatePolicyFiles(const base::FilePath& root,
@@ -17,6 +19,9 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
                            const base::FilePath& policy_dir,
                            bool gid_policies);
 bool ConfigureProcessMgmtSecurity(const base::FilePath& root);
+
+// Sets up the LoadPin verity root digests to be trusted by the kernel.
+bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform);
 
 }  // namespace startup
 

@@ -4,6 +4,9 @@
 
 #include "init/startup/security_manager.h"
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -15,10 +18,18 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <linux/loadpin.h>
 
 namespace {
 
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
+
+constexpr char kDevNull[] = "dev/null";
+constexpr char kLoadPinVerity[] = "loadpin/dm-verity";
+// During CrOS build phases, this file will be produced and baked into the
+// rootfs. Specifically during the DLC build flows.
+constexpr char kTrustedDlcVerityDigests[] =
+    "opt/google/dlc/_trusted_verity_digests";
 
 // Path to the security fs file for configuring process management security
 // policies in the chromiumos LSM (used for kernel version <= 4.4).
@@ -27,11 +38,11 @@ constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 // get the SafeSetID LSM functionality.
 constexpr char kProcessMgmtPolicies[] =
     "chromiumos/process_management_policies/add_whitelist_policy";
-constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 constexpr char kProcessMgmtPoliciesDir[] =
     "usr/share/cros/startup/process_management_policies";
 constexpr char kProcessMgmtPoliciesDirGID[] =
     "usr/share/cros/startup/gid_process_management_policies";
+constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 
 }  // namespace
 
@@ -140,6 +151,61 @@ bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
   return AccumulatePolicyFiles(root, uid_mgmt_policies, pmpd, false) &&
          AccumulatePolicyFiles(root, mgmt_policies, pmpd, false) &&
          AccumulatePolicyFiles(root, gid_mgmt_policies, pmp_gid, true);
+}
+
+bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
+  const auto loadpin_verity =
+      root.Append(kSysKernelSecurity).Append(kLoadPinVerity);
+  const auto trusted_dlc_digests = root.Append(kTrustedDlcVerityDigests);
+  const auto dev_null = root.Append(kDevNull);
+  // Only try loading the trusted dm-verity root digests if:
+  //   1. LoadPin dm-verity attribute is supported.
+  //   2a. Trusted list of DLC dm-verity root digest file exists.
+  //   2b. Otherwise, we must feed LoadPin with an invalid digests file.
+
+  // Open (write) the LoadPin dm-verity attribute file.
+  constexpr auto kWriteFlags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
+  auto fd = platform->Open(loadpin_verity, kWriteFlags);
+  if (!fd.is_valid()) {
+    // This means LoadPin dm-verity attribute is not supported.
+    // No further action is required.
+    if (errno == ENOENT) {
+      return true;
+    }
+    // TODO(kimjae): Need to somehow handle this failure, as this still means
+    // later a digest can get fed into LoadPin.
+    PLOG(WARNING) << "Failed to open LoadPin verity file.";
+    return false;
+  }
+
+  // Open (read) the trusted digest file in rootfs.
+  constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
+  auto digests_fd = platform->Open(trusted_dlc_digests, kReadFlags);
+  if (!digests_fd.is_valid()) {
+    if (errno != ENOENT) {
+      PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
+      // NOTE: Do not return here, so invalid digests get fed into LoadPin.
+    }
+    // Any failure in loading/parsing will block subsequent feeds into LoadPin.
+    digests_fd = platform->Open(dev_null, kReadFlags);
+    if (!digests_fd.is_valid()) {
+      PLOG(WARNING) << "Failed to open " << dev_null.value() << ".";
+      return false;
+    }
+  }
+
+  // Write trusted digests or /dev/null into LoadPin.
+  int arg1 = digests_fd.get();
+  int ret =
+      platform->Ioctl(fd.get(), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, &arg1);
+  if (ret != 0) {
+    PLOG(WARNING) << "Unable to setup trusted DLC verity digests";
+  }
+  // On success or failure:
+  // Subsequent `ioctl` on loadpin/dm-verity should fail as the trusted
+  // dm-verity root digest list is not empty or invalid digest file descriptor
+  // is fed into LoadPin.
+  return ret == 0;
 }
 
 }  // namespace startup

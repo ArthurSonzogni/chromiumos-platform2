@@ -27,11 +27,11 @@ namespace {
 
 constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
 
-constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
-constexpr char kSysKernelDebug[] = "sys/kernel/debug";
-constexpr char kSysKernelConfig[] = "sys/kernel/config";
-constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kRunNamespaces[] = "run/namespaces";
+constexpr char kSysKernelConfig[] = "sys/kernel/config";
+constexpr char kSysKernelDebug[] = "sys/kernel/debug";
+constexpr char kSysKernelSecurity[] = "sys/kernel/security";
+constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
@@ -156,6 +156,10 @@ void ChromeosStartup::EarlySetup() {
                         kCommonMountFlags, "")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << sys_security.value();
+  }
+
+  if (!SetupLoadPinVerityDigests(root_, platform_.get())) {
+    LOG(WARNING) << "Failed to setup LoadPin verity digests.";
   }
 
   // Initialize kernel sysctl settings early so that they take effect for boot

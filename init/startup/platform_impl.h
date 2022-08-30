@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 
 namespace startup {
 
@@ -26,16 +27,24 @@ class Platform {
   virtual bool Mount(const base::FilePath& src,
                      const base::FilePath& dst,
                      const std::string& type,
-                     unsigned long flags,
+                     unsigned long flags,  // NOLINT(runtime/int)
                      const std::string& data);
   virtual bool Mount(const std::string& src,
                      const base::FilePath& dst,
                      const std::string& type,
-                     unsigned long flags,
+                     unsigned long flags,  // NOLINT(runtime/int)
                      const std::string& data);
 
   // Wrapper around umount(2).
   virtual bool Umount(const base::FilePath& path);
+
+  // Wrapper around open(2).
+  virtual base::ScopedFD Open(const base::FilePath& pathname, int flags);
+
+  // Wrapper around ioctl(2).
+  // Can't create virtual templated methods, so define per use case.
+  // NOLINTNEXTLINE(runtime/int)
+  virtual int Ioctl(int fd, unsigned long request, int* arg1);
 };
 
 }  // namespace startup

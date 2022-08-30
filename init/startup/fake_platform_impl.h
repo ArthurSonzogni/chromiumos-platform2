@@ -29,28 +29,32 @@ class FakePlatform : public Platform {
 
   void SetMountResultForPath(const base::FilePath& path,
                              const std::string& output);
-  // Wrapper around stat(2).
-  bool Stat(const base::FilePath& path, struct stat* st) override;
 
-  // Wrapper around mount(2).
+  void SetIoctlReturnValue(int ret);
+
+  // `startup::Platform` overrides.
+  bool Stat(const base::FilePath& path, struct stat* st) override;
   bool Mount(const base::FilePath& src,
              const base::FilePath& dst,
              const std::string& type,
-             unsigned long flags,
+             unsigned long flags,  // NOLINT(runtime/int)
              const std::string& data) override;
   bool Mount(const std::string& src,
              const base::FilePath& dst,
              const std::string& type,
-             unsigned long flags,
+             unsigned long flags,  // NOLINT(runtime/int)
              const std::string& data) override;
-
-  // Wrapper around umount(2).
   bool Umount(const base::FilePath& path) override;
+  base::ScopedFD Open(const base::FilePath& pathname, int flags) override;
+  // NOLINTNEXTLINE(runtime/int)
+  int Ioctl(int fd, unsigned long request, int* arg1) override;
 
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
   std::vector<std::string> umount_vector_;
+  int open_ret_ = -1;
+  int ioctl_ret_ = 0;
 };
 
 }  // namespace startup

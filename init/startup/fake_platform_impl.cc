@@ -26,6 +26,10 @@ void FakePlatform::SetMountResultForPath(const base::FilePath& path,
   mount_result_map_[path.value()] = output;
 }
 
+void FakePlatform::SetIoctlReturnValue(int ret) {
+  ioctl_ret_ = ret;
+}
+
 bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
@@ -40,7 +44,7 @@ bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
 bool FakePlatform::Mount(const base::FilePath& src,
                          const base::FilePath& dst,
                          const std::string& type,
-                         unsigned long flags,
+                         unsigned long flags,  // NOLINT(runtime/int)
                          const std::string& data) {
   std::unordered_map<std::string, std::string>::iterator it;
   it = mount_result_map_.find(dst.value());
@@ -54,7 +58,7 @@ bool FakePlatform::Mount(const base::FilePath& src,
 bool FakePlatform::Mount(const std::string& src,
                          const base::FilePath& dst,
                          const std::string& type,
-                         unsigned long flags,
+                         unsigned long flags,  // NOLINT(runtime/int)
                          const std::string& data) {
   std::unordered_map<std::string, std::string>::iterator it;
   it = mount_result_map_.find(dst.value());
@@ -68,6 +72,15 @@ bool FakePlatform::Mount(const std::string& src,
 bool FakePlatform::Umount(const base::FilePath& path) {
   umount_vector_.push_back(path.value());
   return true;
+}
+
+base::ScopedFD FakePlatform::Open(const base::FilePath& pathname, int flags) {
+  return base::ScopedFD(open_ret_);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+int FakePlatform::Ioctl(int fd, unsigned long request, int* arg1) {
+  return ioctl_ret_;
 }
 
 }  // namespace startup
