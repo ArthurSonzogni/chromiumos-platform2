@@ -781,6 +781,10 @@ bool BuildAuthFactor(Printer& printer,
     // Recovery metadata has no fields currently.
     auth_factor->mutable_cryptohome_recovery_metadata();
     return true;
+  } else if (cl->HasSwitch(switches::kPublicMount)) {
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
+    auth_factor->mutable_kiosk_metadata();
+    return true;
   }
   printer.PrintHumanOutput("No auth factor specified\n");
   return false;
