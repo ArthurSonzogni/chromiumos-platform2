@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
@@ -134,7 +134,7 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto scrypt_auth_state = std::make_unique<AuthBlockState>();
 
-  LibScryptCompatAuthBlock scrypt_auth_block;
+  ScryptAuthBlock scrypt_auth_block;
   CryptoStatus error = scrypt_auth_block.Create(
       auth_input, scrypt_auth_state.get(), key_blobs.get());
 
@@ -150,8 +150,8 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
     return;
   }
 
-  if (auto* scrypt_state = std::get_if<LibScryptCompatAuthBlockState>(
-          &scrypt_auth_state->state)) {
+  if (auto* scrypt_state =
+          std::get_if<ScryptAuthBlockState>(&scrypt_auth_state->state)) {
     ChallengeCredentialAuthBlockState cc_state = {
         .scrypt_state = std::move(*scrypt_state),
         .keyset_challenge_info = std::move(*signature_challenge_info),
@@ -285,10 +285,10 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
   std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
   DCHECK(passkey);
 
-  // We only need passkey for the LibScryptCompatAuthBlock AuthInput.
+  // We only need passkey for the ScryptAuthBlock AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};
 
-  LibScryptCompatAuthBlock scrypt_auth_block;
+  ScryptAuthBlock scrypt_auth_block;
   auto key_blobs = std::make_unique<KeyBlobs>();
   CryptoStatus error =
       scrypt_auth_block.Derive(auth_input, scrypt_state, key_blobs.get());

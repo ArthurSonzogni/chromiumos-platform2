@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -26,7 +26,7 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()
-    : LibScryptCompatAuthBlock(kSignatureChallengeProtected) {}
+    : ScryptAuthBlock(kSignatureChallengeProtected) {}
 
 CryptoStatus ChallengeCredentialAuthBlock::Create(
     const AuthInput& user_input,
@@ -34,7 +34,7 @@ CryptoStatus ChallengeCredentialAuthBlock::Create(
     KeyBlobs* key_blobs) {
   AuthBlockState auth_state;
   CryptoStatus error =
-      LibScryptCompatAuthBlock::Create(user_input, &auth_state, key_blobs);
+      ScryptAuthBlock::Create(user_input, &auth_state, key_blobs);
   if (!error.ok()) {
     LOG(ERROR) << "scrypt derivation failed for challenge credential";
     return MakeStatus<CryptohomeCryptoError>(
@@ -43,7 +43,7 @@ CryptoStatus ChallengeCredentialAuthBlock::Create(
         .Wrap(std::move(error));
   }
   if (auto* scrypt_state =
-          std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state)) {
+          std::get_if<ScryptAuthBlockState>(&auth_state.state)) {
     ChallengeCredentialAuthBlockState cc_state = {.scrypt_state =
                                                       std::move(*scrypt_state)};
     *auth_block_state = AuthBlockState{.state = std::move(cc_state)};
@@ -74,7 +74,7 @@ CryptoStatus ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
 
   AuthBlockState scrypt_state = {.state = cc_state->scrypt_state};
   CryptoStatus error =
-      LibScryptCompatAuthBlock::Derive(user_input, scrypt_state, key_blobs);
+      ScryptAuthBlock::Derive(user_input, scrypt_state, key_blobs);
   if (error.ok())
     return error;
   return MakeStatus<CryptohomeCryptoError>(

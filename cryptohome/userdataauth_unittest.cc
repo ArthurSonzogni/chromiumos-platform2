@@ -26,6 +26,7 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -2968,8 +2969,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
             .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
         EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
             .WillOnce(Return(true));
-        EXPECT_CALL(auth_block_utility_,
-                    GetAuthBlockTypeForCreation(_, _, _, _))
+        EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
             .WillOnce(Return(AuthBlockType::kTpmEcc));
         EXPECT_CALL(auth_block_utility_,
                     CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
@@ -3011,7 +3011,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
 
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
       .WillOnce(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeCryptoError>());
@@ -4743,6 +4743,42 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
         key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
         key_data.set_label("password-scrypt-label");
         vk->SetKeyData(key_data);
+        const brillo::Blob kScryptPlaintext =
+            brillo::BlobFromString("plaintext");
+        const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+            {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+        brillo::SecureBlob wrapped_keyset;
+        brillo::SecureBlob wrapped_chaps_key;
+        brillo::SecureBlob wrapped_reset_seed;
+        brillo::SecureBlob derived_key = {
+            0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+            0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+            0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+            0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+            0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+            0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+        brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+        brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+        brillo::SecureBlob reset_seed_salt =
+            brillo::SecureBlob("reset_seed_salt");
+        scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+        chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+        reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+        if (hwsec_foundation::LibScryptCompat::Encrypt(
+                derived_key, scrypt_salt, blob_to_encrypt,
+                hwsec_foundation::kDefaultScryptParams, &wrapped_keyset)) {
+          vk->SetWrappedKeyset(wrapped_keyset);
+        }
+        if (hwsec_foundation::LibScryptCompat::Encrypt(
+                derived_key, chaps_salt, blob_to_encrypt,
+                hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key)) {
+          vk->SetWrappedChapsKey(wrapped_chaps_key);
+        }
+        if (hwsec_foundation::LibScryptCompat::Encrypt(
+                derived_key, reset_seed_salt, blob_to_encrypt,
+                hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed)) {
+          vk->SetWrappedResetSeed(wrapped_reset_seed);
+        }
         return vk;
       });
 

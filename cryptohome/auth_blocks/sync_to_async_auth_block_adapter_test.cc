@@ -18,7 +18,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -53,9 +53,9 @@ class SyncToAsyncAuthBlockAdapterTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-using AsyncLibScryptCompatAuthBlockTest = SyncToAsyncAuthBlockAdapterTest;
+using AsyncScryptAuthBlockTest = SyncToAsyncAuthBlockAdapterTest;
 
-TEST_F(AsyncLibScryptCompatAuthBlockTest, CreateTest) {
+TEST_F(AsyncScryptAuthBlockTest, CreateTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob("foo");
 
@@ -65,31 +65,32 @@ TEST_F(AsyncLibScryptCompatAuthBlockTest, CreateTest) {
           std::unique_ptr<AuthBlockState> auth_state) {
         EXPECT_TRUE(error.ok());
 
+        auto* state = std::get_if<ScryptAuthBlockState>(&auth_state->state);
+        EXPECT_NE(state, nullptr);
+
         // Because the salt is generated randomly inside the auth block, this
         // test cannot check the exact values returned. The salt() could be
         // passed through in some test specific harness, but the underlying
         // scrypt code is tested in so many other places, it's unnecessary.
-        EXPECT_FALSE(blobs->scrypt_key->derived_key().empty());
-        EXPECT_FALSE(blobs->scrypt_key->ConsumeSalt().empty());
+        EXPECT_FALSE(blobs->vkk_key->empty());
+        EXPECT_FALSE(state->salt->empty());
 
-        EXPECT_FALSE(blobs->chaps_scrypt_key->derived_key().empty());
-        EXPECT_FALSE(blobs->chaps_scrypt_key->ConsumeSalt().empty());
+        EXPECT_FALSE(blobs->scrypt_chaps_key->empty());
+        EXPECT_FALSE(state->chaps_salt->empty());
 
-        EXPECT_FALSE(
-            blobs->scrypt_wrapped_reset_seed_key->derived_key().empty());
-        EXPECT_FALSE(
-            blobs->scrypt_wrapped_reset_seed_key->ConsumeSalt().empty());
+        EXPECT_FALSE(blobs->scrypt_reset_seed_key->empty());
+        EXPECT_FALSE(state->reset_seed_salt->empty());
         run_loop.Quit();
       });
 
-  auto scrypt_auth_block = std::make_unique<LibScryptCompatAuthBlock>();
+  auto scrypt_auth_block = std::make_unique<ScryptAuthBlock>();
   SyncToAsyncAuthBlockAdapter auth_block(std::move(scrypt_auth_block));
   auth_block.Create(auth_input, std::move(create_callback));
 
   run_loop.Run();
 }
 
-TEST_F(AsyncLibScryptCompatAuthBlockTest, DeriveTest) {
+TEST_F(AsyncScryptAuthBlockTest, DeriveTest) {
   SerializedVaultKeyset serialized;
   serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED);
 
@@ -199,15 +200,13 @@ TEST_F(AsyncLibScryptCompatAuthBlockTest, DeriveTest) {
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_out_data) {
         EXPECT_TRUE(error.ok());
-        EXPECT_EQ(derived_key, key_out_data->scrypt_key->derived_key());
-        EXPECT_EQ(derived_chaps_key,
-                  key_out_data->chaps_scrypt_key->derived_key());
-        EXPECT_EQ(derived_reset_seed_key,
-                  key_out_data->scrypt_wrapped_reset_seed_key->derived_key());
+        EXPECT_EQ(derived_key, key_out_data->vkk_key);
+        EXPECT_EQ(derived_chaps_key, key_out_data->scrypt_chaps_key);
+        EXPECT_EQ(derived_reset_seed_key, key_out_data->scrypt_reset_seed_key);
         run_loop.Quit();
       });
 
-  auto scrypt_auth_block = std::make_unique<LibScryptCompatAuthBlock>();
+  auto scrypt_auth_block = std::make_unique<ScryptAuthBlock>();
   SyncToAsyncAuthBlockAdapter auth_block(std::move(scrypt_auth_block));
   auth_block.Derive(auth_input, auth_state, std::move(derive_callback));
 

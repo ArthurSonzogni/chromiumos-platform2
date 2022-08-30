@@ -83,8 +83,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockType GetAuthBlockTypeForCreation(
       const bool is_le_credential,
       const bool is_recovery,
-      const bool is_challenge_credential,
-      const AuthFactorStorageType auth_factor_storage_type) const override;
+      const bool is_challenge_credential) const override;
 
   // This function returns the AuthBlock type for
   // AuthBlock::Derive() based on AutBlockState.

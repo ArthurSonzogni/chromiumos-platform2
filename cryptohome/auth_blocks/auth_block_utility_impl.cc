@@ -26,7 +26,6 @@
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
@@ -293,8 +292,7 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     const bool is_le_credential,
     const bool is_recovery,
-    const bool is_challenge_credential,
-    const AuthFactorStorageType auth_factor_storage_type) const {
+    const bool is_challenge_credential) const {
   DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
   if (is_le_credential) {
     return AuthBlockType::kPinWeaver;
@@ -328,9 +326,7 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
   }
 
   if (USE_TPM_INSECURE_FALLBACK) {
-    return auth_factor_storage_type == AuthFactorStorageType::kUserSecretStash
-               ? AuthBlockType::kScrypt
-               : AuthBlockType::kLibScryptCompat;
+    return AuthBlockType::kScrypt;
   }
 
   LOG(WARNING) << "No available auth block for creation.";
@@ -364,16 +360,13 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
       return std::make_unique<TpmNotBoundToPcrAuthBlock>(
           crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
 
-    case AuthBlockType::kLibScryptCompat:
-      return std::make_unique<LibScryptCompatAuthBlock>();
+    case AuthBlockType::kScrypt:
+      return std::make_unique<ScryptAuthBlock>();
 
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<CryptohomeRecoveryAuthBlock>(
           crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
           crypto_->le_manager(), platform_);
-
-    case AuthBlockType::kScrypt:
-      return std::make_unique<ScryptAuthBlock>();
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
@@ -436,10 +429,6 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<TpmNotBoundToPcrAuthBlock>(
               crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
-
-    case AuthBlockType::kLibScryptCompat:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<LibScryptCompatAuthBlock>());
 
     case AuthBlockType::kScrypt:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
@@ -519,9 +508,9 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
   } else if (const auto* state =
                  std::get_if<PinWeaverAuthBlockState>(&auth_state.state)) {
     vault_keyset.SetPinWeaverState(*state);
-  } else if (const auto* state = std::get_if<LibScryptCompatAuthBlockState>(
-                 &auth_state.state)) {
-    vault_keyset.SetLibScryptCompatState(*state);
+  } else if (const auto* state =
+                 std::get_if<ScryptAuthBlockState>(&auth_state.state)) {
+    vault_keyset.SetScryptState(*state);
   } else if (const auto* state = std::get_if<ChallengeCredentialAuthBlockState>(
                  &auth_state.state)) {
     vault_keyset.SetChallengeCredentialState(*state);
@@ -546,9 +535,9 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
   } else if (const auto* state = std::get_if<PinWeaverAuthBlockState>(
                  &auth_block_state.state)) {
     auth_block_type = AuthBlockType::kPinWeaver;
-  } else if (const auto* state = std::get_if<LibScryptCompatAuthBlockState>(
-                 &auth_block_state.state)) {
-    auth_block_type = AuthBlockType::kLibScryptCompat;
+  } else if (const auto* state =
+                 std::get_if<ScryptAuthBlockState>(&auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kScrypt;
   } else if (const auto* state =
                  std::get_if<TpmEccAuthBlockState>(&auth_block_state.state)) {
     auth_block_type = AuthBlockType::kTpmEcc;
@@ -558,9 +547,6 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
   } else if (const auto& state = std::get_if<CryptohomeRecoveryAuthBlockState>(
                  &auth_block_state.state)) {
     auth_block_type = AuthBlockType::kCryptohomeRecovery;
-  } else if (const auto* state =
-                 std::get_if<ScryptAuthBlockState>(&auth_block_state.state)) {
-    auth_block_type = AuthBlockType::kScrypt;
   }
 
   return auth_block_type;

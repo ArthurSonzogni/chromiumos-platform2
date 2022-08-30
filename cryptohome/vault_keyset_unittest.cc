@@ -24,13 +24,15 @@
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
@@ -150,11 +152,11 @@ std::string HexDecode(const std::string& hex) {
 class LibScryptCompatVaultKeyset : public VaultKeyset {
  protected:
   std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const override {
-    return std::make_unique<LibScryptCompatAuthBlock>();
+    return std::make_unique<ScryptAuthBlock>();
   }
 
   std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation() override {
-    return std::make_unique<LibScryptCompatAuthBlock>();
+    return std::make_unique<ScryptAuthBlock>();
   }
 };
 
@@ -438,6 +440,38 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+  const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
+  const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+      {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+  brillo::SecureBlob wrapped_keyset;
+  brillo::SecureBlob wrapped_chaps_key;
+  brillo::SecureBlob wrapped_reset_seed;
+  brillo::SecureBlob derived_key = {
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+
+  scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, scrypt_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_keyset));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, chaps_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, reset_seed_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed));
+  keyset.SetWrappedKeyset(wrapped_keyset);
+  keyset.SetWrappedChapsKey(wrapped_chaps_key);
+  keyset.SetWrappedResetSeed(wrapped_reset_seed);
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
@@ -447,25 +481,57 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   EXPECT_NE(cc_state, nullptr);
 }
 
-TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
+TEST_F(VaultKeysetTest, GetScryptAuthBlockState) {
   VaultKeyset keyset;
   keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
-  keyset.SetWrappedKeyset(brillo::SecureBlob("foo"));
-  keyset.SetWrappedChapsKey(brillo::SecureBlob("bar"));
-  keyset.SetWrappedResetSeed(brillo::SecureBlob("baz"));
+  const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
+  const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+      {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+  brillo::SecureBlob wrapped_keyset;
+  brillo::SecureBlob wrapped_chaps_key;
+  brillo::SecureBlob wrapped_reset_seed;
+  brillo::SecureBlob derived_key = {
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+
+  scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, scrypt_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_keyset));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, chaps_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, reset_seed_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed));
+  keyset.SetWrappedKeyset(wrapped_keyset);
+  keyset.SetWrappedChapsKey(wrapped_chaps_key);
+  keyset.SetWrappedResetSeed(wrapped_reset_seed);
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
-  const LibScryptCompatAuthBlockState* scrypt_state =
-      std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
+  const ScryptAuthBlockState* scrypt_state =
+      std::get_if<ScryptAuthBlockState>(&auth_state.state);
   ASSERT_NE(scrypt_state, nullptr);
-  EXPECT_TRUE(scrypt_state->wrapped_keyset.has_value());
-  EXPECT_TRUE(scrypt_state->wrapped_chaps_key.has_value());
-  EXPECT_TRUE(scrypt_state->wrapped_reset_seed.has_value());
+  EXPECT_TRUE(scrypt_state->salt.has_value());
+  EXPECT_TRUE(scrypt_state->chaps_salt.has_value());
+  EXPECT_TRUE(scrypt_state->reset_seed_salt.has_value());
+  EXPECT_TRUE(scrypt_state->work_factor.has_value());
+  EXPECT_TRUE(scrypt_state->block_size.has_value());
+  EXPECT_TRUE(scrypt_state->parallel_factor.has_value());
 }
 
 TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
@@ -476,6 +542,38 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
 
+  const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
+  const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+      {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+  brillo::SecureBlob wrapped_keyset;
+  brillo::SecureBlob wrapped_chaps_key;
+  brillo::SecureBlob wrapped_reset_seed;
+  brillo::SecureBlob derived_key = {
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+
+  scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, scrypt_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_keyset));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, chaps_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, reset_seed_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed));
+  keyset.SetWrappedKeyset(wrapped_keyset);
+  keyset.SetWrappedChapsKey(wrapped_chaps_key);
+  keyset.SetWrappedResetSeed(wrapped_reset_seed);
   AuthBlockState auth_state;
 
   // A required tpm_key is not set in keyset, failure in creating
@@ -495,6 +593,38 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
   keyset.SetTPMKey(brillo::SecureBlob("blabla"));
+  const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
+  const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+      {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+  brillo::SecureBlob wrapped_keyset;
+  brillo::SecureBlob wrapped_chaps_key;
+  brillo::SecureBlob wrapped_reset_seed;
+  brillo::SecureBlob derived_key = {
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+
+  scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, scrypt_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_keyset));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, chaps_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, reset_seed_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed));
+  keyset.SetWrappedKeyset(wrapped_keyset);
+  keyset.SetWrappedChapsKey(wrapped_chaps_key);
+  keyset.SetWrappedResetSeed(wrapped_reset_seed);
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));

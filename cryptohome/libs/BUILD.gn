@@ -354,7 +354,6 @@ static_library("libcrostpm") {
     "../auth_blocks/challenge_credential_auth_block.cc",
     "../auth_blocks/cryptohome_recovery_auth_block.cc",
     "../auth_blocks/double_wrapped_compat_auth_block.cc",
-    "../auth_blocks/libscrypt_compat_auth_block.cc",
     "../auth_blocks/pin_weaver_auth_block.cc",
     "../auth_blocks/revocation.cc",
     "../auth_blocks/scrypt_auth_block.cc",

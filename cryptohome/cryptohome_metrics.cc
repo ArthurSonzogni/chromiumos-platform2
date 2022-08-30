@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -213,21 +214,6 @@ static_assert(
         static_cast<int>(cryptohome::LegacyCodePathLocation::kMaxValue) + 1,
     "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
 
-// List of strings for corresponding AuthBlockType parameters.
-const char* const kAuthBlockTypeString[] = {".PinWeaver",
-                                            ".ChallengeCredential",
-                                            ".DoubleWrappedCompat",
-                                            ".TpmBoundToPcr",
-                                            ".TpmNotBoundToPcr",
-                                            ".LibScryptCompat",
-                                            ".CryptohomeRecovery",
-                                            ".TpmEcc",
-                                            ".Scrypt"};
-
-static_assert(std::size(kAuthBlockTypeString) ==
-                  static_cast<int>(cryptohome::AuthBlockType::kMaxValue),
-              "kAuthBlockTypeString out of sync with AuthBlockType");
-
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
 
@@ -266,14 +252,12 @@ char const* GetAuthBlockTypeStringVariant(cryptohome::AuthBlockType type) {
       return "TpmBoundToPcr";
     case cryptohome::AuthBlockType::kTpmNotBoundToPcr:
       return "TpmNotBoundToPcr";
-    case cryptohome::AuthBlockType::kLibScryptCompat:
-      return "LibScryptCompat";
+    case cryptohome::AuthBlockType::kScrypt:
+      return "Scrypt";
     case cryptohome::AuthBlockType::kCryptohomeRecovery:
       return "CryptohomeRecovery";
     case cryptohome::AuthBlockType::kTpmEcc:
       return "TpmEcc";
-    case cryptohome::AuthBlockType::kScrypt:
-      return "Scrypt";
     case cryptohome::AuthBlockType::kMaxValue:
       NOTREACHED();
       return "";
@@ -392,7 +376,9 @@ void ReportTimerDuration(
       auth_session_performance_timer->auth_block_type;
   std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
   if (auth_block_type != cryptohome::AuthBlockType::kMaxValue) {
-    metric_name.append(kAuthBlockTypeString[static_cast<int>(auth_block_type)]);
+    std::string block_type =
+        base::StrCat({".", GetAuthBlockTypeStringVariant(auth_block_type)});
+    metric_name.append(block_type);
   }
 
   auto duration =

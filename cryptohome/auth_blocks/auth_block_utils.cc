@@ -15,8 +15,8 @@ namespace cryptohome {
 
 namespace {
 constexpr AuthBlockFlags auth_block_flags[] = {
-    kPinWeaverFlags,       kChallengeCredentialFlags, kDoubleWrappedCompatFlags,
-    kLibScryptCompatFlags, kTpmNotBoundToPcrFlags,    kTpmBoundToPcrFlags,
+    kPinWeaverFlags, kChallengeCredentialFlags, kDoubleWrappedCompatFlags,
+    kScryptFlags,    kTpmNotBoundToPcrFlags,    kTpmBoundToPcrFlags,
     kTpmEccFlags};
 
 }  // namespace
@@ -60,15 +60,14 @@ bool GetAuthBlockState(const VaultKeyset& vk, AuthBlockState& out_state) {
     case AuthBlockType::kChallengeCredential:
       return vk.GetSignatureChallengeState(&out_state);
 
-    case AuthBlockType::kLibScryptCompat:
-      return vk.GetLibScryptCompatState(&out_state);
+    case AuthBlockType::kScrypt:
+      return vk.GetScryptState(&out_state);
 
     case AuthBlockType::kCryptohomeRecovery:
       LOG(ERROR)
           << "CryptohomeRecovery is not a supported AuthBlockType for now.";
       return false;
 
-    case AuthBlockType::kScrypt:
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
       return false;

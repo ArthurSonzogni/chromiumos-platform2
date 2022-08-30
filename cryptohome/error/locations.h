@@ -909,7 +909,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
   /* =Obsolete= */
   kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor = 542,
-  /* ./auth_blocks/scrypt_auth_block.cc */
+  /* =Obsolete= */
   kLocScryptAuthBlockScryptFailedInCreate = 543,
   /* ./auth_blocks/scrypt_auth_block.cc */
   kLocScryptAuthBlockInvalidBlockStateInDerive = 544,
@@ -1167,8 +1167,22 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor = 670,
   /* ./userdataauth.cc */
   kLocUserDataAuthFinalizeFailedInPrepareEphemeralVault = 671,
-  /* ./auth_Session.cc */
+  /* ./auth_session.cc */
   kLocAuthSessionMismatchedAuthTypes = 672,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockScryptFailedDerivedKeyInCreate = 673,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockInputKeyFailedInCreate = 674,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockChapsKeyFailedInCreate = 675,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockResetKeyFailedInCreate = 676,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockScryptFailedInDeriveFromChapsSalt = 677,
+  /* ./auth_blocks/scrypt_auth_block.cc */
+  kLocScryptAuthBlockScryptFailedInDeriveFromResetSeedSalt = 678,
+  /* ./vault_keyset.cc */
+  kLocVaultKeysetAuthBlockStateFailedInWrapScrypt = 679,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

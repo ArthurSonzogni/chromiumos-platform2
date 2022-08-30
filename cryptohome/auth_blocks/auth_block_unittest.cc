@@ -23,8 +23,8 @@
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -1145,13 +1145,13 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
 }
 
-TEST(LibScryptCompatAuthBlockTest, CreateTest) {
+TEST(ScyptAuthBlockTest, CreateTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob("foo");
 
   KeyBlobs blobs;
 
-  LibScryptCompatAuthBlock auth_block;
+  ScryptAuthBlock auth_block;
   AuthBlockState auth_state;
   EXPECT_TRUE(auth_block.Create(auth_input, &auth_state, &blobs).ok());
 
@@ -1159,17 +1159,20 @@ TEST(LibScryptCompatAuthBlockTest, CreateTest) {
   // cannot check the exact values returned. The salt() could be passed through
   // in some test specific harness, but the underlying scrypt code is tested in
   // so many other places, it's unnecessary.
-  EXPECT_FALSE(blobs.scrypt_key->derived_key().empty());
-  EXPECT_FALSE(blobs.scrypt_key->ConsumeSalt().empty());
+  auto* state = std::get_if<ScryptAuthBlockState>(&auth_state.state);
+  EXPECT_NE(state, nullptr);
 
-  EXPECT_FALSE(blobs.chaps_scrypt_key->derived_key().empty());
-  EXPECT_FALSE(blobs.chaps_scrypt_key->ConsumeSalt().empty());
+  EXPECT_FALSE(blobs.vkk_key->empty());
+  EXPECT_FALSE(state->salt->empty());
 
-  EXPECT_FALSE(blobs.scrypt_wrapped_reset_seed_key->derived_key().empty());
-  EXPECT_FALSE(blobs.scrypt_wrapped_reset_seed_key->ConsumeSalt().empty());
+  EXPECT_FALSE(blobs.scrypt_chaps_key->empty());
+  EXPECT_FALSE(state->chaps_salt->empty());
+
+  EXPECT_FALSE(blobs.scrypt_reset_seed_key->empty());
+  EXPECT_FALSE(state->reset_seed_salt->empty());
 }
 
-TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
+TEST(ScyptAuthBlockTest, DeriveTest) {
   SerializedVaultKeyset serialized;
   serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED);
 
@@ -1251,7 +1254,7 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
-  LibScryptCompatAuthBlock auth_block;
+  ScryptAuthBlock auth_block;
   EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
 
   brillo::SecureBlob derived_key = {
@@ -1278,10 +1281,9 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
       0xFD, 0x7C, 0x78, 0x1D, 0x9B, 0xAD, 0xE6, 0x71, 0x35, 0x2B, 0x32,
       0x1E, 0x59, 0x19, 0x47, 0x88, 0x92, 0x50, 0x28, 0x09};
 
-  EXPECT_EQ(derived_key, key_out_data.scrypt_key->derived_key());
-  EXPECT_EQ(derived_chaps_key, key_out_data.chaps_scrypt_key->derived_key());
-  EXPECT_EQ(derived_reset_seed_key,
-            key_out_data.scrypt_wrapped_reset_seed_key->derived_key());
+  EXPECT_EQ(derived_key, key_out_data.vkk_key);
+  EXPECT_EQ(derived_chaps_key, key_out_data.scrypt_chaps_key);
+  EXPECT_EQ(derived_reset_seed_key, key_out_data.scrypt_reset_seed_key);
 }
 
 class CryptohomeRecoveryAuthBlockTest : public testing::Test {

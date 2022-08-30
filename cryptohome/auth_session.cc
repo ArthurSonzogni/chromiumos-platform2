@@ -436,8 +436,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
 
   // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential,
-      AuthFactorStorageType::kVaultKeyset);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddKeyset),
@@ -611,8 +610,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
 
   AuthBlockType auth_block_type;
   auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential,
-      AuthFactorStorageType::kVaultKeyset);
+      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInUpdate),
@@ -1231,9 +1229,7 @@ void AuthSession::UpdateAuthFactor(
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           is_le_credential, is_recovery,
-          /*is_challenge_credential=*/false,
-          user_secret_stash_ ? AuthFactorStorageType::kUserSecretStash
-                             : AuthFactorStorageType::kVaultKeyset);
+          /*is_challenge_credential=*/false);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR) << "AuthSession: Error in obtaining AuthBlockType in auth "
                   "factor update.";
@@ -1557,8 +1553,7 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           vault_keyset_->IsLECredential(), /*is_recovery=*/false,
-          /*is_challenge_credential*/ false,
-          AuthFactorStorageType::kVaultKeyset);
+          /*is_challenge_credential*/ false);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset.";
@@ -2038,8 +2033,7 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
   bool is_challenge_credential = auth_factor_type == AuthFactorType::kSmartCard;
   AuthBlockType auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
-          is_le_credential, is_recovery, is_challenge_credential,
-          AuthFactorStorageType::kUserSecretStash);
+          is_le_credential, is_recovery, is_challenge_credential);
   if (auth_block_type == AuthBlockType::kMaxValue) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddViaUSS),

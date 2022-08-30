@@ -69,41 +69,6 @@ struct AuthInput {
   std::optional<ChallengeCredentialAuthInput> challenge_credential_auth_input;
 };
 
-// LibScrypt requires a salt to be passed from Create() into the encryption
-// phase, so this struct has an optional salt.
-class LibScryptCompatKeyObjects {
- public:
-  // This class is never usable for encryption without a salt.
-  explicit LibScryptCompatKeyObjects(brillo::SecureBlob derived_key)
-      : derived_key_(derived_key), salt_(std::nullopt) {}
-
-  LibScryptCompatKeyObjects(brillo::SecureBlob derived_key,
-                            brillo::SecureBlob salt)
-      : derived_key_(derived_key), salt_(salt) {}
-
-  // Prohibit copy/move/assignment.
-  LibScryptCompatKeyObjects(const LibScryptCompatKeyObjects&) = delete;
-  LibScryptCompatKeyObjects(const LibScryptCompatKeyObjects&&) = delete;
-  LibScryptCompatKeyObjects& operator=(const LibScryptCompatKeyObjects&) =
-      delete;
-  LibScryptCompatKeyObjects& operator=(const LibScryptCompatKeyObjects&&) =
-      delete;
-
-  // Access the derived key.
-  brillo::SecureBlob derived_key();
-
-  // Access the salt. The salt isn't used for decryption, so this only returns
-  // the salt if the object is safe to used for encryption. Once accessed, the
-  // salt is cleared and the class is no longer usable for encryption.
-  brillo::SecureBlob ConsumeSalt();
-
- private:
-  // The scrypt derived key which must always be present.
-  const brillo::SecureBlob derived_key_;
-  // The salt which only is passed out in the Create() flow.
-  std::optional<brillo::SecureBlob> salt_;
-};
-
 // This struct is populated by the various authentication methods, with the
 // secrets derived from the user input.
 struct KeyBlobs {
@@ -116,21 +81,18 @@ struct KeyBlobs {
   // used for deriving various values and not only for vault keysets, and add a
   // getter that returns the VKK.
   std::optional<brillo::SecureBlob> vkk_key;
+  // The Scrypt chaps key. Used for ScryptAuthBlock for storing the chaps key.
+  std::optional<brillo::SecureBlob> scrypt_chaps_key;
+  // The Scrypt reset seed key. Used for ScryptAuthBlock for storing the reset
+  // seed key.
+  std::optional<brillo::SecureBlob> scrypt_reset_seed_key;
+
   // The file encryption IV.
   std::optional<brillo::SecureBlob> vkk_iv;
   // The IV to use with the chaps key.
   std::optional<brillo::SecureBlob> chaps_iv;
   // The reset secret used for LE credentials.
   std::optional<brillo::SecureBlob> reset_secret;
-
-  // The following fields are for libscrypt compatibility. They must be
-  // unique_ptr's as the libscrypt keys cannot safely be re-used for multiple
-  // encryption operations, so these are destroyed upon use.
-  std::unique_ptr<LibScryptCompatKeyObjects> scrypt_key;
-  // The key for scrypt wrapped chaps key.
-  std::unique_ptr<LibScryptCompatKeyObjects> chaps_scrypt_key;
-  // The scrypt wrapped reset seed.
-  std::unique_ptr<LibScryptCompatKeyObjects> scrypt_wrapped_reset_seed_key;
 };
 
 }  // namespace cryptohome

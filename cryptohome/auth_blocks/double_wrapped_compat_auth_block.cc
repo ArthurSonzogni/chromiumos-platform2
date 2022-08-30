@@ -10,7 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -31,7 +31,7 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     CryptohomeKeysManager* cryptohome_keys_manager)
     : SyncAuthBlock(kDoubleWrapped),
       tpm_auth_block_(hwsec, cryptohome_keys_manager),
-      lib_scrypt_compat_auth_block_() {}
+      scrypt_auth_block_() {}
 
 CryptoStatus DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input,
@@ -60,7 +60,7 @@ CryptoStatus DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
   CryptoStatus error =
-      lib_scrypt_compat_auth_block_.Derive(auth_input, scrypt_state, key_blobs);
+      scrypt_auth_block_.Derive(auth_input, scrypt_state, key_blobs);
   if (error.ok()) {
     return OkStatus<CryptohomeCryptoError>();
   }

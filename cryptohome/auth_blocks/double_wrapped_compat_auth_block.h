@@ -11,7 +11,7 @@
 
 #include <base/gtest_prod_util.h>
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
@@ -40,7 +40,7 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
 
  private:
   TpmNotBoundToPcrAuthBlock tpm_auth_block_;
-  LibScryptCompatAuthBlock lib_scrypt_compat_auth_block_;
+  ScryptAuthBlock scrypt_auth_block_;
 };
 
 }  // namespace cryptohome

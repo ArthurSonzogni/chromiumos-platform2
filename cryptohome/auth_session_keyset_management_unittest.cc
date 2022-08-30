@@ -18,7 +18,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -67,7 +67,7 @@ class FallbackVaultKeyset : public VaultKeyset {
       const override {
     auto auth_block_for_creation = VaultKeyset::GetAuthBlockForCreation();
     if (!auth_block_for_creation) {
-      return std::make_unique<LibScryptCompatAuthBlock>();
+      return std::make_unique<ScryptAuthBlock>();
     }
 
     return auth_block_for_creation;

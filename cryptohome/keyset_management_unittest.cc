@@ -30,8 +30,8 @@
 
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -148,7 +148,7 @@ class FallbackVaultKeyset : public VaultKeyset {
           crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
     }
 
-    return std::make_unique<LibScryptCompatAuthBlock>();
+    return std::make_unique<ScryptAuthBlock>();
   }
 
  private:
@@ -2606,14 +2606,14 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
 
-  key_blobs_.scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-  key_blobs_.chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-  key_blobs_.scrypt_wrapped_reset_seed_key =
-      std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/);
-  LibScryptCompatAuthBlockState scrypt_state = {.salt = kInitialBlob32};
+  key_blobs_.vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  key_blobs_.scrypt_chaps_key =
+      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  key_blobs_.scrypt_reset_seed_key =
+      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  ScryptAuthBlockState scrypt_state = {.salt = kInitialBlob32,
+                                       .chaps_salt = kInitialBlob32,
+                                       .reset_seed_salt = kInitialBlob32};
   auth_state_->state = scrypt_state;
 
   // Explicitly set |reset_seed_| to be empty.
@@ -2630,13 +2630,10 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
   // Generate reset seed and add it to the VaultKeyset object. Need to generate
   // the Keyblobs again since it is not available any more.
   KeyBlobs key_blobs = {
-      .scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-      .chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-      .scrypt_wrapped_reset_seed_key =
-          std::make_unique<LibScryptCompatKeyObjects>(
-              kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/)};
+      .vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
+      .scrypt_chaps_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
+      .scrypt_reset_seed_key =
+          brillo::SecureBlob(kInitialBlob64 /*derived_key*/)};
   // Test
   EXPECT_TRUE(
       keyset_management_->AddResetSeedIfMissing(*init_vk_status.value().get()));
@@ -2662,14 +2659,14 @@ TEST_F(KeysetManagementTest, NotAddingResetSeedToSmartUnlockKeyset) {
   key_data.set_label(kEasyUnlockLabel);
   vk.SetKeyData(key_data);
 
-  key_blobs_.scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-  key_blobs_.chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-  key_blobs_.scrypt_wrapped_reset_seed_key =
-      std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/);
-  LibScryptCompatAuthBlockState scrypt_state = {.salt = kInitialBlob32};
+  key_blobs_.vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  key_blobs_.scrypt_chaps_key =
+      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  key_blobs_.scrypt_reset_seed_key =
+      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
+  ScryptAuthBlockState scrypt_state = {.salt = kInitialBlob32,
+                                       .chaps_salt = kInitialBlob32,
+                                       .reset_seed_salt = kInitialBlob32};
   auth_state_->state = scrypt_state;
 
   // Explicitly set |reset_seed_| to be empty.
@@ -2686,13 +2683,10 @@ TEST_F(KeysetManagementTest, NotAddingResetSeedToSmartUnlockKeyset) {
   // Generate reset seed and add it to the VaultKeyset object. Need to generate
   // the Keyblobs again since it is not available any more.
   KeyBlobs key_blobs = {
-      .scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-      .chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
-          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
-      .scrypt_wrapped_reset_seed_key =
-          std::make_unique<LibScryptCompatKeyObjects>(
-              kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/)};
+      .vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
+      .scrypt_chaps_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
+      .scrypt_reset_seed_key =
+          brillo::SecureBlob(kInitialBlob64 /*derived_key*/)};
   // Test
   EXPECT_FALSE(
       keyset_management_->AddResetSeedIfMissing(*init_vk_status.value().get()));

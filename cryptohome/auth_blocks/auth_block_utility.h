@@ -100,8 +100,7 @@ class AuthBlockUtility {
   virtual AuthBlockType GetAuthBlockTypeForCreation(
       const bool is_le_credential,
       const bool is_recovery,
-      const bool is_challenge_credential,
-      const AuthFactorStorageType auth_factor_storage_type) const = 0;
+      const bool is_challenge_credential) const = 0;
 
   // This function returns the AuthBlock type based on AutBlockState.
   virtual AuthBlockType GetAuthBlockTypeFromState(

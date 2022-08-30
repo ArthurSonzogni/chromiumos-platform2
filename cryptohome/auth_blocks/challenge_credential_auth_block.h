@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 
-class ChallengeCredentialAuthBlock : public LibScryptCompatAuthBlock {
+class ChallengeCredentialAuthBlock : public ScryptAuthBlock {
  public:
   ChallengeCredentialAuthBlock();
   ~ChallengeCredentialAuthBlock() = default;

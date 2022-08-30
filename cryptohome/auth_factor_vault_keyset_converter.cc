@@ -85,7 +85,6 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
     case AuthBlockType::kDoubleWrappedCompat:
     case AuthBlockType::kTpmBoundToPcr:
     case AuthBlockType::kTpmNotBoundToPcr:
-    case AuthBlockType::kLibScryptCompat:
     case AuthBlockType::kTpmEcc:
     case AuthBlockType::kScrypt:
       return AuthFactorType::kPassword;

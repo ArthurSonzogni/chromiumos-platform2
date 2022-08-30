@@ -18,12 +18,9 @@ enum class AuthBlockType {
   kDoubleWrappedCompat = 2,
   kTpmBoundToPcr = 3,
   kTpmNotBoundToPcr = 4,
-  // The scrypt auth block that would be used for legacy VaultKeyset.
-  kLibScryptCompat = 5,
+  kScrypt = 5,
   kCryptohomeRecovery = 6,
   kTpmEcc = 7,
-  // The scrypt auth block that would be used for USS.
-  kScrypt = 8,
   kMaxValue,
 };
 

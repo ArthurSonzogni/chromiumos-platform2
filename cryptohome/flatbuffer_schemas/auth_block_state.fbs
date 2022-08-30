@@ -64,32 +64,13 @@ table PinWeaverAuthBlockState (secure) {
   reset_salt:[ubyte] (id: 4, optional);
 }
 
-// This is a unique AuthBlockState for backwards compatibility. libscrypt puts
-// the metadata, such as IV and salt, into the header of the encrypted
-// buffer. Thus this is the only auth block state to pass wrapped secrets. See
-// the LibScryptCompatAuthBlock header for a full explanation.
-table LibScryptCompatAuthBlockState (secure) {
-  // The wrapped filesystem keys.
-  // This is for in memory data holding only and will not be serialized.
-  wrapped_keyset:[ubyte] (id: 0, optional);
-  // The wrapped chaps keys.
-  // This is for in memory data holding only and will not be serialized.
-  wrapped_chaps_key:[ubyte] (id: 1, optional);
-  // The wrapped reset seed keys.
-  // This is for in memory data holding only and will not be serialized.
-  wrapped_reset_seed:[ubyte] (id: 2, optional);
-  // The random salt.
-  // TODO(b/198394243): We should remove it because it's not actually used.
-  salt:[ubyte] (id: 3, optional);
-}
-
 table ChallengeCredentialAuthBlockState (secure) {
-  scrypt_state:LibScryptCompatAuthBlockState (id: 0);
+  scrypt_state:ScryptAuthBlockState (id: 0);
   keyset_challenge_info:cryptohome.structure._serialized_.SignatureChallengeInfo (id: 1, optional);
 }
 
 table DoubleWrappedCompatAuthBlockState (secure) {
-  scrypt_state:LibScryptCompatAuthBlockState (id: 0);
+  scrypt_state:ScryptAuthBlockState (id: 0);
   tpm_state:TpmNotBoundToPcrAuthBlockState (id: 1);
 }
 
@@ -136,19 +117,22 @@ table TpmEccAuthBlockState (secure) {
 table ScryptAuthBlockState (secure) {
   // The random salt used when deriving the scrypt key.
   salt:[ubyte] (id: 0, optional);
+  // The random salt used when deriving the scrypt_chaps_key.
+  chaps_salt:[ubyte] (id:1, optional);
+  // The random salt used when deriving the scrypt_reset_seed_key.
+  reset_seed_salt:[ubyte] (id:2, optional);
   // The work factor passed to scrypt.
-  work_factor:int = null (id: 1, optional);
+  work_factor:int = null (id: 3, optional);
   // The block size passed to scrypt.
-  block_size:uint = null (id: 2, optional);
+  block_size:uint = null (id: 4, optional);
   // The parallel factor passed to scrypt.
-  parallel_factor:uint = null (id: 3, optional);
+  parallel_factor:uint = null (id: 5, optional);
 }
 
 union AuthBlockStateUnion (secure) {
   TpmBoundToPcrAuthBlockState,
   TpmNotBoundToPcrAuthBlockState,
   PinWeaverAuthBlockState,
-  LibScryptCompatAuthBlockState,
   ChallengeCredentialAuthBlockState,
   DoubleWrappedCompatAuthBlockState,
   CryptohomeRecoveryAuthBlockState,

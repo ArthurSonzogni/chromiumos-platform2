@@ -38,11 +38,11 @@ inline constexpr AuthBlockFlags kDoubleWrappedCompatFlags = {
     .auth_block_type = AuthBlockType::kDoubleWrappedCompat,
 };
 
-inline constexpr AuthBlockFlags kLibScryptCompatFlags = {
+inline constexpr AuthBlockFlags kScryptFlags = {
     .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
     .refuse_flags = SerializedVaultKeyset::TPM_WRAPPED |
                     SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED,
-    .auth_block_type = AuthBlockType::kLibScryptCompat,
+    .auth_block_type = AuthBlockType::kScrypt,
 };
 
 inline constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {

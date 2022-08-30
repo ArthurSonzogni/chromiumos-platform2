@@ -12,7 +12,7 @@
 
 #include <base/memory/weak_ptr.h>
 
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

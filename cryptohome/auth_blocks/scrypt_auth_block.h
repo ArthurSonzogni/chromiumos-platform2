@@ -28,6 +28,9 @@ class ScryptAuthBlock : public SyncAuthBlock {
   CryptoStatus Derive(const AuthInput& auth_input,
                       const AuthBlockState& state,
                       KeyBlobs* key_blobs) override;
+
+ protected:
+  explicit ScryptAuthBlock(DerivationType);
 };
 
 }  // namespace cryptohome

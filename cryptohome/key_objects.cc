@@ -23,19 +23,6 @@ namespace {
 constexpr char kUssCredentialSecretHkdfInfo[] = "cryptohome USS credential";
 }  // namespace
 
-brillo::SecureBlob LibScryptCompatKeyObjects::derived_key() {
-  return derived_key_;
-}
-
-brillo::SecureBlob LibScryptCompatKeyObjects::ConsumeSalt() {
-  CHECK(salt_ != std::nullopt);
-
-  // The salt may not be re-used.
-  brillo::SecureBlob value = salt_.value();
-  salt_.reset();
-  return value;
-}
-
 std::optional<brillo::SecureBlob> KeyBlobs::DeriveUssCredentialSecret() const {
   if (!vkk_key.has_value() || vkk_key.value().empty()) {
     LOG(ERROR) << "Missing input secret for deriving a USS credential secret";

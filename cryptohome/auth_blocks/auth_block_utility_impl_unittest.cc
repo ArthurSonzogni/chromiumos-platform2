@@ -21,16 +21,18 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -74,6 +76,9 @@ namespace cryptohome {
 
 namespace {
 constexpr char kUser[] = "Test User";
+constexpr int kWorkFactor = 16384;
+constexpr int kBlockSize = 8;
+constexpr int kParallelFactor = 1;
 }  // namespace
 
 class AuthBlockUtilityImplTest : public ::testing::Test {
@@ -497,8 +502,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState with
-// LibScryptCompatAuthBlock when the AuthBlock type is
-// AuthBlockType::kLibScryptCompat.
+// ScryptAuthBlock when the AuthBlock type is
+// AuthBlockType::kScrypt.
 TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   // Setup mock expectations and test inputs for low entropy AuthBlock.
   brillo::SecureBlob passkey(20, 'A');
@@ -511,21 +516,20 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
   EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kLibScryptCompat,
+                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kScrypt,
                                                 credentials, std::nullopt,
                                                 out_state, out_key_blobs)
                   .ok());
 
   // Verify that a script wrapped AuthBlock is generated.
-  EXPECT_TRUE(
-      std::holds_alternative<LibScryptCompatAuthBlockState>(out_state.state));
-  auto& scrypt_state = std::get<LibScryptCompatAuthBlockState>(out_state.state);
+  EXPECT_TRUE(std::holds_alternative<ScryptAuthBlockState>(out_state.state));
+  auto& scrypt_state = std::get<ScryptAuthBlockState>(out_state.state);
   EXPECT_TRUE(scrypt_state.salt.has_value());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives AuthBlocks with
-// LibScryptCompatAuthBlock when the AuthBlock type is
-// AuthBlockType::kLibScryptCompat.
+// ScryptAuthBlock when the AuthBlock type is
+// AuthBlockType::kScrypt.
 TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
   // Setup test inputs and the mock expectations.
   brillo::SecureBlob wrapped_keyset = {
@@ -593,11 +597,14 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 
   Credentials credentials(kUser, passkey);
 
-  LibScryptCompatAuthBlockState scrypt_state = {
-      .wrapped_keyset = wrapped_keyset,
-      .wrapped_chaps_key = wrapped_chaps_key,
-      .wrapped_reset_seed = wrapped_reset_seed,
-      .salt = system_salt_};
+  ScryptAuthBlockState scrypt_state = {
+      .salt = brillo::SecureBlob("salt"),
+      .chaps_salt = brillo::SecureBlob("chaps_salt"),
+      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+      .work_factor = kWorkFactor,
+      .block_size = kBlockSize,
+      .parallel_factor = kParallelFactor,
+  };
   AuthBlockState auth_state = {.state = scrypt_state};
 
   // Test
@@ -606,7 +613,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
       keyset_management_.get(), &crypto_, &platform_);
 
   EXPECT_TRUE(auth_block_utility_impl_
-                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kLibScryptCompat,
+                  ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kScrypt,
                                                 credentials, auth_state,
                                                 out_key_blobs)
                   .ok());
@@ -683,11 +690,14 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
 
   Credentials credentials(kUser, passkey);
 
-  LibScryptCompatAuthBlockState scrypt_state = {
-      .wrapped_keyset = wrapped_keyset,
-      .wrapped_chaps_key = wrapped_chaps_key,
-      .wrapped_reset_seed = wrapped_reset_seed,
-      .salt = system_salt_};
+  ScryptAuthBlockState scrypt_state = {
+      .salt = brillo::SecureBlob("salt"),
+      .chaps_salt = brillo::SecureBlob("chaps_salt"),
+      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+      .work_factor = kWorkFactor,
+      .block_size = kBlockSize,
+      .parallel_factor = kParallelFactor,
+  };
   TpmNotBoundToPcrAuthBlockState tpm_state = {
       .scrypt_derived = false,
       .salt = system_salt_,
@@ -805,11 +815,14 @@ TEST_F(AuthBlockUtilityImplTest, DeriveChallengeCredentialAuthBlock) {
 
   Credentials credentials(kUser, passkey);
 
-  LibScryptCompatAuthBlockState scrypt_state = {
-      .wrapped_keyset = wrapped_keyset,
-      .wrapped_chaps_key = wrapped_chaps_key,
-      .wrapped_reset_seed = wrapped_reset_seed,
-      .salt = system_salt_};
+  ScryptAuthBlockState scrypt_state = {
+      .salt = brillo::SecureBlob("salt"),
+      .chaps_salt = brillo::SecureBlob("chaps_salt"),
+      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+      .work_factor = kWorkFactor,
+      .block_size = kBlockSize,
+      .parallel_factor = kParallelFactor,
+  };
   ChallengeCredentialAuthBlockState cc_state = {.scrypt_state = scrypt_state};
   AuthBlockState auth_state = {.state = cc_state};
 
@@ -958,22 +971,20 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
         // test cannot check the exact values returned. The salt() could be
         // passed through in some test specific harness, but the underlying
         // scrypt code is tested in so many other places, it's unnecessary.
-        EXPECT_FALSE(blobs->scrypt_key->derived_key().empty());
-        EXPECT_FALSE(blobs->scrypt_key->ConsumeSalt().empty());
+        auto& tpm_state =
+            std::get<ChallengeCredentialAuthBlockState>(auth_state->state);
 
-        EXPECT_FALSE(blobs->chaps_scrypt_key->derived_key().empty());
-        EXPECT_FALSE(blobs->chaps_scrypt_key->ConsumeSalt().empty());
+        EXPECT_FALSE(blobs->vkk_key->empty());
+        EXPECT_FALSE(tpm_state.scrypt_state.salt->empty());
 
-        EXPECT_FALSE(
-            blobs->scrypt_wrapped_reset_seed_key->derived_key().empty());
-        EXPECT_FALSE(
-            blobs->scrypt_wrapped_reset_seed_key->ConsumeSalt().empty());
+        EXPECT_FALSE(blobs->scrypt_chaps_key->empty());
+        EXPECT_FALSE(tpm_state.scrypt_state.chaps_salt->empty());
+
+        EXPECT_FALSE(blobs->scrypt_reset_seed_key->empty());
+        EXPECT_FALSE(tpm_state.scrypt_state.reset_seed_salt->empty());
 
         ASSERT_TRUE(std::holds_alternative<ChallengeCredentialAuthBlockState>(
             auth_state->state));
-
-        auto& tpm_state =
-            std::get<ChallengeCredentialAuthBlockState>(auth_state->state);
 
         AuthInput auth_input{
             .challenge_credential_auth_input =
@@ -1020,90 +1031,13 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       .state =
           ChallengeCredentialAuthBlockState{
               .scrypt_state =
-                  LibScryptCompatAuthBlockState{
-                      .wrapped_keyset =
-                          brillo::SecureBlob{
-                              0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E,
-                              0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01,
-                              0x4D, 0xEE, 0xFC, 0x79, 0x0D, 0x79, 0x08, 0x79,
-                              0xD5, 0xF6, 0x07, 0x65, 0xDF, 0x76, 0x5A, 0xAE,
-                              0xD1, 0xBD, 0x1D, 0xCF, 0x29, 0xF6, 0xFF, 0x5C,
-                              0x31, 0x30, 0x23, 0xD1, 0x22, 0x17, 0xDF, 0x74,
-                              0x26, 0xD5, 0x11, 0x88, 0x8D, 0x40, 0xA6, 0x9C,
-                              0xB9, 0x72, 0xCE, 0x37, 0x71, 0xB7, 0x39, 0x0E,
-                              0x3E, 0x34, 0x0F, 0x73, 0x29, 0xF4, 0x0F, 0x89,
-                              0x15, 0xF7, 0x6E, 0xA1, 0x5A, 0x29, 0x78, 0x21,
-                              0xB7, 0xC0, 0x76, 0x50, 0x14, 0x5C, 0xAD, 0x77,
-                              0x53, 0xC9, 0xD0, 0xFE, 0xD1, 0xB9, 0x81, 0x32,
-                              0x75, 0x0E, 0x1E, 0x45, 0x34, 0xBD, 0x0B, 0xF7,
-                              0xFA, 0xED, 0x9A, 0xD7, 0x6B, 0xE4, 0x2F, 0xC0,
-                              0x2F, 0x58, 0xBE, 0x3A, 0x26, 0xD1, 0x82, 0x41,
-                              0x09, 0x82, 0x7F, 0x17, 0xA8, 0x5C, 0x66, 0x0E,
-                              0x24, 0x8B, 0x7B, 0xF5, 0xEB, 0x0C, 0x6D, 0xAE,
-                              0x19, 0x5C, 0x7D, 0xC4, 0x0D, 0x8D, 0xB2, 0x18,
-                              0x13, 0xD4, 0xC0, 0x32, 0x34, 0x15, 0xAE, 0x1D,
-                              0xA1, 0x44, 0x2E, 0x80, 0xD8, 0x00, 0x8A, 0xB9,
-                              0xDD, 0xA4, 0xC0, 0x33, 0xAE, 0x26, 0xD3, 0xE6,
-                              0x53, 0xD6, 0x31, 0x5C, 0x4C, 0x10, 0xBB, 0xA9,
-                              0xD5, 0x53, 0xD7, 0xAD, 0xCD, 0x97, 0x20, 0x83,
-                              0xFC, 0x18, 0x4B, 0x7F, 0xC1, 0xBD, 0x85, 0x43,
-                              0x12, 0x85, 0x4F, 0x6F, 0xAA, 0xDB, 0x58, 0xA0,
-                              0x0F, 0x2C, 0xAB, 0xEA, 0x74, 0x8E, 0x2C, 0x28,
-                              0x01, 0x88, 0x48, 0xA5, 0x0A, 0xFC, 0x2F, 0xB4,
-                              0x59, 0x4B, 0xF6, 0xD9, 0xE5, 0x47, 0x94, 0x42,
-                              0xA5, 0x61, 0x06, 0x8C, 0x5A, 0x9C, 0xD3, 0xA6,
-                              0x30, 0x2C, 0x13, 0xCA, 0xF1, 0xFF, 0xFE, 0x5C,
-                              0xE8, 0x21, 0x25, 0x9A, 0xE0, 0x50, 0xC3, 0x2F,
-                              0x14, 0x71, 0x38, 0xD0, 0xE7, 0x79, 0x5D, 0xF0,
-                              0x71, 0x80, 0xF0, 0x3D, 0x05, 0xB6, 0xF7, 0x67,
-                              0x3F, 0x22, 0x21, 0x7A, 0xED, 0x48, 0xC4, 0x2D,
-                              0xEA, 0x2E, 0xAE, 0xE9, 0xA8, 0xFF, 0xA0, 0xB6,
-                              0xB4, 0x0A, 0x94, 0x34, 0x40, 0xD1, 0x6C, 0x6C,
-                              0xC7, 0x90, 0x9C, 0xF7, 0xED, 0x0B, 0xED, 0x90,
-                              0xB1, 0x4D, 0x6D, 0xB4, 0x3D, 0x04, 0x7E, 0x7B,
-                              0x16, 0x59, 0xFF, 0xFE},
-                      .wrapped_chaps_key =
-                          brillo::SecureBlob{
-                              0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E,
-                              0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01,
-                              0xC9, 0x80, 0xA1, 0x30, 0x82, 0x40, 0xE6, 0xCF,
-                              0xC8, 0x59, 0xE9, 0xB6, 0xB0, 0xE8, 0xBF, 0x95,
-                              0x82, 0x79, 0x71, 0xF9, 0x86, 0x8A, 0xCA, 0x53,
-                              0x23, 0xCF, 0x31, 0xFE, 0x4B, 0xD2, 0xA5, 0x26,
-                              0xA4, 0x46, 0x3D, 0x35, 0xEF, 0x69, 0x02, 0xC4,
-                              0xBF, 0x72, 0xDC, 0xF8, 0x90, 0x77, 0xFB, 0x59,
-                              0x0D, 0x41, 0xCB, 0x5B, 0x58, 0xC6, 0x08, 0x0F,
-                              0x19, 0x4E, 0xC8, 0x4A, 0x57, 0xE7, 0x63, 0x43,
-                              0x39, 0x79, 0xD7, 0x6E, 0x0D, 0xD0, 0xE4, 0x4F,
-                              0xFA, 0x55, 0x32, 0xE1, 0x6B, 0xE4, 0xFF, 0x12,
-                              0xB1, 0xA3, 0x75, 0x9C, 0x44, 0x3A, 0x16, 0x68,
-                              0x5C, 0x11, 0xD0, 0xA5, 0x4C, 0x65, 0xB0, 0xBF,
-                              0x04, 0x41, 0x94, 0xFE, 0xC5, 0xDD, 0x5C, 0x78,
-                              0x5B, 0x14, 0xA1, 0x3F, 0x0B, 0x17, 0x9C, 0x75,
-                              0xA5, 0x9E, 0x36, 0x14, 0x5B, 0xC4, 0xAC, 0x77,
-                              0x28, 0xDE, 0xEB, 0xB4, 0x51, 0x5F, 0x33, 0x36},
-                      .wrapped_reset_seed =
-                          brillo::SecureBlob{
-                              0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E,
-                              0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01,
-                              0x7F, 0x40, 0x30, 0x51, 0x2F, 0x15, 0x62, 0x15,
-                              0xB1, 0x2E, 0x58, 0x27, 0x52, 0xE4, 0xFF, 0xC5,
-                              0x3C, 0x1E, 0x19, 0x05, 0x84, 0xD8, 0xE8, 0xD4,
-                              0xFD, 0x8C, 0x33, 0xE8, 0x06, 0x1A, 0x38, 0x28,
-                              0x2D, 0xD7, 0x01, 0xD2, 0xB3, 0xE1, 0x95, 0xC3,
-                              0x49, 0x63, 0x39, 0xA2, 0xB2, 0xE3, 0xDA, 0xE2,
-                              0x76, 0x40, 0x40, 0x11, 0xD1, 0x98, 0xD2, 0x03,
-                              0xFB, 0x60, 0xD0, 0xA1, 0xA5, 0xB5, 0x51, 0xAA,
-                              0xEF, 0x6C, 0xB3, 0xAB, 0x23, 0x65, 0xCA, 0x44,
-                              0x84, 0x7A, 0x71, 0xCA, 0x0C, 0x36, 0x33, 0x7F,
-                              0x53, 0x06, 0x0E, 0x03, 0xBB, 0xC1, 0x9A, 0x9D,
-                              0x40, 0x1C, 0x2F, 0x46, 0xB7, 0x84, 0x00, 0x59,
-                              0x5B, 0xD6, 0x53, 0xE4, 0x51, 0x82, 0xC2, 0x3D,
-                              0xF4, 0x46, 0xD2, 0xDD, 0xE5, 0x7A, 0x0A, 0xEB,
-                              0xC8, 0x45, 0x7C, 0x37, 0x01, 0xD5, 0x37, 0x4E,
-                              0xE3, 0xC7, 0xBC, 0xC6, 0x5E, 0x25, 0xFE, 0xE2,
-                              0x05, 0x14, 0x60, 0x33, 0xB8, 0x1A, 0xF1, 0x17,
-                              0xE1, 0x0C, 0x25, 0x00, 0xA5, 0x0A, 0xD5, 0x03},
+                  ScryptAuthBlockState{
+                      .salt = brillo::SecureBlob("salt"),
+                      .chaps_salt = brillo::SecureBlob("chaps_salt"),
+                      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+                      .work_factor = kWorkFactor,
+                      .block_size = kBlockSize,
+                      .parallel_factor = kParallelFactor,
                   },
               .keyset_challenge_info =
                   structure::SignatureChallengeInfo{
@@ -1121,28 +1055,28 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       0x38, 0x36, 0x31, 0x32, 0x62, 0x37, 0x39, 0x36, 0x30, 0x65};
 
   brillo::SecureBlob derived_key = {
-      0x58, 0x2A, 0x41, 0x1F, 0xC0, 0x27, 0x2D, 0xC7, 0xF8, 0xEC, 0xA3,
-      0x4E, 0xC0, 0x3F, 0x6C, 0x56, 0x6D, 0x88, 0x69, 0x3F, 0x50, 0x20,
-      0x37, 0xE3, 0x77, 0x5F, 0xDD, 0xC3, 0x61, 0x2D, 0x27, 0xAD, 0xD3,
-      0x55, 0x4D, 0x66, 0xE5, 0x83, 0xD2, 0x5E, 0x02, 0x0C, 0x22, 0x59,
-      0x6C, 0x39, 0x35, 0x86, 0xEC, 0x46, 0xB0, 0x85, 0x89, 0xE3, 0x4C,
-      0xB9, 0xE2, 0x0C, 0xA1, 0x27, 0x60, 0x85, 0x5A, 0x37};
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
 
   brillo::SecureBlob derived_chaps_key = {
-      0x16, 0x53, 0xEE, 0x4D, 0x76, 0x47, 0x68, 0x09, 0xB3, 0x39, 0x1D,
-      0xD3, 0x6F, 0xA2, 0x8F, 0x8A, 0x3E, 0xB3, 0x64, 0xDD, 0x4D, 0xC4,
-      0x64, 0x6F, 0xE1, 0xB8, 0x82, 0x28, 0x68, 0x72, 0x68, 0x84, 0x93,
-      0xE2, 0xDB, 0x2F, 0x27, 0x91, 0x08, 0x2C, 0xA0, 0xD9, 0xA1, 0x6E,
-      0x6F, 0x0E, 0x13, 0x66, 0x1D, 0x94, 0x12, 0x6F, 0xF4, 0x98, 0x7B,
-      0x44, 0x62, 0x57, 0x47, 0x33, 0x46, 0xD2, 0x30, 0x42};
+      0x7a, 0xc3, 0x70, 0x54, 0x4d, 0x04, 0x4c, 0xa6, 0x48, 0xcc, 0x4d,
+      0xcf, 0x94, 0x13, 0xa7, 0x97, 0x28, 0x80, 0x9f, 0xec, 0xa0, 0xaf,
+      0x2d, 0x3c, 0xef, 0xf0, 0x34, 0xd6, 0xbd, 0x02, 0x45, 0x1e, 0x3d,
+      0xe1, 0xc2, 0x42, 0xd8, 0x40, 0x75, 0x85, 0x15, 0x87, 0xaf, 0x29,
+      0x2c, 0x44, 0xbc, 0x77, 0x86, 0x87, 0xd2, 0x0b, 0xea, 0xba, 0x51,
+      0x8d, 0xc4, 0x3a, 0xf8, 0x05, 0xb6, 0x20, 0x5d, 0xfd};
 
   brillo::SecureBlob derived_reset_seed_key = {
-      0xFA, 0x93, 0x57, 0xCE, 0x21, 0xBB, 0x82, 0x4D, 0x3A, 0x3B, 0x26,
-      0x88, 0x8C, 0x7E, 0x61, 0x52, 0x52, 0xF0, 0x12, 0x25, 0xA3, 0x59,
-      0xCA, 0x71, 0xD2, 0x0C, 0x52, 0x8A, 0x5B, 0x7A, 0x7D, 0xBF, 0x8E,
-      0xC7, 0x4D, 0x1D, 0xB5, 0xF9, 0x01, 0xA6, 0xE5, 0x5D, 0x47, 0x2E,
-      0xFD, 0x7C, 0x78, 0x1D, 0x9B, 0xAD, 0xE6, 0x71, 0x35, 0x2B, 0x32,
-      0x1E, 0x59, 0x19, 0x47, 0x88, 0x92, 0x50, 0x28, 0x09};
+      0xd4, 0x78, 0x3b, 0xfb, 0x81, 0xfe, 0xb3, 0x84, 0x23, 0x06, 0x18,
+      0xc0, 0x30, 0x1c, 0x40, 0xcb, 0x71, 0x04, 0x46, 0xeb, 0x91, 0x9e,
+      0xa2, 0x7b, 0xd7, 0xcf, 0xcb, 0x5e, 0x67, 0xd3, 0x5a, 0x07, 0x7c,
+      0x5f, 0xc2, 0x92, 0x3f, 0x98, 0x32, 0x75, 0x80, 0xe8, 0xed, 0xda,
+      0x2c, 0x1e, 0x41, 0x1c, 0xd2, 0x07, 0x48, 0x39, 0x2a, 0xfd, 0x6c,
+      0xd6, 0x6f, 0x1c, 0x8e, 0xca, 0x00, 0x79, 0x91, 0x52};
 
   auto mock_key_challenge_service =
       std::make_unique<NiceMock<MockKeyChallengeService>>();
@@ -1166,10 +1100,9 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
         ASSERT_TRUE(error.ok());
-        EXPECT_EQ(derived_key, blobs->scrypt_key->derived_key());
-        EXPECT_EQ(derived_chaps_key, blobs->chaps_scrypt_key->derived_key());
-        EXPECT_EQ(derived_reset_seed_key,
-                  blobs->scrypt_wrapped_reset_seed_key->derived_key());
+        EXPECT_EQ(derived_key, blobs->vkk_key);
+        EXPECT_EQ(derived_chaps_key, blobs->scrypt_chaps_key);
+        EXPECT_EQ(derived_reset_seed_key, blobs->scrypt_reset_seed_key);
       });
 
   AuthInput auth_input = {
@@ -1283,6 +1216,39 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   auto vk1 = std::make_unique<VaultKeyset>();
   vk1->InitializeFromSerialized(serialized);
 
+  const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
+  const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
+      {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
+  brillo::SecureBlob wrapped_keyset;
+  brillo::SecureBlob wrapped_chaps_key;
+  brillo::SecureBlob wrapped_reset_seed;
+  brillo::SecureBlob derived_key = {
+      0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
+      0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
+      0xd4, 0x7a, 0xd8, 0x2b, 0x44, 0xc4, 0x45, 0x53, 0x1a, 0x85, 0x4a,
+      0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
+      0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
+      0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
+  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
+  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
+  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+
+  scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, scrypt_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_keyset));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, chaps_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_chaps_key));
+  ASSERT_TRUE(hwsec_foundation::LibScryptCompat::Encrypt(
+      derived_key, reset_seed_salt, blob_to_encrypt,
+      hwsec_foundation::kDefaultScryptParams, &wrapped_reset_seed));
+  vk1->SetWrappedKeyset(wrapped_keyset);
+  vk1->SetWrappedChapsKey(wrapped_chaps_key);
+  vk1->SetWrappedResetSeed(wrapped_reset_seed);
+
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk1))));
@@ -1296,15 +1262,15 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
       std::get_if<ChallengeCredentialAuthBlockState>(&out_state.state);
   EXPECT_NE(cc_state, nullptr);
 
-  // LibScryptCompatAuthBlockState
+  // ScryptAuthBlockState
 
   // Construct the vault keyset
   serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED);
   auto vk2 = std::make_unique<VaultKeyset>();
   vk2->InitializeFromSerialized(serialized);
-  vk2->SetWrappedKeyset(brillo::SecureBlob("foo"));
-  vk2->SetWrappedChapsKey(brillo::SecureBlob("bar"));
-  vk2->SetWrappedResetSeed(brillo::SecureBlob("baz"));
+  vk2->SetWrappedKeyset(wrapped_keyset);
+  vk2->SetWrappedChapsKey(wrapped_chaps_key);
+  vk2->SetWrappedResetSeed(wrapped_reset_seed);
 
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
@@ -1312,14 +1278,16 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
       credentials.key_data().label(), credentials.GetObfuscatedUsername(),
       out_state);
-  EXPECT_TRUE(
-      std::holds_alternative<LibScryptCompatAuthBlockState>(out_state.state));
-  const LibScryptCompatAuthBlockState* scrypt_state =
-      std::get_if<LibScryptCompatAuthBlockState>(&out_state.state);
+  EXPECT_TRUE(std::holds_alternative<ScryptAuthBlockState>(out_state.state));
+  const ScryptAuthBlockState* scrypt_state =
+      std::get_if<ScryptAuthBlockState>(&out_state.state);
   EXPECT_NE(scrypt_state, nullptr);
-  EXPECT_TRUE(scrypt_state->wrapped_keyset.has_value());
-  EXPECT_TRUE(scrypt_state->wrapped_chaps_key.has_value());
-  EXPECT_TRUE(scrypt_state->wrapped_reset_seed.has_value());
+  EXPECT_TRUE(scrypt_state->salt.has_value());
+  EXPECT_TRUE(scrypt_state->chaps_salt.has_value());
+  EXPECT_TRUE(scrypt_state->reset_seed_salt.has_value());
+  EXPECT_TRUE(scrypt_state->work_factor.has_value());
+  EXPECT_TRUE(scrypt_state->block_size.has_value());
+  EXPECT_TRUE(scrypt_state->parallel_factor.has_value());
 
   // DoubleWrappedCompatAuthBlockstate fail when TPM key is not present
 
@@ -1328,6 +1296,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
                        SerializedVaultKeyset::TPM_WRAPPED);
   auto vk3 = std::make_unique<VaultKeyset>();
   vk3->InitializeFromSerialized(serialized);
+  vk3->SetWrappedKeyset(wrapped_keyset);
 
   // Test
   // Double scrypt fail test when tpm key is not set, failure in creating
@@ -1345,6 +1314,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Construct the vault keyset
   auto vk4 = std::make_unique<VaultKeyset>();
   vk4->InitializeFromSerialized(serialized);
+  vk4->SetWrappedKeyset(wrapped_keyset);
   vk4->SetTPMKey(brillo::SecureBlob("tpmkey"));
 
   // Test
@@ -1453,16 +1423,6 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
-  // Test for kLibScryptCompat
-  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-  EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kLibScryptCompat
-                                      : AuthBlockType::kMaxValue,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
-
   // Test for kScrypt
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
@@ -1470,8 +1430,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                                       : AuthBlockType::kMaxValue,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kUserSecretStash));
+                /*is_challenge_credential =*/false));
 
   // Test for kPinWeaver
   KeyData key_data;
@@ -1480,8 +1439,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kPinWeaver,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/true, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/false));
 
   // Test for kChallengeResponse
   KeyData key_data2;
@@ -1490,8 +1448,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kChallengeCredential,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/true,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/true));
 
   // Test for Tpm backed AuthBlock types.
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
@@ -1504,16 +1461,14 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kTpmEcc,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/false));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
   EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(false));
   EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/false));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
   EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(true));
@@ -1522,15 +1477,13 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/false));
 
   // Test for kCryptohomeRecovery
   EXPECT_EQ(AuthBlockType::kCryptohomeRecovery,
             auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                 /*is_le_credential =*/false, /*is_recovery=*/true,
-                /*is_challenge_credential =*/false,
-                AuthFactorStorageType::kVaultKeyset));
+                /*is_challenge_credential =*/false));
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {

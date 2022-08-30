@@ -221,7 +221,7 @@ class VaultKeyset {
   bool GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const;
   bool GetPinWeaverState(AuthBlockState* auth_state) const;
   bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
-  bool GetLibScryptCompatState(AuthBlockState* auth_state) const;
+  bool GetScryptState(AuthBlockState* auth_state) const;
   bool GetDoubleWrappedCompatState(AuthBlockState* auth_state) const;
   bool GetTpmEccState(AuthBlockState* auth_state) const;
 
@@ -234,7 +234,7 @@ class VaultKeyset {
       const TpmNotBoundToPcrAuthBlockState& auth_state);
   void SetTpmBoundToPcrState(const TpmBoundToPcrAuthBlockState& auth_state);
   void SetPinWeaverState(const PinWeaverAuthBlockState& auth_state);
-  void SetLibScryptCompatState(const LibScryptCompatAuthBlockState& auth_state);
+  void SetScryptState(const ScryptAuthBlockState& auth_state);
   void SetChallengeCredentialState(
       const ChallengeCredentialAuthBlockState& auth_state);
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
@@ -288,10 +288,12 @@ class VaultKeyset {
   // This function encrypts a VaultKeyset with an scrypt derived key.
   //
   // Parameters
+  //   auth_block_state - AuthBlockState that stores salts for scrypt wrapping.
   //   key_blobs - Key blob that stores scrypt derived keys.
   // Return
   //   error - The specific error code on failure.
-  CryptohomeStatus WrapScryptVaultKeyset(const KeyBlobs& key_blobs);
+  CryptohomeStatus WrapScryptVaultKeyset(const AuthBlockState& auth_block_state,
+                                         const KeyBlobs& key_blobs);
 
   // This function consumes the Vault Keyset Key (VKK) and IV, and produces
   // the unwrapped secrets from the Vault Keyset.
