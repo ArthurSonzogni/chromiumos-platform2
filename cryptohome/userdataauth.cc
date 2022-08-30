@@ -4711,7 +4711,10 @@ void UserDataAuth::AddAuthFactor(
   }
 
   StatusCallback on_add_auth_factor_finished = base::BindOnce(
-      &ReplyWithStatus<user_data_auth::AddAuthFactorReply>, std::move(on_done));
+      &UserDataAuth::OnAddCredentialFinished, base::Unretained(this),
+      auth_session_status.value(),
+      base::BindOnce(&ReplyWithStatus<user_data_auth::AddAuthFactorReply>,
+                     std::move(on_done)));
   auth_session_status.value()->AddAuthFactor(
       request, std::move(on_add_auth_factor_finished));
 }
