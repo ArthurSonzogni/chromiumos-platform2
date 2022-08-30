@@ -185,20 +185,41 @@ class Network {
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
-  // TODO(b/232177767): Wrappers for the corresponding functions in the
-  // Connection class. This is a temporary solution. The caller should guarantee
-  // there is a Connection object inside this object.
+  // Routing policy rules have priorities, which establishes the order in which
+  // policy rules will be matched against the current traffic. The higher the
+  // priority value, the lower the priority of the rule. 0 is the highest rule
+  // priority and is generally reserved for the kernel.
+  //
+  // Updates the kernel's routing policy rule database such that policy rules
+  // corresponding to this Connection will use |priority| as the "base
+  // priority". This call also updates the systemwide DNS configuration if
+  // necessary, and triggers captive portal detection if the connection has
+  // transitioned from non-default to default.
+  //
+  // This function should only be called when the Network is connected,
+  // otherwise the call is a no-op.
   mockable void SetPriority(uint32_t priority, bool is_primary_physical);
+
+  // Returns true if this Network is currently the systemwide default.
   mockable bool IsDefault() const;
+
+  // Determines whether this Network controls the system DNS settings. This
+  // should only be true for one Network at a time. This function should only be
+  // called when the Network is connected, otherwise the call is a no-op.
   mockable void SetUseDNS(bool enable);
+
+  // Flush and (re)create routing policy rules for the Network. This function
+  // should only be called when the Network is connected, otherwise the call is
+  // a no-op.
+  // TODO(b/232177767): This function is only used in DeviceInfo. Consider
+  // remove this interface later.
   void UpdateRoutingPolicy();
 
-  // TODO(b/232177767): Getters for access members in Connection. This is a
-  // temporary solution. The caller should guarantee there is a Connection
-  // object inside this object.
-  mockable const std::vector<std::string>& dns_servers() const;
-  mockable const IPAddress& local() const;
-  const IPAddress& gateway() const;
+  // Properties of the current IP config. Returns IPv4 properties if the Network
+  // is dual-stack, and default (empty) values if the Network is not connected.
+  mockable std::vector<std::string> dns_servers() const;
+  mockable IPAddress local() const;
+  IPAddress gateway() const;
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.

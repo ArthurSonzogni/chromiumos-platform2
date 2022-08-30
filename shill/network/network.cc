@@ -589,37 +589,54 @@ bool Network::SetIPFlag(IPAddress::Family family,
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+  if (!connection_) {
+    LOG(WARNING) << __func__ << " called but no connection exists";
+    return;
+  }
   connection_->SetPriority(priority, is_primary_physical);
 }
 
 bool Network::IsDefault() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+  if (!connection_) {
+    return false;
+  }
   return connection_->IsDefault();
 }
 
 void Network::SetUseDNS(bool enable) {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+  if (!connection_) {
+    LOG(WARNING) << __func__ << " called but no connection exists";
+    return;
+  }
   connection_->SetUseDNS(enable);
 }
 
 void Network::UpdateRoutingPolicy() {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+  if (!connection_) {
+    LOG(WARNING) << __func__ << " called but no connection exists";
+    return;
+  }
   connection_->UpdateRoutingPolicy();
 }
 
-const std::vector<std::string>& Network::dns_servers() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+std::vector<std::string> Network::dns_servers() const {
+  if (!connection_) {
+    return {};
+  }
   return connection_->dns_servers();
 }
 
-const IPAddress& Network::local() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+IPAddress Network::local() const {
+  if (!connection_) {
+    return {};
+  }
   return connection_->local();
 }
 
-const IPAddress& Network::gateway() const {
-  CHECK(connection_) << __func__ << " called but no connection exists";
+IPAddress Network::gateway() const {
+  if (!connection_) {
+    return {};
+  }
   return connection_->gateway();
 }
 

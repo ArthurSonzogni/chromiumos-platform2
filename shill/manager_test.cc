@@ -509,10 +509,9 @@ class ManagerTest : public PropertyStoreTest {
     auto* mock_network_ptr = mock_network.get();
     EXPECT_CALL(*mock_network, HasConnectionObject())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_network, local())
-        .WillRepeatedly(ReturnRefOfCopy(ip_addr));
+    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(ip_addr));
     EXPECT_CALL(*mock_network, dns_servers())
-        .WillRepeatedly(ReturnRefOfCopy(kDNSServers));
+        .WillRepeatedly(Return(kDNSServers));
     mock_device->set_network_for_testing(std::move(mock_network));
     return mock_network_ptr;
   }
@@ -2247,9 +2246,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   std::vector<std::string> dns_servers;
   dns_servers.push_back("8.8.8.8");
   EXPECT_CALL(*mock_network0, dns_servers())
-      .WillRepeatedly(ReturnRef(dns_servers));
+      .WillRepeatedly(Return(dns_servers));
   EXPECT_CALL(*mock_network1, dns_servers())
-      .WillRepeatedly(ReturnRef(dns_servers));
+      .WillRepeatedly(Return(dns_servers));
 
   // If both Services have Connections, the DefaultService follows
   // from ServiceOrderIs.  We notify others of the change in

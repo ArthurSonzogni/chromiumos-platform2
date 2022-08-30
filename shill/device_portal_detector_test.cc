@@ -34,6 +34,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::ReturnRefOfCopy;
 
 // This file contains Device unit tests focused on portal detection and
 // integration with the PortalDetector class. These tests minimize the use of
@@ -289,12 +290,14 @@ class DevicePortalDetectorTest : public testing::Test {
   std::unique_ptr<MockConnection> CreateMockConnection() {
     auto connection = std::make_unique<NiceMock<MockConnection>>(&device_info_);
     const IPAddress ip_addr = IPAddress("192.168.86.2");
-    EXPECT_CALL(*connection, local()).WillRepeatedly(ReturnRef(ip_addr));
+    EXPECT_CALL(*connection, local()).WillRepeatedly(ReturnRefOfCopy(ip_addr));
     EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
     const IPAddress gateway = IPAddress("192.168.86.1");
-    EXPECT_CALL(*connection, gateway()).WillRepeatedly(ReturnRef(gateway));
+    EXPECT_CALL(*connection, gateway())
+        .WillRepeatedly(ReturnRefOfCopy(gateway));
     const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
-    EXPECT_CALL(*connection, dns_servers()).WillRepeatedly(ReturnRef(dns_list));
+    EXPECT_CALL(*connection, dns_servers())
+        .WillRepeatedly(ReturnRefOfCopy(dns_list));
     return connection;
   }
 
