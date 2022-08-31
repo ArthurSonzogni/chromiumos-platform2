@@ -15,6 +15,8 @@
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
+#include "diagnostics/cros_healthd/system/fake_mojo_service.h"
+
 namespace diagnostics {
 
 MockContext::MockContext() {
@@ -27,6 +29,7 @@ MockContext::MockContext() {
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
   fwupd_proxy_ =
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
+  mojo_service_ = std::make_unique<FakeMojoService>();
   network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
   network_diagnostics_adapter_ =
       std::make_unique<MockNetworkDiagnosticsAdapter>();
@@ -79,6 +82,10 @@ org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {
 org::freedesktop::fwupdProxyMock* MockContext::mock_fwupd_proxy() const {
   return static_cast<testing::StrictMock<org::freedesktop::fwupdProxyMock>*>(
       fwupd_proxy_.get());
+}
+
+FakeMojoService* MockContext::fake_mojo_service() const {
+  return static_cast<FakeMojoService*>(mojo_service_.get());
 }
 
 FakeNetworkHealthAdapter* MockContext::fake_network_health_adapter() const {

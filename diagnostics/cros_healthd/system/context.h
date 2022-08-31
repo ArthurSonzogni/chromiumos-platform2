@@ -23,12 +23,11 @@
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/libdrm_util.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
-#include "diagnostics/cros_healthd/utils/mojo_relay.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
-#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace brillo {
 class Udev;
@@ -131,11 +130,8 @@ class Context {
   // Use the object returned by udev() to access udev related interfaces.
   brillo::Udev* udev() const;
 
-  // Use for access the chromium data collector.
-  MojoRelay<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>&
-  chromium_data_collector_relay() {
-    return chromium_data_collector_relay_;
-  }
+  // Get MojoService to access external mojo services.
+  MojoService* mojo_service() const { return mojo_service_.get(); }
 
  private:
   Context();
@@ -158,11 +154,10 @@ class Context {
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::bluezProxy> bluetooth_proxy_;
-  MojoRelay<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
-      chromium_data_collector_relay_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
+  std::unique_ptr<MojoService> mojo_service_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;

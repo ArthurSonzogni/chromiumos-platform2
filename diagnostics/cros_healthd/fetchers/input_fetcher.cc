@@ -11,6 +11,7 @@
 
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -97,8 +98,7 @@ void InputFetcher::Fetch(ResultCallback callback) {
   CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
                                          std::move(callback))};
 
-  internal_mojom::ChromiumDataCollector* collector =
-      context_->chromium_data_collector_relay().Get();
+  auto* collector = context_->mojo_service()->GetChromiumDataCollector();
   collector->GetTouchscreenDevices(barrier.Depend(base::BindOnce(
       &State::HandleTouchscreenDevice, base::Unretained(state_ptr))));
   collector->GetTouchpadLibraryName(barrier.Depend(base::BindOnce(

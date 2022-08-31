@@ -7,10 +7,11 @@
 #include <base/test/bind.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/fake/fake_chromium_data_collector.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
+#include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/mojo_task_environment.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -20,10 +21,7 @@ namespace internal_mojom = chromeos::cros_healthd::internal::mojom;
 class InputFetcherTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    mock_context_.chromium_data_collector_relay()
-        .InitNewPipeAndWaitForIncomingRemote();
-    mock_context_.chromium_data_collector_relay().Bind(
-        fake_collector_.receiver().BindNewPipeAndPassRemote());
+    mock_context_.fake_mojo_service()->InitializeFakeMojoService();
   }
 
   mojom::InputResultPtr FetchInput() {
@@ -38,10 +36,13 @@ class InputFetcherTest : public ::testing::Test {
     return res;
   }
 
+  FakeChromiumDataCollector& fake_chromium_data_collector() {
+    return mock_context_.fake_mojo_service()->fake_chromium_data_collector();
+  }
+
   MojoTaskEnvironment env_;
   MockContext mock_context_;
   InputFetcher input_fetcher_{&mock_context_};
-  FakeChromiumDataCollector fake_collector_;
 };
 
 TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
@@ -56,7 +57,8 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
   fake_device->touch_points = 42;
   fake_device->has_stylus = true;
   fake_device->has_stylus_garage_switch = true;
-  fake_collector_.touchscreen_devices().push_back(fake_device.Clone());
+  fake_chromium_data_collector().touchscreen_devices().push_back(
+      fake_device.Clone());
 
   auto expected_device = mojom::TouchscreenDevice::New();
   expected_device->input_device = mojom::InputDevice::New();
@@ -75,7 +77,8 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
 }
 
 TEST_F(InputFetcherTest, FetchTouchpadLibraryName) {
-  fake_collector_.touchpad_library_name() = "FakeTouchpadLibraryName";
+  fake_chromium_data_collector().touchpad_library_name() =
+      "FakeTouchpadLibraryName";
 
   auto result = FetchInput();
   EXPECT_EQ(result->get_input_info()->touchpad_library_name,
@@ -84,7 +87,7 @@ TEST_F(InputFetcherTest, FetchTouchpadLibraryName) {
 
 TEST_F(InputFetcherTest, FetchFailed) {
   // Reset the receiver to emulate the service disconnected.
-  fake_collector_.receiver().reset();
+  fake_chromium_data_collector().receiver().reset();
 
   auto result = FetchInput();
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);

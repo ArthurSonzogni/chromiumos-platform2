@@ -27,6 +27,7 @@
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
+#include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 
 namespace diagnostics {
 
@@ -219,7 +220,10 @@ void CrosHealthd::SendChromiumDataCollector(
     mojo::PendingRemote<
         chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
         remote) {
-  context_->chromium_data_collector_relay().Bind(std::move(remote));
+  // TODO(b/230064284): Remove this after migrate to service manager.
+  static_cast<MojoServiceImpl*>(context_->mojo_service())
+      ->chromium_data_collector_relay()
+      .Bind(std::move(remote));
 }
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
