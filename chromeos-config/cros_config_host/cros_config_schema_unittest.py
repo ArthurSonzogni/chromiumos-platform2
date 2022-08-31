@@ -13,14 +13,14 @@ import json
 import os
 import re
 
-import jsonschema  # pylint: disable=import-error
-from six.moves import zip_longest
-from packaging import version  # pylint: disable=import-error
-
 import cros_config_schema
+import jsonschema  # pylint: disable=import-error
 import libcros_schema
+from packaging import version  # pylint: disable=import-error
+from six.moves import zip_longest
 
 from chromite.lib import cros_test_lib
+
 
 this_dir = os.path.dirname(__file__)
 

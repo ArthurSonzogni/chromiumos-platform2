@@ -13,6 +13,7 @@ import power_manager_prefs_gen_schema
 
 from chromite.lib import cros_test_lib
 
+
 THIS_DIR = os.path.dirname(__file__)
 SCHEMA_FILE = os.path.join(THIS_DIR, "power_manager_prefs_schema.yaml")
 

@@ -10,9 +10,9 @@ import os
 import subprocess
 import unittest
 
+from chromiumos.config.test import fake_config as fake_config_mod
 import cros_config_proto_converter
 
-from chromiumos.config.test import fake_config as fake_config_mod
 
 THIS_DIR = os.path.dirname(__file__)
 

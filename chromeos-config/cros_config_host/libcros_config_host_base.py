@@ -6,15 +6,18 @@
 
 from __future__ import print_function
 
-from collections import namedtuple, OrderedDict
-
+from collections import namedtuple
+from collections import OrderedDict
 import os
 import sys
+
 
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
-from cros_config_schema import GetValidSchemaProperties, ValidationError
+from cros_config_schema import GetValidSchemaProperties
+from cros_config_schema import ValidationError
+
 
 sys.path.pop(0)
 

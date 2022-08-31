@@ -20,12 +20,14 @@ import sys
 
 import six
 
+
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
 import configfs
 import identity_table
 import libcros_schema
+
 
 sys.path.pop(0)
 

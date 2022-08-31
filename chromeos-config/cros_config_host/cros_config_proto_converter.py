@@ -8,31 +8,29 @@
 # pylint: disable=too-many-lines
 
 import argparse
+from collections import namedtuple
 import collections.abc
 import functools
 import glob
 import itertools
 import json
+import os
 import pathlib
 import pprint
-import os
-import sys
 import re
-
+import sys
 from typing import List
-
-from collections import namedtuple
-
-from google.protobuf import json_format
-from google.protobuf import wrappers_pb2
-from lxml import etree
 
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import topology_pb2
-from chromiumos.config.payload import config_bundle_pb2
 from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import ui_config_pb2
+from chromiumos.config.payload import config_bundle_pb2
+from google.protobuf import json_format
+from google.protobuf import wrappers_pb2
+from lxml import etree
+
 
 Config = namedtuple(
     "Config",

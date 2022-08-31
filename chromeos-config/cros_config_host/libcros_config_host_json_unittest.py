@@ -13,6 +13,7 @@ import unittest
 
 import libcros_config_host_json
 
+
 this_dir = os.path.dirname(__file__)
 
 

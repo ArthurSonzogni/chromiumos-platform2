@@ -14,10 +14,12 @@ import json
 import os
 import subprocess
 import tempfile
+
 import configfs
 
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils
+
 
 this_dir = os.path.dirname(__file__)
 

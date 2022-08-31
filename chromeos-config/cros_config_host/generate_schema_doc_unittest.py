@@ -14,6 +14,7 @@ import unittest
 
 import generate_schema_doc
 
+
 this_dir = os.path.dirname(__file__)
 
 

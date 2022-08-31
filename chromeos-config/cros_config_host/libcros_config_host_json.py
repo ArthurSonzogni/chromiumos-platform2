@@ -17,14 +17,20 @@ import json
 import os
 import sys
 
+
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
-from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
-from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
-from libcros_config_host_base import FirmwareInfo, SymlinkedFile
-from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
+from cros_config_schema import TransformConfig
+from libcros_config_host_base import BaseFile
+from libcros_config_host_base import CrosConfigBaseImpl
+from libcros_config_host_base import DeviceConfig
+from libcros_config_host_base import DeviceSignerInfo
+from libcros_config_host_base import FirmwareImage
+from libcros_config_host_base import FirmwareInfo
+from libcros_config_host_base import SymlinkedFile
+
 
 sys.path.pop(0)
 

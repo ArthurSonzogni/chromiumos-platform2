@@ -5,8 +5,9 @@
 
 """Library providing access to the model configuration from the host"""
 
-import sys
 import os
+import sys
+
 
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)

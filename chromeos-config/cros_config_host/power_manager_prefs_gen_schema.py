@@ -10,6 +10,7 @@ import os
 import re
 import sys
 
+
 THIS_DIR = os.path.dirname(__file__)
 
 PREF_DEF_FILE = os.path.join(

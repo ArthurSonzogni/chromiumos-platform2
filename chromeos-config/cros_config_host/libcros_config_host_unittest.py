@@ -11,16 +11,20 @@ from __future__ import print_function
 
 from collections import OrderedDict
 from contextlib import contextmanager
-from io import StringIO
 import copy
+from io import StringIO
 import json
 import os
 import sys
 import unittest
 
 from libcros_config_host import CrosConfig
-from libcros_config_host_base import BaseFile, SymlinkedFile, FirmwareInfo
-from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
+from libcros_config_host_base import BaseFile
+from libcros_config_host_base import DeviceSignerInfo
+from libcros_config_host_base import FirmwareImage
+from libcros_config_host_base import FirmwareInfo
+from libcros_config_host_base import SymlinkedFile
+
 
 YAML_FILE = "../test_data/test.yaml"
 MODELS = sorted(["some", "another", "whitelabel"])
