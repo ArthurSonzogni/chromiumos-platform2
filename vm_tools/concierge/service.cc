@@ -211,21 +211,16 @@ constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
 constexpr gid_t kCrosvmUGid = 299;
 
+// A feature name for throttling ARCVM's crosvm with cpu.cfs_quota_us.
+constexpr char kArcVmInitialThrottleFeatureName[] =
+    "CrOSLateBootArcVmInitialThrottle";
+// A parameter name for |kArcVmInitialThrottleFeatureName|. Can be 1 to 100,
+// or -1 (disabled).
+constexpr char kArcVmInitialThrottleFeatureQuotaParam[] = "quota";
+
 // Needs to be const as libfeatures does pointers checking.
-const VariationsFeature kArcVmInitialThrottle30Feature{
-    "CrOSLateBootArcVmInitial30Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle40Feature{
-    "CrOSLateBootArcVmInitial40Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle50Feature{
-    "CrOSLateBootArcVmInitial50Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle60Feature{
-    "CrOSLateBootArcVmInitial60Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle70Feature{
-    "CrOSLateBootArcVmInitial70Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle80Feature{
-    "CrOSLateBootArcVmInitial80Throttle", FEATURE_DISABLED_BY_DEFAULT};
-const VariationsFeature kArcVmInitialThrottle90Feature{
-    "CrOSLateBootArcVmInitial90Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const VariationsFeature kArcVmInitialThrottleFeature{
+    kArcVmInitialThrottleFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
@@ -4686,30 +4681,36 @@ std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
 }
 
 int Service::GetCpuQuota() {
-  // We need many distinct boolean Features because platform2/ does not have
-  // Chromium's base::FeatureParam<> equivalent. b/228328530
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle90Feature)) {
-    return 90;
+  const feature::PlatformFeatures::ParamsResult& result =
+      platform_features_->GetParamsAndEnabledBlocking(
+          {&kArcVmInitialThrottleFeature});
+
+  const auto result_iter = result.find(kArcVmInitialThrottleFeatureName);
+  if (result_iter == result.end()) {
+    LOG(ERROR) << "Failed to get params for "
+               << kArcVmInitialThrottleFeatureName;
+    return kCpuPercentUnlimited;
   }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle80Feature)) {
-    return 80;
+
+  const auto& entry = result_iter->second;
+  if (!entry.enabled) {
+    return kCpuPercentUnlimited;  // cfs_quota feature is disabled.
   }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle70Feature)) {
-    return 70;
+
+  auto params_iter = entry.params.find(kArcVmInitialThrottleFeatureQuotaParam);
+  if (params_iter == entry.params.end()) {
+    LOG(ERROR) << "Couldn't find the parameter: "
+               << kArcVmInitialThrottleFeatureQuotaParam;
+    return kCpuPercentUnlimited;
   }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle60Feature)) {
-    return 60;
+
+  int quota;
+  if (!base::StringToInt(params_iter->second, &quota)) {
+    LOG(ERROR) << "Failed to parse quota parameter as int: "
+               << params_iter->second;
+    return kCpuPercentUnlimited;
   }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle50Feature)) {
-    return 50;
-  }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle40Feature)) {
-    return 40;
-  }
-  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle30Feature)) {
-    return 30;
-  }
-  return kCpuPercentUnlimited;  // cfs_quota is disabled.
+  return std::min(100, std::max(1, quota));
 }
 
 bool Service::SetWaylandServer(const std::string& request_wayland_server,
