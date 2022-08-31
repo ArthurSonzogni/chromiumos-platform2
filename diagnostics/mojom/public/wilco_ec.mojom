@@ -74,8 +74,11 @@ struct EcEvent {
 // NextMinVersion: 1, NextIndex: 2
 [Stable]
 struct GetEcTelemetryResponse {
+  // NextMinVersion: 2, NextIndex: 5
   [Stable, Extensible]
   enum Status {
+    // This is required for backwards compatibility, should not be used.
+    [MinVersion=1, Default] kUnmappedEnumField = 4,
     // The EC telemetry command was successfully completed.
     kStatusOk = 0,
     // The EC telemetry command was rejected due to the empty request payload.
