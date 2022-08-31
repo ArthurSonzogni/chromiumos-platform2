@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -407,7 +406,7 @@ TEST_F(RmadInterfaceImplTest, Setup) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({"waiting"}), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -425,7 +424,7 @@ TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils(std::vector<std::string>(10, "waiting")),
       CreateMetricsUtils(true));
@@ -442,7 +441,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -469,7 +468,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -496,7 +495,7 @@ TEST_F(RmadInterfaceImplTest,
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -519,7 +518,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::PASS),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_PASS),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -543,7 +542,7 @@ TEST_F(RmadInterfaceImplTest,
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -568,7 +567,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_FALSE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -582,7 +581,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -606,7 +605,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -630,7 +629,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -654,7 +653,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -679,7 +678,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -702,7 +701,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -726,7 +725,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -751,7 +750,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -819,7 +818,7 @@ TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -842,7 +841,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -865,7 +864,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -894,7 +893,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerGetNextStateCaseFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -936,7 +935,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -968,7 +967,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -993,7 +992,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1019,7 +1018,7 @@ TEST_F(RmadInterfaceImplTest,
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1044,7 +1043,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1072,7 +1071,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1100,7 +1099,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1130,7 +1129,7 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({}, {"test_log"}), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
@@ -1170,7 +1169,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
       CreateMetricsUtils(true));
   // Inject fake |ExecuteMountAndWriteLog| callback.
@@ -1203,7 +1202,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
       CreateMetricsUtils(true));
   // Inject fake |ExecuteMountAndWriteLog| callback.
@@ -1234,7 +1233,7 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));

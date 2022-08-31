@@ -47,7 +47,7 @@ TEST_F(TpmManagerClientTest, RoVerificationNotTriggered) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status, RoVerificationStatus::NOT_TRIGGERED);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_NOT_TRIGGERED);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationPass) {
@@ -66,7 +66,7 @@ TEST_F(TpmManagerClientTest, RoVerificationPass) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status, RoVerificationStatus::PASS);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_PASS);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationFail) {
@@ -85,7 +85,7 @@ TEST_F(TpmManagerClientTest, RoVerificationFail) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status, RoVerificationStatus::FAIL);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_FAIL);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationUnsupported) {
@@ -104,7 +104,7 @@ TEST_F(TpmManagerClientTest, RoVerificationUnsupported) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status, RoVerificationStatus::UNSUPPORTED);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationUnsupportedNotTriggered) {
@@ -125,7 +125,7 @@ TEST_F(TpmManagerClientTest, RoVerificationUnsupportedNotTriggered) {
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
   EXPECT_EQ(ro_verification_status,
-            RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED);
+            RMAD_RO_VERIFICATION_UNSUPPORTED_NOT_TRIGGERED);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationUnsupportedTriggered) {
@@ -145,8 +145,7 @@ TEST_F(TpmManagerClientTest, RoVerificationUnsupportedTriggered) {
   RoVerificationStatus ro_verification_status;
   EXPECT_TRUE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
-  EXPECT_EQ(ro_verification_status,
-            RoVerificationStatus::UNSUPPORTED_TRIGGERED);
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED);
 }
 
 TEST_F(TpmManagerClientTest, RoVerificationDBusError) {

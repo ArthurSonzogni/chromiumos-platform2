@@ -21,23 +21,23 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
     tpm_manager::RoVerificationStatus status) {
   switch (status) {
     case tpm_manager::RO_STATUS_NOT_TRIGGERED:
-      return RoVerificationStatus::NOT_TRIGGERED;
+      return RMAD_RO_VERIFICATION_NOT_TRIGGERED;
     case tpm_manager::RO_STATUS_PASS:
-      return RoVerificationStatus::PASS;
+      return RMAD_RO_VERIFICATION_PASS;
     case tpm_manager::RO_STATUS_FAIL:
-      return RoVerificationStatus::FAIL;
+      return RMAD_RO_VERIFICATION_FAIL;
     case tpm_manager::RO_STATUS_UNSUPPORTED:
       // Deprecated.
-      return RoVerificationStatus::UNSUPPORTED;
+      return RMAD_RO_VERIFICATION_UNSUPPORTED;
     case tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED:
-      return RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED;
+      return RMAD_RO_VERIFICATION_UNSUPPORTED_NOT_TRIGGERED;
     case tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED:
-      return RoVerificationStatus::UNSUPPORTED_TRIGGERED;
+      return RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED;
     default:
       break;
   }
   NOTREACHED();
-  return RoVerificationStatus::UNSUPPORTED;
+  return RMAD_RO_VERIFICATION_UNSUPPORTED;
 }
 
 }  // namespace

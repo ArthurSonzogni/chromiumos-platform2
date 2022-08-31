@@ -67,14 +67,14 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
     report.SetIsComplete(false);
   }
 
-  RoVerification ro_verification;
+  RoVerificationStatus ro_verification;
   if (std::string ro_verification_str;
       GetMetricsValue(json_store, kMetricsRoFirmwareVerified,
                       &ro_verification_str) &&
-      RoVerification_Parse(ro_verification_str, &ro_verification)) {
-    report.SetRoVerification(ro_verification);
+      RoVerificationStatus_Parse(ro_verification_str, &ro_verification)) {
+    report.SetRoVerificationStatus(ro_verification);
   } else {
-    report.SetRoVerification(RMAD_RO_VERIFICATION_UNKNOWN);
+    report.SetRoVerificationStatus(RMAD_RO_VERIFICATION_UNKNOWN);
   }
 
   ReturningOwner returning_owner;

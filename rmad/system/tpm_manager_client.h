@@ -5,16 +5,9 @@
 #ifndef RMAD_SYSTEM_TPM_MANAGER_CLIENT_H_
 #define RMAD_SYSTEM_TPM_MANAGER_CLIENT_H_
 
-namespace rmad {
+#include "rmad/proto_bindings/rmad.pb.h"
 
-enum class RoVerificationStatus {
-  NOT_TRIGGERED,
-  PASS,
-  FAIL,
-  UNSUPPORTED,
-  UNSUPPORTED_NOT_TRIGGERED,
-  UNSUPPORTED_TRIGGERED
-};
+namespace rmad {
 
 class TpmManagerClient {
  public:

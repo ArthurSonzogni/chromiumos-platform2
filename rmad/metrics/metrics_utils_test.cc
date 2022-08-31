@@ -433,7 +433,7 @@ class MetricsUtilsImplTest : public testing::Test {
     if (ro_verified) {
       EXPECT_TRUE(MetricsUtils::SetMetricsValue(
           json_store_, kMetricsRoFirmwareVerified,
-          RoVerification_Name(RMAD_RO_VERIFICATION_PASS)));
+          RoVerificationStatus_Name(RMAD_RO_VERIFICATION_PASS)));
     }
 
     if (returning_owner) {
@@ -566,7 +566,7 @@ TEST_F(MetricsUtilsImplTest,
   SetupShimlessRmaReportValues();
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kMetricsRoFirmwareVerified,
-      RoVerification_Name(RMAD_RO_VERIFICATION_UNSUPPORTED)));
+      RoVerificationStatus_Name(RMAD_RO_VERIFICATION_UNSUPPORTED)));
 
   EXPECT_TRUE(metrics_utils->RecordShimlessRmaReport(json_store_));
 }

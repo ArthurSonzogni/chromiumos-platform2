@@ -191,8 +191,8 @@ bool DBusService::CheckRmaCriteria() const {
   CHECK(is_external_utils_initialized_);
   if (RoVerificationStatus status;
       tpm_manager_client_->GetRoVerificationStatus(&status) &&
-      (status == RoVerificationStatus::PASS ||
-       status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
+      (status == RMAD_RO_VERIFICATION_PASS ||
+       status == RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED)) {
     // Initialize the state file so we can reliably boot into RMA even if Chrome
     // accidentally reboots the device before calling |GetCurrentState| API.
     base::WriteFile(state_file_path_, "{}");

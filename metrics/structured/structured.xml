@@ -638,12 +638,20 @@
           1: RMA is complete, 0: RMA is aborted.
       </summary>
     </metric>
-    <metric name="RoVerification" type="int">
+    <metric name="RoVerificationStatus" type="int">
       <summary>
         RO verification of Shimless RMA:
-          0: Shimless RMA run with unknown RO verification status
-          1: Shimless RMA run with RO verification successful
-          2: Shimless RMA run with RO verification unsupported
+          0: Shimless RMA runs with unknown RO verification status.
+          1: Shimless RMA runs with RO verification successful.
+          2: Shimless RMA runs with RO verification unsupported. This should
+             not happen because it's already deprecated.
+          3: RO verification is not triggered. This should not happen because
+             Shimless RMA would not run.
+          4: RO verification fails. This should not happen because the DUT
+             would not boot.
+          5: RO verification is unsupported and not triggered. This should not
+             happen because Shimless RMA would not run.
+          6: Shimless RMA runs with RO verification unsupported but triggered.
       </summary>
     </metric>
     <metric name="ReturningOwner" type="int">

@@ -207,20 +207,17 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
     }
   } else if (RoVerificationStatus status;
              tpm_manager_client_->GetRoVerificationStatus(&status) &&
-             (status == RoVerificationStatus::PASS ||
-              status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
+             (status == RMAD_RO_VERIFICATION_PASS ||
+              status == RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED)) {
     VLOG(1) << "RO verification triggered";
     if (!StartFromInitialState()) {
       return false;
     }
 
     if (!json_store_->SetValue(kRoFirmwareVerified,
-                               status == RoVerificationStatus::PASS) ||
-        !MetricsUtils::SetMetricsValue(
-            json_store_, kMetricsRoFirmwareVerified,
-            RoVerification_Name(status == RoVerificationStatus::PASS
-                                    ? RMAD_RO_VERIFICATION_PASS
-                                    : RMAD_RO_VERIFICATION_UNSUPPORTED))) {
+                               status == RMAD_RO_VERIFICATION_PASS) ||
+        !MetricsUtils::SetMetricsValue(json_store_, kMetricsRoFirmwareVerified,
+                                       RoVerificationStatus_Name(status))) {
       LOG(ERROR) << "Could not store RO firmware verification status";
     }
   }
