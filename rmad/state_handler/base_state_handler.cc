@@ -173,14 +173,6 @@ bool BaseStateHandler::RequestCutoff(
       working_dir_path.AppendASCII(kCutoffRequestFilePath));
 }
 
-bool BaseStateHandler::RequestPowerwash(
-    const base::FilePath& working_dir_path) const {
-  // The pre-stop script picks up the |kPowerwashRequestFilePath| file before
-  // reboot and requests a rma-mode powerwash.
-  return brillo::TouchFile(
-      working_dir_path.AppendASCII(kPowerwashRequestFilePath));
-}
-
 bool BaseStateHandler::IsPowerwashDisabled(
     const base::FilePath& working_dir_path) const {
   // |kDisablePowerwashFilePath| is a file for testing convenience. Manually

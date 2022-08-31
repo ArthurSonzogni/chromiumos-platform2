@@ -90,7 +90,6 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   bool RequestCutoff(const base::FilePath& working_dir_path) const;
 
   // Powerwash related functions.
-  bool RequestPowerwash(const base::FilePath& working_dir_path) const;
   virtual bool CanDisablePowerwash() const { return false; }
   bool IsPowerwashDisabled(const base::FilePath& working_dir_path) const;
   bool StorePowerwashCount(const base::FilePath& unencrypted_preserve_path);

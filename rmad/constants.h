@@ -28,7 +28,6 @@ inline constexpr char kDefaultUnencryptedPreservePath[] =
 inline constexpr char kTestDirPath[] = ".test";
 
 // Files for pre-stop script to read.
-inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";
 inline constexpr char kCutoffRequestFilePath[] = ".battery_cutoff_request";
 
 // Files for testing purpose.
