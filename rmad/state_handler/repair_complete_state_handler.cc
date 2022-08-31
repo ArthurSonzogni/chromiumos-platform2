@@ -110,12 +110,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
       !IsPowerwashDisabled(working_dir_path_)) {
     // Request a powerwash if we want to wipe the device, and powerwash is not
     // done yet.
-    if (!RequestPowerwash(working_dir_path_)) {
-      LOG(ERROR) << "Failed to request powerwash";
-      return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
-    }
-    action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                        &RepairCompleteStateHandler::Reboot);
+    RequestRmaPowerwash();
     return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                                 RMAD_ADDITIONAL_ACTIVITY_REBOOT);
   } else {
@@ -159,6 +154,21 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     CHECK(locked_error_ != RMAD_ERROR_NOT_SET);
     return {.error = locked_error_, .state_case = GetStateCase()};
   }
+}
+
+void RepairCompleteStateHandler::RequestRmaPowerwash() {
+  LOG(INFO) << "Requesting RMA mode powerwash";
+  daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
+      base::BindOnce(&RepairCompleteStateHandler::RequestRmaPowerwashCallback,
+                     base::Unretained(this)));
+}
+
+void RepairCompleteStateHandler::RequestRmaPowerwashCallback(bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to request RMA mode powerwash";
+  }
+  action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                      &RepairCompleteStateHandler::Reboot);
 }
 
 void RepairCompleteStateHandler::Reboot() {

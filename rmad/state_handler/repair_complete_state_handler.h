@@ -69,6 +69,8 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   ~RepairCompleteStateHandler() override = default;
 
  private:
+  void RequestRmaPowerwash();
+  void RequestRmaPowerwashCallback(bool success);
   void Reboot();
   void Shutdown();
   void Cutoff();
