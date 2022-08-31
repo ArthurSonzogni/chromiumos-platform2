@@ -109,6 +109,10 @@ void NewMountNamespace() {
 
   minijail_bind(j.get(), "/", "/", 0);
 
+  // Mount stateful partition to write powerwash request file.
+  minijail_bind(j.get(), "/mnt/stateful_partition", "/mnt/stateful_partition",
+                1);
+
   minijail_mount_with_data(j.get(), "none", "/proc", "proc",
                            MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr);
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",

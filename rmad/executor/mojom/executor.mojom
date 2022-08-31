@@ -40,4 +40,12 @@ interface Executor {
   // Response:
   // * |success| - true if successfully triggers an EC reboot.
   RebootEc() => (bool success);
+
+  // Request an RMA mode powerwash.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully requested an RMA mode powerwash
+  RequestRmaPowerwash() => (bool success);
 };

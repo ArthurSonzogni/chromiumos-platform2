@@ -50,6 +50,11 @@ std::string FormatTime(const base::Time& time) {
                             e.day_of_month, e.hour, e.minute, e.second);
 }
 
+// Powerwash related constants.
+constexpr char kPowerwashRequestFilePath[] =
+    "/mnt/stateful_partition/factory_install_reset";
+constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma";
+
 }  // namespace
 
 namespace rmad {
@@ -132,6 +137,19 @@ void Executor::MountAndCopyFirmwareUpdater(
 
 void Executor::RebootEc(RebootEcCallback callback) {
   std::move(callback).Run(ec_utils_->Reboot());
+}
+
+void Executor::RequestRmaPowerwash(RequestRmaPowerwashCallback callback) {
+  const base::FilePath powerwash_file_path(kPowerwashRequestFilePath);
+  if (!base::WriteFile(powerwash_file_path, kRmaPowerwashArgs,
+                       std::size(kRmaPowerwashArgs) - 1)) {
+    LOG(ERROR) << "Failed to write powerwash request file";
+    std::move(callback).Run(false);
+  } else if (!brillo::SyncFileOrDirectory(powerwash_file_path, false, true)) {
+    LOG(ERROR) << "Failed to sync powerwash request file";
+    std::move(callback).Run(false);
+  }
+  std::move(callback).Run(true);
 }
 
 }  // namespace rmad
