@@ -183,8 +183,6 @@ TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
             .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
             .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kApplVers))
-            .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kBankReady))
             .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
@@ -206,10 +204,6 @@ TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kFpgaRomVersion))
             .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSpiFlashStatus))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kDebugIdx))
-            .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kDebugVal))
             .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kCameraConfig))
             .WillOnce(Return(0x1234));

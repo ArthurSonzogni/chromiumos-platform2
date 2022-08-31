@@ -186,14 +186,11 @@ std::optional<uint16_t> FakeDev::ReadRegister(HpsReg reg) {
       break;
 
     case HpsReg::kSysCmd:
-    case HpsReg::kApplVers:
     case HpsReg::kFeatEn:
     case HpsReg::kFpgaBootCount:
     case HpsReg::kFpgaLoopCount:
     case HpsReg::kFpgaRomVersion:
     case HpsReg::kSpiFlashStatus:
-    case HpsReg::kDebugIdx:
-    case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
     case HpsReg::kStartCameraTest:
     case HpsReg::kOptionBytesConfig:
@@ -259,7 +256,6 @@ bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kMagic:
     case HpsReg::kHwRev:
     case HpsReg::kSysStatus:
-    case HpsReg::kApplVers:
     case HpsReg::kBankReady:
     case HpsReg::kError:
     case HpsReg::kFeature0:
@@ -270,8 +266,6 @@ bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kFpgaLoopCount:
     case HpsReg::kFpgaRomVersion:
     case HpsReg::kSpiFlashStatus:
-    case HpsReg::kDebugIdx:
-    case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
     case HpsReg::kStartCameraTest:
     case HpsReg::kOptionBytesConfig:

@@ -41,7 +41,6 @@ constexpr std::initializer_list<RegInfo> REGISTERS = {
     {.num = HpsReg::kHwRev, .name = "kHwRev", .readable = true},
     {.num = HpsReg::kSysStatus, .name = "kSysStatus", .readable = true},
     {.num = HpsReg::kSysCmd, .name = "kSysCmd", .readable = false},
-    {.num = HpsReg::kApplVers, .name = "kApplVers", .readable = true},
     {.num = HpsReg::kBankReady, .name = "kBankReady", .readable = true},
     {.num = HpsReg::kError, .name = "kError", .readable = true},
     {.num = HpsReg::kFeatEn, .name = "kFeatEn", .readable = true},
@@ -61,8 +60,6 @@ constexpr std::initializer_list<RegInfo> REGISTERS = {
     {.num = HpsReg::kSpiFlashStatus,
      .name = "kSpiFlashStatus",
      .readable = true},
-    {.num = HpsReg::kDebugIdx, .name = "kDebugIdx", .readable = true},
-    {.num = HpsReg::kDebugVal, .name = "kDebugVal", .readable = true},
     {.num = HpsReg::kCameraConfig, .name = "kCameraConfig", .readable = true},
     {.num = HpsReg::kStartCameraTest,
      .name = "kStartCameraTest",
@@ -215,7 +212,6 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
           return base::StringPrintf("0x%04x", val);
       }
 
-    case HpsReg::kApplVers:
     case HpsReg::kFeatEn:
     case HpsReg::kFeature0:
     case HpsReg::kFeature1:
@@ -229,8 +225,6 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
     case HpsReg::kFpgaLoopCount:
     case HpsReg::kFpgaRomVersion:
     case HpsReg::kSpiFlashStatus:
-    case HpsReg::kDebugIdx:
-    case HpsReg::kDebugVal:
     case HpsReg::kCameraConfig:
     case HpsReg::kStartCameraTest:
     case HpsReg::kOptionBytesConfig:
