@@ -78,6 +78,7 @@ class AuthSession final {
   AuthSession(
       std::string username,
       unsigned int flags,
+      AuthIntent intent,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       Crypto* crypto,
       Platform* platform,
@@ -94,6 +95,8 @@ class AuthSession final {
   const std::string& obfuscated_username() const {
     return obfuscated_username_;
   }
+
+  AuthIntent auth_intent() const { return auth_intent_; }
 
   // Returns the token which is used to identify the current AuthSession.
   const base::UnguessableToken& token() const { return token_; }
@@ -476,6 +479,7 @@ class AuthSession final {
 
   // AuthSession's flag configuration.
   const bool is_ephemeral_user_;
+  const AuthIntent auth_intent_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::flat_set<AuthIntent> authorized_intents_;

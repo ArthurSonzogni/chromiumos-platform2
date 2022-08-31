@@ -1131,6 +1131,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManInvalidMetadataInGetDelayInSeconds = 652,
   /* ./userdataauth.cc */
   kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault = 653,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoIntentInStartAuthSession = 654,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -142,6 +142,7 @@ std::optional<AuthInput> CreateAuthInputWithResetSecret(
 AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
+    AuthIntent intent,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     Crypto* crypto,
     Platform* platform,
@@ -156,6 +157,7 @@ AuthSession::AuthSession(
       serialized_token_(
           AuthSession::GetSerializedStringFromToken(token_).value_or("")),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
+      auth_intent_(intent),
       on_timeout_(std::move(on_timeout)),
       crypto_(crypto),
       platform_(platform),
@@ -235,7 +237,9 @@ void AuthSession::RecordAuthSessionStart() const {
                                       is_le_credential ? " le" : ""));
   }
   LOG(INFO) << "AuthSession: started with is_ephemeral_user="
-            << is_ephemeral_user_ << " user_exists=" << user_exists_
+            << is_ephemeral_user_
+            << " intent=" << static_cast<int>(auth_intent_)
+            << " user_exists=" << user_exists_
             << " keys=" << base::JoinString(keys, ",") << ".";
 }
 

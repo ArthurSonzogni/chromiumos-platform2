@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_PROTO_UTILS_H_
 #define CRYPTOHOME_AUTH_SESSION_PROTO_UTILS_H_
 
+#include <optional>
+
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_session.h"
@@ -12,6 +14,8 @@
 namespace cryptohome {
 
 user_data_auth::AuthIntent AuthIntentToProto(AuthIntent auth_intent);
+std::optional<AuthIntent> AuthIntentFromProto(
+    user_data_auth::AuthIntent auth_intent);
 
 }  // namespace cryptohome
 

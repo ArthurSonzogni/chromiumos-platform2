@@ -49,14 +49,14 @@ AuthSessionManager::AuthSessionManager(
 }
 
 AuthSession* AuthSessionManager::CreateAuthSession(
-    const std::string& account_id, uint32_t flags) {
+    const std::string& account_id, uint32_t flags, AuthIntent auth_intent) {
   // The lifetime of AuthSessionManager instance will outlast AuthSession
   // which is why usage of |Unretained| is safe.
   auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
-      account_id, flags, std::move(on_timeout), crypto_, platform_,
+      account_id, flags, auth_intent, std::move(on_timeout), crypto_, platform_,
       user_session_map_, keyset_management_, auth_block_utility_,
       auth_factor_manager_, user_secret_stash_storage_);
 

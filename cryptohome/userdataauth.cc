@@ -3919,8 +3919,25 @@ void UserDataAuth::StartAuthSession(
 
   user_data_auth::StartAuthSessionReply reply;
 
+  if (request.intent() == user_data_auth::AUTH_INTENT_UNSPECIFIED) {
+    // TODO(b/240596931): Stop allowing the UNSPECIFIED value after Chrome's
+    // change to populate this field lives for some time.
+    request.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
+  }
+  std::optional<AuthIntent> auth_intent = AuthIntentFromProto(request.intent());
+  if (!auth_intent.has_value()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIntentInStartAuthSession),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
+    return;
+  }
+
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
-      request.account_id().account_id(), request.flags());
+      request.account_id().account_id(), request.flags(), auth_intent.value());
   if (!auth_session) {
     ReplyWithError(
         std::move(on_done), reply,
