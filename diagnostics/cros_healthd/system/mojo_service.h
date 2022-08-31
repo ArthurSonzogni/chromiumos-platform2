@@ -21,6 +21,10 @@ namespace chromeos::network_diagnostics::mojom {
 class NetworkDiagnosticsRoutines;
 }
 
+namespace cros::mojom {
+class SensorService;
+}
+
 namespace diagnostics {
 
 // Interface for accessing external mojo services.
@@ -45,6 +49,9 @@ class MojoService {
   // Returns the mojo interface to NetworkDiagnosticsRoutines.
   virtual chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
   GetNetworkDiagnosticsRoutines() = 0;
+
+  // Returns the mojo interface to SensorService.
+  virtual cros::mojom::SensorService* GetSensorService() = 0;
 };
 
 }  // namespace diagnostics

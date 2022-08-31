@@ -54,6 +54,7 @@ executable("cros_healthd") {
 if (use.test) {
   pkg_config("cros_healthd_test_pkg_deps") {
     pkg_deps = [
+      "iioservice_ipc",
       "libchrome",
       "libchrome-test",
       "mojo_service_manager",

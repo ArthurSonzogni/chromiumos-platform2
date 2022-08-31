@@ -67,6 +67,7 @@ if (use.test) {
       "egl",
       "fwupd",
       "glesv2",
+      "iioservice_ipc",
       "libbrillo",
       "libchrome",
       "libchrome-test",
