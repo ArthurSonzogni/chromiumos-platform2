@@ -1442,7 +1442,9 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthExTest,
               StartMigrateToDircryptoWithUnAuthenticatedAuthSession);
 
+  friend class AuthSessionInterfaceTestBase;
   friend class AuthSessionInterfaceTest;
+  friend class AuthSessionInterfaceMockAuthTest;
 };
 
 }  // namespace cryptohome
