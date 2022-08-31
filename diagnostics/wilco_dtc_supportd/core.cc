@@ -74,8 +74,9 @@ bool ConvertStatusFromMojom(MojomWilcoDtcSupportdWebRequestStatus mojo_status,
     case MojomWilcoDtcSupportdWebRequestStatus::kHttpError:
       *status_out = Core::WebRequestStatus::kHttpError;
       return true;
+    default:
+      return false;
   }
-  return false;
 }
 
 bool ConvertPowerEventToGrpc(
