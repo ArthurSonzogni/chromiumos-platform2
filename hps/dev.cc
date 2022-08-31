@@ -63,6 +63,25 @@ std::optional<uint16_t> DevInterface::ReadReg(HpsReg r) {
   }
 }
 
+std::optional<std::string> DevInterface::ReadStringReg(HpsReg r, size_t len) {
+  auto reg = HpsRegInfo(r);
+  std::string ret(len, '\0');
+
+  if (this->ReadDevice(I2cReg(r), reinterpret_cast<uint8_t*>(ret.data()),
+                       static_cast<unsigned int>(ret.size()))) {
+    auto terminator = ret.find('\0');
+    if (terminator != std::string::npos) {
+      ret.resize(terminator);
+    }
+    VLOG(2) << base::StringPrintf("ReadReg: %s (%zu bytes) OK", reg->name,
+                                  ret.size());
+    return ret;
+  } else {
+    VLOG(2) << "ReadStringReg: " << reg->name << " FAILED";
+    return std::nullopt;
+  }
+}
+
 /*
  * Write 1 register.
  * Returns false on failure.

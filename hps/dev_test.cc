@@ -21,7 +21,8 @@ static int const kBlockSizeBytes = 128;
 // The cmd and len for each read and write are saved.
 class DevInterfaceFake : public DevInterface {
  public:
-  DevInterfaceFake() : fails_(0), cmd_(0), len_(0), reads_(0), writes_(0) {}
+  DevInterfaceFake()
+      : fails_(0), cmd_(0), len_(0), data_{}, reads_(0), writes_(0) {}
   ~DevInterfaceFake() override = default;
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
     ++reads_;
@@ -31,9 +32,8 @@ class DevInterfaceFake : public DevInterface {
       --fails_;
       return false;
     }
-    if (len == 2) {
-      data[0] = data_[0];
-      data[1] = data_[1];
+    for (size_t i = 0; i < len; i++) {
+      data[i] = data_[i];
     }
     return true;
   }
@@ -45,20 +45,19 @@ class DevInterfaceFake : public DevInterface {
       --fails_;
       return false;
     }
-    if (len == 2) {
-      data_[0] = data[0];
-      data_[1] = data[1];
+    for (size_t i = 0; i < len; i++) {
+      data_[i] = data[i];
     }
     return true;
   }
   size_t BlockSizeBytes() override { return kBlockSizeBytes; }
 
-  int fails_;        // If non-zero, fail the request and decrement this count.
-  uint8_t cmd_;      // Command byte of request.
-  size_t len_;       // Length of request.
-  uint8_t data_[2];  // Data read or written.
-  int reads_;        // Count of Read calls.
-  int writes_;       // Count of Write calls.
+  int fails_;    // If non-zero, fail the request and decrement this count.
+  uint8_t cmd_;  // Command byte of request.
+  size_t len_;   // Length of request.
+  uint8_t data_[256];  // Data read or written.
+  int reads_;          // Count of Read calls.
+  int writes_;         // Count of Write calls.
 };
 
 class DevInterfaceTest : public testing::Test {
@@ -83,6 +82,20 @@ TEST_F(DevInterfaceTest, ReadReg) {
   EXPECT_EQ(dev_.cmd_, 0x80 | 32);
   EXPECT_EQ(dev_.len_, 2);
   EXPECT_EQ(dev_.reads_, 2);
+}
+
+/*
+ * Check that a ReadStringReg reads the correct data.
+ */
+TEST_F(DevInterfaceTest, ReadStringReg) {
+  dev_.data_[0] = 'H';
+  dev_.data_[1] = 'i';
+  dev_.data_[2] = '!';
+  std::optional<std::string> d =
+      dev_.ReadStringReg(hps::HpsReg::kPreviousCrashMessage, 256);
+  EXPECT_EQ(d.value(), "Hi!");
+  EXPECT_EQ(dev_.len_, 256);
+  EXPECT_EQ(dev_.cmd_, 0x80 | 22);
 }
 
 /*

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <hps/hps_reg.h>
 
@@ -62,6 +63,13 @@ class DevInterface {
    * Returns value read, or -1 for error.
    */
   [[nodiscard]] virtual std::optional<uint16_t> ReadReg(HpsReg r);
+
+  /*
+   * Read a register which holds a string.
+   * Returns value read, or nullopt for error.
+   */
+  [[nodiscard]] virtual std::optional<std::string> ReadStringReg(HpsReg r,
+                                                                 size_t len);
 
   /*
    * Write 1 register.
