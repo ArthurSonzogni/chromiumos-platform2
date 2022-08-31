@@ -50,15 +50,15 @@ bool DevInterface::Write(uint8_t cmd, const uint8_t* data, size_t len) {
  * Returns value read, or -1 for error.
  */
 std::optional<uint16_t> DevInterface::ReadReg(HpsReg r) {
+  auto reg = HpsRegInfo(r);
   uint8_t res[2];
 
   if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
     uint16_t ret = static_cast<uint16_t>(res[0] << 8) | res[1];
-    VLOG(2) << base::StringPrintf("ReadReg: %s : 0x%.4x OK", HpsRegToString(r),
-                                  ret);
+    VLOG(2) << base::StringPrintf("ReadReg: %s : 0x%.4x OK", reg->name, ret);
     return ret;
   } else {
-    VLOG(2) << "ReadReg: " << HpsRegToString(r) << " FAILED";
+    VLOG(2) << "ReadReg: " << reg->name << " FAILED";
     return std::nullopt;
   }
 }
@@ -68,18 +68,18 @@ std::optional<uint16_t> DevInterface::ReadReg(HpsReg r) {
  * Returns false on failure.
  */
 bool DevInterface::WriteReg(HpsReg r, uint16_t data) {
+  auto reg = HpsRegInfo(r);
   uint8_t buf[2];
 
   buf[0] = data >> 8;
   buf[1] = data & 0xFF;
 
   if (this->WriteDevice(I2cReg(r), buf, sizeof(buf))) {
-    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x OK", HpsRegToString(r),
-                                  data);
+    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x OK", reg->name, data);
     return true;
   } else {
-    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x FAILED",
-                                  HpsRegToString(r), data);
+    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x FAILED", reg->name,
+                                  data);
     return false;
   }
 }

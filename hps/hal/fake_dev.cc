@@ -202,12 +202,12 @@ std::optional<uint16_t> FakeDev::ReadRegister(HpsReg reg) {
     case HpsReg::kMax:
       break;
   }
-  VLOG(2) << "Read reg " << HpsRegToString(reg) << " value " << v;
+  VLOG(2) << "Read reg " << HpsRegInfo(reg)->name << " value " << v;
   return v;
 }
 
 bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
-  VLOG(2) << "Write reg " << HpsRegToString(reg) << " value " << value;
+  VLOG(2) << "Write reg " << HpsRegInfo(reg)->name << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
     case HpsReg::kSysCmd:

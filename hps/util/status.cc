@@ -22,7 +22,7 @@
 
 namespace {
 
-// No arguments, registers 0 - 4 are dumped
+// No arguments, all registers are dumped
 // N - dump register N
 // N - M Dump registers between N and M inclusive
 int Status(std::unique_ptr<hps::HPS> hps,
@@ -31,7 +31,7 @@ int Status(std::unique_ptr<hps::HPS> hps,
   switch (args.size()) {
     case 1:
       start = 0;
-      end = static_cast<int>(hps::HpsReg::kLargestRegister);
+      end = static_cast<int>(hps::HpsReg::kMax);
       break;
 
     case 2:

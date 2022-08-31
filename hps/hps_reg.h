@@ -46,7 +46,6 @@ enum class HpsReg : uint8_t {
   kOptionBytesConfig = 20,
   kPartIds = 21,
   kPreviousCrashMessage = 22,
-  kLargestRegister = kPreviousCrashMessage,  // keep this in sync
   kMax = 127,
 };
 

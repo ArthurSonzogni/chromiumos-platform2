@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
@@ -35,59 +36,58 @@ bool ReadVersionFromFile(const base::FilePath& path, uint32_t* version) {
   return true;
 }
 
-const char* HpsRegToString(const HpsReg reg) {
-  switch (reg) {
-    case HpsReg::kMagic:
-      return "kMagic";
-    case HpsReg::kHwRev:
-      return "kHwRev";
-    case HpsReg::kSysStatus:
-      return "kSysStatus";
-    case HpsReg::kSysCmd:
-      return "kSysCmd";
-    case HpsReg::kApplVers:
-      return "kApplVers";
-    case HpsReg::kBankReady:
-      return "kBankReady";
-    case HpsReg::kError:
-      return "kError";
-    case HpsReg::kFeatEn:
-      return "kFeatEn";
-    case HpsReg::kFeature0:
-      return "kFeature0";
-    case HpsReg::kFeature1:
-      return "kFeature1";
-    case HpsReg::kFirmwareVersionHigh:
-      return "kFirmwareVersionHigh";
-    case HpsReg::kFirmwareVersionLow:
-      return "kFirmwareVersionLow";
-    case HpsReg::kFpgaBootCount:
-      return "kFpgaBootCount";
-    case HpsReg::kFpgaLoopCount:
-      return "kFpgaLoopCount";
-    case HpsReg::kFpgaRomVersion:
-      return "kFpgaRomVersion";
-    case HpsReg::kSpiFlashStatus:
-      return "kSpiFlashStatus";
-    case HpsReg::kDebugIdx:
-      return "kDebugIdx";
-    case HpsReg::kDebugVal:
-      return "kDebugVal";
-    case HpsReg::kCameraConfig:
-      return "kCameraConfig";
-    case HpsReg::kStartCameraTest:
-      return "kStartCameraTest";
-    case HpsReg::kOptionBytesConfig:
-      return "kOptionBytesConfig";
-    case HpsReg::kPartIds:
-      return "kPartIds";
-    case HpsReg::kPreviousCrashMessage:
-      return "kPreviousCrashMessage";
+constexpr std::initializer_list<RegInfo> REGISTERS = {
+    {.num = HpsReg::kMagic, .name = "kMagic", .readable = true},
+    {.num = HpsReg::kHwRev, .name = "kHwRev", .readable = true},
+    {.num = HpsReg::kSysStatus, .name = "kSysStatus", .readable = true},
+    {.num = HpsReg::kSysCmd, .name = "kSysCmd", .readable = false},
+    {.num = HpsReg::kApplVers, .name = "kApplVers", .readable = true},
+    {.num = HpsReg::kBankReady, .name = "kBankReady", .readable = true},
+    {.num = HpsReg::kError, .name = "kError", .readable = true},
+    {.num = HpsReg::kFeatEn, .name = "kFeatEn", .readable = true},
+    {.num = HpsReg::kFeature0, .name = "kFeature0", .readable = true},
+    {.num = HpsReg::kFeature1, .name = "kFeature1", .readable = true},
+    {.num = HpsReg::kFirmwareVersionHigh,
+     .name = "kFirmwareVersionHigh",
+     .readable = true},
+    {.num = HpsReg::kFirmwareVersionLow,
+     .name = "kFirmwareVersionLow",
+     .readable = true},
+    {.num = HpsReg::kFpgaBootCount, .name = "kFpgaBootCount", .readable = true},
+    {.num = HpsReg::kFpgaLoopCount, .name = "kFpgaLoopCount", .readable = true},
+    {.num = HpsReg::kFpgaRomVersion,
+     .name = "kFpgaRomVersion",
+     .readable = true},
+    {.num = HpsReg::kSpiFlashStatus,
+     .name = "kSpiFlashStatus",
+     .readable = true},
+    {.num = HpsReg::kDebugIdx, .name = "kDebugIdx", .readable = true},
+    {.num = HpsReg::kDebugVal, .name = "kDebugVal", .readable = true},
+    {.num = HpsReg::kCameraConfig, .name = "kCameraConfig", .readable = true},
+    {.num = HpsReg::kStartCameraTest,
+     .name = "kStartCameraTest",
+     .readable = false},
+    {.num = HpsReg::kOptionBytesConfig,
+     .name = "kOptionBytesConfig",
+     .readable = true},
+    {.num = HpsReg::kPartIds, .name = "kPartIds", .readable = true},
+    {.num = HpsReg::kPreviousCrashMessage,
+     .name = "kPreviousCrashMessage",
+     .readable = true},
+};
 
-    case HpsReg::kMax:
-      return "kMax";
+std::optional<RegInfo> HpsRegInfo(int reg) {
+  auto ret = std::find_if(
+      REGISTERS.begin(), REGISTERS.end(),
+      [&](RegInfo info) { return static_cast<int>(info.num) == reg; });
+  if (ret != REGISTERS.end()) {
+    return *ret;
   }
-  return "unknown";
+  return std::nullopt;
+}
+
+std::optional<RegInfo> HpsRegInfo(HpsReg reg) {
+  return HpsRegInfo(static_cast<int>(reg));
 }
 
 std::string HpsRegValToString(HpsReg reg, uint16_t val) {
