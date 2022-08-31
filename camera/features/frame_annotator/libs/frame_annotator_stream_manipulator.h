@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_FRAME_ANNOTATOR_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_
-#define CAMERA_FEATURES_FRAME_ANNOTATOR_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_
+#ifndef CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_
+#define CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_
 
 #include "common/stream_manipulator.h"
 
@@ -18,7 +18,7 @@
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/camera_thread.h"
-#include "features/frame_annotator/frame_annotator.h"
+#include "features/frame_annotator/libs/frame_annotator.h"
 #include "gpu/egl/egl_context.h"
 
 namespace cros {
@@ -63,4 +63,4 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_FRAME_ANNOTATOR_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_
+#endif  // CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_FRAME_ANNOTATOR_STREAM_MANIPULATOR_H_

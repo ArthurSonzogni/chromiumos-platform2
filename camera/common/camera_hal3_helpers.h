@@ -58,9 +58,9 @@ inline Rect<T> ClampRect(const Rect<T>& rect, const Rect<T>& bound) {
 
 // Returns the maximum centering crop window within |size| with the specified
 // aspect ratio.
-Rect<uint32_t> GetCenteringFullCrop(Size size,
-                                    uint32_t aspect_ratio_x,
-                                    uint32_t aspect_ratio_y);
+CROS_CAMERA_EXPORT Rect<uint32_t> GetCenteringFullCrop(Size size,
+                                                       uint32_t aspect_ratio_x,
+                                                       uint32_t aspect_ratio_y);
 
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.

@@ -6,23 +6,13 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   configs = [ "//camera/build:cros_camera_common" ]
-  pkg_deps = [
-    "libcros_camera_android_deps",
-    "libsync",
-    "libyuv",
-    "skia",
-  ]
+  pkg_deps = [ "libcros_camera_android_deps" ]
 }
 
 source_set("frame_annotator") {
-  sources = [
-    "//camera/features/frame_annotator/face_rectangles_frame_annotator.cc",
-    "//camera/features/frame_annotator/frame_annotator_stream_manipulator.cc",
-    "//camera/features/frame_annotator/metadata_previewer_frame_annotator.cc",
-  ]
+  sources = [ "//camera/features/frame_annotator/frame_annotator_loader_stream_manipulator.cc" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
-  public_deps = [ "//camera/gpu" ]
 }

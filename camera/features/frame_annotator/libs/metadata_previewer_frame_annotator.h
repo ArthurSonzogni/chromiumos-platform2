@@ -4,10 +4,10 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_FRAME_ANNOTATOR_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_
-#define CAMERA_FEATURES_FRAME_ANNOTATOR_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_
+#ifndef CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_
+#define CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_
 
-#include "features/frame_annotator/frame_annotator.h"
+#include "features/frame_annotator/libs/frame_annotator.h"
 
 #include <base/containers/queue.h>
 #include <base/time/time.h>
@@ -54,4 +54,4 @@ class MetadataPreviewerFrameAnnotator : public FrameAnnotator {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_FRAME_ANNOTATOR_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_
+#endif  // CAMERA_FEATURES_FRAME_ANNOTATOR_LIBS_METADATA_PREVIEWER_FRAME_ANNOTATOR_H_

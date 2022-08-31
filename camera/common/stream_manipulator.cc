@@ -35,7 +35,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
-#include "features/frame_annotator/frame_annotator_stream_manipulator.h"
+#include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
 #endif
 
 namespace cros {
@@ -123,8 +123,8 @@ StreamManipulator::GetEnabledStreamManipulators(
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
   stream_manipulators.emplace_back(
-      std::make_unique<FrameAnnotatorStreamManipulator>());
-  LOGF(INFO) << "FrameAnnotatorStreamManipulator enabled";
+      std::make_unique<FrameAnnotatorLoaderStreamManipulator>());
+  LOGF(INFO) << "FrameAnnotatorLoaderStreamManipulator enabled";
 #endif
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, &stream_manipulators,

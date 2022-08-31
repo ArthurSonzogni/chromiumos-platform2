@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/frame_annotator/face_rectangles_frame_annotator.h"
+#include "features/frame_annotator/libs/face_rectangles_frame_annotator.h"
 
 #include <algorithm>
 #include <string>

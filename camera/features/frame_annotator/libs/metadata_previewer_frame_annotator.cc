@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/frame_annotator/metadata_previewer_frame_annotator.h"
+#include "features/frame_annotator/libs/metadata_previewer_frame_annotator.h"
 
 #include <cinttypes>
 #include <string>
