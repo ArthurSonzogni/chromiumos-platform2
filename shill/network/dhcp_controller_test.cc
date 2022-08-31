@@ -652,8 +652,7 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
         varrun.Append(base::StringPrintf("dhcpcd-%s-4.pid", kDeviceName));
     base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
     ASSERT_TRUE(base::CreateDirectory(varlib));
-    lease_file_ =
-        varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
+    lease_file_ = varlib.Append(base::StringPrintf("%s.lease", kDeviceName));
     ASSERT_EQ(0, base::WriteFile(pid_file_, "", 0));
     ASSERT_EQ(0, base::WriteFile(lease_file_, "", 0));
     ASSERT_TRUE(base::PathExists(pid_file_));

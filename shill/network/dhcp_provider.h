@@ -57,8 +57,7 @@ class DHCPProvider {
     std::string hostname;
   };
 
-  static constexpr char kDHCPCDPathFormatLease[] =
-      "var/lib/dhcpcd/dhcpcd-%s.lease";
+  static constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
 
   virtual ~DHCPProvider();
 

@@ -132,8 +132,12 @@ bool DHCPProvider::IsRecentlyUnbound(int pid) {
 
 void DHCPProvider::DestroyLease(const std::string& name) {
   SLOG(2) << __func__ << " name: " << name;
-  base::DeleteFile(
-      root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str())));
+
+  const auto lease =
+      root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str()));
+  if (!base::DeleteFile(lease)) {
+    PLOG(WARNING) << "Failed to remove lease file: " << lease;
+  }
 }
 
 }  // namespace shill
