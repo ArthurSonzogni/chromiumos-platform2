@@ -28,8 +28,23 @@ message CryptoRecoveryRpcRequest {
   optional bytes cbor_cryptorecoveryrequest = 2;  // cbor encoded request
 }
 
+// Error codes returned in the recovery response.
+enum RecoveryError {
+  // No error
+  RECOVERY_ERROR_UNSPECIFIED = 0;
+  // Fatal error due to invalid payload
+  RECOVERY_ERROR_FATAL = 1;
+  // Transient error that is retriable
+  RECOVERY_ERROR_TRANSIENT = 2;
+  // Invalid/outdated reauth proof token
+  RECOVERY_ERROR_AUTH = 3;
+  // Invalid/outdated epoch index was used in the request
+  RECOVERY_ERROR_EPOCH = 4;
+}
+
 // Result of a cryptohome recovery
 message CryptoRecoveryRpcResponse {
   optional int32 protocol_version = 1;             // protocol version
   optional bytes cbor_cryptorecoveryresponse = 2;  // cbor encoded response
+  optional RecoveryError error_code = 3;
 }

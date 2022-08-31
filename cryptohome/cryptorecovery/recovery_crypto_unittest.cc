@@ -530,5 +530,26 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
   EXPECT_NE(onboarding_metadata.recovery_id, recovery_id);
 }
 
+TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  CryptoRecoveryRpcResponse response_proto;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_proto);
+
+  // Generate fake error response.
+  response_proto.set_error_code(RecoveryError::RECOVERY_ERROR_FATAL);
+
+  DecryptResponsePayloadRequest decrypt_response_payload_request(
+      {.encrypted_channel_priv_key = channel_priv_key,
+       .epoch_response = epoch_response_,
+       .recovery_response_proto = response_proto,
+       .obfuscated_username = ""});
+  HsmResponsePlainText response_plain_text;
+  EXPECT_FALSE(recovery_->DecryptResponsePayload(
+      decrypt_response_payload_request, &response_plain_text));
+}
+
 }  // namespace cryptorecovery
 }  // namespace cryptohome

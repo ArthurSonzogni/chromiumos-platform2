@@ -39,8 +39,6 @@ extern const char kRequestPayloadSalt[];
 extern const char kResponseAead[];
 extern const char kResponseHsmMetaData[];
 extern const char kResponsePayloadSalt[];
-extern const char kResponseErrorCode[];
-extern const char kResponseErrorString[];
 extern const char kCryptohomeUser[];
 extern const char kCryptohomeUserType[];
 extern const char kDeviceUserId[];

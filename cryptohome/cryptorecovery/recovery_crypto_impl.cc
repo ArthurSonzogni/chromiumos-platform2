@@ -718,6 +718,14 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
 
+  if (request.recovery_response_proto.error_code() !=
+      RecoveryError::RECOVERY_ERROR_UNSPECIFIED) {
+    LOG(ERROR) << "Recovery response returned an error: "
+               << static_cast<int>(
+                      request.recovery_response_proto.error_code());
+    return false;
+  }
+
   RecoveryResponse recovery_response;
   if (!GetRecoveryResponseFromProto(request.recovery_response_proto,
                                     &recovery_response)) {

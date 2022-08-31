@@ -175,8 +175,6 @@ const char kRequestPayloadSalt[] = "request_salt";
 const char kResponseAead[] = "resp_aead";
 const char kResponseHsmMetaData[] = "hsm_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
-const char kResponseErrorCode[] = "error_code";
-const char kResponseErrorString[] = "error_string";
 const char kCryptohomeUser[] = "cryptohome_user";
 const char kCryptohomeUserType[] = "cryptohome_user_type";
 const char kDeviceUserId[] = "device_user_id";
@@ -339,8 +337,6 @@ bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
 
   response_map.emplace(kResponseAead,
                        ConvertAeadPayloadToCborMap(response.response_payload));
-  response_map.emplace(kResponseErrorCode, response.error_code);
-  response_map.emplace(kResponseErrorString, response.error_string);
 
   if (!SerializeCborMap(response_map, response_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Response to CBOR";
@@ -622,31 +618,6 @@ bool DeserializeRecoveryResponseFromCbor(
   }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
-  const auto error_code_entry =
-      response_map.find(cbor::Value(kResponseErrorCode));
-  if (error_code_entry == response_map.end()) {
-    LOG(ERROR) << "No " << kResponseErrorCode
-               << " entry in the Recovery Response map.";
-    return false;
-  }
-  if (!error_code_entry->second.is_integer()) {
-    LOG(ERROR) << "Wrongly formatted " << kResponseErrorCode
-               << " entry in the Recovery Response map.";
-    return false;
-  }
-
-  const auto error_string_entry =
-      response_map.find(cbor::Value(kResponseErrorString));
-  if (error_string_entry == response_map.end()) {
-    LOG(ERROR) << "No " << kResponseErrorString
-               << " entry in the Recovery Response map.";
-    return false;
-  }
-  if (!error_string_entry->second.is_string()) {
-    LOG(ERROR) << "Wrongly formatted " << kResponseErrorString
-               << " entry in the Recovery Response map.";
-    return false;
-  }
 
   const auto response_payload_entry =
       response_map.find(cbor::Value(kResponseAead));
@@ -668,8 +639,6 @@ bool DeserializeRecoveryResponseFromCbor(
   }
 
   response->response_payload = std::move(response_payload);
-  response->error_code = error_code_entry->second.GetInteger();
-  response->error_string = error_string_entry->second.GetString();
   return true;
 }
 

@@ -452,7 +452,6 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
 
   RecoveryResponse recovery_response;
   recovery_response.response_payload = std::move(response_payload);
-  recovery_response.error_code = 0;
   if (!GenerateRecoveryRequestProto(recovery_response,
                                     recovery_response_proto)) {
     LOG(ERROR) << "Failed to generate Recovery Response proto";

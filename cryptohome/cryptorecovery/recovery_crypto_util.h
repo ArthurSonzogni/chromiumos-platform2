@@ -194,10 +194,6 @@ struct HsmResponsePlainText {
 struct RecoveryResponse {
   // The AEAD-encrypted payload.
   ResponsePayload response_payload;
-  // Numeric error code.
-  int error_code = 0;
-  // Error message.
-  std::string error_string;
 };
 
 }  // namespace cryptorecovery
