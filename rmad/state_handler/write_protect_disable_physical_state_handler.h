@@ -67,7 +67,9 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
   void OnWriteProtectDisabled();
-  void RebootEc(bool powerwash_required);
+  void RequestRmaPowerwashAndRebootEc();
+  void RequestRmaPowerwashAndRebootEcCallback(bool success);
+  void RebootEc();
   void RebootEcCallback(bool success);
 
   base::FilePath working_dir_path_;

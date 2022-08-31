@@ -147,23 +147,39 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
 
   // Chrome picks up the signal and shows the "Preparing to reboot" message.
   daemon_callback_->GetWriteProtectSignalCallback().Run(false);
-  // Reboot even when we don't enable factory mode to keep the user flow
-  // consistent.
-  reboot_timer_.Start(
-      FROM_HERE, kRebootDelay,
-      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEc,
-                     base::Unretained(this), powerwash_required));
+
+  // Request RMA mode powerwash if required, then reboot EC.
+  if (powerwash_required) {
+    reboot_timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
+                           RequestRmaPowerwashAndRebootEc,
+                       base::Unretained(this)));
+  } else {
+    reboot_timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEc,
+                       base::Unretained(this)));
+  }
 }
 
-void WriteProtectDisablePhysicalStateHandler::RebootEc(
-    bool powerwash_required) {
-  // Inject rma-mode powerwash if required.
-  // TODO(chenghan): The current powerwash request implementation doesn't work
-  //                 with EC reboot.
-  if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request powerwash";
+void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndRebootEc() {
+  LOG(INFO) << "Requesting RMA mode powerwash";
+  daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
+      base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
+                         RequestRmaPowerwashAndRebootEcCallback,
+                     base::Unretained(this)));
+}
+
+void WriteProtectDisablePhysicalStateHandler::
+    RequestRmaPowerwashAndRebootEcCallback(bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
-  // Reboot EC.
+  RebootEc();
+}
+
+void WriteProtectDisablePhysicalStateHandler::RebootEc() {
   LOG(INFO) << "Rebooting EC after physically removing WP";
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,

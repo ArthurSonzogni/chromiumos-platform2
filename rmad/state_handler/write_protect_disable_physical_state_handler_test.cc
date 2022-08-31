@@ -49,6 +49,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       bool expect_powerwash,
       bool is_cros_debug,
       bool* factory_mode_toggled = nullptr,
+      bool* powerwash_requested = nullptr,
       bool* reboot_toggled = nullptr) {
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
@@ -82,6 +83,10 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     daemon_callback_->SetWriteProtectSignalCallback(
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
                             base::Unretained(&signal_sender_)));
+    // Register request powerwash callback.
+    daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
+        &WriteProtectDisablePhysicalStateHandlerTest::RequestRmaPowerwash,
+        base::Unretained(this), powerwash_requested));
     // Register reboot EC callback.
     daemon_callback_->SetExecuteRebootEcCallback(base::BindRepeating(
         &WriteProtectDisablePhysicalStateHandlerTest::RebootEc,
@@ -90,6 +95,14 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     return base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_cr50_utils), std::move(mock_crossystem_utils));
+  }
+
+  void RequestRmaPowerwash(bool* powerwash_requested,
+                           base::OnceCallback<void(bool)> callback) {
+    if (powerwash_requested) {
+      *powerwash_requested = true;
+    }
+    std::move(callback).Run(true);
   }
 
   void RebootEc(bool* reboot_toggled, base::OnceCallback<void(bool)> callback) {
@@ -173,9 +186,12 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeSuccess) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  bool factory_mode_toggled = false, reboot_toggled = false;
+  bool factory_mode_toggled = false, powerwash_requested = false,
+       reboot_toggled = false;
   auto handler = CreateStateHandler({1, 1, 0}, false, true, true, true,
-                                    &factory_mode_toggled, &reboot_toggled);
+                                    &factory_mode_toggled, &powerwash_requested,
+                                    &reboot_toggled);
+
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -192,16 +208,22 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       .WillOnce(Assign(&signal_sent, true));
 
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // First call to |mock_crossystem_utils_| during polling, get 1.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Second call to |mock_crossystem_utils_| during polling, get 1.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Third call to |mock_crossystem_utils_| during polling, get 0.
   // Try to enable factory mode and send the signal.
@@ -209,21 +231,24 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+  EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_CrosDebug) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  bool factory_mode_toggled = false, reboot_toggled = false;
-  auto handler = CreateStateHandler({0}, false, true, true, true,
-                                    &factory_mode_toggled, &reboot_toggled);
+  bool factory_mode_toggled = false, powerwash_requested = false,
+       reboot_toggled = false;
+
+  auto handler =
+      CreateStateHandler({0}, false, true, true, true, &factory_mode_toggled,
+                         &powerwash_requested, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -242,6 +267,8 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       .WillOnce(Assign(&signal_sent, true));
 
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Call to |mock_crossystem_utils_| during polling, get 0.
   // Try to enable factory mode and send the signal.
@@ -249,21 +276,23 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
-  // Request powerwash and reboot after a delay.
+  // Reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
-  EXPECT_FALSE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_NonCrosDebug) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  bool factory_mode_toggled = false, reboot_toggled = false;
-  auto handler = CreateStateHandler({0}, false, true, true, false,
-                                    &factory_mode_toggled, &reboot_toggled);
+  bool factory_mode_toggled = false, powerwash_requested = false,
+       reboot_toggled = false;
+  auto handler =
+      CreateStateHandler({0}, false, true, true, false, &factory_mode_toggled,
+                         &powerwash_requested, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -282,6 +311,8 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       .WillOnce(Assign(&signal_sent, true));
 
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Call to |mock_crossystem_utils_| during polling, get 0.
   // Try to enable factory mode and send the signal.
@@ -289,21 +320,24 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+  EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeFailed) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  bool factory_mode_toggled = false, reboot_toggled = false;
+  bool factory_mode_toggled = false, powerwash_requested = false,
+       reboot_toggled = false;
+
   auto handler = CreateStateHandler({1, 1, 0}, false, false, true, true,
-                                    &factory_mode_toggled, &reboot_toggled);
+                                    &factory_mode_toggled, &powerwash_requested,
+                                    &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -320,16 +354,22 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       .WillOnce(Assign(&signal_sent, true));
 
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // First call to |mock_crossystem_utils_| during polling, get 1.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Second call to |mock_crossystem_utils_| during polling, get 1.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Third call to |mock_crossystem_utils_| during polling, get 0.
   // Try to enable factory mode and send the signal.
@@ -337,12 +377,12 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Request powerwash and reboot after a delay.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kRebootDelay);
-  EXPECT_TRUE(base::PathExists(
-      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
+  EXPECT_TRUE(powerwash_requested);
   EXPECT_TRUE(reboot_toggled);
 }
 
