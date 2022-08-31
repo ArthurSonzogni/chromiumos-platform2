@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
@@ -22,10 +23,17 @@ constexpr int kVersionOffset = 20;
 // Returns false on failure.
 bool ReadVersionFromFile(const base::FilePath& path, uint32_t* version);
 
+enum class RegType {
+  kUint16,
+  kPartIdArray,  // decoding this is not implemented
+  kString,
+};
+
 struct RegInfo {
   HpsReg num;
   const char* name;
   bool readable;
+  RegType type;
 };
 
 // Look up info about the given register.
@@ -42,7 +50,6 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val);
 // Only registers which are known to exist and be readable are included;
 // others are silently skipped.
 // `callback` should be a functor that accepts std::string.
-// TODO(skyostil): Add support for >16 bit registers.
 template <typename Callback>
 int DumpHpsRegisters(DevInterface& dev,
                      Callback callback,
@@ -58,15 +65,37 @@ int DumpHpsRegisters(DevInterface& dev,
     if (!reg->readable) {
       continue;
     }
-    std::optional<uint16_t> result = dev.ReadReg(reg->num);
-    if (!result) {
-      callback(base::StringPrintf("Register %3d: error (%s)", i, reg->name));
-      failures++;
-    } else {
-      callback(base::StringPrintf(
-          "Register %3d: 0x%04x (%s) %s", i, result.value(), reg->name,
-          HpsRegValToString(reg->num, result.value()).c_str()));
+    std::string dump_out;
+    switch (reg->type) {
+      // Part IDs are [u32; 5] but decoding it is not implemented yet.
+      case RegType::kPartIdArray:
+      case RegType::kUint16: {
+        std::optional<uint16_t> result = dev.ReadReg(reg->num);
+        if (!result) {
+          dump_out =
+              base::StringPrintf("Register %3d: error (%s)", i, reg->name);
+          failures++;
+        } else {
+          dump_out = base::StringPrintf(
+              "Register %3d: 0x%04x (%s) %s", i, result.value(), reg->name,
+              HpsRegValToString(reg->num, result.value()).c_str());
+        }
+        break;
+      }
+      case RegType::kString: {
+        std::optional<std::string> result = dev.ReadStringReg(reg->num, 256);
+        if (!result) {
+          dump_out =
+              base::StringPrintf("Register %3d: error (%s)", i, reg->name);
+          failures++;
+        } else {
+          dump_out = base::StringPrintf("Register %3d: ...... (%s) %s", i,
+                                        reg->name, result.value().c_str());
+        }
+        break;
+      }
     }
+    callback(std::move(dump_out));
   }
   return failures;
 }

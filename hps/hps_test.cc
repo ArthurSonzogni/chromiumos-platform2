@@ -35,6 +35,10 @@ class MockHpsDev : public hps::DevInterface {
   MOCK_METHOD(bool, Read, (uint8_t, uint8_t*, size_t), (override));
   MOCK_METHOD(bool, Write, (uint8_t, const uint8_t*, size_t), (override));
   MOCK_METHOD(std::optional<uint16_t>, ReadReg, (hps::HpsReg), (override));
+  MOCK_METHOD(std::optional<std::string>,
+              ReadStringReg,
+              (hps::HpsReg, size_t len),
+              (override));
   MOCK_METHOD(bool, WriteReg, (hps::HpsReg, uint16_t), (override));
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
     return true;
@@ -211,8 +215,9 @@ TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
             .WillOnce(Return(0x1234));
         EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kPartIds))
             .WillOnce(Return(0x1234));
-        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kPreviousCrashMessage))
-            .WillOnce(Return(0x1234));
+        EXPECT_CALL(*dev_,
+                    ReadStringReg(hps::HpsReg::kPreviousCrashMessage, 256))
+            .WillOnce(Return("test"));
 
         hps_->IsRunning();
       },
