@@ -663,6 +663,7 @@ void Device::StopConnectionDiagnostics() {
 }
 
 void Device::EmitMACAddress(const std::string& mac_address) {
+  // TODO(b/245984500): What about MAC changed by the supplicant?
   if (mac_address.empty() ||
       MakeHardwareAddressFromString(mac_address).empty()) {
     adaptor_->EmitStringChanged(kAddressProperty, mac_address_);

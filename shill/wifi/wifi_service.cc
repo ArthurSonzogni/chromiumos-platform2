@@ -486,11 +486,18 @@ void WiFiService::ClearPassphrase(Error* /*error*/) {
   UpdateConnectable();
 }
 
+void WiFiService::SetSupplicantMACPolicy(KeyValueStore& kv) const {
+  kv.Set(WPASupplicant::kNetworkPropertyMACAddrPolicy,
+         RandomizationPolicyToSupplicantPolicy.at(random_mac_policy_));
+}
+
 std::string WiFiService::GetMACPolicy(Error* /*error*/) {
   return RandomizationPolicyMap.at(random_mac_policy_);
 }
 
-bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
+bool WiFiService::SetMACPolicyInternal(const std::string& policy,
+                                       Error* error,
+                                       bool only_property) {
   SLOG(this, 2) << __func__;
   auto ret = std::find_if(
       RandomizationPolicyMap.begin(), RandomizationPolicyMap.end(),
@@ -524,7 +531,14 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
     }
   }
   random_mac_policy_ = ret->first;
+  if (!only_property) {
+    current_mac_policy_ = random_mac_policy_;
+  }
   return true;
+}
+
+bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
+  return SetMACPolicyInternal(policy, error, true);
 }
 
 Service::Service::TetheringState WiFiService::GetTethering() const {
@@ -599,8 +613,11 @@ bool WiFiService::Load(const StoreInterface* storage) {
   std::string mac_policy;
   Error error;
   if (storage->GetString(id, kStorageMACPolicy, &mac_policy)) {
-    // We assume saved value is correct.
-    SetMACPolicy(mac_policy, &error);
+    // Loaded random MAC policy is also a current one so that during connection
+    // in UpdateMACAddress we do not falsely detect policy change.
+    if (!SetMACPolicyInternal(mac_policy, &error, false)) {
+      return false;
+    }
   }
 
   uint64_t delta;
@@ -727,6 +744,7 @@ bool WiFiService::Unload() {
   ClearPassphrase(&unused_error);
   mac_address_.Clear();
   random_mac_policy_ = RandomizationPolicy::Hardware;
+  current_mac_policy_ = RandomizationPolicy::Hardware;
   match_priority_ = kDefaultMatchPriority;
   PasspointCredentialsRefPtr creds = parent_credentials_;
   parent_credentials_ = nullptr;
@@ -1065,9 +1083,11 @@ void WiFiService::EmitLinkQualityReportEvent(
 }
 
 WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
-  const auto now = clock_->Now();
+  UpdateMACAddressRet ret{std::string(),
+                          current_mac_policy_ != random_mac_policy_};
   bool rotating = false;
-  bool change = false;
+
+  current_mac_policy_ = random_mac_policy_;
 
   switch (random_mac_policy_) {
     case RandomizationPolicy::PersistentRandom:
@@ -1078,17 +1098,15 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
     case RandomizationPolicy::NonPersistentRandom:
       // For forced non-persistent policy we always rotate.
       rotating = true;
-      // If address is not expiring for this policy that means the policy has
-      // changed recently and address should be refreshed.
-      change = !mac_address_.will_expire();
       break;
     default:
       // Other modes do not require explicit address to be set.
-      // Setting empty mac address will result in publishing the hardware one.
-      return {std::string(), false};
+      return ret;
   }
+
+  const auto now = clock_->Now();
   // If we get here then we need to have MAC set - make sure it is.
-  change = change || !mac_address_.is_set();
+  bool change = ret.policy_change || !mac_address_.is_set();
   // For rotating MAC check its expiration and lease/disconnect times.
   if (!change && rotating) {
     change = mac_address_.IsExpired(now) ||
@@ -1101,10 +1119,13 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
     if (rotating) {
       mac_address_.set_expiration_time(now +
                                        MACAddress::kDefaultExpirationTime);
+    } else {
+      mac_address_.set_expiration_time(MACAddress::kNotExpiring);
     }
+    ret.mac = mac_address_.ToString();
   }
 
-  return {mac_address_.ToString(), change};
+  return ret;
 }
 
 KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
@@ -1208,8 +1229,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   SLOG(this, 2) << "Sending MAC policy: "
                 << RandomizationPolicyMap.at(random_mac_policy_)
                 << " to supplicant.";
-  params.Set(WPASupplicant::kNetworkPropertyMACAddrPolicy,
-             RandomizationPolicyToSupplicantPolicy.at(random_mac_policy_));
+  SetSupplicantMACPolicy(params);
   switch (random_mac_policy_) {
     case RandomizationPolicy::PersistentRandom:
     // Fall through. For non-persistent policy we use the same WPA supplicant

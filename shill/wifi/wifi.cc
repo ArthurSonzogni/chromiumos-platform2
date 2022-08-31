@@ -654,7 +654,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
 
   Error unused_error;
   network_rpcid = FindNetworkRpcidForService(service, &unused_error);
-  const auto [new_mac, update_supplicant] = service->UpdateMACAddress();
+  const auto [new_mac, mac_policy_change] = service->UpdateMACAddress();
   if (network_rpcid.value().empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
@@ -674,13 +674,18 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     CHECK(!network_rpcid.value().empty());  // No DBus path should be empty.
     service->set_bgscan_string(bgscan_string);
     rpcid_by_service_[service] = network_rpcid;
-  } else if (update_supplicant && !new_mac.empty()) {
-    // During AddNetwork() (above) MAC is being configured as one of the
-    // network parameters, but here we need to send an explicit update.
+  } else if (mac_policy_change || !new_mac.empty()) {
+    // During AddNetwork() (above) MAC and policy are being configured, but here
+    // we need to send an explicit update.
     std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
         control_interface()->CreateSupplicantNetworkProxy(network_rpcid);
     KeyValueStore kv;
-    kv.Set(WPASupplicant::kNetworkPropertyMACAddrValue, new_mac);
+    if (mac_policy_change) {
+      service->SetSupplicantMACPolicy(kv);
+    }
+    if (!new_mac.empty()) {
+      kv.Set(WPASupplicant::kNetworkPropertyMACAddrValue, new_mac);
+    }
     if (!supplicant_network_proxy->SetProperties(kv)) {
       LOG(ERROR) << "Failed to change MAC for network: "
                  << network_rpcid.value();

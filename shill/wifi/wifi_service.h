@@ -215,6 +215,7 @@ class WiFiService : public Service {
 
   // Called by WiFi to retrieve configuration parameters for wpa_supplicant.
   mockable KeyValueStore GetSupplicantConfigurationParameters() const;
+  void SetSupplicantMACPolicy(KeyValueStore& kv) const;
 
   // "wpa", "wpa2" and "wpa3" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
@@ -247,7 +248,7 @@ class WiFiService : public Service {
   // UpdateMACAddress return type.
   struct UpdateMACAddressRet {
     std::string mac;
-    bool update;
+    bool policy_change;
   };
   // Update MAC address when necessary e.g. when it needs to be re-rolled.
   // Returns the current MAC address (if randomized) and if it needs
@@ -326,6 +327,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, Is8021x);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
+  FRIEND_TEST(WiFiServiceTest, LoadMACPolicy);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseForNonPassphraseService);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
@@ -469,8 +471,14 @@ class WiFiService : public Service {
   // Return MAC address randomization policy setting.
   std::string GetMACPolicy(Error* error);
 
-  // Set MAC address randomization policy.
+  // Set MAC address randomization policy - this version is only used as a D-Bus
+  // callback and delegates job to the internal version below.
   bool SetMACPolicy(const std::string& policy, Error* error);
+  // Set MAC address randomization policy.  Argument |only_property| indicates
+  // whether to only update property value or the current policy too.
+  bool SetMACPolicyInternal(const std::string& policy,
+                            Error* error,
+                            bool only_property);
 
   void SetWiFi(const WiFiRefPtr& new_wifi);
 
@@ -505,10 +513,16 @@ class WiFiService : public Service {
   // with this service instead.
   const std::string mode_;
   bool hidden_ssid_;
-  // Random MAC address policy.
+  // Random MAC address policies:
+  // |random_mac_policy_| - keeps the value of property "WiFi.RandomMACPolicy"
+  // |current_mac_policy_| - is the policy currently configured.
+  // Normally these two should be equal but they might differ during policy
+  // change - that is between the moment new policy is set and the moment we
+  // (re)connect to the network.
   RandomizationPolicy random_mac_policy_ = RandomizationPolicy::Hardware;
-  // MAC Address used when |random_mac_policy_| is set to |PersistentRandom|.
-  // Empty otherwise.
+  RandomizationPolicy current_mac_policy_ = RandomizationPolicy::Hardware;
+  // MAC Address used when |current_mac_policy_| is set to either
+  // |PersistentRandom| or |NonPersistentRandom|.
   MACAddress mac_address_;
   // This tracks if particular service ever encountered Captive portal.
   // In order to improve user experience with MAC Address randomization,
