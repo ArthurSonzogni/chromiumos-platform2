@@ -4555,6 +4555,10 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   }
 
   PreMountHook(obfuscated_username);
+  if (low_disk_space_handler_) {
+    low_disk_space_handler_->disk_cleanup()->FreeDiskSpaceDuringLogin(
+        obfuscated_username);
+  }
   ReportTimerStart(kMountExTimer);
   MountStatus mount_status = session_status.value()->MountVault(
       auth_session_status.value()->username(),
