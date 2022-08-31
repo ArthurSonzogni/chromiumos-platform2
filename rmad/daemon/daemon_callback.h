@@ -39,6 +39,8 @@ using ExecuteMountAndCopyFirmwareUpdaterCallback =
     base::RepeatingCallback<void(uint8_t, base::OnceCallback<void(bool)>)>;
 using ExecuteRebootEcCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
+using ExecuteRequestRmaPowerwashCallback =
+    base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 
 #define DECLARE_CALLBACK(type, var)                 \
  public:                                            \
@@ -76,6 +78,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
   DECLARE_CALLBACK(ExecuteMountAndCopyFirmwareUpdaterCallback,
                    execute_mount_and_copy_firmware_updater_callback_);
   DECLARE_CALLBACK(ExecuteRebootEcCallback, execute_reboot_ec_callback_);
+  DECLARE_CALLBACK(ExecuteRequestRmaPowerwashCallback,
+                   execute_request_rma_powerwash_callback_);
 };
 
 }  // namespace rmad
