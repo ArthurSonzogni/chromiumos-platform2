@@ -431,6 +431,7 @@ constexpr char kPinSwitch[] = "pin";
 constexpr char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
 constexpr char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
 constexpr char kRecoveryResponseSwitch[] = "recovery_response";
+constexpr char kAuthIntentSwitch[] = "auth_intent";
 }  // namespace
 }  // namespace switches
 
@@ -628,7 +629,7 @@ bool ConfirmRemove(Printer& printer, const std::string& user) {
 }
 
 bool BuildAccountId(Printer& printer,
-                    base::CommandLine* cl,
+                    const base::CommandLine* cl,
                     cryptohome::AccountIdentifier* id) {
   std::string account_id;
   if (!GetAccountId(printer, cl, &account_id)) {
@@ -636,6 +637,32 @@ bool BuildAccountId(Printer& printer,
     return false;
   }
   id->set_account_id(account_id);
+  return true;
+}
+
+bool BuildStartAuthSessionRequest(
+    Printer& printer,
+    const base::CommandLine& cl,
+    user_data_auth::StartAuthSessionRequest& req) {
+  if (!BuildAccountId(printer, &cl, req.mutable_account_id())) {
+    return false;
+  }
+  unsigned int flags = 0;
+  flags |= cl.HasSwitch(switches::kEnsureEphemeralSwitch)
+               ? user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER
+               : 0;
+  req.set_flags(flags);
+  if (cl.HasSwitch(switches::kAuthIntentSwitch)) {
+    std::string intent_string =
+        cl.GetSwitchValueASCII(switches::kAuthIntentSwitch);
+    user_data_auth::AuthIntent intent;
+    if (!AuthIntent_Parse(intent_string, &intent)) {
+      printer.PrintFormattedHumanOutput("Invalid auth intent \"%s\".\n",
+                                        intent_string.c_str());
+      return false;
+    }
+    req.set_intent(intent);
+  }
   return true;
 }
 
@@ -3098,19 +3125,12 @@ int main(int argc, char** argv) {
     printer.PrintReplyProtobuf(reply);
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(printer, cl, &id))
-      return 1;
-
     user_data_auth::StartAuthSessionRequest req;
-    user_data_auth::StartAuthSessionReply reply;
-    unsigned int flags = 0;
-    flags |= cl->HasSwitch(switches::kEnsureEphemeralSwitch)
-                 ? user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER
-                 : 0;
-    req.set_flags(flags);
-    *req.mutable_account_id() = id;
+    if (!BuildStartAuthSessionRequest(printer, *cl, req)) {
+      return 1;
+    }
 
+    user_data_auth::StartAuthSessionReply reply;
     brillo::ErrorPtr error;
     if (!userdataauth_proxy.StartAuthSession(req, &reply, &error, timeout_ms) ||
         error) {
