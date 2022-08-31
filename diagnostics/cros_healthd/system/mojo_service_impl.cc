@@ -63,6 +63,8 @@ std::unique_ptr<MojoServiceImpl> MojoServiceImpl::Create(
   impl->RequestService(
       chromeos::mojo_services::kChromiumNetworkDiagnosticsRoutines,
       impl->network_diagnostics_routines_, kFirstConnectDelay);
+  impl->RequestService(chromeos::mojo_services::kIioSensor,
+                       impl->sensor_service_, kFirstConnectDelay);
   return impl;
 }
 
@@ -88,6 +90,11 @@ chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
 MojoServiceImpl::GetNetworkDiagnosticsRoutines() {
   DCHECK(network_diagnostics_routines_.is_bound());
   return network_diagnostics_routines_.get();
+}
+
+cros::mojom::SensorService* MojoServiceImpl::GetSensorService() {
+  DCHECK(sensor_service_.is_bound());
+  return sensor_service_.get();
 }
 
 template <typename InterfaceType>
