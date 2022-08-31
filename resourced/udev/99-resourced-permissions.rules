@@ -2,5 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="" \
+DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/gt_boost_freq_mhz"
+
+KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_governor"
