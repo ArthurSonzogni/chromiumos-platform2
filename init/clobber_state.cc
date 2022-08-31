@@ -303,6 +303,8 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
   for (const std::string& arg : split_args) {
     if (arg == "factory") {
       args.factory_wipe = true;
+      // Factory mode implies fast wipe.
+      args.fast_wipe = true;
     } else if (arg == "fast") {
       args.fast_wipe = true;
     } else if (arg == "keepimg") {
