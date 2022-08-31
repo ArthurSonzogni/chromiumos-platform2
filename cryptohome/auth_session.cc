@@ -39,6 +39,7 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/vault_keyset.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
@@ -144,6 +145,7 @@ AuthSession::AuthSession(
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     Crypto* crypto,
     Platform* platform,
+    UserSessionMap* user_session_map,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
@@ -157,6 +159,7 @@ AuthSession::AuthSession(
       on_timeout_(std::move(on_timeout)),
       crypto_(crypto),
       platform_(platform),
+      user_session_map_(user_session_map),
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
@@ -164,6 +167,8 @@ AuthSession::AuthSession(
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);
+  DCHECK(platform_);
+  DCHECK(user_session_map_);
   DCHECK(keyset_management_);
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);

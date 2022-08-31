@@ -39,6 +39,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
+#include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/userdataauth.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -111,7 +112,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &platform_, keyset_management_.get(),
+        &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
         auth_block_utility_.get(), &auth_factor_manager_,
         &user_secret_stash_storage_);
 
@@ -188,6 +189,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
+  UserSessionMap user_session_map_;
 
   FileSystemKeyset file_system_keyset_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;

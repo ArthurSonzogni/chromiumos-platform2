@@ -11,7 +11,6 @@
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_session.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
@@ -24,6 +23,8 @@
 #include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
+
+class AuthSession;
 
 class UserSession {
  public:

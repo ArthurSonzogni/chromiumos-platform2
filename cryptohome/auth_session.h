@@ -35,6 +35,7 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_session/user_session_map.h"
 
 namespace cryptohome {
 
@@ -72,8 +73,7 @@ class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
 
-  // Caller needs to ensure that the KeysetManagement*, AuthBlockUtility*,
-  // AuthFactorManager* and UserSecretStashStorage* outlive the instance of
+  // Caller needs to ensure that the passed raw pointers outlive the instance of
   // AuthSession.
   AuthSession(
       std::string username,
@@ -81,6 +81,7 @@ class AuthSession final {
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       Crypto* crypto,
       Platform* platform,
+      UserSessionMap* user_session_map,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
@@ -496,6 +497,8 @@ class AuthSession final {
   // The creator of the AuthSession object is responsible for the life of
   // Platform object.
   Platform* const platform_;
+  // Unowned pointer.
+  UserSessionMap* const user_session_map_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.

@@ -39,6 +39,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
+#include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -111,8 +112,9 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &platform_, &keyset_management_, auth_block_utility_.get(),
-        &auth_factor_manager_, &user_secret_stash_storage_);
+        &crypto_, &platform_, &user_session_map_, &keyset_management_,
+        auth_block_utility_.get(), &auth_factor_manager_,
+        &user_secret_stash_storage_);
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -136,6 +138,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   TaskEnvironment task_environment{
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
   NiceMock<MockPlatform> platform_;
+  UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;

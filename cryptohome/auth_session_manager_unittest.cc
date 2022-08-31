@@ -22,6 +22,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_session/user_session_map.h"
 
 using base::test::TaskEnvironment;
 using ::testing::_;
@@ -50,6 +51,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
+  UserSessionMap user_session_map_;
 };
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {
@@ -62,8 +64,8 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   UserSecretStashStorage user_secret_stash_storage(&platform);
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &crypto_, &platform_, &keyset_management, &auth_block_utility,
-      &auth_factor_manager, &user_secret_stash_storage);
+      &crypto_, &platform_, &user_session_map_, &keyset_management,
+      &auth_block_utility, &auth_factor_manager, &user_secret_stash_storage);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);
@@ -94,8 +96,8 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   UserSecretStashStorage user_secret_stash_storage(&platform);
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &crypto_, &platform_, &keyset_management, &auth_block_utility,
-      &auth_factor_manager, &user_secret_stash_storage);
+      &crypto_, &platform_, &user_session_map_, &keyset_management,
+      &auth_block_utility, &auth_factor_manager, &user_secret_stash_storage);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);
@@ -115,8 +117,8 @@ TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
   UserSecretStashStorage user_secret_stash_storage(&platform);
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &crypto_, &platform_, &keyset_management, &auth_block_utility,
-      &auth_factor_manager, &user_secret_stash_storage);
+      &crypto_, &platform_, &user_session_map_, &keyset_management,
+      &auth_block_utility, &auth_factor_manager, &user_secret_stash_storage);
 
   // Test:
   EXPECT_FALSE(

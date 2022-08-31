@@ -1330,15 +1330,15 @@ class UserDataAuth {
   // for tests.
   UserSecretStashStorage* user_secret_stash_storage_ = nullptr;
 
+  // Records the UserSession objects associated with each username.
+  // This and its content should only be accessed from the mount thread.
+  UserSessionMap sessions_;
+
   // Manager for auth session objects.
   std::unique_ptr<AuthSessionManager> default_auth_session_manager_;
   // Usually set to default_auth_session_manager_, but can be overridden for
   // tests.
   AuthSessionManager* auth_session_manager_;
-
-  // Records the UserSession objects associated with each username.
-  // This and its content should only be accessed from the mount thread.
-  UserSessionMap sessions_;
 
   // The low_disk_space_handler_ object in normal operation
   std::unique_ptr<LowDiskSpaceHandler> default_low_disk_space_handler_;
