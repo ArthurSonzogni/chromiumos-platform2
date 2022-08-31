@@ -23,6 +23,9 @@
 /sys/class/devcoredump(/.*)?               u:object_r:sysfs_class_devcoredump:s0
 
 /sys/devices/system/cpu(/.*)?                                   u:object_r:sysfs_devices_system_cpu:s0
+
+/sys/devices/system/cpu/cpuidle(/.*)                            u:object_r:sysfs_cpuidle:s0
+
 # Use u:object_r:sysfs:s0 for writable files to disallow regular apps to
 # access them.
 /sys/devices/system/cpu/cpufreq/ondemand/ignore_nice_load       u:object_r:sysfs:s0
@@ -63,7 +66,6 @@
 # For Intel
 /sys/devices/system/cpu/(cpu[0-9]+/)?power/energy_perf_bias     u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]*/energy_performance_preference u:object_r:sysfs:s0
-/sys/devices/system/cpu/cpuidle/current_governor                u:object_r:sysfs:s0
 /sys/devices/system/cpu/intel_pstate/hwp_dynamic_boost          u:object_r:sysfs:s0
 /sys/devices/system/cpu/intel_pstate/max_perf_pct               u:object_r:sysfs:s0
 /sys/devices/system/cpu/intel_pstate/min_perf_pct               u:object_r:sysfs:s0
