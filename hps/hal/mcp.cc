@@ -35,7 +35,7 @@ static const int kRetries = 50;        // Max retries.
 static constexpr base::TimeDelta kDelay =
     base::Milliseconds(10);  // Delay between retries.
 static constexpr base::TimeDelta kReadSleep = base::Milliseconds(1);
-static constexpr base::TimeDelta kReadTimeout = base::Milliseconds(10);
+static constexpr base::TimeDelta kReadTimeout = base::Milliseconds(1000);
 
 /*
  * Calculate write block size.
@@ -192,12 +192,6 @@ void Mcp::Close() {
 }
 
 bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
-  // 3 bytes at the start of the buffer are reserved for the response header,
-  // so do not allow transfers that are larger than the remaining space.
-  if (len > (kMcpTransferSize - 3)) {
-    LOG(ERROR) << base::StringPrintf("Read req too long (%zu)", len);
-    return false;
-  }
   if (!this->PrepareBus()) {
     return false;
   }
@@ -220,7 +214,7 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   this->Clear();
   this->out_[0] = kCmdReadRepeatStart;
   this->out_[1] = len & 0xff;          // LSB transfer length
-  this->out_[2] = 0;                   // MSB transfer length
+  this->out_[2] = (len >> 8) & 0xff;   // MSB transfer length
   this->out_[3] = this->address_ | 1;  // For read.
   if (!this->Cmd()) {
     LOG(ERROR) << "Read (read phase) failed";
@@ -231,6 +225,8 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
     LOG(ERROR) << "Read (read busy) failed";
     return false;
   }
+  size_t len_remaining = len;
+  uint8_t* data_remaining = data;
   this->Clear();
   base::ElapsedTimer timer;
   do {
@@ -245,12 +241,18 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
         return false;
       }
       size_t sz = this->in_[3];
-      if (sz > len) {
+      if (sz > len_remaining) {
         LOG(ERROR) << base::StringPrintf("Read size error (%zu)", sz);
         return false;
       }
-      memcpy(data, &this->in_[4], sz);
-      return true;
+      memcpy(data_remaining, &this->in_[4], sz);
+      data_remaining += sz;
+      len_remaining -= sz;
+      if (len_remaining) {
+        continue;
+      } else {
+        return true;
+      }
     }
     base::PlatformThread::Sleep(kReadSleep);
   } while (timer.Elapsed() < kReadTimeout);
