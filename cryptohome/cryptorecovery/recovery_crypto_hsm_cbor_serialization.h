@@ -36,7 +36,6 @@ extern const char kRequestAead[];
 extern const char kRequestRsaSignature[];
 extern const char kEpochPublicKey[];
 extern const char kRequestPayloadSalt[];
-extern const char kResponseAead[];
 extern const char kResponseHsmMetaData[];
 extern const char kResponsePayloadSalt[];
 extern const char kCryptohomeUser[];
@@ -95,8 +94,8 @@ bool SerializeRecoveryRequestPlainTextToCbor(
     brillo::SecureBlob* plain_text_cbor);
 
 // Constructs cbor-encoded binary blob for the Recovery Response.
-bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
-                                     brillo::SecureBlob* response_cbor);
+bool SerializeResponsePayloadToCbor(const ResponsePayload& response,
+                                    brillo::SecureBlob* response_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in response payload.
@@ -147,8 +146,8 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
     HsmResponseAssociatedData* response_ad);
 
 // Extracts data from Recovery Response cbor.
-bool DeserializeRecoveryResponseFromCbor(
-    const brillo::SecureBlob& response_cbor, RecoveryResponse* response);
+bool DeserializeResponsePayloadFromCbor(const brillo::SecureBlob& response_cbor,
+                                        ResponsePayload* response);
 
 // Extracts data from Epoch Metadata cbor.
 bool DeserializeEpochMetadataFromCbor(

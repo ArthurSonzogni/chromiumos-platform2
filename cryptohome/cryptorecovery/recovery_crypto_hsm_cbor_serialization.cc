@@ -172,7 +172,6 @@ const char kRequestAead[] = "req_aead";
 const char kRequestRsaSignature[] = "rsa_signature";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const char kRequestPayloadSalt[] = "request_salt";
-const char kResponseAead[] = "resp_aead";
 const char kResponseHsmMetaData[] = "hsm_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
 const char kCryptohomeUser[] = "cryptohome_user";
@@ -331,14 +330,9 @@ bool SerializeRecoveryRequestPlainTextToCbor(
   return true;
 }
 
-bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
-                                     brillo::SecureBlob* response_cbor) {
-  cbor::Value::MapValue response_map;
-
-  response_map.emplace(kResponseAead,
-                       ConvertAeadPayloadToCborMap(response.response_payload));
-
-  if (!SerializeCborMap(response_map, response_cbor)) {
+bool SerializeResponsePayloadToCbor(const ResponsePayload& response,
+                                    brillo::SecureBlob* response_cbor) {
+  if (!SerializeCborMap(ConvertAeadPayloadToCborMap(response), response_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Response to CBOR";
     return false;
   }
@@ -610,35 +604,17 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
   return true;
 }
 
-bool DeserializeRecoveryResponseFromCbor(
-    const brillo::SecureBlob& response_cbor, RecoveryResponse* response) {
+bool DeserializeResponsePayloadFromCbor(const brillo::SecureBlob& response_cbor,
+                                        ResponsePayload* response) {
   const auto& cbor = ReadCborMap(response_cbor);
   if (!cbor) {
     return false;
   }
 
-  const cbor::Value::MapValue& response_map = cbor->GetMap();
-
-  const auto response_payload_entry =
-      response_map.find(cbor::Value(kResponseAead));
-  if (response_payload_entry == response_map.end()) {
-    LOG(ERROR) << "No " << kResponseAead
-               << " entry in the Recovery Response map.";
-    return false;
-  }
-  if (!response_payload_entry->second.is_map()) {
-    LOG(ERROR) << "Wrongly formatted " << kResponseAead
-               << " entry in the Recovery Response map.";
-    return false;
-  }
-  ResponsePayload response_payload;
-  if (!ConvertCborMapToAeadPayload(response_payload_entry->second.GetMap(),
-                                   &response_payload)) {
+  if (!ConvertCborMapToAeadPayload(cbor->GetMap(), response)) {
     LOG(ERROR) << "Failed to deserialize Response payload from CBOR.";
     return false;
   }
-
-  response->response_payload = std::move(response_payload);
   return true;
 }
 

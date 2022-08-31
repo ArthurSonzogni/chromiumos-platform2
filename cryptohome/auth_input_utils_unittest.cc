@@ -98,13 +98,13 @@ TEST_F(AuthInputUtils, CreateAuthInputRecoveryCreate) {
 
 TEST_F(AuthInputUtils, CreateAuthInputRecoveryDerive) {
   constexpr char kEpochResponse[] = "fake_epoch_response";
-  constexpr char kRecoveryResponse[] = "fake_recovery_response";
+  constexpr char kResponsePayload[] = "fake_recovery_response";
   SecureBlob ephemeral_pub_key = SecureBlob("fake_ephemeral_pub_key");
 
   user_data_auth::AuthInput proto;
   proto.mutable_cryptohome_recovery_input()->set_epoch_response(kEpochResponse);
   proto.mutable_cryptohome_recovery_input()->set_recovery_response(
-      kRecoveryResponse);
+      kResponsePayload);
 
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
@@ -117,7 +117,7 @@ TEST_F(AuthInputUtils, CreateAuthInputRecoveryDerive) {
   EXPECT_EQ(auth_input.value()
                 .cryptohome_recovery_auth_input.value()
                 .recovery_response,
-            SecureBlob(kRecoveryResponse));
+            SecureBlob(kResponsePayload));
   EXPECT_EQ(auth_input.value()
                 .cryptohome_recovery_auth_input.value()
                 .ephemeral_pub_key,

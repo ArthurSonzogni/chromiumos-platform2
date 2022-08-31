@@ -190,12 +190,6 @@ struct HsmResponsePlainText {
   brillo::SecureBlob key_auth_value;
 };
 
-// RecoveryResponse is the cbor response to a RecoveryRequest.
-struct RecoveryResponse {
-  // The AEAD-encrypted payload.
-  ResponsePayload response_payload;
-};
-
 }  // namespace cryptorecovery
 }  // namespace cryptohome
 

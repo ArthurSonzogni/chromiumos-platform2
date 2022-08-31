@@ -84,7 +84,7 @@ class FakeRecoveryMediatorCrypto {
   // 4. Serialize response payload associated_data and plain_text
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
-  // 6. Encrypt plain_text, generate `RecoveryResponse` and serialize it to
+  // 6. Encrypt plain_text, generate `ResponsePayload` and serialize it to
   // `recovery_response_proto.cbor_cryptorecoveryresponse`.
   bool MediateHsmPayload(
       const brillo::SecureBlob& mediator_priv_key,

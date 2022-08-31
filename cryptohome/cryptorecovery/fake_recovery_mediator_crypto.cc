@@ -75,10 +75,10 @@ bool GetRecoveryRequestFromProto(
 }
 
 bool GenerateRecoveryRequestProto(
-    const RecoveryResponse& response,
+    const ResponsePayload& response,
     CryptoRecoveryRpcResponse* recovery_response) {
   brillo::SecureBlob recovery_response_cbor;
-  if (!SerializeRecoveryResponseToCbor(response, &recovery_response_cbor)) {
+  if (!SerializeResponsePayloadToCbor(response, &recovery_response_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Response to cbor";
     return false;
   }
@@ -450,8 +450,8 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  RecoveryResponse recovery_response;
-  recovery_response.response_payload = std::move(response_payload);
+  ResponsePayload recovery_response;
+  recovery_response = std::move(response_payload);
   if (!GenerateRecoveryRequestProto(recovery_response,
                                     recovery_response_proto)) {
     LOG(ERROR) << "Failed to generate Recovery Response proto";

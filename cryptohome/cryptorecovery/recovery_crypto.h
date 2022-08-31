@@ -252,9 +252,9 @@ class RecoveryCrypto {
   // Decrypt plain text from the Recovery Response.
   // Consists of the following steps:
   // 1. Deserialize `recovery_response_proto.cbor_cryptorecoveryresponse` to
-  // `RecoveryResponse`.
+  // `ResponsePayload`.
   // 2. Get cipher text, associated data, AES-GCM tag and iv from
-  // `response_payload` field of `RecoveryResponse`
+  // `response_payload` field of `ResponsePayload`
   // 3. Decrypt cipher text of response payload, deserialize it from CBOR
   // and store the result in `response_plain_text`. The key for decryption is
   // HKDF(ECDH(channel_priv_key, epoch_response.epoch_pub_key)).

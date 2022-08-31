@@ -38,8 +38,8 @@ using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using cryptohome::cryptorecovery::RecoveryRequest;
-using cryptohome::cryptorecovery::RecoveryResponse;
 using cryptohome::cryptorecovery::RequestMetadata;
+using cryptohome::cryptorecovery::ResponsePayload;
 
 namespace {
 constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";

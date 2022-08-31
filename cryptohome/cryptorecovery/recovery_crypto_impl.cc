@@ -109,9 +109,9 @@ bool GenerateRecoveryRequestProto(const RecoveryRequest& request,
   return true;
 }
 
-bool GetRecoveryResponseFromProto(
+bool GetResponsePayloadFromProto(
     const CryptoRecoveryRpcResponse& recovery_response_proto,
-    RecoveryResponse* recovery_response) {
+    ResponsePayload* recovery_response) {
   if (!recovery_response_proto.has_cbor_cryptorecoveryresponse()) {
     LOG(ERROR)
         << "No cbor_cryptorecoveryresponse field in recovery_response_proto";
@@ -120,8 +120,8 @@ bool GetRecoveryResponseFromProto(
   brillo::SecureBlob recovery_response_cbor(
       recovery_response_proto.cbor_cryptorecoveryresponse().begin(),
       recovery_response_proto.cbor_cryptorecoveryresponse().end());
-  if (!DeserializeRecoveryResponseFromCbor(recovery_response_cbor,
-                                           recovery_response)) {
+  if (!DeserializeResponsePayloadFromCbor(recovery_response_cbor,
+                                          recovery_response)) {
     LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
     return false;
   }
@@ -726,16 +726,16 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
 
-  RecoveryResponse recovery_response;
-  if (!GetRecoveryResponseFromProto(request.recovery_response_proto,
-                                    &recovery_response)) {
+  ResponsePayload recovery_response;
+  if (!GetResponsePayloadFromProto(request.recovery_response_proto,
+                                   &recovery_response)) {
     LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
     return false;
   }
 
   HsmResponseAssociatedData response_ad;
   if (!DeserializeHsmResponseAssociatedDataFromCbor(
-          recovery_response.response_payload.associated_data, &response_ad)) {
+          recovery_response.associated_data, &response_ad)) {
     LOG(ERROR) << "Unable to deserialize Response payload associated data";
     return false;
   }
@@ -795,10 +795,9 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   shared_secret_point_blob.clear();
 
   brillo::SecureBlob response_plain_text_cbor;
-  if (!AesGcmDecrypt(recovery_response.response_payload.cipher_text,
-                     recovery_response.response_payload.associated_data,
-                     recovery_response.response_payload.tag, aes_gcm_key,
-                     recovery_response.response_payload.iv,
+  if (!AesGcmDecrypt(recovery_response.cipher_text,
+                     recovery_response.associated_data, recovery_response.tag,
+                     aes_gcm_key, recovery_response.iv,
                      &response_plain_text_cbor)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption of response plain text";
     return false;
