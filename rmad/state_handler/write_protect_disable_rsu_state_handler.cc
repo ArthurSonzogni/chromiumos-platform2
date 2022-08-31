@@ -121,20 +121,21 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Inject rma-mode powerwash if it is not disabled.
-  if (!IsPowerwashDisabled(working_dir_path_) &&
-      !RequestPowerwash(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request powerwash";
-    return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
-  }
-
   // Sync state file before doing EC reboot.
   json_store_->Sync();
-  // Schedule an EC reboot after |kRebootDelay| seconds and return.
-  timer_.Start(FROM_HERE, kRebootDelay,
-               base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEc,
-                              base::Unretained(this),
-                              !IsPowerwashDisabled(working_dir_path_)));
+
+  // Request RMA mode powerwash if it is not disabled.
+  if (IsPowerwashDisabled(working_dir_path_)) {
+    timer_.Start(FROM_HERE, kRebootDelay,
+                 base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEc,
+                                base::Unretained(this)));
+  } else {
+    timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(
+            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc,
+            base::Unretained(this)));
+  }
 
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
@@ -154,11 +155,23 @@ bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   return factory_mode_enabled && (hwwp_status == 0);
 }
 
-void WriteProtectDisableRsuStateHandler::RebootEc(bool powerwash_required) {
-  // Inject rma-mode powerwash if required.
-  if (powerwash_required && !RequestPowerwash(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request powerwash";
+void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc() {
+  LOG(INFO) << "Requesting RMA mode powerwash";
+  daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
+      base::BindOnce(&WriteProtectDisableRsuStateHandler::
+                         RequestRmaPowerwashAndRebootEcCallback,
+                     base::Unretained(this)));
+}
+
+void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEcCallback(
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
+  RebootEc();
+}
+
+void WriteProtectDisableRsuStateHandler::RebootEc() {
   LOG(INFO) << "Rebooting EC after RSU";
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEcCallback,
