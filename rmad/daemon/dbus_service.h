@@ -88,6 +88,7 @@ class DBusService : public brillo::DBusServiceDaemon {
       base::OnceCallback<void(const std::optional<std::string>&)> callback);
   void ExecuteMountAndCopyFirmwareUpdater(
       uint8_t device_id, base::OnceCallback<void(bool)> callback);
+  void ExecuteRebootEc(base::OnceCallback<void(bool)> callback);
 
  protected:
   // brillo::DBusServiceDaemon overrides.

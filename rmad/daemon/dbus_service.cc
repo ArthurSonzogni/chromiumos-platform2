@@ -506,6 +506,8 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteMountAndCopyFirmwareUpdaterCallback(
       base::BindRepeating(&DBusService::ExecuteMountAndCopyFirmwareUpdater,
                           weak_ptr_factory_.GetWeakPtr()));
+  daemon_callback->SetExecuteRebootEcCallback(base::BindRepeating(
+      &DBusService::ExecuteRebootEc, weak_ptr_factory_.GetWeakPtr()));
   return daemon_callback;
 }
 
@@ -600,6 +602,10 @@ void DBusService::ExecuteMountAndWriteLog(
 void DBusService::ExecuteMountAndCopyFirmwareUpdater(
     uint8_t device_id, base::OnceCallback<void(bool)> callback) {
   executor_->MountAndCopyFirmwareUpdater(device_id, std::move(callback));
+}
+
+void DBusService::ExecuteRebootEc(base::OnceCallback<void(bool)> callback) {
+  executor_->RebootEc(std::move(callback));
 }
 
 void DBusService::OnExecutorDisconnected() {
