@@ -128,4 +128,9 @@ void Executor::MountAndCopyFirmwareUpdater(
   std::move(callback).Run(false);
 }
 
+void Executor::RebootEc(RebootEcCallback callback) {
+  // TODO(chenghan): This is currently fake.
+  std::move(callback).Run(false);
+}
+
 }  // namespace rmad

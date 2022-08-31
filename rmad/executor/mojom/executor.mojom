@@ -32,4 +32,12 @@ interface Executor {
   // Response:
   // * |success| - true if successfully copies the firmware updater.
   MountAndCopyFirmwareUpdater(uint8 device_id) => (bool success);
+
+  // Perform an EC reboot.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully triggers an EC reboot.
+  RebootEc() => (bool success);
 };

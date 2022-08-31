@@ -30,6 +30,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
                         MountAndWriteLogCallback callback) override;
   void MountAndCopyFirmwareUpdater(
       uint8_t device_id, MountAndCopyFirmwareUpdaterCallback callback) override;
+  void RebootEc(RebootEcCallback callback) override;
 
  private:
   // Provides a Mojo endpoint that rmad can call to access the executor's Mojo
