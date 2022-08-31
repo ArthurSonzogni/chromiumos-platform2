@@ -75,7 +75,7 @@ Network::Network(int interface_index,
 
 void Network::Start(const Network::StartOptions& opts) {
   // TODO(b/232177767): Log the StartOptions and other parameters.
-  if (has_started_) {
+  if (state_ != State::kIdle) {
     LOG(INFO) << interface_name_
               << ": Network has been started, stop it before starting with the "
                  "new options";
@@ -85,8 +85,8 @@ void Network::Start(const Network::StartOptions& opts) {
   EnableARPFiltering();
 
   // If the execution of this function fails, StopInternal() will be called and
-  // turn this variable to false.
-  has_started_ = true;
+  // turn the state to kIdle.
+  state_ = State::kConfiguring;
 
   bool ipv6_started = false;
   if (opts.accept_ra) {
@@ -149,6 +149,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
         device_info_);
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
+  state_ = State::kConnected;
   ConfigureStaticIPv6Address();
   event_handler_->OnConnectionUpdated();
 
@@ -164,8 +165,8 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
-  const bool should_trigger_callback = has_started_ && trigger_callback;
-  has_started_ = false;
+  const bool should_trigger_callback =
+      state_ != State::kIdle && trigger_callback;
   StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
@@ -188,14 +189,11 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   if (ipconfig_changed) {
     event_handler_->OnIPConfigsPropertyUpdated();
   }
+  state_ = State::kIdle;
   connection_ = nullptr;
   if (should_trigger_callback) {
     event_handler_->OnNetworkStopped(is_failure);
   }
-}
-
-bool Network::HasConnectionObject() const {
-  return connection_ != nullptr;
 }
 
 void Network::InvalidateIPv6Config() {
@@ -496,7 +494,7 @@ void Network::OnIPv6ConfigUpdated() {
   // is no existing IPv4 connection. We always prefer IPv4 configuration over
   // IPv6.
   if (ip6config()->properties().HasIPAddressAndDNS() &&
-      (!HasConnectionObject() || connection_->IsIPv6())) {
+      (!IsConnected() || connection_->IsIPv6())) {
     SetupConnection(ip6config());
   }
 }

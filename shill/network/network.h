@@ -94,6 +94,19 @@ class Network {
     bool accept_ra = false;
   };
 
+  // State for tracking the L3 connectivity (e.g., portal state is not
+  // included).
+  enum class State {
+    // The Network is not started.
+    kIdle,
+    // The Network has been started. Waiting for IP configuration provisioned.
+    kConfiguring,
+    // The layer 3 connectivity has been established. At least one of IPv4 and
+    // IPv6 configuration has been provisioned, and the other one can still be
+    // in the configuring state.
+    kConnected,
+  };
+
   // Note that |event_handler| should live longer than the created Network
   // object, so usually it should be the owner of this object.
   explicit Network(int interface_index,
@@ -110,18 +123,11 @@ class Network {
 
   // Starts the network with the given |options|.
   void Start(const StartOptions& options);
-  // Configures (or reconfigures) the associated Connection object with the
-  // given IPConfig.
-  // TODO(b/232177767): Move this function into private section. Currently this
-  // is only used in Device::UpdateBlackholeUserTraffic().
-  void SetupConnection(IPConfig* ipconfig);
   // Stops the network connection. OnNetworkStopped() will be called when
   // cleaning up the network state is finished.
   void Stop();
-  // Returns if the associated Connection object exist. Note that the return
-  // value does not indicate any real state of the network. This function will
-  // finally be removed.
-  mockable bool HasConnectionObject() const;
+
+  mockable bool IsConnected() const { return state_ == State::kConnected; }
 
   // Sets IPv4 properties specific to technology. Currently this is used by
   // cellular and VPN.
@@ -244,10 +250,18 @@ class Network {
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
     dhcp_provider_ = provider;
   }
+  void set_state_for_testing(State state) { state_ = state; }
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
   friend class DeviceTest;
+  // TODO(b/232177767): Refactor StaticIPParametersTest to remove this
+  // dependency
+  friend class StaticIPParametersTest;
+
+  // Configures (or reconfigures) the associated Connection object with the
+  // given IPConfig.
+  void SetupConnection(IPConfig* ipconfig);
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
@@ -296,13 +310,7 @@ class Network {
   // after a Network object is created. Make it modifiable just for unit tests.
   bool fixed_ip_params_;
 
-  // Indicates whether the network is in a configuring or connected state.
-  // TODO(b/232177767): Consider change this to a enum class with three states.
-  // Currently the connected state is actually represented by whether a
-  // Connection object exists, and this variable is only used for deciding
-  // whether OnNetworkStopped() event needs to be triggered or not in
-  // StopInternal().
-  bool has_started_ = false;
+  State state_ = State::kIdle;
 
   std::unique_ptr<Connection> connection_;
 

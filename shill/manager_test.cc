@@ -355,7 +355,7 @@ class ManagerTest : public PropertyStoreTest {
     device->set_selected_service_for_testing(service);
     if (service) {
       EXPECT_CALL(*service, IsConnected(_))
-          .WillRepeatedly(Return(device->network()->HasConnectionObject()));
+          .WillRepeatedly(Return(device->network()->IsConnected()));
     }
   }
 
@@ -507,8 +507,7 @@ class ManagerTest : public PropertyStoreTest {
         mock_device->interface_index(), mock_device->link_name(),
         mock_device->technology());
     auto* mock_network_ptr = mock_network.get();
-    EXPECT_CALL(*mock_network, HasConnectionObject())
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mock_network, IsConnected()).WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(ip_addr));
     EXPECT_CALL(*mock_network, dns_servers())
         .WillRepeatedly(Return(kDNSServers));

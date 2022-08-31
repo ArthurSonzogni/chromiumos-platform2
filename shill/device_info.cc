@@ -1409,7 +1409,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
         GetPrimaryIPv6Address(interface_index));
   }
 
-  if (device->network()->HasConnectionObject()) {
+  if (device->network()->IsConnected()) {
     // Connection::UpdateRoutingPolicy uses DeviceInfo::GetAddresses to
     // determine an interface's assigned addresses. Thus a modification to
     // |address_list| should cause UpdateRoutingPolicy to retrigger.

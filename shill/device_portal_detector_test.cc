@@ -232,6 +232,7 @@ class DevicePortalDetectorTest : public testing::Test {
     EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
 
     device_->network_->set_connection_for_testing(CreateMockConnection());
+    device_->network_->set_state_for_testing(Network::State::kConnected);
 
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);

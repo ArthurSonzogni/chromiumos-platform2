@@ -580,8 +580,9 @@ bool Device::UpdatePortalDetector(bool restart) {
     return false;
   }
 
-  if (!network_->HasConnectionObject()) {
-    LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Connection";
+  if (!network_->IsConnected()) {
+    LOG(INFO) << LoggingTag()
+              << ": Skipping portal detection: Network is not connected";
     return false;
   }
 
@@ -636,7 +637,7 @@ void Device::StopPortalDetection() {
 }
 
 void Device::StartConnectionDiagnosticsAfterPortalDetection() {
-  DCHECK(network_->HasConnectionObject());
+  DCHECK(network_->IsConnected());
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       network_->interface_name(), network_->interface_index(),
       network_->local(), network_->gateway(), network_->dns_servers(),
@@ -689,9 +690,9 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     return;
   }
 
-  if (!network_->HasConnectionObject()) {
+  if (!network_->IsConnected()) {
     LOG(INFO) << LoggingTag()
-              << ": Portal detection completed but there is no Connecttion";
+              << ": Portal detection completed but Network is not connected";
     return;
   }
 

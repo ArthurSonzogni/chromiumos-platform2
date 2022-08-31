@@ -176,6 +176,8 @@ class DeviceTest : public testing::Test {
   }
 
   void SetConnection(std::unique_ptr<Connection> connection) {
+    device_->network_->set_state_for_testing(
+        connection ? Network::State::kConnected : Network::State::kIdle);
     device_->network_->set_connection_for_testing(std::move(connection));
   }
 
@@ -213,7 +215,7 @@ class DeviceTest : public testing::Test {
     auto controller = CreateDHCPController();
     dhcp_controller_ = controller.get();
     device_->network()->set_dhcp_controller(std::move(controller));
-    device_->network()->has_started_ = true;
+    device_->network()->state_ = Network::State::kConnected;
   }
 
   void SetupIPv6Config() {
@@ -509,8 +511,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   OnDHCPFailure();
   // Verify connection not teardown.
-  // TODO(b/232177767): Check Network state instead.
-  EXPECT_TRUE(device_->network()->HasConnectionObject());
+  EXPECT_TRUE(device_->network()->IsConnected());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
@@ -1049,7 +1050,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
 
   // IPv6 configuration update with non-IPv6 connection, no connection update.
   // TODO(b/232177767): Check Network state instead.
-  EXPECT_TRUE(device_->network()->HasConnectionObject());
+  EXPECT_TRUE(device_->network()->IsConnected());
   IPAddress address1(IPAddress::kFamilyIPv6);
   const char kAddress1[] = "fe80::1aa9:5ff:abcd:1231";
   ASSERT_TRUE(address1.SetAddressFromString(kAddress1));

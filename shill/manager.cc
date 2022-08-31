@@ -1781,7 +1781,7 @@ void Manager::SortServicesTask() {
       new_physical = service;
     }
     if (network) {
-      DCHECK(network->HasConnectionObject());
+      DCHECK(network->IsConnected());
       if (!found_dns && !network->dns_servers().empty()) {
         found_dns = true;
         network->SetUseDNS(true);
@@ -2663,7 +2663,7 @@ Network* Manager::FindActiveNetworkFromService(
     return nullptr;
   }
   auto device = FindDeviceFromService(service);
-  if (!device || !device->network()->HasConnectionObject()) {
+  if (!device || !device->network()->IsConnected()) {
     return nullptr;
   }
   return device->network();
@@ -3138,7 +3138,7 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
 }
 
 void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
-  if (!device->network()->HasConnectionObject()) {
+  if (!device->network()->IsConnected()) {
     LOG(INFO) << device->LoggingTag()
               << ": Skipping connectivity test: no Network connection";
     return;
