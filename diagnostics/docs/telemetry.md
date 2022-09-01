@@ -1154,6 +1154,7 @@ event --help`.
 | parent_process_id | uint32 | PID of the parent of this process. |
 | process_group_id | uint32 | Process group ID of the group. |
 | threads | uint32 | Number of threads in this process. |
+| process_id | uint32 | Process ID of this process. |
 
 ##### ProcessState
 | Enum | Description |
