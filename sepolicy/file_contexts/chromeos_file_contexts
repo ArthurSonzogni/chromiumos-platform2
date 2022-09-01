@@ -228,6 +228,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
+/usr/local/share/tast(/.*)?     u:object_r:cros_dev_tast_test:s0
+
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
 
 /usr/libexec/cryptohome/update_userdataauth_from_features.sh u:object_r:cros_update_userdataauth_shell_script:s0
