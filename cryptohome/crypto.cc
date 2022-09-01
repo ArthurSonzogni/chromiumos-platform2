@@ -154,7 +154,8 @@ bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
     return false;
   }
 
-  LECredStatus ret = le_manager_->ResetCredential(le_label, reset_secret);
+  LECredStatus ret = le_manager_->ResetCredential(le_label, reset_secret,
+                                                  /*strong_reset=*/false);
   if (!ret.ok()) {
     PopulateError(&out_error, ret->local_lecred_error() ==
                                       LE_CRED_ERROR_INVALID_RESET_SECRET

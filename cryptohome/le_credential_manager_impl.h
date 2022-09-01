@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <libhwsec/frontend/pinweaver/frontend.h>
@@ -41,6 +42,7 @@ class LECredentialManagerImpl : public LECredentialManager {
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
       uint64_t* ret_label) override;
 
   LECredStatus CheckCredential(uint64_t label,
@@ -49,7 +51,8 @@ class LECredentialManagerImpl : public LECredentialManager {
                                brillo::SecureBlob* reset_secret) override;
 
   LECredStatus ResetCredential(uint64_t label,
-                               const brillo::SecureBlob& reset_secret) override;
+                               const brillo::SecureBlob& reset_secret,
+                               bool strong_reset) override;
 
   LECredStatus RemoveCredential(uint64_t label) override;
 
@@ -60,6 +63,9 @@ class LECredentialManagerImpl : public LECredentialManager {
 
   // Returns the delay in seconds.
   LECredStatusOr<uint32_t> GetDelayInSeconds(uint64_t label) override;
+
+  LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
+      uint64_t label) override;
 
  private:
   // Since the CheckCredential() and ResetCredential() functions are very
@@ -86,6 +92,7 @@ class LECredentialManagerImpl : public LECredentialManager {
                            const brillo::SecureBlob& secret,
                            brillo::SecureBlob* he_secret,
                            brillo::SecureBlob* reset_secret,
+                           bool strong_reset,
                            bool is_le_secret);
 
   // Helper function to retrieve the credential metadata, MAC, and auxiliary

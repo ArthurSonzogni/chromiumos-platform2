@@ -6,6 +6,7 @@
 #define CRYPTOHOME_LE_CREDENTIAL_MANAGER_H_
 
 #include <map>
+#include <optional>
 #include <vector>
 
 #include <libhwsec/structures/operation_policy.h>
@@ -27,22 +28,24 @@ class LECredentialManager {
   // The Low entropy credential is represented by |le_secret|, and the high
   // entropy and reset secrets by |he_secret| and |reset_secret| respectively.
   // The delay schedule which governs the rate at which CheckCredential()
-  // attempts are allowed is provided in |delay_sched|. On success, returns
-  // OkStatus and stores the newly provisioned label in |ret_label|. On
-  // failure, returns status with:
+  // attempts are allowed is provided in |delay_sched|. The expiration delay
+  // which governs how long a credential expires after creation/reset is
+  // provided in |expiration_delay|. Nullopt for |expiration_delay| means that
+  // the credential won't expire. On success, returns OkStatus and stores the
+  // newly provisioned label in |ret_label|. On failure, returns status with:
   // - LE_CRED_ERROR_NO_FREE_LABEL if there is no free label.
   // - LE_CRED_ERROR_HASH_TREE if there was an error in the hash tree.
   //
   // The returned label should be placed into the metadata associated with the
   // Encrypted Vault Key (EVK). so that it can be used to look up the credential
   // later.
-
   virtual LECredStatus InsertCredential(
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& le_secret,
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
       uint64_t* ret_label) = 0;
 
   // Attempts authentication for a LE Credential.
@@ -65,7 +68,9 @@ class LECredentialManager {
                                        brillo::SecureBlob* he_secret,
                                        brillo::SecureBlob* reset_secret) = 0;
 
-  // Attempts reset of a LE Credential.
+  // Attempts reset of a LE Credential. |strong_reset| indicates whether the
+  // expiration time should be reset (extended to |expiration_delay| seconds
+  // from now) too.
   //
   // Returns LE_CRED_SUCCESS on success.
   //
@@ -75,8 +80,9 @@ class LECredentialManager {
   // - LE_CRED_ERROR_HASH_TREE for error in hash tree.
   // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
   // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
-  virtual LECredStatus ResetCredential(
-      uint64_t label, const brillo::SecureBlob& reset_secret) = 0;
+  virtual LECredStatus ResetCredential(uint64_t label,
+                                       const brillo::SecureBlob& reset_secret,
+                                       bool strong_reset) = 0;
 
   // Remove a credential at node with label |label|.
   //
@@ -93,6 +99,11 @@ class LECredentialManager {
 
   // Returns the delay in seconds.
   virtual LECredStatusOr<uint32_t> GetDelayInSeconds(uint64_t label) = 0;
+
+  // Get the remaining time until the credential expires, in seconds. Nullopt
+  // means the credential won't expire. 0 means the credential already expired.
+  virtual LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
+      uint64_t label) = 0;
 };
 
 };  // namespace cryptohome

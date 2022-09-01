@@ -1038,7 +1038,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
 };
 
 TEST_F(LeCredentialsManagerTest, Encrypt) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
@@ -1064,7 +1064,7 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptFail) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LE_CRED_ERROR_NO_FREE_LABEL));
@@ -1115,7 +1115,7 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
 // crbug.com/1224150: auth_locked must be set to false when an LE credential is
 // re-saved.
 TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
@@ -1195,7 +1195,7 @@ TEST_F(LeCredentialsManagerTest, DecryptLocked) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
@@ -1221,7 +1221,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LE_CRED_ERROR_NO_FREE_LABEL));
@@ -1248,7 +1248,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
+      .Times(0);
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());

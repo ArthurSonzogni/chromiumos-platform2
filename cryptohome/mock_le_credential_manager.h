@@ -8,6 +8,7 @@
 #include "cryptohome/le_credential_manager.h"
 
 #include <string>
+#include <optional>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -24,6 +25,7 @@ class MockLECredentialManager : public LECredentialManager {
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                const DelaySchedule&,
+               std::optional<uint32_t>,
                uint64_t*),
               (override));
 
@@ -37,7 +39,9 @@ class MockLECredentialManager : public LECredentialManager {
 
   MOCK_METHOD(LECredStatus,
               ResetCredential,
-              (uint64_t label, const brillo::SecureBlob& reset_secret),
+              (uint64_t label,
+               const brillo::SecureBlob& reset_secret,
+               bool strong_reset),
               (override));
 
   MOCK_METHOD(LECredStatus, RemoveCredential, (uint64_t), (override));
@@ -46,6 +50,11 @@ class MockLECredentialManager : public LECredentialManager {
 
   MOCK_METHOD(LECredStatusOr<uint32_t>,
               GetDelayInSeconds,
+              (uint64_t label),
+              (override));
+
+  MOCK_METHOD(LECredStatusOr<std::optional<uint32_t>>,
+              GetExpirationInSeconds,
               (uint64_t label),
               (override));
 };

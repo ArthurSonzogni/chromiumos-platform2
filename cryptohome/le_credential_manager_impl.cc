@@ -80,6 +80,7 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_sched,
+    std::optional<uint32_t> expiration_delay,
     uint64_t* ret_label) {
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
@@ -113,7 +114,7 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
 
   hwsec::StatusOr<CredentialTreeResult> result = pinweaver_->InsertCredential(
       policies, label.value(), h_aux, le_secret, he_secret, reset_secret,
-      delay_sched, /*expiration_delay=*/std::nullopt);
+      delay_sched, expiration_delay);
   if (!result.ok()) {
     LOG(ERROR) << "Error executing pinweaver InsertCredential command: "
                << result.status();
@@ -172,12 +173,13 @@ LECredStatus LECredentialManagerImpl::CheckCredential(
     const brillo::SecureBlob& le_secret,
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret) {
-  return CheckSecret(label, le_secret, he_secret, reset_secret, true);
+  return CheckSecret(label, le_secret, he_secret, reset_secret, false, true);
 }
 
 LECredStatus LECredentialManagerImpl::ResetCredential(
-    uint64_t label, const brillo::SecureBlob& reset_secret) {
-  return CheckSecret(label, reset_secret, nullptr, nullptr, false);
+    uint64_t label, const brillo::SecureBlob& reset_secret, bool strong_reset) {
+  return CheckSecret(label, reset_secret, nullptr, nullptr, strong_reset,
+                     false);
 }
 
 LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
@@ -243,6 +245,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
     const brillo::SecureBlob& secret,
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret,
+    bool strong_reset,
     bool is_le_secret) {
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
@@ -290,7 +293,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
       is_le_secret
           ? pinweaver_->CheckCredential(label, h_aux, orig_cred, secret)
           : pinweaver_->ResetCredential(label, h_aux, orig_cred, secret,
-                                        /*strong_reset=*/false);
+                                        strong_reset);
 
   if (!result.ok()) {
     LOG(ERROR) << "Failed to call pinweaver in check secret: "
@@ -417,6 +420,59 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInGetDelayInSeconds),
+               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               LECredError::LE_CRED_ERROR_HASH_TREE)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+  }
+
+  return result.value();
+}
+
+LECredStatusOr<std::optional<uint32_t>>
+LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
+  if (!hash_tree_->IsValid()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetExpirationInSeconds),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                          &h_aux, &metadata_lost);
+  if (!status.ok()) {
+    ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
+                   status->local_lecred_error());
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManRetrieveLabelFailedInGetExpirationInSeconds))
+        .Wrap(std::move(status));
+  }
+
+  if (metadata_lost) {
+    LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_INVALID_METADATA);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocLECredManInvalidMetadataInGetExpirationInSeconds),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_METADATA);
+  }
+
+  ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
+                 LE_CRED_SUCCESS);
+
+  hwsec::StatusOr<std::optional<uint32_t>> result =
+      pinweaver_->GetExpirationInSeconds(orig_cred);
+  if (!result.ok()) {
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManPinWeaverFailedInGetExpirationInSeconds),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));

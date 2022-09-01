@@ -1183,6 +1183,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptAuthBlockScryptFailedInDeriveFromResetSeedSalt = 678,
   /* ./vault_keyset.cc */
   kLocVaultKeysetAuthBlockStateFailedInWrapScrypt = 679,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInGetExpirationInSeconds = 680,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManRetrieveLabelFailedInGetExpirationInSeconds = 681,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidMetadataInGetExpirationInSeconds = 682,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPinWeaverFailedInGetExpirationInSeconds = 683,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

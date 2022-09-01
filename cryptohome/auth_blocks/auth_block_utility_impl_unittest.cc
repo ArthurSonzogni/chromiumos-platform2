@@ -205,7 +205,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
 
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
 
-  EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(
           DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
   crypto_.set_le_manager_for_testing(

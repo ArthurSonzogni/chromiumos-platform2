@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/revocation.h"
 
 #include <map>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -131,7 +132,8 @@ CryptoError Create(LECredentialManager* le_manager,
       /*le_secret=*/le_secret,
       /*he_secret=*/he_secret,
       /*reset_secret=*/brillo::SecureBlob(kDefaultSecretSize),
-      /*delay_sched=*/GetDelaySchedule(), &label);
+      /*delay_sched=*/GetDelaySchedule(),
+      /*expiration_delay=*/std::nullopt, &label);
 
   if (!ret.ok())
     return ret->local_crypto_error();

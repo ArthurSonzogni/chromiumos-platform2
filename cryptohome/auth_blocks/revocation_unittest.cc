@@ -33,7 +33,7 @@ TEST(RevocationTest, Create) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state;
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
-  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
   EXPECT_EQ(CryptoError::CE_NONE, Create(&le_cred_manager, &state, &key_blobs));
 }

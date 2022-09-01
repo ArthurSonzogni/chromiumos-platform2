@@ -396,7 +396,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   brillo::SecureBlob le_secret;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
-  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(
           DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
 
@@ -433,7 +433,7 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   // Now test that the method fails if the le_cred_manager fails.
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_fail;
   NiceMock<MockLECredentialManager> le_cred_manager_fail;
-  ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _))
+  ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LECredError::LE_CRED_ERROR_HASH_TREE));
@@ -1431,9 +1431,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   brillo::SecureBlob le_secret, he_secret;
   uint64_t le_label = 1;
-  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<2>(&he_secret),
-                      SetArgPointee<5>(le_label),
+                      SetArgPointee<6>(le_label),
                       ReturnError<CryptohomeLECredError>()));
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;

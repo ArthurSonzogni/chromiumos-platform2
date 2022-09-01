@@ -4,6 +4,7 @@
 
 // Functional tests for LECredentialManager + SignInHashTree.
 #include <iterator>  // For std::begin()/std::end().
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -85,12 +86,12 @@ class LECredentialManagerImplUnitTest : public testing::Test {
     brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                      std::end(kResetSecret1Array));
 
-    EXPECT_TRUE(
-        le_mgr_
-            ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
-                               kLeSecret1, kHeSecret1, kResetSecret1,
-                               delay_sched, &label)
-            .ok());
+    EXPECT_TRUE(le_mgr_
+                    ->InsertCredential(
+                        std::vector<hwsec::OperationPolicySetting>(),
+                        kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                        /*expiration_delay=*/std::nullopt, &label)
+                    .ok());
 
     brillo::SecureBlob he_secret;
     brillo::SecureBlob reset_secret;
@@ -178,16 +179,18 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertAndCheck) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   EXPECT_TRUE(
@@ -241,7 +244,8 @@ TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
 
   ASSERT_TRUE(le_mgr_
                   ->InsertCredential(policies, kLeSecret1, kHeSecret1,
-                                     kResetSecret1, delay_sched, &label1)
+                                     kResetSecret1, delay_sched,
+                                     /*expiration_delay=*/std::nullopt, &label1)
                   .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
@@ -305,11 +309,12 @@ TEST_F(LECredentialManagerImplUnitTest, InvalidLabelCheck) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   // First try a badly encoded label.
   uint64_t invalid_label = ~label1;
   brillo::SecureBlob he_secret;
@@ -342,11 +347,12 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertRemove) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   ASSERT_TRUE(le_mgr_->RemoveCredential(label1).ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
@@ -375,7 +381,9 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecret) {
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
           ->local_lecred_error());
 
-  EXPECT_TRUE(le_mgr_->ResetCredential(label1, kResetSecret1).ok());
+  EXPECT_TRUE(
+      le_mgr_->ResetCredential(label1, kResetSecret1, /*strong_reset=*/false)
+          .ok());
 
   he_secret.clear();
   // Make sure we can Check successfully, post reset.
@@ -401,7 +409,8 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
           ->local_lecred_error());
 
   EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
-            le_mgr_->ResetCredential(label1, kLeSecret1)->local_lecred_error());
+            le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false)
+                ->local_lecred_error());
 
   // Make sure that Check still fails.
   EXPECT_EQ(
@@ -425,11 +434,12 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
 
   le_mgr_.reset();
   CorruptLeafCache();
@@ -440,11 +450,12 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
   EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 
   // Now let's reinsert the same credential.
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
 
   le_mgr_.reset();
   CorruptLeafCache();
@@ -453,11 +464,12 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
 
   // Let's make sure future operations work.
   uint64_t label2;
-  EXPECT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   EXPECT_TRUE(
@@ -483,11 +495,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
 
   base::ScopedTempDir snapshot;
   ASSERT_TRUE(snapshot.CreateUniqueTempDir());
@@ -495,11 +508,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
 
   // Another Insert & Remove after taking the snapshot.
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
 
   le_mgr_.reset();
   RestoreSnapshot(snapshot.GetPath());
@@ -530,21 +544,23 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
   // Another Insert & Remove after taking the snapshot.
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
   ASSERT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 
   le_mgr_.reset();
@@ -553,11 +569,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
 
   // Subsequent operation should work.
   uint64_t label3;
-  EXPECT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label3)
-                  .ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label3)
+          .ok());
 }
 
 // Initialize the LECredManager and take a snapshot after 2 operations,
@@ -579,17 +596,19 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
@@ -635,29 +654,31 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInserts) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
   // Perform inserts to fill up the replay log.
   uint64_t temp_label;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_TRUE(
-        le_mgr_
-            ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
-                               kLeSecret2, kHeSecret1, kResetSecret1,
-                               delay_sched, &temp_label)
-            .ok());
+    ASSERT_TRUE(le_mgr_
+                    ->InsertCredential(
+                        std::vector<hwsec::OperationPolicySetting>(),
+                        kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                        /*expiration_delay=*/std::nullopt, &temp_label)
+                    .ok());
   }
 
   le_mgr_.reset();
@@ -673,11 +694,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInserts) {
   EXPECT_TRUE(
       le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
           .ok());
-  EXPECT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &temp_label)
-                  .ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &temp_label)
+          .ok());
   EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 }
 
@@ -701,28 +723,30 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
 
   // Perform |kLogSize| credential inserts.
   std::vector<uint64_t> labels_to_remove;
   uint64_t temp_label;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_TRUE(
-        le_mgr_
-            ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
-                               kLeSecret2, kHeSecret1, kResetSecret1,
-                               delay_sched, &temp_label)
-            .ok());
+    ASSERT_TRUE(le_mgr_
+                    ->InsertCredential(
+                        std::vector<hwsec::OperationPolicySetting>(),
+                        kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                        /*expiration_delay=*/std::nullopt, &temp_label)
+                    .ok());
     labels_to_remove.push_back(temp_label);
   }
 
@@ -756,11 +780,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
   EXPECT_TRUE(
       le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
           .ok());
-  EXPECT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &temp_label)
-                  .ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &temp_label)
+          .ok());
   EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 }
 
@@ -782,17 +807,19 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
@@ -806,11 +833,12 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
             ->local_lecred_error());
   }
   uint64_t label3;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
-                      kHeSecret1, kResetSecret1, delay_sched, &label3)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label3)
+          .ok());
 
   le_mgr_.reset();
   RestoreSnapshot(snapshot->GetPath());
@@ -843,17 +871,19 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
                                    std::end(kResetSecret1Array));
 
   uint64_t label1;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label1)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
   uint64_t label2;
-  ASSERT_TRUE(le_mgr_
-                  ->InsertCredential(
-                      std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
-                      kHeSecret1, kResetSecret1, delay_sched, &label2)
-                  .ok());
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   ASSERT_TRUE(
@@ -880,12 +910,13 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
       LE_CRED_ERROR_HASH_TREE,
       le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret)
           ->local_lecred_error());
-  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
-            le_mgr_
-                ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
-                                   kLeSecret2, kHeSecret1, kResetSecret1,
-                                   delay_sched, &label2)
-                ->local_lecred_error());
+  EXPECT_EQ(
+      LE_CRED_ERROR_HASH_TREE,
+      le_mgr_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt, &label2)
+          ->local_lecred_error());
 }
 
 }  // namespace cryptohome

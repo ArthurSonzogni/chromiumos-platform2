@@ -10,6 +10,7 @@
 
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -205,7 +206,8 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
 
   uint64_t label;
   LECredStatus ret = le_manager_->InsertCredential(
-      policies, le_secret, he_secret, reset_secret, delay_sched, &label);
+      policies, le_secret, he_secret, reset_secret, delay_sched,
+      /*expiration_delay=*/std::nullopt, &label);
   if (!ret.ok()) {
     LogLERetCode(ret->local_lecred_error());
     return MakeStatus<CryptohomeCryptoError>(
