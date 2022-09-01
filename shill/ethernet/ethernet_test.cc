@@ -20,10 +20,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/ethernet/mock_eap_listener.h"
+#include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -33,18 +36,12 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
-#include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
-
-#if !defined(DISABLE_WIRED_8021X)
-#include "shill/ethernet/mock_eap_listener.h"
-#include "shill/ethernet/mock_ethernet_eap_provider.h"
-#include "shill/mock_eap_credentials.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/wpa_supplicant.h"
-#endif  // DISABLE_WIRED_8021X
+#include "shill/test_event_dispatcher.h"
+#include "shill/testing.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -87,17 +84,14 @@ class EthernetTest : public testing::Test {
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         ethernet_(new TestEthernet(&manager_, ifname_, hwaddr_, ifindex_)),
-#if !defined(DISABLE_WIRED_8021X)
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
-#endif  // DISABLE_WIRED_8021X
         mock_sockets_(new StrictMock<MockSockets>()),
         mock_service_(new MockEthernetService(
-            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {
-  }
+            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
   ~EthernetTest() override {}
 
   void SetUp() override {
@@ -108,14 +102,12 @@ class EthernetTest : public testing::Test {
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 
-#if !defined(DISABLE_WIRED_8021X)
     ethernet_->eap_listener_.reset(eap_listener_);  // Transfers ownership.
     EXPECT_CALL(manager_, ethernet_eap_provider())
         .WillRepeatedly(Return(&ethernet_eap_provider_));
     ethernet_eap_provider_.set_service(mock_eap_service_);
     // Transfers ownership.
     manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
-#endif  // DISABLE_WIRED_8021X
 
     EXPECT_CALL(manager_, ethernet_provider())
         .WillRepeatedly(Return(&ethernet_provider_));
@@ -125,10 +117,8 @@ class EthernetTest : public testing::Test {
   }
 
   void TearDown() override {
-#if !defined(DISABLE_WIRED_8021X)
     ethernet_eap_provider_.set_service(nullptr);
     ethernet_->eap_listener_.reset();
-#endif  // DISABLE_WIRED_8021X
     ethernet_->network()->set_dhcp_provider_for_testing(nullptr);
     ethernet_->sockets_.reset();
     Mock::VerifyAndClearExpectations(&manager_);
@@ -182,7 +172,6 @@ class EthernetTest : public testing::Test {
     ethernet_->bus_type_ = bus_type;
   }
 
-#if !defined(DISABLE_WIRED_8021X)
   bool GetIsEapAuthenticated() { return ethernet_->is_eap_authenticated_; }
   void SetIsEapAuthenticated(bool is_eap_authenticated) {
     ethernet_->is_eap_authenticated_ = is_eap_authenticated;
@@ -230,7 +219,6 @@ class EthernetTest : public testing::Test {
         .WillOnce(Return(ByMove(std::move(supplicant_interface_proxy_))));
     return proxy;
   }
-#endif  // DISABLE_WIRED_8021X
 
   EventDispatcherForTest dispatcher_;
   MockControl control_interface_;
@@ -240,7 +228,6 @@ class EthernetTest : public testing::Test {
   scoped_refptr<TestEthernet> ethernet_;
   MockDHCPProvider dhcp_provider_;
 
-#if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider ethernet_eap_provider_;
 
   // Owned by Ethernet instance, but tracked here for expectations.
@@ -249,7 +236,6 @@ class EthernetTest : public testing::Test {
   scoped_refptr<MockService> mock_eap_service_;
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;
-#endif  // DISABLE_WIRED_8021X
 
   // Owned by Ethernet instance, but tracked here for expectations.
   MockSockets* mock_sockets_;
@@ -261,12 +247,10 @@ class EthernetTest : public testing::Test {
 
 TEST_F(EthernetTest, Construct) {
   EXPECT_FALSE(GetLinkUp());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(GetIsEapAuthenticated());
   EXPECT_FALSE(GetIsEapDetected());
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticationCompletedProperty));
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticatorDetectedProperty));
-#endif  // DISABLE_WIRED_8021X
   EXPECT_EQ(nullptr, GetService());
 }
 
@@ -282,50 +266,37 @@ TEST_F(EthernetTest, LinkEvent) {
 
   // Link-down event while already down.
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_listener_, Start()).Times(0);
-#endif  // DISABLE_WIRED_8021X
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
   EXPECT_FALSE(GetLinkUp());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(GetIsEapDetected());
-#endif  // DISABLE_WIRED_8021X
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Link-up event while down.
   int kFakeFd = 789;
   EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(mock_service_)));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_listener_, Start());
-#endif  // DISABLE_WIRED_8021X
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
   EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(GetIsEapDetected());
-#endif  // DISABLE_WIRED_8021X
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(mock_service_.get());
 
   // Link-up event while already up.
   EXPECT_CALL(manager_, UpdateService(_)).Times(0);
   EXPECT_CALL(*mock_service_, OnVisibilityChanged()).Times(0);
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_listener_, Start()).Times(0);
-#endif  // DISABLE_WIRED_8021X
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(GetIsEapDetected());
-#endif  // DISABLE_WIRED_8021X
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(mock_service_.get());
 
   // Link-down event while up.
-#if !defined(DISABLE_WIRED_8021X)
   SetIsEapDetected(true);
   // This is done in SetUp, but we have to reestablish this after calling
   // VerifyAndClearExpectations() above.
@@ -334,14 +305,11 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_CALL(ethernet_eap_provider_,
               ClearCredentialChangeCallback(ethernet_.get()));
   EXPECT_CALL(*eap_listener_, Stop());
-#endif  // DISABLE_WIRED_8021X
   EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(GetService().get())));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
   EXPECT_FALSE(GetLinkUp());
-#if !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(GetIsEapDetected());
-#endif  // DISABLE_WIRED_8021X
 
   // Restore this expectation during shutdown.
   EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
@@ -383,7 +351,6 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   StopEthernet();
 }
 
-#if !defined(DISABLE_WIRED_8021X)
 TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_FALSE(GetIsEapDetected());
   EXPECT_CALL(*eap_listener_, Stop());
@@ -549,7 +516,6 @@ TEST_F(EthernetTest, Certification) {
   TriggerCertification(kSubjectName, kDepth);
   StopEthernet();
 }
-#endif  // DISABLE_WIRED_8021X
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceInvalidArguments) {
   SetBusType(kDeviceBusTypeUsb);

@@ -88,10 +88,6 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_WAKE_ON_WIFI" ]
   }
 
-  if (!use.wired_8021x) {
-    defines += [ "DISABLE_WIRED_8021X" ]
-  }
-
   if (!use.wpa3_sae) {
     defines += [ "DISABLE_WPA3_SAE" ]
   }
@@ -261,7 +257,10 @@ static_library("libshill") {
     "eap_credentials.cc",
     "ephemeral_profile.cc",
     "error.cc",
+    "ethernet/eap_listener.cc",
     "ethernet/ethernet.cc",
+    "ethernet/ethernet_eap_provider.cc",
+    "ethernet/ethernet_eap_service.cc",
     "ethernet/ethernet_provider.cc",
     "ethernet/ethernet_service.cc",
     "ethernet/ethernet_temporary_service.cc",
@@ -407,14 +406,6 @@ static_library("libshill") {
       "vpn/vpn_connection.cc",
       "vpn/vpn_util.cc",
       "vpn/wireguard_driver.cc",
-    ]
-  }
-
-  if (use.wired_8021x) {
-    sources += [
-      "ethernet/eap_listener.cc",
-      "ethernet/ethernet_eap_provider.cc",
-      "ethernet/ethernet_eap_service.cc",
     ]
   }
 }
@@ -636,11 +627,16 @@ if (use.test) {
       "dns_util_test.cc",
       "eap_credentials_test.cc",
       "error_test.cc",
+      "ethernet/eap_listener_test.cc",
+      "ethernet/ethernet_eap_provider_test.cc",
+      "ethernet/ethernet_eap_service_test.cc",
       "ethernet/ethernet_provider.cc",
       "ethernet/ethernet_provider_test.cc",
       "ethernet/ethernet_service_test.cc",
       "ethernet/ethernet_test.cc",
+      "ethernet/mock_eap_listener.cc",
       "ethernet/mock_ethernet.cc",
+      "ethernet/mock_ethernet_eap_provider.cc",
       "ethernet/mock_ethernet_provider.cc",
       "ethernet/mock_ethernet_service.cc",
       "external_task_test.cc",
@@ -820,16 +816,6 @@ if (use.test) {
         "vpn/vpn_provider_test.cc",
         "vpn/vpn_service_test.cc",
         "vpn/wireguard_driver_test.cc",
-      ]
-    }
-
-    if (use.wired_8021x) {
-      sources += [
-        "ethernet/eap_listener_test.cc",
-        "ethernet/ethernet_eap_provider_test.cc",
-        "ethernet/ethernet_eap_service_test.cc",
-        "ethernet/mock_eap_listener.cc",
-        "ethernet/mock_ethernet_eap_provider.cc",
       ]
     }
   }

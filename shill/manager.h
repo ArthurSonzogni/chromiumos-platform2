@@ -47,6 +47,7 @@ class ControlInterface;
 class DeviceClaimer;
 class DefaultProfile;
 class Error;
+class EthernetEapProvider;
 class EthernetProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
@@ -60,10 +61,6 @@ class WiFiProvider;
 class CellularServiceProvider;
 class ModemInfo;
 #endif
-
-#if !defined(DISABLE_WIRED_8021X)
-class EthernetEapProvider;
-#endif  // DISABLE_WIRED_8021X
 
 // Helper class for storing in memory the set of shill Manager DBUS R or RW
 // DBus properties.
@@ -386,11 +383,9 @@ class Manager {
   virtual EthernetProvider* ethernet_provider() {
     return ethernet_provider_.get();
   }
-#if !defined(DISABLE_WIRED_8021X)
   virtual EthernetEapProvider* ethernet_eap_provider() const {
     return ethernet_eap_provider_.get();
   }
-#endif  // DISABLE_WIRED_8021X
   VPNProvider* vpn_provider() const { return vpn_provider_.get(); }
   WiFiProvider* wifi_provider() const { return wifi_provider_.get(); }
   PropertyStore* mutable_store() { return &store_; }
@@ -787,9 +782,7 @@ class Manager {
   std::unique_ptr<CellularServiceProvider> cellular_service_provider_;
 #endif  // DISABLE_CELLULAR
   std::unique_ptr<EthernetProvider> ethernet_provider_;
-#if !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
-#endif  // DISABLE_WIRED_8021X
   std::unique_ptr<VPNProvider> vpn_provider_;
   std::unique_ptr<WiFiProvider> wifi_provider_;
   std::unique_ptr<SupplicantManager> supplicant_manager_;

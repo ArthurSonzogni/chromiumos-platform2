@@ -31,6 +31,9 @@
 #include "shill/device.h"
 #include "shill/device_id.h"
 #include "shill/device_info.h"
+#include "shill/eap_credentials.h"
+#include "shill/ethernet/eap_listener.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
@@ -41,16 +44,10 @@
 #include "shill/refptr_types.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
-
-#if !defined(DISABLE_WIRED_8021X)
-#include "shill/eap_credentials.h"
-#include "shill/ethernet/eap_listener.h"
-#include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
-#endif  // DISABLE_WIRED_8021X
 
 namespace shill {
 
@@ -124,21 +121,17 @@ Ethernet::Ethernet(Manager* manager,
              Technology::kEthernet),
       link_up_(false),
       bus_type_(GetDeviceBusType()),
-#if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(interface_index)),
-#endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
       permanent_mac_address_(GetPermanentMacAddressFromKernel()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
-#if !defined(DISABLE_WIRED_8021X)
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
                            &is_eap_authenticated_);
   store->RegisterConstBool(kEapAuthenticatorDetectedProperty,
                            &is_eap_detected_);
-#endif  // DISABLE_WIRED_8021X
   store->RegisterConstBool(kLinkUpProperty, &link_up_);
   store->RegisterConstString(kDeviceBusTypeProperty, &bus_type_);
   store->RegisterDerivedString(
@@ -146,10 +139,8 @@ Ethernet::Ethernet(Manager* manager,
       StringAccessor(new CustomAccessor<Ethernet, std::string>(
           this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
 
-#if !defined(DISABLE_WIRED_8021X)
   eap_listener_->set_request_received_callback(
       base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
-#endif  // DISABLE_WIRED_8021X
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 
   if (bus_type_ == kDeviceBusTypeUsb) {
@@ -196,9 +187,7 @@ void Ethernet::Stop(Error* error,
   if (!service_->HasEthernet()) {
     service_ = nullptr;
   }
-#if !defined(DISABLE_WIRED_8021X)
   StopSupplicant();
-#endif  // DISABLE_WIRED_8021X
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();  // indicate immediate completion
@@ -217,9 +206,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
       service_->OnVisibilityChanged();
     }
     SetupWakeOnLan();
-#if !defined(DISABLE_WIRED_8021X)
     eap_listener_->Start();
-#endif  // DISABLE_WIRED_8021X
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
     adaptor()->EmitBoolChanged(kLinkUpProperty, link_up_);
@@ -228,7 +215,6 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
       manager()->UpdateService(service_);
       service_->OnVisibilityChanged();
     }
-#if !defined(DISABLE_WIRED_8021X)
     is_eap_detected_ = false;
     adaptor()->EmitBoolChanged(kEapAuthenticatorDetectedProperty,
                                is_eap_detected_);
@@ -236,7 +222,6 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     SetIsEapAuthenticated(false);
     StopSupplicant();
     eap_listener_->Stop();
-#endif  // DISABLE_WIRED_8021X
   }
 }
 
@@ -291,7 +276,6 @@ EthernetProvider* Ethernet::GetProvider() {
   return provider;
 }
 
-#if !defined(DISABLE_WIRED_8021X)
 void Ethernet::TryEapAuthentication() {
   try_eap_authentication_callback_.Reset(base::Bind(
       &Ethernet::TryEapAuthenticationTask, weak_ptr_factory_.GetWeakPtr()));
@@ -524,7 +508,6 @@ void Ethernet::TryEapAuthenticationTask() {
 SupplicantProcessProxyInterface* Ethernet::supplicant_process_proxy() const {
   return manager()->supplicant_manager()->proxy();
 }
-#endif  // DISABLE_WIRED_8021X
 
 void Ethernet::SetupWakeOnLan() {
   int sock;

@@ -29,6 +29,7 @@
 #include "shill/device_claimer.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/geolocation_info.h"
 #include "shill/logging.h"
@@ -58,10 +59,6 @@
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
-
-#if !defined(DISABLE_WIRED_8021X)
-#include "shill/ethernet/mock_ethernet_eap_provider.h"
-#endif  // DISABLE_WIRED_8021X
 
 namespace shill {
 using ::testing::_;
@@ -105,9 +102,7 @@ class ManagerTest : public PropertyStoreTest {
         device_info_(new NiceMock<MockDeviceInfo>(manager())),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
-#if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
-#endif  // DISABLE_WIRED_8021X
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
         throttler_(new StrictMock<MockThrottler>()),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
@@ -122,11 +117,9 @@ class ManagerTest : public PropertyStoreTest {
 
     manager()->ethernet_provider_.reset(ethernet_provider_);
 
-#if !defined(DISABLE_WIRED_8021X)
     // Replace the manager's Ethernet EAP provider with our mock.
     // Passes ownership.
     manager()->ethernet_eap_provider_.reset(ethernet_eap_provider_);
-#endif  // DISABLE_WIRED_8021X
 
     // Replace the manager's WiFi provider with our mock.  Passes
     // ownership.
@@ -482,11 +475,9 @@ class ManagerTest : public PropertyStoreTest {
     return service;
   }
 
-#if !defined(DISABLE_WIRED_8021X)
   void SetEapProviderService(const ServiceRefPtr& service) {
     ethernet_eap_provider_->set_service(service);
   }
-#endif  // DISABLE_WIRED_8021X
 
   const std::vector<Technology>& GetTechnologyOrder() {
     return manager()->technology_order_;
@@ -528,9 +519,7 @@ class ManagerTest : public PropertyStoreTest {
   // EXPECT*()
   ManagerMockAdaptor* manager_adaptor_;
   MockEthernetProvider* ethernet_provider_;
-#if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider* ethernet_eap_provider_;
-#endif  // DISABLE_WIRED_8021X
   MockWiFiProvider* wifi_provider_;
   MockThrottler* throttler_;
   MockUpstart* upstart_;
@@ -1566,7 +1555,6 @@ TEST_F(ManagerTest, GetServiceEthernet) {
   EXPECT_TRUE(e.IsSuccess());
 }
 
-#if !defined(DISABLE_WIRED_8021X)
 TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
@@ -1576,7 +1564,6 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
   EXPECT_EQ(service, manager()->GetService(args, &e));
   EXPECT_TRUE(e.IsSuccess());
 }
-#endif  // DISABLE_WIRED_8021X
 
 TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;

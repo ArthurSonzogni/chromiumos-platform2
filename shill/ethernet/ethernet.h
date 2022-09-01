@@ -17,35 +17,23 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
-
-#if !defined(DISABLE_WIRED_8021X)
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
-#endif  // DISABLE_WIRED_8021X
 
 namespace shill {
 
-class EthernetProvider;
-class Sockets;
-class StoreInterface;
-
-#if !defined(DISABLE_WIRED_8021X)
 class CertificateFile;
 class EapListener;
 class EthernetEapProvider;
+class EthernetProvider;
+class Sockets;
+class StoreInterface;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
-#endif  // DISABLE_WIRED_8021X
 
-class Ethernet
-#if !defined(DISABLE_WIRED_8021X)
-    : public Device,
-      public SupplicantEventDelegateInterface {
-#else
-    : public Device {
-#endif  // DISABLE_WIRED_8021X
+class Ethernet : public Device, public SupplicantEventDelegateInterface {
  public:
   Ethernet(Manager* manager,
            const std::string& link_name,
@@ -66,7 +54,6 @@ class Ethernet
   virtual void ConnectTo(EthernetService* service);
   virtual void DisconnectFrom(EthernetService* service);
 
-#if !defined(DISABLE_WIRED_8021X)
   // Test to see if conditions are correct for EAP authentication (both
   // credentials and a remote EAP authenticator is present) and initiate
   // an authentication if possible.
@@ -87,7 +74,6 @@ class Ethernet
                            const RpcIdentifier& cred,
                            const KeyValueStore& properties) override;
   void InterworkingSelectDone() override;
-#endif  // DISABLE_WIRED_8021X
 
   std::string GetStorageIdentifier() const override;
 
@@ -106,7 +92,6 @@ class Ethernet
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();
 
-#if !defined(DISABLE_WIRED_8021X)
   // Return a pointer to the EAP provider for Ethernet devices.
   EthernetEapProvider* GetEapProvider();
 
@@ -136,7 +121,6 @@ class Ethernet
   void TryEapAuthenticationTask();
 
   SupplicantProcessProxyInterface* supplicant_process_proxy() const;
-#endif  // DISABLE_WIRED_8021X
 
   // Accessors for the UsbEthernetMacAddressSource property.
   std::string GetUsbEthernetMacAddressSource(Error* error);
@@ -182,7 +166,6 @@ class Ethernet
 
   std::string bus_type_;
 
-#if !defined(DISABLE_WIRED_8021X)
   // Track whether we have completed EAP authentication successfully.
   bool is_eap_authenticated_;
 
@@ -206,7 +189,6 @@ class Ethernet
   // Make sure TryEapAuthenticationTask is only queued for execution once
   // at a time.
   base::CancelableClosure try_eap_authentication_callback_;
-#endif  // DISABLE_WIRED_8021X
 
   std::unique_ptr<Sockets> sockets_;
 

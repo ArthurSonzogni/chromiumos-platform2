@@ -36,12 +36,10 @@ class MockManager : public Manager {
               (override));
 #endif  // DISABLE_CELLULAR
   MOCK_METHOD(EthernetProvider*, ethernet_provider, (), (override));
-#if !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(EthernetEapProvider*,
               ethernet_eap_provider,
               (),
               (const, override));
-#endif  // DISABLE_WIRED_8021X
   MOCK_METHOD(const PropertyStore&, store, (), (const, override));
   MOCK_METHOD(const base::FilePath&, run_path, (), (const, override));
   MOCK_METHOD(void, Start, (), (override));

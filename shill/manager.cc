@@ -45,6 +45,8 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
+#include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/event_dispatcher.h"
@@ -72,11 +74,6 @@
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/modem_info.h"
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIRED_8021X)
-#include "shill/ethernet/ethernet_eap_provider.h"
-#include "shill/ethernet/ethernet_eap_service.h"
-#endif  // DISABLE_WIRED_8021X
 
 namespace shill {
 
@@ -173,9 +170,7 @@ Manager::Manager(ControlInterface* control_interface,
       cellular_service_provider_(new CellularServiceProvider(this)),
 #endif  // DISABLE_CELLULAR
       ethernet_provider_(new EthernetProvider(this)),
-#if !defined(DISABLE_WIRED_8021X)
       ethernet_eap_provider_(new EthernetEapProvider(this)),
-#endif  // DISABLE_WIRED_8021X
       vpn_provider_(new VPNProvider(this)),
       wifi_provider_(new WiFiProvider(this)),
       supplicant_manager_(new SupplicantManager(this)),
@@ -1317,7 +1312,6 @@ void Manager::EmitDeviceProperties() {
   adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
                                UninitializedTechnologies(&error));
 }
-
 
 void Manager::OnDeviceClaimerVanished() {
   // Reset device claimer.
@@ -2811,9 +2805,7 @@ void Manager::UpdateProviderMapping() {
   providers_[Technology::kCellular] = cellular_service_provider_.get();
 #endif  // DISABLE_CELLULAR
   providers_[Technology::kEthernet] = ethernet_provider_.get();
-#if !defined(DISABLE_WIRED_8021X)
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
-#endif  // DISABLE_WIRED_8021X
   providers_[Technology::kVPN] = vpn_provider_.get();
   providers_[Technology::kWiFi] = wifi_provider_.get();
 }
