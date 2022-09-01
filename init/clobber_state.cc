@@ -91,6 +91,9 @@ constexpr char kUbiDeviceStatefulFormat[] = "/dev/ubi%d_0";
 
 constexpr base::TimeDelta kMinClobberDuration = base::Minutes(5);
 
+// UFS purge timeout seconds.
+constexpr int kUFSPurgeTimeoutSec = 300;
+
 // |strip_partition| attempts to remove the partition number from the result.
 base::FilePath GetRootDevice(bool strip_partition) {
   char buf[PATH_MAX];
@@ -700,10 +703,63 @@ bool ClobberState::WipeMTDDevice(
    */
 }
 
+bool ClobberState::IsUFSStorage(const base::FilePath& root) {
+  // UFS storage should have only one BSG node.
+  base::FilePath bsg_node_dir = root.Append("dev").Append("bsg");
+  base::FileEnumerator bsg_node_enumerator(
+      bsg_node_dir, false, base::FileEnumerator::FileType::FILES, "ufs-bsg*");
+
+  base::FilePath bsg_node_path = bsg_node_enumerator.Next();
+  // BSG node is not found.
+  if (bsg_node_path.empty()) {
+    LOG(INFO) << "No UFS BSG node is found.";
+    return false;
+  }
+
+  // More than one BSG nodes are found.
+  if (!bsg_node_enumerator.Next().empty()) {
+    LOG(ERROR) << "More than one UFS BSG node are found!";
+    return false;
+  }
+
+  LOG(INFO) << "Found UFS BSG node: " << bsg_node_path;
+  return true;
+}
+
+bool ClobberState::AttemptFastWipeUFS(const base::FilePath& device_path,
+                                      bool wipe_stateful) {
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+
+  base::FilePath factory_ufs_path("/usr/sbin/factory_ufs");
+  if (!base::PathExists(factory_ufs_path)) {
+    LOG(ERROR) << factory_ufs_path.value()
+               << " not found. Fallback to normal wiping.";
+    return false;
+  }
+
+  brillo::ProcessImpl factory_ufs;
+  factory_ufs.AddArg(factory_ufs_path.value());
+  factory_ufs.AddArg("clobber");
+  factory_ufs.AddStringOption("-b", device_path.value().c_str());
+  if (wipe_stateful) {
+    factory_ufs.AddIntOption("-p", kUFSPurgeTimeoutSec);
+  }
+  factory_ufs.RedirectOutput(temp_file.value());
+  int factory_ufs_ret = factory_ufs.Run();
+  if (factory_ufs_ret) {
+    LOG(ERROR) << "`factory_ufs clobber` failed with code " << factory_ufs_ret;
+  }
+  AppendFileToLog(temp_file);
+
+  return factory_ufs_ret == 0;
+}
+
 // static
 bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
                                    ClobberUi* ui,
-                                   bool fast) {
+                                   bool fast,
+                                   bool wipe_stateful) {
   const int write_block_size = 4 * 1024 * 1024;
   int64_t to_write = 0;
   if (fast) {
@@ -746,6 +802,17 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
           base::BindOnce([](ClobberUi* ui) { ui->StopWipeUi(); }, ui));
     } else {
       display_progress = false;
+    }
+  }
+
+  if (IsUFSStorage(base::FilePath("/"))) {
+    LOG(INFO) << "Attempt to fast wipe the UFS storage: "
+              << device_path.value();
+    // Don't need to display progress for wiping UFS since it also runs
+    // quickly.
+    if (AttemptFastWipeUFS(device_path, wipe_stateful)) {
+      LOG(INFO) << "Successfully clear the UFS storage.";
+      return true;
     }
   }
 
@@ -1613,7 +1680,8 @@ bool ClobberState::WipeDevice(const base::FilePath& device_path) {
   if (wipe_info_.is_mtd_flash) {
     return WipeMTDDevice(device_path, partitions_);
   } else {
-    return WipeBlockDevice(device_path, ui_.get(), args_.fast_wipe);
+    return WipeBlockDevice(device_path, ui_.get(), args_.fast_wipe,
+                           wipe_info_.stateful_partition_device == device_path);
   }
 }
 

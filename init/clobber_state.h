@@ -109,6 +109,14 @@ class ClobberState {
   static bool WipeMTDDevice(const base::FilePath& device_path,
                             const PartitionNumbers& partitions);
 
+  // Check if the storage is UFS.
+  static bool IsUFSStorage(const base::FilePath& root);
+
+  // Attempt to fast wipe the UFS block device.
+  // If |wipe_stateful| is true, run the purge operation.
+  static bool AttemptFastWipeUFS(const base::FilePath& device_path,
+                                 bool wipe_stateful);
+
   // Wipe |device_path|, showing a progress UI using |ui|.
   //
   // If |fast| is true, wipe |device_path| using a less-thorough but much faster
@@ -117,7 +125,8 @@ class ClobberState {
   // A progress indicator will not be displayed if |fast| mode is enabled.
   static bool WipeBlockDevice(const base::FilePath& device_path,
                               ClobberUi* ui,
-                              bool fast);
+                              bool fast,
+                              bool wipe_stateful);
 
   // Reads successful and priority metadata from partition numbered
   // |partition_number| on |disk|, storing the results in |successful_out| and
