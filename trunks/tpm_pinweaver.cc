@@ -336,7 +336,8 @@ TPM_RC Serialize_pw_start_bio_auth_t(uint8_t protocol_version,
                                      const std::string& h_aux,
                                      const std::string& cred_metadata,
                                      std::string* buffer) {
-  if (protocol_version <= 1 || auth_channel > PW_BA_PK_ENTRY_COUNT) {
+  if (protocol_version <= 1 || auth_channel > PW_BA_PK_ENTRY_COUNT ||
+      client_nonce.size() != PW_SECRET_SIZE) {
     return SAPI_RC_BAD_PARAMETER;
   }
 
