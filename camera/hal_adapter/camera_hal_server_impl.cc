@@ -16,7 +16,6 @@
 #include <unistd.h>
 
 #include <deque>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -73,11 +72,6 @@ CameraHalServerImpl::~CameraHalServerImpl() {
 void CameraHalServerImpl::Start() {
   VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-
-  if (!gpu_resources_.Initialize()) {
-    LOGF(ERROR) << "Failed to initialize GPU resources";
-    ExitOnMainThread(-ENODEV);
-  }
 
   int result = LoadCameraHal();
   if (result != 0) {
@@ -279,7 +273,7 @@ int CameraHalServerImpl::LoadCameraHal() {
     void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
       LOGF(INFO) << "Failed to dlopen: " << dlerror();
-      return -ENOENT;
+      return ENOENT;
     }
 
     cros_camera_hal_t* cros_camera_hal = static_cast<cros_camera_hal_t*>(
@@ -298,26 +292,26 @@ int CameraHalServerImpl::LoadCameraHal() {
       return ELIBBAD;
     }
 
-    camera_interfaces.emplace_back(module, cros_camera_hal);
+    camera_interfaces.push_back({module, cros_camera_hal});
   }
 
   auto active_callback =
       base::BindRepeating(&CameraHalServerImpl::OnCameraActivityChange,
                           base::Unretained(this), ipc_bridge_->GetWeakPtr());
   if (enable_front && enable_back && enable_external) {
-    camera_hal_adapter_ = std::make_unique<CameraHalAdapter>(
-        camera_interfaces, mojo_manager_.get(), active_callback);
+    camera_hal_adapter_.reset(new CameraHalAdapter(
+        camera_interfaces, mojo_manager_.get(), active_callback));
   } else {
-    camera_hal_adapter_ = std::make_unique<CameraHalTestAdapter>(
+    camera_hal_adapter_.reset(new CameraHalTestAdapter(
         camera_interfaces, mojo_manager_.get(), active_callback, enable_front,
-        enable_back, enable_external);
+        enable_back, enable_external));
   }
 
   LOGF(INFO) << "Running camera HAL adapter on " << getpid();
 
-  if (!camera_hal_adapter_->Start(&gpu_resources_)) {
+  if (!camera_hal_adapter_->Start()) {
     LOGF(ERROR) << "Failed to start camera HAL adapter";
-    return -ENODEV;
+    return ENODEV;
   }
 
   return 0;

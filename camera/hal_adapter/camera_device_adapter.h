@@ -35,7 +35,6 @@
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
-#include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
 
@@ -131,8 +130,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::flat_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
   // Starts the camera device adapter.  This method must be called before all
   // the other methods are called.
-  bool Start(GpuResources* gpu_resources,
-             HasReprocessEffectVendorTagCallback
+  bool Start(HasReprocessEffectVendorTagCallback
                  has_reprocess_effect_vendor_tag_callback,
              ReprocessEffectCallback reprocess_effect_callback);
 
@@ -361,7 +359,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // this situation.
   CameraMonitor capture_monitor_;
 
-  GpuResources* gpu_resources_ = nullptr;
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
 };
 

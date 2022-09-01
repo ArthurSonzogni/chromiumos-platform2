@@ -108,13 +108,4 @@ std::ostream& operator<<(std::ostream& stream, const Range<T>& r) {
 
 }  // namespace cros
 
-template <>
-struct std::hash<cros::Size> {
-  std::size_t operator()(cros::Size const& s) const noexcept {
-    std::size_t h1 = std::hash<unsigned int>{}(s.width);
-    std::size_t h2 = std::hash<unsigned int>{}(s.height);
-    return h1 ^ (h2 << 1);
-  }
-};
-
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_

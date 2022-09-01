@@ -35,7 +35,9 @@
 #include "cros-camera/common.h"
 #include "features/hdrnet/tests/hdrnet_processor_test_fixture.h"
 
-namespace cros::tests {
+namespace cros {
+
+namespace tests {
 
 struct Options {
   int iterations = 1000;
@@ -130,7 +132,7 @@ class HdrNetProcessorTest : public testing::Test {
                  g_args.input_image_format,
                  g_args.output_sizes,
                  g_args.use_noop_adapter) {}
-  ~HdrNetProcessorTest() override = default;
+  ~HdrNetProcessorTest() = default;
 
  protected:
   HdrNetProcessorTestFixture fixture_;
@@ -149,7 +151,7 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   HdrnetMetrics metrics;
   for (int i = 0; i < g_args.iterations; ++i) {
     Camera3CaptureDescriptor result = fixture_.ProduceFakeCaptureResult();
-    fixture_.ProcessResultMetadata(&result);
+    fixture_.processor()->ProcessResultMetadata(&result);
     base::ScopedFD fence = fixture_.Run(i, metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     ASSERT_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
@@ -161,7 +163,9 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   }
 }
 
-}  // namespace cros::tests
+}  // namespace tests
+
+}  // namespace cros
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
