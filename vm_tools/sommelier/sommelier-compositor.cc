@@ -75,25 +75,6 @@ static void sl_virtwl_dmabuf_end_write(int fd, struct sl_context* ctx) {
   sl_virtwl_dmabuf_sync(fd, DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE, ctx);
 }
 
-static uint32_t sl_drm_format_for_shm_format(int format) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12:
-      return WL_DRM_FORMAT_NV12;
-    case WL_SHM_FORMAT_RGB565:
-      return WL_DRM_FORMAT_RGB565;
-    case WL_SHM_FORMAT_ARGB8888:
-      return WL_DRM_FORMAT_ARGB8888;
-    case WL_SHM_FORMAT_ABGR8888:
-      return WL_DRM_FORMAT_ABGR8888;
-    case WL_SHM_FORMAT_XRGB8888:
-      return WL_DRM_FORMAT_XRGB8888;
-    case WL_SHM_FORMAT_XBGR8888:
-      return WL_DRM_FORMAT_XBGR8888;
-  }
-  assert(0);
-  return 0;
-}
-
 static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   wl_buffer_destroy(buffer->internal);
   sl_mmap_unref(buffer->mmap);
@@ -160,8 +141,11 @@ static void sl_host_surface_attach(struct wl_client* client,
     host->contents_width = host_buffer->width;
     host->contents_height = host_buffer->height;
     buffer_proxy = host_buffer->proxy;
-    if (host_buffer->shm_mmap)
-      host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
+
+    if (!host_buffer->is_drm) {
+      if (host_buffer->shm_mmap)
+        host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
+    }
   }
 
   if (host->contents_shm_mmap) {
@@ -233,7 +217,7 @@ static void sl_host_surface_attach(struct wl_client* client,
                                          create_output.strides[1], 0, 0);
           size = MAX(size, create_output.offsets[1] +
                                create_output.offsets[1] * height /
-                                   host_buffer->shm_mmap->y_ss[1]);
+                                   host->contents_shm_mmap->y_ss[1]);
         }
         host->current_buffer->internal =
             zwp_linux_buffer_params_v1_create_immed(
@@ -243,12 +227,12 @@ static void sl_host_surface_attach(struct wl_client* client,
         host->current_buffer->mmap = sl_mmap_create(
             create_output.fd, size, bpp, num_planes, create_output.offsets[0],
             create_output.strides[0], create_output.offsets[1],
-            create_output.strides[1], host_buffer->shm_mmap->y_ss[0],
-            host_buffer->shm_mmap->y_ss[1]);
+            create_output.strides[1], host->contents_shm_mmap->y_ss[0],
+            host->contents_shm_mmap->y_ss[1]);
         host->current_buffer->mmap->begin_write = sl_virtwl_dmabuf_begin_write;
         host->current_buffer->mmap->end_write = sl_virtwl_dmabuf_end_write;
       } else {
-        size_t size = host_buffer->shm_mmap->size;
+        size_t size = host->contents_shm_mmap->size;
         struct WaylandBufferCreateInfo create_info = {0};
         struct WaylandBufferCreateOutput create_output = {0};
         struct wl_shm_pool* pool;
@@ -266,16 +250,17 @@ static void sl_host_surface_attach(struct wl_client* client,
                                   create_output.host_size);
 
         host->current_buffer->internal = wl_shm_pool_create_buffer(
-            pool, 0, width, height, host_buffer->shm_mmap->stride[0],
+            pool, 0, width, height, host->contents_shm_mmap->stride[0],
             shm_format);
         wl_shm_pool_destroy(pool);
 
         host->current_buffer->mmap = sl_mmap_create(
             create_output.fd, create_output.host_size, bpp, num_planes, 0,
-            host_buffer->shm_mmap->stride[0],
-            host_buffer->shm_mmap->offset[1] - host_buffer->shm_mmap->offset[0],
-            host_buffer->shm_mmap->stride[1], host_buffer->shm_mmap->y_ss[0],
-            host_buffer->shm_mmap->y_ss[1]);
+            host->contents_shm_mmap->stride[0],
+            host->contents_shm_mmap->offset[1] -
+                host->contents_shm_mmap->offset[0],
+            host->contents_shm_mmap->stride[1],
+            host->contents_shm_mmap->y_ss[0], host->contents_shm_mmap->y_ss[1]);
       }
 
       assert(host->current_buffer->internal);

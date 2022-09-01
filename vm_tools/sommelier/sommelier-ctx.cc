@@ -402,3 +402,18 @@ bool sl_context_init_wayland_channel(struct sl_context* ctx,
   }
   return true;
 }
+
+sl_window* sl_context_lookup_window_for_surface(struct sl_context* ctx,
+                                                wl_resource* resource) {
+  sl_window* surface_window = NULL;
+  sl_window* window;
+
+  wl_list_for_each(window, &ctx->windows, link) {
+    if (window->host_surface_id == wl_resource_get_id(resource)) {
+      surface_window = window;
+      break;
+    }
+  }
+
+  return surface_window;
+}

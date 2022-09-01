@@ -164,10 +164,32 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
       sl_create_host_buffer(host->ctx, client, id,
                             zwp_linux_buffer_params_v1_create_immed(
                                 buffer_params, width, height, format, 0),
-                            width, height);
+                            width, height, /*is_drm=*/true);
   if (is_gpu_buffer) {
     host_buffer->sync_point = sl_sync_point_create(name);
     host_buffer->sync_point->sync = sl_drm_sync;
+    host_buffer->shm_format = sl_shm_format_for_drm_format(format);
+
+    // Create our DRM PRIME mmap container
+    // This is simply a container that records necessary information
+    // to map the DRM buffer through the GBM API's.
+    // The GBM API's may need to perform a rather heavy copy of the
+    // buffer into memory accessible by the CPU to perform the mapping
+    // operation.
+    // For this reason, the GBM mapping API's will not be used until we
+    // are absolutely certain that the buffers contents need to be
+    // accessed. This will be done through a call to sl_mmap_begin_access.
+    //
+    // We are also checking for a single plane format as this container
+    // is currently only defined for single plane format buffers.
+
+    if (sl_shm_num_planes_for_shm_format(host_buffer->shm_format) == 1) {
+      host_buffer->shm_mmap = sl_drm_prime_mmap_create(
+          host->ctx->gbm, name,
+          sl_shm_bpp_for_shm_format(host_buffer->shm_format),
+          sl_shm_num_planes_for_shm_format(host_buffer->shm_format), stride0,
+          width, height, format);
+    }
   } else {
     close(name);
   }

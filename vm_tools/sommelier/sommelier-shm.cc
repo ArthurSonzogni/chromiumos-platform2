@@ -133,8 +133,8 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
-  struct sl_host_buffer* host_buffer =
-      sl_create_host_buffer(host->shm->ctx, client, id, NULL, width, height);
+  struct sl_host_buffer* host_buffer = sl_create_host_buffer(
+      host->shm->ctx, client, id, NULL, width, height, /*is_drm=*/false);
 
   host_buffer->shm_format = format;
   host_buffer->shm_mmap = sl_mmap_create(

@@ -88,6 +88,44 @@ struct sl_data_source {
 #define MIN_AURA_SHELL_VERSION 6
 #define MAX_AURA_SHELL_VERSION 38
 
+int sl_shm_format_for_drm_format(uint32_t drm_format) {
+  switch (drm_format) {
+    case WL_DRM_FORMAT_NV12:
+      return WL_SHM_FORMAT_NV12;
+    case WL_DRM_FORMAT_RGB565:
+      return WL_SHM_FORMAT_RGB565;
+    case WL_DRM_FORMAT_ARGB8888:
+      return WL_SHM_FORMAT_ARGB8888;
+    case WL_DRM_FORMAT_ABGR8888:
+      return WL_SHM_FORMAT_ABGR8888;
+    case WL_DRM_FORMAT_XRGB8888:
+      return WL_SHM_FORMAT_XRGB8888;
+    case WL_DRM_FORMAT_XBGR8888:
+      return WL_SHM_FORMAT_XBGR8888;
+  }
+  assert(0);
+  return 0;
+}
+
+uint32_t sl_drm_format_for_shm_format(int format) {
+  switch (format) {
+    case WL_SHM_FORMAT_NV12:
+      return WL_DRM_FORMAT_NV12;
+    case WL_SHM_FORMAT_RGB565:
+      return WL_DRM_FORMAT_RGB565;
+    case WL_SHM_FORMAT_ARGB8888:
+      return WL_DRM_FORMAT_ARGB8888;
+    case WL_SHM_FORMAT_ABGR8888:
+      return WL_DRM_FORMAT_ABGR8888;
+    case WL_SHM_FORMAT_XRGB8888:
+      return WL_DRM_FORMAT_XRGB8888;
+    case WL_SHM_FORMAT_XBGR8888:
+      return WL_DRM_FORMAT_XBGR8888;
+  }
+  assert(0);
+  return 0;
+}
+
 const char* net_wm_state_to_string(int i) {
   switch (i) {
     case NET_WM_STATE_REMOVE:
@@ -257,7 +295,8 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                                              uint32_t id,
                                              struct wl_buffer* proxy,
                                              int32_t width,
-                                             int32_t height) {
+                                             int32_t height,
+                                             bool is_drm) {
   TRACE_EVENT("surface", "sl_create_host_buffer", "id", id);
   struct sl_host_buffer* host_buffer =
       static_cast<sl_host_buffer*>(malloc(sizeof(*host_buffer)));
@@ -280,6 +319,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                            host_buffer);
   }
   host_buffer->sync_point = NULL;
+  host_buffer->is_drm = is_drm;
 
   return host_buffer;
 }  // NOLINT(whitespace/indent)

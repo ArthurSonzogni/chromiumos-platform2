@@ -172,6 +172,7 @@ struct sl_host_buffer {
   struct sl_mmap* shm_mmap;
   uint32_t shm_format;
   struct sl_sync_point* sync_point;
+  bool is_drm;
 };
 
 struct sl_data_source_send_request {
@@ -395,8 +396,8 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                                              uint32_t id,
                                              struct wl_buffer* proxy,
                                              int32_t width,
-                                             int32_t height);
-
+                                             int32_t height,
+                                             bool is_drm);
 
 struct sl_global* sl_compositor_global_create(struct sl_context* ctx);
 void sl_compositor_init_context(struct sl_context* ctx,
@@ -481,6 +482,9 @@ void sl_create_window(struct sl_context* ctx,
 void sl_handle_client_message(struct sl_context* ctx,
                               xcb_client_message_event_t* event);
 void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event);
+
+uint32_t sl_drm_format_for_shm_format(int format);
+int sl_shm_format_for_drm_format(uint32_t drm_format);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

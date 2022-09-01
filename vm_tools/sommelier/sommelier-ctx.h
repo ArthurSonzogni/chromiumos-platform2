@@ -206,4 +206,7 @@ bool sl_context_init_wayland_channel(struct sl_context* ctx,
                                      struct wl_event_loop* event_loop,
                                      bool display);
 
+sl_window* sl_context_lookup_window_for_surface(struct sl_context* ctx,
+                                                wl_resource* resource);
+
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_CTX_H_
