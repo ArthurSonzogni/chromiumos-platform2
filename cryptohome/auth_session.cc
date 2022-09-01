@@ -935,6 +935,7 @@ bool AuthSession::AuthenticateAuthFactor(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return false;
   }
+  const AuthFactor& auth_factor = *label_to_auth_factor_iter->second;
 
   // Fill up the auth input.
   AuthFactorMetadata auth_factor_metadata;
@@ -952,12 +953,20 @@ bool AuthSession::AuthenticateAuthFactor(
     return false;
   }
 
+  // If suitable, attempt lightweight authentication via a credential verifier.
+  if (auth_intent_ == AuthIntent::kVerifyOnly &&
+      IsCredentialVerifierSupported(auth_factor.type()) &&
+      AuthenticateViaCredentialVerifier(auth_input.value())) {
+    const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
+    SetAuthSessionAsAuthenticated(lightweight_intents);
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return true;
+  }
+
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   // If the user has configured AuthFactors, then we proceed with USS flow.
   if (user_has_configured_auth_factor_) {
-    AuthFactor auth_factor = *label_to_auth_factor_iter->second;
-
     // Record current time for timing for how long AuthenticateAuthFactor will
     // take.
     auto auth_session_performance_timer =
@@ -1982,6 +1991,22 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
       std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
+}
+
+bool AuthSession::AuthenticateViaCredentialVerifier(
+    const AuthInput& auth_input) {
+  const UserSession* user_session = user_session_map_->Find(username_);
+  if (!user_session) {
+    return false;
+  }
+  // Attempt to verify the auth input against the verifier attached to the
+  // user's session.
+  // TODO(b/240596931): Switch the verifier to using `AuthInput`.
+  if (!auth_input.user_input.has_value()) {
+    return false;
+  }
+  Credentials credentials(username_, auth_input.user_input.value());
+  return user_session->VerifyCredentials(credentials);
 }
 
 void AuthSession::AuthenticateViaUserSecretStash(

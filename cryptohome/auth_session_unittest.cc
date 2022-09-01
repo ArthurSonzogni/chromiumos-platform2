@@ -46,6 +46,7 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
 
 namespace cryptohome {
@@ -2703,6 +2704,101 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+}
+
+// Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kVerifyOnly`
+// scenario, using a credential verifier.
+TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Configure the credential verifier mock to succeed.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, VerifyCredentials(_)).WillOnce(Return(true));
+  EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
+  // Create an AuthSession with a fake factor. No authentication mocks are set
+  // up, because the lightweight authentication should be used in the test.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kVerifyOnly,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), AuthBlockState()));
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Test.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request, authenticate_future.GetCallback()));
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
+}
+
+// Test that AuthenticateAuthFactor succeeds and doesn't use the credential
+// verifier in the `AuthIntent::kDecrypt` scenario.
+TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Expect that no verification calls are made.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, VerifyCredentials(_)).Times(0);
+  EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
+  // Create an AuthSession with a fake factor.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), AuthBlockState()));
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+  // Set up VaultKeyset authentication mock.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([](AuthBlockType, const AuthInput&, const AuthBlockState&,
+                   AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(),
+                 std::make_unique<KeyBlobs>());
+        return true;
+      });
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  // Test.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request, authenticate_future.GetCallback()));
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {

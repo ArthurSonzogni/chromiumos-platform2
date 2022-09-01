@@ -1127,6 +1127,47 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
 }
 
+// Test that AuthenticateAuthFactor succeeds using credential verifier based
+// lightweight authentication when `AuthIntent::kVerifyOnly` is requested.
+TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange. Set up a fake VK without authentication mocks.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
+  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
+                           keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  // Set up a user session with a mocked credential verifier.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, VerifyCredentials(_)).WillOnce(Return(true));
+  EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
+  // Create an AuthSession.
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kVerifyOnly);
+  ASSERT_TRUE(auth_session);
+
+  // Act.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  request.set_auth_factor_label(kPasswordLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply reply =
+      AuthenticateAuthFactor(request);
+
+  // Assert. The legacy `authenticated` field stays false.
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(reply.authenticated());
+  EXPECT_THAT(reply.authorized_for(),
+              UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
+}
+
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is missing.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   const std::string obfuscated_username = SanitizeUserName(kUsername);
