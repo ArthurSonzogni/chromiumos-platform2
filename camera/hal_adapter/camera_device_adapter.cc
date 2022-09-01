@@ -393,6 +393,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       .session_parameters = session_parameters.get(),
   });
 
+  // TODO(kamesan): Handle the failures.
   for (auto& stream_manipulator : stream_manipulators_) {
     stream_manipulator->ConfigureStreams(&stream_config);
   }
