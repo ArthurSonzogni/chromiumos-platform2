@@ -150,21 +150,17 @@ if (use.test) {
       "event_history_test.cc",
       "ip_address_test.cc",
       "netlink_attribute_test.cc",
+      "netlink_manager_test.cc",
+      "netlink_message_test.cc",
+      "netlink_packet_test.cc",
+      "netlink_socket_test.cc",
+      "nl80211_attribute_test.cc",
       "nl80211_message_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
       "rtnl_message_test.cc",
       "shill_time_test.cc",
     ]
-    if (use.wifi) {
-      sources += [
-        "netlink_manager_test.cc",
-        "netlink_message_test.cc",
-        "netlink_packet_test.cc",
-        "netlink_socket_test.cc",
-        "nl80211_attribute_test.cc",
-      ]
-    }
     configs += [
       "//common-mk:test",
       ":shill_net_test_config",
