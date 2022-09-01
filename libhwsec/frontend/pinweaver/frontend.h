@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FRONTEND_PINWEAVER_FRONTEND_H_
 #define LIBHWSEC_FRONTEND_PINWEAVER_FRONTEND_H_
 
+#include <optional>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -53,9 +54,10 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
   // it, its associated reset_secret |reset_secret| and the high entropy
   // credential it protects |he_secret| are also provided. The delay schedule
   // which determines the delay enforced between authentication attempts is
-  // provided by |delay_schedule|. And the credential is bound to the the
-  // |policies|, the check credential operation would only success when one of
-  // policy match.
+  // provided by |delay_schedule|. The credential is bound to the |policies|,
+  // the check credential operation would only success when one of policy match.
+  // And the credential has an expiration window of |expiration_delay|, it
+  // expires after that many seconds after creation and each strong reset.
   //
   // |h_aux| requires a particular order: starting from left child to right
   // child, from leaf upwards till the children of the root label.
@@ -72,7 +74,8 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
       const brillo::SecureBlob& le_secret,
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
-      const DelaySchedule& delay_schedule) = 0;
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay) = 0;
 
   // Tries to verify/authenticate a credential.
   //
@@ -107,7 +110,8 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
   // Tries to reset a (potentially locked out) credential.
   //
   // The reset credential is |reset_secret| and the credential metadata is
-  // in |orig_cred_metadata|.
+  // in |orig_cred_metadata|. |strong_reset| indicates whether the expiration
+  // should be reset too.
   //
   // On success, the updated credential metadata and corresponding new MAC
   // will be returned in |new_cred_metadata| and |new_mac|.
@@ -117,7 +121,8 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
       const uint64_t label,
       const std::vector<std::vector<uint8_t>>& h_aux,
       const std::vector<uint8_t>& orig_cred_metadata,
-      const brillo::SecureBlob& reset_secret) = 0;
+      const brillo::SecureBlob& reset_secret,
+      bool strong_reset) = 0;
 
   // Retrieves the replay log.
   //
@@ -148,6 +153,11 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
 
   // Get the remaining delay in seconds.
   virtual StatusOr<uint32_t> GetDelayInSeconds(
+      const brillo::Blob& cred_metadata) = 0;
+
+  // Get the remaining time until the credential expires, in seconds. Nullopt
+  // means the credential won't expire. 0 means the credential already expired.
+  virtual StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       const brillo::Blob& cred_metadata) = 0;
 };
 

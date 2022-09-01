@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -115,7 +116,7 @@ TEST_F(BackendPinweaverTpm2Test, ResetFailure) {
 }
 
 TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
-  constexpr uint32_t kVersion = 1;
+  constexpr uint32_t kVersion = 2;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -126,6 +127,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
   const hwsec::Backend::PinWeaver::DelaySchedule kDelaySched = {
       {5, UINT32_MAX},
   };
+  const uint32_t kExpirationDelay = 100;
   const std::vector<OperationPolicySetting> kPolicies = {
       OperationPolicySetting{
           .device_config_settings =
@@ -156,18 +158,17 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
-      PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret, kFakeHeSecret,
-                          kFakeResetSecret, kDelaySched, _,
-                          /*expiration_delay=*/Eq(std::nullopt), _, _, _, _))
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret,
+                                  kFakeHeSecret, kFakeResetSecret, kDelaySched,
+                                  _, Eq(kExpirationDelay), _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<9>(0), SetArgPointee<10>(kFakeRoot),
                       SetArgPointee<11>(kFakeCred), SetArgPointee<12>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
       kPolicies, kLabel, kHAux, kFakeLeSecret, kFakeHeSecret, kFakeResetSecret,
-      kDelaySched);
+      kDelaySched, kExpirationDelay);
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result->error, ErrorCode::kSuccess);
@@ -180,7 +181,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
 }
 
 TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedPolicy) {
-  constexpr uint32_t kVersion = 1;
+  constexpr uint32_t kVersion = 2;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -191,6 +192,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedPolicy) {
   const hwsec::Backend::PinWeaver::DelaySchedule kDelaySched = {
       {5, UINT32_MAX},
   };
+  const uint32_t kExpirationDelay = 100;
   const std::vector<OperationPolicySetting> kPolicies = {
       OperationPolicySetting{.permission =
                                  Permission{
@@ -209,12 +211,12 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedPolicy) {
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
       kPolicies, kLabel, kHAux, kFakeLeSecret, kFakeHeSecret, kFakeResetSecret,
-      kDelaySched);
+      kDelaySched, kExpirationDelay);
 
   EXPECT_FALSE(result.ok());
 }
 
-TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedVersion) {
+TEST_F(BackendPinweaverTpm2Test, InsertCredentialV0PolicyUnsupported) {
   constexpr uint32_t kVersion = 0;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
@@ -258,12 +260,12 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedVersion) {
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
       kPolicies, kLabel, kHAux, kFakeLeSecret, kFakeHeSecret, kFakeResetSecret,
-      kDelaySched);
+      kDelaySched, /*expiration_delay=*/std::nullopt);
 
   EXPECT_FALSE(result.ok());
 }
 
-TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
+TEST_F(BackendPinweaverTpm2Test, InsertCredentialV1ExpirationUnsupported) {
   constexpr uint32_t kVersion = 1;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
@@ -275,6 +277,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
   const hwsec::Backend::PinWeaver::DelaySchedule kDelaySched = {
       {5, UINT32_MAX},
   };
+  const uint32_t kExpirationDelay = 100;
   const std::vector<OperationPolicySetting> kPolicies = {
       OperationPolicySetting{
           .device_config_settings =
@@ -305,17 +308,66 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
-      PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret, kFakeHeSecret,
-                          kFakeResetSecret, kDelaySched, _,
-                          /*expiration_delay=*/Eq(std::nullopt), _, _, _, _))
+  auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
+      kPolicies, kLabel, kHAux, kFakeLeSecret, kFakeHeSecret, kFakeResetSecret,
+      kDelaySched, kExpirationDelay);
+
+  EXPECT_FALSE(result.ok());
+}
+
+TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
+  constexpr uint32_t kVersion = 2;
+  constexpr uint32_t kLabel = 42;
+  const std::string kFakeRoot = "fake_root";
+  const std::string kFakeCred = "fake_cred";
+  const std::string kFakeMac = "fake_mac";
+  const brillo::SecureBlob kFakeLeSecret("fake_le_secret");
+  const brillo::SecureBlob kFakeHeSecret("fake_he_secret");
+  const brillo::SecureBlob kFakeResetSecret("fake_reset_secret");
+  const hwsec::Backend::PinWeaver::DelaySchedule kDelaySched = {
+      {5, UINT32_MAX},
+  };
+  const uint32_t kExpirationDelay = 100;
+  const std::vector<OperationPolicySetting> kPolicies = {
+      OperationPolicySetting{
+          .device_config_settings =
+              DeviceConfigSettings{
+                  .current_user =
+                      DeviceConfigSettings::CurrentUserSetting{
+                          .username = std::nullopt,
+                      },
+              },
+      },
+      OperationPolicySetting{
+          .device_config_settings =
+              DeviceConfigSettings{
+                  .current_user =
+                      DeviceConfigSettings::CurrentUserSetting{
+                          .username = "fake_username",
+                      },
+              },
+      },
+  };
+  const std::vector<brillo::Blob>& kHAux = {
+      brillo::Blob(32, 'X'),
+      brillo::Blob(32, 'Y'),
+      brillo::Blob(32, 'Z'),
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret,
+                                  kFakeHeSecret, kFakeResetSecret, kDelaySched,
+                                  _, Eq(kExpirationDelay), _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<9>(PW_ERR_DELAY_SCHEDULE_INVALID),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::InsertCredential>(
       kPolicies, kLabel, kHAux, kFakeLeSecret, kFakeHeSecret, kFakeResetSecret,
-      kDelaySched);
+      kDelaySched, kExpirationDelay);
 
   EXPECT_FALSE(result.ok());
 }
@@ -494,7 +546,7 @@ TEST_F(BackendPinweaverTpm2Test, RemoveCredentialFail) {
 }
 
 TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
-  constexpr uint32_t kVersion = 1;
+  constexpr uint32_t kVersion = 2;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -513,14 +565,15 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
 
   EXPECT_CALL(
       proxy_->GetMock().tpm_utility,
-      PinWeaverResetAuth(kVersion, kFakeResetSecret, /*strong_reset=*/false, _,
+      PinWeaverResetAuth(kVersion, kFakeResetSecret, /*strong_reset=*/true, _,
                          kFakeCred, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
                       SetArgPointee<7>(kNewCred), SetArgPointee<8>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::PinWeaver::ResetCredential>(
-      kLabel, kHAux, brillo::BlobFromString(kFakeCred), kFakeResetSecret);
+      kLabel, kHAux, brillo::BlobFromString(kFakeCred), kFakeResetSecret,
+      /*strong_reset=*/true);
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result->error, ErrorCode::kSuccess);
@@ -530,6 +583,31 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
             brillo::BlobFromString(kNewCred));
   ASSERT_TRUE(result->new_mac.has_value());
   EXPECT_EQ(result->new_mac.value(), brillo::BlobFromString(kFakeMac));
+}
+
+TEST_F(BackendPinweaverTpm2Test, ResetCredentialV1ExpirationUnsupported) {
+  constexpr uint32_t kVersion = 1;
+  constexpr uint32_t kLabel = 42;
+  const std::string kFakeRoot = "fake_root";
+  const std::string kFakeCred = "fake_cred";
+  const std::string kNewCred = "new_cred";
+  const std::string kFakeMac = "fake_mac";
+  const brillo::SecureBlob kFakeResetSecret("fake_reset_secret");
+  const std::vector<brillo::Blob>& kHAux = {
+      brillo::Blob(32, 'X'),
+      brillo::Blob(32, 'Y'),
+      brillo::Blob(32, 'Z'),
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::PinWeaver::ResetCredential>(
+      kLabel, kHAux, brillo::BlobFromString(kFakeCred), kFakeResetSecret,
+      /*strong_reset=*/true);
+
+  ASSERT_FALSE(result.ok());
 }
 
 TEST_F(BackendPinweaverTpm2Test, GetLog) {
@@ -798,6 +876,96 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayInSecondsV2) {
       brillo::CombineBlobs({header, leaf}));
   ASSERT_TRUE(result4.ok());
   EXPECT_EQ(result4.value(), UINT32_MAX);
+}
+
+TEST_F(BackendPinweaverTpm2Test, GetExpirationInSecondsV1) {
+  constexpr uint32_t kVersion = 1;
+  const std::string kFakeRoot = "fake_root";
+
+  brillo::Blob header(sizeof(unimported_leaf_data_t));
+  brillo::Blob leaf(sizeof(leaf_public_data_t));
+
+  struct leaf_public_data_t* leaf_data =
+      reinterpret_cast<struct leaf_public_data_t*>(leaf.data());
+  leaf_data->expiration_delay_s.v = 10;
+  leaf_data->expiration_ts.boot_count = 1;
+  leaf_data->expiration_ts.timer_value = 120;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  // In version 1, credentials are always treated as having no expiration.
+  auto result =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(result.value(), std::nullopt);
+}
+
+TEST_F(BackendPinweaverTpm2Test, GetExpirationInSecondsV2) {
+  constexpr uint32_t kVersion = 2;
+  const std::string kFakeRoot = "fake_root";
+
+  brillo::Blob header(sizeof(unimported_leaf_data_t));
+  brillo::Blob leaf(sizeof(leaf_public_data_t));
+  // Simulate a leaf created at v1.
+  brillo::Blob leaf_v1(offsetof(leaf_public_data_t, expiration_ts));
+
+  struct leaf_public_data_t* leaf_data =
+      reinterpret_cast<struct leaf_public_data_t*>(leaf.data());
+  leaf_data->expiration_delay_s.v = 0;
+  leaf_data->expiration_ts.boot_count = 0;
+  leaf_data->expiration_ts.timer_value = 0;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  // This is only called 3 times because when the delay is 0, we don't have
+  // to query the current timestamp.
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              PinWeaverSysInfo(kVersion, _, _, _, _))
+      .Times(3)
+      .WillRepeatedly(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
+                            SetArgPointee<3>(1), SetArgPointee<4>(100),
+                            Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(result.value(), std::nullopt);
+
+  leaf_data->expiration_delay_s.v = 10;
+  leaf_data->expiration_ts.timer_value = 120;
+  auto result2 =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result2.ok());
+  EXPECT_EQ(result2.value(), 0);
+
+  leaf_data->expiration_ts.boot_count = 1;
+  leaf_data->expiration_ts.timer_value = 80;
+  auto result3 =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result3.ok());
+  EXPECT_EQ(result3.value(), 0);
+
+  leaf_data->expiration_ts.timer_value = 120;
+  auto result4 =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf}));
+  ASSERT_TRUE(result4.ok());
+  EXPECT_EQ(result4.value(), 20);
+
+  // Leaf created in version before v2 has no expiration.
+  auto result5 =
+      middleware_->CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
+          brillo::CombineBlobs({header, leaf_v1}));
+  ASSERT_TRUE(result5.ok());
+  EXPECT_EQ(result5.value(), std::nullopt);
 }
 
 }  // namespace hwsec

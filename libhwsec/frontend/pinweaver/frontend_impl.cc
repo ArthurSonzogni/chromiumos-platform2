@@ -4,6 +4,7 @@
 
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 
+#include <optional>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -42,10 +43,11 @@ StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::InsertCredential(
     const brillo::SecureBlob& le_secret,
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
-    const DelaySchedule& delay_schedule) {
+    const DelaySchedule& delay_schedule,
+    std::optional<uint32_t> expiration_delay) {
   return middleware_.CallSync<&Backend::PinWeaver::InsertCredential>(
       policies, label, h_aux, le_secret, he_secret, reset_secret,
-      delay_schedule);
+      delay_schedule, expiration_delay);
 }
 
 StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::CheckCredential(
@@ -69,9 +71,10 @@ StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::ResetCredential(
     const uint64_t label,
     const std::vector<std::vector<uint8_t>>& h_aux,
     const std::vector<uint8_t>& orig_cred_metadata,
-    const brillo::SecureBlob& reset_secret) {
+    const brillo::SecureBlob& reset_secret,
+    bool strong_reset) {
   return middleware_.CallSync<&Backend::PinWeaver::ResetCredential>(
-      label, h_aux, orig_cred_metadata, reset_secret);
+      label, h_aux, orig_cred_metadata, reset_secret, strong_reset);
 }
 
 StatusOr<GetLogResult> PinWeaverFrontendImpl::GetLog(
@@ -102,6 +105,12 @@ StatusOr<DelaySchedule> PinWeaverFrontendImpl::GetDelaySchedule(
 StatusOr<uint32_t> PinWeaverFrontendImpl::GetDelayInSeconds(
     const brillo::Blob& cred_metadata) {
   return middleware_.CallSync<&Backend::PinWeaver::GetDelayInSeconds>(
+      cred_metadata);
+}
+
+StatusOr<std::optional<uint32_t>> PinWeaverFrontendImpl::GetExpirationInSeconds(
+    const brillo::Blob& cred_metadata) {
+  return middleware_.CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
       cred_metadata);
 }
 

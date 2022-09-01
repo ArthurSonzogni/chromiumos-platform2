@@ -7,6 +7,7 @@
 #include <fcntl.h>
 
 #include <string>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -110,9 +111,9 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
 
   ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
 
-  hwsec::StatusOr<CredentialTreeResult> result =
-      pinweaver_->InsertCredential(policies, label.value(), h_aux, le_secret,
-                                   he_secret, reset_secret, delay_sched);
+  hwsec::StatusOr<CredentialTreeResult> result = pinweaver_->InsertCredential(
+      policies, label.value(), h_aux, le_secret, he_secret, reset_secret,
+      delay_sched, /*expiration_delay=*/std::nullopt);
   if (!result.ok()) {
     LOG(ERROR) << "Error executing pinweaver InsertCredential command: "
                << result.status();
@@ -288,7 +289,8 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
   hwsec::StatusOr<CredentialTreeResult> result =
       is_le_secret
           ? pinweaver_->CheckCredential(label, h_aux, orig_cred, secret)
-          : pinweaver_->ResetCredential(label, h_aux, orig_cred, secret);
+          : pinweaver_->ResetCredential(label, h_aux, orig_cred, secret,
+                                        /*strong_reset=*/false);
 
   if (!result.ok()) {
     LOG(ERROR) << "Failed to call pinweaver in check secret: "

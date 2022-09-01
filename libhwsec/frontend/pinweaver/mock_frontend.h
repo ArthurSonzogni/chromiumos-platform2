@@ -35,7 +35,8 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const brillo::SecureBlob& le_secret,
                const brillo::SecureBlob& he_secret,
                const brillo::SecureBlob& reset_secret,
-               const DelaySchedule& delay_schedule),
+               const DelaySchedule& delay_schedule,
+               std::optional<uint32_t> expiration_delay),
               (override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               CheckCredential,
@@ -55,7 +56,8 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
               (const uint64_t label,
                const std::vector<std::vector<uint8_t>>& h_aux,
                const std::vector<uint8_t>& orig_cred_metadata,
-               const brillo::SecureBlob& reset_secret),
+               const brillo::SecureBlob& reset_secret,
+               bool strong_reset),
               (override));
   MOCK_METHOD(StatusOr<GetLogResult>,
               GetLog,
@@ -77,6 +79,10 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
               (override));
   MOCK_METHOD(StatusOr<uint32_t>,
               GetDelayInSeconds,
+              (const brillo::Blob& cred_metadata),
+              (override));
+  MOCK_METHOD(StatusOr<std::optional<uint32_t>>,
+              GetExpirationInSeconds,
               (const brillo::Blob& cred_metadata),
               (override));
 };

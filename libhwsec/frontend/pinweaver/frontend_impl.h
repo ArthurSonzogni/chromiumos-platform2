@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FRONTEND_PINWEAVER_FRONTEND_IMPL_H_
 #define LIBHWSEC_FRONTEND_PINWEAVER_FRONTEND_IMPL_H_
 
+#include <optional>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -34,7 +35,8 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
       const brillo::SecureBlob& le_secret,
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
-      const DelaySchedule& delay_schedule) override;
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay) override;
   StatusOr<CredentialTreeResult> CheckCredential(
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
@@ -48,7 +50,8 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
       const uint64_t label,
       const std::vector<std::vector<uint8_t>>& h_aux,
       const std::vector<uint8_t>& orig_cred_metadata,
-      const brillo::SecureBlob& reset_secret) override;
+      const brillo::SecureBlob& reset_secret,
+      bool strong_reset) override;
   StatusOr<GetLogResult> GetLog(
       const std::vector<uint8_t>& cur_disk_root_hash) override;
   StatusOr<ReplayLogOperationResult> ReplayLogOperation(
@@ -60,6 +63,8 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
   StatusOr<DelaySchedule> GetDelaySchedule(
       const brillo::Blob& cred_metadata) override;
   StatusOr<uint32_t> GetDelayInSeconds(
+      const brillo::Blob& cred_metadata) override;
+  StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       const brillo::Blob& cred_metadata) override;
 };
 
