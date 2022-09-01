@@ -218,7 +218,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
       &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
-  auth_session.SetAuthSessionAsAuthenticated();
+  auth_session.SetAuthSessionAsAuthenticated(kAllAuthIntents);
 
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
   auth_session.timeout_timer_.FireNow();

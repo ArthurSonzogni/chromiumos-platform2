@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/flat_set.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -207,8 +208,9 @@ AuthSession::AuthSession(
 
   // If the Auth Session is started for an ephemeral user, we always start in an
   // authenticated state.
+  // TODO(b/240596931): Remove this in favor of lightweight authentication.
   if (is_ephemeral_user_) {
-    SetAuthSessionAsAuthenticated();
+    SetAuthSessionAsAuthenticated(kAllAuthIntents);
   }
 }
 
@@ -243,12 +245,16 @@ void AuthSession::RecordAuthSessionStart() const {
             << " keys=" << base::JoinString(keys, ",") << ".";
 }
 
-void AuthSession::SetAuthSessionAsAuthenticated() {
-  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+void AuthSession::SetAuthSessionAsAuthenticated(
+    base::span<const AuthIntent> new_authorized_intents) {
+  if (new_authorized_intents.empty()) {
+    NOTREACHED() << "Empty intent set cannot be authorized";
+    return;
+  }
+  authorized_intents_.insert(new_authorized_intents.begin(),
+                             new_authorized_intents.end());
+  if (authorized_intents_.contains(AuthIntent::kDecrypt)) {
     status_ = AuthStatus::kAuthStatusAuthenticated;
-    authorized_intents_.insert(AuthIntent::kDecrypt);
-    authorized_intents_.insert(AuthIntent::kVerifyOnly);
-
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
     LOG(INFO) << "AuthSession: authenticated.";
@@ -293,7 +299,7 @@ CryptohomeStatus AuthSession::OnUserCreated() {
     }
     // Since this function is called for a new user, it is safe to put the
     // AuthSession in an authenticated state.
-    SetAuthSessionAsAuthenticated();
+    SetAuthSessionAsAuthenticated(kAllAuthIntents);
     user_exists_ = true;
     if (IsUserSecretStashExperimentEnabled()) {
       // Check invariants.
@@ -836,7 +842,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
 
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated();
+  SetAuthSessionAsAuthenticated(kAllAuthIntents);
 
   // Set the credential verifier for this credential.
   if (passkey.has_value()) {
@@ -2082,7 +2088,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   ResetLECredentials();
 
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated();
+  SetAuthSessionAsAuthenticated(kAllAuthIntents);
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());

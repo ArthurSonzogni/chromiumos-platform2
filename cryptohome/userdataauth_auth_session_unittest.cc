@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -21,6 +22,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
@@ -326,8 +328,9 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     CreateAuthSessionManager(auth_block_utility_impl_.get());
   }
 
-  void SetAuthSessionAsAuthenticated(AuthSession* auth_session) {
-    auth_session->SetAuthSessionAsAuthenticated();
+  void SetAuthSessionAsAuthenticated(AuthSession* auth_session,
+                                     base::span<const AuthIntent> intents) {
+    auth_session->SetAuthSessionAsAuthenticated(intents);
   }
 
   AuthorizationRequest CreateAuthorization(const std::string& secret) {
@@ -551,7 +554,7 @@ TEST_F(AuthSessionInterfaceTest,
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt);
-  SetAuthSessionAsAuthenticated(auth_session);
+  SetAuthSessionAsAuthenticated(auth_session, kAllAuthIntents);
 
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))

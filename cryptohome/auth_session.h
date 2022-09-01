@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/containers/flat_set.h>
+#include <base/containers/span.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <base/unguessable_token.h>
@@ -66,6 +67,11 @@ enum class AuthIntent {
   // this intent doesn't allow any privileged operation.
   kVerifyOnly,
 };
+
+// The list of all intents. Useful for places that want to set the "fully
+// authenticated" state.
+constexpr AuthIntent kAllAuthIntents[] = {AuthIntent::kDecrypt,
+                                          AuthIntent::kVerifyOnly};
 
 // This class starts a session for the user to authenticate with their
 // credentials.
@@ -267,9 +273,10 @@ class AuthSession final {
   // Emits a debug log message with the session's initial state.
   void RecordAuthSessionStart() const;
 
-  // SetAuthSessionAsAuthenticated to authenticated sets the status to
-  // authenticated and start the timer.
-  void SetAuthSessionAsAuthenticated();
+  // Switches the state to authorize the specified intents. Starts or restarts
+  // the timer when applicable.
+  void SetAuthSessionAsAuthenticated(
+      base::span<const AuthIntent> new_authorized_intents);
 
   // This function returns credentials based on the state of the current
   // |AuthSession|.

@@ -93,7 +93,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   ASSERT_THAT(auth_session, NotNull());
   base::UnguessableToken token = auth_session->token();
   ASSERT_THAT(auth_session_manager_.FindAuthSession(token), Eq(auth_session));
-  auth_session->SetAuthSessionAsAuthenticated();
+  auth_session->SetAuthSessionAsAuthenticated(kAllAuthIntents);
   task_environment_.FastForwardUntilNoTasksRemain();
   ASSERT_THAT(auth_session_manager_.FindAuthSession(token), IsNull());
 }
