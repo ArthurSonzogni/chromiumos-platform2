@@ -260,6 +260,7 @@ void DlpAdaptor::RequestFileAccess(
     inodes.push_back(inode_n);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
+    file_metadata->set_inode(inode_n);
     file_metadata->set_source_url(file_entry.source_url());
     file_metadata->set_path(file_path);
   }
@@ -361,6 +362,7 @@ void DlpAdaptor::CheckFilesTransfer(
     transferred_files.insert(file_path);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
+    file_metadata->set_inode(file_inode);
     file_metadata->set_source_url(file_entry.source_url());
     file_metadata->set_path(file_path);
   }
