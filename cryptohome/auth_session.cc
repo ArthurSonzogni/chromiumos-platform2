@@ -1789,6 +1789,13 @@ void AuthSession::AddAuthFactor(
     return;
   }
 
+  if (is_ephemeral_user_) {
+    // If AuthSession is configured as an ephemeral user, then we do not save
+    // the key to the disk.
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
   if (user_secret_stash_) {
     // The user has a UserSecretStash (either because it's a new user and the
     // experiment is on or it's an existing user who went through this flow), so
