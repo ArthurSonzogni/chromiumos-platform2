@@ -20,6 +20,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver/frontend.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
@@ -39,7 +40,7 @@ class Crypto {
   explicit Crypto(hwsec::CryptohomeFrontend* hwsec,
                   hwsec::PinWeaverFrontend* pinweaver,
                   CryptohomeKeysManager* cryptohome_keys_manager,
-                  cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend);
+                  hwsec::RecoveryCryptoFrontend* recovery_hwsec);
   Crypto(const Crypto&) = delete;
   Crypto& operator=(const Crypto&) = delete;
 
@@ -98,10 +99,8 @@ class Crypto {
     return cryptohome_keys_manager_;
   }
 
-  // Gets the RecoveryCryptoTpmBackend object.
-  cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() {
-    return recovery_backend_;
-  }
+  // Gets the hwsec::RecoveryCryptoFrontend object.
+  hwsec::RecoveryCryptoFrontend* GetRecoveryCrypto() { return recovery_hwsec_; }
 
   // Gets an instance of the LECredentialManagerImpl object.
   LECredentialManager* le_manager() { return le_manager_.get(); }
@@ -125,7 +124,7 @@ class Crypto {
   CryptohomeKeysManager* const cryptohome_keys_manager_;
 
   // The cryptohome recovery backend.
-  cryptorecovery::RecoveryCryptoTpmBackend* const recovery_backend_;
+  hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
 
   // Handler for Low Entropy credentials.
   std::unique_ptr<LECredentialManager> le_manager_;

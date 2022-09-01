@@ -10,6 +10,7 @@
 
 #include <brillo/secure_blob.h>
 #include <cryptohome/platform.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
@@ -25,7 +26,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
  public:
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<RecoveryCryptoImpl> Create(
-      RecoveryCryptoTpmBackend* tpm_backend, Platform* platform);
+      hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform);
 
   RecoveryCryptoImpl(const RecoveryCryptoImpl&) = delete;
   RecoveryCryptoImpl& operator=(const RecoveryCryptoImpl&) = delete;
@@ -68,7 +69,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
  private:
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
-                     RecoveryCryptoTpmBackend* tpm_backend,
+                     hwsec::RecoveryCryptoFrontend* hwsec_backend,
                      Platform* platform);
   bool GenerateRecoveryKey(const crypto::ScopedEC_POINT& recovery_pub_point,
                            const crypto::ScopedEC_KEY& dealer_key_pair,
@@ -94,7 +95,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const CryptoRecoveryIdContainer& recovery_id_pb) const;
 
   hwsec_foundation::EllipticCurve ec_;
-  RecoveryCryptoTpmBackend* const tpm_backend_;
+  hwsec::RecoveryCryptoFrontend* const hwsec_backend_;
   Platform* const platform_;
 };
 

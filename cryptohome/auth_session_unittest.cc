@@ -37,7 +37,6 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -2628,7 +2627,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                    const cryptorecovery::RequestMetadata& request_metadata,
                    const brillo::Blob& epoch_response,
                    const CryptohomeRecoveryAuthBlockState& state,
-                   cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
+                   hwsec::RecoveryCryptoFrontend* recovery_hwsec,
                    brillo::SecureBlob* out_recovery_request,
                    brillo::SecureBlob* out_ephemeral_pub_key) {
         *out_ephemeral_pub_key = brillo::SecureBlob("test");

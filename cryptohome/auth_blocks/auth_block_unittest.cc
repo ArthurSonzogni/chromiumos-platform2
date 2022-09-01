@@ -13,6 +13,8 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -29,7 +31,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/fake_platform.h"
@@ -1299,7 +1300,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   }
 
   void PerformRecovery(
-      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+      hwsec::RecoveryCryptoFrontend* recovery_crypto,
       const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state,
       cryptorecovery::CryptoRecoveryRpcResponse* response_proto,
       brillo::SecureBlob* ephemeral_pub_key) {
@@ -1315,7 +1316,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
 
     // Start recovery process.
     std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-        cryptorecovery::RecoveryCryptoImpl::Create(tpm_backend, &platform_);
+        cryptorecovery::RecoveryCryptoImpl::Create(recovery_crypto, &platform_);
     ASSERT_TRUE(recovery);
     brillo::SecureBlob rsa_priv_key;
 
@@ -1366,8 +1367,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   auth_input.obfuscated_username = kObfuscatedUsername;
 
   // IsPinWeaverEnabled()) returns `false` -> revocation is not supported.
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
+  hwsec::Tpm2SimulatorFactoryForTest factory;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend =
+      factory.GetRecoveryCryptoFrontend();
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   SetupMockHwsec(hwsec);
@@ -1375,7 +1377,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec, &recovery_crypto_fake_tpm_backend, nullptr, &platform_);
+      &hwsec, recovery_crypto_fake_backend.get(), nullptr, &platform_);
   AuthBlockState auth_state;
   EXPECT_TRUE(
       auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
@@ -1389,7 +1391,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   brillo::SecureBlob ephemeral_pub_key;
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
-  PerformRecovery(&recovery_crypto_fake_tpm_backend, cryptohome_recovery_state,
+  PerformRecovery(recovery_crypto_fake_backend.get(), cryptohome_recovery_state,
                   &response_proto, &ephemeral_pub_key);
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
@@ -1425,8 +1427,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   auth_input.obfuscated_username = kObfuscatedUsername;
 
   // IsPinWeaverEnabled() returns `true` -> revocation is supported.
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
+  hwsec::Tpm2SimulatorFactoryForTest factory;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend =
+      factory.GetRecoveryCryptoFrontend();
   NiceMock<MockLECredentialManager> le_cred_manager;
   brillo::SecureBlob le_secret, he_secret;
   uint64_t le_label = 1;
@@ -1441,7 +1444,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec, &recovery_crypto_fake_tpm_backend, &le_cred_manager, &platform_);
+      &hwsec, recovery_crypto_fake_backend.get(), &le_cred_manager, &platform_);
   AuthBlockState auth_state;
   EXPECT_TRUE(
       auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
@@ -1460,7 +1463,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   brillo::SecureBlob ephemeral_pub_key;
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
-  PerformRecovery(&recovery_crypto_fake_tpm_backend, cryptohome_recovery_state,
+  PerformRecovery(recovery_crypto_fake_backend.get(), cryptohome_recovery_state,
                   &response_proto, &ephemeral_pub_key);
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
@@ -1503,15 +1506,16 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
 
   // Tpm::GetLECredentialBackend() returns `nullptr` -> revocation is not
   // supported.
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
+  hwsec::Tpm2SimulatorFactoryForTest factory;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend =
+      factory.GetRecoveryCryptoFrontend();
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   SetupMockHwsec(hwsec);
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec, &recovery_crypto_fake_tpm_backend,
+      &hwsec, recovery_crypto_fake_backend.get(),
       /*LECredentialManager*=*/nullptr, &platform_);
   AuthBlockState auth_state;
   EXPECT_FALSE(

@@ -166,8 +166,7 @@ class StubTpm : public Tpm {
     return false;
   }
   bool GetRsuDeviceId(std::string* device_id) override { return false; }
-  cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend()
-      override {
+  hwsec::RecoveryCryptoFrontend* GetRecoveryCrypto() override {
     return nullptr;
   }
   hwsec::Status IsDelegateBoundToPcr(bool* result) override {

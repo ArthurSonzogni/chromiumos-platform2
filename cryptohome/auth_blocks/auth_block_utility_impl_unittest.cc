@@ -17,7 +17,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -36,7 +38,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/filesystem_layout.h"
@@ -78,10 +79,12 @@ constexpr char kUser[] = "Test User";
 class AuthBlockUtilityImplTest : public ::testing::Test {
  public:
   AuthBlockUtilityImplTest()
-      : crypto_(&hwsec_,
+      : recovery_crypto_fake_backend_(
+            hwsec_factory_.GetRecoveryCryptoFrontend()),
+        crypto_(&hwsec_,
                 &pinweaver_,
                 &cryptohome_keys_manager_,
-                &recovery_crypto_fake_tpm_backend_) {}
+                recovery_crypto_fake_backend_.get()) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
 
@@ -105,8 +108,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend_;
+  hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
   Crypto crypto_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
@@ -1642,9 +1645,8 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
             &epoch_response));
     epoch_response_blob_ =
         brillo::BlobFromString(epoch_response.SerializeAsString());
-
     auto recovery = cryptorecovery::RecoveryCryptoImpl::Create(
-        &recovery_crypto_fake_tpm_backend_, &platform_);
+        recovery_crypto_fake_backend_.get(), &platform_);
     ASSERT_TRUE(recovery);
 
     cryptorecovery::HsmPayload hsm_payload;
@@ -1693,10 +1695,9 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
 TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, GetAuthBlockState(),
-      crypto_.GetRecoveryCryptoBackend(), &recovery_request,
-      &ephemeral_pub_key);
+      "obfuscated_username", cryptorecovery::RequestMetadata{},
+      epoch_response_blob_, GetAuthBlockState(), crypto_.GetRecoveryCrypto(),
+      &recovery_request, &ephemeral_pub_key);
   EXPECT_TRUE(status.ok());
   EXPECT_FALSE(ephemeral_pub_key.empty());
   EXPECT_FALSE(recovery_request.empty());
@@ -1707,8 +1708,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestNoHsmPayload) {
   auto state = GetAuthBlockState();
   state.hsm_payload = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      "obfuscated_username", cryptorecovery::RequestMetadata{},
+      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
       &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
@@ -1719,8 +1720,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   auto state = GetAuthBlockState();
   state.channel_pub_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      "obfuscated_username", cryptorecovery::RequestMetadata{},
+      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
       &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
@@ -1731,8 +1732,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   auto state = GetAuthBlockState();
   state.encrypted_channel_priv_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCryptoBackend(),
+      "obfuscated_username", cryptorecovery::RequestMetadata{},
+      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
       &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
@@ -1741,10 +1742,9 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
        GenerateRecoveryRequestNoEpochResponse) {
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      /*obfuscated_username=*/"", cryptorecovery::RequestMetadata{},
+      "obfuscated_username", cryptorecovery::RequestMetadata{},
       /*epoch_response=*/brillo::Blob(), GetAuthBlockState(),
-      crypto_.GetRecoveryCryptoBackend(), &recovery_request,
-      &ephemeral_pub_key);
+      crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 

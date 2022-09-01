@@ -1036,41 +1036,50 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
 bool TpmLiveTest::RecoveryTpmBackendTest() {
   LOG(INFO) << "RecoveryTpmBackendTest started";
 
-  cryptohome::cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
-      tpm_->GetRecoveryCryptoBackend();
-  if (!tpm_backend) {
+  hwsec::RecoveryCryptoFrontend* recovery_crypto = tpm_->GetRecoveryCrypto();
+  if (!recovery_crypto) {
     LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
     return false;
   }
 
-  hwsec_foundation::ScopedBN_CTX context =
+  hwsec_foundation::ScopedBN_CTX context_ =
       hwsec_foundation::CreateBigNumContext();
   std::optional<hwsec_foundation::EllipticCurve> ec_256 =
       hwsec_foundation::EllipticCurve::Create(
-          hwsec_foundation::EllipticCurve::CurveType::kPrime256, context.get());
+          hwsec_foundation::EllipticCurve::CurveType::kPrime256,
+          context_.get());
   crypto::ScopedEC_KEY destination_share_key_pair =
-      ec_256->GenerateKey(context.get());
+      ec_256->GenerateKey(context_.get());
   if (!destination_share_key_pair) {
     LOG(ERROR) << "Failed to generate destination share key pair";
     return false;
   }
-  brillo::SecureBlob key_auth_value = tpm_backend->GenerateKeyAuthValue();
-
-  // Call key importing/sealing
-  cryptorecovery::EncryptEccPrivateKeyRequest encrypt_request_destination_share(
-      {.ec = ec_256.value(),
-       .own_key_pair = destination_share_key_pair,
-       .auth_value = key_auth_value,
-       .obfuscated_username = "obfuscated_username"});
-  cryptorecovery::EncryptEccPrivateKeyResponse
-      encrypt_response_destination_share;
-  if (!tpm_backend->EncryptEccPrivateKey(encrypt_request_destination_share,
-                                         &encrypt_response_destination_share)) {
-    LOG(ERROR) << "Failed to encrypt destination share.";
+  hwsec::StatusOr<std::optional<brillo::SecureBlob>> key_auth_value =
+      recovery_crypto->GenerateKeyAuthValue();
+  if (!key_auth_value.ok()) {
+    LOG(ERROR) << "Failed go generate key auth value: "
+               << key_auth_value.status();
     return false;
   }
 
-  crypto::ScopedEC_KEY others_key_pair = ec_256->GenerateKey(context.get());
+  // Call key importing/sealing
+  hwsec::EncryptEccPrivateKeyRequest encrypt_request_destination_share{
+      .ec = ec_256.value(),
+      .own_key_pair = std::move(destination_share_key_pair),
+      .auth_value = key_auth_value.value(),
+      .current_user = "obfuscated_username",
+  };
+  hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
+      encrypt_response_destination_share =
+          recovery_crypto->EncryptEccPrivateKey(
+              std::move(encrypt_request_destination_share));
+  if (!encrypt_response_destination_share.ok()) {
+    LOG(ERROR) << "Failed to encrypt destination share: "
+               << encrypt_response_destination_share.status();
+    return false;
+  }
+
+  crypto::ScopedEC_KEY others_key_pair = ec_256->GenerateKey(context_.get());
   if (!others_key_pair) {
     LOG(ERROR) << "Failed to generate other's key pair.";
     return false;
@@ -1089,23 +1098,23 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
   }
 
   // Call key loading/unsealing
-  cryptorecovery::GenerateDhSharedSecretRequest
-      decrypt_request_destination_share(
-          {.ec = ec_256.value(),
-           .encrypted_own_priv_key =
-               encrypt_response_destination_share.encrypted_own_priv_key,
-           .extended_pcr_bound_own_priv_key =
-               encrypt_response_destination_share
-                   .extended_pcr_bound_own_priv_key,
-           .auth_value = key_auth_value,
-           .obfuscated_username = "obfuscated_username",
-           .others_pub_point = std::move(others_pub_key)});
-  crypto::ScopedEC_POINT point_dh =
-      tpm_backend->GenerateDiffieHellmanSharedSecret(
-          decrypt_request_destination_share);
-  if (!point_dh) {
+  hwsec::GenerateDhSharedSecretRequest decrypt_request_destination_share{
+      .ec = ec_256.value(),
+      .encrypted_own_priv_key =
+          encrypt_response_destination_share->encrypted_own_priv_key,
+      .extended_pcr_bound_own_priv_key =
+          encrypt_response_destination_share->extended_pcr_bound_own_priv_key,
+      .auth_value = key_auth_value.value(),
+      .current_user = "obfuscated_username",
+      .others_pub_point = std::move(others_pub_key),
+  };
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh =
+      recovery_crypto->GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
+  if (!point_dh.ok()) {
     LOG(ERROR) << "Failed to perform scalar multiplication of others_pub_key "
-                  "and destination_share";
+                  "and destination_share: "
+               << point_dh.status();
     return false;
   }
 
@@ -1118,10 +1127,28 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
     return false;
   }
 
-  crypto::ScopedEC_POINT point_dh_null =
-      tpm_backend->GenerateDiffieHellmanSharedSecret(
-          decrypt_request_destination_share);
-  if (point_dh_null) {
+  others_pub_key = crypto::ScopedEC_POINT(
+      EC_POINT_dup(others_pub_key_ptr, ec_256->GetGroup()));
+  if (!others_pub_key) {
+    LOG(ERROR) << "Failed to get other's public key.";
+    return false;
+  }
+
+  hwsec::GenerateDhSharedSecretRequest decrypt_failed_request_destination_share{
+      .ec = ec_256.value(),
+      .encrypted_own_priv_key =
+          encrypt_response_destination_share->encrypted_own_priv_key,
+      .extended_pcr_bound_own_priv_key =
+          encrypt_response_destination_share->extended_pcr_bound_own_priv_key,
+      .auth_value = key_auth_value.value(),
+      .current_user = "obfuscated_username",
+      .others_pub_point = std::move(others_pub_key),
+  };
+
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_null =
+      recovery_crypto->GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_failed_request_destination_share));
+  if (point_dh_null.ok()) {
     LOG(ERROR) << "Generated DH shared secret successfully without the correct "
                   "PCR state.";
     return false;

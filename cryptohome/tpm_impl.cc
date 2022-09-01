@@ -165,7 +165,8 @@ TpmImpl::TpmImpl()
       owner_password_(),
       hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
       hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
-      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()) {
+      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()),
+      recovery_crypto_(hwsec_factory_->GetRecoveryCryptoFrontend()) {
   TSS_HCONTEXT context_handle = ConnectContext();
   if (context_handle) {
     tpm_context_.reset(0, context_handle);
@@ -1885,8 +1886,8 @@ bool TpmImpl::GetRsuDeviceId(std::string* device_id) {
   return false;
 }
 
-cryptorecovery::RecoveryCryptoTpmBackend* TpmImpl::GetRecoveryCryptoBackend() {
-  return &recovery_crypto_backend_;
+hwsec::RecoveryCryptoFrontend* TpmImpl::GetRecoveryCrypto() {
+  return recovery_crypto_.get();
 }
 
 bool TpmImpl::GetDelegate(brillo::Blob* blob,

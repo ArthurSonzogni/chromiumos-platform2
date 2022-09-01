@@ -152,8 +152,8 @@ std::string GetRlzCode() {
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
-    RecoveryCryptoTpmBackend* tpm_backend, Platform* platform) {
-  DCHECK(tpm_backend);
+    hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform) {
+  DCHECK(hwsec_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -168,14 +168,15 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
   // using wrapUnique because the constructor is private and make_unique calls
   // the constructor externally
   return base::WrapUnique(
-      new RecoveryCryptoImpl(std::move(*ec), tpm_backend, platform));
+      new RecoveryCryptoImpl(std::move(*ec), hwsec_backend, platform));
 }
 
-RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec,
-                                       RecoveryCryptoTpmBackend* tpm_backend,
-                                       Platform* platform)
-    : ec_(std::move(ec)), tpm_backend_(tpm_backend), platform_(platform) {
-  DCHECK(tpm_backend_);
+RecoveryCryptoImpl::RecoveryCryptoImpl(
+    EllipticCurve ec,
+    hwsec::RecoveryCryptoFrontend* hwsec_backend,
+    Platform* platform)
+    : ec_(std::move(ec)), hwsec_backend_(hwsec_backend), platform_(platform) {
+  DCHECK(hwsec_backend_);
 }
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
@@ -337,19 +338,22 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
   // because key_auth_value is unavailable and will only be recovered from the
   // decrypted response afterward
-  crypto::ScopedEC_POINT shared_secret_point =
-      tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          GenerateDhSharedSecretRequest(
-              {.ec = ec_,
-               .encrypted_own_priv_key =
-                   request_param.encrypted_channel_priv_key,
-               .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
-               .auth_value = std::nullopt,
-               .obfuscated_username = request_param.obfuscated_username,
-               .others_pub_point = std::move(epoch_pub_point)}));
-  if (!shared_secret_point) {
+  hwsec::StatusOr<crypto::ScopedEC_POINT> shared_secret_point =
+      hwsec_backend_->GenerateDiffieHellmanSharedSecret(
+          hwsec::GenerateDhSharedSecretRequest{
+              .ec = ec_,
+              .encrypted_own_priv_key =
+                  brillo::Blob(request_param.encrypted_channel_priv_key.begin(),
+                               request_param.encrypted_channel_priv_key.end()),
+              .extended_pcr_bound_own_priv_key = brillo::Blob(),
+              .auth_value = std::nullopt,
+              .current_user = request_param.obfuscated_username,
+              .others_pub_point = std::move(epoch_pub_point),
+          });
+  if (!shared_secret_point.ok()) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
-                  "channel_priv_key";
+                  "channel_priv_key: "
+               << shared_secret_point.status();
     return false;
   }
   brillo::SecureBlob aes_gcm_key;
@@ -357,7 +361,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // requires the need to utilize a randomized salt value in the HKDF
   // computation.
   if (!GenerateEcdhHkdfSymmetricKey(
-          ec_, *shared_secret_point, request_param.channel_pub_key,
+          ec_, *shared_secret_point.value(), request_param.channel_pub_key,
           GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
           kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for recovery "
@@ -366,7 +370,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   }
 
   // Dispose shared_secret_point after used
-  shared_secret_point.reset();
+  shared_secret_point.value().reset();
 
   brillo::SecureBlob ephemeral_inverse_pub_key;
   if (!GenerateEphemeralKey(ephemeral_pub_key, &ephemeral_inverse_pub_key)) {
@@ -391,22 +395,31 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   }
 
   // Sign the request payload with the rsa private key
-  brillo::SecureBlob request_payload_blob;
+  brillo::SecureBlob request_payload_secure_blob;
   if (!SerializeRecoveryRequestPayloadToCbor(request_payload,
-                                             &request_payload_blob)) {
+                                             &request_payload_secure_blob)) {
     LOG(ERROR) << "Failed to serialize Recovery Request payload";
     return false;
   }
-  brillo::SecureBlob rsa_signature;
-  if (!tpm_backend_->SignRequestPayload(request_param.encrypted_rsa_priv_key,
-                                        request_payload_blob, &rsa_signature)) {
-    LOG(ERROR) << "Failed to sign Recovery Request payload";
+  brillo::Blob encrypted_rsa_priv_key(
+      request_param.encrypted_rsa_priv_key.begin(),
+      request_param.encrypted_rsa_priv_key.end());
+  brillo::Blob request_payload_blob(request_payload_secure_blob.begin(),
+                                    request_payload_secure_blob.end());
+  hwsec::StatusOr<std::optional<brillo::Blob>> rsa_signature =
+      hwsec_backend_->SignRequestPayload(encrypted_rsa_priv_key,
+                                         request_payload_blob);
+  if (!rsa_signature.ok()) {
+    LOG(ERROR) << "Failed to sign Recovery Request payload: "
+               << rsa_signature.status();
     return false;
   }
 
   RecoveryRequest request;
-  request.request_payload = std::move(request_payload_blob);
-  request.rsa_signature = std::move(rsa_signature);
+  request.request_payload = std::move(request_payload_secure_blob);
+  if (rsa_signature.value().has_value()) {
+    request.rsa_signature = brillo::SecureBlob(rsa_signature.value().value());
+  }
   if (!GenerateRecoveryRequestProto(request, recovery_request)) {
     LOG(ERROR) << "Failed to generate Recovery Request proto";
     return false;
@@ -454,23 +467,32 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     }
   } while (BN_is_zero(secret.get()));
 
-  brillo::SecureBlob key_auth_value = tpm_backend_->GenerateKeyAuthValue();
-  EncryptEccPrivateKeyRequest tpm_backend_request_destination_share(
-      {.ec = ec_,
-       .own_key_pair = destination_share_key_pair,
-       .auth_value = key_auth_value,
-       .obfuscated_username = request.obfuscated_username});
-  EncryptEccPrivateKeyResponse tpm_backend_response_destination_share;
-  if (!tpm_backend_->EncryptEccPrivateKey(
-          tpm_backend_request_destination_share,
-          &tpm_backend_response_destination_share)) {
-    LOG(ERROR) << "Failed to encrypt destination share";
+  hwsec::StatusOr<std::optional<brillo::SecureBlob>> key_auth_value =
+      hwsec_backend_->GenerateKeyAuthValue();
+  if (!key_auth_value.ok()) {
+    LOG(ERROR) << "Failed to generate key auth value: "
+               << key_auth_value.status();
     return false;
   }
-  response->encrypted_destination_share =
-      tpm_backend_response_destination_share.encrypted_own_priv_key;
-  response->extended_pcr_bound_destination_share =
-      tpm_backend_response_destination_share.extended_pcr_bound_own_priv_key;
+
+  hwsec::EncryptEccPrivateKeyRequest backend_request_destination_share{
+      .ec = ec_,
+      .own_key_pair = std::move(destination_share_key_pair),
+      .auth_value = key_auth_value.value(),
+      .current_user = request.obfuscated_username,
+  };
+  hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
+      backend_response_destination_share = hwsec_backend_->EncryptEccPrivateKey(
+          std::move(backend_request_destination_share));
+  if (!backend_response_destination_share.ok()) {
+    LOG(ERROR) << "Failed to encrypt destination share: "
+               << backend_response_destination_share.status();
+    return false;
+  }
+  response->encrypted_destination_share = brillo::SecureBlob(
+      backend_response_destination_share->encrypted_own_priv_key);
+  response->extended_pcr_bound_destination_share = brillo::SecureBlob(
+      backend_response_destination_share->extended_pcr_bound_own_priv_key);
 
   crypto::ScopedEC_POINT recovery_pub_point =
       ec_.MultiplyWithGenerator(*secret, context.get());
@@ -481,11 +503,20 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   }
 
   // Generate RSA key pair
-  brillo::SecureBlob rsa_public_key_der;
-  if (!tpm_backend_->GenerateRsaKeyPair(&response->encrypted_rsa_priv_key,
-                                        &rsa_public_key_der)) {
-    LOG(ERROR) << "Error creating PCR bound signing key.";
+  hwsec::StatusOr<std::optional<hwsec::RecoveryCryptoRsaKeyPair>> rsa_key_pair =
+      hwsec_backend_->GenerateRsaKeyPair();
+  if (!rsa_key_pair.ok()) {
+    LOG(ERROR) << "Error creating PCR bound signing key: "
+               << rsa_key_pair.status();
     return false;
+  }
+
+  brillo::SecureBlob rsa_public_key_der;
+  if (rsa_key_pair.value().has_value()) {
+    response->encrypted_rsa_priv_key =
+        brillo::SecureBlob(rsa_key_pair.value()->encrypted_rsa_private_key);
+    rsa_public_key_der =
+        brillo::SecureBlob(rsa_key_pair.value()->rsa_public_key_spki_der);
   }
 
   // Generate channel key pair.
@@ -502,20 +533,23 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
   // because key_auth_value will be unavailable when encrypted_channel_priv_key
   // is unsealed from TPM1.2
-  EncryptEccPrivateKeyRequest tpm_backend_request_channel_priv_key(
-      {.ec = ec_,
-       .own_key_pair = channel_key_pair,
-       .auth_value = std::nullopt,
-       .obfuscated_username = request.obfuscated_username});
-  EncryptEccPrivateKeyResponse tpm_backend_response_channel_priv_key;
-  if (!tpm_backend_->EncryptEccPrivateKey(
-          tpm_backend_request_channel_priv_key,
-          &tpm_backend_response_channel_priv_key)) {
-    LOG(ERROR) << "Failed to encrypt channel_priv_key";
+  hwsec::EncryptEccPrivateKeyRequest backend_request_channel_priv_key{
+      .ec = ec_,
+      .own_key_pair = std::move(channel_key_pair),
+      .auth_value = std::nullopt,
+      .current_user = request.obfuscated_username,
+  };
+  hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
+      backend_response_channel_priv_key = hwsec_backend_->EncryptEccPrivateKey(
+          std::move(backend_request_channel_priv_key));
+  if (!backend_response_channel_priv_key.ok()) {
+    LOG(ERROR) << "Failed to encrypt channel_priv_key: "
+               << backend_response_channel_priv_key.status();
     return false;
   }
-  response->encrypted_channel_priv_key =
-      tpm_backend_response_channel_priv_key.encrypted_own_priv_key;
+
+  response->encrypted_channel_priv_key = brillo::SecureBlob(
+      backend_response_channel_priv_key->encrypted_own_priv_key);
 
   crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
   if (!publisher_key_pair) {
@@ -563,7 +597,9 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   HsmPlainText hsm_plain_text;
   hsm_plain_text.mediator_share = mediator_share;
   hsm_plain_text.dealer_pub_key = dealer_pub_key;
-  hsm_plain_text.key_auth_value = key_auth_value;
+  if (key_auth_value.value().has_value()) {
+    hsm_plain_text.key_auth_value = key_auth_value.value().value();
+  }
   if (!SerializeHsmPlainTextToCbor(hsm_plain_text, &plain_text_cbor)) {
     LOG(ERROR) << "Failed to generate HSM plain text cbor";
     return false;
@@ -667,25 +703,36 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to add mediated_point and ephemeral_pub_point";
     return false;
   }
+
+  std::optional<brillo::SecureBlob> auth_value;
+  if (!request.key_auth_value.empty()) {
+    auth_value = request.key_auth_value;
+  }
+
   // Performs scalar multiplication of dealer_pub_point and destination_share.
-  GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
-      {.ec = ec_,
-       .encrypted_own_priv_key = request.encrypted_destination_share,
-       .extended_pcr_bound_own_priv_key =
-           request.extended_pcr_bound_destination_share,
-       .auth_value = request.key_auth_value,
-       .obfuscated_username = request.obfuscated_username,
-       .others_pub_point = std::move(dealer_pub_point)});
-  crypto::ScopedEC_POINT point_dh =
-      tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          tpm_backend_request_destination_share);
-  if (!point_dh) {
+  hwsec::GenerateDhSharedSecretRequest backend_request_destination_share{
+      .ec = ec_,
+      .encrypted_own_priv_key =
+          brillo::Blob(request.encrypted_destination_share.begin(),
+                       request.encrypted_destination_share.end()),
+      .extended_pcr_bound_own_priv_key =
+          brillo::Blob(request.extended_pcr_bound_destination_share.begin(),
+                       request.extended_pcr_bound_destination_share.end()),
+      .auth_value = auth_value,
+      .current_user = request.obfuscated_username,
+      .others_pub_point = std::move(dealer_pub_point),
+  };
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh =
+      hwsec_backend_->GenerateDiffieHellmanSharedSecret(
+          std::move(backend_request_destination_share));
+  if (!point_dh.ok()) {
     LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "
-                  "and destination_share";
+                  "and destination_share: "
+               << point_dh.status();
     return false;
   }
   crypto::ScopedEC_POINT point_dest =
-      ec_.Add(*point_dh, *mediator_dh, context.get());
+      ec_.Add(*point_dh.value(), *mediator_dh, context.get());
   if (!point_dest) {
     LOG(ERROR)
         << "Failed to perform point addition of point_dh and mediator_dh";
@@ -765,24 +812,28 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
   // because key_auth_value is unavailable and will only be recovered from the
   // decrypted response afterward
-  GenerateDhSharedSecretRequest tpm_backend_request_destination_share(
-      {.ec = ec_,
-       .encrypted_own_priv_key = request.encrypted_channel_priv_key,
-       .extended_pcr_bound_own_priv_key = brillo::SecureBlob(),
-       .auth_value = std::nullopt,
-       .obfuscated_username = request.obfuscated_username,
-       .others_pub_point = std::move(epoch_pub_point)});
-  crypto::ScopedEC_POINT shared_secret_point =
-      tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          tpm_backend_request_destination_share);
-  if (!shared_secret_point) {
+  hwsec::GenerateDhSharedSecretRequest backend_request_destination_share{
+      .ec = ec_,
+      .encrypted_own_priv_key =
+          brillo::Blob(request.encrypted_channel_priv_key.begin(),
+                       request.encrypted_channel_priv_key.end()),
+      .extended_pcr_bound_own_priv_key = brillo::Blob(),
+      .auth_value = std::nullopt,
+      .current_user = request.obfuscated_username,
+      .others_pub_point = std::move(epoch_pub_point),
+  };
+  hwsec::StatusOr<crypto::ScopedEC_POINT> shared_secret_point =
+      hwsec_backend_->GenerateDiffieHellmanSharedSecret(
+          std::move(backend_request_destination_share));
+  if (!shared_secret_point.ok()) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
-                  "channel_priv_key";
+                  "channel_priv_key: "
+               << shared_secret_point.status();
     return false;
   }
   brillo::SecureBlob shared_secret_point_blob;
   crypto::ScopedEC_KEY shared_secret_key =
-      ec_.PointToEccKey(*shared_secret_point);
+      ec_.PointToEccKey(*shared_secret_point.value());
   if (!ec_.EncodeToSpkiDer(shared_secret_key, &shared_secret_point_blob,
                            context.get())) {
     LOG(ERROR)
@@ -790,18 +841,18 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfSymmetricKey(ec_, *shared_secret_point, epoch_pub_key,
-                                    GetResponsePayloadPlainTextHkdfInfo(),
-                                    response_ad.response_payload_salt,
-                                    RecoveryCrypto::kHkdfHash,
-                                    kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec_, *shared_secret_point.value(), epoch_pub_key,
+          GetResponsePayloadPlainTextHkdfInfo(),
+          response_ad.response_payload_salt, RecoveryCrypto::kHkdfHash,
+          kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for response "
                   "plain text decryption";
     return false;
   }
 
   // Dispose shared_secret_point after used
-  shared_secret_point.reset();
+  shared_secret_point.value().reset();
   shared_secret_point_blob.clear();
 
   brillo::SecureBlob response_plain_text_cbor;

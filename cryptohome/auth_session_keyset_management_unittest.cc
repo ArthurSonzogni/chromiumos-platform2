@@ -82,7 +82,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       : crypto_(&hwsec_,
                 &pinweaver_,
                 &cryptohome_keys_manager_,
-                /*recovery_backend=*/nullptr) {
+                /*recovery_hwsec=*/nullptr) {
     // Setting HWSec Expectations.
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));

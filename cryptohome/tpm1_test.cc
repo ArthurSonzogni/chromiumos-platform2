@@ -582,7 +582,4 @@ TEST_F(TpmImplTest, HasResetLockPermissionsFailure) {
   EXPECT_FALSE(GetTpm()->HasResetLockPermissions());
 }
 
-TEST_F(TpmImplTest, GetRecoveryCryptoBackend) {
-  EXPECT_TRUE(GetTpm()->GetRecoveryCryptoBackend());
-}
 }  // namespace cryptohome

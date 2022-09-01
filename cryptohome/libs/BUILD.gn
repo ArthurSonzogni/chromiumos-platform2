@@ -305,7 +305,6 @@ static_library("libcrosplatform") {
     "../auth_factor/auth_factor_manager.cc",
     "../cryptohome_metrics.cc",
     "../cryptorecovery/recovery_crypto.cc",
-    "../cryptorecovery/recovery_crypto_fake_tpm_backend_impl.cc",
     "../cryptorecovery/recovery_crypto_hsm_cbor_serialization.cc",
     "../cryptorecovery/recovery_crypto_impl.cc",
     "../cryptorecovery/recovery_crypto_util.h",
@@ -396,15 +395,11 @@ static_library("libcrostpm") {
   ]
 
   if (use.tpm2) {
-    sources += [
-      "../cryptorecovery/recovery_crypto_tpm2_backend_impl.cc",
-      "../tpm2_impl.cc",
-    ]
+    sources += [ "../tpm2_impl.cc" ]
     libs += [ "trunks" ]
   }
   if (use.tpm) {
     sources += [
-      "../cryptorecovery/recovery_crypto_tpm1_backend_impl.cc",
       "../tpm1_static_utils.cc",
       "../tpm_impl.cc",
       "../tpm_metrics.cc",

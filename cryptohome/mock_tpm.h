@@ -145,8 +145,8 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, GetVersionInfo, (TpmVersionInfo*), (override));
   MOCK_METHOD(bool, GetIFXFieldUpgradeInfo, (IFXFieldUpgradeInfo*), (override));
   MOCK_METHOD(bool, GetRsuDeviceId, (std::string*), (override));
-  MOCK_METHOD(cryptorecovery::RecoveryCryptoTpmBackend*,
-              GetRecoveryCryptoBackend,
+  MOCK_METHOD(hwsec::RecoveryCryptoFrontend*,
+              GetRecoveryCrypto,
               (),
               (override));
   MOCK_METHOD(bool,

@@ -27,9 +27,6 @@
 #include <openssl/rsa.h>
 
 namespace cryptohome {
-namespace cryptorecovery {
-class RecoveryCryptoTpmBackend;
-}  //  namespace cryptorecovery
 
 using TpmKeyHandle = uint32_t;
 
@@ -481,11 +478,10 @@ class Tpm {
   // than verifying RMA unlock eligibility.
   virtual bool GetRsuDeviceId(std::string* device_id) = 0;
 
-  // Get a pointer to the RecoveryCryptoBackend object, which is used for
-  // performing recovery-crypto operations. Returns nullptr if the
+  // Get a pointer to the hwsec::RecoveryCryptoFrontend object, which is used
+  // for performing recovery-crypto operations. Returns nullptr if the
   // implementation does not support recovery-crypto operations.
-  virtual cryptorecovery::RecoveryCryptoTpmBackend*
-  GetRecoveryCryptoBackend() = 0;
+  virtual hwsec::RecoveryCryptoFrontend* GetRecoveryCrypto() = 0;
 
   // Gets owner auth delegate. Returns |true| iff the operation succeeds. Once
   // returning |true|, |blob| and |secret| are set to the blob and secret of

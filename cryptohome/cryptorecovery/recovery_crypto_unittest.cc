@@ -6,13 +6,14 @@
 #include <utility>
 
 #include <gtest/gtest.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -111,6 +112,7 @@ class RecoveryCryptoTest : public testing::Test {
   ~RecoveryCryptoTest() = default;
 
   void SetUp() override {
+    recovery_crypto_fake_backend_ = hwsec_factory_.GetRecoveryCryptoFrontend();
     ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
         &mediator_pub_key_));
     ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
@@ -122,7 +124,7 @@ class RecoveryCryptoTest : public testing::Test {
     ASSERT_TRUE(
         FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response_));
 
-    recovery_ = RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend_,
+    recovery_ = RecoveryCryptoImpl::Create(recovery_crypto_fake_backend_.get(),
                                            &platform_);
     ASSERT_TRUE(recovery_);
     mediator_ = FakeRecoveryMediatorCrypto::Create();
@@ -176,8 +178,8 @@ class RecoveryCryptoTest : public testing::Test {
   RequestMetadata request_metadata_;
 
   FakePlatform platform_;
-  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend_;
+  hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
 
   SecureBlob mediator_pub_key_;
   SecureBlob mediator_priv_key_;
@@ -375,12 +377,10 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = ""});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
-                                            &mediated_recovery_key));
 
-  // `mediated_recovery_key` is different from `recovery_key` when
-  // `destination_share` is set to a wrong value.
-  EXPECT_NE(recovery_key, mediated_recovery_key);
+  // Recover with invalid destination share should fail.
+  EXPECT_FALSE(recovery_->RecoverDestination(recover_destination_request,
+                                             &mediated_recovery_key));
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
@@ -411,12 +411,10 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = "obfuscated_username"});
   SecureBlob mediated_recovery_key;
-  EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
-                                            &mediated_recovery_key));
 
-  // `mediated_recovery_key` is different from `recovery_key` when
-  // `ephemeral_pub_key` is set to a wrong value.
-  EXPECT_NE(recovery_key, mediated_recovery_key);
+  // Recover with invalid ephemeral key should fail.
+  EXPECT_FALSE(recovery_->RecoverDestination(recover_destination_request,
+                                             &mediated_recovery_key));
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {

@@ -11,6 +11,7 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -128,7 +129,7 @@ class AuthBlockUtility {
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,
       const CryptohomeRecoveryAuthBlockState& state,
-      cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
+      hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
 

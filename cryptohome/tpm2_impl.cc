@@ -181,7 +181,8 @@ std::map<uint32_t, std::string> ToStrPcrMap(
 Tpm2Impl::Tpm2Impl()
     : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
       hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
-      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()) {}
+      pinweaver_(hwsec_factory_->GetPinWeaverFrontend()),
+      recovery_crypto_(hwsec_factory_->GetRecoveryCryptoFrontend()) {}
 
 Tpm2Impl::Tpm2Impl(std::unique_ptr<hwsec::CryptohomeFrontend> hwsec,
                    trunks::TrunksFactory* factory,
@@ -1341,8 +1342,8 @@ bool Tpm2Impl::GetRsuDeviceId(std::string* device_id) {
   return trunks->tpm_utility->GetRsuDeviceId(device_id) == TPM_RC_SUCCESS;
 }
 
-cryptorecovery::RecoveryCryptoTpmBackend* Tpm2Impl::GetRecoveryCryptoBackend() {
-  return &recovery_crypto_backend_;
+hwsec::RecoveryCryptoFrontend* Tpm2Impl::GetRecoveryCrypto() {
+  return recovery_crypto_.get();
 }
 
 bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,

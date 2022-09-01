@@ -370,7 +370,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<CryptohomeRecoveryAuthBlock>(
-          crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
+          crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
           crypto_->le_manager(), platform_);
 
     case AuthBlockType::kScrypt:
@@ -449,7 +449,7 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     case AuthBlockType::kCryptohomeRecovery:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<CryptohomeRecoveryAuthBlock>(
-              crypto_->GetHwsec(), crypto_->GetRecoveryCryptoBackend(),
+              crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
               crypto_->le_manager(), platform_));
 
     case AuthBlockType::kMaxValue:
@@ -597,7 +597,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     const cryptorecovery::RequestMetadata& request_metadata,
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
-    cryptorecovery::RecoveryCryptoTpmBackend* recovery_backend,
+    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     brillo::SecureBlob* out_recovery_request,
     brillo::SecureBlob* out_ephemeral_pub_key) const {
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
@@ -634,7 +634,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (!recovery_backend) {
+  if (!recovery_hwsec) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest),
@@ -643,7 +643,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   }
 
   std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-      cryptorecovery::RecoveryCryptoImpl::Create(recovery_backend, platform_);
+      cryptorecovery::RecoveryCryptoImpl::Create(recovery_hwsec, platform_);
 
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.

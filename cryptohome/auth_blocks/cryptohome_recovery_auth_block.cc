@@ -21,7 +21,6 @@
 #include "cryptohome/auth_blocks/revocation.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/location_utils.h"
@@ -47,22 +46,22 @@ namespace cryptohome {
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
-    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     Platform* platform)
-    : CryptohomeRecoveryAuthBlock(hwsec, tpm_backend, nullptr, platform) {}
+    : CryptohomeRecoveryAuthBlock(hwsec, recovery_hwsec, nullptr, platform) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
-    cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     LECredentialManager* le_manager,
     Platform* platform)
     : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery),
       hwsec_(hwsec),
-      tpm_backend_(tpm_backend),
+      recovery_hwsec_(recovery_hwsec),
       le_manager_(le_manager),
       platform_(platform) {
   DCHECK(hwsec_);
-  DCHECK(tpm_backend_);
+  DCHECK(recovery_hwsec_);
   DCHECK(platform_);
 }
 
@@ -89,7 +88,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(tpm_backend_, platform_);
+      RecoveryCryptoImpl::Create(recovery_hwsec_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -224,7 +223,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery =
-      RecoveryCryptoImpl::Create(tpm_backend_, platform_);
+      RecoveryCryptoImpl::Create(recovery_hwsec_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(

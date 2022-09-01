@@ -449,9 +449,8 @@ bool UserDataAuth::Initialize() {
     Tpm* tpm = Tpm::GetSingleton();
     CHECK(tpm);
 
-    default_crypto_ =
-        std::make_unique<Crypto>(hwsec_, pinweaver_, cryptohome_keys_manager_,
-                                 tpm->GetRecoveryCryptoBackend());
+    default_crypto_ = std::make_unique<Crypto>(
+        hwsec_, pinweaver_, cryptohome_keys_manager_, tpm->GetRecoveryCrypto());
     crypto_ = default_crypto_.get();
   }
 

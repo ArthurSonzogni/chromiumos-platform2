@@ -62,20 +62,18 @@ bool GenerateOnboardingMetadata(const FilePath& file_path,
   return true;
 }
 
-cryptohome::cryptorecovery::RecoveryCryptoTpmBackend*
-GetRecoveryCryptoTpmBackend() {
+hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   if (!tpm) {
     LOG(ERROR) << "Failed to get tpm singleton";
     return nullptr;
   }
-  cryptohome::cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
-      tpm->GetRecoveryCryptoBackend();
-  if (!tpm_backend) {
-    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
+  hwsec::RecoveryCryptoFrontend* recovery_crypto = tpm->GetRecoveryCrypto();
+  if (!recovery_crypto) {
+    LOG(ERROR) << "hwsec::RecoveryCryptoFrontend is null";
     return nullptr;
   }
-  return tpm_backend;
+  return recovery_crypto;
 }
 
 bool CheckMandatoryFlag(const std::string& flag_name,
@@ -125,7 +123,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& recovery_id_file_path,
     cryptohome::Platform* platform) {
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoFrontend(), platform);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -222,7 +220,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoFrontend(), platform);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -362,7 +360,7 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoFrontend(), platform);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;

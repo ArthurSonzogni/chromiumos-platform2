@@ -479,7 +479,6 @@ if (use.test) {
 
     if (use.tpm2) {
       sources += [
-        "cryptorecovery/recovery_crypto_tpm2_backend_impl_unittest.cc",
         "error/cryptohome_tpm2_error_test.cc",
         "error/reporting_tpm2_test.cc",
         "tpm2_test.cc",
@@ -488,7 +487,6 @@ if (use.test) {
     }
     if (use.tpm) {
       sources += [
-        "cryptorecovery/recovery_crypto_tpm1_backend_impl_unittest.cc",
         "error/cryptohome_tpm1_error_test.cc",
         "error/reporting_tpm1_test.cc",
         "tpm1_static_utils_unittest.cc",
@@ -664,7 +662,6 @@ if (use.fuzzer) {
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
     if (!use.tpm) {
       sources += [
-        "cryptorecovery/recovery_crypto_tpm1_backend_impl.cc",
         "tpm1_static_utils.cc",
         "tpm_impl.cc",
         "tpm_metrics.cc",

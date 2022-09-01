@@ -24,11 +24,11 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(
       hwsec::CryptohomeFrontend* hwsec,
-      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+      hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       Platform* platform);
   explicit CryptohomeRecoveryAuthBlock(
       hwsec::CryptohomeFrontend* hwsec,
-      cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend,
+      hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       LECredentialManager* le_manager,
       Platform* platform);
 
@@ -57,7 +57,7 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   CryptoStatus PrepareForRemovalInternal(const AuthBlockState& state);
 
   hwsec::CryptohomeFrontend* const hwsec_;
-  cryptorecovery::RecoveryCryptoTpmBackend* const tpm_backend_;
+  hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
   // Low Entropy credentials manager, needed for revocation support.
   LECredentialManager* const le_manager_;
   Platform* const platform_;
