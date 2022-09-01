@@ -126,14 +126,14 @@ void RunBatteryHealthRoutine(Context* const context,
           : 1;
   result_dict.SetIntKey("present", present);
   result_dict.SetStringKey("manufacturer", power_supply_proto.battery_vendor());
-  result_dict.SetIntKey("currentNowA", power_supply_proto.battery_current());
+  result_dict.SetDoubleKey("currentNowA", power_supply_proto.battery_current());
   result_dict.SetStringKey("status", power_supply_proto.battery_status());
-  result_dict.SetIntKey("voltageNowV", power_supply_proto.battery_voltage());
-  result_dict.SetIntKey("chargeFullAh",
-                        power_supply_proto.battery_charge_full());
-  result_dict.SetIntKey("chargeFullDesignAh",
-                        power_supply_proto.battery_charge_full_design());
-  result_dict.SetIntKey("chargeNowAh", power_supply_proto.battery_charge());
+  result_dict.SetDoubleKey("voltageNowV", power_supply_proto.battery_voltage());
+  result_dict.SetDoubleKey("chargeFullAh",
+                           power_supply_proto.battery_charge_full());
+  result_dict.SetDoubleKey("chargeFullDesignAh",
+                           power_supply_proto.battery_charge_full_design());
+  result_dict.SetDoubleKey("chargeNowAh", power_supply_proto.battery_charge());
 
   if (TestWearPercentage(power_supply_proto, percent_battery_wear_allowed,
                          status, status_message, &result_dict) &&
