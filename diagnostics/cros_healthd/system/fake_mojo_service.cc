@@ -18,6 +18,9 @@ void FakeMojoService::InitializeFakeMojoService() {
 
   chromium_data_collector().Bind(
       fake_chromium_data_collector_.receiver().BindNewPipeAndPassRemote());
+
+  sensor_service().Bind(
+      fake_sensor_service_.receiver().BindNewPipeAndPassRemote());
 }
 
 }  // namespace diagnostics

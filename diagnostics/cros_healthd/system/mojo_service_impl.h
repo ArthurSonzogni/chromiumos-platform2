@@ -57,11 +57,12 @@ class MojoServiceImpl : public MojoService {
   chromium_data_collector() {
     return chromium_data_collector_;
   }
-
-  // Getters for subclass to modify the value.
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
   service_manager() {
     return service_manager_;
+  }
+  mojo::Remote<cros::mojom::SensorService>& sensor_service() {
+    return sensor_service_;
   }
 
  private:
