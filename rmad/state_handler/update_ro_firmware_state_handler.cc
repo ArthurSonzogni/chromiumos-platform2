@@ -279,7 +279,13 @@ void UpdateRoFirmwareStateHandler::OnCopyCompleted(bool copy_success) {
 
 void UpdateRoFirmwareStateHandler::OnCopySuccess() {
   // This is run in |updater_task_runner_|.
+  const base::FilePath updater_path(kFirmwareUpdaterPath);
+  // Check again that the copied firmware updater exists.
+  CHECK(base::PathExists(updater_path));
   bool update_success = RunFirmwareUpdater();
+  // Remove the copied firmware updater.
+  CHECK(base::DeleteFile(updater_path));
+
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&UpdateRoFirmwareStateHandler::OnUpdateCompleted,
