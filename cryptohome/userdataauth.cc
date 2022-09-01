@@ -4792,7 +4792,12 @@ void UserDataAuth::RemoveAuthFactor(
     return;
   }
 
-  auth_session_status.value()->RemoveAuthFactor(request, std::move(on_done));
+  StatusCallback on_remove_auth_factor_finished =
+      base::BindOnce(&ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
+                     std::move(on_done));
+
+  auth_session_status.value()->RemoveAuthFactor(
+      request, std::move(on_remove_auth_factor_finished));
 }
 
 void UserDataAuth::ListAuthFactors(

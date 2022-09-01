@@ -996,38 +996,31 @@ bool AuthSession::AuthenticateAuthFactor(
 
 void AuthSession::RemoveAuthFactor(
     const user_data_auth::RemoveAuthFactorRequest& request,
-    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-        on_done) {
+    StatusCallback on_done) {
   user_data_auth::RemoveAuthFactorReply reply;
 
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInRemoveAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
 
   if (user_secret_stash_) {
     // TODO(b/236869367): Wrap the error when it is not a OKStatus.
-    ReplyWithError(
-        std::move(on_done), reply,
+    std::move(on_done).Run(
         RemoveAuthFactorViaUserSecretStash(request.auth_factor_label()));
     return;
   }
 
   // TODO(b/236869367): Implement for VaultKeyset users.
-  ReplyWithError(
-      std::move(on_done), reply,
-      MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          CryptoError::CE_OTHER_CRYPTO,
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+  std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(
+          kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor),
+      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      CryptoError::CE_OTHER_CRYPTO,
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
 }
 
 CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(

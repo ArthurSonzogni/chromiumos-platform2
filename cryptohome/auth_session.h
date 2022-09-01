@@ -153,10 +153,8 @@ class AuthSession final {
   // RemoveAuthFactor is called when the user wants to remove auth factor
   // provided in the `request`. Note: only USS users are supported currently.
   // TODO(b/236869367): Implement for VaultKeyset users.
-  void RemoveAuthFactor(
-      const user_data_auth::RemoveAuthFactorRequest& request,
-      base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-          on_done);
+  void RemoveAuthFactor(const user_data_auth::RemoveAuthFactorRequest& request,
+                        StatusCallback on_done);
 
   // UpdateAuthFactor is called when the user wants to update auth factor
   // provided in the `request`. Note: only USS users are supported currently.

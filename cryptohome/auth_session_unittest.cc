@@ -2572,18 +2572,11 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
-  bool called = false;
-  auth_session.RemoveAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::RemoveAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
 
-  ASSERT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  TestFuture<CryptohomeStatus> remove_future;
+  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+
+  EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Only password is available.
   std::map<std::string, AuthFactorType> stored_factors_1 =
@@ -2644,17 +2637,11 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
-  bool called = false;
-  auth_session.RemoveAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::RemoveAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
-  ASSERT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  TestFuture<CryptohomeStatus> remove_future;
+  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+
+  EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Add the same pin auth factor again.
   error = AddPinAuthFactor(kFakePin, auth_session);
@@ -2689,18 +2676,13 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
-  bool called = false;
-  auth_session.RemoveAuthFactor(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::RemoveAuthFactorReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
 
-  ASSERT_TRUE(called);
-  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
+  TestFuture<CryptohomeStatus> remove_future;
+  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+
+  ASSERT_THAT(remove_future.Get(), NotOk());
+  EXPECT_EQ(remove_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
 }
 
 TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
@@ -2714,19 +2696,14 @@ TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
                            &auth_block_utility_, &auth_factor_manager_,
                            &user_secret_stash_storage_);
   // Test.
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
-  auth_session.RemoveAuthFactor(
-      request, base::BindOnce(
-                   [](user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::RemoveAuthFactorReply& reply) {
-                     error = reply.error();
-                   },
-                   std::ref(error)));
-  EXPECT_EQ(error,
+  TestFuture<CryptohomeStatus> remove_future;
+  auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+
+  ASSERT_THAT(remove_future.Get(), NotOk());
+  EXPECT_EQ(remove_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
