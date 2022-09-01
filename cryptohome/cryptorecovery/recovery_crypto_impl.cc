@@ -128,17 +128,6 @@ bool GetResponsePayloadFromProto(
   return true;
 }
 
-std::string GetRlzCode() {
-  constexpr char kPath[] = "/";
-  constexpr char kProperty[] = "brand-code";
-  std::string data;
-  brillo::CrosConfig cros_config;
-  if (!cros_config.GetString(kPath, kProperty, &data)) {
-    return kDeviceUnknown;
-  }
-  return data;
-}
-
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
@@ -843,10 +832,10 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
   return true;
 }
 
-void RecoveryCryptoImpl::GenerateOnboardingMetadata(
+bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
+    const AccountIdentifier& account_id,
     const std::string& gaia_id,
     const std::string& device_user_id,
-    const std::string& recovery_id,
     OnboardingMetadata* onboarding_metadata) const {
   onboarding_metadata->cryptohome_user_type = UserType::kGaiaId;
   // The user is uniquely identified by the obfuscated GAIA ID.
@@ -865,11 +854,21 @@ void RecoveryCryptoImpl::GenerateOnboardingMetadata(
     onboarding_metadata->form_factor = device_type;
   }
   onboarding_metadata->rlz_code = GetRlzCode();
+  // TODO(mslus): Return more granular error codes (not just an empty string)
+  // and try to re-generate a RecoveryId in case it existed before but is
+  // corrupted.
+  std::string recovery_id = LoadStoredRecoveryId(account_id);
+  if (recovery_id.empty()) {
+    LOG(ERROR) << "Unable to get a valid Recovery Id";
+    return false;
+  }
   onboarding_metadata->recovery_id = recovery_id;
+  return true;
 }
 
-std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(
-    const base::FilePath& recovery_id_path) const {
+std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
   if (recovery_id_path.empty()) {
     LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
     return "";
@@ -889,47 +888,28 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(
                          recovery_id_pb.recovery_id().end()));
 }
 
-std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
+bool RecoveryCryptoImpl::GenerateRecoveryId(
     const AccountIdentifier& account_id) const {
   base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return LoadStoredRecoveryIdFromFile(recovery_id_path);
-}
-
-bool RecoveryCryptoImpl::GenerateRecoveryIdToFile(
-    const base::FilePath& recovery_id_path) const {
   if (recovery_id_path.empty()) {
     LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
     return false;
   }
   CryptoRecoveryIdContainer recovery_id_pb;
   if (!IsRecoveryIdAvailable(recovery_id_path) ||
-      !LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+      !LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb) ||
+      !RotateRecoveryId(&recovery_id_pb)) {
     // Persisted RecoveryIdContainer cannot be retrieved because it has been not
     // created before or there was an error on storage access attempt so we are
-    // clearing it up before trying to generate a fresh one.
+    // re-generating it.
     recovery_id_pb.Clear();
+    GenerateInitialRecoveryId(&recovery_id_pb);
   }
-  GenerateRecoveryIdProto(&recovery_id_pb);
   if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb)) {
     LOG(ERROR) << "Unable to serialize the new Recovery Id";
     return false;
   }
   return true;
-}
-
-bool RecoveryCryptoImpl::GenerateRecoveryId(
-    const AccountIdentifier& account_id) const {
-  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return GenerateRecoveryIdToFile(recovery_id_path);
-}
-
-void RecoveryCryptoImpl::GenerateRecoveryIdProto(
-    CryptoRecoveryIdContainer* recovery_id_pb) const {
-  if (!recovery_id_pb->has_seed() || !recovery_id_pb->has_increment() ||
-      !RotateRecoveryId(recovery_id_pb)) {
-    recovery_id_pb->Clear();
-    GenerateInitialRecoveryId(recovery_id_pb);
-  }
 }
 
 bool RecoveryCryptoImpl::RotateRecoveryId(
@@ -1018,6 +998,17 @@ bool RecoveryCryptoImpl::PersistRecoveryIdContainer(
     return false;
   }
   return true;
+}
+
+std::string RecoveryCryptoImpl::GetRlzCode() const {
+  constexpr char kPath[] = "/";
+  constexpr char kProperty[] = "brand-code";
+  std::string data;
+  brillo::CrosConfig cros_config;
+  if (!cros_config.GetString(kPath, kProperty, &data)) {
+    return kDeviceUnknown;
+  }
+  return data;
 }
 
 }  // namespace cryptorecovery

@@ -23,7 +23,6 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 
 using base::FilePath;
@@ -43,23 +42,19 @@ using cryptohome::cryptorecovery::ResponsePayload;
 
 namespace {
 constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
-constexpr char kFakeGaiaId[] = "123456789012345678901";
-constexpr char kFakeUserDeviceId[] = "fake_user_device_id";
 
-bool GenerateOnboardingMetadata(const FilePath& file_path,
-                                RecoveryCryptoImpl* recovery_crypto,
-                                OnboardingMetadata* onboarding_metadata) {
-  if (!recovery_crypto) {
-    return false;
-  }
-  std::string recovery_id =
-      recovery_crypto->LoadStoredRecoveryIdFromFile(file_path);
-  if (recovery_id.empty()) {
-    return false;
-  }
-  recovery_crypto->GenerateOnboardingMetadata(kFakeGaiaId, kFakeUserDeviceId,
-                                              recovery_id, onboarding_metadata);
-  return true;
+OnboardingMetadata GenerateFakeOnboardingMetadata() {
+  SecureBlob recovery_id = hwsec_foundation::Sha256(SecureBlob("recovery_id"));
+  OnboardingMetadata onboarding_metadata{
+      .cryptohome_user_type = cryptohome::cryptorecovery::UserType::kGaiaId,
+      .cryptohome_user = "123456789012345678901",
+      .device_user_id = "fake_device_user_id",
+      .board_name = "fake_board",
+      .form_factor = "fake_form_factor",
+      .rlz_code = "fake_rlz_code",
+      .recovery_id = hwsec_foundation::SecureBlobToHex(recovery_id)};
+
+  return onboarding_metadata;
 }
 
 cryptohome::cryptorecovery::RecoveryCryptoTpmBackend*
@@ -121,11 +116,14 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_pub_key_out_file_path,
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
-    const FilePath& recovery_secret_out_file_path,
-    const FilePath& recovery_id_file_path,
-    cryptohome::Platform* platform) {
+    const FilePath& recovery_secret_out_file_path) {
+  // TODO(mslus): Platform pointer is passed here in order to access filesystem
+  // for recovery_id generation. We are using fake onboarding_metadata at the
+  // moment so it is ok to use nullptr but in the next iteration we should start
+  // testing with the real Platform.
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -139,22 +137,12 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     return false;
   }
 
-  // Generates a new recovery_id to be persisted on a chromebook.
-  if (!recovery_crypto->GenerateRecoveryIdToFile(recovery_id_file_path)) {
-    LOG(ERROR) << "Failed to generate a new recovery_id.";
-    return false;
-  }
   // Generates HSM payload that would be persisted on a chromebook.
-  OnboardingMetadata onboarding_metadata;
-  if (!GenerateOnboardingMetadata(recovery_id_file_path, recovery_crypto.get(),
-                                  &onboarding_metadata)) {
-    LOG(ERROR) << "Unable to generate OnboardingMetadata.";
-    return false;
-  }
+  OnboardingMetadata onboarding_metadata = GenerateFakeOnboardingMetadata();
   cryptohome::cryptorecovery::GenerateHsmPayloadRequest
       generate_hsm_payload_request(
           {.mediator_pub_key = mediator_pub_key,
-           .onboarding_metadata = onboarding_metadata,
+           .onboarding_metadata = GenerateFakeOnboardingMetadata(),
            .obfuscated_username = kObfuscatedUsername});
   cryptohome::cryptorecovery::GenerateHsmPayloadResponse
       generate_hsm_payload_response;
@@ -198,8 +186,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     const FilePath& channel_priv_key_in_file_path,
     const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& ephemeral_pub_key_out_file_path,
-    const FilePath& recovery_request_out_file_path,
-    cryptohome::Platform* platform) {
+    const FilePath& recovery_request_out_file_path) {
   SecureBlob rsa_priv_key;
   SecureBlob channel_pub_key;
   SecureBlob channel_priv_key;
@@ -222,7 +209,8 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -322,8 +310,7 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& ephemeral_pub_key_in_file_path,
     const FilePath& destination_share_in_file_path,
     const FilePath& extended_pcr_bound_destination_share_in_file_path,
-    const FilePath& recovery_secret_out_file_path,
-    cryptohome::Platform* platform) {
+    const FilePath& recovery_secret_out_file_path) {
   SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
       destination_share, extended_pcr_bound_destination_share;
   if (!ReadHexFileToSecureBlobLogged(recovery_response_in_file_path,
@@ -362,7 +349,8 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(), platform);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(),
+                                 /*platform*/ nullptr);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -419,7 +407,6 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToStderr);
   base::AtExitManager exit_manager;
-  cryptohome::Platform platform;
 
   DEFINE_string(
       action, "",
@@ -519,9 +506,6 @@ int main(int argc, char* argv[]) {
   DEFINE_string(
       mediator_pub_key_out_file, "",
       "Path to the file containing the hex-encoded fake mediator pub key.");
-  DEFINE_string(
-      recovery_id_file, "",
-      "Path to the file containing serialized data to generate recovery_id.");
   brillo::FlagHelper::Init(argc, argv,
                            "cryptohome-test-tool - Test tool for cryptohome.");
 
@@ -543,8 +527,7 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag("serialized_hsm_payload_out_file",
                            FLAGS_serialized_hsm_payload_out_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
-                           FLAGS_recovery_secret_out_file) &&
-        CheckMandatoryFlag("recovery_id_file", FLAGS_recovery_id_file)) {
+                           FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoCreateHsmPayloadAction(
           FilePath(FLAGS_mediator_pub_key_in_file),
           FilePath(FLAGS_rsa_priv_key_out_file),
@@ -553,8 +536,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_channel_pub_key_out_file),
           FilePath(FLAGS_channel_priv_key_out_file),
           FilePath(FLAGS_serialized_hsm_payload_out_file),
-          FilePath(FLAGS_recovery_secret_out_file),
-          FilePath(FLAGS_recovery_id_file), &platform);
+          FilePath(FLAGS_recovery_secret_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_create_recovery_request") {
     if (CheckMandatoryFlag("rsa_priv_key_in_file",
@@ -577,7 +559,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_channel_priv_key_in_file),
           FilePath(FLAGS_serialized_hsm_payload_in_file),
           FilePath(FLAGS_ephemeral_pub_key_out_file),
-          FilePath(FLAGS_recovery_request_out_file), &platform);
+          FilePath(FLAGS_recovery_request_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_mediate") {
     if (CheckMandatoryFlag("recovery_request_in_file",
@@ -609,7 +591,7 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),
           FilePath(FLAGS_extended_pcr_bound_destination_share_in_file),
-          FilePath(FLAGS_recovery_secret_out_file), &platform);
+          FilePath(FLAGS_recovery_secret_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_get_fake_epoch") {
     if (CheckMandatoryFlag("epoch_response_out_file",
