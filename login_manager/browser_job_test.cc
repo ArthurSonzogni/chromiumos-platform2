@@ -717,4 +717,35 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
                              BrowserJob::kBrowserDataMigrationModeFlag, "any");
 }
 
+TEST_F(BrowserJobTest, SetBrowserDataBackwardMigrationArgsForUser) {
+  job_->StartSession(kUser, kHash);
+  job_->SetBrowserDataBackwardMigrationArgsForUser(kHash);
+
+  // Check that |job_args_1| has args set for data migration.
+  std::vector<std::string> job_args_1 = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args_1, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsToContainFlag(
+      job_args_1, BrowserJob::kBrowserDataBackwardMigrationForUserFlag, kHash);
+  ExpectArgsNotToContainFlag(job_args_1, BrowserJob::kLoginUserFlag, kUser);
+  job_->ClearBrowserDataBackwardMigrationArgs();
+
+  // Check that calling |ClearBrowserDataBackwardMigrationArgs()| once clears
+  // args for data migration and |job_args_2| has args set to launch chrome for
+  // regular user session.
+  std::vector<std::string> job_args_2 = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsNotToContainFlag(
+      job_args_2, BrowserJob::kBrowserDataBackwardMigrationForUserFlag, kHash);
+}
+
+TEST_F(BrowserJobTest, SetDoubleMigration) {
+  job_->StartSession(kUser, kHash);
+  job_->SetBrowserDataMigrationArgsForUser(kHash, "copy");
+  job_->SetBrowserDataBackwardMigrationArgsForUser(kHash);
+
+  ASSERT_DEATH({ job_->ExportArgv(); },
+               "Both forward and backward migration have been called");
+}
+
 }  // namespace login_manager

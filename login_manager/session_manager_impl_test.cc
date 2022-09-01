@@ -3651,6 +3651,47 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimaryUser) {
   EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
 }
 
+TEST_F(SessionManagerImplTest, StartBrowserDataBackwardMigration) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
+      .Times(1);
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartBrowserDataBackwardMigration(&error, kSaneEmail));
+}
+
+TEST_F(SessionManagerImplTest,
+       StartBrowserDataBackwardMigrationForNonLoggedInUser) {
+  // If session has not been started for user,
+  // |SetBrowserDataBackwardMigrationArgsForUser()| does not get called.
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
+      .Times(0);
+
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->StartBrowserDataBackwardMigration(&error, kSaneEmail));
+  EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
+}
+
+TEST_F(SessionManagerImplTest,
+       StartBrowserDataBackwardMigrationForNonPrimaryUser) {
+  const std::string second_user_email = "seconduser@gmail.com";
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectAndRunStartSession(second_user_email);
+
+  // Migration should only happen for primary user.
+  const std::string userhash = SanitizeUserName(second_user_email);
+  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
+      .Times(0);
+
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(
+      impl_->StartBrowserDataBackwardMigration(&error, second_user_email));
+  EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
+}
+
 class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
  public:
   void SetUp() override {

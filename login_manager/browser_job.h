@@ -106,6 +106,16 @@ class BrowserJobInterface : public ChildJobInterface {
   // Clears values set by |SetBrowserDataMigrationArgsForUser()|.
   virtual void ClearBrowserDataMigrationArgs() = 0;
 
+  // Sets |kBrowserDataBackwardMigrationForUserFlag| and |kLoginManagerFlag| to
+  // chrome launch flags. |userhash| is passed as the value of
+  // |kBrowserDataBackwardMigrationFlag| to let chrome know which user data
+  // directory to do backward migration on.
+  virtual void SetBrowserDataBackwardMigrationArgsForUser(
+      const std::string& userhash) = 0;
+
+  // Clears values set by |SetBrowserDataBackwardMigrationArgsForUser()|.
+  virtual void ClearBrowserDataBackwardMigrationArgs() = 0;
+
   // The flag to pass to Chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
 
@@ -129,6 +139,14 @@ class BrowserJobInterface : public ChildJobInterface {
   // The flag to pass to Chrome to tell which migration to run.
   // It is used together with |kBrowserDataMigrationForUserFlag|.
   static const char kBrowserDataMigrationModeFlag[];
+
+  // The flag to pass to Chrome to tell it to run backward migration for the
+  // user with the specified user hash.
+  static const char kBrowserDataBackwardMigrationForUserFlag[];
+
+  // The flag to pass to Chrome to tell which migration to run.
+  // It is used together with |kBrowserDataBackwardMigrationForUserFlag|.
+  static const char kBrowserDataBackwardMigrationModeFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -178,6 +196,9 @@ class BrowserJob : public BrowserJobInterface {
   void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
                                           const std::string& mode) override;
   void ClearBrowserDataMigrationArgs() override;
+  void SetBrowserDataBackwardMigrationArgsForUser(
+      const std::string& userhash) override;
+  void ClearBrowserDataBackwardMigrationArgs() override;
   void SetTestArguments(const std::vector<std::string>& arguments) override;
   void SetAdditionalEnvironmentVariables(
       const std::vector<std::string>& env_vars) override;
@@ -220,6 +241,10 @@ class BrowserJob : public BrowserJobInterface {
   // Lacros related data migration arguments. This is only non-empty if
   // |SetBrowserDataMigrationArgsForUser| is called.
   std::vector<std::string> browser_data_migration_arguments_;
+
+  // Lacros related data backward migration arguments. This is only non-empty if
+  // |SetBrowserDataBackwardMigrationArgsForUser| is called.
+  std::vector<std::string> browser_data_backward_migration_arguments_;
 
   // Feature flags to pass to the browser.
   std::vector<std::string> feature_flags_;

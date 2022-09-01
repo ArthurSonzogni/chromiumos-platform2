@@ -56,6 +56,10 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
               SetBrowserDataMigrationArgsForUser,
               (const std::string&, const std::string&),
               (override));
+  MOCK_METHOD(void,
+              SetBrowserDataBackwardMigrationArgsForUser,
+              (const std::string&),
+              (override));
   MOCK_METHOD(bool, IsBrowser, (pid_t), (override));
   MOCK_METHOD(std::optional<pid_t>, GetBrowserPid, (), (const override));
   MOCK_METHOD(base::TimeTicks, GetLastBrowserRestartTime, (), (override));
