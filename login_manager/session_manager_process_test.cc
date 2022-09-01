@@ -443,6 +443,15 @@ TEST_F(SessionManagerProcessTest, SetBrowserDataMigrationArgsForUser) {
   manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
 }
 
+TEST_F(SessionManagerProcessTest, SetBrowserDataBackwardMigrationArgsForUser) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+
+  const std::string userhash = "1234abcd";
+  EXPECT_CALL(*job, SetBrowserDataBackwardMigrationArgsForUser(userhash))
+      .Times(1);
+  manager_->SetBrowserDataBackwardMigrationArgsForUser(userhash);
+}
+
 TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
   // Check that |SessionManager::RunBrowser()| calls
   // |ClearBrowserDataMigrationArgs()| after fork/exec if browser data migration
@@ -453,6 +462,7 @@ TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
   manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
 
   EXPECT_CALL(*job, ClearBrowserDataMigrationArgs());
+  EXPECT_CALL(*job, ClearBrowserDataBackwardMigrationArgs());
 
   manager_->RunBrowser();
 }
