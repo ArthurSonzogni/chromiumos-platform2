@@ -381,6 +381,12 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(
       wayland_dir.Append(vm_tools::kConciergeSecurityContext), uid, gid, 0755));
 
+  // Create a directory where the libassistant V2 can create socket files for
+  // gRPC.
+  const base::FilePath libassistant_dir("/run/libassistant");
+  CHECK(base::DeletePathRecursively(libassistant_dir));
+  CHECK(EnsureDirectoryExists(libassistant_dir, uid, gid, 0700));
+
   // Create the directory where policies for extensions installed in
   // device-local accounts are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
