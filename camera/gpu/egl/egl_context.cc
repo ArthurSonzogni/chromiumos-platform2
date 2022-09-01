@@ -10,15 +10,15 @@
 #include <vector>
 
 #include "cros-camera/common.h"
-#include "gpu/egl/egl_display.h"
 #include "gpu/egl/utils.h"
 
 namespace cros {
 
 // static
 std::unique_ptr<EglContext> EglContext::GetSurfacelessContext() {
-  EGLDisplay egl_display = GetInitializedEglDisplay();
-  if (egl_display == EGL_NO_DISPLAY) {
+  EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  if (eglInitialize(egl_display, /*major=*/nullptr, /*minor=*/nullptr) !=
+      EGL_TRUE) {
     LOGF(FATAL) << "Failed to create EGL display";
   }
   // This will leak |egl_display|, but it should be okay.
