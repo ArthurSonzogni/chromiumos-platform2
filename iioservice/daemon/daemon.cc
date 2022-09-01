@@ -31,6 +31,7 @@
 namespace iioservice {
 
 Daemon::~Daemon() {
+  iio_sensor_.reset();
   SensorMetrics::Shutdown();
 }
 
