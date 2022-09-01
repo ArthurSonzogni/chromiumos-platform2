@@ -138,8 +138,7 @@ class CameraClient {
   // Camera device handle returned to framework for use.
   camera3_device_t camera3_device_;
 
-  // Use to check the constructor, OpenDevice, and CloseDevice are called on the
-  // same thread.
+  // Use to check the constructor and OpenDevice are called on the same thread.
   base::ThreadChecker thread_checker_;
 
   // Use to check camera v3 device operations are called on the same thread.
