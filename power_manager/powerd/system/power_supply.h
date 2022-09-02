@@ -541,6 +541,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // File for communicating with the Embedded Controller (EC).
   base::FilePath cros_ec_path_;
 
+  // True if the kFactoryModePref pref indicates that the system is running in
+  // the factory
+  bool factory_mode_ = false;
+
   // Should multiple battery directories in sysfs be read and combined?
   bool allow_multiple_batteries_ = false;
 

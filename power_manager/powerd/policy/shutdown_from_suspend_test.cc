@@ -146,14 +146,7 @@ TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
   shutdown_from_suspend_.PrepareForSuspendAttempt();
   base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
-  // Fake a dark resume.
-  shutdown_from_suspend_.HandleDarkResume();
-  SetLinePower(true);
-  // Now |PrepareForSuspendAttempt| should return Action::SUSPEND as it is on
-  // line power.
-  EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
-            ShutdownFromSuspend::Action::SUSPEND);
-  // Fake another dark resume without line power. PrepareForSuspendAttempt|
+  // Fake a dark resume without line power. PrepareForSuspendAttempt|
   // should return Action::SHUT_DOWN.
   SetLinePower(false);
   shutdown_from_suspend_.HandleDarkResume();

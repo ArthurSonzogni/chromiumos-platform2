@@ -628,6 +628,7 @@ void PowerSupply::Init(
 
   battery_percentage_converter_ = battery_percentage_converter;
 
+  prefs_->GetBool(kFactoryModePref, &factory_mode_);
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
   prefs_->GetBool(kHasBarreljackPref, &has_barreljack_);
 
@@ -977,7 +978,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     UpdateObservedBatteryChargeRate(&status);
     status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
     status.battery_below_shutdown_threshold =
-        IsBatteryBelowShutdownThreshold(status);
+        status.battery_is_present && IsBatteryBelowShutdownThreshold(status);
 
     // Update and modify values based on Adaptive Charging
     status.adaptive_charging_supported = adaptive_charging_supported_;
@@ -1456,6 +1457,10 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
            ? status.display_battery_percentage <= 0
            : status.battery_percentage <= low_battery_shutdown_percent_);
 
+  if (below_threshold && factory_mode_) {
+    LOG(INFO) << "Battery is low, but not shutting down in factory mode";
+    return false;
+  }
   // Most AC chargers can deliver enough current to prevent the battery from
   // discharging while the device is in use; other chargers (e.g. USB) may not
   // be able to, though. The observed charge rate is checked to verify whether

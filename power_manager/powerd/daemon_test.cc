@@ -1124,16 +1124,6 @@ TEST_F(DaemonTest, FactoryMode) {
       dbus_wrapper_->IsMethodExported(kIncreaseKeyboardBrightnessMethod));
   EXPECT_FALSE(
       dbus_wrapper_->IsMethodExported(kDecreaseKeyboardBrightnessMethod));
-
-  // powerd shouldn't shut the system down in response to a low battery
-  // charge.
-  system::PowerStatus status;
-  status.battery_is_present = true;
-  status.battery_below_shutdown_threshold = true;
-  async_commands_.clear();
-  power_supply_->set_status(status);
-  power_supply_->NotifyObservers();
-  EXPECT_EQ(0, async_commands_.size());
 }
 
 TEST_F(DaemonTest, GetAdaptiveChargingPrediction) {

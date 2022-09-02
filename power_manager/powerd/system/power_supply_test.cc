@@ -1510,6 +1510,21 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   EXPECT_TRUE(status.battery_below_shutdown_threshold);
 }
 
+TEST_F(PowerSupplyTest, FactoryMode) {
+  const double kShutdownPercent = 5.0;
+  const double kCurrent = -1.0;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
+  prefs_.SetInt64(kFactoryModePref, 1);
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  UpdateChargeAndCurrent((kShutdownPercent - 1.0) / 100.0, kCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+}
+
 TEST_F(PowerSupplyTest, LowPowerCharger) {
   // If a charger is connected but the current is zero and the battery
   // isn't full, the battery should be reported as discharging.

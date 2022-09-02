@@ -76,9 +76,10 @@ void ShutdownFromSuspend::Init(
 
 bool ShutdownFromSuspend::IsBatteryLow() {
   if (power_supply_->RefreshImmediately()) {
-    const double percent = power_supply_->GetPowerStatus().battery_percentage;
-    if (0 <= percent && percent <= low_battery_shutdown_percent_) {
-      LOG(INFO) << "Battery percentage " << base::StringPrintf("%0.2f", percent)
+    system::PowerStatus status = power_supply_->GetPowerStatus();
+    if (status.battery_below_shutdown_threshold) {
+      LOG(INFO) << "Battery percentage "
+                << base::StringPrintf("%0.2f", status.battery_percentage)
                 << "% <= low_battery_shutdown_percent ("
                 << base::StringPrintf("%0.2f", low_battery_shutdown_percent_)
                 << "%).";
@@ -134,11 +135,8 @@ ShutdownFromSuspend::Action ShutdownFromSuspend::PrepareForSuspendAttempt() {
   // TODO(crbug.com/964510): If the timer is gonna expire in next few minutes,
   // shutdown.
   if (in_dark_resume_ && ShutdownFromSuspend::ShouldShutdown()) {
-    if (!power_supply_->GetPowerStatus().line_power_on) {
-      LOG(INFO) << "Shutting down.";
-      return ShutdownFromSuspend::Action::SHUT_DOWN;
-    }
-    LOG(INFO) << "Not shutting down from resume as line power is connected.";
+    LOG(INFO) << "Shutting down.";
+    return ShutdownFromSuspend::Action::SHUT_DOWN;
   }
 
   if (!alarm_timer_) {
