@@ -13,7 +13,6 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {

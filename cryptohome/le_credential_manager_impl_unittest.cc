@@ -18,7 +18,6 @@
 
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/tpm.h"
 
 using ::hwsec_foundation::GetSecureRandom;
 

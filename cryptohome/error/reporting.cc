@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <brillo/hash/MurmurHash3.h>
+#include <libhwsec/error/tpm_error.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 

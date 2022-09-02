@@ -19,7 +19,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
-#include "cryptohome/tpm.h"
 
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;

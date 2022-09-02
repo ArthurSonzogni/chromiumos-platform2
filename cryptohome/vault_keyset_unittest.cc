@@ -38,7 +38,6 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_tpm.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {

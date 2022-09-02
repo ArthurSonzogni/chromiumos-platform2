@@ -14,7 +14,6 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/tpm_metrics.h"
 
 namespace cryptohome {

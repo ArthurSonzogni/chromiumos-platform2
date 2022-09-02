@@ -16,7 +16,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;

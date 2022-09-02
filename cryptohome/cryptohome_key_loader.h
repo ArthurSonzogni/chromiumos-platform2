@@ -13,7 +13,6 @@
 #include <libhwsec/status.h>
 
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 

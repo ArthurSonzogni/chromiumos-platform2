@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_TPM_METRICS_H_
 #define CRYPTOHOME_TPM_METRICS_H_
 
-#include "cryptohome/tpm.h"
-
 namespace cryptohome {
 
 // WARNING: The values in the following enum are written to logs and the

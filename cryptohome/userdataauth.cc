@@ -29,6 +29,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -63,7 +64,6 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session.h"
@@ -329,8 +329,10 @@ UserDataAuth::UserDataAuth()
     : origin_thread_id_(base::PlatformThread::CurrentId()),
       mount_thread_(nullptr),
       system_salt_(),
+      hwsec_factory_(nullptr),
       hwsec_(nullptr),
       pinweaver_(nullptr),
+      recovery_crypto_(nullptr),
       default_cryptohome_keys_manager_(nullptr),
       cryptohome_keys_manager_(nullptr),
       tpm_manager_util_(nullptr),
@@ -404,22 +406,24 @@ bool UserDataAuth::Initialize() {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
   }
 
+  if (!hwsec_factory_) {
+    default_hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
+    hwsec_factory_ = default_hwsec_factory_.get();
+  }
+
   if (!hwsec_) {
-    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
-    // of it.
-    Tpm* tpm = Tpm::GetSingleton();
-    CHECK(tpm);
-    hwsec_ = tpm->GetHwsec();
-    CHECK(hwsec_);
+    default_hwsec_ = hwsec_factory_->GetCryptohomeFrontend();
+    hwsec_ = default_hwsec_.get();
   }
 
   if (!pinweaver_) {
-    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
-    // of it.
-    Tpm* tpm = Tpm::GetSingleton();
-    CHECK(tpm);
-    pinweaver_ = tpm->GetPinWeaver();
-    CHECK(pinweaver_);
+    default_pinweaver_ = hwsec_factory_->GetPinWeaverFrontend();
+    pinweaver_ = default_pinweaver_.get();
+  }
+
+  if (!recovery_crypto_) {
+    default_recovery_crypto_ = hwsec_factory_->GetRecoveryCryptoFrontend();
+    recovery_crypto_ = default_recovery_crypto_.get();
   }
 
   // Note that we check to see if |cryptohome_keys_manager_| is available here
@@ -444,13 +448,8 @@ bool UserDataAuth::Initialize() {
   }
 
   if (!crypto_) {
-    // TODO(b/174816474): Get rid of the TPM object after we remove all useages
-    // of it.
-    Tpm* tpm = Tpm::GetSingleton();
-    CHECK(tpm);
-
     default_crypto_ = std::make_unique<Crypto>(
-        hwsec_, pinweaver_, cryptohome_keys_manager_, tpm->GetRecoveryCrypto());
+        hwsec_, pinweaver_, cryptohome_keys_manager_, recovery_crypto_);
     crypto_ = default_crypto_.get();
   }
 

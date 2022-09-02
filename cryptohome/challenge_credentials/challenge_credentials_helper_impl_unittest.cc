@@ -26,7 +26,6 @@
 #include "cryptohome/challenge_credentials/signature_sealing_test_utils.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/mock_key_challenge_service.h"
-#include "cryptohome/mock_tpm.h"
 
 using brillo::Blob;
 using brillo::BlobToString;

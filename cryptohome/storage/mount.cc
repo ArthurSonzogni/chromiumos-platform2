@@ -44,7 +44,6 @@
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 

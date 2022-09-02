@@ -20,8 +20,10 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver/frontend.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -556,12 +558,22 @@ class UserDataAuth {
   // Override |homedirs_| for testing purpose
   void set_homedirs(cryptohome::HomeDirs* homedirs) { homedirs_ = homedirs; }
 
+  // Override |hwsec_factory_| for testing purpose
+  void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
+    hwsec_factory_ = hwsec_factory;
+  }
+
   // Override |hwsec_| for testing purpose
   void set_hwsec(hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
 
   // Override |pinweaver_| for testing purpose
   void set_pinweaver(hwsec::PinWeaverFrontend* pinweaver) {
     pinweaver_ = pinweaver;
+  }
+
+  // Override |recovery_crypto| for testing purpose
+  void set_recovery_crypto(hwsec::RecoveryCryptoFrontend* recovery_crypto) {
+    recovery_crypto_ = recovery_crypto;
   }
 
   // Override |cryptohome_keys_manager_| for testing purpose
@@ -1173,11 +1185,29 @@ class UserDataAuth {
   // The system salt that is used for obfuscating the username
   brillo::SecureBlob system_salt_;
 
+  // The default hwsec factory object.
+  std::unique_ptr<hwsec::Factory> default_hwsec_factory_;
+
+  // The object to generate the other frontends.
+  hwsec::Factory* hwsec_factory_;
+
+  // The default object for accessing the HWSec related functions.
+  std::unique_ptr<hwsec::CryptohomeFrontend> default_hwsec_;
+
   // The object for accessing the HWSec related functions.
   hwsec::CryptohomeFrontend* hwsec_;
 
+  // The default object for accessing the pinweaver related functions.
+  std::unique_ptr<hwsec::PinWeaverFrontend> default_pinweaver_;
+
   // The object for accessing the pinweaver related functions.
   hwsec::PinWeaverFrontend* pinweaver_;
+
+  // The default object for accessing the recovery crypto related functions.
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> default_recovery_crypto_;
+
+  // The object for accessing the recovery crypto related functions.
+  hwsec::RecoveryCryptoFrontend* recovery_crypto_;
 
   // The default cryptohome key loader object
   std::unique_ptr<CryptohomeKeysManager> default_cryptohome_keys_manager_;

@@ -44,7 +44,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using base::FilePath;

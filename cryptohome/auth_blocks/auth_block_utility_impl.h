@@ -26,7 +26,6 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 

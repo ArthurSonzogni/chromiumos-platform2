@@ -37,7 +37,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
-#include "cryptohome/mock_tpm.h"
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
@@ -806,7 +805,6 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  ScopedKeyHandle handle;
 
   SetupMockHwsec(hwsec);
 
@@ -845,7 +843,6 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   SetupMockHwsec(hwsec);
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  ScopedKeyHandle handle;
   EXPECT_CALL(hwsec, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(hwsec, GetAuthValue(_, pass_blob))
@@ -877,7 +874,6 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrPreloadFailedTest) {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   SetupMockHwsec(hwsec);
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  ScopedKeyHandle handle;
   EXPECT_CALL(hwsec, PreloadSealedData(_))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 

@@ -16,7 +16,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/tpm.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorAction;

@@ -17,7 +17,6 @@
 
 namespace cryptohome {
 
-class Tpm;
 class CryptohomeKeysManager;
 
 class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {

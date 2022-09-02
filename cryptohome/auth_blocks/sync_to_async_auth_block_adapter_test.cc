@@ -24,7 +24,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
-#include "cryptohome/mock_tpm.h"
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;

@@ -13,7 +13,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_tpm.h"
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMRetryAction;

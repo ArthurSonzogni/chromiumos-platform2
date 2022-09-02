@@ -22,8 +22,10 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
+#include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -53,7 +55,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
@@ -63,7 +64,6 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_homedirs.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 
@@ -152,7 +152,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
-
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
@@ -173,8 +172,10 @@ class UserDataAuthTestBase : public ::testing::Test {
         &user_activity_timestamp_manager_);
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(attrs_.get());
+    userdataauth_->set_hwsec_factory(&hwsec_factory_);
     userdataauth_->set_hwsec(&hwsec_);
     userdataauth_->set_pinweaver(&pinweaver_);
+    userdataauth_->set_recovery_crypto(&recovery_crypto_);
     userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
@@ -271,11 +272,19 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Platform object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockPlatform> platform_;
 
+  // Mock HWSec factory object, will be passed to UserDataAuth for its internal
+  // use.
+  NiceMock<hwsec::MockFactory> hwsec_factory_;
+
   // Mock HWSec object, will be passed to UserDataAuth for its internal use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
 
   // Mock pinweaver object, will be passed to UserDataAuth for its internal use.
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+
+  // Mock recovery crypto object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
 
   // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
   // internal use.

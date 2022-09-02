@@ -6,7 +6,6 @@
 
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
 
 #include <limits>
