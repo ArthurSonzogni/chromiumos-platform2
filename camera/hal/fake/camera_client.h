@@ -6,7 +6,14 @@
 #ifndef CAMERA_HAL_FAKE_CAMERA_CLIENT_H_
 #define CAMERA_HAL_FAKE_CAMERA_CLIENT_H_
 
+#include <memory>
+#include <vector>
+#include "hal/fake/request_handler.h"
+
+#include <absl/status/status.h>
+#include <base/containers/flat_map.h>
 #include <base/sequence_checker.h>
+#include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 
@@ -60,6 +67,12 @@ class CameraClient {
   int Flush(const camera3_device_t* dev);
 
  private:
+  // Start |request_thread_| and streaming.
+  absl::Status StreamOn(const std::vector<camera3_stream_t*>& streams);
+
+  // Stop streaming and |request_thread_|.
+  void StreamOff();
+
   const int id_;
 
   // Camera device handle returned to framework for use.
@@ -70,6 +83,20 @@ class CameraClient {
 
   // Camera request metadata template.
   const android::CameraMetadata request_template_;
+
+  // Methods used to call back into the framework.
+  const camera3_callback_ops_t* callback_ops_;
+
+  // Metadata for latest request.
+  android::CameraMetadata latest_request_metadata_;
+
+  std::unique_ptr<RequestHandler> request_handler_;
+
+  // Used to handle requests.
+  base::Thread request_thread_;
+
+  // Task runner for request thread.
+  scoped_refptr<base::SequencedTaskRunner> request_task_runner_;
 
   // Use to check the constructor and OpenDevice are called on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

@@ -22,8 +22,11 @@ shared_library("libcamera_hal") {
     "camera_client.cc",
     "camera_hal.cc",
     "camera_hal_device_ops.cc",
+    "capture_request.cc",
+    "fake_stream.cc",
     "hal_spec.cc",
     "metadata_handler.cc",
+    "request_handler.cc",
     "value_util.cc",
   ]
   configs += [ ":target_defaults" ]

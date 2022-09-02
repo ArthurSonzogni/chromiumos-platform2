@@ -12,6 +12,8 @@
 namespace cros {
 absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
                                  android::CameraMetadata* request_metadata);
+
+absl::Status FillResultMetadata(android::CameraMetadata* metadata);
 }
 
 #endif  // CAMERA_HAL_FAKE_METADATA_HANDLER_H_

@@ -345,4 +345,18 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
              : absl::InternalError("metadata update");
 }
 
+absl::Status FillResultMetadata(android::CameraMetadata* metadata) {
+  MetadataUpdater update(metadata);
+
+  update(ANDROID_CONTROL_AE_STATE, ANDROID_CONTROL_AE_STATE_CONVERGED);
+  update(ANDROID_CONTROL_AF_STATE, ANDROID_CONTROL_AF_STATE_INACTIVE);
+  update(ANDROID_CONTROL_AWB_STATE, ANDROID_CONTROL_AWB_STATE_CONVERGED);
+  update(ANDROID_FLASH_STATE, ANDROID_FLASH_STATE_UNAVAILABLE);
+  update(ANDROID_LENS_STATE, ANDROID_LENS_STATE_STATIONARY);
+  update(ANDROID_REQUEST_PIPELINE_DEPTH, uint8_t{2});
+
+  return update.ok() ? absl::OkStatus()
+                     : absl::InternalError("metadata update");
+}
+
 }  // namespace cros

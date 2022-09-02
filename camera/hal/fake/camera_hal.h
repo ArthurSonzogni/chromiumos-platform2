@@ -55,6 +55,11 @@ class CameraHal {
   // OpenDevice.
   void CloseDevice(int id);
 
+  CameraMojoChannelManagerToken* GetMojoManagerToken() {
+    DCHECK(mojo_manager_token_ != nullptr);
+    return mojo_manager_token_;
+  }
+
  private:
   void CloseDeviceOnHalThread(int id, base::OnceCallback<void()> callback);
 
@@ -84,6 +89,9 @@ class CameraHal {
 
   // Used to post CloseDevice to run on the same thread.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  // Mojo manager token which is used for Mojo communication.
+  CameraMojoChannelManagerToken* mojo_manager_token_;
 
   // All methods of this class should be run on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

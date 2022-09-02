@@ -144,7 +144,9 @@ int CameraHal::Init() {
   return 0;
 }
 
-void CameraHal::SetUp(CameraMojoChannelManagerToken* token) {}
+void CameraHal::SetUp(CameraMojoChannelManagerToken* token) {
+  mojo_manager_token_ = token;
+}
 
 void CameraHal::TearDown() {}
 
