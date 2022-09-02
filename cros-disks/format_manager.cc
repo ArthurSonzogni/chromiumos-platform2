@@ -13,11 +13,16 @@
 #include <base/containers/contains.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+#include <chromeos/libminijail.h>
 
+#include "base/bind.h"
+#include "base/callback_helpers.h"
+#include "base/strings/string_piece.h"
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
+#include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
 
@@ -122,12 +127,14 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
   process->NewIpcNamespace();
   process->NewNetworkNamespace();
   process->SetCapabilities(0);
+
   if (!process->EnterPivotRoot()) {
-    LOG(WARNING) << "Could not enter pivot root";
+    LOG(ERROR) << "Cannot enter pivot root";
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
+
   if (!process->SetUpMinimalMounts()) {
-    LOG(WARNING) << "Could not set up minimal mounts for jail";
+    LOG(ERROR) << "Cannot set up minimal mounts for jail";
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
 
@@ -147,7 +154,7 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
   gid_t group_id;
   if (!platform_->GetUserAndGroupId(kFormatUserAndGroupName, &user_id,
                                     &group_id)) {
-    LOG(ERROR) << "Cannot find user and group with name "
+    LOG(ERROR) << "Cannot find user ID and group ID of "
                << quote(kFormatUserAndGroupName);
     return FORMAT_ERROR_INTERNAL;
   }
@@ -165,12 +172,18 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
       base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
   process->PreserveFile(dev_file.GetPlatformFile());
 
+  // Sets an output callback, even if it does nothing, to activate the capture
+  // of the generated messages.
+  process->SetOutputCallback(base::DoNothing());
+
   if (!process->Start()) {
-    LOG(WARNING) << "Cannot start process " << quote(format_program)
-                 << " to format " << quote(device_file);
+    LOG(ERROR) << "Cannot start " << quote(format_program) << " to format "
+               << quote(device_file);
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
 
+  LOG(INFO) << "Running " << quote(format_program) << " to format "
+            << quote(device_file);
   return FORMAT_ERROR_NONE;
 }
 
@@ -214,59 +227,81 @@ FormatErrorType FormatManager::StartFormatting(
     return LabelErrorToFormatError(label_error);
   }
 
-  if (base::Contains(format_process_, device_path)) {
+  const auto [it, ok] = format_process_.try_emplace(device_path);
+  SandboxedProcess& process = it->second;
+
+  if (!ok) {
     LOG(WARNING) << "Device " << quote(device_path)
-                 << " is already being formatted";
+                 << " is already being formatted by "
+                 << process.GetProgramName() << "[" << process.pid() << "]";
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
-  SandboxedProcess* process = &format_process_[device_path];
-
-  FormatErrorType error = StartFormatProcess(
-      device_file, format_program,
-      CreateFormatArguments(filesystem, format_options), platform_, process);
-  if (error == FORMAT_ERROR_NONE) {
-    process_reaper_->WatchForChild(
-        FROM_HERE, process->pid(),
-        base::BindOnce(&FormatManager::OnFormatProcessTerminated,
-                       weak_ptr_factory_.GetWeakPtr(), device_path));
-  } else {
-    format_process_.erase(device_path);
+  if (const FormatErrorType error =
+          StartFormatProcess(device_file, format_program,
+                             CreateFormatArguments(filesystem, format_options),
+                             platform_, &process)) {
+    format_process_.erase(it);
+    return error;
   }
-  return error;
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, process.pid(),
+      base::BindOnce(&FormatManager::OnFormatProcessTerminated,
+                     weak_ptr_factory_.GetWeakPtr(), device_path));
+  return FORMAT_ERROR_NONE;
 }
 
 void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
                                               const siginfo_t& info) {
-  format_process_.erase(device_path);
-  FormatErrorType error_type = FORMAT_ERROR_UNKNOWN;
+  const auto node = format_process_.extract(device_path);
+  if (!node) {
+    LOG(ERROR) << "Cannot find process formatting " << quote(device_path);
+    return;
+  }
+
+  DCHECK_EQ(node.key(), device_path);
+  const SandboxedProcess& process = node.mapped();
+
+  FormatErrorType error = FORMAT_ERROR_UNKNOWN;
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {
-        error_type = FORMAT_ERROR_NONE;
-        LOG(INFO) << "Process " << info.si_pid << " for formatting "
-                  << quote(device_path) << " completed successfully";
+        error = FORMAT_ERROR_NONE;
+        LOG(INFO) << "Program " << quote(process.GetProgramName())
+                  << " formatting " << quote(device_path) << " finished with "
+                  << Process::ExitCode(info.si_status);
       } else {
-        error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-        LOG(ERROR) << "Process " << info.si_pid << " for formatting "
-                   << quote(device_path) << " exited with a status "
-                   << info.si_status;
+        error = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+        LOG(ERROR) << "Program " << quote(process.GetProgramName())
+                   << " formatting " << quote(device_path) << " finished with "
+                   << Process::ExitCode(info.si_status);
       }
       break;
 
     case CLD_DUMPED:
     case CLD_KILLED:
-      error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-      LOG(ERROR) << "Process " << info.si_pid << " for formatting "
-                 << quote(device_path) << " killed by a signal "
-                 << info.si_status;
+      error = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+      LOG(ERROR) << "Program " << quote(process.GetProgramName())
+                 << " formatting " << quote(device_path) << " was killed by "
+                 << Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status);
       break;
 
     default:
+      LOG(ERROR) << "Unexpected si_code value: " << info.si_code;
       break;
   }
+
+  if (error && !LOG_IS_ON(INFO)) {
+    // The mkfs program finished with an error, and its capture messages have
+    // not been logged yet. Log them now as errors.
+    for (const base::StringPiece line : process.GetCapturedOutput()) {
+      LOG(ERROR) << process.GetProgramName() << ": " << line;
+    }
+  }
+
   if (observer_)
-    observer_->OnFormatCompleted(device_path, error_type);
+    observer_->OnFormatCompleted(device_path, error);
 }
 
 std::string FormatManager::GetFormatProgramPath(

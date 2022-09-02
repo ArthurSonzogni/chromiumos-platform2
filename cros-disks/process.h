@@ -87,7 +87,7 @@ class Process {
 
   // Gets all the messages written by the subprocess to its stdout and stderr,
   // split into lines.
-  const std::vector<std::string>& GetCapturedOutput() {
+  const std::vector<std::string>& GetCapturedOutput() const {
     return captured_output_;
   }
 
