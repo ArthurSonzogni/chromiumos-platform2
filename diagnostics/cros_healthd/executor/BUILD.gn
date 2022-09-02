@@ -28,7 +28,11 @@ source_set("libcros_healthd_executor") {
 }
 
 executable("executor-delegate") {
-  sources = [ "delegate_main.cc" ]
+  sources = [
+    "delegate_impl.cc",
+    "delegate_main.cc",
+  ]
   configs += [ ":libcros_healthd_executor_pkg_deps" ]
+  deps = [ "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings" ]
   install_path = "/usr/libexec/diagnostics"
 }
