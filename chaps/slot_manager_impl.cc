@@ -945,18 +945,25 @@ bool SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     string new_auth_key_blob;
     if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
       LOG(INFO) << "Token not initialized; ignoring change auth data event.";
-    } else if (!tpm_utility_->ChangeAuthData(Sha1(old_auth_data),
-                                             Sha1(new_auth_data), auth_key_blob,
-                                             &new_auth_key_blob)) {
-      LOG(ERROR) << "Failed to change auth data for token at " << path.value();
-    } else if (!object_pool->SetInternalBlob(kEncryptedAuthKey,
-                                             new_auth_key_blob)) {
-      LOG(ERROR) << "Failed to write changed auth blob for token at "
-                 << path.value();
-    } else if (!object_pool->SetInternalBlob(kAuthDataHash,
-                                             HashAuthData(new_auth_data))) {
-      LOG(ERROR) << "Failed to write auth data hash for token at "
-                 << path.value();
+    } else {
+      if (!tpm_utility_->ChangeAuthData(Sha1(old_auth_data),
+                                        Sha1(new_auth_data), auth_key_blob,
+                                        &new_auth_key_blob)) {
+        LOG(ERROR) << "Failed to change auth data for token at "
+                   << path.value();
+        return false;
+      }
+      if (!object_pool->SetInternalBlob(kEncryptedAuthKey, new_auth_key_blob)) {
+        LOG(ERROR) << "Failed to write changed auth blob for token at "
+                   << path.value();
+        return false;
+      }
+      if (!object_pool->SetInternalBlob(kAuthDataHash,
+                                        HashAuthData(new_auth_data))) {
+        LOG(ERROR) << "Failed to write auth data hash for token at "
+                   << path.value();
+        return false;
+      }
     }
   } else {
     // We're working with a software-only token.
