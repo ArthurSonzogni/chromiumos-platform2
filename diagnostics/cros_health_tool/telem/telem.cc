@@ -402,6 +402,38 @@ std::string EnumToString(mojom::OsInfo::EfiPlatformSize size) {
   }
 }
 
+std::string EnumToString(mojom::Sensor::Type type) {
+  switch (type) {
+    case mojom::Sensor::Type::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::Sensor::Type::kAccel:
+      return "Accel";
+    case mojom::Sensor::Type::kLight:
+      return "Light";
+    case mojom::Sensor::Type::kGyro:
+      return "Gyro";
+    case mojom::Sensor::Type::kAngle:
+      return "Angle";
+    case mojom::Sensor::Type::kGravity:
+      return "Gravity";
+  }
+}
+
+std::string EnumToString(mojom::Sensor::Location type) {
+  switch (type) {
+    case mojom::Sensor::Location::kUnmappedEnumField:
+      return "UnmappedEnumField";
+    case mojom::Sensor::Location::kUnknown:
+      return "Unknown";
+    case mojom::Sensor::Location::kBase:
+      return "Base";
+    case mojom::Sensor::Location::kLid:
+      return "Lid";
+    case mojom::Sensor::Location::kCamera:
+      return "Camera";
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -1369,6 +1401,19 @@ void DisplaySensorInfo(const mojom::SensorResultPtr& result) {
   base::Value output{base::Value::Type::DICTIONARY};
   const auto& info = result->get_sensor_info();
   CHECK(!info.is_null());
+
+  if (info->sensors.has_value()) {
+    auto* out_sensors =
+        output.SetKey("sensors", base::Value{base::Value::Type::LIST});
+    for (const auto& sensor : info->sensors.value()) {
+      base::Value out_sensor{base::Value::Type::DICTIONARY};
+      SET_DICT(name, sensor, &out_sensor);
+      SET_DICT(device_id, sensor, &out_sensor);
+      SET_DICT(type, sensor, &out_sensor);
+      SET_DICT(location, sensor, &out_sensor);
+      out_sensors->Append(std::move(out_sensor));
+    }
+  }
 
   SET_DICT(lid_angle, info, &output);
 
