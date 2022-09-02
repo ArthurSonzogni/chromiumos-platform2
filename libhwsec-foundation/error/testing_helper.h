@@ -20,8 +20,37 @@ namespace testing {
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-MATCHER(IsOk, "") {
-  return arg.ok();
+// Monomorphic implementation of matcher IsOk() for a given type T.
+// T can be StatusChain, StatusChainOr<>, or a reference to either of them.
+template <typename T>
+class MonoIsOkMatcherImpl : public ::testing::MatcherInterface<T> {
+ public:
+  using is_gtest_matcher = void;
+  void DescribeTo(std::ostream* os) const override { *os << "is OK"; }
+  void DescribeNegationTo(std::ostream* os) const override {
+    *os << "is not OK";
+  }
+  bool MatchAndExplain(
+      T actual_value, ::testing::MatchResultListener* listener) const override {
+    if (listener->stream() && !actual_value.ok()) {
+      *listener->stream() << actual_value.status();
+    }
+    return actual_value.ok();
+  }
+};
+
+// Implements IsOk() as a polymorphic matcher.
+class IsOkMatcher {
+ public:
+  template <typename T>
+  operator ::testing::Matcher<T>() const {  // NOLINT
+    return ::testing::Matcher<T>(new MonoIsOkMatcherImpl<T>());
+  }
+};
+
+// Returns a gMock matcher that matches a Status or StatusOr<> which is OK.
+inline IsOkMatcher IsOk() {
+  return IsOkMatcher();
 }
 
 MATCHER(NotOk, "") {
