@@ -7,6 +7,8 @@
 #ifndef INIT_STARTUP_SECURITY_MANAGER_H_
 #define INIT_STARTUP_SECURITY_MANAGER_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
@@ -14,14 +16,20 @@
 
 namespace startup {
 
+// Accumulate process management policies from the files in the policy dir
+// and append them to to output_file.
 bool AccumulatePolicyFiles(const base::FilePath& root,
                            const base::FilePath& output_file,
                            const base::FilePath& policy_dir,
                            bool gid_policies);
+// Determine where securityfs files are placed and accumulate policy files.
 bool ConfigureProcessMgmtSecurity(const base::FilePath& root);
 
 // Sets up the LoadPin verity root digests to be trusted by the kernel.
 bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform);
+
+// Block symlink and FIFO access on the given path.
+bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path);
 
 }  // namespace startup
 

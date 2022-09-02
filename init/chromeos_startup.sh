@@ -116,12 +116,6 @@ is_tpm_owned() {
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
 
-if [ -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
-  DISABLE_STATEFUL_SECURITY_HARDENING="true"
-else
-  DISABLE_STATEFUL_SECURITY_HARDENING="false"
-fi
-
 # CROS_DEBUG equals one if we've booted in developer mode or we've
 # booted a developer image.
 crossystem "cros_debug?1"
@@ -232,12 +226,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
         fi
       fi
     fi
-  fi
-
-  if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
-    # Block symlink traversal and opening of FIFOs on stateful. Note that we set
-    # up exceptions for developer mode later on.
-    block_symlink_and_fifo /mnt/stateful_partition
   fi
 
   # Mount the OEM partition.
@@ -444,7 +432,7 @@ dev_gather_logs
 # Collect crash reports from early boot/mount failures.
 crash_reporter --ephemeral_collect
 
-if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
+if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
   # Set up symlink traversal and FIFO blocking policy for /var, which may reside
   # on a separate file system than /mnt/stateful_partition. Block symlink
   # traversal and opening of FIFOs by default, but allow exceptions in the few

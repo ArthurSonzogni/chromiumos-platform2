@@ -198,7 +198,8 @@ void ChromeosStartup::EarlySetup() {
 
   const base::FilePath disable_sec_hard =
       root_.Append(kDisableStatefulSecurityHard);
-  if (base::PathExists(disable_sec_hard) &&
+  enable_stateful_security_hardening_ = !base::PathExists(disable_sec_hard);
+  if (!enable_stateful_security_hardening_ &&
       !ConfigureProcessMgmtSecurity(root_)) {
     PLOG(WARNING) << "Failed to configure process management security.";
   }
@@ -219,6 +220,12 @@ int ChromeosStartup::Run() {
       flags_, root_, stateful_, platform_.get(),
       std::make_unique<brillo::LogicalVolumeManager>());
   stateful_mount_->MountStateful();
+
+  if (enable_stateful_security_hardening_) {
+    // Block symlink traversal and opening of FIFOs on stateful. Note that we
+    // set up exceptions for developer mode later on.
+    BlockSymlinkAndFifo(root_, stateful_.value());
+  }
 
   int ret = RunChromeosStartupScript();
   if (ret) {

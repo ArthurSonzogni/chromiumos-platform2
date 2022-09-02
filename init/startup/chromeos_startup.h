@@ -66,6 +66,7 @@ class ChromeosStartup {
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
   std::unique_ptr<Platform> platform_;
+  bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
 };
 

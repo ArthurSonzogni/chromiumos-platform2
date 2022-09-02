@@ -44,6 +44,9 @@ constexpr char kProcessMgmtPoliciesDirGID[] =
     "usr/share/cros/startup/gid_process_management_policies";
 constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 
+constexpr char kLsmInodePolicies[] =
+    "sys/kernel/security/chromiumos/inode_security_policies";
+
 }  // namespace
 
 namespace startup {
@@ -206,6 +209,22 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
   // dm-verity root digest list is not empty or invalid digest file descriptor
   // is fed into LoadPin.
   return ret == 0;
+}
+
+bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path) {
+  base::FilePath base = root.Append(kLsmInodePolicies);
+  base::FilePath sym = base.Append("block_symlink");
+  base::FilePath fifo = base.Append("block_fifo");
+  bool ret = true;
+  if (!base::WriteFile(sym, path)) {
+    PLOG(WARNING) << "Failed to write to block_symlink for " << path;
+    ret = false;
+  }
+  if (!base::WriteFile(fifo, path)) {
+    PLOG(WARNING) << "Failed to write to block_fifo for " << path;
+    ret = false;
+  }
+  return ret;
 }
 
 }  // namespace startup
