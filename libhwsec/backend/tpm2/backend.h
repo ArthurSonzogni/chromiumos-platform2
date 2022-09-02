@@ -17,6 +17,7 @@
 #include "libhwsec/backend/tpm2/key_management.h"
 #include "libhwsec/backend/tpm2/pinweaver.h"
 #include "libhwsec/backend/tpm2/random.h"
+#include "libhwsec/backend/tpm2/recovery_crypto.h"
 #include "libhwsec/backend/tpm2/sealing.h"
 #include "libhwsec/backend/tpm2/signature_sealing.h"
 #include "libhwsec/backend/tpm2/signing.h"
@@ -62,6 +63,7 @@ class BackendTpm2 : public Backend {
   RandomTpm2& GetRandomTpm2() { return random_; }
   PinWeaverTpm2& GetPinWeaverTpm2() { return pinweaver_; }
   VendorTpm2& GetVendorTpm2() { return vendor_; }
+  RecoveryCryptoTpm2& GetRecoveryCryptoTpm2() { return recovery_crypto_; }
 
   void set_middleware_derivative_for_test(
       MiddlewareDerivative middleware_derivative) {
@@ -86,7 +88,7 @@ class BackendTpm2 : public Backend {
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
   Vendor* GetVendor() override { return &vendor_; }
-  RecoveryCrypto* GetRecoveryCrypto() override { return nullptr; }
+  RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
 
   Proxy& proxy_;
 
@@ -105,6 +107,7 @@ class BackendTpm2 : public Backend {
   RandomTpm2 random_{*this};
   PinWeaverTpm2 pinweaver_{*this};
   VendorTpm2 vendor_{*this};
+  RecoveryCryptoTpm2 recovery_crypto_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };
