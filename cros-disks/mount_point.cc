@@ -114,6 +114,13 @@ void MountPoint::OnLauncherExit(const int exit_code) {
   data_.error = ConvertLauncherExitCodeToMountError(exit_code);
   DCHECK_NE(MOUNT_ERROR_IN_PROGRESS, data_.error);
 
+  if (exit_code != 0 && process_ && !LOG_IS_ON(INFO)) {
+    for (const auto& s : process_->GetCapturedOutput()) {
+      LOG(ERROR) << process_->GetProgramName() << "[" << process_->pid()
+                 << "]: " << s;
+    }
+  }
+
   if (launcher_exit_callback_)
     std::move(launcher_exit_callback_).Run(data_.error);
 }
