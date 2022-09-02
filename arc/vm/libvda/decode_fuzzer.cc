@@ -294,7 +294,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         base::subtle::PlatformSharedMemoryRegion platform_shm =
             base::WritableSharedMemoryRegion::TakeHandleForSerialization(
                 std::move(shm_region));
-        base::subtle::PlatformSharedMemoryRegion::ScopedPlatformHandle handle =
+        base::subtle::ScopedPlatformSharedMemoryHandle handle =
             platform_shm.PassPlatformHandle();
         fd = handle.fd.release();
       }
