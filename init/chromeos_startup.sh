@@ -227,20 +227,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
       fi
     fi
   fi
-
-  # Mount the OEM partition.
-  # mount_or_fail isn't used since this partition only has a filesystem
-  # on some boards.
-  OEM_FLAGS="ro,nodev,noexec,nosuid"
-  if [ "${FORMAT_OEM}" = "ubi" ]; then
-    OEM_DEV="/dev/ubi${PARTITION_NUM_OEM}_0"
-    if [ ! -e "${OEM_DEV}" ]; then
-      OEM_DEV="/dev/ubi0_${PARTITION_NUM_OEM}"
-    fi
-  else
-    OEM_DEV="${ROOTDEV_TYPE}${PARTITION_NUM_OEM}"
-  fi
-  mount -n -t "${FS_FORMAT_OEM}" -o "${OEM_FLAGS}" "${OEM_DEV}" /usr/share/oem
 fi
 
 # This file is created by clobber-state after the transition

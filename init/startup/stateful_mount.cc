@@ -407,6 +407,21 @@ void StatefulMount::MountStateful() {
       std::vector<std::string> argv{"keepimg"};
       platform_->Clobber(argv);
     }
+
+    // Mount the OEM partition.
+    // mount_or_fail isn't used since this partition only has a filesystem
+    // on some boards.
+    int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
+    std::string* part_num_oem = image_vars.FindStringKey("PARTITION_NUM_OEM");
+    const std::string* fs_form_oem = image_vars.FindStringKey("FS_FORMAT_OEM");
+    std::string oem_dev =
+        AppendPartition(root_dev_type_.value(), *part_num_oem);
+    status = platform_->Mount(base::FilePath(oem_dev),
+                              base::FilePath("/usr/share/oem"), *fs_form_oem,
+                              oem_flags, "");
+    if (!status) {
+      PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
+    }
   }
 }
 
