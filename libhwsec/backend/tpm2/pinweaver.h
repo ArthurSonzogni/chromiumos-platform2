@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <trunks/tpm_utility.h>
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/status.h"
@@ -64,6 +65,23 @@ class PinWeaverTpm2 : public Backend::PinWeaver,
       const brillo::Blob& cred_metadata) override;
   StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       const brillo::Blob& cred_metadata) override;
+  StatusOr<PinWeaverEccPoint> GeneratePk(
+      uint8_t auth_channel,
+      const PinWeaverEccPoint& client_public_key) override;
+  StatusOr<CredentialTreeResult> InsertRateLimiter(
+      uint8_t auth_channel,
+      const std::vector<OperationPolicySetting>& policies,
+      const uint64_t label,
+      const std::vector<brillo::Blob>& h_aux,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay) override;
+  StatusOr<CredentialTreeResult> StartBiometricsAuth(
+      uint8_t auth_channel,
+      const uint64_t label,
+      const std::vector<brillo::Blob>& h_aux,
+      const brillo::Blob& orig_cred_metadata,
+      const brillo::SecureBlob& client_nonce) override;
 
  private:
   StatusOr<PinWeaverTimestamp> GetLastAccessTimestamp(
@@ -72,6 +90,8 @@ class PinWeaverTpm2 : public Backend::PinWeaver,
   StatusOr<uint32_t> GetExpirationDelay(const brillo::Blob& cred_metadata);
   StatusOr<PinWeaverTimestamp> GetExpirationTimestamp(
       const brillo::Blob& cred_metadata);
+  StatusOr<trunks::ValidPcrCriteria> PolicySettingsToPcrCriteria(
+      const std::vector<OperationPolicySetting>& policies);
 
   // The protocol version used by pinweaver.
   std::optional<uint8_t> protocol_version_;

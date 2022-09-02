@@ -21,6 +21,7 @@ using CredentialTreeResult = PinWeaverFrontend::CredentialTreeResult;
 using GetLogResult = PinWeaverFrontend::GetLogResult;
 using ReplayLogOperationResult = PinWeaverFrontend::ReplayLogOperationResult;
 using DelaySchedule = PinWeaverFrontend::DelaySchedule;
+using PinWeaverEccPoint = Backend::PinWeaver::PinWeaverEccPoint;
 
 StatusOr<bool> PinWeaverFrontendImpl::IsEnabled() {
   return middleware_.CallSync<&Backend::PinWeaver::IsEnabled>();
@@ -112,6 +113,35 @@ StatusOr<std::optional<uint32_t>> PinWeaverFrontendImpl::GetExpirationInSeconds(
     const brillo::Blob& cred_metadata) {
   return middleware_.CallSync<&Backend::PinWeaver::GetExpirationInSeconds>(
       cred_metadata);
+}
+
+StatusOr<PinWeaverEccPoint> PinWeaverFrontendImpl::GeneratePk(
+    uint8_t auth_channel, const PinWeaverEccPoint& client_public_key) {
+  return middleware_.CallSync<&Backend::PinWeaver::GeneratePk>(
+      auth_channel, client_public_key);
+}
+
+StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::InsertRateLimiter(
+    uint8_t auth_channel,
+    const std::vector<OperationPolicySetting>& policies,
+    const uint64_t label,
+    const std::vector<brillo::Blob>& h_aux,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_schedule,
+    std::optional<uint32_t> expiration_delay) {
+  return middleware_.CallSync<&Backend::PinWeaver::InsertRateLimiter>(
+      auth_channel, policies, label, h_aux, reset_secret, delay_schedule,
+      expiration_delay);
+}
+
+StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::StartBiometricsAuth(
+    uint8_t auth_channel,
+    const uint64_t label,
+    const std::vector<brillo::Blob>& h_aux,
+    const brillo::Blob& orig_cred_metadata,
+    const brillo::SecureBlob& client_nonce) {
+  return middleware_.CallSync<&Backend::PinWeaver::StartBiometricsAuth>(
+      auth_channel, label, h_aux, orig_cred_metadata, client_nonce);
 }
 
 }  // namespace hwsec

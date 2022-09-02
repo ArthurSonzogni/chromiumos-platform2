@@ -97,4 +97,30 @@ StatusOr<std::optional<uint32_t>> PinWeaverTpm1::GetExpirationInSeconds(
     const brillo::Blob& cred_metadata) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
+
+StatusOr<PinWeaverTpm1::PinWeaverEccPoint> PinWeaverTpm1::GeneratePk(
+    uint8_t auth_channel,
+    const PinWeaverTpm1::PinWeaverEccPoint& client_public_key) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
+
+StatusOr<PinWeaverTpm1::CredentialTreeResult> PinWeaverTpm1::InsertRateLimiter(
+    uint8_t auth_channel,
+    const std::vector<OperationPolicySetting>& policies,
+    const uint64_t label,
+    const std::vector<brillo::Blob>& h_aux,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_schedule,
+    std::optional<uint32_t> expiration_delay) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
+
+StatusOr<PinWeaverTpm1::CredentialTreeResult>
+PinWeaverTpm1::StartBiometricsAuth(uint8_t auth_channel,
+                                   const uint64_t label,
+                                   const std::vector<brillo::Blob>& h_aux,
+                                   const brillo::Blob& orig_cred_metadata,
+                                   const brillo::SecureBlob& client_nonce) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
 }  // namespace hwsec
