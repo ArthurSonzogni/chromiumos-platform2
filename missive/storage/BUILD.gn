@@ -102,6 +102,7 @@ static_library("storage") {
     "//missive/encryption:verification",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/proto:pipeline_id_proto",
     "//missive/util:file",
     "//missive/util:status",
     "//missive/util:status_macros",
