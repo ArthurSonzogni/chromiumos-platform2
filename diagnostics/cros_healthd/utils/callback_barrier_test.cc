@@ -31,6 +31,13 @@ TEST(CallbackBarrierTest, Depend) {
   std::move(cb).Run();
 }
 
+TEST(CallbackBarrierTest, DependencyClosure) {
+  CallbackBarrier barrier{ExpectToBeCalledCallback(),
+                          ExpectNotToBeCalledCallback()};
+  auto cb = barrier.CreateDependencyClosure();
+  std::move(cb).Run();
+}
+
 TEST(CallbackBarrierTest, DependMultiple) {
   CallbackBarrier barrier{ExpectToBeCalledCallback(),
                           ExpectNotToBeCalledCallback()};

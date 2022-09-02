@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_IMPL_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -46,6 +47,7 @@ class MojoServiceImpl : public MojoService {
   chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
   GetNetworkDiagnosticsRoutines() override;
   cros::mojom::SensorService* GetSensorService() override;
+  cros::mojom::SensorDevice* GetSensorDevice(int32_t device_id) override;
 
  protected:
   MojoServiceImpl();
@@ -88,6 +90,9 @@ class MojoServiceImpl : public MojoService {
                            uint32_t error,
                            const std::string& message);
 
+  // Bind the sensor device if it is not bound.
+  void BindSensorDeviceRemoteIfNeeded(int32_t device_id);
+
   // Mojo remotes or adaptors to access mojo interfaces.
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
@@ -98,6 +103,7 @@ class MojoServiceImpl : public MojoService {
   mojo::Remote<chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
       network_diagnostics_routines_;
   mojo::Remote<cros::mojom::SensorService> sensor_service_;
+  std::map<int32_t, mojo::Remote<cros::mojom::SensorDevice>> sensor_devices_;
 
   // Network adapters. TODO(b/237239654): Remove this after migration.
   NetworkHealthAdapter* const network_health_adapter_;

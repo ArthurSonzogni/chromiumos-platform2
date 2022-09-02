@@ -5,12 +5,16 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_SERVICE_H_
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+
+#include "diagnostics/cros_healthd/fake/fake_sensor_device.h"
 
 namespace diagnostics {
 
@@ -30,6 +34,9 @@ class FakeSensorService : public cros::mojom::SensorService {
       const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
           ids_types);
 
+  // Sets the fake sensor device for the given sensor id.
+  void SetSensorDevice(int32_t id, std::unique_ptr<FakeSensorDevice> device);
+
  private:
   // cros::mojom::SensorService overrides.
   void GetDeviceIds(cros::mojom::DeviceType type,
@@ -44,6 +51,8 @@ class FakeSensorService : public cros::mojom::SensorService {
 
   // First is the device id, second is the device's types.
   base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>> ids_types_;
+  // First is the device id, second is unique ptr to FakeSensorDevice.
+  std::map<int32_t, std::unique_ptr<FakeSensorDevice>> ids_devices_;
   // Mojo receiver for binding pipe.
   mojo::Receiver<cros::mojom::SensorService> receiver_{this};
 };

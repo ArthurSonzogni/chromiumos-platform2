@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fake/fake_sensor_service.h"
 
+#include <memory>
 #include <utility>
 
 namespace diagnostics {
@@ -12,6 +13,11 @@ void FakeSensorService::SetIdsTypes(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         ids_types) {
   ids_types_ = ids_types;
+}
+
+void FakeSensorService::SetSensorDevice(
+    int32_t id, std::unique_ptr<FakeSensorDevice> device) {
+  ids_devices_[id] = std::move(device);
 }
 
 void FakeSensorService::GetDeviceIds(cros::mojom::DeviceType type,
@@ -26,7 +32,7 @@ void FakeSensorService::GetAllDeviceIds(GetAllDeviceIdsCallback callback) {
 void FakeSensorService::GetDevice(
     int32_t iio_device_id,
     mojo::PendingReceiver<cros::mojom::SensorDevice> device_request) {
-  NOTIMPLEMENTED();
+  ids_devices_[iio_device_id]->receiver().Bind(std::move(device_request));
 }
 
 void FakeSensorService::RegisterNewDevicesObserver(

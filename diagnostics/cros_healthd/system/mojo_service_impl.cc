@@ -97,6 +97,19 @@ cros::mojom::SensorService* MojoServiceImpl::GetSensorService() {
   return sensor_service_.get();
 }
 
+cros::mojom::SensorDevice* MojoServiceImpl::GetSensorDevice(int32_t device_id) {
+  MojoServiceImpl::BindSensorDeviceRemoteIfNeeded(device_id);
+  return sensor_devices_[device_id].get();
+}
+
+void MojoServiceImpl::BindSensorDeviceRemoteIfNeeded(int32_t device_id) {
+  if (sensor_devices_[device_id].is_bound())
+    return;
+
+  MojoServiceImpl::GetSensorService()->GetDevice(
+      device_id, sensor_devices_[device_id].BindNewPipeAndPassReceiver());
+}
+
 template <typename InterfaceType>
 void MojoServiceImpl::RequestService(const std::string& service_name,
                                      mojo::Remote<InterfaceType>& remote,

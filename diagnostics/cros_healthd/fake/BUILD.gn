@@ -21,6 +21,7 @@ source_set("libfake_cros_healthd") {
     "fake_chromium_data_collector.cc",
     "fake_probe_service.cc",
     "fake_routine_service.cc",
+    "fake_sensor_device.cc",
     "fake_sensor_service.cc",
     "fake_service_manager.cc",
   ]

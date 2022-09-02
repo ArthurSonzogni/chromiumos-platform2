@@ -23,6 +23,7 @@ class NetworkDiagnosticsRoutines;
 
 namespace cros::mojom {
 class SensorService;
+class SensorDevice;
 }
 
 namespace diagnostics {
@@ -52,6 +53,9 @@ class MojoService {
 
   // Returns the mojo interface to SensorService.
   virtual cros::mojom::SensorService* GetSensorService() = 0;
+
+  // Returns the mojo interface to SensorDevice.
+  virtual cros::mojom::SensorDevice* GetSensorDevice(int32_t device_id) = 0;
 };
 
 }  // namespace diagnostics

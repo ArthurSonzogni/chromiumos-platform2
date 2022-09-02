@@ -42,6 +42,13 @@ CallbackBarrier::Tracker::~Tracker() {
   std::move(on_finish_).Run(num_uncalled_callback_ == 0);
 }
 
+base::OnceClosure CallbackBarrier::CreateDependencyClosure() {
+  // If this closure is dropped, |DecreaseUncalledCallbackNum| won't be called
+  // so we know that there is an uncalled dependency.
+  tracker_->IncreaseUncalledCallbackNum();
+  return base::BindOnce(&Tracker::DecreaseUncalledCallbackNum, tracker_);
+}
+
 void CallbackBarrier::Tracker::IncreaseUncalledCallbackNum() {
   ++num_uncalled_callback_;
 }

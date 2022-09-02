@@ -87,15 +87,14 @@ class CallbackBarrier {
   const CallbackBarrier& operator=(const CallbackBarrier&) = delete;
   ~CallbackBarrier();
 
+  // Creates a closure and makes it a dependency.
+  base::OnceClosure CreateDependencyClosure();
+
   // Makes a |base::OnceCallback<T>| a dependency. Returns the wrapped once
   // callback to be used.
   template <typename T>
   base::OnceCallback<T> Depend(base::OnceCallback<T> callback) {
-    tracker_->IncreaseUncalledCallbackNum();
-    // If the callback is dropped, |DecreaseCallbackNum| won't be called so we
-    // know that there is an uncalled dependency.
-    return std::move(callback).Then(
-        base::BindOnce(&Tracker::DecreaseUncalledCallbackNum, tracker_));
+    return std::move(callback).Then(CreateDependencyClosure());
   }
 
  private:
