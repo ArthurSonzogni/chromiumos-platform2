@@ -24,6 +24,10 @@ using ::testing::WithArg;
 
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
+// Acceptable error code for getting lid angle.
+constexpr int kInvalidCommandCode = 1;
+// Failure error code for getting lid angle.
+constexpr int kExitFailureCode = 253;
 
 // Saves |response| to |response_destination|.
 void OnGetSensorResponseReceived(mojom::SensorResultPtr* response_destination,
@@ -101,9 +105,19 @@ TEST_F(SensorFetcherTest, FetchLidAngleIncorrectlyFormatted) {
             chromeos::cros_healthd::mojom::ErrorType::kParseError);
 }
 
+// Test that acceptable error code can be handled and gets null lid_angle.
+TEST_F(SensorFetcherTest, FetchLidAngleAcceptableError) {
+  SetExecutorResponse("EC result 1 (INVALID_COMMAND)\n", kInvalidCommandCode);
+
+  auto sensor_result = FetchSensorInfoSync();
+  ASSERT_TRUE(sensor_result->is_sensor_info());
+  const auto& sensor_info = sensor_result->get_sensor_info();
+  ASSERT_FALSE(sensor_info->lid_angle);
+}
+
 // Test that the executor fails to collect lid_angle and gets ProbeError.
 TEST_F(SensorFetcherTest, FetchLidAngleFailure) {
-  SetExecutorResponse("Some error happened!\n", EXIT_FAILURE);
+  SetExecutorResponse("Some error happened!\n", kExitFailureCode);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_error());

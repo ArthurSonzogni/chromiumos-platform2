@@ -21,6 +21,10 @@ namespace {
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
+// Acceptable error code for getting lid angle.
+constexpr int kInvalidCommandCode = 1;
+constexpr int kInvalidParamCode = 3;
+
 std::pair<mojom::NullableUint16Ptr, mojom::ProbeErrorPtr> ParseLidAngle(
     std::string input) {
   // Format of |input|: "Lid angle: ${LID_ANGLE}\n"
@@ -48,13 +52,20 @@ void HandleLidAngleResponse(Context* context,
                             mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
+
+  if (return_code == kInvalidCommandCode || return_code == kInvalidParamCode) {
+    std::move(callback).Run(
+        mojom::SensorResult::NewSensorInfo(mojom::SensorInfo::New()));
+    return;
+  }
+
   if (!err.empty() || return_code != EXIT_SUCCESS) {
     std::move(callback).Run(
         mojom::SensorResult::NewError(CreateAndLogProbeError(
             mojom::ErrorType::kSystemUtilityError,
-            base::StringPrintf(
-                "GetLidAngle failed with return code: %d and error: %s",
-                return_code, err.c_str()))));
+            base::StringPrintf("GetLidAngle failed with unacceptable return "
+                               "code: %d and error: %s",
+                               return_code, err.c_str()))));
     return;
   }
 
