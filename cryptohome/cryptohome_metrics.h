@@ -453,9 +453,11 @@ const char kCryptohomeDoubleMount[] = "Cryptohome.DoubleMountRequest";
 // Constants related to LE Credential UMA logging.
 inline constexpr char kLEOpResetTree[] = ".ResetTree";
 inline constexpr char kLEOpInsert[] = ".Insert";
+inline constexpr char kLEOpInsertRateLimiter[] = ".InsertRateLimiter";
 inline constexpr char kLEOpCheck[] = ".Check";
 inline constexpr char kLEOpReset[] = ".Reset";
 inline constexpr char kLEOpRemove[] = ".Remove";
+inline constexpr char kLEOpStartBiometricsAuth[] = ".StartBiometricsAuth";
 inline constexpr char kLEOpSync[] = ".Sync";
 inline constexpr char kLEOpGetDelayInSeconds[] = ".GetDelayInSeconds";
 inline constexpr char kLEOpGetExpirationInSeconds[] = ".GetExpirationInSeconds";

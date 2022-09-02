@@ -67,7 +67,48 @@ class LECredentialManagerImpl : public LECredentialManager {
   LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       uint64_t label) override;
 
+  LECredStatus InsertRateLimiter(
+      uint8_t auth_channel,
+      const std::vector<hwsec::OperationPolicySetting>& policies,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
+      uint64_t* ret_label) override;
+
+  LECredStatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
+      uint8_t auth_channel,
+      uint64_t label,
+      const brillo::SecureBlob& client_nonce) override;
+
  private:
+  // Since the InsertCredential() and InsertRateLimiter() functions are very
+  // similar, this function combines the common parts of both the calls
+  // into a generic "insert leaf" function. |auth_channel| is only valid in
+  // InsertRateLimiter(), while |le_secret| and |he_secret| is only valid in
+  // InsertCredential(). |is_rate_limiter| is used to signal whether the leaf
+  // being inserted is a rate-limiter (true) or a normal credential (false).
+  //
+  // On success, returns OkStatus and stores the
+  // newly provisioned label in |ret_label|.
+  //
+  // On failure, returns status with:
+  // - LE_CRED_ERROR_NO_FREE_LABEL if there is no free label.
+  // - LE_CRED_ERROR_HASH_TREE if there was an error in the hash tree.
+  //
+  // The returned label should be placed into the metadata associated with the
+  // Encrypted Vault Key (EVK). so that it can be used to look up the credential
+  // later.
+  LECredStatus InsertLeaf(
+      uint8_t* auth_channel,
+      const std::vector<hwsec::OperationPolicySetting>& policies,
+      const brillo::SecureBlob* le_secret,
+      const brillo::SecureBlob* he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
+      bool is_rate_limiter,
+      uint64_t* ret_label);
+
   // Since the CheckCredential() and ResetCredential() functions are very
   // similar, this function combines the common parts of both the calls
   // into a generic "check credential" function. The label to be checked

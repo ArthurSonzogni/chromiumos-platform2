@@ -82,90 +82,9 @@ LECredStatus LECredentialManagerImpl::InsertCredential(
     const DelaySchedule& delay_sched,
     std::optional<uint32_t> expiration_delay,
     uint64_t* ret_label) {
-  if (!hash_tree_->IsValid() || !Sync()) {
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-
-  SignInHashTree::Label label = hash_tree_->GetFreeLabel();
-  if (!label.is_valid()) {
-    LOG(ERROR) << "No free labels available.";
-    ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk,
-                   LE_CRED_ERROR_NO_FREE_LABEL);
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManLabelUnavailableInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-        LECredError::LE_CRED_ERROR_NO_FREE_LABEL);
-  }
-
-  std::vector<brillo::Blob> h_aux = GetAuxHashes(label);
-  if (h_aux.empty()) {
-    LOG(ERROR) << "Error getting aux hashes for label: " << label.value();
-    ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-
-  ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
-
-  hwsec::StatusOr<CredentialTreeResult> result = pinweaver_->InsertCredential(
-      policies, label.value(), h_aux, le_secret, he_secret, reset_secret,
-      delay_sched, expiration_delay);
-  if (!result.ok()) {
-    LOG(ERROR) << "Error executing pinweaver InsertCredential command: "
-               << result.status();
-    ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
-    return MakeStatus<CryptohomeLECredError>(
-               CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInInsertCred),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-               LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
-  }
-  root_hash_ = result->new_root;
-
-  ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_SUCCESS);
-
-  if (!hash_tree_->StoreLabel(label, result->new_mac.value(),
-                              result->new_cred_metadata.value(), false)) {
-    ReportLEResult(kLEOpInsert, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
-    LOG(ERROR) << "InsertCredential succeeded in PinWeaver but disk updated "
-                  "failed, label: "
-               << label.value();
-    // The insert into the disk hash tree failed, so let us remove
-    // the credential from the TPM state so that we are back to where
-    // we started.
-    hwsec::StatusOr<CredentialTreeResult> remove_result =
-        pinweaver_->RemoveCredential(label.value(), h_aux,
-                                     result->new_mac.value());
-    if (!remove_result.ok()) {
-      ReportLEResult(kLEOpInsert, kLEActionBackendRecoverInsert,
-                     LE_CRED_ERROR_HASH_TREE);
-      LOG(ERROR)
-          << " Failed to rewind aborted InsertCredential in PinWeaver, label: "
-          << label.value() << ": " << std::move(remove_result.status());
-      // The attempt to undo the PinWeaver side operation has also failed, Can't
-      // do much else now. We block further LE operations until at least the
-      // next boot.
-      is_locked_ = true;
-    }
-    root_hash_ = remove_result->new_root;
-
-    ReportLEResult(kLEOpInsert, kLEActionBackendRecoverInsert, LE_CRED_SUCCESS);
-
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManStoreFailedInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-
-  ReportLEResult(kLEOpInsert, kLEActionSaveToDisk, LE_CRED_SUCCESS);
-
-  *ret_label = label.value();
-  return OkStatus<CryptohomeLECredError>();
+  return InsertLeaf(nullptr, policies, &le_secret, &he_secret, reset_secret,
+                    delay_sched, expiration_delay, /*is_rate_limiter=*/false,
+                    ret_label);
 }
 
 LECredStatus LECredentialManagerImpl::CheckCredential(
@@ -479,6 +398,238 @@ LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
   }
 
   return result.value();
+}
+
+LECredStatus LECredentialManagerImpl::InsertRateLimiter(
+    uint8_t auth_channel,
+    const std::vector<hwsec::OperationPolicySetting>& policies,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_sched,
+    std::optional<uint32_t> expiration_delay,
+    uint64_t* ret_label) {
+  return InsertLeaf(&auth_channel, policies, nullptr, nullptr, reset_secret,
+                    delay_sched, expiration_delay, /*is_rate_limiter=*/true,
+                    ret_label);
+}
+
+LECredStatusOr<LECredentialManager::StartBiometricsAuthReply>
+LECredentialManagerImpl::StartBiometricsAuth(
+    uint8_t auth_channel,
+    uint64_t label,
+    const brillo::SecureBlob& client_nonce) {
+  if (!hash_tree_->IsValid() || !Sync()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInStartBiometricsAuth),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok()) {
+    ReportLEResult(kLEOpStartBiometricsAuth, kLEActionLoadFromDisk,
+                   ret->local_lecred_error());
+    return ret;
+  }
+
+  if (metadata_lost) {
+    LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    ReportLEResult(kLEOpStartBiometricsAuth, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_INVALID_METADATA);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInStartBiometricsAuth),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_METADATA);
+  }
+
+  ReportLEResult(kLEOpStartBiometricsAuth, kLEActionLoadFromDisk,
+                 LE_CRED_SUCCESS);
+
+  hwsec::StatusOr<CredentialTreeResult> result =
+      pinweaver_->StartBiometricsAuth(auth_channel, label, h_aux, orig_cred,
+                                      client_nonce);
+
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to call pinweaver in start biometrics auth: "
+               << result.status();
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManPinWeaverFailedInStartBiometricsAuth),
+               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               LECredError::LE_CRED_ERROR_HASH_TREE)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+  }
+  root_hash_ = result->new_root;
+
+  ReportLEResult(kLEOpStartBiometricsAuth, kLEActionBackend,
+                 BackendErrorToCredError(result->error));
+
+  // Store the new credential meta data and MAC in case the backend performed a
+  // state change. Note that this might also be needed for some failure cases.
+  if (result->new_cred_metadata.has_value() && result->new_mac.has_value()) {
+    if (!hash_tree_->StoreLabel(label_object, result->new_mac.value(),
+                                result->new_cred_metadata.value(), false)) {
+      ReportLEResult(kLEOpStartBiometricsAuth, kLEActionSaveToDisk,
+                     LE_CRED_ERROR_HASH_TREE);
+      LOG(ERROR) << "Failed to update credential in disk hash tree for label: "
+                 << label;
+      // This is an un-salvageable state. We can't make LE updates anymore,
+      // since the disk state can't be updated.
+      // We block further LE operations until at least the next boot.
+      // The hope is that on reboot, the disk operations start working. In that
+      // case, we will be able to replay this operation from the TPM log.
+      is_locked_ = true;
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocLECredManStoreLabelFailedInStartBiometricsAuth),
+          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+          LECredError::LE_CRED_ERROR_HASH_TREE);
+    }
+  }
+
+  ReportLEResult(kLEOpStartBiometricsAuth, kLEActionSaveToDisk,
+                 LE_CRED_SUCCESS);
+
+  LECredStatus converted = ConvertTpmError(result->error);
+  if (!converted.ok()) {
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInStartBiometricsAuth),
+               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}))
+        .Wrap(std::move(converted));
+  }
+
+  if (!result->server_nonce.has_value() || !result->iv.has_value() ||
+      !result->encrypted_he_secret.has_value()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidOutputInStartBiometricsAuth),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  LECredentialManager::StartBiometricsAuthReply reply{
+      .server_nonce = std::move(result->server_nonce.value()),
+      .iv = std::move(result->iv.value()),
+      .encrypted_he_secret = std::move(result->encrypted_he_secret.value()),
+  };
+
+  return reply;
+}
+
+LECredStatus LECredentialManagerImpl::InsertLeaf(
+    uint8_t* auth_channel,
+    const std::vector<hwsec::OperationPolicySetting>& policies,
+    const brillo::SecureBlob* le_secret,
+    const brillo::SecureBlob* he_secret,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_sched,
+    std::optional<uint32_t> expiration_delay,
+    bool is_rate_limiter,
+    uint64_t* ret_label) {
+  if (!hash_tree_->IsValid() || !Sync()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  if ((is_rate_limiter && !auth_channel) ||
+      (!is_rate_limiter && (!le_secret || !he_secret))) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidParamInInsertCred),
+        error::ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  const char* uma_log_op =
+      is_rate_limiter ? kLEOpInsertRateLimiter : kLEOpInsert;
+
+  SignInHashTree::Label label = hash_tree_->GetFreeLabel();
+  if (!label.is_valid()) {
+    LOG(ERROR) << "No free labels available.";
+    ReportLEResult(uma_log_op, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_NO_FREE_LABEL);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManLabelUnavailableInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_NO_FREE_LABEL);
+  }
+
+  std::vector<brillo::Blob> h_aux = GetAuxHashes(label);
+  if (h_aux.empty()) {
+    LOG(ERROR) << "Error getting aux hashes for label: " << label.value();
+    ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
+
+  hwsec::StatusOr<CredentialTreeResult> result =
+      is_rate_limiter
+          ? pinweaver_->InsertRateLimiter(*auth_channel, policies,
+                                          label.value(), h_aux, reset_secret,
+                                          delay_sched, expiration_delay)
+          : pinweaver_->InsertCredential(policies, label.value(), h_aux,
+                                         *le_secret, *he_secret, reset_secret,
+                                         delay_sched, expiration_delay);
+  if (!result.ok()) {
+    LOG(ERROR) << "Error executing pinweaver InsertCredential command: "
+               << result.status();
+    ReportLEResult(uma_log_op, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInInsertCred),
+               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               LECredError::LE_CRED_ERROR_HASH_TREE)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+  }
+  root_hash_ = result->new_root;
+
+  ReportLEResult(uma_log_op, kLEActionBackend, LE_CRED_SUCCESS);
+
+  if (!hash_tree_->StoreLabel(label, result->new_mac.value(),
+                              result->new_cred_metadata.value(), false)) {
+    ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+    LOG(ERROR) << "InsertCredential succeeded in PinWeaver but disk updated "
+                  "failed, label: "
+               << label.value();
+    // The insert into the disk hash tree failed, so let us remove
+    // the credential from the TPM state so that we are back to where
+    // we started.
+    hwsec::StatusOr<CredentialTreeResult> remove_result =
+        pinweaver_->RemoveCredential(label.value(), h_aux,
+                                     result->new_mac.value());
+    if (!remove_result.ok()) {
+      ReportLEResult(uma_log_op, kLEActionBackendRecoverInsert,
+                     LE_CRED_ERROR_HASH_TREE);
+      LOG(ERROR)
+          << " Failed to rewind aborted InsertCredential in PinWeaver, label: "
+          << label.value() << ": " << std::move(remove_result.status());
+      // The attempt to undo the PinWeaver side operation has also failed, Can't
+      // do much else now. We block further LE operations until at least the
+      // next boot.
+      is_locked_ = true;
+    }
+    root_hash_ = remove_result->new_root;
+
+    ReportLEResult(uma_log_op, kLEActionBackendRecoverInsert, LE_CRED_SUCCESS);
+
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManStoreFailedInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+
+  *ret_label = label.value();
+  return OkStatus<CryptohomeLECredError>();
 }
 
 LECredStatus LECredentialManagerImpl::RetrieveLabelInfo(

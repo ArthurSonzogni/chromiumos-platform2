@@ -1191,6 +1191,20 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManInvalidMetadataInGetExpirationInSeconds = 682,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetExpirationInSeconds = 683,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInStartBiometricsAuth = 684,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidMetadataInStartBiometricsAuth = 685,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPinWeaverFailedInStartBiometricsAuth = 686,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManStoreLabelFailedInStartBiometricsAuth = 687,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManTpmFailedInStartBiometricsAuth = 688,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidOutputInStartBiometricsAuth = 689,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidParamInInsertCred = 690,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

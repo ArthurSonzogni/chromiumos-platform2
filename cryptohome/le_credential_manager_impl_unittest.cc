@@ -4,12 +4,14 @@
 
 // Functional tests for LECredentialManager + SignInHashTree.
 #include <iterator>  // For std::begin()/std::end().
+#include <memory>
 #include <optional>
 #include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -26,6 +28,7 @@ namespace {
 
 constexpr int kLEMaxIncorrectAttempt = 5;
 constexpr int kFakeLogSize = 2;
+constexpr uint8_t kAuthChannel = 0;
 
 // All the keys are 32 bytes long.
 constexpr uint8_t kLeSecret1Array[] = {
@@ -48,7 +51,18 @@ constexpr uint8_t kResetSecret1Array[] = {
     0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00, 0x0B,
     0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15};
 
+constexpr uint8_t kClientNonceArray[] = {
+    0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00,
+    0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x00, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15};
+
 constexpr char kCredDirName[] = "low_entropy_creds";
+
+// As the point needs to be valid, the point is pre-generated.
+constexpr char kClientEccPointXHex[] =
+    "78D184E439FD4EC5BADC5431C8A6DD8EC039F945E7AD9DEDC5166BEF390E9AFD";
+constexpr char kClientEccPointYHex[] =
+    "4E411B61F1B48601ED3A218E4EE6075A3053130E6F25BBFF7FE08BB6D3EC6BF6";
 
 }  // namespace
 
@@ -152,6 +166,42 @@ class LECredentialManagerImplUnitTest : public testing::Test {
                                     temp_dir_.GetPath(), true));
   }
 
+  void GeneratePk(uint8_t auth_channel) {
+    hwsec::PinWeaverFrontend::PinWeaverEccPoint pt;
+    brillo::Blob x_blob, y_blob;
+    base::HexStringToBytes(kClientEccPointXHex, &x_blob);
+    base::HexStringToBytes(kClientEccPointYHex, &y_blob);
+    memcpy(pt.x, x_blob.data(), sizeof(pt.x));
+    memcpy(pt.y, y_blob.data(), sizeof(pt.y));
+    EXPECT_TRUE(pinweaver_->GeneratePk(auth_channel, pt).ok());
+  }
+
+  // Helper function to create a rate-limiter & then lock it out.
+  uint64_t CreateLockedOutRateLimiter(uint8_t auth_channel) {
+    const std::map<uint32_t, uint32_t> delay_sched = {
+        {kLEMaxIncorrectAttempt, UINT32_MAX},
+    };
+    brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                    std::end(kClientNonceArray));
+    const brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                           std::end(kResetSecret1Array));
+
+    uint64_t label;
+    EXPECT_TRUE(
+        le_mgr_
+            ->InsertRateLimiter(auth_channel,
+                                std::vector<hwsec::OperationPolicySetting>(),
+                                kResetSecret1, delay_sched,
+                                /*expiration_delay=*/std::nullopt, &label)
+            .ok());
+
+    for (int i = 0; i < kLEMaxIncorrectAttempt; i++) {
+      EXPECT_TRUE(
+          le_mgr_->StartBiometricsAuth(auth_channel, label, kClientNonce).ok());
+    }
+    return label;
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
@@ -205,6 +255,57 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertAndCheck) {
       le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
           .ok());
   EXPECT_EQ(he_secret, kHeSecret1);
+}
+
+// Basic check: Insert 2 rate-limiters, then verify we can retrieve them
+// correctly.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsBasicInsertAndCheck) {
+  constexpr uint8_t kWrongAuthChannel = 1;
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1;
+  uint64_t label2;
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+  brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+
+  GeneratePk(kAuthChannel);
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
+  auto reply1 =
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
+  ASSERT_TRUE(reply1.ok());
+
+  auto reply2 =
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label2, kClientNonce);
+  ASSERT_TRUE(reply2.ok());
+
+  // Server should return different values every time.
+  EXPECT_NE(reply1->server_nonce, reply2->server_nonce);
+  EXPECT_NE(reply1->iv, reply2->iv);
+  EXPECT_NE(reply1->encrypted_he_secret, reply2->encrypted_he_secret);
+
+  // Incorrect auth channel passed should result in INVALID_LE_SECRET.
+  GeneratePk(kWrongAuthChannel);
+  EXPECT_EQ(
+      LE_CRED_ERROR_INVALID_LE_SECRET,
+      le_mgr_->StartBiometricsAuth(kWrongAuthChannel, label1, kClientNonce)
+          .status()
+          ->local_lecred_error());
 }
 
 // Insert a label and verify that authentication works. Simulate the PCR
@@ -293,6 +394,29 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
   EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kTpmLockout));
+}
+
+// Verify getting locked out due to too many attempts for biometrics
+// rate-limiters.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
+  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                        std::end(kClientNonceArray));
+
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+  auto reply = le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            reply.status()->local_lecred_error());
+  EXPECT_TRUE(
+      ContainsActionInStack(reply.status(), error::ErrorAction::kTpmLockout));
+
+  // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
+  // right metadata is stored.
+  reply = le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            reply.status()->local_lecred_error());
+  EXPECT_TRUE(
+      ContainsActionInStack(reply.status(), error::ErrorAction::kTpmLockout));
 }
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent
@@ -417,6 +541,58 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
           ->local_lecred_error());
+}
+
+// Check that a reset unlocks a locked out rate-limiter.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecret) {
+  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                        std::end(kClientNonceArray));
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
+                .status()
+                ->local_lecred_error());
+
+  EXPECT_TRUE(
+      le_mgr_->ResetCredential(label1, kResetSecret1, /*strong_reset=*/false)
+          .ok());
+
+  // Make sure we can Check successfully, post reset.
+  EXPECT_TRUE(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce).ok());
+}
+
+// Check that an invalid reset doesn't unlock a locked rate-limiter.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecretNegative) {
+  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                        std::end(kClientNonceArray));
+  GeneratePk(kAuthChannel);
+  uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
+  brillo::SecureBlob kLeSecret1(std::begin(kLeSecret1Array),
+                                std::end(kLeSecret1Array));
+
+  // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
+  // is stored.
+  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
+                .status()
+                ->local_lecred_error());
+
+  EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
+            le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false)
+                ->local_lecred_error());
+
+  // Make sure that Check still fails.
+  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
+            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
+                .status()
+                ->local_lecred_error());
 }
 
 // Corrupt the hash cache, and see if subsequent LE operations succeed.
@@ -787,6 +963,122 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
                              /*expiration_delay=*/std::nullopt, &temp_label)
           .ok());
   EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
+}
+
+// Initialize the LECredManager and take a snapshot after 2 operations,
+// then perform |kLogSize| inserts of rate-limiters. Then, restore the snapshot
+// (in effect "losing" the last |kLogSize| operations). The log functionality
+// should restore the "lost" state.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsLogReplayLostInserts) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+  brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+
+  GeneratePk(kAuthChannel);
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
+  uint64_t label2;
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform inserts to fill up the replay log.
+  uint64_t temp_label;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_TRUE(
+        le_mgr_
+            ->InsertRateLimiter(kAuthChannel,
+                                std::vector<hwsec::OperationPolicySetting>(),
+                                kResetSecret1, delay_sched,
+                                /*expiration_delay=*/std::nullopt, &temp_label)
+            .ok());
+  }
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operations should work.
+  ASSERT_TRUE(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce).ok());
+  ASSERT_TRUE(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label2, kClientNonce).ok());
+  EXPECT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &temp_label)
+          .ok());
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
+}
+
+// Initialize the LECredManager and take a snapshot after 2 operations,
+// then perform |kLogSize| start auths of rate-limiters. Then, restore the
+// snapshot (in effect "losing" the last |kLogSize| operations). The log
+// functionality should restore the "lost" state.
+TEST_F(LECredentialManagerImplUnitTest, BiometricsLogReplayLostStartAuths) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
+                                   std::end(kResetSecret1Array));
+  brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
+
+  GeneratePk(kAuthChannel);
+  // Perform insert.
+  uint64_t label1;
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label1)
+          .ok());
+  uint64_t label2;
+  ASSERT_TRUE(
+      le_mgr_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt, &label2)
+          .ok());
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform start auths to fill up the replay log.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_TRUE(
+        le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce).ok());
+  }
+
+  le_mgr_.reset();
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // Subsequent operations should work.
+  ASSERT_TRUE(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce).ok());
+  ASSERT_TRUE(
+      le_mgr_->StartBiometricsAuth(kAuthChannel, label2, kClientNonce).ok());
 }
 
 // Verify behaviour when more operations are lost than the log can save.

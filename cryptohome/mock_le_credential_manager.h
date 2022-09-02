@@ -57,6 +57,21 @@ class MockLECredentialManager : public LECredentialManager {
               GetExpirationInSeconds,
               (uint64_t label),
               (override));
+
+  MOCK_METHOD(LECredStatus,
+              InsertRateLimiter,
+              (uint8_t,
+               const std::vector<hwsec::OperationPolicySetting>&,
+               const brillo::SecureBlob&,
+               const DelaySchedule&,
+               std::optional<uint32_t>,
+               uint64_t*),
+              (override));
+
+  MOCK_METHOD(LECredStatusOr<LECredentialManager::StartBiometricsAuthReply>,
+              StartBiometricsAuth,
+              (uint8_t, uint64_t, const brillo::SecureBlob&),
+              (override));
 };
 
 }  // namespace cryptohome

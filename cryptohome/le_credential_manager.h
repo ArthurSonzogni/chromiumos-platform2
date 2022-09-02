@@ -21,6 +21,12 @@ class LECredentialManager {
  public:
   typedef std::map<uint32_t, uint32_t> DelaySchedule;
 
+  struct StartBiometricsAuthReply {
+    brillo::SecureBlob server_nonce;
+    brillo::SecureBlob iv;
+    brillo::SecureBlob encrypted_he_secret;
+  };
+
   virtual ~LECredentialManager() = default;
 
   // Inserts an LE credential into the system.
@@ -104,6 +110,52 @@ class LECredentialManager {
   // means the credential won't expire. 0 means the credential already expired.
   virtual LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       uint64_t label) = 0;
+
+  // Inserts an biometrics rate-limiter into the system.
+  //
+  // The can be reset by the reset secret |reset_secret|.
+  // The delay schedule which governs the rate at which CheckCredential()
+  // attempts are allowed is provided in |delay_sched|. The expiration delay
+  // which governs how long a credential expires after creation/reset is
+  // provided in |expiration_delay|. Nullopt for |expiration_delay| means that
+  // the credential won't expire.
+  //
+  // On success, returns OkStatus and stores the
+  // newly provisioned label in |ret_label|.
+  //
+  // On failure, returns status with:
+  // - LE_CRED_ERROR_NO_FREE_LABEL if there is no free label.
+  // - LE_CRED_ERROR_HASH_TREE if there was an error in the hash tree.
+  //
+  // The returned label should be placed into the metadata associated with the
+  // Encrypted Vault Key (EVK). so that it can be used to look up the credential
+  // later.
+  virtual LECredStatus InsertRateLimiter(
+      uint8_t auth_channel,
+      const std::vector<hwsec::OperationPolicySetting>& policies,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_sched,
+      std::optional<uint32_t> expiration_delay,
+      uint64_t* ret_label) = 0;
+
+  // Starts an authentication attempt with a rate-limiter.
+  //
+  // The |client_nonce| is used to perform session key exchange, which is then
+  // used for encrypting the |encrypted_he_secret| released on success.
+  //
+  // On failure, returns status with:
+  // LE_CRED_ERROR_INVALID_LE_SECRET for incorrect authentication attempt.
+  // LE_CRED_ERROR_TOO_MANY_ATTEMPTS for locked out credential (too many
+  // incorrect attempts).
+  // LE_CRED_ERROR_HASH_TREE for error in hash tree.
+  // LE_CRED_ERROR_INVALID_LABEL for invalid label.
+  // LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
+  // LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
+  // values, in which case only reboot will allow this user to authenticate.
+  virtual LECredStatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
+      uint8_t auth_channel,
+      uint64_t label,
+      const brillo::SecureBlob& client_nonce) = 0;
 };
 
 };  // namespace cryptohome
