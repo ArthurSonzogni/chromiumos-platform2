@@ -37,6 +37,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include "base/strings/strcat.h"
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
@@ -82,6 +83,9 @@ constexpr char kSeccompPolicyPath[] = "/usr/share/policy/9s-seccomp.policy";
 
 // Static prefix of SmbFs mount names.
 constexpr char kSmbFsMountNamePrefix[] = "smbfs-";
+
+// Static prefix of GuestOS mount names.
+constexpr char kGuestOsMountNamePrefix[] = "guestos+";
 
 // Max number of open files allowed per server.
 constexpr rlim_t kMaxOpenFiles = 64 * 1024;
@@ -758,7 +762,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   bool owner_id_required =
       request.storage_location() == SharePathRequest::DOWNLOADS ||
       request.storage_location() == SharePathRequest::MY_FILES ||
-      request.storage_location() == SharePathRequest::LINUX_FILES;
+      request.storage_location() == SharePathRequest::LINUX_FILES ||
+      request.storage_location() == SharePathRequest::GUEST_OS_FILES;
   if (owner_id.ReferencesParent() || owner_id.BaseName() != owner_id ||
       (owner_id_required && owner_id.value().size() == 0)) {
     LOG(ERROR) << "owner_id references parent, or is "
@@ -777,9 +782,9 @@ std::unique_ptr<dbus::Response> Service::SharePath(
       request.storage_location() == SharePathRequest::DRIVEFS_FILES_BY_ID ||
       request.storage_location() ==
           SharePathRequest::DRIVEFS_SHORTCUT_TARGETS_BY_ID;
-  if (drivefs_mount_name.ReferencesParent() ||
-      drivefs_mount_name.BaseName() != drivefs_mount_name ||
-      (drivefs_mount_name_required &&
+  if (drivefs_mount_name_required &&
+      (drivefs_mount_name.ReferencesParent() ||
+       drivefs_mount_name.BaseName() != drivefs_mount_name ||
        !base::StartsWith(drivefs_mount_name.value(), "drivefs-",
                          base::CompareCase::SENSITIVE))) {
     LOG(ERROR) << "drivefs_mount_name references parent, or is "
@@ -810,6 +815,30 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     // that is named based on the share ID itself.
     smbfs_dst_prefix = smbfs_mount_name.value().substr(
         std::string(kSmbFsMountNamePrefix).size());
+  }
+
+  // Validate guest_os_mount_name and set guest_os_dst_prefix.
+  base::FilePath guest_os_mount_name(request.guest_os_mount_name());
+  std::string guest_os_dst_prefix;
+  if (request.storage_location() == SharePathRequest::GUEST_OS_FILES) {
+    if (guest_os_mount_name.ReferencesParent() ||
+        guest_os_mount_name.BaseName() != guest_os_mount_name ||
+        !base::StartsWith(
+            guest_os_mount_name.value(),
+            base::StrCat({kGuestOsMountNamePrefix, owner_id.value(), "+"}),
+            base::CompareCase::SENSITIVE)) {
+      LOG(ERROR) << "guest_os_mount_name references parent, or is more than 1 "
+                    "component, or is not populated";
+      response.set_failure_reason(
+          "guest_os_mount_name must be a single valid component");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    // Once we strip the prefix and owner id we're left with an encoded vm name
+    // and container name, which gives us a per-guest identifier. Use this as
+    // the root for sharing that guests's folders in to the target.
+    guest_os_dst_prefix = guest_os_mount_name.value().substr(
+        strlen(kGuestOsMountNamePrefix) + owner_id.value().length() + 1);
   }
 
   // Build the source and destination directories.
@@ -875,6 +904,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
                 .Append(base::JoinString(
                     {"crostini", owner_id.value(), "termina", "penguin"}, "_"));
       dst = dst.Append("LinuxFiles");
+      break;
+    case SharePathRequest::GUEST_OS_FILES:
+      src = base::FilePath("/media/fuse/").Append(guest_os_mount_name),
+      dst = dst.Append("GuestOsFiles").Append(guest_os_dst_prefix);
       break;
     case SharePathRequest::FONTS:
       src = base::FilePath("/usr/share/fonts");
