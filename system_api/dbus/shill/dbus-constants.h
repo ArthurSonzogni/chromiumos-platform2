@@ -645,6 +645,7 @@ const char kSecurityWpa2Wpa3Enterprise[] = "wpa2+wpa3-ent";
 const char kSecurityWpa3Enterprise[] = "wpa3-ent";
 
 // WiFi Band options.
+const char kBandAll[] = "all-bands";
 const char kBand2GHz[] = "2.4GHz";
 const char kBand5GHz[] = "5GHz";
 const char kBand6GHz[] = "6GHz";
@@ -902,10 +903,11 @@ const char kTrafficCounterSourceSystem[] = "system";
 // Manager kTetheringConfigProperty dictionary key names.
 const char kTetheringConfAutoDisableProperty[] = "auto_disable";
 const char kTetheringConfBandProperty[] = "band";
+const char kTetheringConfMARProperty[] = "randomize_mac_address";
 const char kTetheringConfPassphraseProperty[] = "passphrase";
 const char kTetheringConfSecurityProperty[] = "security";
 const char kTetheringConfSSIDProperty[] = "ssid";
-const char kTetheringConfUpstreamTech[] = "upstream_technology";
+const char kTetheringConfUpstreamTechProperty[] = "upstream_technology";
 
 // Manager kTetheringCapabilitiesProperty dictionary key names.
 const char kTetheringCapDownstreamProperty[] = "downstream_technologies";

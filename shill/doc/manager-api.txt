@@ -738,7 +738,7 @@ Properties	object ActiveProfile [readonly]
 			boolean MAR
 				a random MAC address is used when a mobile AP is started
 				(WiFi downstream only). Default to true.
-			string hexSSID
+			string ssid
 				the hex-encoded tethering SSID name to be advertised (WiFi
 				downstream only)
 			string band

@@ -36,6 +36,7 @@ class TetheringManagerTest : public PropertyStoreTest {
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
   manager()->RegisterDevice(device_);
+  manager()->tethering_manager()->allowed_ = true;
 
   KeyValueStore caps;
   Error error;
@@ -57,6 +58,59 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   std::vector<std::string> wifi_security =
       caps.Get<std::vector<std::string>>(kTetheringCapSecurityProperty);
   EXPECT_FALSE(wifi_security.empty());
+}
+
+TEST_F(TetheringManagerTest, TetheringConfig) {
+  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
+  manager()->RegisterDevice(device_);
+  manager()->tethering_manager()->allowed_ = true;
+
+  // Check default TetheringConfig.
+  KeyValueStore caps;
+  Error error;
+  caps = manager()->tethering_manager()->GetConfig(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(caps.Get<bool>(kTetheringConfMARProperty));
+  EXPECT_TRUE(caps.Get<bool>(kTetheringConfAutoDisableProperty));
+  std::string ssid = caps.Get<std::string>(kTetheringConfSSIDProperty);
+  EXPECT_FALSE(ssid.empty());
+  EXPECT_TRUE(std::all_of(ssid.begin(), ssid.end(), ::isxdigit));
+  std::string passphrase =
+      caps.Get<std::string>(kTetheringConfPassphraseProperty);
+  EXPECT_FALSE(passphrase.empty());
+  EXPECT_TRUE(std::all_of(passphrase.begin(), passphrase.end(), ::isxdigit));
+  std::string security = caps.Get<std::string>(kTetheringConfSecurityProperty);
+  EXPECT_EQ(security, kSecurityWpa2Wpa3);
+  EXPECT_FALSE(caps.Contains<std::string>(kTetheringConfBandProperty));
+  EXPECT_FALSE(caps.Contains<std::string>(kTetheringConfUpstreamTechProperty));
+
+  // Set TetheringConfig.
+  KeyValueStore args;
+  args.Set<bool>(kTetheringConfMARProperty, false);
+  args.Set<bool>(kTetheringConfAutoDisableProperty, false);
+  ssid = "6368726F6D654F532D31323334";
+  args.Set<std::string>(kTetheringConfSSIDProperty, ssid);
+  passphrase = "test0000";
+  args.Set<std::string>(kTetheringConfPassphraseProperty, passphrase);
+  args.Set<std::string>(kTetheringConfSecurityProperty, kSecurityWpa3);
+  args.Set<std::string>(kTetheringConfBandProperty, kBand2GHz);
+  args.Set<std::string>(kTetheringConfUpstreamTechProperty, kTypeCellular);
+  EXPECT_TRUE(manager()->tethering_manager()->SetConfig(args, &error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Read and check if match.
+  caps = manager()->tethering_manager()->GetConfig(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(caps.Get<bool>(kTetheringConfMARProperty));
+  EXPECT_FALSE(caps.Get<bool>(kTetheringConfAutoDisableProperty));
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfSSIDProperty), ssid);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfPassphraseProperty),
+            passphrase);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfSecurityProperty),
+            kSecurityWpa3);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfBandProperty), kBand2GHz);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfUpstreamTechProperty),
+            kTypeCellular);
 }
 
 }  // namespace shill
