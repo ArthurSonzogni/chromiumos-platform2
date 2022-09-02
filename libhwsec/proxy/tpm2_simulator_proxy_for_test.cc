@@ -22,6 +22,10 @@
 
 namespace {
 
+constexpr char kOwnerPassword[] = "owner_password";
+constexpr char kEndorsementPassword[] = "endorsement_password";
+constexpr char kLockoutPassword[] = "lockout_password";
+
 class ScopedChdir {
  public:
   explicit ScopedChdir(const base::FilePath& dir) {
@@ -106,6 +110,15 @@ bool Tpm2SimulatorProxyForTest::Init() {
   }
 
   if (low_level_factory_->GetTpmUtility()->InitializeTpm()) {
+    LOG(ERROR) << "Failed to init TPM.";
+    return false;
+  }
+
+  const std::string owner_password = kOwnerPassword;
+  const std::string endorsement_password = kEndorsementPassword;
+  const std::string lockout_password = kLockoutPassword;
+  if (low_level_factory_->GetTpmUtility()->TakeOwnership(
+          owner_password, endorsement_password, lockout_password)) {
     LOG(ERROR) << "Failed to init TPM.";
     return false;
   }
