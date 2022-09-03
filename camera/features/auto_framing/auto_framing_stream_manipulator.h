@@ -14,13 +14,14 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
 #include "common/camera_buffer_pool.h"
-#include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
@@ -106,6 +107,14 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     kTransitionToOff,
   };
 
+  struct Metrics {
+    int num_captures = 0;
+    int enabled_count = 0;
+    base::TimeDelta accumulated_on_time = base::Seconds(0);
+    base::TimeDelta accumulated_off_time = base::Seconds(0);
+    base::flat_map<AutoFramingError, int> errors;
+  };
+
   bool InitializeOnThread(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback);
   bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
@@ -126,6 +135,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   void ResetOnThread();
   void UpdateOptionsOnThread(const base::Value& json_values);
   std::pair<State, State> StateTransitionOnThread();
+  void UploadMetricsOnThread();
 
   void OnOptionsUpdated(const base::Value& json_values);
 
@@ -153,6 +163,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   CaptureResultCallback result_callback_;
+
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   // Determined by static camera metadata and fixed after Initialize().
   Size active_array_dimension_;
@@ -182,8 +194,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   Rect<float> region_of_interest_ = {0.0f, 0.0f, 1.0f, 1.0f};
   Rect<float> active_crop_region_ = {0.0f, 0.0f, 1.0f, 1.0f};
 
-  // Metadata logger for tests and debugging.
-  MetadataLogger metadata_logger_;
+  Metrics metrics_;
 
   CameraThread thread_;
 };

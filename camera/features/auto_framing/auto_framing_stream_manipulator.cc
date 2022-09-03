@@ -32,9 +32,6 @@ namespace cros {
 
 namespace {
 
-constexpr char kMetadataDumpPath[] =
-    "/run/camera/auto_framing_frame_metadata.json";
-
 constexpr char kEnableKey[] = "enable";
 constexpr char kDebugKey[] = "debug";
 constexpr char kMaxFullWidthKey[] = "max_video_width";
@@ -224,6 +221,24 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
   return std::make_pair(size.width / g, size.height / g);
 }
 
+int CalculateMedian(const base::flat_map<int, int>& histogram) {
+  DCHECK_GT(histogram.size(), 0);
+  const int total_count = std::accumulate(
+      histogram.begin(), histogram.end(), 0,
+      [](int count, const auto& bin) { return count + bin.second; });
+  DCHECK_GT(total_count, 0);
+  const int half_total_count = total_count / 2;
+  size_t count = 0;
+  for (const auto& [v, c] : histogram) {
+    count += c;
+    if (count >= half_total_count) {
+      return v;
+    }
+  }
+  NOTREACHED();
+  return 0;
+}
+
 }  // namespace
 
 //
@@ -254,7 +269,7 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
               base::FilePath(kOverrideAutoFramingConfigFile)}),
       runtime_options_(runtime_options),
       still_capture_processor_(std::move(still_capture_processor)),
-      metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
+      camera_metrics_(CameraMetrics::New()),
       thread_("AutoFramingThread") {
   DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
@@ -373,6 +388,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   if (!active_array_dimension_.is_valid()) {
     LOGF(ERROR) << "Invalid active array size: "
                 << active_array_dimension_.ToString();
+    ++metrics_.errors[AutoFramingError::kInitializationError];
     return false;
   }
 
@@ -381,6 +397,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
       options_.max_video_height);
   if (!full_frame_size_.is_valid() || !still_size_.is_valid()) {
     LOGF(ERROR) << "Cannot find suitable full video/still frame resolutions";
+    ++metrics_.errors[AutoFramingError::kInitializationError];
     return false;
   }
   VLOGF(1) << "Full frame sizes: video=" << full_frame_size_.ToString()
@@ -451,6 +468,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   }
   if (!target_size.is_valid()) {
     LOGF(ERROR) << "No valid output stream found in stream config";
+    ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
   auto [target_aspect_ratio_x, target_aspect_ratio_y] =
@@ -473,6 +491,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 
   if (!stream_config->SetStreams(hal_streams)) {
     LOGF(ERROR) << "Failed to manipulate stream config";
+    ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
 
@@ -505,6 +524,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   if ((full_frame_stream_.usage & kFullFrameBufferUsage) !=
       kFullFrameBufferUsage) {
     LOGF(ERROR) << "Failed to negotiate buffer usage on full frame stream";
+    ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
   full_frame_buffer_pool_ =
@@ -533,6 +553,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     if ((still_yuv_stream_->usage & kStillYuvBufferUsage) !=
         kStillYuvBufferUsage) {
       LOGF(ERROR) << "Failed to negotiate buffer usage on still YUV stream";
+      ++metrics_.errors[AutoFramingError::kConfigurationError];
       return false;
     }
     still_yuv_buffer_pool_ =
@@ -555,6 +576,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
 
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
+    ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
 
@@ -589,12 +611,15 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
+  ++metrics_.num_captures;
+
   // Ignore reprocessing requests.
   if (request->GetInputBuffer()) {
     return true;
   }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
+    ++metrics_.errors[AutoFramingError::kProcessRequestError];
     return false;
   }
 
@@ -625,6 +650,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     if (!ctx->full_frame_buffer) {
       LOGF(ERROR) << "Failed to allocate full frame buffer for request "
                   << request->frame_number();
+      ++metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
     hal_buffers.push_back(camera3_stream_buffer_t{
@@ -643,6 +669,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     if (!ctx->still_yuv_buffer) {
       LOGF(ERROR) << "Failed to allocate still YUV buffer for request "
                   << request->frame_number();
+      ++metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
     hal_buffers.push_back(camera3_stream_buffer_t{
@@ -792,6 +819,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     if (sync_wait(full_frame_buffer->release_fence, kSyncWaitTimeoutMs) != 0) {
       LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
                   << frame_number;
+      ++metrics_.errors[AutoFramingError::kProcessResultError];
       return false;
     }
     close(full_frame_buffer->release_fence);
@@ -855,6 +883,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     if (!ctx->cropped_still_yuv_buffer) {
       LOGF(ERROR) << "Failed to allocate cropped still YUV buffer on result "
                   << frame_number;
+      ++metrics_.errors[AutoFramingError::kProcessResultError];
       return false;
     }
     const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
@@ -899,6 +928,7 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
   if (!ctx->cropped_still_yuv_buffer) {
     LOGF(ERROR) << "Failed to allocate cropped still YUV buffer on result "
                 << frame_number;
+    ++metrics_.errors[AutoFramingError::kProcessResultError];
     return false;
   }
   const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
@@ -1051,6 +1081,8 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
 void AutoFramingStreamManipulator::ResetOnThread() {
   DCHECK(thread_.IsCurrentThread());
 
+  UploadMetricsOnThread();
+
   auto_framing_client_.TearDown();
   still_capture_processor_->Reset();
 
@@ -1070,6 +1102,72 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   faces_.clear();
   region_of_interest_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
   active_crop_region_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
+
+  metrics_ = Metrics{};
+}
+
+void AutoFramingStreamManipulator::UploadMetricsOnThread() {
+  DCHECK(thread_.IsCurrentThread());
+
+  const AutoFramingClient::Metrics pipeline_metrics =
+      auto_framing_client_.GetMetrics();
+  // Skip sessions that no frames are actually captured.
+  if (metrics_.num_captures == 0) {
+    return;
+  }
+  VLOGF(1) << "Metrics:"
+           << " num_captures=" << metrics_.num_captures
+           << " enabled_count=" << metrics_.enabled_count
+           << " accumulated_on_time=" << metrics_.accumulated_on_time
+           << " accumulated_off_time=" << metrics_.accumulated_off_time
+           << " num_detections=" << pipeline_metrics.num_detections
+           << " num_detection_hits=" << pipeline_metrics.num_detection_hits
+           << " accumulated_detection_latency="
+           << pipeline_metrics.accumulated_detection_latency;
+
+  constexpr base::TimeDelta kRecordThreshold = base::Seconds(10);
+  if (metrics_.accumulated_on_time + metrics_.accumulated_off_time >=
+      kRecordThreshold) {
+    camera_metrics_->SendAutoFramingEnabledTimePercentage(
+        metrics_.accumulated_on_time /
+        (metrics_.accumulated_on_time + metrics_.accumulated_off_time));
+  }
+  camera_metrics_->SendAutoFramingEnabledCount(metrics_.enabled_count);
+
+  if (pipeline_metrics.num_detections > 0) {
+    const int detection_hit_rate = pipeline_metrics.num_detection_hits * 100 /
+                                   pipeline_metrics.num_detections;
+    const base::TimeDelta avg_detection_latency =
+        pipeline_metrics.accumulated_detection_latency /
+        pipeline_metrics.num_detections;
+    VLOGF(1) << "Detection hit rate: " << detection_hit_rate << "%";
+    VLOGF(1) << "Average detection latency: " << avg_detection_latency;
+    camera_metrics_->SendAutoFramingDetectionHitPercentage(detection_hit_rate);
+    camera_metrics_->SendAutoFramingAvgDetectionLatency(avg_detection_latency);
+  }
+  if (pipeline_metrics.zoom_ratio_tenths_histogram.size() > 0) {
+    const int median_zoom_ratio_tenths =
+        CalculateMedian(pipeline_metrics.zoom_ratio_tenths_histogram);
+    VLOGF(1) << "Median zoom ratio: "
+             << static_cast<float>(median_zoom_ratio_tenths) / 10.0f;
+    camera_metrics_->SendAutoFramingMedianZoomRatio(median_zoom_ratio_tenths);
+  }
+
+  bool has_error = false;
+  for (auto& errors : {metrics_.errors, pipeline_metrics.errors}) {
+    for (auto [error, count] : errors) {
+      if (count > 0) {
+        // Only report each error once in a session.
+        LOGF(ERROR) << "There were " << count << " occurrences of error "
+                    << static_cast<int>(error);
+        camera_metrics_->SendAutoFramingError(error);
+        has_error = true;
+      }
+    }
+  }
+  if (!has_error) {
+    camera_metrics_->SendAutoFramingError(AutoFramingError::kNoError);
+  }
 }
 
 void AutoFramingStreamManipulator::UpdateOptionsOnThread(
@@ -1135,7 +1233,6 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
   if (GetEnabled()) {
     if (state_ == State::kOff || state_ == State::kTransitionToOff) {
       state_ = State::kTransitionToOn;
-      state_transition_timer_ = base::ElapsedTimer();
     } else if (state_ == State::kTransitionToOn &&
                state_transition_timer_.Elapsed() >= options_.enable_delay) {
       state_ = State::kOn;
@@ -1143,7 +1240,6 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
   } else {
     if (state_ == State::kOn || state_ == State::kTransitionToOn) {
       state_ = State::kTransitionToOff;
-      state_transition_timer_ = base::ElapsedTimer();
     } else if (state_ == State::kTransitionToOff &&
                state_transition_timer_.Elapsed() >= options_.disable_delay) {
       state_ = State::kOff;
@@ -1152,6 +1248,15 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
   if (prev_state != state_) {
     LOGF(INFO) << "State: " << static_cast<int>(prev_state) << " -> "
                << static_cast<int>(state_);
+    if (prev_state == State::kOn) {
+      metrics_.accumulated_on_time += state_transition_timer_.Elapsed();
+    } else if (prev_state == State::kOff) {
+      metrics_.accumulated_off_time += state_transition_timer_.Elapsed();
+    }
+    if (state_ == State::kOn) {
+      ++metrics_.enabled_count;
+    }
+    state_transition_timer_ = base::ElapsedTimer();
   }
   return std::make_pair(prev_state, state_);
 }
@@ -1194,10 +1299,12 @@ base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
   if (input_release_fence.is_valid() &&
       sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
     LOGF(ERROR) << "sync_wait() timed out on input buffer";
+    ++metrics_.errors[AutoFramingError::kProcessResultError];
   }
   if (output_acquire_fence.is_valid() &&
       sync_wait(output_acquire_fence.get(), kSyncWaitTimeoutMs) != 0) {
     LOGF(ERROR) << "sync_wait() timed out on output buffer";
+    ++metrics_.errors[AutoFramingError::kProcessResultError];
   }
 
   SharedImage input_image = SharedImage::CreateFromBuffer(

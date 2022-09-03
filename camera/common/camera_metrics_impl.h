@@ -57,6 +57,13 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendGcamAeAvgHdrRatio(int hdr_ratio) override;
   void SendGcamAeAvgTet(int tet) override;
 
+  void SendAutoFramingEnabledTimePercentage(int percentage) override;
+  void SendAutoFramingEnabledCount(int count) override;
+  void SendAutoFramingDetectionHitPercentage(int percentage) override;
+  void SendAutoFramingAvgDetectionLatency(base::TimeDelta latency) override;
+  void SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) override;
+  void SendAutoFramingError(AutoFramingError error) override;
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };

@@ -26,7 +26,10 @@ source_set("auto_framing") {
   configs += [ "//common-mk:pic" ]
   public_deps = [ "//camera/gpu" ]
   deps = [
+    "//camera/common:base",
     "//camera/common:libcros_camera_mojom",
+    "//camera/common:mojo_base",
+    "//camera/features",
     "//camera/gpu:image_processor",
   ]
 }

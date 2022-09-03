@@ -9,7 +9,9 @@
 
 #include <memory>
 
+#include <base/containers/flat_map.h>
 #include <base/time/time.h>
+
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -75,6 +77,25 @@ enum class HdrnetError {
   // Error triggered by camera HAL.
   kCameraHal3Error = 7,
   kMaxValue = kCameraHal3Error,
+};
+
+enum class AutoFramingError {
+  kNoError = 0,
+  // Error in auto-framing stream manipulator initialization.
+  kInitializationError = 1,
+  // Error in auto-framing stream manipulator configuration.
+  kConfigurationError = 2,
+  // Error in auto-framing stream manipulator processing requests.
+  kProcessRequestError = 3,
+  // Error in auto-framing stream manipulator processing results.
+  kProcessResultError = 4,
+  // Error when initializing auto-framing pipeline.
+  kPipelineInitializationError = 5,
+  // Error when adding inputs to auto-framing pipeline.
+  kPipelineInputError = 6,
+  // Error when obtaining outputs auto-framing pipeline.
+  kPipelineOutputError = 7,
+  kMaxValue = kPipelineOutputError,
 };
 
 class CROS_CAMERA_EXPORT CameraMetrics {
@@ -166,6 +187,26 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records the average total exposure time (TET) per session.
   virtual void SendGcamAeAvgTet(int tet) = 0;
+
+  // *** Auto-framing metrics ***
+
+  // Records auto-framing enabled time in ratio per session.
+  virtual void SendAutoFramingEnabledTimePercentage(int percentage) = 0;
+
+  // Records auto-framing enabled count per session.
+  virtual void SendAutoFramingEnabledCount(int count) = 0;
+
+  // Records auto-framing detection hit rate per session.
+  virtual void SendAutoFramingDetectionHitPercentage(int percentage) = 0;
+
+  // Records auto-framing average detection latency per session.
+  virtual void SendAutoFramingAvgDetectionLatency(base::TimeDelta latency) = 0;
+
+  // Records auto-framing median zoom ratio per session.
+  virtual void SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) = 0;
+
+  // Records auto-framing average zoom ratio per session.
+  virtual void SendAutoFramingError(AutoFramingError error) = 0;
 };
 
 }  // namespace cros

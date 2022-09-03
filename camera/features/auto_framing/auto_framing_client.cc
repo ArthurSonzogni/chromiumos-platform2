@@ -9,6 +9,7 @@
 #include <hardware/gralloc.h>
 #include <libyuv.h>
 
+#include <algorithm>
 #include <limits>
 #include <numeric>
 #include <optional>
@@ -34,6 +35,14 @@ constexpr uint32_t kDetectorInputHeight = 320;
 
 constexpr char kAutoFramingGraphConfigOverridePath[] =
     "/run/camera/auto_framing_subgraph.pbtxt";
+
+bool AreSameRects(const Rect<float>& r1, const Rect<float>& r2) {
+  constexpr float kThreshold = std::numeric_limits<float>::epsilon();
+  return std::abs(r1.left - r2.left) <= kThreshold &&
+         std::abs(r1.top - r2.top) <= kThreshold &&
+         std::abs(r1.right() - r2.right()) <= kThreshold &&
+         std::abs(r1.bottom() - r2.bottom()) <= kThreshold;
+}
 
 }  // namespace
 
@@ -65,6 +74,7 @@ bool AutoFramingClient::SetUp(const Options& options) {
                                                    graph_config_ptr)) {
     LOGF(ERROR) << "Failed to initialize auto-framing engine";
     auto_framing_ = nullptr;
+    ++metrics_.errors[AutoFramingError::kPipelineInitializationError];
     return false;
   }
 
@@ -94,6 +104,7 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
   VLOGF(2) << "Notify frame @" << timestamp;
   if (!auto_framing_->NotifyFrame(timestamp)) {
     LOGF(ERROR) << "Failed to notify frame @" << timestamp;
+    ++metrics_.errors[AutoFramingError::kPipelineInputError];
     return false;
   }
 
@@ -118,6 +129,7 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
                                    kDetectorInputWidth)) {
     LOGF(ERROR) << "Failed to detect frame @" << timestamp;
     detector_input_buffer_timestamp_ = std::nullopt;
+    ++metrics_.errors[AutoFramingError::kPipelineInputError];
     return false;
   }
 
@@ -132,6 +144,7 @@ bool AutoFramingClient::ResetCropWindow(int64_t timestamp) {
                                           full_crop_.top, full_crop_.right(),
                                           full_crop_.bottom())) {
     LOGF(ERROR) << "Failed to reset crop window @" << timestamp;
+    ++metrics_.errors[AutoFramingError::kPipelineInputError];
     return false;
   }
   return true;
@@ -153,6 +166,7 @@ Rect<float> AutoFramingClient::GetCropWindow(int64_t timestamp) {
     base::TimeDelta elapsed_time = timer.Elapsed();
     if (elapsed_time >= kCropCalculationTimeout) {
       LOGF(WARNING) << "Calculating crop window timed out; using the last";
+      ++metrics_.errors[AutoFramingError::kPipelineOutputError];
       return crop_windows_.empty() ? full_crop_normalized_
                                    : crop_windows_.rbegin()->second;
     }
@@ -196,6 +210,12 @@ void AutoFramingClient::OnNewRegionOfInterest(
       Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
           .AsRect<uint32_t>(),
       image_size_);
+  ++metrics_.num_detections;
+  if (x_min != 0 || y_min != 0 || x_max != image_size_.width - 1 ||
+      y_max != image_size_.height - 1) {
+    ++metrics_.num_detection_hits;
+  }
+  metrics_.accumulated_detection_latency += detection_timer_->Elapsed();
 }
 
 void AutoFramingClient::OnNewCropWindow(
@@ -204,10 +224,29 @@ void AutoFramingClient::OnNewCropWindow(
            << "," << x_max << "," << y_max;
 
   base::AutoLock lock(lock_);
-  crop_windows_[timestamp] = NormalizeRect(
+  const Rect<float> crop_window = NormalizeRect(
       Rect<int>(x_min, y_min, x_max - x_min + 1, y_max - y_min + 1)
           .AsRect<uint32_t>(),
       image_size_);
+  crop_windows_[timestamp] = crop_window;
+
+  // Sample zoom ratio when the crop window is stabilized for some time.
+  constexpr base::TimeDelta kCropWindowStabilizationPeriod = base::Seconds(1);
+  if (!last_crop_window_.has_value() ||
+      !AreSameRects(crop_window, *last_crop_window_)) {
+    sample_crop_window_timer_ = base::ElapsedTimer();
+  } else if (sample_crop_window_timer_.Elapsed() >=
+             kCropWindowStabilizationPeriod) {
+    const float zoom_ratio =
+        1.0f / std::max(crop_window.width, crop_window.height);
+    if (zoom_ratio > 1.01f) {
+      ++metrics_
+            .zoom_ratio_tenths_histogram[static_cast<int>(zoom_ratio * 10.0f)];
+    }
+    sample_crop_window_timer_ = base::ElapsedTimer();
+  }
+  last_crop_window_ = crop_window;
+
   crop_window_received_cv_.Signal();
 }
 

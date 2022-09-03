@@ -131,6 +131,32 @@ constexpr int kMinTet = 1;
 constexpr int kMaxTet = 10000;
 constexpr int kTetBuckets = 50;
 
+// *** Auto-framing metrics ***
+
+constexpr char kCameraAutoFramingEnabledTime[] =
+    "ChromeOS.Camera.AutoFraming.EnabledTime";
+
+constexpr char kCameraAutoFramingEnabledCount[] =
+    "ChromeOS.Camera.AutoFraming.EnabledCount";
+constexpr int kMaxEnabledCount = 10;
+
+constexpr char kCameraAutoFramingDetectionHitRate[] =
+    "ChromeOS.Camera.AutoFraming.DetectionHitRate";
+
+constexpr char kCameraAutoFramingAvgDetectionLatency[] =
+    "ChromeOS.Camera.AutoFraming.AverageDetectionLatency";
+constexpr int kMinDetectionLatencyUs = 0;
+constexpr int kMaxDetectionLatencyUs = 1'000'000;
+constexpr int kDetectionLatencyBuckets = 30;
+
+constexpr char kCameraAutoFramingMedianZoomRatio[] =
+    "ChromeOS.Camera.AutoFraming.MedianZoomRatio";
+constexpr int kMinZoomRatioTenths = 10;
+constexpr int kMaxZoomRatioTenths = 40;
+constexpr int kZoomRatioBuckets = 30;
+
+constexpr char kCameraAutoFramingError[] = "ChromeOS.Camera.AutoFraming.Error";
+
 }  // namespace
 
 // static
@@ -340,6 +366,37 @@ void CameraMetricsImpl::SendGcamAeAvgHdrRatio(int hdr_ratio) {
 void CameraMetricsImpl::SendGcamAeAvgTet(int tet) {
   metrics_lib_->SendToUMA(kCameraGcamAeAvgTet, tet, kMinTet, kMaxTet,
                           kTetBuckets);
+}
+
+void CameraMetricsImpl::SendAutoFramingEnabledTimePercentage(int percentage) {
+  metrics_lib_->SendPercentageToUMA(kCameraAutoFramingEnabledTime, percentage);
+}
+
+void CameraMetricsImpl::SendAutoFramingEnabledCount(int count) {
+  metrics_lib_->SendLinearToUMA(kCameraAutoFramingEnabledCount, count,
+                                kMaxEnabledCount);
+}
+
+void CameraMetricsImpl::SendAutoFramingDetectionHitPercentage(int percentage) {
+  metrics_lib_->SendPercentageToUMA(kCameraAutoFramingDetectionHitRate,
+                                    percentage);
+}
+
+void CameraMetricsImpl::SendAutoFramingAvgDetectionLatency(
+    base::TimeDelta latency) {
+  metrics_lib_->SendToUMA(kCameraAutoFramingAvgDetectionLatency,
+                          latency.InMicroseconds(), kMinDetectionLatencyUs,
+                          kMaxDetectionLatencyUs, kDetectionLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) {
+  metrics_lib_->SendToUMA(kCameraAutoFramingMedianZoomRatio, zoom_ratio_tenths,
+                          kMinZoomRatioTenths, kMaxZoomRatioTenths,
+                          kZoomRatioBuckets);
+}
+
+void CameraMetricsImpl::SendAutoFramingError(AutoFramingError error) {
+  metrics_lib_->SendEnumToUMA(kCameraAutoFramingError, error);
 }
 
 }  // namespace cros

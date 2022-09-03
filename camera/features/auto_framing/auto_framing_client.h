@@ -15,12 +15,14 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/containers/flat_map.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
 #include "cros-camera/auto_framing_cros.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
 
 namespace cros {
@@ -35,6 +37,14 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
     uint32_t target_aspect_ratio_x = 0;
     uint32_t target_aspect_ratio_y = 0;
     float detection_rate = 0.0f;
+  };
+
+  struct Metrics {
+    int num_detections = 0;
+    int num_detection_hits = 0;
+    base::TimeDelta accumulated_detection_latency = base::Seconds(0);
+    base::flat_map<int, int> zoom_ratio_tenths_histogram;
+    base::flat_map<AutoFramingError, int> errors;
   };
 
   AutoFramingClient() : crop_window_received_cv_(&lock_) {}
@@ -64,6 +74,8 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   // Tear down the pipeline and clear states.
   void TearDown();
 
+  Metrics GetMetrics() const { return metrics_; }
+
   // Implementations of AutoFramingCrOS::Client.
   void OnFrameProcessed(int64_t timestamp) override;
   void OnNewRegionOfInterest(
@@ -84,6 +96,10 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   std::map<int64_t, Rect<float>> crop_windows_ GUARDED_BY(lock_);
   base::TimeDelta min_detection_interval_ GUARDED_BY(lock_);
   std::optional<base::ElapsedTimer> detection_timer_ GUARDED_BY(lock_);
+
+  Metrics metrics_ GUARDED_BY(lock_);
+  std::optional<Rect<float>> last_crop_window_ GUARDED_BY(lock_);
+  base::ElapsedTimer sample_crop_window_timer_ GUARDED_BY(lock_);
 };
 
 }  // namespace cros
