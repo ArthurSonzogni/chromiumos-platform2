@@ -120,6 +120,9 @@ class UserSession {
   // label (stored in RealUserSession::key_data_).
   virtual void RemoveCredentialVerifierForKeyLabel(
       const std::string& key_label) = 0;
+
+  // Resets the application container for a given session.
+  virtual bool ResetApplicationContainer(const std::string& application) = 0;
 };
 
 }  // namespace cryptohome

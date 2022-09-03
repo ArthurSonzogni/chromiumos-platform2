@@ -1458,4 +1458,27 @@ void UserDataAuthAdaptor::DoGetAuthSessionStatus(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::ResetApplicationContainer(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::ResetApplicationContainerReply>> response,
+    const user_data_auth::ResetApplicationContainerRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoResetApplicationContainer,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::ResetApplicationContainerReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoResetApplicationContainer(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::ResetApplicationContainerReply>> response,
+    const user_data_auth::ResetApplicationContainerRequest& in_request) {
+  user_data_auth::ResetApplicationContainerReply reply =
+      service_->ResetApplicationContainer(in_request);
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

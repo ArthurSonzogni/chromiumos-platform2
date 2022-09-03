@@ -123,6 +123,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // stop.
   void MaybeCancelMigrateEncryptionAndWait();
 
+  // Reset application container.
+  bool ResetApplicationContainer(const std::string& application);
+
  private:
   // Gets the directory to mount the user's ephemeral cryptohome at.
   //

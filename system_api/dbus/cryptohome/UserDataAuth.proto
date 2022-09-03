@@ -1415,6 +1415,20 @@ message CheckHealthReply {
   bool requires_powerwash = 2;
 }
 
+// Input parameters to ResetApplicationContainer()
+message ResetApplicationContainerRequest {
+  // Represents the user whose application container needs to be reset.
+  cryptohome.AccountIdentifier account_id = 1;
+  // Application container name.
+  string application_name = 2;
+}
+
+// Output parameters for ResetApplicationContainer().
+message ResetApplicationContainerReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+}
+
 // Fido make credential public key options.
 message FidoMakeCredentialRequest {
   cryptohome.AccountIdentifier account_id = 1;

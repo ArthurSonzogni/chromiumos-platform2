@@ -77,6 +77,10 @@ class MockUserSession : public UserSession {
               PrepareWebAuthnSecret,
               (const brillo::SecureBlob&, const brillo::SecureBlob&),
               (override));
+  MOCK_METHOD(bool,
+              ResetApplicationContainer,
+              (const std::string&),
+              (override));
 };
 
 }  // namespace cryptohome

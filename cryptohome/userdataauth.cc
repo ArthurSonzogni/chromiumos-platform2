@@ -3331,6 +3331,50 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
   return reply;
 }
 
+user_data_auth::ResetApplicationContainerReply
+UserDataAuth::ResetApplicationContainer(
+    const user_data_auth::ResetApplicationContainerRequest& request) {
+  AssertOnMountThread();
+  user_data_auth::ResetApplicationContainerReply reply;
+  std::string account_id = GetAccountId(request.account_id());
+
+  if (account_id.empty() || request.application_name().empty()) {
+    // RemoveRequest must have identifier or an AuthSession Id
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInResetAppContainer),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  UserSession* session = sessions_.Find(account_id);
+  if (!session || !session->IsActive()) {
+    // Can't reset container of inactive user.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserInactiveInResetAppContainer),
+            ErrorActionSet({ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+        &reply);
+    return reply;
+  }
+
+  if (!session->ResetApplicationContainer(request.application_name())) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserFailedResetAppContainer),
+            ErrorActionSet({ErrorAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+        &reply);
+    return reply;
+  }
+
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
+}
+
 void UserDataAuth::StartMigrateToDircrypto(
     const user_data_auth::StartMigrateToDircryptoRequest& request,
     base::RepeatingCallback<void(

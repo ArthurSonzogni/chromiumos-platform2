@@ -267,6 +267,11 @@ class UserDataAuth {
   user_data_auth::RemoveReply Remove(
       const user_data_auth::RemoveRequest& request);
 
+  // Reset the application container specified in the request for the user
+  // identified by authsession id.
+  user_data_auth::ResetApplicationContainerReply ResetApplicationContainer(
+      const user_data_auth::ResetApplicationContainerRequest& request);
+
   // Return true if we support low entropy credential.
   bool IsLowEntropyCredentialSupported();
 

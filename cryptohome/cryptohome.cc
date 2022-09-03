@@ -289,6 +289,7 @@ constexpr const char* kActions[] = {"mount_ex",
                                     "list_auth_factors",
                                     "get_auth_session_status",
                                     "get_recovery_request",
+                                    "reset_application_container",
                                     nullptr};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -386,7 +387,8 @@ enum ActionEnum {
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
-  ACTION_GET_RECOVERY_REQUEST
+  ACTION_GET_RECOVERY_REQUEST,
+  ACTION_RESET_APPLICATION_CONTAINER
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -432,6 +434,7 @@ constexpr char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
 constexpr char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
 constexpr char kRecoveryResponseSwitch[] = "recovery_response";
 constexpr char kAuthIntentSwitch[] = "auth_intent";
+constexpr char kApplicationName[] = "application_name";
 }  // namespace
 }  // namespace switches
 
@@ -3799,6 +3802,37 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Failed to get recovery request.\n");
+      return static_cast<int>(reply.error());
+    }
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_RESET_APPLICATION_CONTAINER],
+                     action.c_str())) {
+    user_data_auth::ResetApplicationContainerRequest request;
+    user_data_auth::ResetApplicationContainerReply reply;
+
+    if (!BuildAccountId(printer, cl, request.mutable_account_id())) {
+      return 1;
+    }
+    request.set_application_name(
+        cl->GetSwitchValueASCII(switches::kApplicationName));
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to ResetApplicationContainer";
+    if (!userdataauth_proxy.ResetApplicationContainer(request, &reply, &error,
+                                                      timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "ResetApplicationContainer call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput(
+          "Failed to reset application container"
+          ".\n");
       return static_cast<int>(reply.error());
     }
   } else {

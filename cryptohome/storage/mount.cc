@@ -400,6 +400,15 @@ bool Mount::PerformMigration(const MigrationHelper::ProgressCallback& callback,
   return true;
 }
 
+bool Mount::ResetApplicationContainer(const std::string& application) {
+  if (!user_cryptohome_vault_) {
+    LOG(ERROR) << "No active vault containers to reset.";
+    return false;
+  }
+
+  return user_cryptohome_vault_->ResetApplicationContainer(application);
+}
+
 void Mount::MaybeCancelMigrateEncryptionAndWait() {
   base::AutoLock lock(active_dircrypto_migrator_lock_);
   is_dircrypto_migration_cancelled_ = true;

@@ -328,4 +328,13 @@ void RealUserSession::RemoveCredentialVerifierForKeyLabel(
   }
 }
 
+bool RealUserSession::ResetApplicationContainer(
+    const std::string& application) {
+  if (!mount_->IsNonEphemeralMounted()) {
+    return false;
+  }
+
+  return mount_->ResetApplicationContainer(application);
+}
+
 }  // namespace cryptohome

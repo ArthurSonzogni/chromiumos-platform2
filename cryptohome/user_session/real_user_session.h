@@ -135,6 +135,8 @@ class RealUserSession : public UserSession {
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek) override;
 
+  bool ResetApplicationContainer(const std::string& application) override;
+
  private:
   // Computes a public derivative from |fek| and |fnek|, and store its hash for
   // u2fd to fetch.

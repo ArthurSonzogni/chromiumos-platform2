@@ -392,6 +392,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetRecoveryRequestReply>> response,
       const user_data_auth::GetRecoveryRequestRequest& in_request);
 
+  void ResetApplicationContainer(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::ResetApplicationContainerReply>> response,
+      const user_data_auth::ResetApplicationContainerRequest& in_request)
+      override;
+  void DoResetApplicationContainer(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::ResetApplicationContainerReply>> response,
+      const user_data_auth::ResetApplicationContainerRequest& in_request);
+
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);
