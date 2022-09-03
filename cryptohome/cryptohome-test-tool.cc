@@ -16,6 +16,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec/factory/factory.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
@@ -24,7 +26,6 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/tpm.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -62,18 +63,15 @@ bool GenerateOnboardingMetadata(const FilePath& file_path,
   return true;
 }
 
+// Note: This function is not thread safe.
 hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
-  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
-  if (!tpm) {
-    LOG(ERROR) << "Failed to get tpm singleton";
-    return nullptr;
+  static std::unique_ptr<hwsec::Factory> hwsec_factory;
+  static std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto;
+  if (!hwsec_factory) {
+    hwsec_factory = std::make_unique<hwsec::FactoryImpl>();
+    recovery_crypto = hwsec_factory->GetRecoveryCryptoFrontend();
   }
-  hwsec::RecoveryCryptoFrontend* recovery_crypto = tpm->GetRecoveryCrypto();
-  if (!recovery_crypto) {
-    LOG(ERROR) << "hwsec::RecoveryCryptoFrontend is null";
-    return nullptr;
-  }
-  return recovery_crypto;
+  return recovery_crypto.get();
 }
 
 bool CheckMandatoryFlag(const std::string& flag_name,
