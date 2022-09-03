@@ -24,7 +24,6 @@ group("all") {
     ":mount_encrypted_lib",
     ":stateful-recovery",
     ":stateful_recovery_lib",
-    ":tpm-manager",
   ]
   if (use.test) {
     deps += [
@@ -218,30 +217,6 @@ executable("mount-encrypted") {
   ]
   pkg_deps = [ "vboot_host" ]
 }
-
-executable("tpm-manager") {
-  sources = [ "tpm_manager.cc" ]
-  configs += [ ":target_defaults" ]
-  libs = [
-    "tpm_manager",
-    "attestation",
-  ]
-
-  pkg_deps = [
-    "libecryptfs",
-    "libmetrics",
-  ]
-  deps = [ "libs:libcrostpm" ]
-
-  if (use.tpm2) {
-    libs += [ "trunks" ]
-  }
-  if (use.tpm) {
-    libs += [ "chaps" ]
-    pkg_deps += [ "vboot_host" ]
-  }
-}
-
 executable("homedirs_initializer") {
   sources = [ "homedirs_initializer.cc" ]
   configs += [ ":target_defaults" ]
@@ -499,7 +474,6 @@ if (use.test) {
       "libtpm_manager-client-test",
     ]
     deps = [
-      ":tpm-manager",
       "libs:libcrostpm",
       "libs:libnvram-boot-lockbox",
       "//common-mk/testrunner",
