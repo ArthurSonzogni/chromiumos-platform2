@@ -43,10 +43,7 @@
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/error/location_utils.h"
-#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
@@ -4379,6 +4376,8 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
                const user_data_auth::ExtendAuthSessionReply& reply) {
               EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
                         reply.error());
+              EXPECT_EQ(TRUE, reply.has_seconds_left());
+              EXPECT_GT(reply.seconds_left(), kAuthSessionExtensionDuration);
               extended_ref = true;
             },
             std::ref(extended)));

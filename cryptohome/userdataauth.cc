@@ -4300,6 +4300,7 @@ void UserDataAuth::ExtendAuthSession(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession))
             .Wrap(std::move(ret));
   }
+  reply.set_seconds_left(auth_session->GetRemainingTime().InSeconds());
   ReplyWithError(std::move(on_done), reply, std::move(err));
 }
 

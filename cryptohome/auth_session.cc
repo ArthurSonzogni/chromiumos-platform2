@@ -19,6 +19,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -2292,7 +2293,7 @@ base::TimeDelta AuthSession::GetRemainingTime() const {
   DCHECK(timeout_timer_.IsRunning());
   auto time_passed = base::TimeTicks::Now() - timeout_timer_start_time_;
   auto time_left = timeout_timer_.GetCurrentDelay() - time_passed;
-  return time_left;
+  return time_left.is_negative() ? base::TimeDelta() : time_left;
 }
 
 std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {

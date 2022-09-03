@@ -815,7 +815,7 @@ message AuthenticateAuthSessionReply {
   CryptohomeErrorInfo error_info = 3;
 
   // The time left in the current AuthSession after authentication.
-  uint32 seconds_left = 4;
+  optional uint32 seconds_left = 4;
 }
 
 message InvalidateAuthSessionRequest {
@@ -856,7 +856,7 @@ message ExtendAuthSessionReply {
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
   // The time left in the current AuthSession after extension.
-  uint32 seconds_left = 3;
+  optional uint32 seconds_left = 3;
 }
 
 message UpdateCredentialRequest {

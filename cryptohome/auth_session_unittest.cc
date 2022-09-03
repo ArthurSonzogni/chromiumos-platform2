@@ -39,7 +39,6 @@
 #include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/error/converter.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -87,6 +86,12 @@ constexpr char kFakePin[] = "123456";
 constexpr char kFakeOtherPass[] = "test_other_pass";
 // Fake username to be used in this test suite.
 constexpr char kFakeUsername[] = "test_username";
+
+// Set to match the 5 minute timer and a 1 minute extension in AuthSession.
+constexpr int kAuthSessionExtensionDuration = 60;
+constexpr auto kAuthSessionTimeout = base::Minutes(5);
+constexpr auto kAuthSessionExtension =
+    base::Seconds(kAuthSessionExtensionDuration);
 
 // Returns a blob "derived" from provided blob to generate fake vkk_key from
 // user secret in tests.
@@ -142,11 +147,13 @@ class AuthSessionTest : public ::testing::Test {
   }
 
  protected:
-  base::test::SingleThreadTaskEnvironment task_environment_;
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunnerHandle::Get();
 
-  // Mock and fake objects, will be passed to AuthSession for its internal use.
+  // Mock and fake objects, will be passed to AuthSession for its internal
+  // use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockPlatform> platform_;
@@ -1863,6 +1870,29 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
   ASSERT_THAT(update_future.Get(), NotOk());
   // Verify that the credential_verifier is not updated on failure.
   EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
+}
+
+TEST_F(AuthSessionTest, ExtensionTest) {
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  AuthSession auth_session(
+      kFakeUsername, flags, AuthIntent::kDecrypt, base::DoNothing(), &crypto_,
+      &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  auth_session.SetAuthSessionAsAuthenticated(kAllAuthIntents);
+
+  ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
+
+  EXPECT_TRUE(auth_session.ExtendTimeoutTimer(kAuthSessionExtension).ok());
+
+  // Verify that timer has changed, within a resaonsable degree of error.
+  auto requested_delay = kAuthSessionTimeout + kAuthSessionExtension;
+  EXPECT_EQ(auth_session.timeout_timer_.GetCurrentDelay(), requested_delay);
+
+  auth_session.timeout_timer_.FireNow();
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment
