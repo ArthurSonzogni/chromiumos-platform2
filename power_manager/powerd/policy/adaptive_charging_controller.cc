@@ -46,7 +46,7 @@ const double kHeuristicMinFullOnACRatio = 0.5;
 const int64_t kBatterySustainDisabled = -1;
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
-const double kDefaultMinProbability = 0.2;
+const double kDefaultMinProbability = 0.35;
 const int kAdaptiveChargingTimeBucketMin = 15;
 
 }  // namespace
