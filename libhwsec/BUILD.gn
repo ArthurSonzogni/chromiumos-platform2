@@ -12,6 +12,7 @@ group("all") {
     ":install_headers_overalls",
     ":install_headers_structures",
     ":libhwsec",
+    ":libhwsec_client",
   ]
   if (use.test) {
     deps += [
@@ -208,6 +209,7 @@ source_set("hardware_abstraction_external_library") {
   sources = [
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
+    "frontend/client/frontend_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "frontend/pinweaver/frontend_impl.cc",
     "frontend/recovery_crypto/frontend_impl.cc",
@@ -306,6 +308,14 @@ shared_library("libhwsec") {
     all_dependent_configs += [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
+}
+
+executable("libhwsec_client") {
+  sources = [ "client/main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+
+  deps = [ ":libhwsec" ]
 }
 
 install_config("install_headers") {

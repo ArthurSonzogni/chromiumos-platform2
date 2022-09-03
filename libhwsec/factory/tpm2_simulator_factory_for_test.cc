@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/tpm2/backend.h"
+#include "libhwsec/frontend/client/frontend_impl.h"
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
@@ -52,6 +53,12 @@ Tpm2SimulatorFactoryForTest::GetPinWeaverFrontend() {
 std::unique_ptr<RecoveryCryptoFrontend>
 Tpm2SimulatorFactoryForTest::GetRecoveryCryptoFrontend() {
   return std::make_unique<RecoveryCryptoFrontendImpl>(
+      Middleware(middleware_->Derive()));
+}
+
+std::unique_ptr<ClientFrontend>
+Tpm2SimulatorFactoryForTest::GetClientFrontend() {
+  return std::make_unique<ClientFrontendImpl>(
       Middleware(middleware_->Derive()));
 }
 

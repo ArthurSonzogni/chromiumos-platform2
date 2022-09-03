@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
@@ -25,6 +26,7 @@ class Factory {
   virtual std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() = 0;
   virtual std::unique_ptr<RecoveryCryptoFrontend>
   GetRecoveryCryptoFrontend() = 0;
+  virtual std::unique_ptr<ClientFrontend> GetClientFrontend() = 0;
 };
 
 }  // namespace hwsec

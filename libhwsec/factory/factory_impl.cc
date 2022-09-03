@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/frontend/client/frontend_impl.h"
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
@@ -33,6 +34,10 @@ std::unique_ptr<RecoveryCryptoFrontend>
 FactoryImpl::GetRecoveryCryptoFrontend() {
   return std::make_unique<RecoveryCryptoFrontendImpl>(
       Middleware(middleware_.Derive()));
+}
+
+std::unique_ptr<ClientFrontend> FactoryImpl::GetClientFrontend() {
+  return std::make_unique<ClientFrontendImpl>(Middleware(middleware_.Derive()));
 }
 
 }  // namespace hwsec

@@ -33,6 +33,10 @@ class MockFactory : public Factory {
               GetRecoveryCryptoFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ClientFrontend>,
+              GetClientFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

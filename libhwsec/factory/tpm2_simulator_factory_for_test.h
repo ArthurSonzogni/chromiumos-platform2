@@ -10,6 +10,7 @@
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/factory/factory.h"
+#include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
@@ -31,6 +32,7 @@ class HWSEC_EXPORT Tpm2SimulatorFactoryForTest : public Factory {
   std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
   std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() override;
   std::unique_ptr<RecoveryCryptoFrontend> GetRecoveryCryptoFrontend() override;
+  std::unique_ptr<ClientFrontend> GetClientFrontend() override;
 
  private:
   std::unique_ptr<Proxy> proxy_;
