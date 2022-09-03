@@ -13,8 +13,6 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
-#include "cryptohome/tpm_metrics.h"
-
 namespace {
 
 struct TimerHistogramParams {
@@ -32,7 +30,6 @@ constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCredentialRevocationResultHistogram[] =
     "Cryptohome.%s.CredentialRevocationResult";
-constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
 constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
     "Cryptohome.DeletedUserProfiles";
 constexpr char kCryptohomeGCacheFreedDiskSpaceInMbHistogram[] =
@@ -319,14 +316,6 @@ void ReportCryptohomeError(CryptohomeErrorMetric error) {
   }
   g_metrics->SendEnumToUMA(kCryptohomeErrorHistogram, error,
                            kCryptohomeErrorNumBuckets);
-}
-
-void ReportTpmResult(TpmResult result) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(kCryptohomeTpmResultsHistogram, result,
-                           kTpmResultNumberOfBuckets);
 }
 
 void ReportCrosEvent(const char* event) {

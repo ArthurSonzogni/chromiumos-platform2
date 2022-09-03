@@ -14,7 +14,6 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/tpm_metrics.h"
 
 namespace cryptohome {
 
@@ -590,9 +589,6 @@ void ReportWrappingKeyDerivationType(DerivationType derivation_type,
 
 // The |error| value is reported to the "Cryptohome.Errors" enum histogram.
 void ReportCryptohomeError(CryptohomeErrorMetric error);
-
-// The |result| value is reported to the "Cryptohome.TpmResults" enum histogram.
-void ReportTpmResult(TpmResult result);
 
 // Cros events are translated to an enum and reported to the generic
 // "Platform.CrOSEvent" enum histogram. The |event| string must be registered in

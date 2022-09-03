@@ -324,7 +324,6 @@ if (use.test) {
       "mock_key_challenge_service.cc",
       "mock_lockbox.cc",
       "mock_pkcs11_init.cc",
-      "mock_tpm.cc",
       "persistent_lookup_table_unittest.cc",
       "platform_unittest.cc",
       "sign_in_hash_tree_unittest.cc",
@@ -390,20 +389,11 @@ if (use.test) {
     ]
 
     if (use.tpm2) {
-      sources += [
-        "error/cryptohome_tpm2_error_test.cc",
-        "error/reporting_tpm2_test.cc",
-        "tpm2_test.cc",
-      ]
+      sources += [ "error/reporting_tpm2_test.cc" ]
       libs += [ "trunks_test" ]
     }
     if (use.tpm) {
-      sources += [
-        "error/cryptohome_tpm1_error_test.cc",
-        "error/reporting_tpm1_test.cc",
-        "tpm1_static_utils_unittest.cc",
-        "tpm1_test.cc",
-      ]
+      sources += [ "error/reporting_tpm1_test.cc" ]
     }
   }
 
@@ -564,15 +554,7 @@ if (use.fuzzer) {
 
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
     if (!use.tpm) {
-      sources += [
-        "tpm1_static_utils.cc",
-        "tpm_impl.cc",
-        "tpm_metrics.cc",
-      ]
-      libs += [
-        "hwsec",
-        "tspi",
-      ]
+      libs += [ "tspi" ]
     }
   }
 

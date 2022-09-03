@@ -277,7 +277,6 @@ proto_library("cryptohome-proto") {
     "${proto_in_dir}/hash_tree_leaf_data.proto",
     "${proto_in_dir}/signature_sealed_data.proto",
     "${proto_in_dir}/timestamp.proto",
-    "${proto_in_dir}/tpm_status.proto",
     "${proto_in_dir}/vault_keyset.proto",
   ]
   all_dependent_configs = [ ":cryptohome-proto_config" ]
@@ -382,7 +381,6 @@ static_library("libcrostpm") {
     "../pkcs11_init.cc",
     "../sign_in_hash_tree.cc",
     "../signature_sealing/structures_proto.cc",
-    "../tpm.cc",
     "../vault_keyset.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -394,18 +392,6 @@ static_library("libcrostpm") {
     "system_api",
   ]
 
-  if (use.tpm2) {
-    sources += [ "../tpm2_impl.cc" ]
-    libs += [ "trunks" ]
-  }
-  if (use.tpm) {
-    sources += [
-      "../tpm1_static_utils.cc",
-      "../tpm_impl.cc",
-      "../tpm_metrics.cc",
-    ]
-    libs += [ "tspi" ]
-  }
   deps = [
     ":cryptohome-flatbuffers",
     ":cryptohome-flatbuffers-binding",
