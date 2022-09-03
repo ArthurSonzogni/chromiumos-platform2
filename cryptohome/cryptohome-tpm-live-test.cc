@@ -14,7 +14,6 @@
 #include <brillo/syslog_logging.h>
 #include <openssl/evp.h>
 
-#include "cryptohome/tpm.h"
 #include "cryptohome/tpm_live_test.h"
 
 class ClientLoop : public brillo::Daemon {
@@ -32,14 +31,10 @@ class ClientLoop : public brillo::Daemon {
       success = cryptohome::TpmLiveTest().TpmBoundToPcrAuthBlockTest();
     } else if (test_ == "tpm_not_bound_to_pcr_auth_block_test") {
       success = cryptohome::TpmLiveTest().TpmNotBoundToPcrAuthBlockTest();
-    } else if (test_ == "pcr_key_test") {
-      success = cryptohome::TpmLiveTest().PCRKeyTest();
     } else if (test_ == "decryption_key_test") {
       success = cryptohome::TpmLiveTest().DecryptionKeyTest();
     } else if (test_ == "seal_with_current_user_test") {
       success = cryptohome::TpmLiveTest().SealWithCurrentUserTest();
-    } else if (test_ == "nvram_test") {
-      success = cryptohome::TpmLiveTest().NvramTest();
     } else if (test_ == "signature_sealed_secret_test") {
       success = cryptohome::TpmLiveTest().SignatureSealedSecretTest();
     } else if (test_ == "recovery_tpm_backend_test") {

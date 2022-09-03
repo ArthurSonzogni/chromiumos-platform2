@@ -22,6 +22,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec/structures/key.h>
@@ -31,7 +32,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/error.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -47,14 +47,6 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
 
-#if USE_TPM1
-#include <trousers/scoped_tss_type.h>
-#include <trousers/tss.h>
-#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
-
-#include "cryptohome/tpm_impl.h"
-#endif  // USE_TPM1
-
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -67,6 +59,8 @@ namespace cryptohome {
 namespace {
 
 constexpr int kSecretSizeBytes = 32;
+constexpr uint32_t kTpm12Family = 0x312E3200;
+constexpr uint32_t kTpm20Family = 0x322E3000;
 
 // Performs common tests for an auth block against correct/wrong passwords.
 bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
@@ -134,8 +128,10 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
 }  // namespace
 
 TpmLiveTest::TpmLiveTest()
-    : tpm_(Tpm::GetSingleton()),
-      cryptohome_keys_manager_(tpm_->GetHwsec(), &platform_) {}
+    : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
+      hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
+      recovery_crypto_(hwsec_factory_->GetRecoveryCryptoFrontend()),
+      cryptohome_keys_manager_(hwsec_.get(), &platform_) {}
 
 bool TpmLiveTest::RunLiveTests() {
   if (!TpmEccAuthBlockTest()) {
@@ -150,20 +146,12 @@ bool TpmLiveTest::RunLiveTests() {
     LOG(ERROR) << "Error running TpmNotBoundToPcrAuthBlockTest.";
     return false;
   }
-  if (!PCRKeyTest()) {
-    LOG(ERROR) << "Error running PCRKeyTest.";
-    return false;
-  }
   if (!DecryptionKeyTest()) {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
   }
   if (!SealWithCurrentUserTest()) {
     LOG(ERROR) << "Error running SealWithCurrentUserTest.";
-    return false;
-  }
-  if (!NvramTest()) {
-    LOG(ERROR) << "Error running NvramTest.";
     return false;
   }
   if (!SignatureSealedSecretTest()) {
@@ -174,38 +162,13 @@ bool TpmLiveTest::RunLiveTests() {
   return true;
 }
 
-bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
-                           const SecureBlob& public_key_der,
-                           int index) {
-  SecureBlob input_data("input_data");
-  SecureBlob signature;
-  if (!tpm_->Sign(pcr_bound_key, input_data, index, &signature)) {
-    LOG(ERROR) << "Error signing with PCR bound key.";
-    return false;
-  }
-  const unsigned char* public_key_data = public_key_der.data();
-  crypto::ScopedRSA rsa(
-      d2i_RSAPublicKey(nullptr, &public_key_data, public_key_der.size()));
-  if (!rsa.get()) {
-    LOG(ERROR) << "Failed to decode public key.";
-    return false;
-  }
-  SecureBlob digest = Sha256(input_data);
-  if (!RSA_verify(NID_sha256, digest.data(), digest.size(), signature.data(),
-                  signature.size(), rsa.get())) {
-    LOG(ERROR) << "Failed to verify signature.";
-    return false;
-  }
-  return true;
-}
-
 bool TpmLiveTest::TpmEccAuthBlockTest() {
   LOG(INFO) << "TpmEccAuthBlockTest started";
 
   // Skip the test if elliptic-curve cryptography is not supported on the
   // device.
   hwsec::StatusOr<absl::flat_hash_set<hwsec::KeyAlgoType>> algorithms_status =
-      tpm_->GetHwsec()->GetSupportedAlgo();
+      hwsec_->GetSupportedAlgo();
   if (!algorithms_status.ok()) {
     LOG(ERROR) << "Failed to get supported algorithms: "
                << algorithms_status.status();
@@ -216,7 +179,7 @@ bool TpmLiveTest::TpmEccAuthBlockTest() {
     return true;
   }
 
-  TpmEccAuthBlock auth_block(tpm_->GetHwsec(), &cryptohome_keys_manager_);
+  TpmEccAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
   if (!TestPasswordBasedAuthBlock(auth_block)) {
     LOG(ERROR) << "TpmEccAuthBlockTest failed.";
     return false;
@@ -227,8 +190,7 @@ bool TpmLiveTest::TpmEccAuthBlockTest() {
 
 bool TpmLiveTest::TpmBoundToPcrAuthBlockTest() {
   LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
-  TpmBoundToPcrAuthBlock auth_block(tpm_->GetHwsec(),
-                                    &cryptohome_keys_manager_);
+  TpmBoundToPcrAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
   if (!TestPasswordBasedAuthBlock(auth_block)) {
     LOG(ERROR) << "TpmBoundToPcrAuthBlockTest failed.";
     return false;
@@ -239,8 +201,7 @@ bool TpmLiveTest::TpmBoundToPcrAuthBlockTest() {
 
 bool TpmLiveTest::TpmNotBoundToPcrAuthBlockTest() {
   LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
-  TpmNotBoundToPcrAuthBlock auth_block(tpm_->GetHwsec(),
-                                       &cryptohome_keys_manager_);
+  TpmNotBoundToPcrAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
   if (!TestPasswordBasedAuthBlock(auth_block)) {
     LOG(ERROR) << "TpmNotBoundToPcrAuthBlockTest failed.";
     return false;
@@ -249,69 +210,11 @@ bool TpmLiveTest::TpmNotBoundToPcrAuthBlockTest() {
   return true;
 }
 
-bool TpmLiveTest::PCRKeyTest() {
-  LOG(INFO) << "PCRKeyTest started";
-  uint32_t index = 5;
-  Blob pcr_data;
-  if (!tpm_->ReadPCR(index, &pcr_data)) {
-    LOG(ERROR) << "Error reading pcr value from TPM.";
-    return false;
-  }
-  SecureBlob pcr_bound_key1;  // Sign key
-  SecureBlob pcr_bound_key2;  // Decrypt key
-  SecureBlob public_key_der1;
-  SecureBlob public_key_der2;
-  SecureBlob creation_blob1;
-  SecureBlob creation_blob2;
-  std::map<uint32_t, brillo::Blob> pcr_map({{index, pcr_data}});
-  // Create the keys.
-  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kSignKey,
-                               &pcr_bound_key1, &public_key_der1,
-                               &creation_blob1)) {
-    LOG(ERROR) << "Error creating PCR bound signing key.";
-    return false;
-  }
-  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
-                               &pcr_bound_key2, &public_key_der2,
-                               &creation_blob2)) {
-    LOG(ERROR) << "Error creating PCR bound decryption key.";
-    return false;
-  }
-  if (!tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key1, creation_blob1) ||
-      !tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key2, creation_blob2)) {
-    LOG(ERROR) << "Error verifying PCR bound key.";
-    return false;
-  }
-  // Check that signing key works.
-  if (!SignData(pcr_bound_key1, public_key_der1, index)) {
-    LOG(ERROR) << "Error signing the blob.";
-    return false;
-  }
-  // Check that signing data doesn't work (only for TPM2).
-  if (tpm_->GetVersion() != Tpm::TPM_1_2) {
-    if (SignData(pcr_bound_key2, public_key_der2, index)) {
-      LOG(ERROR) << "Signing data succeeded with decryption only key.";
-      return false;
-    }
-  }
-  // Extend PCR to invalidate the keys.
-  if (!tpm_->ExtendPCR(index, BlobFromString("01234567890123456789"))) {
-    LOG(ERROR) << "Error extending PCR.";
-    return false;
-  }
-  if (SignData(pcr_bound_key1, public_key_der1, index)) {
-    LOG(ERROR) << "Sign succeeded without the correct PCR state.";
-    return false;
-  }
-  LOG(INFO) << "PCRKeyTest ended successfully.";
-  return true;
-}
-
 bool TpmLiveTest::DecryptionKeyTest() {
   LOG(INFO) << "DecryptionKeyTest started";
 
   hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> cryptohome_key =
-      tpm_->GetHwsec()->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
+      hwsec_->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
   if (!cryptohome_key.ok()) {
     LOG(ERROR) << "Failed to create RSA cryptohome key: "
                << cryptohome_key.status();
@@ -321,14 +224,14 @@ bool TpmLiveTest::DecryptionKeyTest() {
   hwsec::Key key = cryptohome_key->key.GetKey();
 
   SecureBlob plaintext(32, 'b');
-  hwsec::StatusOr<Blob> ciphertext = tpm_->GetHwsec()->Encrypt(key, plaintext);
+  hwsec::StatusOr<Blob> ciphertext = hwsec_->Encrypt(key, plaintext);
   if (!ciphertext.ok()) {
     LOG(ERROR) << "Error encrypting blob: " << ciphertext.status();
     return false;
   }
 
   hwsec::StatusOr<SecureBlob> decrypted_plaintext =
-      tpm_->GetHwsec()->Decrypt(key, ciphertext.value());
+      hwsec_->Decrypt(key, ciphertext.value());
   if (!decrypted_plaintext.ok()) {
     LOG(ERROR) << "Error decrypting blob: " << decrypted_plaintext.status();
     return false;
@@ -347,7 +250,7 @@ bool TpmLiveTest::SealWithCurrentUserTest() {
   LOG(INFO) << "SealWithCurrentUserTest started";
 
   hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> cryptohome_key =
-      tpm_->GetHwsec()->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
+      hwsec_->CreateCryptohomeKey(hwsec::KeyAlgoType::kRsa);
   if (!cryptohome_key.ok()) {
     LOG(ERROR) << "Failed to create RSA cryptohome key: "
                << cryptohome_key.status();
@@ -358,23 +261,21 @@ bool TpmLiveTest::SealWithCurrentUserTest() {
 
   SecureBlob plaintext(32, 'a');
   SecureBlob pass_blob(256, 'b');
-  hwsec::StatusOr<SecureBlob> auth_value =
-      tpm_->GetHwsec()->GetAuthValue(key, pass_blob);
+  hwsec::StatusOr<SecureBlob> auth_value = hwsec_->GetAuthValue(key, pass_blob);
   if (!auth_value.ok()) {
     LOG(ERROR) << "Failed to get auth value: " << auth_value.status();
     return false;
   }
 
-  hwsec::StatusOr<Blob> ciphertext = tpm_->GetHwsec()->SealWithCurrentUser(
-      std::nullopt, auth_value.value(), plaintext);
+  hwsec::StatusOr<Blob> ciphertext =
+      hwsec_->SealWithCurrentUser(std::nullopt, auth_value.value(), plaintext);
   if (!ciphertext.ok()) {
     LOG(ERROR) << "Error sealing the blob: " << ciphertext.status();
     return false;
   }
 
-  hwsec::StatusOr<SecureBlob> unsealed_text =
-      tpm_->GetHwsec()->UnsealWithCurrentUser(std::nullopt, auth_value.value(),
-                                              ciphertext.value());
+  hwsec::StatusOr<SecureBlob> unsealed_text = hwsec_->UnsealWithCurrentUser(
+      std::nullopt, auth_value.value(), ciphertext.value());
   if (!unsealed_text.ok()) {
     LOG(ERROR) << "Error unsealing the blob: " << unsealed_text.status();
     return false;
@@ -387,13 +288,13 @@ bool TpmLiveTest::SealWithCurrentUserTest() {
 
   // Check that unsealing doesn't work with wrong pass_blob.
   pass_blob.char_data()[255] = 'a';
-  auth_value = tpm_->GetHwsec()->GetAuthValue(key, pass_blob);
+  auth_value = hwsec_->GetAuthValue(key, pass_blob);
   if (!auth_value.ok()) {
     LOG(ERROR) << "Failed to get auth value: " << auth_value.status();
     return false;
   }
 
-  unsealed_text = tpm_->GetHwsec()->UnsealWithCurrentUser(
+  unsealed_text = hwsec_->UnsealWithCurrentUser(
       std::nullopt, auth_value.value(), ciphertext.value());
   if (unsealed_text.ok() && plaintext == unsealed_text.value()) {
     LOG(ERROR) << "SealWithCurrentUser failed to fail.";
@@ -404,75 +305,6 @@ bool TpmLiveTest::SealWithCurrentUserTest() {
   return true;
 }
 
-bool TpmLiveTest::NvramTest() {
-  LOG(INFO) << "NvramTest started";
-  uint32_t index = 12;
-  SecureBlob nvram_data("nvram_data");
-  if (tpm_->IsNvramDefined(index)) {
-    if (!tpm_->DestroyNvram(index)) {
-      LOG(ERROR) << "Error destroying old Nvram.";
-      return false;
-    }
-    if (tpm_->IsNvramDefined(index)) {
-      LOG(ERROR) << "Nvram still defined after it was destroyed.";
-      return false;
-    }
-  }
-  if (!tpm_->DefineNvram(
-          index, nvram_data.size(),
-          Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0)) {
-    LOG(ERROR) << "Defining Nvram index.";
-    return false;
-  }
-  if (!tpm_->IsNvramDefined(index)) {
-    LOG(ERROR) << "Nvram index is not defined after creating.";
-    return false;
-  }
-  if (tpm_->GetNvramSize(index) != nvram_data.size()) {
-    LOG(ERROR) << "Nvram space is of incorrect size.";
-    return false;
-  }
-  if (tpm_->IsNvramLocked(index)) {
-    LOG(ERROR) << "Nvram should not be locked before writing.";
-    return false;
-  }
-  if (!tpm_->WriteNvram(index, nvram_data)) {
-    LOG(ERROR) << "Error writing to Nvram.";
-    return false;
-  }
-  if (!tpm_->WriteLockNvram(index)) {
-    LOG(ERROR) << "Error locking Nvram space.";
-    return false;
-  }
-  if (!tpm_->IsNvramLocked(index)) {
-    LOG(ERROR) << "Nvram should be locked after locking.";
-    return false;
-  }
-  SecureBlob data;
-  if (!tpm_->ReadNvram(index, &data)) {
-    LOG(ERROR) << "Error reading from Nvram.";
-    return false;
-  }
-  if (data != nvram_data) {
-    LOG(ERROR) << "Data read from Nvram did not match data written.";
-    return false;
-  }
-  if (tpm_->WriteNvram(index, nvram_data)) {
-    LOG(ERROR) << "We should not be able to write to a locked Nvram space.";
-    return false;
-  }
-  if (!tpm_->DestroyNvram(index)) {
-    LOG(ERROR) << "Error destroying Nvram space.";
-    return false;
-  }
-  if (tpm_->IsNvramDefined(index)) {
-    LOG(ERROR) << "Nvram still defined after it was destroyed.";
-    return false;
-  }
-  LOG(INFO) << "NvramTest ended successfully.";
-  return true;
-}
-
 namespace {
 
 using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
@@ -480,13 +312,13 @@ using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 struct SignatureSealedSecretTestCaseParam {
   SignatureSealedSecretTestCaseParam(
       const std::string& test_case_description,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms,
       std::optional<HwsecAlgorithm> expected_algorithm,
       int openssl_algorithm_nid)
       : test_case_description(test_case_description),
-        tpm(tpm),
+        hwsec_(hwsec),
         key_size_bits(key_size_bits),
         supported_algorithms(supported_algorithms),
         expected_algorithm(expected_algorithm),
@@ -497,29 +329,30 @@ struct SignatureSealedSecretTestCaseParam {
 
   static SignatureSealedSecretTestCaseParam MakeSuccessful(
       const std::string& test_case_description,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms,
       HwsecAlgorithm expected_algorithm,
       int openssl_algorithm_nid) {
     return SignatureSealedSecretTestCaseParam(
-        test_case_description, tpm, key_size_bits, supported_algorithms,
+        test_case_description, hwsec, key_size_bits, supported_algorithms,
         expected_algorithm, openssl_algorithm_nid);
   }
 
   static SignatureSealedSecretTestCaseParam MakeFailing(
       const std::string& test_case_description,
-      Tpm* tpm,
+      hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms) {
-    return SignatureSealedSecretTestCaseParam(
-        test_case_description, tpm, key_size_bits, supported_algorithms, {}, 0);
+    return SignatureSealedSecretTestCaseParam(test_case_description, hwsec,
+                                              key_size_bits,
+                                              supported_algorithms, {}, 0);
   }
 
   bool expect_success() const { return expected_algorithm.has_value(); }
 
   std::string test_case_description;
-  Tpm* tpm;
+  hwsec::CryptohomeFrontend* hwsec_;
   int key_size_bits;
   std::vector<HwsecAlgorithm> supported_algorithms;
   std::optional<HwsecAlgorithm> expected_algorithm;
@@ -651,9 +484,8 @@ class SignatureSealedSecretTestCase final {
 
  private:
   const std::string kObfuscatedUsername = "obfuscated_username";
-  const std::set<uint32_t> kPcrIndexes{kTpmSingleUserPCR};
 
-  hwsec::CryptohomeFrontend* hwsec() { return param_.tpm->GetHwsec(); }
+  hwsec::CryptohomeFrontend* hwsec() { return param_.hwsec_; }
 
   static bool GenerateRsaKey(int key_size_bits,
                              crypto::ScopedEVP_PKEY* pkey,
@@ -962,50 +794,61 @@ class SignatureSealedSecretTestCase final {
 bool TpmLiveTest::SignatureSealedSecretTest() {
   using TestCaseParam = SignatureSealedSecretTestCaseParam;
   LOG(INFO) << "SignatureSealedSecretTest started";
+
+  hwsec::StatusOr<uint32_t> family = hwsec_->GetFamily();
+  if (!family.ok()) {
+    LOG(ERROR) << "Failed to get the TPM family: " << family.status();
+    return false;
+  }
+
   std::vector<TestCaseParam> test_case_params;
+
   for (int key_size_bits : {1024, 2048}) {
     test_case_params.push_back(TestCaseParam::MakeSuccessful(
-        "SHA-1", tpm_, key_size_bits, {HwsecAlgorithm::kRsassaPkcs1V15Sha1},
+        "SHA-1", hwsec_.get(), key_size_bits,
+        {HwsecAlgorithm::kRsassaPkcs1V15Sha1},
         HwsecAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
-    if (tpm_->GetVersion() == Tpm::TPM_1_2) {
+
+    if (family.value() == kTpm12Family) {
       test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-256", tpm_, key_size_bits,
+          TestCaseParam::MakeFailing("SHA-256", hwsec_.get(), key_size_bits,
                                      {HwsecAlgorithm::kRsassaPkcs1V15Sha256}));
       test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-384", tpm_, key_size_bits,
+          TestCaseParam::MakeFailing("SHA-384", hwsec_.get(), key_size_bits,
                                      {HwsecAlgorithm::kRsassaPkcs1V15Sha384}));
       test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-512", tpm_, key_size_bits,
+          TestCaseParam::MakeFailing("SHA-512", hwsec_.get(), key_size_bits,
                                      {HwsecAlgorithm::kRsassaPkcs1V15Sha512}));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "{SHA-1,SHA-256}", tpm_, key_size_bits,
+          "{SHA-1,SHA-256}", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha256,
            HwsecAlgorithm::kRsassaPkcs1V15Sha1},
           HwsecAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
-    } else {
+    } else if (family.value() == kTpm20Family) {
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-256", tpm_, key_size_bits,
+          "SHA-256", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha256},
           HwsecAlgorithm::kRsassaPkcs1V15Sha256, NID_sha256));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-384", tpm_, key_size_bits,
+          "SHA-384", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha384},
           HwsecAlgorithm::kRsassaPkcs1V15Sha384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-512", tpm_, key_size_bits,
+          "SHA-512", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha512},
           HwsecAlgorithm::kRsassaPkcs1V15Sha512, NID_sha512));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "{SHA-384,SHA-256,SHA-512}", tpm_, key_size_bits,
+          "{SHA-384,SHA-256,SHA-512}", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha384,
            HwsecAlgorithm::kRsassaPkcs1V15Sha256,
            HwsecAlgorithm::kRsassaPkcs1V15Sha512},
           HwsecAlgorithm::kRsassaPkcs1V15Sha384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "{SHA-1,SHA-256}", tpm_, key_size_bits,
+          "{SHA-1,SHA-256}", hwsec_.get(), key_size_bits,
           {HwsecAlgorithm::kRsassaPkcs1V15Sha1,
            HwsecAlgorithm::kRsassaPkcs1V15Sha256},
           HwsecAlgorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+    } else {
     }
   }
 
@@ -1017,9 +860,9 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
       return false;
   }
 
-  if (!tpm_->ExtendPCR(kTpmSingleUserPCR,
-                       BlobFromString("01234567890123456789"))) {
-    LOG(ERROR) << "Error extending PCR";
+  if (hwsec::Status status = hwsec_->SetCurrentUser("another_user");
+      !status.ok()) {
+    LOG(ERROR) << "Failed to set current user: " << status;
     return false;
   }
 
@@ -1036,12 +879,6 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
 bool TpmLiveTest::RecoveryTpmBackendTest() {
   LOG(INFO) << "RecoveryTpmBackendTest started";
 
-  hwsec::RecoveryCryptoFrontend* recovery_crypto = tpm_->GetRecoveryCrypto();
-  if (!recovery_crypto) {
-    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
-    return false;
-  }
-
   hwsec_foundation::ScopedBN_CTX context_ =
       hwsec_foundation::CreateBigNumContext();
   std::optional<hwsec_foundation::EllipticCurve> ec_256 =
@@ -1055,7 +892,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
     return false;
   }
   hwsec::StatusOr<std::optional<brillo::SecureBlob>> key_auth_value =
-      recovery_crypto->GenerateKeyAuthValue();
+      recovery_crypto_->GenerateKeyAuthValue();
   if (!key_auth_value.ok()) {
     LOG(ERROR) << "Failed go generate key auth value: "
                << key_auth_value.status();
@@ -1071,7 +908,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
   };
   hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
       encrypt_response_destination_share =
-          recovery_crypto->EncryptEccPrivateKey(
+          recovery_crypto_->EncryptEccPrivateKey(
               std::move(encrypt_request_destination_share));
   if (!encrypt_response_destination_share.ok()) {
     LOG(ERROR) << "Failed to encrypt destination share: "
@@ -1109,7 +946,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
       .others_pub_point = std::move(others_pub_key),
   };
   hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh =
-      recovery_crypto->GenerateDiffieHellmanSharedSecret(
+      recovery_crypto_->GenerateDiffieHellmanSharedSecret(
           std::move(decrypt_request_destination_share));
   if (!point_dh.ok()) {
     LOG(ERROR) << "Failed to perform scalar multiplication of others_pub_key "
@@ -1120,10 +957,9 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
 
   LOG(INFO) << "RecoveryTpmBackendTest ended successfully.";
 
-  // Extend PCR value.
-  if (!tpm_->ExtendPCR(kTpmSingleUserPCR,
-                       BlobFromString("01234567890123456789"))) {
-    LOG(ERROR) << "Error extending PCR";
+  if (hwsec::Status status = hwsec_->SetCurrentUser("another_user");
+      !status.ok()) {
+    LOG(ERROR) << "Failed to set current user: " << status;
     return false;
   }
 
@@ -1146,7 +982,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
   };
 
   hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_null =
-      recovery_crypto->GenerateDiffieHellmanSharedSecret(
+      recovery_crypto_->GenerateDiffieHellmanSharedSecret(
           std::move(decrypt_failed_request_destination_share));
   if (point_dh_null.ok()) {
     LOG(ERROR) << "Generated DH shared secret successfully without the correct "
