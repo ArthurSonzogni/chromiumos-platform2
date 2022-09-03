@@ -77,6 +77,7 @@ class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
       const std::vector<SignatureSealingAlgorithm>& key_algorithms) override;
   StatusOr<brillo::SecureBlob> UnsealWithChallenge(
       ChallengeID challenge, const brillo::Blob& challenge_response) override;
+  StatusOr<uint32_t> GetFamily() override;
 };
 
 }  // namespace hwsec

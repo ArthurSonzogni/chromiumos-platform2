@@ -253,4 +253,8 @@ StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithChallenge(
       challenge, challenge_response);
 }
 
+StatusOr<uint32_t> CryptohomeFrontendImpl::GetFamily() {
+  return middleware_.CallSync<&Backend::Vendor::GetFamily>();
+}
+
 }  // namespace hwsec

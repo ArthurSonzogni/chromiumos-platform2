@@ -165,6 +165,11 @@ class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
   // |challenge_response|.
   virtual StatusOr<brillo::SecureBlob> UnsealWithChallenge(
       ChallengeID challenge, const brillo::Blob& challenge_response) = 0;
+
+  // Gets the TPM family of GSC/TPM.
+  // 0x312E3200 = TPM1.2
+  // 0x322E3000 = TPM2.0
+  virtual StatusOr<uint32_t> GetFamily() = 0;
 };
 
 }  // namespace hwsec

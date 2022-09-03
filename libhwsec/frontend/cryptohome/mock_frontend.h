@@ -102,6 +102,7 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
               UnsealWithChallenge,
               (ChallengeID challenge, const brillo::Blob& challenge_response),
               (override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (override));
 };
 
 }  // namespace hwsec
