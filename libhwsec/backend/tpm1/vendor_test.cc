@@ -12,6 +12,8 @@
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
 using hwsec_foundation::kWellKnownExponent;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -265,6 +267,71 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed2) {
 
   auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
   ASSERT_FALSE(result.ok());
+}
+
+TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfo) {
+  brillo::Blob fake_result(108, 'Z');
+  fake_result[0] = 0;
+  fake_result[1] = 106;
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_TPM_FieldUpgrade(kDefaultTpm, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(fake_result.size()),
+                      SetArgPointee<4>(fake_result.data()),
+                      Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT16_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT16_s);
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
+
+  auto result =
+      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
+
+  ASSERT_THAT(result, IsOk());
+}
+
+TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoLengthMismatch) {
+  brillo::Blob fake_result{42, 42, 42, 42, 42};
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_TPM_FieldUpgrade(kDefaultTpm, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(fake_result.size()),
+                      SetArgPointee<4>(fake_result.data()),
+                      Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT16_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT16_s);
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
+
+  auto result =
+      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
+
+  EXPECT_THAT(result, NotOk());
+}
+
+TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoUnknownLength) {
+  brillo::Blob fake_result{0, 3, 1, 2, 3};
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_TPM_FieldUpgrade(kDefaultTpm, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(fake_result.size()),
+                      SetArgPointee<4>(fake_result.data()),
+                      Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT16_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT16_s);
+
+  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
+      .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
+
+  auto result =
+      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
+
+  EXPECT_THAT(result, NotOk());
 }
 
 }  // namespace hwsec

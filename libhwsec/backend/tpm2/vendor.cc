@@ -153,7 +153,7 @@ StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
   return BlobFromString(device_id);
 }
 
-StatusOr<brillo::Blob> VendorTpm2::GetIFXFieldUpgradeInfo() {
+StatusOr<IFXFieldUpgradeInfo> VendorTpm2::GetIFXFieldUpgradeInfo() {
   return MakeStatus<TPMError>("Unsupported command", TPMRetryAction::kNoRetry);
 }
 

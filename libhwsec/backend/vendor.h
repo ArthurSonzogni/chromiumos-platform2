@@ -10,6 +10,7 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
+#include "libhwsec/structures/ifx_info.h"
 
 namespace hwsec {
 
@@ -44,7 +45,7 @@ class Vendor {
   virtual StatusOr<brillo::Blob> GetRsuDeviceId() = 0;
 
   // Gets the IFX upgrade information.
-  virtual StatusOr<brillo::Blob> GetIFXFieldUpgradeInfo() = 0;
+  virtual StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() = 0;
 
   // Declares the TPM firmware is stable.
   virtual Status DeclareTpmFirmwareStable() = 0;

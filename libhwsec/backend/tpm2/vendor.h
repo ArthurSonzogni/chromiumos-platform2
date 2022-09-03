@@ -13,6 +13,7 @@
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/ifx_info.h"
 
 namespace hwsec {
 
@@ -31,7 +32,7 @@ class VendorTpm2 : public Backend::Vendor,
   StatusOr<int32_t> GetFingerprint() override;
   StatusOr<bool> IsSrkRocaVulnerable() override;
   StatusOr<brillo::Blob> GetRsuDeviceId() override;
-  StatusOr<brillo::Blob> GetIFXFieldUpgradeInfo() override;
+  StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() override;
   Status DeclareTpmFirmwareStable() override;
   StatusOr<brillo::Blob> SendRawCommand(const brillo::Blob& command) override;
 

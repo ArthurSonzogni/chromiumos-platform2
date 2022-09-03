@@ -32,6 +32,28 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
+namespace {
+
+constexpr uint8_t kIfxFieldUpgradeRequest[] = {0x11, 0x00, 0x00};
+constexpr uint32_t kFieldUpgradeInfo2Size = 106;
+
+Status ParseIFXFirmwarePackage(
+    overalls::Overalls& overalls,
+    uint64_t* offset,
+    uint8_t* buffer,
+    uint64_t capacity,
+    IFXFieldUpgradeInfo::FirmwarePackage& firmware_package) {
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT32_s(
+      offset, &firmware_package.package_id, buffer, capacity)));
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT32_s(
+      offset, &firmware_package.version, buffer, capacity)));
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT32_s(
+      offset, &firmware_package.stale_version, buffer, capacity)));
+  return OkStatus();
+}
+
+}  // namespace
+
 Status VendorTpm1::EnsureVersionInfo() {
   if (version_info_.has_value()) {
     return OkStatus();
@@ -138,8 +160,81 @@ StatusOr<brillo::Blob> VendorTpm1::GetRsuDeviceId() {
   return MakeStatus<TPMError>("Unsupported command", TPMRetryAction::kNoRetry);
 }
 
-StatusOr<brillo::Blob> VendorTpm1::GetIFXFieldUpgradeInfo() {
-  return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
+StatusOr<IFXFieldUpgradeInfo> VendorTpm1::GetIFXFieldUpgradeInfo() {
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
+
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+
+  uint32_t length;
+  ScopedTssMemory response(overalls, context);
+  brillo::Blob request(
+      kIfxFieldUpgradeRequest,
+      kIfxFieldUpgradeRequest + sizeof(kIfxFieldUpgradeRequest));
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_TPM_FieldUpgrade(
+          tpm_handle, request.size(), request.data(), &length, response.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_TPM_FieldUpgrade");
+
+  // Parse the response.
+  uint64_t offset = 0;
+  uint16_t size = 0;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, &size, response.value(), length)));
+
+  if (size != length - sizeof(uint16_t)) {
+    return MakeStatus<TPMError>("FieldUpgrade response size mismatch",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  if (size != kFieldUpgradeInfo2Size) {
+    return MakeStatus<TPMError>("Unknown FieldUpgrade response size",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  IFXFieldUpgradeInfo info = {};
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, nullptr, response.value(), length)));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, &info.max_data_size, response.value(), length)));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, nullptr, response.value(), length)));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT32_s(
+      &offset, nullptr, response.value(), length)));
+
+  offset += 34;
+
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+                                          length, info.bootloader));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, nullptr, response.value(), length)));
+
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+                                          length, info.firmware[0]));
+
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+                                          length, info.firmware[1]));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, &info.status, response.value(), length)));
+
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+                                          length, info.process_fw));
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, nullptr, response.value(), length)));
+
+  offset += 6;
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+      &offset, &info.field_upgrade_counter, response.value(), length)));
+
+  return info;
 }
 
 Status VendorTpm1::DeclareTpmFirmwareStable() {

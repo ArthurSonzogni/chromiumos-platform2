@@ -46,6 +46,12 @@ class Overalls {
                                        BYTE* blob) {
     return Trspi_UnloadBlob_UINT16(offset, out, blob);
   }
+  virtual TSS_RESULT Orspi_UnloadBlob_UINT16_s(UINT64* offset,
+                                               UINT16* out,
+                                               BYTE* blob,
+                                               UINT64 capacity) {
+    return Trspi_UnloadBlob_UINT16_s(offset, out, blob, capacity);
+  }
   virtual TSS_RESULT Orspi_UnloadBlob_RSA_KEY_PARMS_s(
       UINT64* offset, BYTE* blob, UINT64 capacity, TCPA_RSA_KEY_PARMS* parms) {
     return Trspi_UnloadBlob_RSA_KEY_PARMS_s(offset, blob, capacity, parms);
@@ -60,11 +66,6 @@ class Overalls {
                                                UINT64 capacity,
                                                TCPA_PUBKEY* pubKey) {
     return Trspi_UnloadBlob_PUBKEY_s(offset, blob, capacity, pubKey);
-  }
-  virtual TSS_RESULT Orspi_UnloadBlob_KEY12(UINT64* offset,
-                                            BYTE* blob,
-                                            TPM_KEY12* key) {
-    return Trspi_UnloadBlob_KEY12(offset, blob, key);
   }
   virtual TSS_RESULT Orspi_UnloadBlob_KEY12_s(UINT64* offset,
                                               BYTE* blob,

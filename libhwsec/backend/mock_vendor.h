@@ -26,7 +26,10 @@ class MockVendor : public Vendor {
   MOCK_METHOD(StatusOr<int32_t>, GetFingerprint, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetIFXFieldUpgradeInfo, (), (override));
+  MOCK_METHOD(StatusOr<IFXFieldUpgradeInfo>,
+              GetIFXFieldUpgradeInfo,
+              (),
+              (override));
   MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               SendRawCommand,
