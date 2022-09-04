@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -23,21 +25,35 @@ namespace diagnostics {
 namespace mojom = chromeos::cros_healthd::mojom;
 
 // The ProcessFetcher class is responsible for gathering information about a
-// particular process on the device.
+// particular or multiple/ all processes on the device.
 class ProcessFetcher final : public BaseFetcher {
  public:
-  // |process_id| is the PID for the process whose information will be fetched.
   // Only override |root_dir| for testing.
   ProcessFetcher(Context* context,
-                 pid_t process_id,
                  const base::FilePath& root_dir = base::FilePath("/"));
 
   // Returns information about a particular process on the device, or the error
-  // that occurred retrieving the information.
+  // that occurred retrieving the information. |process_id| is the PID for the
+  // process whose information will be fetched.
   void FetchProcessInfo(
+      uint32_t process_id,
       base::OnceCallback<void(mojom::ProcessResultPtr)> callback);
 
+  // Returns information about multiple specified or all processes on the
+  // device, and the errors if any occurred and not ignored when retrieving the
+  // information. |input_process_ids| is the array of PIDs for the processes
+  // whose information will be fetched. |ignore_single_process_error| will
+  // enable errors to be ignored when fetching process infos if set to true.
+  void FetchMultipleProcessInfo(
+      const std::optional<std::vector<uint32_t>>& input_process_ids,
+      const bool ignore_single_process_error,
+      base::OnceCallback<void(mojom::MultipleProcessResultPtr)> callback);
+
  private:
+  // Collects |process_info| through `ParseProcPidStat`, `ParseProcPidStatm`,
+  // `CalculateProcessUptime`, `GetProcessUid` for |pid|.
+  std::optional<mojom::ProbeErrorPtr> GetProcessInfo(
+      uint32_t pid, mojom::ProcessInfo* process_info);
   // Parses relevant fields from /proc/|process_id_|/stat. Returns the first
   // error encountered or std::nullopt if no errors occurred. |priority|,
   // |nice|, |start_time_ticks|, |name|, |parent_process_id|,
@@ -52,7 +68,8 @@ class ProcessFetcher final : public BaseFetcher {
       uint32_t* parent_process_id,
       uint32_t* process_group_id,
       uint32_t* threads,
-      uint32_t* process_id);
+      uint32_t* process_id,
+      base::FilePath proc_pid_dir);
 
   // Parses relevant fields from /proc/|process_id_|/statm. Returns the first
   // error encountered or std::nullopt if no errors occurred.
@@ -61,7 +78,8 @@ class ProcessFetcher final : public BaseFetcher {
   std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
       uint32_t* total_memory_kib,
       uint32_t* resident_memory_kib,
-      uint32_t* free_memory_kib);
+      uint32_t* free_memory_kib,
+      base::FilePath proc_pid_dir);
 
   // Calculates the uptime of the process in clock ticks using
   // |start_time_ticks|. Returns the first error encountered or std::nullopt if
@@ -73,15 +91,12 @@ class ProcessFetcher final : public BaseFetcher {
   // Fetches the real user ID of the process. Returns the first error
   // encountered or std::nullopt if no errors occurred. |user_id| is only
   // valid if std::nullopt was returned.
-  std::optional<mojom::ProbeErrorPtr> GetProcessUid(uid_t* user_id);
+  std::optional<mojom::ProbeErrorPtr> GetProcessUid(
+      uid_t* user_id, base::FilePath proc_pid_dir);
 
   // File paths read will be relative to |root_dir_|. In production, this should
   // be "/", but it can be overridden for testing.
   const base::FilePath root_dir_;
-  // Procfs subdirectory with files specific to the process.
-  const base::FilePath proc_pid_dir_;
-  // The process ID.
-  const pid_t process_id_;
 };
 
 }  // namespace diagnostics

@@ -9,12 +9,15 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -102,10 +105,82 @@ std::optional<mojom::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
   return std::nullopt;
 }
 
+std::optional<mojom::ProbeErrorPtr> ParseIOContents(
+    std::string io_content, mojom::ProcessInfoPtr& process_info) {
+  std::string bytes_read_str;
+  std::string bytes_written_str;
+  std::string read_system_calls_str;
+  std::string write_system_calls_str;
+  std::string physical_bytes_read_str;
+  std::string physical_bytes_written_str;
+  std::string cancelled_bytes_written_str;
+  if (!RE2::FullMatch(io_content, kProcessIOFileRegex, &bytes_read_str,
+                      &bytes_written_str, &read_system_calls_str,
+                      &write_system_calls_str, &physical_bytes_read_str,
+                      &physical_bytes_written_str,
+                      &cancelled_bytes_written_str)) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                  "Failed to parse process IO file");
+  }
+
+  if (!base::StringToUint64(bytes_read_str, &process_info->bytes_read)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert bytes_read to uint64_t: " + bytes_read_str);
+  }
+
+  if (!base::StringToUint64(bytes_written_str, &process_info->bytes_written)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert bytes_written to uint64_t: " + bytes_written_str);
+  }
+
+  if (!base::StringToUint64(read_system_calls_str,
+                            &process_info->read_system_calls)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert read_system_calls to uint64_t: " +
+            read_system_calls_str);
+  }
+
+  if (!base::StringToUint64(write_system_calls_str,
+                            &process_info->write_system_calls)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert write_system_calls to uint64_t: " +
+            write_system_calls_str);
+  }
+
+  if (!base::StringToUint64(physical_bytes_read_str,
+                            &process_info->physical_bytes_read)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert physical_bytes_read to uint64_t: " +
+            physical_bytes_read_str);
+  }
+
+  if (!base::StringToUint64(physical_bytes_written_str,
+                            &process_info->physical_bytes_written)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert physical_bytes_written to uint64_t: " +
+            physical_bytes_written_str);
+  }
+
+  if (!base::StringToUint64(cancelled_bytes_written_str,
+                            &process_info->cancelled_bytes_written)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert cancelled_bytes_written to uint64_t: " +
+            cancelled_bytes_written_str);
+  }
+  return std::nullopt;
+}
+
 void FinishFetchingProcessInfo(
     base::OnceCallback<void(mojom::ProcessResultPtr)> callback,
     uint32_t process_id,
-    base::flat_map<uint32_t, mojom::ProcessInfoPtr> process_info,
+    mojom::ProcessInfo process_info,
     const base::flat_map<uint32_t, std::string>& io_contents) {
   if (io_contents.empty() || !io_contents.contains(process_id)) {
     std::move(callback).Run(mojom::ProcessResult::NewError(
@@ -114,184 +189,177 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  std::string bytes_read_str;
-  std::string bytes_written_str;
-  std::string read_system_calls_str;
-  std::string write_system_calls_str;
-  std::string physical_bytes_read_str;
-  std::string physical_bytes_written_str;
-  std::string cancelled_bytes_written_str;
-  if (!RE2::FullMatch(io_contents.find(process_id)->second, kProcessIOFileRegex,
-                      &bytes_read_str, &bytes_written_str,
-                      &read_system_calls_str, &write_system_calls_str,
-                      &physical_bytes_read_str, &physical_bytes_written_str,
-                      &cancelled_bytes_written_str)) {
+  mojom::ProcessInfoPtr process_info_ptr = process_info.Clone();
+  auto error = ParseIOContents(io_contents.at(process_id), process_info_ptr);
+  if (error.has_value()) {
+    std::move(callback).Run(mojom::ProcessResult::NewError(error->Clone()));
+    return;
+  } else {
     std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError, "Failed to parse process IO file")));
+        mojom::ProcessResult::NewProcessInfo(std::move(process_info_ptr)));
     return;
   }
+}
 
-  auto single_process_info_ref = process_info.find(process_id);
-
-  if (!base::StringToUint64(bytes_read_str,
-                            &single_process_info_ref->second->bytes_read)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert bytes_read to uint64_t: " + bytes_read_str)));
-    return;
+void FinishFetchingMultipleProcessInfo(
+    base::OnceCallback<void(mojom::MultipleProcessResultPtr)> callback,
+    const bool ignore_single_process_error,
+    std::vector<std::pair<uint32_t, mojom::ProcessInfoPtr>>
+        multiple_process_info,
+    std::vector<std::pair<uint32_t, mojom::ProbeErrorPtr>> errors,
+    const base::flat_map<uint32_t, std::string>& all_io_contents) {
+  for (auto it = multiple_process_info.begin();
+       it != multiple_process_info.end();) {
+    uint32_t pid = it->first;
+    if (!all_io_contents.contains(pid)) {
+      if (!ignore_single_process_error) {
+        errors.push_back(
+            {pid, CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
+                                         "Failed to read process IO file")});
+      }
+      it = multiple_process_info.erase(it);
+      continue;
+    }
+    auto error = ParseIOContents(all_io_contents.at(pid), it->second);
+    if (error.has_value()) {
+      if (!ignore_single_process_error) {
+        errors.push_back({pid, error->Clone()});
+      }
+      it = multiple_process_info.erase(it);
+      continue;
+    }
+    ++it;
   }
 
-  if (!base::StringToUint64(bytes_written_str,
-                            &single_process_info_ref->second->bytes_written)) {
-    std::move(callback).Run(mojom::ProcessResult::NewError(
-        CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                               "Failed to convert bytes_written to uint64_t: " +
-                                   bytes_written_str)));
-    return;
-  }
+  mojom::MultipleProcessResultPtr multiple_process_result =
+      mojom::MultipleProcessResult::New(
+          base::flat_map<uint32_t, mojom::ProcessInfoPtr>{
+              std::move(multiple_process_info)},
+          base::flat_map<uint32_t, mojom::ProbeErrorPtr>{std::move(errors)});
+  std::move(callback).Run(std::move(multiple_process_result));
 
-  if (!base::StringToUint64(
-          read_system_calls_str,
-          &single_process_info_ref->second->read_system_calls)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert read_system_calls to uint32_t: " +
-                read_system_calls_str)));
-    return;
-  }
-
-  if (!base::StringToUint64(
-          write_system_calls_str,
-          &single_process_info_ref->second->write_system_calls)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert write_system_calls to uint32_t: " +
-                write_system_calls_str)));
-    return;
-  }
-
-  if (!base::StringToUint64(
-          physical_bytes_read_str,
-          &single_process_info_ref->second->physical_bytes_read)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert physical_bytes_read to uint64_t: " +
-                physical_bytes_read_str)));
-    return;
-  }
-
-  if (!base::StringToUint64(
-          physical_bytes_written_str,
-          &single_process_info_ref->second->physical_bytes_written)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert physical_bytes_written to uint64_t: " +
-                physical_bytes_written_str)));
-    return;
-  }
-
-  if (!base::StringToUint64(
-          cancelled_bytes_written_str,
-          &single_process_info_ref->second->cancelled_bytes_written)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kParseError,
-            "Failed to convert cancelled_bytes_written to uint64_t: " +
-                cancelled_bytes_written_str)));
-    return;
-  }
-
-  std::move(callback).Run(mojom::ProcessResult::NewProcessInfo(
-      single_process_info_ref->second.Clone()));
   return;
 }
 
 }  // namespace
 
-ProcessFetcher::ProcessFetcher(Context* context,
-                               pid_t process_id,
-                               const base::FilePath& root_dir)
-    : BaseFetcher(context),
-      root_dir_(root_dir),
-      proc_pid_dir_(GetProcProcessDirectoryPath(root_dir, process_id)),
-      process_id_(process_id) {}
+ProcessFetcher::ProcessFetcher(Context* context, const base::FilePath& root_dir)
+    : BaseFetcher(context), root_dir_(root_dir) {}
 
 void ProcessFetcher::FetchProcessInfo(
+    uint32_t process_id,
     base::OnceCallback<void(mojom::ProcessResultPtr)> callback) {
   mojom::ProcessInfo process_info;
+  auto error = GetProcessInfo(process_id, &process_info);
+  if (error.has_value()) {
+    std::move(callback).Run(
+        mojom::ProcessResult::NewError(std::move(error.value())));
+    return;
+  }
+
+  context_->executor()->GetProcessIOContents(
+      {base::checked_cast<uint32_t>(process_id)},
+      base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
+                     std::move(process_id), std::move(process_info)));
+}
+
+void ProcessFetcher::FetchMultipleProcessInfo(
+    const std::optional<std::vector<uint32_t>>& input_process_ids,
+    const bool ignore_single_process_error,
+    base::OnceCallback<void(mojom::MultipleProcessResultPtr)> callback) {
+  std::vector<std::pair<uint32_t, mojom::ProcessInfoPtr>> process_infos;
+  std::vector<std::pair<uint32_t, mojom::ProbeErrorPtr>> errors;
+  std::set<uint32_t> process_ids;
+  if (!input_process_ids.has_value()) {
+    base::FileEnumerator enumerator(root_dir_.Append("proc"), false,
+                                    base::FileEnumerator::DIRECTORIES);
+    for (base::FilePath proc_path = enumerator.Next(); !proc_path.empty();
+         proc_path = enumerator.Next()) {
+      uint32_t process_id;
+      if (base::StringToUint(proc_path.BaseName().value(), &process_id)) {
+        process_ids.insert(process_id);
+      }
+    }
+  } else {
+    for (const auto& input_process_id : *input_process_ids) {
+      process_ids.insert(input_process_id);
+    }
+  }
+
+  for (auto it = process_ids.begin(); it != process_ids.end();) {
+    mojom::ProcessInfo process_info;
+    uint32_t process_id = *it;
+    auto error = GetProcessInfo(process_id, &process_info);
+    if (error.has_value()) {
+      if (!ignore_single_process_error) {
+        errors.push_back({process_id, error->Clone()});
+      }
+      it = process_ids.erase(it);
+    } else {
+      process_infos.push_back({process_id, process_info.Clone()});
+      ++it;
+    }
+  }
+
+  context_->executor()->GetProcessIOContents(
+      {process_ids.begin(), process_ids.end()},
+      base::BindOnce(&FinishFetchingMultipleProcessInfo, std::move(callback),
+                     ignore_single_process_error, std::move(process_infos),
+                     std::move(errors)));
+}
+
+std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessInfo(
+    uint32_t pid, mojom::ProcessInfo* process_info) {
+  base::FilePath proc_pid_dir = GetProcProcessDirectoryPath(root_dir_, pid);
 
   // Number of ticks after system boot that the process started.
   uint64_t start_time_ticks;
   auto error = ParseProcPidStat(
-      &process_info.state, &process_info.priority, &process_info.nice,
-      &start_time_ticks, &process_info.name, &process_info.parent_process_id,
-      &process_info.process_group_id, &process_info.threads,
-      &process_info.process_id);
+      &process_info->state, &process_info->priority, &process_info->nice,
+      &start_time_ticks, &process_info->name, &process_info->parent_process_id,
+      &process_info->process_group_id, &process_info->threads,
+      &process_info->process_id, proc_pid_dir);
   if (error.has_value()) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(std::move(error.value())));
-    return;
+    return error;
   }
 
-  error = CalculateProcessUptime(start_time_ticks, &process_info.uptime_ticks);
+  error = CalculateProcessUptime(start_time_ticks, &process_info->uptime_ticks);
   if (error.has_value()) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(std::move(error.value())));
-    return;
+    return error;
   }
 
-  error = ParseProcPidStatm(&process_info.total_memory_kib,
-                            &process_info.resident_memory_kib,
-                            &process_info.free_memory_kib);
+  error = ParseProcPidStatm(&process_info->total_memory_kib,
+                            &process_info->resident_memory_kib,
+                            &process_info->free_memory_kib, proc_pid_dir);
   if (error.has_value()) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(std::move(error.value())));
-    return;
+    return error;
   }
 
   uid_t user_id;
-  error = GetProcessUid(&user_id);
+  error = GetProcessUid(&user_id, proc_pid_dir);
   if (error.has_value()) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(std::move(error.value())));
-    return;
+    return error;
   }
 
-  process_info.user_id = static_cast<uint32_t>(user_id);
-
-  if (!ReadAndTrimString(proc_pid_dir_, kProcessCmdlineFile,
-                         &process_info.command)) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(CreateAndLogProbeError(
-            mojom::ErrorType::kFileReadError,
-            "Failed to read " +
-                proc_pid_dir_.Append(kProcessCmdlineFile).value())));
-    return;
+  process_info->user_id = static_cast<uint32_t>(user_id);
+  if (!ReadAndTrimString(proc_pid_dir, kProcessCmdlineFile,
+                         &process_info->command)) {
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError,
+        "Failed to read " + proc_pid_dir.Append(kProcessCmdlineFile).value());
   }
 
   // In "/proc/{PID}/cmdline", the arguments are separated by 0x00, we need
   // to replace them by space for better output.
-  for (auto& ch : process_info.command) {
+  for (auto& ch : process_info->command) {
     if (ch == '\0') {
       ch = ' ';
     }
   }
-  base::TrimWhitespaceASCII(process_info.command, base::TRIM_ALL,
-                            &process_info.command);
+  base::TrimWhitespaceASCII(process_info->command, base::TRIM_ALL,
+                            &process_info->command);
 
-  base::flat_map<uint32_t, mojom::ProcessInfoPtr> process_info_map;
-  process_info_map[process_id_] = process_info.Clone();
-
-  context_->executor()->GetProcessIOContents(
-      {base::checked_cast<uint32_t>(process_id_)},
-      base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
-                     process_id_, std::move(process_info_map)));
+  return std::nullopt;
 }
 
 std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
@@ -303,7 +371,8 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
     uint32_t* parent_process_id,
     uint32_t* process_group_id,
     uint32_t* threads,
-    uint32_t* process_id) {
+    uint32_t* process_id,
+    base::FilePath proc_pid_dir) {
   // Note that start_time_ticks, name, parent_process_id, process_group_id,
   // threads, process_id are the only pointers actually dereferenced in this
   // function. The helper functions which set |state|, |priority| and |nice| are
@@ -316,9 +385,8 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   DCHECK(process_id);
 
   std::string stat_contents;
-  const base::FilePath kProcPidStatFile =
-      proc_pid_dir_.Append(kProcessStatFile);
-  if (!ReadAndTrimString(proc_pid_dir_, kProcessStatFile, &stat_contents)) {
+  const base::FilePath kProcPidStatFile = proc_pid_dir.Append(kProcessStatFile);
+  if (!ReadAndTrimString(proc_pid_dir, kProcessStatFile, &stat_contents)) {
     return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read " + kProcPidStatFile.value());
   }
@@ -354,43 +422,43 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
                                       std::string(start_time_str));
   }
 
+  base::StringPiece process_id_str =
+      stat_tokens[ProcPidStatIndices::kProcessID];
+  if (!base::StringToUint(process_id_str, process_id)) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                  "Failed to convert process id to uint32: " +
+                                      std::string(process_id_str));
+  }
+
   // In "/proc/{PID}/stat", the filename of the executable is displayed in
   // parentheses, we need to remove them to get original value.
   std::string name_str = std::string(stat_tokens[ProcPidStatIndices::kName]);
   name_str = name_str.substr(1, name_str.size() - 2);
   *name = std::optional<std::string>(name_str);
 
-  base::StringPiece process_id_str =
-      stat_tokens[ProcPidStatIndices::kProcessID];
-  if (!base::StringToUint(process_id_str, process_id)) {
-    return CreateAndLogProbeError(
-        mojom::ErrorType::kParseError,
-        "Failed to convert " + std::string(process_id_str) + " to uint32_t.");
-  }
-
   base::StringPiece parent_process_id_str =
       stat_tokens[ProcPidStatIndices::kParentProcessID];
   if (!base::StringToUint(parent_process_id_str, parent_process_id)) {
-    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                  "Failed to convert " +
-                                      std::string(parent_process_id_str) +
-                                      " to uint32_t.");
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert parent process id to uint32: " +
+            std::string(parent_process_id_str));
   }
 
   base::StringPiece process_group_id_str =
       stat_tokens[ProcPidStatIndices::kProcessGroupID];
   if (!base::StringToUint(process_group_id_str, process_group_id)) {
-    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                  "Failed to convert " +
-                                      std::string(process_group_id_str) +
-                                      " to uint32_t.");
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert process group id to uint32: " +
+            std::string(process_group_id_str));
   }
 
   base::StringPiece threads_str = stat_tokens[ProcPidStatIndices::kThreads];
   if (!base::StringToUint(threads_str, threads)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
-        "Failed to convert " + std::string(threads_str) + " to uint32_t.");
+        "Failed to convert threads to uint32: " + std::string(threads_str));
   }
 
   return std::nullopt;
@@ -399,16 +467,17 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
 std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
     uint32_t* total_memory_kib,
     uint32_t* resident_memory_kib,
-    uint32_t* free_memory_kib) {
+    uint32_t* free_memory_kib,
+    base::FilePath proc_pid_dir) {
   DCHECK(total_memory_kib);
   DCHECK(resident_memory_kib);
   DCHECK(free_memory_kib);
 
   std::string statm_contents;
-  if (!ReadAndTrimString(proc_pid_dir_, kProcessStatmFile, &statm_contents)) {
+  if (!ReadAndTrimString(proc_pid_dir, kProcessStatmFile, &statm_contents)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kFileReadError,
-        "Failed to read " + proc_pid_dir_.Append(kProcessStatmFile).value());
+        "Failed to read " + proc_pid_dir.Append(kProcessStatmFile).value());
   }
 
   std::string total_memory_pages_str;
@@ -501,14 +570,14 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
 }
 
 std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
-    uid_t* user_id) {
+    uid_t* user_id, base::FilePath proc_pid_dir) {
   DCHECK(user_id);
 
   std::string status_contents;
-  if (!ReadAndTrimString(proc_pid_dir_, kProcessStatusFile, &status_contents)) {
+  if (!ReadAndTrimString(proc_pid_dir, kProcessStatusFile, &status_contents)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kFileReadError,
-        "Failed to read " + proc_pid_dir_.Append(kProcessStatusFile).value());
+        "Failed to read " + proc_pid_dir.Append(kProcessStatusFile).value());
   }
 
   std::vector<std::string> status_lines = base::SplitString(

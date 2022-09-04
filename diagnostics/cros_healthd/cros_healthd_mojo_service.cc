@@ -98,8 +98,8 @@ void CrosHealthdMojoService::AddUsbObserver(
 
 void CrosHealthdMojoService::ProbeProcessInfo(
     uint32_t process_id, ProbeProcessInfoCallback callback) {
-  ProcessFetcher(context_, static_cast<pid_t>(process_id))
-      .FetchProcessInfo(std::move(callback));
+  ProcessFetcher(context_).FetchProcessInfo(static_cast<pid_t>(process_id),
+                                            std::move(callback));
 }
 
 void CrosHealthdMojoService::ProbeTelemetryInfo(
@@ -111,7 +111,10 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
 void CrosHealthdMojoService::ProbeMultipleProcessInfo(
     const std::optional<std::vector<uint32_t>>& process_ids,
     const bool ignore_single_process_info,
-    ProbeMultipleProcessInfoCallback callback) {}
+    ProbeMultipleProcessInfoCallback callback) {
+  ProcessFetcher(context_).FetchMultipleProcessInfo(
+      process_ids, ignore_single_process_info, std::move(callback));
+}
 
 void CrosHealthdMojoService::GetServiceStatus(
     GetServiceStatusCallback callback) {
