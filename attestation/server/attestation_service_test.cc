@@ -98,12 +98,15 @@ EncryptedData MockEncryptedData(std::string data) {
   return encrypted_data;
 }
 
-KeyInfo CreateChallengeKeyInfo() {
+KeyInfo CreateChallengeKeyInfo(std::string customer_id = "") {
   KeyInfo key_info;
   key_info.set_key_type(EUK);
   key_info.set_domain("domain");
   key_info.set_device_id("device_id");
   key_info.set_certificate("");
+  if (!customer_id.empty()) {
+    key_info.set_customer_id(customer_id);
+  }
   return key_info;
 }
 
@@ -288,8 +291,14 @@ class AttestationServiceBaseTest : public testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(*mock_policy_provider_, GetDevicePolicy())
         .WillOnce(ReturnRef(mock_device_policy_));
-    EXPECT_CALL(mock_device_policy_, GetCustomerId(_))
-        .WillOnce(DoAll(SetArgPointee<0>(customer_id), Return(true)));
+    if (customer_id.empty()) {
+      // Assume empty means a customer ID is not available.
+      EXPECT_CALL(mock_device_policy_, GetCustomerId(_))
+          .WillOnce(Return(false));
+    } else {
+      EXPECT_CALL(mock_device_policy_, GetCustomerId(_))
+          .WillOnce(DoAll(SetArgPointee<0>(customer_id), Return(true)));
+    }
   }
 
   // Verify Attestation CA-related data, including the default CA's identity
@@ -1027,6 +1036,7 @@ TEST_P(AttestationServiceEnterpriseTest,
   request.set_include_signed_public_key(true);
   request.set_key_name_for_spkac(kKeyNameForSpkac);
   request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+  request.set_include_customer_id(true);
   service_->SignEnterpriseChallenge(
       request, base::BindOnce(callback, expected_key_info_str, QuitClosure()));
   Run();
@@ -1035,6 +1045,119 @@ TEST_P(AttestationServiceEnterpriseTest,
 INSTANTIATE_TEST_SUITE_P(VerifiedAccessType,
                          AttestationServiceEnterpriseTest,
                          ::testing::Values(DEFAULT_VA, TEST_VA));
+
+class AttestationServiceCustomerIdTest : public AttestationServiceBaseTest {
+ public:
+  ~AttestationServiceCustomerIdTest() override = default;
+
+  KeyInfo SetUpKeyInfoForCustomerId(bool include_customer_id,
+                                    std::string customer_id) {
+    if (include_customer_id) {
+      ExpectGetCustomerId(customer_id);
+    }
+
+    GoogleKeys google_keys_;
+    EXPECT_CALL(
+        mock_crypto_utility_,
+        VerifySignatureUsingHexKey(
+            _, google_keys_.va_signing_key(DEFAULT_VA).modulus_in_hex(), _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+
+    KeyInfo key_info = CreateChallengeKeyInfo(customer_id);
+    std::string key_info_str;
+    key_info.SerializeToString(&key_info_str);
+    EXPECT_CALL(
+        mock_crypto_utility_,
+        EncryptDataForGoogle(
+            key_info_str,
+            google_keys_.va_encryption_key(DEFAULT_VA).modulus_in_hex(), _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<3>(MockEncryptedData(key_info_str)),
+                              Return(true)));
+    return key_info;
+  }
+
+ protected:
+  auto CreateSuccessfulChallengeCallback(std::string customer_id) {
+    auto callback = [](std::string customer_id, base::OnceClosure quit_closure,
+                       const SignEnterpriseChallengeReply& reply) {
+      EXPECT_EQ(STATUS_SUCCESS, reply.status());
+      EXPECT_TRUE(reply.has_challenge_response());
+      SignedData signed_data;
+      EXPECT_TRUE(signed_data.ParseFromString(reply.challenge_response()));
+      EXPECT_EQ("signature", signed_data.signature());
+      ChallengeResponse response_pb;
+      EXPECT_TRUE(response_pb.ParseFromString(signed_data.data()));
+      EXPECT_EQ(CreateChallenge("EnterpriseKeyChallenge"),
+                response_pb.challenge().data());
+      KeyInfo key_info = CreateChallengeKeyInfo(customer_id);
+      std::string key_info_str;
+      key_info.SerializeToString(&key_info_str);
+      EXPECT_EQ(key_info_str,
+                response_pb.encrypted_key_info().encrypted_data());
+      std::move(quit_closure).Run();
+    };
+    return base::BindOnce(callback, customer_id, QuitClosure());
+  }
+
+  SignEnterpriseChallengeRequest CreateChallengeRequest(
+      const KeyInfo& key_info, bool include_customer_id) {
+    SignEnterpriseChallengeRequest request;
+    request.set_va_type(DEFAULT_VA);
+    request.set_username("user");
+    request.set_key_label("label");
+    request.set_domain(key_info.domain());
+    request.set_device_id(key_info.device_id());
+    request.set_include_signed_public_key(false);
+    request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+    request.set_include_customer_id(include_customer_id);
+    return request;
+  }
+};
+
+TEST_F(AttestationServiceCustomerIdTest, DoNotIncludeCustomerIdSucceeds) {
+  bool include_customer_id = false;
+  std::string customer_id = "";
+  KeyInfo key_info =
+      SetUpKeyInfoForCustomerId(include_customer_id, customer_id);
+  SignEnterpriseChallengeRequest request =
+      CreateChallengeRequest(key_info, include_customer_id);
+  auto callback = CreateSuccessfulChallengeCallback(customer_id);
+  service_->SignEnterpriseChallenge(request, std::move(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceCustomerIdTest, IncludeCustomerIdSucceeds) {
+  bool include_customer_id = true;
+  std::string customer_id = "customer_id";
+  KeyInfo key_info =
+      SetUpKeyInfoForCustomerId(include_customer_id, customer_id);
+  SignEnterpriseChallengeRequest request =
+      CreateChallengeRequest(key_info, include_customer_id);
+  auto callback = CreateSuccessfulChallengeCallback(customer_id);
+  service_->SignEnterpriseChallenge(request, std::move(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceCustomerIdTest,
+       IncludeCustomerIdFailsWithoutActualCustomerId) {
+  bool include_customer_id = true;
+  KeyInfo key_info =
+      SetUpKeyInfoForCustomerId(include_customer_id, /*customer_id=*/"");
+  SignEnterpriseChallengeRequest request =
+      CreateChallengeRequest(key_info, include_customer_id);
+  auto callback = [](base::OnceClosure quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_challenge_response());
+    std::move(quit_closure).Run();
+  };
+  service_->SignEnterpriseChallenge(request,
+                                    base::BindOnce(callback, QuitClosure()));
+  Run();
+}
 
 class AttestationServiceTest : public AttestationServiceBaseTest,
                                public testing::WithParamInterface<ACAType> {

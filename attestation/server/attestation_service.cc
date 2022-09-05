@@ -3158,13 +3158,12 @@ void AttestationService::SignEnterpriseChallengeTask(
     key_info.set_key_type(EUK);
     key_info.set_domain(request.domain());
   } else {
-    // For machine key, the customer_id should be included, not the domain
-    // name.
+    // For machine key the domain name should not be include.
     key_info.set_key_type(EMK);
-    if (!PopulateCustomerId(&key_info)) {
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-      return;
-    }
+  }
+  if (request.include_customer_id() && !PopulateCustomerId(&key_info)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
   }
   key_info.set_device_id(request.device_id());
 
