@@ -95,10 +95,11 @@ class BrowserJobInterface : public ChildJobInterface {
   // Throw away the pid of the currently-tracked browser job.
   virtual void ClearPid() = 0;
 
-  // Sets |kBrowserDataMigrationFlag| and |kLoginManagerFlag| to chrome launch
-  // flags. |userhash| is passed as the value of |kBrowserDataMigrationFlag| to
-  // let chrome know which user data directory to do migration on.
-  // |mode| is set as the value of |kBrowserDataMigrationModeFlag|.
+  // Sets |kBrowserDataMigrationForUserFlag| and |kLoginManagerFlag| to chrome
+  // launch flags. |userhash| is passed as the value of
+  // |kBrowserDataMigrationFlag| to let chrome know which user data directory to
+  // do migration on. |mode| is set as the value of
+  // |kBrowserDataMigrationModeFlag|.
   virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
                                                   const std::string& mode) = 0;
 
