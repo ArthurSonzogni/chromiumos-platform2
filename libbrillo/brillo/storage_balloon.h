@@ -24,10 +24,10 @@ class BRILLO_EXPORT StorageBalloon {
 
   // Checks if the storage balloon is still in a valid state.
   bool IsValid();
-  // Resize to only a maximum of |target_space| bytes of space on the
-  // filesystem.
-  bool Inflate(int64_t target_space);
-  // Resize to zero.
+  // Resizes the balloon so that a maximum of |target_space| bytes is available
+  // on the filesystem.
+  bool Adjust(int64_t target_space);
+  // Resizes the balloon to zero.
   bool Deflate();
   // Get the current balloon size.
   int64_t GetCurrentBalloonSize();
@@ -42,7 +42,8 @@ class BRILLO_EXPORT StorageBalloon {
   virtual bool Fstat(struct stat* buf);
 
  private:
-  int64_t CalculateBalloonInflationSize(int64_t target_space);
+  bool CalculateBalloonInflationSize(int64_t target_space,
+                                     int64_t* inflation_size);
 
   base::ScopedFD balloon_fd_;
 };

@@ -68,10 +68,10 @@ TEST(StorageBalloonTest, FullInflation) {
   FakeStorageBalloon f(100 * 4096, dir.GetPath());
   EXPECT_EQ(f.IsValid(), true);
 
-  EXPECT_TRUE(f.Inflate(5 * 4096));
+  EXPECT_TRUE(f.Adjust(5 * 4096));
   EXPECT_EQ(f.GetCurrentBalloonSize(), 95 * 4096);
 
-  EXPECT_TRUE(f.Inflate(4096));
+  EXPECT_TRUE(f.Adjust(4096));
   EXPECT_EQ(f.GetCurrentBalloonSize(), 99 * 4096);
 }
 
@@ -82,11 +82,25 @@ TEST(StorageBalloonTest, FullDeflation) {
   FakeStorageBalloon f(100 * 4096, dir.GetPath());
   EXPECT_EQ(f.IsValid(), true);
 
-  EXPECT_TRUE(f.Inflate(5 * 4096));
+  EXPECT_TRUE(f.Adjust(5 * 4096));
   EXPECT_EQ(f.GetCurrentBalloonSize(), 95 * 4096);
 
   EXPECT_TRUE(f.Deflate());
   EXPECT_EQ(f.GetCurrentBalloonSize(), 0);
+}
+
+TEST(StorageBalloonTest, Adjustment) {
+  base::ScopedTempDir dir;
+
+  ASSERT_TRUE(dir.CreateUniqueTempDir());
+  FakeStorageBalloon f(100 * 4096, dir.GetPath());
+  EXPECT_EQ(f.IsValid(), true);
+
+  EXPECT_TRUE(f.Adjust(1 * 4096));
+  EXPECT_EQ(f.GetCurrentBalloonSize(), 99 * 4096);
+
+  EXPECT_TRUE(f.Adjust(95 * 4096));
+  EXPECT_EQ(f.GetCurrentBalloonSize(), 5 * 4096);
 }
 
 }  // namespace brillo

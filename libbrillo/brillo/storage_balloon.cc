@@ -4,6 +4,8 @@
 
 #include "brillo/storage_balloon.h"
 
+#include <algorithm>
+
 #include <fcntl.h>
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
@@ -23,7 +25,7 @@ bool StorageBalloon::IsValid() {
   return balloon_fd_.is_valid();
 }
 
-bool StorageBalloon::Inflate(int64_t target_space) {
+bool StorageBalloon::Adjust(int64_t target_space) {
   if (!IsValid()) {
     LOG(ERROR) << "Invalid balloon";
     return false;
@@ -34,8 +36,8 @@ bool StorageBalloon::Inflate(int64_t target_space) {
     return false;
   }
 
-  int64_t inflation_size = CalculateBalloonInflationSize(target_space);
-  if (inflation_size < 0) {
+  int64_t inflation_size = 0;
+  if (!CalculateBalloonInflationSize(target_space, &inflation_size)) {
     LOG(ERROR) << "Failed to calculate balloon inflation size.";
     return false;
   }
@@ -47,6 +49,10 @@ bool StorageBalloon::Inflate(int64_t target_space) {
   if (existing_size < 0) {
     LOG(ERROR) << "Failed to get balloon file size";
     return false;
+  }
+
+  if (inflation_size < 0) {
+    return Ftruncate(std::max(existing_size + inflation_size, int64_t(0)));
   }
 
   if (!Fallocate(existing_size, inflation_size)) {
@@ -102,25 +108,24 @@ bool StorageBalloon::Fstat(struct stat* buf) {
   return fstat(balloon_fd_.get(), buf) == 0;
 }
 
-int64_t StorageBalloon::CalculateBalloonInflationSize(int64_t target_space) {
+bool StorageBalloon::CalculateBalloonInflationSize(int64_t target_space,
+                                                   int64_t* inflation_size) {
   struct statfs buf;
 
   if (target_space < 0) {
     LOG(ERROR) << "Invalid target space";
-    return -1;
+    return false;
   }
 
   if (!FstatFs(&buf)) {
     LOG(ERROR) << "Failed to statvfs() balloon fd";
-    return -1;
+    return false;
   }
 
   int64_t available_space = buf.f_bfree * buf.f_bsize;
+  *inflation_size = available_space - target_space;
 
-  if (target_space > available_space)
-    return 0;
-
-  return (available_space - target_space);
+  return true;
 }
 
 int64_t StorageBalloon::GetCurrentBalloonSize() {
