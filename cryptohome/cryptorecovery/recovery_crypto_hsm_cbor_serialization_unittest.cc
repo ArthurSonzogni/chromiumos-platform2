@@ -134,13 +134,40 @@ class HsmPayloadCborHelperTest : public testing::Test {
     ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
         &dealer_pub_key_, &dealer_priv_key_, context_.get()));
 
-    onboarding_meta_data_.cryptohome_user_type = UserType::kGaiaId;
-    onboarding_meta_data_.cryptohome_user = "User ID";
-    onboarding_meta_data_.device_user_id = "Device User ID";
-    onboarding_meta_data_.board_name = "Board Name";
-    onboarding_meta_data_.form_factor = "Form factor";
-    onboarding_meta_data_.rlz_code = "Rlz Code";
-    onboarding_meta_data_.recovery_id = "Recovery ID";
+    OnboardingMetadata onboarding_meta_data;
+    onboarding_meta_data.cryptohome_user_type = UserType::kGaiaId;
+    onboarding_meta_data.cryptohome_user = "User ID";
+    onboarding_meta_data.device_user_id = "Device User ID";
+    onboarding_meta_data.board_name = "Board Name";
+    onboarding_meta_data.form_factor = "Form factor";
+    onboarding_meta_data.rlz_code = "Rlz Code";
+    onboarding_meta_data.recovery_id = "Recovery ID";
+    hsm_associated_data_.publisher_pub_key = publisher_pub_key_;
+    hsm_associated_data_.channel_pub_key = channel_pub_key_;
+    hsm_associated_data_.rsa_public_key = rsa_public_key_;
+    hsm_associated_data_.onboarding_meta_data = onboarding_meta_data;
+  }
+
+  void ExpectEqualsToFakeHsmAssociatedData(
+      const HsmAssociatedData& hsm_ad) const {
+    EXPECT_EQ(hsm_associated_data_.publisher_pub_key, hsm_ad.publisher_pub_key);
+    EXPECT_EQ(hsm_associated_data_.channel_pub_key, hsm_ad.channel_pub_key);
+    EXPECT_EQ(hsm_associated_data_.rsa_public_key, hsm_ad.rsa_public_key);
+
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.cryptohome_user_type,
+              hsm_ad.onboarding_meta_data.cryptohome_user_type);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.cryptohome_user,
+              hsm_ad.onboarding_meta_data.cryptohome_user);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.device_user_id,
+              hsm_ad.onboarding_meta_data.device_user_id);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.board_name,
+              hsm_ad.onboarding_meta_data.board_name);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.form_factor,
+              hsm_ad.onboarding_meta_data.form_factor);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.rlz_code,
+              hsm_ad.onboarding_meta_data.rlz_code);
+    EXPECT_EQ(hsm_associated_data_.onboarding_meta_data.recovery_id,
+              hsm_ad.onboarding_meta_data.recovery_id);
   }
 
  protected:
@@ -153,7 +180,7 @@ class HsmPayloadCborHelperTest : public testing::Test {
   brillo::SecureBlob dealer_pub_key_;
   brillo::SecureBlob dealer_priv_key_;
   brillo::SecureBlob rsa_public_key_;
-  OnboardingMetadata onboarding_meta_data_;
+  HsmAssociatedData hsm_associated_data_;
 };
 
 class AeadPayloadHelper {
@@ -258,17 +285,10 @@ class ResponsePayloadCborHelperTest : public testing::Test {
 // Verifies serialization of HSM payload associated data to CBOR.
 TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   brillo::SecureBlob cbor_output;
-  HsmAssociatedData args;
-  args.publisher_pub_key = publisher_pub_key_;
-  args.channel_pub_key = channel_pub_key_;
-  args.onboarding_meta_data = onboarding_meta_data_;
-
-  ASSERT_TRUE(SerializeHsmAssociatedDataToCbor(args, &cbor_output));
-
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kPublisherPublicKey, publisher_pub_key_));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kChannelPublicKey, channel_pub_key_));
+  HsmAssociatedData hsm_associated_data = hsm_associated_data_;
+  hsm_associated_data.rsa_public_key = brillo::SecureBlob();
+  ASSERT_TRUE(
+      SerializeHsmAssociatedDataToCbor(hsm_associated_data_, &cbor_output));
 
   cbor::Value deserialized_schema_version;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(cbor_output, kSchemaVersion,
@@ -276,36 +296,50 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_THAT(deserialized_schema_version,
               CborIntegerEq(kHsmAssociatedDataSchemaVersion));
 
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsSecureBlobValue(
+                  kPublisherPublicKey, hsm_associated_data_.publisher_pub_key));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsSecureBlobValue(
+                  kChannelPublicKey, hsm_associated_data_.channel_pub_key));
+
   cbor::Value deserialized_onboarding_metadata;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
       cbor_output, kOnboardingMetaData, &deserialized_onboarding_metadata));
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsIntegerValue(kSchemaVersion,
+                                          kOnboardingMetaDataSchemaVersion));
   ASSERT_TRUE(deserialized_onboarding_metadata.is_map());
   EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
               CborMapContainsStringValue(
-                  kCryptohomeUser, onboarding_meta_data_.cryptohome_user));
+                  kCryptohomeUser,
+                  hsm_associated_data_.onboarding_meta_data.cryptohome_user));
   EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
-              CborMapContainsStringValue(kDeviceUserId,
-                                         onboarding_meta_data_.device_user_id));
+              CborMapContainsStringValue(
+                  kDeviceUserId,
+                  hsm_associated_data_.onboarding_meta_data.device_user_id));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
-      CborMapContainsStringValue(kBoardName, onboarding_meta_data_.board_name));
-  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
-              CborMapContainsStringValue(kFormFactor,
-                                         onboarding_meta_data_.form_factor));
+      CborMapContainsStringValue(
+          kBoardName, hsm_associated_data_.onboarding_meta_data.board_name));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
-      CborMapContainsStringValue(kRlzCode, onboarding_meta_data_.rlz_code));
-  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
-              CborMapContainsStringValue(kRecoveryId,
-                                         onboarding_meta_data_.recovery_id));
+      CborMapContainsStringValue(
+          kFormFactor, hsm_associated_data_.onboarding_meta_data.form_factor));
+  EXPECT_THAT(
+      deserialized_onboarding_metadata.GetMap(),
+      CborMapContainsStringValue(
+          kRlzCode, hsm_associated_data_.onboarding_meta_data.rlz_code));
+  EXPECT_THAT(
+      deserialized_onboarding_metadata.GetMap(),
+      CborMapContainsStringValue(
+          kRecoveryId, hsm_associated_data_.onboarding_meta_data.recovery_id));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
       CborMapContainsIntegerValue(
           kCryptohomeUserType,
-          static_cast<int>(onboarding_meta_data_.cryptohome_user_type)));
-  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
-              CborMapContainsIntegerValue(kSchemaVersion,
-                                          kOnboardingMetaDataSchemaVersion));
+          static_cast<int>(
+              hsm_associated_data_.onboarding_meta_data.cryptohome_user_type)));
   EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 8);
 
   // 3 fields + schema version:
@@ -369,29 +403,16 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
 }
 
 // Verifies deserialization of HSM associated data from CBOR.
-TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayload) {
-  brillo::SecureBlob mediator_share;
+TEST_F(HsmPayloadCborHelperTest, SerializeDeserializeHsmAssociatedData) {
   brillo::SecureBlob cbor_output;
+  ASSERT_TRUE(
+      SerializeHsmAssociatedDataToCbor(hsm_associated_data_, &cbor_output));
 
-  crypto::ScopedBIGNUM scalar = BigNumFromValue(123123123u);
-  ASSERT_TRUE(scalar);
-  ASSERT_TRUE(BigNumToSecureBlob(*scalar, 10, &mediator_share));
-
-  // Serialize plain text payload with empty kav.
-  cbor::Value::MapValue fake_map;
-  fake_map.emplace(kPublisherPublicKey, publisher_pub_key_);
-  fake_map.emplace(kChannelPublicKey, channel_pub_key_);
-  fake_map.emplace(kRsaPublicKey, rsa_public_key_);
-  brillo::SecureBlob hsm_cbor;
-  ASSERT_TRUE(CreateCborMapForTesting(fake_map, &hsm_cbor));
-
-  HsmAssociatedData hsm_associated_data;
+  HsmAssociatedData hsm_ad_output;
   EXPECT_TRUE(
-      DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
+      DeserializeHsmAssociatedDataFromCbor(cbor_output, &hsm_ad_output));
 
-  EXPECT_EQ(hsm_associated_data.publisher_pub_key, publisher_pub_key_);
-  EXPECT_EQ(hsm_associated_data.channel_pub_key, channel_pub_key_);
-  EXPECT_EQ(hsm_associated_data.rsa_public_key, rsa_public_key_);
+  ExpectEqualsToFakeHsmAssociatedData(hsm_ad_output);
 }
 
 // Verifies that the deserialization of HSM associated data text from CBOR fails
@@ -498,7 +519,7 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
   HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
-  args.onboarding_meta_data = onboarding_meta_data_;
+  args.onboarding_meta_data = hsm_associated_data_.onboarding_meta_data;
   ASSERT_TRUE(SerializeHsmAssociatedDataToCbor(args, &cbor_output));
   brillo::SecureBlob deserialized_dealer_pub_key;
   EXPECT_FALSE(GetBytestringValueFromCborMapByKeyForTesting(

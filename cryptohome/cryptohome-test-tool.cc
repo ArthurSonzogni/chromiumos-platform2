@@ -405,7 +405,7 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  brillo::InitLog(brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::AtExitManager exit_manager;
 
   DEFINE_string(

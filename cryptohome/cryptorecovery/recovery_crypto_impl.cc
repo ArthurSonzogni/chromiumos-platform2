@@ -78,6 +78,16 @@ bool GenerateRecoveryRequestAssociatedData(
     const RequestMetadata& request_meta_data,
     const CryptoRecoveryEpochResponse& epoch_response,
     RecoveryRequestAssociatedData* request_ad) {
+  HsmAssociatedData hsm_associated_data;
+  if (!DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                            &hsm_associated_data)) {
+    LOG(ERROR) << "Unable to deserialize hsm_payload.associated_data";
+    return false;
+  }
+  // Log the recovery id, to be used for debugging.
+  LOG(INFO) << "GenerateRecoveryRequestAssociatedData for recovery id: "
+            << hsm_associated_data.onboarding_meta_data.recovery_id;
+
   request_ad->hsm_payload = hsm_payload;
   request_ad->request_meta_data = request_meta_data;
   if (!epoch_response.has_epoch_meta_data()) {
