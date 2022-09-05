@@ -608,6 +608,9 @@ void UserDataAuth::CreateMountThreadDBus() {
 }
 
 void UserDataAuth::ShutdownTask() {
+  default_auth_session_manager_.reset();
+  default_uss_experiment_config_fetcher_.reset();
+  default_fingerprint_manager_.reset();
   default_challenge_credentials_helper_.reset();
   if (mount_thread_bus_) {
     mount_thread_bus_->ShutdownAndBlock();
