@@ -24,7 +24,7 @@ END
 setup_deps() {
   apt-get update
   apt-get install -y debian-archive-keyring pbuilder debootstrap devscripts \
-    qemu-user-static
+    qemu-user-static debhelper
 
   cp .pbuilderrc /root/
 

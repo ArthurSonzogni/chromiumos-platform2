@@ -13,3 +13,4 @@ BASETGZ="/var/cache/pbuilder/base-${ARCH}.tgz"
 BUILDPLACE="/var/cache/pbuilder/build"
 BUILDRESULT="/var/cache/pbuilder/${NAME}/result/"
 DEBOOTSTRAPOPTS=("${DEBOOTSTRAPOPTS[@]}" "--arch=${ARCH}")
+PBUILDERSATISFYDEPENDSCMD="/usr/lib/pbuilder/pbuilder-satisfydepends-apt"
