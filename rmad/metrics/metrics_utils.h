@@ -24,7 +24,7 @@ struct StateMetricsData {
 
   bool operator==(const StateMetricsData& other) const;
   base::Value ToValue() const;
-  bool FromValue(const base::Value* data);
+  bool FromValue(const base::Value* value);
 
   RmadState::StateCase state_case;
   bool is_aborted;
@@ -35,9 +35,9 @@ struct StateMetricsData {
   int save_log_count;
 };
 
-base::Value ConvertToValue(const StateMetricsData& value);
+base::Value ConvertToValue(const StateMetricsData& data);
 
-bool ConvertFromValue(const base::Value* data, StateMetricsData* result);
+bool ConvertFromValue(const base::Value* value, StateMetricsData* data);
 
 class MetricsUtils {
  public:

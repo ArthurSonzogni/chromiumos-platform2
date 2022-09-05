@@ -27,39 +27,41 @@ using testing::Return;
 namespace {
 
 constexpr char kTestJsonStoreFilename[] = "test.json";
-constexpr char kDefaultMetricsJson[] =
-    R"({
-      "metrics": {
-        "first_setup_timestamp": 123.456,
-        "setup_timestamp": 456.789,
-        "running_time": 333.333,
-        "ro_firmware_verified": true,
-        "replaced_component_names": [],
-        "occurred_errors": ["RMAD_ERROR_MISSING_COMPONENT"],
-        "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
-        "state_metrics": {
-          "1": {
-            "state_case": 1,
-            "state_is_aborted": false,
-            "state_setup_timestamp": 0.0,
-            "state_overall_time": 123.456,
-            "state_transition_count": 2,
-            "state_get_log_count": 3,
-            "state_save_log_count": 4
-          },
-          "2": {
-            "state_case": 2,
-            "state_is_aborted": true,
-            "state_setup_timestamp": 123.456,
-            "state_overall_time": 332.544,
-            "state_transition_count": 1,
-            "state_get_log_count": 0,
-            "state_save_log_count": 0
-          }
-        }
+constexpr char kDefaultMetricsJson[] = R"(
+{
+  "metrics": {
+    "first_setup_timestamp": 123.456,
+    "setup_timestamp": 456.789,
+    "running_time": 333.333,
+    "ro_firmware_verified": true,
+    "replaced_component_names": [],
+    "occurred_errors": ["RMAD_ERROR_MISSING_COMPONENT"],
+    "additional_activities": ["RMAD_ADDITIONAL_ACTIVITY_REBOOT"],
+    "state_metrics": {
+      "1": {
+        "state_case": 1,
+        "state_is_aborted": false,
+        "state_setup_timestamp": 0.0,
+        "state_overall_time": 123.456,
+        "state_transition_count": 2,
+        "state_get_log_count": 3,
+        "state_save_log_count": 4
+      },
+      "2": {
+        "state_case": 2,
+        "state_is_aborted": true,
+        "state_setup_timestamp": 123.456,
+        "state_overall_time": 332.544,
+        "state_transition_count": 1,
+        "state_get_log_count": 0,
+        "state_save_log_count": 0
       }
-    })";
+    }
+  }
+}
+)";
 constexpr char kEmptyMetricsJson[] = "{}";
+// This is the exact json string to match. DO NOT format it.
 constexpr char kDefaultMetricsSummaryJson[] = R"({
    "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
    "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
@@ -84,6 +86,24 @@ constexpr char kDefaultMetricsSummaryJson[] = R"({
          "state_transition_count": 1
       }
    }
+}
+)";
+
+constexpr char kInvalidStateMetricsTimestampJson[] = R"(
+{
+  "metrics": {
+    "state_metrics": {
+      "1": {
+        "state_case": 1,
+        "state_is_aborted": false,
+        "state_setup_timestamp": -1,
+        "state_overall_time": 123.456,
+        "state_transition_count": 2,
+        "state_get_log_count": 3,
+        "state_save_log_count": 4
+      }
+    }
+  }
 }
 )";
 
@@ -132,6 +152,211 @@ constexpr double kTestStateOverallTime = 555.555;
 }  // namespace
 
 namespace rmad {
+
+class StateMetricsDataTest : public testing::Test {
+ public:
+  StateMetricsDataTest() = default;
+
+  StateMetricsData CreateDefaultStateMetricsData() {
+    StateMetricsData data;
+    data.state_case = RmadState::STATE_NOT_SET;
+    data.is_aborted = false;
+    data.setup_timestamp = 0;
+    data.overall_time = 0;
+    data.transition_count = 0;
+    data.get_log_count = 0;
+    data.save_log_count = 0;
+    return data;
+  }
+
+  base::Value CreateDefaultValue() {
+    base::Value dict(base::Value::Type::DICT);
+    dict.SetKey(kStateCase, ConvertToValue(0));
+    dict.SetKey(kStateIsAborted, ConvertToValue(false));
+    dict.SetKey(kStateSetupTimestamp, ConvertToValue(0.0));
+    dict.SetKey(kStateOverallTime, ConvertToValue(0.0));
+    dict.SetKey(kStateTransitionsCount, ConvertToValue(0));
+    dict.SetKey(kStateGetLogCount, ConvertToValue(0));
+    dict.SetKey(kStateSaveLogCount, ConvertToValue(0));
+    return dict;
+  }
+};
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  EXPECT_TRUE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_StateCaseNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.state_case = RmadState::kRestock;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_IsAbortedNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.is_aborted = true;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_SetupTimestampNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.setup_timestamp = 1;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_OverallTimeNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.overall_time = 1;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_GetLogCountNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.get_log_count = 1;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, OperatorIsEqual_SaveLogCountNE) {
+  StateMetricsData data1 = CreateDefaultStateMetricsData();
+  StateMetricsData data2 = CreateDefaultStateMetricsData();
+
+  data1.save_log_count = 1;
+
+  EXPECT_FALSE(data1 == data2);
+}
+
+TEST_F(StateMetricsDataTest, ToValue) {
+  StateMetricsData data = CreateDefaultStateMetricsData();
+
+  base::Value value = data.ToValue();
+
+  EXPECT_EQ(value, CreateDefaultValue());
+}
+
+TEST_F(StateMetricsDataTest, ConvertToValue) {
+  StateMetricsData data = CreateDefaultStateMetricsData();
+
+  base::Value value = ConvertToValue(data);
+
+  EXPECT_EQ(value, CreateDefaultValue());
+}
+
+TEST_F(StateMetricsDataTest, FromValue) {
+  base::Value value = CreateDefaultValue();
+
+  StateMetricsData data;
+  EXPECT_TRUE(data.FromValue(&value));
+  EXPECT_EQ(data, CreateDefaultStateMetricsData());
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoData) {
+  base::Value* value = nullptr;
+  StateMetricsData data;
+
+  EXPECT_FALSE(data.FromValue(value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_ValueNotDict) {
+  base::Value value(base::Value::Type::LIST);
+  StateMetricsData data;
+
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoStateCase) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateCase);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoTimeStamp) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateSetupTimestamp);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoOverallTime) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateOverallTime);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoIsAborted) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateIsAborted);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoTransitionsCount) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateTransitionsCount);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoGetLogCount) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateGetLogCount);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, FromValue_NoSaveLogCount) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  value.GetDict().Remove(kStateSaveLogCount);
+  EXPECT_FALSE(data.FromValue(&value));
+}
+
+TEST_F(StateMetricsDataTest, ConvertFromValue) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData data;
+
+  EXPECT_TRUE(ConvertFromValue(&value, &data));
+}
+
+TEST_F(StateMetricsDataTest, ConvertFromValue_NoValue) {
+  base::Value* value = nullptr;
+  StateMetricsData data;
+
+  EXPECT_FALSE(ConvertFromValue(value, &data));
+}
+
+TEST_F(StateMetricsDataTest, ConvertFromValue_NoData) {
+  base::Value value = CreateDefaultValue();
+  StateMetricsData* data = nullptr;
+
+  EXPECT_FALSE(ConvertFromValue(&value, data));
+}
 
 class MetricsUtilsTest : public testing::Test {
  public:
@@ -316,6 +541,50 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
   EXPECT_DOUBLE_EQ(state_it->second.overall_time, kTestStateOverallTime);
 }
 
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_StateNotFound) {
+  EXPECT_TRUE(
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+
+  EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, RmadState::StateCase::kWelcome,
+      RmadState::StateCase::kRestock, kTestStateSetupTimestamp));
+}
+
+TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_InvalidTimestamp) {
+  EXPECT_TRUE(
+      CreateInputFile(kInvalidStateMetricsTimestampJson,
+                      std::size(kInvalidStateMetricsTimestampJson) - 1));
+
+  RmadState::StateCase state_case = RmadState::StateCase::kRestock;
+  EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, RmadState::StateCase::kWelcome, state_case,
+      kTestStateLeaveTimestamp));
+}
+
+TEST_F(MetricsUtilsTest,
+       UpdateStateMetricsOnStateTransition_NotIncreasedTimestamp) {
+  EXPECT_TRUE(
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+
+  RmadState::StateCase state_case = RmadState::StateCase::kRestock;
+  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, RmadState::StateCase::STATE_NOT_SET, state_case,
+      kTestStateSetupTimestamp));
+
+  std::map<int, StateMetricsData> state_metrics;
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kStateMetrics,
+                                            &state_metrics));
+
+  auto state_it = state_metrics.find(static_cast<int>(state_case));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_DOUBLE_EQ(state_it->second.setup_timestamp, kTestStateSetupTimestamp);
+
+  // Invalid timestamp: timestamp should be incremented each time.
+  EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
+      json_store_, state_case, RmadState::StateCase::STATE_NOT_SET,
+      kTestStateSetupTimestamp - 1));
+}
+
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
   EXPECT_TRUE(
       CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
@@ -401,6 +670,13 @@ TEST_F(MetricsUtilsTest, GetMetricsSummaryAsString) {
 
   EXPECT_EQ(MetricsUtils::GetMetricsSummaryAsString(json_store_),
             kDefaultMetricsSummaryJson);
+}
+
+TEST_F(MetricsUtilsTest, GetMetricsSummaryAsString_NoData) {
+  EXPECT_TRUE(
+      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+
+  EXPECT_EQ(MetricsUtils::GetMetricsSummaryAsString(json_store_), "");
 }
 
 class MetricsUtilsImplTest : public testing::Test {

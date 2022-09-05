@@ -60,48 +60,48 @@ base::Value StateMetricsData::ToValue() const {
   return dict;
 }
 
-bool StateMetricsData::FromValue(const base::Value* data) {
-  if (!data || !data->is_dict()) {
+bool StateMetricsData::FromValue(const base::Value* value) {
+  if (!value || !value->is_dict()) {
     return false;
   }
 
-  if (auto state_case_it = data->FindKey(kStateCase);
+  if (auto state_case_it = value->FindKey(kStateCase);
       state_case_it && state_case_it->GetIfInt().has_value()) {
     state_case = static_cast<RmadState::StateCase>(state_case_it->GetInt());
   } else {
     return false;
   }
-  if (auto is_aborted_it = data->FindKey(kStateIsAborted);
+  if (auto is_aborted_it = value->FindKey(kStateIsAborted);
       is_aborted_it && is_aborted_it->GetIfBool().has_value()) {
     is_aborted = is_aborted_it->GetBool();
   } else {
     return false;
   }
-  if (auto setup_timestamp_it = data->FindKey(kStateSetupTimestamp);
+  if (auto setup_timestamp_it = value->FindKey(kStateSetupTimestamp);
       setup_timestamp_it && setup_timestamp_it->GetIfDouble().has_value()) {
     setup_timestamp = setup_timestamp_it->GetDouble();
   } else {
     return false;
   }
-  if (auto overall_time_it = data->FindKey(kStateOverallTime);
+  if (auto overall_time_it = value->FindKey(kStateOverallTime);
       overall_time_it && overall_time_it->GetIfDouble().has_value()) {
     overall_time = overall_time_it->GetDouble();
   } else {
     return false;
   }
-  if (auto transition_count_it = data->FindKey(kStateTransitionsCount);
+  if (auto transition_count_it = value->FindKey(kStateTransitionsCount);
       transition_count_it && transition_count_it->GetIfInt().has_value()) {
     transition_count = transition_count_it->GetInt();
   } else {
     return false;
   }
-  if (auto get_log_count_it = data->FindKey(kStateGetLogCount);
+  if (auto get_log_count_it = value->FindKey(kStateGetLogCount);
       get_log_count_it && get_log_count_it->GetIfInt().has_value()) {
     get_log_count = get_log_count_it->GetInt();
   } else {
     return false;
   }
-  if (auto save_log_count_it = data->FindKey(kStateSaveLogCount);
+  if (auto save_log_count_it = value->FindKey(kStateSaveLogCount);
       save_log_count_it && save_log_count_it->GetIfInt().has_value()) {
     save_log_count = save_log_count_it->GetInt();
   } else {
@@ -111,16 +111,16 @@ bool StateMetricsData::FromValue(const base::Value* data) {
   return true;
 }
 
-base::Value ConvertToValue(const StateMetricsData& value) {
-  return value.ToValue();
+base::Value ConvertToValue(const StateMetricsData& data) {
+  return data.ToValue();
 }
 
-bool ConvertFromValue(const base::Value* data, StateMetricsData* result) {
-  if (!data || !result) {
+bool ConvertFromValue(const base::Value* value, StateMetricsData* data) {
+  if (!value || !data) {
     return false;
   }
 
-  return result->FromValue(data);
+  return data->FromValue(value);
 }
 
 bool MetricsUtils::UpdateStateMetricsOnAbort(
@@ -149,8 +149,8 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
-  if (from != RmadState::STATE_NOT_SET) {
-    int key = static_cast<int>(from);
+  if (to != RmadState::STATE_NOT_SET) {
+    int key = static_cast<int>(to);
     state_metrics[key].transition_count++;
   }
 
@@ -239,19 +239,20 @@ bool MetricsUtils::CalculateStateOverallTime(
 
   int key = static_cast<int>(state_case);
   if (state_metrics->find(key) == state_metrics->end()) {
-    LOG(ERROR) << "Failed to get state metrics to calculate.";
+    LOG(ERROR) << key << ": Failed to get state metrics to calculate.";
     return false;
   }
 
-  if ((*state_metrics)[key].setup_timestamp == 0.0) {
-    LOG(ERROR) << "Failed to get timestamp when state is setup.";
+  if ((*state_metrics)[key].setup_timestamp < 0.0) {
+    LOG(ERROR) << key << ": Invalid setup timestamp: "
+               << (*state_metrics)[key].setup_timestamp << " is less than 0.";
     return false;
   }
 
   double time_spent_sec =
       leave_timestamp - (*state_metrics)[key].setup_timestamp;
   if (time_spent_sec < 0) {
-    LOG(ERROR) << "Failed to calculate time spent.";
+    LOG(ERROR) << key << ": Failed to calculate time spent.";
     return false;
   }
 
