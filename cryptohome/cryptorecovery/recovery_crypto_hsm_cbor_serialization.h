@@ -38,6 +38,13 @@ extern const char kEpochPublicKey[];
 extern const char kRequestPayloadSalt[];
 extern const char kResponseHsmMetaData[];
 extern const char kResponsePayloadSalt[];
+extern const char kPublicLedgerEntryProof[];
+extern const char kPrivateLogEntryProof[];
+extern const char kLeafIndex[];
+extern const char kCheckpointNote[];
+extern const char kInclusionProof[];
+extern const char kLoggedRecord[];
+extern const char kLedgerSignedProof[];
 extern const char kCryptohomeUser[];
 extern const char kCryptohomeUserType[];
 extern const char kDeviceUserId[];
@@ -57,6 +64,8 @@ extern const int kHsmAssociatedDataSchemaVersion;
 extern const int kOnboardingMetaDataSchemaVersion;
 extern const int kRequestMetaDataSchemaVersion;
 extern const int kHsmMetaDataSchemaVersion;
+extern const int kLoggedRecordSchemaVersion;
+extern const int kLedgerSignedProofSchemaVersion;
 
 // Constructs cbor-encoded binary blob for the Recovery Request payload.
 bool SerializeRecoveryRequestPayloadToCbor(
