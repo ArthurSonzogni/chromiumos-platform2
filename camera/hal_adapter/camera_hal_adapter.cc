@@ -35,6 +35,7 @@
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
+#include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_associated_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
@@ -110,9 +111,11 @@ CameraHalAdapter::~CameraHalAdapter() {
   set_camera_metadata_vendor_ops(nullptr);
 }
 
-bool CameraHalAdapter::Start() {
+bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+
+  gpu_resources_ = gpu_resources;
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -261,7 +264,7 @@ int32_t CameraHalAdapter::OpenDevice(
       base::BindRepeating(&ReprocessEffectManager::ReprocessRequest,
                           base::Unretained(&reprocess_effect_manager_));
   if (!device_adapters_[camera_id]->Start(
-          std::move(has_reprocess_effect_vendor_tag_callback),
+          gpu_resources_, std::move(has_reprocess_effect_vendor_tag_callback),
           std::move(reprocess_effect_callback))) {
     device_adapters_.erase(camera_id);
     return -ENODEV;
@@ -894,6 +897,13 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
 
   camera_metrics_->SendSessionDuration(session_timer_map_[camera_id].Elapsed());
   session_timer_map_.erase(camera_id);
+
+  gpu_resources_->gpu_task_runner()->PostTask(
+      FROM_HERE, base::BindOnce([]() {
+        // To end the last event posted by the camera device on the GPU thread
+        // properly.
+        PERFETTO_INTERNAL_ADD_EMPTY_EVENT();
+      }));
 }
 
 void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {

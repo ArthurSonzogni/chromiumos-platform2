@@ -25,6 +25,7 @@
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
 #include "gpu/egl/egl_context.h"
+#include "gpu/gpu_resources.h"
 #include "gpu/image_processor.h"
 
 namespace cros {
@@ -73,7 +74,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   ~AutoFramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.
-  bool Initialize(const camera_metadata_t* static_info,
+  bool Initialize(GpuResources* gpu_resources_,
+                  const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;

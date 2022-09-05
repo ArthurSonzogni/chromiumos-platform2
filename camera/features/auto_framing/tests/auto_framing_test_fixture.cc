@@ -234,7 +234,7 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
   if (!auto_framing_stream_manipulator_->Initialize(
-          locked_static_info,
+          nullptr, locked_static_info,
           base::BindRepeating(
               [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
                 event->Signal();

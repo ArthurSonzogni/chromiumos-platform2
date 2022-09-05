@@ -39,7 +39,8 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
 
   // HdrNetProcessor implementations.
   ~HdrNetProcessorImpl() override = default;
-  bool Initialize(Size input_size,
+  bool Initialize(GpuResources* gpu_resources,
+                  Size input_size,
                   const std::vector<Size>& output_sizes) override;
   void TearDown() override;
   void SetOptions(const Options& options) override;
@@ -66,7 +67,7 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
-  std::unique_ptr<GpuImageProcessor> image_processor_;
+  GpuResources* gpu_resources_;
   std::unique_ptr<HdrNetLinearRgbPipelineCrOS> hdrnet_pipeline_;
   std::unique_ptr<HdrNetProcessorDeviceAdapter> processor_device_adapter_;
 
