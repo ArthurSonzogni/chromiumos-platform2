@@ -15,7 +15,6 @@
 #include "common/stream_manipulator.h"
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/common_types.h"
-#include "gpu/gpu_resources.h"
 
 namespace cros {
 
@@ -49,8 +48,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   ~FaceDetectionStreamManipulator() override = default;
 
   // Implementations of StreamManipulator.
-  bool Initialize(GpuResources* gpu_resources,
-                  const camera_metadata_t* static_info,
+  bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;

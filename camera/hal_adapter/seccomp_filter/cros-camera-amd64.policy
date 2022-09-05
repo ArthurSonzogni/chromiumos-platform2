@@ -55,8 +55,6 @@ getuid: 1
 inotify_add_watch: 1
 inotify_init: 1
 ioctl: 1
-# kcmp is specific to AMD GPUs.
-kcmp: 1
 lseek: 1
 lstat: 1
 madvise: 1
