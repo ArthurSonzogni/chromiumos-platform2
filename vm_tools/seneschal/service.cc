@@ -899,6 +899,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
       src = base::FilePath("/run/arc/sdcard/write/emulated/0");
       dst = dst.Append("PlayFiles");
       break;
+    case SharePathRequest::PLAY_FILES_GUEST_OS:
+      src = base::FilePath("/media/fuse/android_files");
+      dst = dst.Append("PlayFiles");
+      break;
     case SharePathRequest::LINUX_FILES:
       src = base::FilePath("/media/fuse/")
                 .Append(base::JoinString(

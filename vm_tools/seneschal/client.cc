@@ -37,6 +37,7 @@ constexpr char kStorageTeamDrives[] = "teamdrives";
 constexpr char kStorageComputers[] = "computers";
 constexpr char kStorageRemovable[] = "removable";
 constexpr char kStoragePlayFiles[] = "playfiles";
+constexpr char kStoragePlayFilesGuestOs[] = "playfilesguestos";
 constexpr char kStorageLinuxFiles[] = "linuxfiles";
 constexpr char kStorageGuestOsFiles[] = "guestosfiles";
 
@@ -203,6 +204,8 @@ int SharePath(dbus::ObjectProxy* proxy,
     location = vm_tools::seneschal::SharePathRequest::REMOVABLE;
   } else if (storage_location == kStoragePlayFiles) {
     location = vm_tools::seneschal::SharePathRequest::PLAY_FILES;
+  } else if (storage_location == kStoragePlayFilesGuestOs) {
+    location = vm_tools::seneschal::SharePathRequest::PLAY_FILES_GUEST_OS;
   } else if (storage_location == kStorageLinuxFiles) {
     if (owner_id.empty()) {
       LOG(ERROR) << "--owner_id is required for --storage_location=linuxfiles";

@@ -159,6 +159,9 @@ message SharePathRequest {
     // A GuestOS share from one of the user's VMs at
     // /media/fuse/guestos+<owner_id>+<vm_name>+<container_name>
     GUEST_OS_FILES = 13;
+    // The user's PlayFiles/ directory under virtio-blk
+    // /media/fuse/android_files.
+    PLAY_FILES_GUEST_OS = 14;
   }
   StorageLocation storage_location = 3;
 
