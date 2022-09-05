@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::common;
 use crate::common::{parse_file_to_u64, FullscreenVideo, RTCAudioActive};
@@ -1104,6 +1104,42 @@ fn test_power_update_power_preferences_gaming_active() -> Result<()> {
 
     let sampling_rate = read_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
+
+    Ok(())
+}
+
+fn write_i32_to_file(path: &Path, value: i32) -> Result<()> {
+    fs::create_dir_all(
+        path.parent()
+            .with_context(|| format!("cannot get parent: {}", path.display()))?,
+    )?;
+
+    std::fs::write(path, value.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn test_set_gt_boost_freq_mhz() -> Result<()> {
+    const GT_BOOST_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_boost_freq_mhz";
+    const GT_MAX_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_max_freq_mhz";
+    const GT_MIN_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_min_freq_mhz";
+
+    let root = tempdir()?;
+    let root_path = root.path();
+    let gt_boost_freq_mhz_path = root_path.join(GT_BOOST_FREQ_MHZ_PATH);
+    let gt_max_freq_mhz_path = root_path.join(GT_MAX_FREQ_MHZ_PATH);
+    let gt_min_freq_mhz_path = root_path.join(GT_MIN_FREQ_MHZ_PATH);
+    write_i32_to_file(&gt_boost_freq_mhz_path, 500)?;
+    write_i32_to_file(&gt_max_freq_mhz_path, 1100)?;
+    write_i32_to_file(&gt_min_freq_mhz_path, 300)?;
+
+    common::set_gt_boost_freq_mhz_impl(root_path, common::RTCAudioActive::Active)?;
+
+    assert_eq!(common::read_file_to_u64(&gt_boost_freq_mhz_path)?, 300);
+
+    common::set_gt_boost_freq_mhz_impl(root_path, common::RTCAudioActive::Inactive)?;
+
+    assert_eq!(common::read_file_to_u64(&gt_boost_freq_mhz_path)?, 1100);
 
     Ok(())
 }
