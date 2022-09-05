@@ -120,6 +120,13 @@ class NDProxy {
   // Stop all proxying between |if_id1| and |if_id2|.
   void StopProxy(int if_id1, int if_id2);
 
+ protected:
+  // For destination IP address |dest_ipv6|, resolve it into destination MAC
+  // and fill in |dest_mac|. A neighbor table lookup may take place but no NS
+  // message will be sent. If the IP cannot be resolved, all-nodes multicast
+  // address 33:33:00:00:00:01 will be used as a fallback.
+  void ResolveDestinationMac(const in6_addr& dest_ipv6, uint8_t* dest_mac);
+
  private:
   // Data structure to store interface mapping for a certain kind of packet to
   // be proxied. For example, {1: {2}, 2: {1}} means that packet from interfaces

@@ -38,11 +38,20 @@
 
 namespace patchpanel {
 namespace {
-const unsigned char kZeroMacAddress[] = {0, 0, 0, 0, 0, 0};
-const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
-                                              0xff, 0xff, 0xff};
+const unsigned char kAllNodesMulticastMacAddress[] = {0x33, 0x33, 0,
+                                                      0,    0,    0x01};
+const unsigned char kAllRoutersMulticastMacAddress[] = {0x33, 0x33, 0,
+                                                        0,    0,    0x02};
+const unsigned char kSolicitedNodeMulticastMacAddressPrefix[] = {
+    0x33, 0x33, 0xff, 0, 0, 0};
 const struct in6_addr kAllNodesMulticastAddress = {
     {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
+const struct in6_addr kAllRoutersMulticastAddress = {
+    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}}};
+const struct in6_addr kSolicitedNodeMulticastAddressPrefix = {
+    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0,
+                    0}}};
+constexpr int kSolicitedGroupSuffixLength = 3;
 
 // These filter instructions assume that the input is an IPv6 packet and check
 // that the packet is an ICMPv6 packet of whose ICMPv6 type is one of: neighbor
@@ -442,28 +451,15 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         .sll_ifindex = target_if,
         .sll_halen = ETHER_ADDR_LEN,
     };
-    memcpy(new_dst_addr.sll_addr, dst_addr.sll_addr, ETHER_ADDR_LEN);
-    if (memcmp(&new_dst_addr.sll_addr, kZeroMacAddress, ETHER_ADDR_LEN) == 0) {
-      memcpy(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN);
-    }
 
-    // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
-    // it needs to be modified so guest OS L3 stack can see it.
-    // For proxy cascading case, we also need to recheck if destination MAC is
-    // ff:ff:ff:ff:ff:ff (which must have been filled by an upstream proxy).
-    if (!(new_dst_addr.sll_addr[0] & 0x1) ||
-        memcmp(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN) ==
-            0) {
-      MacAddress neighbor_mac;
-      ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
-      if (GetNeighborMac(new_ip6->ip6_dst, &neighbor_mac)) {
-        memcpy(&new_dst_addr.sll_addr, neighbor_mac.data(), ETHER_ADDR_LEN);
-      } else {
-        // If we can't resolve the destination IP into MAC from kernel neighbor
-        // table, fill destination MAC with broadcast MAC instead.
-        memcpy(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN);
-      }
-    }
+    ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
+    ResolveDestinationMac(new_ip6->ip6_dst, new_dst_addr.sll_addr);
+    VLOG_IF(1, memcmp(new_dst_addr.sll_addr, &kAllNodesMulticastMacAddress,
+                      ETHER_ADDR_LEN) == 0)
+        << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
+        << " packet dest IP " << IPv6AddressToString(new_ip6->ip6_dst)
+        << " into MAC address, using all-nodes multicast MAC instead. In: "
+        << dst_addr.sll_ifindex << ", out: " << target_if;
 
     VLOG_IF(3, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
                 icmp6->icmp6_type == ND_ROUTER_ADVERT))
@@ -514,6 +510,37 @@ const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
     }
   }
   return nullptr;
+}
+
+void NDProxy::ResolveDestinationMac(const in6_addr& dest_ipv6,
+                                    uint8_t* dest_mac) {
+  if (memcmp(&dest_ipv6, &kAllNodesMulticastAddress, sizeof(in6_addr)) == 0) {
+    memcpy(dest_mac, &kAllNodesMulticastMacAddress, ETHER_ADDR_LEN);
+    return;
+  }
+  if (memcmp(&dest_ipv6, &kAllRoutersMulticastAddress, sizeof(in6_addr)) == 0) {
+    memcpy(dest_mac, &kAllRoutersMulticastMacAddress, ETHER_ADDR_LEN);
+    return;
+  }
+  if (memcmp(&dest_ipv6, &kSolicitedNodeMulticastAddressPrefix,
+             sizeof(in6_addr) - kSolicitedGroupSuffixLength) == 0) {
+    memcpy(dest_mac, &kSolicitedNodeMulticastMacAddressPrefix, ETHER_ADDR_LEN);
+    memcpy(dest_mac + ETHER_ADDR_LEN - kSolicitedGroupSuffixLength,
+           &dest_ipv6.s6_addr[sizeof(in6_addr) - kSolicitedGroupSuffixLength],
+           kSolicitedGroupSuffixLength);
+    return;
+  }
+
+  MacAddress neighbor_mac;
+  if (GetNeighborMac(dest_ipv6, &neighbor_mac)) {
+    memcpy(dest_mac, neighbor_mac.data(), ETHER_ADDR_LEN);
+    return;
+  }
+  // If we can't resolve the destination IP into MAC from kernel neighbor
+  // table, fill destination MAC with all-nodes multicast MAC instead.
+  // TODO(b/244271776): Investigate whether there is legitimate case we need to
+  // do this, or we should simply drop the packet instead.
+  memcpy(dest_mac, &kAllNodesMulticastMacAddress, ETHER_ADDR_LEN);
 }
 
 bool NDProxy::GetLinkLocalAddress(int ifindex, in6_addr* link_local) {

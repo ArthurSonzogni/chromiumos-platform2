@@ -10,9 +10,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
+
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -411,6 +415,76 @@ TEST(NDProxyTest, TranslateFrame) {
 
   delete[] in_buffer;
   delete[] out_buffer;
+}
+
+// NDProxy with functions interacting with kernel state faked
+class NDProxyUnderTest : NDProxy {
+ public:
+  void RegisterNeighbor(const in6_addr& ipv6_addr, const MacAddress& mac_addr) {
+    neighbor_table_.emplace_back(ipv6_addr, mac_addr);
+  }
+
+ private:
+  std::vector<std::pair<in6_addr, MacAddress>> neighbor_table_;
+
+  bool GetLocalMac(int if_id, MacAddress* mac_addr) override { return false; }
+
+  bool GetNeighborMac(const in6_addr& ipv6_addr,
+                      MacAddress* mac_addr) override {
+    for (const auto& neighbor : neighbor_table_) {
+      if (memcmp(&ipv6_addr, &neighbor.first, sizeof(in6_addr)) == 0) {
+        memcpy(mac_addr, &neighbor.second, ETHER_ADDR_LEN);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool GetLinkLocalAddress(int if_id, in6_addr* link_local) override {
+    return false;
+  }
+
+  FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
+};
+
+TEST(NDProxyTest, ResolveDestinationMac) {
+  NDProxyUnderTest ndproxy;
+  ndproxy.RegisterNeighbor(
+      StringToIPv6Address("2a01:db8:abc:f605:5c5e:a5ff:fe32:743c"),
+      {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c});
+  ndproxy.RegisterNeighbor(StringToIPv6Address("ff02::1:ff89:2083"),
+                           {0x33, 0x33, 0xff, 0x89, 0x20, 0x83});
+
+  struct {
+    std::string name;
+    std::string dest_ip;
+    MacAddress dest_mac;
+  } test_cases[] = {
+      {"all_nodes", "ff02::1", {0x33, 0x33, 0, 0, 0, 0x01}},
+      {"all_routers", "ff02::2", {0x33, 0x33, 0, 0, 0, 0x02}},
+      {"solicited_node_1",
+       "ff02::1:ff6a:b4d2",
+       {0x33, 0x33, 0xff, 0x6a, 0xb4, 0xd2}},
+      {"solicited_node_2",
+       "ff02::1:ff89:2083",
+       {0x33, 0x33, 0xff, 0x89, 0x20, 0x83}},
+      {"known_neighbor",
+       "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c",
+       {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c}},
+      {"unknown_neighbor",
+       "fe80::4868:8aff:fedc:b071",
+       {0x33, 0x33, 0, 0, 0, 0x01}},
+  };
+
+  for (const auto& test_case : test_cases) {
+    LOG(INFO) << test_case.name;
+    MacAddress dest_mac;
+    in6_addr dest_ip = StringToIPv6Address(test_case.dest_ip);
+    ndproxy.ResolveDestinationMac(dest_ip, dest_mac.data());
+    const auto expected = MacAddressToString(test_case.dest_mac);
+    const auto received = MacAddressToString(dest_mac);
+    EXPECT_EQ(expected, received);
+  }
 }
 
 }  // namespace patchpanel
