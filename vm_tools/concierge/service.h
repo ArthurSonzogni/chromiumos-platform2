@@ -240,6 +240,11 @@ class Service final {
   std::unique_ptr<dbus::Response> GetVmGpuCachePath(
       dbus::MethodCall* method_call);
 
+  // Handles a request to add group permission to directories created by mesa
+  // for a specified VM.
+  std::unique_ptr<dbus::Response> AddGroupPermissionMesa(
+      dbus::MethodCall* method_call);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);

@@ -56,6 +56,16 @@ std::optional<base::FilePath> GetFilePathFromName(
       return std::nullopt;
     }
   }
+
+  if (base::IsLink(storage_dir)) {
+    LOG(ERROR) << "Invalid symlinked storage directory " << storage_dir;
+    return std::nullopt;
+  }
+
+  // Group rx permission needed for VM shader cache management by shadercached
+  if (!base::SetPosixFilePermissions(storage_dir, 0750)) {
+    LOG(WARNING) << "Failed to set directory permissions for " << storage_dir;
+  }
   return storage_dir.Append(encoded_name).AddExtension(extension);
 }
 

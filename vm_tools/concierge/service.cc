@@ -1372,6 +1372,7 @@ bool Service::Init() {
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
+      {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -4707,8 +4708,8 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     bool enable_render_server) {
   base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
   // Cache ID is either boot id or OS build hash
-  base::FilePath cache_id = cache_path.DirName();
-  base::FilePath base_path = cache_id.DirName();
+  base::FilePath cache_id_path = cache_path.DirName();
+  base::FilePath base_path = cache_id_path.DirName();
 
   base::FilePath cache_device_path = cache_path.Append("device");
   base::FilePath cache_render_server_path =
@@ -4717,6 +4718,9 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
 
   const base::FilePath* cache_subdir_paths[] = {&cache_device_path,
                                                 &cache_render_server_path};
+  const base::FilePath* permissions_to_update[] = {
+      &base_path, &cache_id_path, &cache_path, &cache_device_path,
+      &cache_render_server_path};
 
   base::AutoLock guard(cache_mutex_);
 
@@ -4731,7 +4735,7 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
   // If Cache ID dir exists we know another VM has already created a fresh base
   // dir during this boot or OS release. Otherwise, we erase Base dir to wipe
   // out any previous Cache ID dir.
-  if (!base::DirectoryExists(cache_id)) {
+  if (!base::DirectoryExists(cache_id_path)) {
     LOG(INFO) << "GPU cache dir not found, deleting base directory";
     if (!base::DeletePathRecursively(base_path)) {
       LOG(ERROR) << "Failed to delete gpu cache directory: " << base_path
@@ -4756,8 +4760,64 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     }
   }
 
+  for (const base::FilePath* path : permissions_to_update) {
+    if (base::IsLink(*path)) {
+      continue;
+    }
+    // Group rx permission needed for VM shader cache management by shadercached
+    if (!base::SetPosixFilePermissions(*path, 0750)) {
+      LOG(WARNING) << "Failed to set directory permissions for " << *path;
+    }
+  }
+
   return VMGpuCacheSpec{.device = std::move(cache_device_path),
                         .render_server = std::move(cache_render_server_path)};
+}
+
+void AddGroupPermissionChildren(const base::FilePath& path) {
+  auto enumerator = base::FileEnumerator(
+      path, true,
+      base::FileEnumerator::DIRECTORIES ^ base::FileEnumerator::SHOW_SYM_LINKS);
+
+  for (base::FilePath child_path = enumerator.Next(); !child_path.empty();
+       child_path = enumerator.Next()) {
+    if (child_path == path) {
+      // Do not change permission for the root path
+      continue;
+    }
+
+    int permission;
+    if (!base::GetPosixFilePermissions(child_path, &permission)) {
+      LOG(WARNING) << "Failed to get permission for " << path.value();
+    } else if (!base::SetPosixFilePermissions(
+                   child_path, permission | base::FILE_PERMISSION_GROUP_MASK)) {
+      LOG(WARNING) << "Failed to change permission for " << child_path.value();
+    }
+  }
+}
+
+std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  AddGroupPermissionMesaRequest request;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Unable to parse AddGroupPermissionMesaRequest from message");
+  }
+
+  base::FilePath cache_path =
+      GetVmGpuCachePathInternal(request.owner_id(), request.name());
+
+  AddGroupPermissionChildren(cache_path);
+
+  return dbus_response;
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
