@@ -16,18 +16,18 @@ float max_rgb(vec3 v) {
 }
 
 void main() {
-  vec3 rgb = texture2D(uInputTexture, vTexCoord).rgb;
+  vec3 rgb = texture(uInputTexture, vTexCoord).rgb;
 
   // Re-apply GTM.
   float max_value = max_rgb(rgb);
-  float gain = texture2D(uGtmLutTexture, vec2(max_value, 0.0)).r;
+  float gain = texture(uGtmLutTexture, vec2(max_value, 0.0)).r;
   vec3 gtm_rgb = clamp(rgb * gain, 0.0, 1.0);
 
   // Re-apply Gamma.
   vec3 out_rgb = vec3(
-      texture2D(uGammaLutTexture, vec2(gtm_rgb.r, 0.0)).r,
-      texture2D(uGammaLutTexture, vec2(gtm_rgb.g, 0.0)).r,
-      texture2D(uGammaLutTexture, vec2(gtm_rgb.b, 0.0)).r);
+      texture(uGammaLutTexture, vec2(gtm_rgb.r, 0.0)).r,
+      texture(uGammaLutTexture, vec2(gtm_rgb.g, 0.0)).r,
+      texture(uGammaLutTexture, vec2(gtm_rgb.b, 0.0)).r);
 
   // Convert to NV12.
   if (uIsYPlane) {
