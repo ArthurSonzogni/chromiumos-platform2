@@ -13,9 +13,11 @@
 namespace rmad {
 
 // Allowed models for running Shimless RMA.
-inline constexpr std::array<const char*, 8> kAllowedModels = {
-    "fleex",  "bobba",     "bobba360", "blooguard",
-    "phaser", "phaser360", "garg",     "garg360"};
+inline constexpr std::array<const char*, 13> kAllowedModels = {
+    // Fully supported models.
+    "fleex", "bobba", "bobba360", "phaser", "phaser360", "bloog", "blooglet",
+    // Partially supported models just for testing.
+    "blooguard", "garg", "garg360", "dorp", "sparky", "sparky360"};
 
 // Pipe name for internal mojo connection between D-Bus daemon and executor.
 inline constexpr char kRmadInternalMojoPipeName[] = "rmad_internal";
