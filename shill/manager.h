@@ -514,11 +514,6 @@ class Manager {
                                   const KeyValueStore& properties,
                                   Error* error);
 
-  // Provider getter function.
-  const ProviderInterface* GetProviderWithTechnology(Technology technology) {
-    return providers_[technology];
-  }
-
   TetheringManager* tethering_manager() const {
     return tethering_manager_.get();
   }
