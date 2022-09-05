@@ -318,45 +318,10 @@ void WiFiService::SetSecurityProperties() {
   // WiFiService::GetSupplicantConfigurationParameters() instead? For the most
   // part, we don't want KeyMgmt to be user-configurable, and we don't really
   // want to rely on Storage values.
-  if (security_.IsValid()) {
-    switch (security_.mode()) {
-      case WiFiSecurity::kNone:
-      case WiFiSecurity::kWep:
-        SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
-        break;
-      case WiFiSecurity::kWpa:
-      case WiFiSecurity::kWpaWpa2:
-      case WiFiSecurity::kWpa2:
-        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
-        break;
-      case WiFiSecurity::kWpa2Wpa3:
-      case WiFiSecurity::kWpaAll:
-        SetEAPKeyManagement(
-            base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
-                               WPASupplicant::kKeyManagementSAE));
-        break;
-      case WiFiSecurity::kWpa3:
-        SetEAPKeyManagement(WPASupplicant::kKeyManagementSAE);
-        break;
-      case WiFiSecurity::kWpaEnterprise:
-      case WiFiSecurity::kWpaWpa2Enterprise:
-      case WiFiSecurity::kWpa2Enterprise:
-        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAP);
-        break;
-      case WiFiSecurity::kWpa2Wpa3Enterprise:
-      case WiFiSecurity::kWpaAllEnterprise:
-        SetEAPKeyManagement(
-            base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAEAP,
-                               WPASupplicant::kKeyManagementWPAEAPSHA256));
-        break;
-      case WiFiSecurity::kWpa3Enterprise:
-        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAPSHA256);
-        break;
-    }
-  } else if (Is8021x()) {
+  if (Is8021x()) {
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
-  } else if (security_class_ == kSecurityClassPsk) {
+  } else if (security_class() == kSecurityClassPsk) {
 #if !defined(DISABLE_WPA3_SAE)
     // WPA/WPA2-PSK or WPA3-SAE.
     SetEAPKeyManagement(base::StringPrintf("%s %s",
@@ -366,6 +331,9 @@ void WiFiService::SetSecurityProperties() {
     // WPA/WPA2-PSK.
     SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
 #endif  // DISABLE_WPA3_SAE
+  } else if (security_class() == kSecurityClassNone ||
+             security_class() == kSecurityClassWep) {
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
   } else {
     LOG(ERROR) << "Unsupported security class " << security_class_;
   }
