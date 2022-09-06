@@ -76,6 +76,13 @@ cryptohome --action=unmount
 umount /run/namespaces/mnt_chrome
 bootstat cryptohome-unmounted
 
+# In case cryptohome crashes, application containers may remain active post
+# cryptohome unmount. Check for the existence of these devices and lazy remove
+# the encrypted containers of these containers.
+for device in /dev/mapper/dmcrypt-* ; do
+  dmsetup remove --deferred "${device}"
+done
+
 # Post unmount, attempt to kill any left over processes from the session
 # that could have leaked user mounts. This is intentionally done post
 # unmount: lazy unmount cleans up mounts from the root namespace and
