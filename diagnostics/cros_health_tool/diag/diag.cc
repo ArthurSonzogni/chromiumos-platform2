@@ -255,8 +255,9 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution:
         routine_result = actions.ActionRunArcDnsResolutionRoutine();
         break;
-      default:
-        std::cout << "Unsupported routine: " << FLAGS_routine << std::endl;
+      case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
+        // Never map FLAGS_routine to kUnknown field.
+        NOTREACHED();
         return EXIT_FAILURE;
     }
 

@@ -185,7 +185,7 @@ std::string EnumToString(mojom::EncryptionState encryption_state) {
       return "TME enabled";
     case mojom::EncryptionState::kMktmeEnabled:
       return "MKTME enabled";
-    default:
+    case mojom::EncryptionState::kUnknown:
       return "Unknown state";
   }
 }
@@ -196,7 +196,7 @@ std::string EnumToString(mojom::CryptoAlgorithm algorithm) {
       return "AES-XTS-128";
     case mojom::CryptoAlgorithm::kAesXts256:
       return "AES-XTS-256";
-    default:
+    case mojom::CryptoAlgorithm::kUnknown:
       return "Invalid Algorithm";
   }
 }
@@ -306,7 +306,9 @@ std::optional<std::string> EnumToString(mojom::BluetoothDeviceType type) {
       return "LE";
     case mojom::BluetoothDeviceType::kDual:
       return "DUAL";
-    default:
+    case mojom::BluetoothDeviceType::kUnfound:
+      return std::nullopt;
+    case mojom::BluetoothDeviceType::kUnmappedEnumField:
       return std::nullopt;
   }
 }
@@ -377,7 +379,7 @@ std::optional<std::string> EnumToString(mojom::DisplayInputType type) {
       return "Digital";
     case mojom::DisplayInputType::kAnalog:
       return "Analog";
-    default:
+    case mojom::DisplayInputType::kUnmappedEnumField:
       return std::nullopt;
   }
 }

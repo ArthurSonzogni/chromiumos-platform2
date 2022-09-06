@@ -74,7 +74,7 @@ bool ConvertStatusFromMojom(MojomWilcoDtcSupportdWebRequestStatus mojo_status,
     case MojomWilcoDtcSupportdWebRequestStatus::kHttpError:
       *status_out = Core::WebRequestStatus::kHttpError;
       return true;
-    default:
+    case MojomWilcoDtcSupportdWebRequestStatus::kUnmappedEnumField:
       return false;
   }
 }
