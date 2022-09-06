@@ -61,6 +61,7 @@ pipe2: 1
 poll: 1
 ppoll: 1
 ppoll_time64: 1
+pread64: 1
 read: 1
 readv: 1
 recvmmsg_time64: 1
