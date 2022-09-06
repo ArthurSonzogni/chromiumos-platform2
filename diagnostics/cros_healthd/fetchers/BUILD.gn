@@ -73,6 +73,7 @@ if (use.test) {
       "libcros_config",
       "libdebugd-client",
       "libdebugd-client-test",
+      "mojo_service_manager",
       "system_api",
     ]
   }

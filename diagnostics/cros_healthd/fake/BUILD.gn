@@ -9,6 +9,7 @@ pkg_config("libfake_cros_healthd_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "mojo_service_manager",
   ]
 }
 
@@ -19,5 +20,6 @@ source_set("libfake_cros_healthd") {
     "fake_chromium_data_collector.cc",
     "fake_probe_service.cc",
     "fake_routine_service.cc",
+    "fake_service_manager.cc",
   ]
 }

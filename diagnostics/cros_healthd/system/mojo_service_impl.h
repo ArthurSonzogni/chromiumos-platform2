@@ -7,6 +7,10 @@
 
 #include <memory>
 
+#include <mojo/public/cpp/bindings/remote.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
+
+#include "diagnostics/cros_healthd/fake/fake_service_manager.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/utils/mojo_relay.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
@@ -24,6 +28,8 @@ class MojoServiceImpl : public MojoService {
   static std::unique_ptr<MojoServiceImpl> Create();
 
   // MojoService overrides.
+  chromeos::mojo_service_manager::mojom::ServiceManager* GetServiceManager()
+      override;
   chromeos::cros_healthd::internal::mojom::ChromiumDataCollector*
   GetChromiumDataCollector() override;
 
@@ -37,10 +43,22 @@ class MojoServiceImpl : public MojoService {
  protected:
   MojoServiceImpl();
 
+  // Getters for subclass to modify the value.
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+  service_manager() {
+    return service_manager_;
+  }
+
  private:
   // Mojo remotes or adaptors to access mojo interfaces.
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_;
   MojoRelay<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
       chromium_data_collector_relay_;
+
+  // The fake service manager before we can use the real implementation.
+  // TODO(b/244407986): Remove this temporary dependency.
+  FakeServiceManager fake_service_manager_;
 };
 
 }  // namespace diagnostics

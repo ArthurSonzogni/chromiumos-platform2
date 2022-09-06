@@ -11,6 +11,7 @@ pkg_config("libcros_healthd_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libmojo",
+    "mojo_service_manager",
   ]
 }
 
@@ -40,13 +41,14 @@ source_set("libcros_healthd") {
 
 executable("cros_healthd") {
   sources = [ "main.cc" ]
+  configs += [ ":libcros_healthd_pkg_deps" ]
+  install_path = "bin"
   deps = [
     ":libcros_healthd",
     "executor:libcros_healthd_executor",
     "minijail:libcros_healthd_minijail",
     "system:libcros_healthd_system",
   ]
-  install_path = "bin"
 }
 
 if (use.test) {
@@ -54,6 +56,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome",
       "libchrome-test",
+      "mojo_service_manager",
     ]
   }
 

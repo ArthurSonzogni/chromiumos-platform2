@@ -18,6 +18,7 @@ pkg_config("libcros_healthd_system_pkg_deps") {
     "libpci",
     "libtpm_manager-client",
     "libudev",
+    "mojo_service_manager",
     "protobuf",
     "system_api",
   ]
@@ -42,6 +43,9 @@ source_set("libcros_healthd_system") {
     "//diagnostics:dbus-proxies",
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
+
+    # TODO(b/244407986): Remove this temporary dependency.
+    "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
     "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
     "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter",
     "//diagnostics/mojom/external:cros_healthd_internal",
@@ -69,6 +73,7 @@ if (use.test || use.fuzzer) {
       "libdebugd-client-test",
       "libtpm_manager-client",
       "libtpm_manager-client-test",
+      "mojo_service_manager",
       "protobuf",
       "system_api",
     ]

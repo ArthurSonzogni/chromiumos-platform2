@@ -13,6 +13,9 @@ FakeMojoService::FakeMojoService() = default;
 FakeMojoService::~FakeMojoService() = default;
 
 void FakeMojoService::InitializeFakeMojoService() {
+  service_manager().Bind(
+      fake_service_manager_.receiver().BindNewPipeAndPassRemote());
+
   chromium_data_collector_relay().InitNewPipeAndWaitForIncomingRemote();
   chromium_data_collector_relay().Bind(
       fake_chromium_data_collector_.receiver().BindNewPipeAndPassRemote());

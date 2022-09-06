@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -110,6 +111,7 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetFioRoutines() {
 class CrosHealthdRoutineServiceTest : public testing::Test {
  protected:
   void SetUp() override {
+    mock_context_.fake_mojo_service()->InitializeFakeMojoService();
     mock_context_.fake_system_config()->SetFioSupported(true);
     mock_context_.fake_system_config()->SetHasBattery(true);
     mock_context_.fake_system_config()->SetNvmeSupported(true);

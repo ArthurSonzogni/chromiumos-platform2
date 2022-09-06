@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -26,7 +27,10 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     PowerEvents* power_events,
     AudioEvents* audio_events,
     UdevEvents* udev_events)
-    : context_(context),
+    : probe_provider_(this),
+      event_provider_(this),
+      system_provider_(this),
+      context_(context),
       fetch_aggregator_(fetch_aggregator),
       bluetooth_events_(bluetooth_events),
       lid_events_(lid_events),
@@ -40,6 +44,12 @@ CrosHealthdMojoService::CrosHealthdMojoService(
   DCHECK(power_events_);
   DCHECK(audio_events_);
   DCHECK(udev_events_);
+  probe_provider_.Register(context->mojo_service()->GetServiceManager(),
+                           chromeos::mojo_services::kCrosHealthdProbe);
+  event_provider_.Register(context->mojo_service()->GetServiceManager(),
+                           chromeos::mojo_services::kCrosHealthdEvent);
+  system_provider_.Register(context->mojo_service()->GetServiceManager(),
+                            chromeos::mojo_services::kCrosHealthdSystem);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;

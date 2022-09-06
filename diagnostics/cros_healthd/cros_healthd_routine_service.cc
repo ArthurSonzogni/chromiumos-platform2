@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
@@ -40,7 +41,7 @@ void SetErrorRoutineUpdate(const std::string& status_message,
 
 CrosHealthdRoutineService::CrosHealthdRoutineService(
     Context* context, CrosHealthdRoutineFactory* routine_factory)
-    : context_(context), routine_factory_(routine_factory) {
+    : context_(context), routine_factory_(routine_factory), provider_(this) {
   DCHECK(context_);
   DCHECK(routine_factory_);
 
@@ -391,6 +392,9 @@ void CrosHealthdRoutineService::HandleNvmeSelfTestSupportedResponse(
 void CrosHealthdRoutineService::OnServiceReady() {
   LOG(INFO) << "CrosHealthdRoutineService is ready.";
   ready_ = true;
+
+  provider_.Register(context_->mojo_service()->GetServiceManager(),
+                     chromeos::mojo_services::kCrosHealthdDiagnostics);
 
   // Run all the callbacks.
   std::vector<base::OnceClosure> callbacks;

@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -158,6 +159,10 @@ class CrosHealthdRoutineService final
   CrosHealthdRoutineFactory* routine_factory_ = nullptr;
   // The callbacks to run when the service become ready.
   std::vector<base::OnceClosure> service_ready_callbacks_;
+  // Mojo service provider to provide service to mojo service manager.
+  MojoServiceProvider<
+      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      provider_;
 
   // Must be the last class member.
   base::WeakPtrFactory<CrosHealthdRoutineService> weak_ptr_factory_{this};

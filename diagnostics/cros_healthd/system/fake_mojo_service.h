@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "diagnostics/cros_healthd/fake/fake_chromium_data_collector.h"
+#include "diagnostics/cros_healthd/fake/fake_service_manager.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 
 namespace diagnostics {
@@ -25,13 +26,16 @@ class FakeMojoService : public MojoServiceImpl {
   // call this manually in unit tests.
   void InitializeFakeMojoService();
 
-  // Gets fake_chromium_data_collector.
+  // Getters for fake implementation.
+  FakeServiceManager& fake_service_manager() { return fake_service_manager_; }
+
   FakeChromiumDataCollector& fake_chromium_data_collector() {
     return fake_chromium_data_collector_;
   }
 
  private:
   // Fake implementations.
+  FakeServiceManager fake_service_manager_;
   FakeChromiumDataCollector fake_chromium_data_collector_;
 };
 

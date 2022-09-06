@@ -131,6 +131,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
       chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
       receiver;
   if (is_chrome) {
+    LOG(INFO) << "Bootstrap from chrome through dbus";
     if (mojo_service_bind_attempted_) {
       // This should not normally be triggered, since the other endpoint - the
       // browser process - should bootstrap the Mojo connection only once, and
