@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_GARCON_DESKTOP_FILE_H_
 #define VM_TOOLS_GARCON_DESKTOP_FILE_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -81,6 +82,7 @@ class DesktopFile {
   bool startup_notify() const { return startup_notify_; }
   // This returns the path to the parsed .desktop file itself.
   const base::FilePath& file_path() const { return file_path_; }
+  const uint64_t steam_app_id() const { return steam_app_id_; }
 
   // Returns true if this desktop file is of type "Application".
   bool IsApplication() const;
@@ -111,6 +113,7 @@ class DesktopFile {
   std::vector<std::string> categories_;
   std::string startup_wm_class_;
   bool startup_notify_ = false;
+  uint64_t steam_app_id_ = 0;
 };
 
 }  // namespace garcon

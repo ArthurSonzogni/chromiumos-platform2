@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_GARCON_HOST_NOTIFIER_H_
 #define VM_TOOLS_GARCON_HOST_NOTIFIER_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -254,6 +255,9 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   base::RepeatingTimer free_disk_space_timer_;
 
   uint32_t sftp_vsock_port_ = 0;
+
+  void HandleSteamApp(std::unordered_set<uint64_t> found_steam_apps);
+  std::unordered_set<uint64_t> installed_steam_apps_;
 
   base::WeakPtrFactory<HostNotifier> weak_ptr_factory_{this};
 };

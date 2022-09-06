@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
@@ -51,6 +52,7 @@ constexpr char kDesktopEntryCategories[] = "Categories";
 constexpr char kDesktopEntryStartupWmClass[] = "StartupWMClass";
 constexpr char kDesktopEntryStartupNotify[] = "StartupNotify";
 constexpr char kDesktopEntryTypeApplication[] = "Application";
+constexpr char kDesktopEntrySteamAppId[] = "X-Steam-AppID";
 // Valid values for the "Type" entry.
 const char* const kValidDesktopEntryTypes[] = {kDesktopEntryTypeApplication,
                                                "Link", "Directory"};
@@ -234,6 +236,10 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
         startup_wm_class_ = UnescapeString(key_value.second);
       } else if (key == kDesktopEntryStartupNotify) {
         startup_notify_ = ParseBool(key_value.second);
+      } else if (key == kDesktopEntrySteamAppId) {
+        if (!base::StringToUint64(key_value.second, &steam_app_id_)) {
+          LOG(WARNING) << "Failed to parse " << kDesktopEntrySteamAppId;
+        }
       } else if (base::StartsWith(key, kDesktopEntryNameWithLocale,
                                   base::CompareCase::SENSITIVE)) {
         std::string locale = ExtractKeyLocale(key);

@@ -10,6 +10,7 @@
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <set>
 #include <string>
@@ -736,6 +737,25 @@ void HostNotifier::NotifyHostOfPendingAppListUpdates() {
   }
 }
 
+void HostNotifier::HandleSteamApp(
+    std::unordered_set<uint64_t> found_steam_apps) {
+  for (auto app_id : found_steam_apps) {
+    if (installed_steam_apps_.find(app_id) == installed_steam_apps_.end()) {
+      LOG(INFO) << "Attempting to install shader cache for newly installed "
+                << "steam app";
+      InstallShaderCache(app_id, false, false);
+    }
+  }
+  for (auto app_id : installed_steam_apps_) {
+    if (found_steam_apps.find(app_id) == found_steam_apps.end()) {
+      LOG(INFO) << "Attempting to uninstall shader cache for removed steam app";
+      UninstallShaderCache(app_id);
+    }
+  }
+
+  installed_steam_apps_ = found_steam_apps;
+}
+
 void HostNotifier::SendAppListToHost() {
   if (send_app_list_to_host_in_progress_) {
     // Don't have multiple SendAppListToHost callback chains happening at the
@@ -756,6 +776,8 @@ void HostNotifier::SendAppListToHost() {
 
   // If we hit duplicate IDs, then we are supposed to use the first one only.
   std::set<std::string> unique_app_ids;
+
+  std::unordered_set<uint64_t> found_steam_apps;
 
   // Get the list of directories that we should search for .desktop files
   // recursively and then perform the search.
@@ -778,6 +800,12 @@ void HostNotifier::SendAppListToHost() {
                      << enum_path.value();
         continue;
       }
+
+      // Found steam apps
+      if (desktop_file->steam_app_id()) {
+        found_steam_apps.emplace(desktop_file->steam_app_id());
+      }
+
       // If we have already seen this desktop file ID then don't analyze this
       // one. We want to check this before we do the filtering to allow users
       // to put .desktop files in local locations to hide applications in
@@ -865,6 +893,7 @@ void HostNotifier::SendAppListToHost() {
   // round.
   send_app_list_to_host_in_progress_ = true;
 
+  HandleSteamApp(found_steam_apps);
   RequestNextPackageIdOrCompleteUpdateApplicationList(
       std::move(callback_state));
 }
