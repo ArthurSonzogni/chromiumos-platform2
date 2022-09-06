@@ -211,12 +211,4 @@ void AutoFramingClient::OnNewCropWindow(
   crop_window_received_cv_.Signal();
 }
 
-void AutoFramingClient::OnNewAnnotatedFrame(int64_t timestamp,
-                                            const uint8_t* data,
-                                            int stride) {
-  VLOGF(2) << "Annotated frame @" << timestamp;
-
-  // TODO(kamesan): Draw annotated frame in debug mode.
-}
-
 }  // namespace cros

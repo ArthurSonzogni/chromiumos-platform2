@@ -70,9 +70,6 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
       int64_t timestamp, int x_min, int y_min, int x_max, int y_max) override;
   void OnNewCropWindow(
       int64_t timestamp, int x_min, int y_min, int x_max, int y_max) override;
-  void OnNewAnnotatedFrame(int64_t timestamp,
-                           const uint8_t* data,
-                           int stride) override;
 
  private:
   base::Lock lock_;
