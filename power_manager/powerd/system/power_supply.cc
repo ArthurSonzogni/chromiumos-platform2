@@ -1544,6 +1544,13 @@ void PowerSupply::NotifyObservers() {
 void PowerSupply::OnGetPowerSupplyPropertiesMethodCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  if (!power_status_initialized_) {
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_FAILED,
+            "PowerSupplyProperties has not been initialized."));
+    return;
+  }
   PowerSupplyProperties protobuf;
   CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
   std::unique_ptr<dbus::Response> response =
