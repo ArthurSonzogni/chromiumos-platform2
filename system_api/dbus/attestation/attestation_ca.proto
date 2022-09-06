@@ -211,8 +211,8 @@ message DeviceSetupCertificateMetadata {
   // This will be used as the CN of the Remote Attestation certificate.
   optional string id = 1;
 
-  // Unix timestamp of the generation of the request.
-  optional uint64 timestamp = 2;
+  // Unix timestamp (in seconds) of the generation of the request.
+  optional uint64 timestamp_seconds = 2;
 
   // The generated certificate will be bound to this value. This is used to
   // prevent replay attacks. Currently it is the FIDO credential id.
