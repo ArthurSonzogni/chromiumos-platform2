@@ -19,6 +19,7 @@ namespace {
 constexpr int kMaxNumEntries = 1024;
 constexpr int kTimeoutOverheadInMS = 1000;
 constexpr double kSecond2Millisecond = 1000.0;
+constexpr int kNumberFirstReadsDiscarded = 10;
 
 constexpr char kIioDevicePathPrefix[] = "/sys/bus/iio/devices/iio:device";
 constexpr char kIioDeviceEntryName[] = "name";
@@ -67,7 +68,8 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
       parameter_channels,
       kIioParameterFrequencyPrefix + base::NumberToString(frequency_),
       kIioParameterDeviceIdPrefix + base::NumberToString(id_),
-      kIioParameterSamplesPrefix + base::NumberToString(samples),
+      kIioParameterSamplesPrefix +
+          base::NumberToString(samples + kNumberFirstReadsDiscarded),
       kIioParameterTimeoutPrefix +
           base::NumberToString(ceil(kSecond2Millisecond / frequency_) +
                                kTimeoutOverheadInMS),
@@ -101,12 +103,19 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
       data.at(i).push_back(raw_data * scale_);
     }
 
-    if (data.at(i).size() != samples) {
+    if (data.at(i).size() != samples + kNumberFirstReadsDiscarded) {
       LOG(ERROR) << location_ << ":" << name_ << ":" << channels[i]
                  << ": We received " << data.at(i).size() << " instead of "
-                 << samples << " samples.";
+                 << samples << " + " << kNumberFirstReadsDiscarded
+                 << " (dropped few invalid reads at the beginning) samples.";
       return false;
     }
+
+    // Remove first few invalid reads as a workaround of crrev/c/1423123.
+    // This would be fixed by FW update later.
+    // TODO(genechang): Remove this workaround when new firmware is released.
+    data.at(i).erase(data.at(i).begin(),
+                     data.at(i).begin() + kNumberFirstReadsDiscarded);
   }
 
   avg_data->resize(channels.size());
