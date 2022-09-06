@@ -32,7 +32,7 @@ fn main() {
                         .map(|byte| format!("{:02x}", byte))
                         .collect::<String>()
                 })
-                .unwrap_or("".to_string());
+                .unwrap_or_else(|| "".to_string());
 
             let ret = format!(
                 "{}:{}:{} {}",
