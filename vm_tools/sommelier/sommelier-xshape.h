@@ -14,4 +14,10 @@ void sl_handle_shape_notify(struct sl_context* ctx,
 
 void sl_shape_query(struct sl_context* ctx, xcb_window_t xwindow);
 
+void sl_xshape_generate_argb_image(struct sl_context* ctx,
+                                   pixman_region32_t* shape,
+                                   struct sl_mmap* src_mmap,
+                                   pixman_image_t* dst_image,
+                                   uint32_t src_shm_format);
+
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_XSHAPE_H_

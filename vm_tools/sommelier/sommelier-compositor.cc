@@ -6,6 +6,7 @@
 #include "sommelier-timing.h"     // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "sommelier-xshape.h"     // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -57,6 +58,7 @@ struct sl_output_buffer {
   struct sl_mmap* mmap;
   struct pixman_region32 surface_damage;
   struct pixman_region32 buffer_damage;
+  pixman_image_t* shape_image;
   struct sl_host_surface* surface;
 };
 
@@ -81,6 +83,10 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   pixman_region32_fini(&buffer->surface_damage);
   pixman_region32_fini(&buffer->buffer_damage);
   wl_list_remove(&buffer->link);
+
+  if (buffer->shape_image)
+    pixman_image_unref(buffer->shape_image);
+
   free(buffer);
 }
 
@@ -129,7 +135,14 @@ static void sl_host_surface_attach(struct wl_client* client,
                             wl_resource_get_user_data(buffer_resource))
                       : NULL;
   struct wl_buffer* buffer_proxy = NULL;
-  struct sl_window* window;
+  struct sl_window* window = NULL;
+  bool window_shaped = false;
+
+  // The window_shaped flag should only be set if the xshape functionality
+  // has been explicitly enabled
+  window = sl_context_lookup_window_for_surface(host->ctx, resource);
+  if (window && host->ctx->enable_xshape)
+    window_shaped = window->shaped;
 
   host->current_buffer = NULL;
   if (host->contents_shm_mmap) {
@@ -140,14 +153,40 @@ static void sl_host_surface_attach(struct wl_client* client,
   if (host_buffer) {
     host->contents_width = host_buffer->width;
     host->contents_height = host_buffer->height;
+    host->contents_shm_format = host_buffer->shm_format;
+    host->proxy_buffer = host_buffer->proxy;
     buffer_proxy = host_buffer->proxy;
 
     if (!host_buffer->is_drm) {
       if (host_buffer->shm_mmap)
         host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
+    } else {
+      if (window_shaped && host_buffer->shm_mmap) {
+        host->contents_shm_mmap = sl_mmap_ref(host_buffer->shm_mmap);
+      } else {
+        // A fallback if for some reason the DRM PRIME mmap container was
+        // not created (or if this is not a shaped window)
+        host->contents_shm_mmap = NULL;
+        window_shaped = false;
+      }
     }
   }
 
+  // Transfer the flag and shape data over to the surface
+  // if we are working on a shaped window
+  if (window_shaped) {
+    host->contents_shaped = true;
+    pixman_region32_copy(&host->contents_shape, &window->shape_rectangles);
+  } else {
+    host->contents_shaped = false;
+    pixman_region32_clear(&host->contents_shape);
+  }
+
+  // This code will also check if we need to reallocate
+  // a output_surface based on the status of the shaped flag
+  //
+  // An output_surface that is shaped will have its format
+  // forced to ARGB8888 (hence the changes below)
   if (host->contents_shm_mmap) {
     while (!wl_list_empty(&host->released_buffers)) {
       host->current_buffer = wl_container_of(host->released_buffers.next,
@@ -155,7 +194,10 @@ static void sl_host_surface_attach(struct wl_client* client,
 
       if (host->current_buffer->width == host_buffer->width &&
           host->current_buffer->height == host_buffer->height &&
-          host->current_buffer->format == host_buffer->shm_format) {
+          ((window_shaped && host->current_buffer->shape_image &&
+            host->current_buffer->format == WL_SHM_FORMAT_ARGB8888) ||
+           (!window_shaped &&
+            host->current_buffer->format == host_buffer->shm_format))) {
         break;
       }
 
@@ -169,7 +211,8 @@ static void sl_host_surface_attach(struct wl_client* client,
                   "dmabuf_enabled", host->ctx->channel->supports_dmabuf());
       size_t width = host_buffer->width;
       size_t height = host_buffer->height;
-      uint32_t shm_format = host_buffer->shm_format;
+      uint32_t shm_format =
+          window_shaped ? WL_SHM_FORMAT_ARGB8888 : host_buffer->shm_format;
       size_t bpp = sl_shm_bpp_for_shm_format(shm_format);
       size_t num_planes = sl_shm_num_planes_for_shm_format(shm_format);
 
@@ -185,6 +228,15 @@ static void sl_host_surface_attach(struct wl_client* client,
                                 MAX_SIZE, MAX_SIZE);
       pixman_region32_init_rect(&host->current_buffer->buffer_damage, 0, 0,
                                 MAX_SIZE, MAX_SIZE);
+
+      if (window_shaped) {
+        host->current_buffer->shape_image = pixman_image_create_bits_no_clear(
+            PIXMAN_a8r8g8b8, width, height, NULL, 0);
+
+        assert(host->current_buffer->shape_image);
+      } else {
+        host->current_buffer->shape_image = NULL;
+      }
 
       if (host->ctx->channel->supports_dmabuf()) {
         int rv;
@@ -274,6 +326,11 @@ static void sl_host_surface_attach(struct wl_client* client,
   }
 
   sl_transform_guest_to_host(host->ctx, host, &x, &y);
+
+  // Save these values in case we need to roll back the decisions
+  // made here in the commit phase of the attach-commit cycle
+  host->contents_x_offset = x;
+  host->contents_y_offset = y;
 
   if (host_buffer && host_buffer->sync_point) {
     TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
@@ -494,6 +551,7 @@ static void sl_host_surface_frame(struct wl_client* client,
 
 static void copy_damaged_rect(sl_host_surface* host,
                               pixman_box32_t* rect,
+                              bool shaped,
                               double scale_x,
                               double scale_y,
                               double offset_x,
@@ -508,6 +566,21 @@ static void copy_damaged_rect(sl_host_surface* host,
   size_t bpp = host->contents_shm_mmap->bpp;
   size_t num_planes = host->contents_shm_mmap->num_planes;
   int32_t x1, y1, x2, y2;
+  size_t null_set[3] = {0, 0, 0};
+  size_t shape_stride[3] = {0, 0, 0};
+
+  if (shaped) {
+    // If we are copying from a shaped window, the actual image data
+    // we want comes from the shape_image. We are making the modifications
+    // here so the source data comes from this buffer.
+    src_addr = reinterpret_cast<uint8_t*>(
+        pixman_image_get_data(host->current_buffer->shape_image));
+    src_offset = null_set;
+    src_stride = shape_stride;
+
+    shape_stride[0] =
+        pixman_image_get_stride(host->current_buffer->shape_image);
+  }
 
   // Enclosing rect after applying scale and offset.
   x1 = rect->x1 * scale_x + offset_x;
@@ -557,6 +630,48 @@ static void sl_host_surface_commit(struct wl_client* client,
   if (!wl_list_empty(&host->contents_viewport))
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
 
+  // We are doing this check outside the contents_shm_mmap check below so
+  // we can bail out on the shaped processing of a DRM buffer in case mapping
+  // it fails.
+  if (host->contents_shm_mmap) {
+    bool mmap_ensured = sl_mmap_begin_access(host->contents_shm_mmap);
+
+    if (!mmap_ensured) {
+      // Clean up anything left from begin_access
+      sl_mmap_end_access(host->contents_shm_mmap);
+
+      if (host->contents_shaped) {
+        // Shaped contents, with a source buffer.
+        // We need to fallback and disable shape processing
+        // This might also be a good event to log somewhere
+        sl_mmap_unref(host->contents_shm_mmap);
+
+        // Release the allocated output buffer back to the queue
+        host->contents_shm_mmap = NULL;
+        host->contents_shaped = false;
+        pixman_region32_clear(&host->contents_shape);
+        sl_output_buffer_release(NULL, host->current_buffer->internal);
+
+        // Attach the original buffer back, ensure proxy_buffer is not NULL
+        assert(host->proxy_buffer);
+        wl_surface_attach(host->proxy, host->proxy_buffer,
+                          host->contents_x_offset, host->contents_y_offset);
+      } else {
+        // If we are not shaped, we will still need access to the buffer in this
+        // case. We shouldn't get here. We are using this assert to provide some
+        // clues within error logs that may result from hitting this point.
+        assert(mmap_ensured);
+      }
+    } else {
+      // In this case, perform the image manipulation if we are dealing
+      // with a shaped surface.
+      if (host->contents_shaped)
+        sl_xshape_generate_argb_image(
+            host->ctx, &host->contents_shape, host->contents_shm_mmap,
+            host->current_buffer->shape_image, host->contents_shm_format);
+    }
+  }
+
   if (host->contents_shm_mmap) {
     double contents_scale_x, contents_scale_y;
     wl_fixed_t contents_offset_x, contents_offset_y;
@@ -575,8 +690,8 @@ static void sl_host_surface_commit(struct wl_client* client,
     while (n--) {
       TRACE_EVENT("surface",
                   "sl_host_surface_commit: memcpy_loop (surface damage)");
-      copy_damaged_rect(host, rect, contents_scale_x, contents_scale_y,
-                        wl_fixed_to_double(contents_offset_x),
+      copy_damaged_rect(host, rect, host->contents_shaped, contents_scale_x,
+                        contents_scale_y, wl_fixed_to_double(contents_offset_x),
                         wl_fixed_to_double(contents_offset_y));
       ++rect;
     }
@@ -593,7 +708,7 @@ static void sl_host_surface_commit(struct wl_client* client,
     while (n--) {
       TRACE_EVENT("surface",
                   "sl_host_surface_commit: memcpy_loop (buffer damage)");
-      copy_damaged_rect(host, rect, 1.0, 1.0, 0.0, 0.0);
+      copy_damaged_rect(host, rect, host->contents_shaped, 1.0, 1.0, 0.0, 0.0);
       ++rect;
     }
 
@@ -696,6 +811,7 @@ static void sl_host_surface_commit(struct wl_client* client,
     if (host->contents_shm_mmap->buffer_resource) {
       wl_buffer_send_release(host->contents_shm_mmap->buffer_resource);
     }
+    sl_mmap_end_access(host->contents_shm_mmap);
     sl_mmap_unref(host->contents_shm_mmap);
     host->contents_shm_mmap = NULL;
   }
@@ -764,6 +880,8 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
     zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
     host->surface_sync = NULL;
   }
+
+  pixman_region32_fini(&host->contents_shape);
   free(host);
 }
 
@@ -872,6 +990,9 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->ctx = host->compositor->ctx;
   host_surface->contents_width = 0;
   host_surface->contents_height = 0;
+  host_surface->contents_x_offset = 0;
+  host_surface->contents_y_offset = 0;
+  host_surface->contents_shm_format = 0;
   host_surface->contents_scale = 1;
   wl_list_init(&host_surface->contents_viewport);
   host_surface->contents_shm_mmap = NULL;
@@ -884,6 +1005,9 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->scale_round_on_y = false;
   host_surface->last_event_serial = 0;
   host_surface->current_buffer = NULL;
+  host_surface->proxy_buffer = NULL;
+  host_surface->contents_shaped = false;
+  pixman_region32_init(&host_surface->contents_shape);
   wl_list_init(&host_surface->released_buffers);
   wl_list_init(&host_surface->busy_buffers);
   host_surface->resource = wl_resource_create(
