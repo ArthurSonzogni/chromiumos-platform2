@@ -17,7 +17,6 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
-#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
@@ -30,7 +29,6 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
@@ -38,11 +36,9 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CryptohomeClient> cryptohome_client,
-    std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store, daemon_callback),
       cryptohome_client_(std::move(cryptohome_client)),
-      cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
@@ -75,7 +71,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   // 3. Same owner + replaced components don't require WP disabling:
   //    Go to WipeSelection state.
   // 4. Different owner + CCD blocked:
-  //    Mandatory RSU. Go straight to RSU state.
+  //    Must wipe the device. Mandatory RSU. Go straight to RSU state.
   // 5. Different owner + CCD not blocked:
   //    Must wipe the device. Skip WipeSelection state and go to WpDisableMethod
   //    state.
@@ -112,15 +108,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
     } else {
       // Case 5.
-      // If factory mode is already enabled, go directly to WpDisableComplete
-      // state.
       json_store_->SetValue(kCcdBlocked, false);
-      if (cr50_utils_->IsFactoryModeEnabled()) {
-        MetricsUtils::SetMetricsValue(
-            json_store_, kWpDisableMethod,
-            WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_SKIPPED));
-        return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
-      }
       // If HWWP is already disabled, assume the user will select the physical
       // method and go directly to WpDisablePhysical state.
       if (int hwwp_status;

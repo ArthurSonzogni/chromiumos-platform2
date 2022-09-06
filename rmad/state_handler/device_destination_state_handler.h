@@ -9,7 +9,6 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/cryptohome_client.h"
-#include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 
 namespace rmad {
@@ -19,13 +18,12 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   explicit DeviceDestinationStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cryptohome_client_|, |cr50_utils_| and
-  // |crossystem_utils_| for testing.
+  // Used to inject mock |cryptohome_client_| and |crossystem_utils_| for
+  // testing.
   explicit DeviceDestinationStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CryptohomeClient> cryptohome_client,
-      std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
@@ -41,7 +39,6 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   bool ReplacedComponentNeedHwwpDisabled() const;
 
   std::unique_ptr<CryptohomeClient> cryptohome_client_;
-  std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 };
 
