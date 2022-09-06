@@ -58,6 +58,7 @@ const char kAddAuthFactor[] = "AddAuthFactor";
 const char kAuthenticateAuthFactor[] = "AuthenticateAuthFactor";
 const char kUpdateAuthFactor[] = "UpdateAuthFactor";
 const char kRemoveAuthFactor[] = "RemoveAuthFactor";
+const char kListAuthFactors[] = "ListAuthFactors";
 const char kGetAuthSessionStatus[] = "GetAuthSessionStatus";
 const char kGetRecoveryRequest[] = "GetRecoveryRequest";
 
