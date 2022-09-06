@@ -165,10 +165,9 @@ const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 const char WPASupplicant::kCredentialsPropertyDomain[] = "domain";
 const char WPASupplicant::kCredentialsPropertyPassword[] = "password";
 const char WPASupplicant::kCredentialsPropertyRealm[] = "realm";
-const char WPASupplicant::kCredentialsPropertyRoamingConsortium[] =
-    "roaming_consortium";
-const char WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium[] =
-    "required_roaming_consortium";
+const char WPASupplicant::kCredentialsPropertyHomeOIs[] = "home_ois";
+const char WPASupplicant::kCredentialsPropertyRequiredHomeOIs[] =
+    "required_home_ois";
 const char WPASupplicant::kCredentialsPropertyRoamingConsortiums[] =
     "roaming_consortiums";
 const char WPASupplicant::kCredentialsPropertyUsername[] = "username";

@@ -87,37 +87,15 @@ bool PasspointCredentials::ToSupplicantProperties(
   properties->Set<std::string>(WPASupplicant::kCredentialsPropertyRealm,
                                realm_);
 
-  // As supplicant lacks the support for matching multiple Home Organization
-  // Identifiers (Home OIs), we need to handle them carefully. It leads to two
-  // different situations:
-  //  - "required" Home OIs: only one OI is supported. If there's more, we
-  //    can't use the credentials or we would take the risk to match with
-  //    networks we're not supposed to (see §9.1.2 from the specification).
-  //  - there's no "required" Home OIs: we take the first one of the OIs
-  //    list, but we may miss some matches.
-  // The full OIs lists are stored, so we'll be able add the support to
-  // supplicant later without breaking the credentials providers (apps, ...).
   if (!required_home_ois_.empty()) {
-    if (required_home_ois_.size() > 1) {
-      // TODO(b/162105998) add support for multiple Home OIs in wpa_supplicant.
-      LOG(ERROR) << "Passpoint credentials does not support multiple "
-                 << "required Home OIs yet (" << required_home_ois_.size()
-                 << " found).";
-      properties->Clear();
-      return false;
-    }
     properties->Set<std::string>(
-        WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium,
-        EncodeOI(required_home_ois_[0]));
-  } else if (!home_ois_.empty()) {
-    if (home_ois_.size() > 1) {
-      // TODO(b/162105998) add support for multiple Home OIs in wpa_supplicant.
-      LOG(WARNING) << "Passpoint credentials does not support multiple "
-                   << "Home OIs yet, only the first one will be used.";
-    }
-    properties->Set<std::string>(
-        WPASupplicant::kCredentialsPropertyRoamingConsortium,
-        EncodeOI(home_ois_[0]));
+        WPASupplicant::kCredentialsPropertyRequiredHomeOIs,
+        EncodeOIList(required_home_ois_));
+  }
+
+  if (!home_ois_.empty()) {
+    properties->Set<std::string>(WPASupplicant::kCredentialsPropertyHomeOIs,
+                                 EncodeOIList(home_ois_));
   }
 
   if (!roaming_consortia_.empty()) {

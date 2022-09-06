@@ -158,8 +158,8 @@ class WPASupplicant {
   static const char kCredentialsPropertyDomain[];
   static const char kCredentialsPropertyPassword[];
   static const char kCredentialsPropertyRealm[];
-  static const char kCredentialsPropertyRoamingConsortium[];
-  static const char kCredentialsPropertyRequiredRoamingConsortium[];
+  static const char kCredentialsPropertyHomeOIs[];
+  static const char kCredentialsPropertyRequiredHomeOIs[];
   static const char kCredentialsPropertyRoamingConsortiums[];
   static const char kCredentialsPropertyUsername[];
   static const char kCredentialsMatchType[];

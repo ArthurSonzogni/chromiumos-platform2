@@ -391,12 +391,11 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
                                          "green-sp.example.com"};
   const std::string realm("blue-sp.example.com");
   const std::vector<uint64_t> home_ois{0x1234, 0x5678};
-  const std::vector<uint64_t> single_home_oi{0xab89cd12};
   const std::vector<uint64_t> required_home_ois{0xabcd, 0xcdef};
   const std::vector<uint64_t> roaming_consortia{0x11111111, 0x22222222};
 
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
-      "an_id", domains, realm, home_ois, single_home_oi, roaming_consortia,
+      "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
       /*metered_override=*/false, "app_package_name");
 
   // Add the minimal set of EAP properties
@@ -418,17 +417,18 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   // can't be set with the constructor.
   EXPECT_TRUE(
       properties.Contains<std::string>(WPASupplicant::kNetworkPropertyEapEap));
-  // There's one required Home OIs
-  EXPECT_EQ("AB89CD12",
+  EXPECT_EQ("1234,5678", properties.Get<std::string>(
+                             WPASupplicant::kCredentialsPropertyHomeOIs));
+  EXPECT_EQ("ABCD,CDEF",
             properties.Get<std::string>(
-                WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium));
+                WPASupplicant::kCredentialsPropertyRequiredHomeOIs));
   EXPECT_EQ("11111111,22222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
 
   creds = new PasspointCredentials(
-      "an_id", domains, realm, home_ois, std::vector<uint64_t>(),
-      roaming_consortia, /*metered_override=*/false, "app_package_name");
+      "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
+      /*metered_override=*/false, "app_package_name");
 
   // EAP method and authentication is missing, it will be rejected.
   properties.Clear();
@@ -448,23 +448,11 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
                          WPASupplicant::kCredentialsPropertyDomain));
   EXPECT_EQ(realm, properties.Get<std::string>(
                        WPASupplicant::kCredentialsPropertyRealm));
-  // There's no required Home OIs, we expect to find the first one from the
-  // home_ois in the list.
-  EXPECT_EQ("1234", properties.Get<std::string>(
-                        WPASupplicant::kCredentialsPropertyRoamingConsortium));
+  EXPECT_EQ("1234,5678", properties.Get<std::string>(
+                             WPASupplicant::kCredentialsPropertyHomeOIs));
   EXPECT_EQ("11111111,22222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
-
-  // For now we only support one "required" Home OI, the translation to
-  // supplicant properties has to fail if there's more while supplicant
-  // is not fixed.
-  creds = new PasspointCredentials(
-      "an_id", domains, realm, home_ois, home_ois, roaming_consortia,
-      /*metered_override=*/false, "app_package_name");
-
-  properties.Clear();
-  EXPECT_FALSE(creds->ToSupplicantProperties(&properties));
 }
 
 TEST_F(PasspointCredentialsTest, EncodeOI) {
