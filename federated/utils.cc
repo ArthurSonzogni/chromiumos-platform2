@@ -39,17 +39,17 @@ tensorflow::Example ConvertToTensorFlowExampleProto(const ExamplePtr& example) {
   auto& feature = *tf_example.mutable_features()->mutable_feature();
 
   for (const auto& iter : example->features->feature) {
-    if (iter.second->which() == ValueList::Tag::INT64_LIST) {
+    if (iter.second->which() == ValueList::Tag::kInt64List) {
       const std::vector<int64_t>& value_list =
           iter.second->get_int64_list()->value;
       *feature[iter.first].mutable_int64_list()->mutable_value() = {
           value_list.begin(), value_list.end()};
-    } else if (iter.second->which() == ValueList::Tag::FLOAT_LIST) {
+    } else if (iter.second->which() == ValueList::Tag::kFloatList) {
       const std::vector<double>& value_list =
           iter.second->get_float_list()->value;
       *feature[iter.first].mutable_float_list()->mutable_value() = {
           value_list.begin(), value_list.end()};
-    } else if (iter.second->which() == ValueList::Tag::STRING_LIST) {
+    } else if (iter.second->which() == ValueList::Tag::kStringList) {
       const std::vector<std::string>& value_list =
           iter.second->get_string_list()->value;
       *feature[iter.first].mutable_bytes_list()->mutable_value() = {

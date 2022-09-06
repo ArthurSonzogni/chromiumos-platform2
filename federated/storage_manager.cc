@@ -37,8 +37,7 @@ using ::chromeos::federated::mojom::ValueList;
 using ::chromeos::federated::mojom::ValueListPtr;
 
 ValueListPtr CreateStringList(const std::vector<std::string>& values) {
-  ValueListPtr value_list = ValueList::New();
-  value_list->set_string_list(StringList::New());
+  ValueListPtr value_list = ValueList::NewStringList(StringList::New());
   value_list->get_string_list()->value = values;
   return value_list;
 }
