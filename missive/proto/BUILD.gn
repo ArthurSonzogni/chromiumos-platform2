@@ -78,3 +78,11 @@ proto_library("libmissiveprotosecurityevents") {
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
+
+proto_library("libmissiveprotosecurityxdrevents") {
+  sources = [ "synced/security_xdr_events.proto" ]
+
+  proto_in_dir = "//missive/proto/synced"
+  proto_out_dir = "include/missive/proto"
+  standalone = true
+}
