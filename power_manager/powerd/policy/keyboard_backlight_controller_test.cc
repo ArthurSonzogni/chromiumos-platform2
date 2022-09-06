@@ -16,7 +16,6 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
-#include "power_manager/powerd/policy/backlight_controller_test_util.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -452,11 +451,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
 
   EXPECT_EQ(0, backlight_.current_level());
 
-  dbus_wrapper_.ClearSentSignals();
   CallIncreaseKeyboardBrightness();
-  test::CheckBrightnessChangedSignal(
-      &dbus_wrapper_, 0, kKeyboardBrightnessChangedSignal, 10.0,
-      BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
@@ -473,13 +468,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
-  // A no-op increase should still emit a signal.
-  dbus_wrapper_.ClearSentSignals();
   CallIncreaseKeyboardBrightness();
-  test::CheckBrightnessChangedSignal(
-      &dbus_wrapper_, 0, kKeyboardBrightnessChangedSignal, 100.0,
-      BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 
@@ -495,11 +484,7 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
 
   EXPECT_EQ(100, backlight_.current_level());
 
-  dbus_wrapper_.ClearSentSignals();
   CallDecreaseKeyboardBrightness();
-  test::CheckBrightnessChangedSignal(
-      &dbus_wrapper_, 0, kKeyboardBrightnessChangedSignal, 60.0,
-      BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
@@ -516,13 +501,7 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
-  // A no-op decrease should still emit a signal.
-  dbus_wrapper_.ClearSentSignals();
   CallDecreaseKeyboardBrightness();
-  test::CheckBrightnessChangedSignal(
-      &dbus_wrapper_, 0, kKeyboardBrightnessChangedSignal, 0.0,
-      BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 }

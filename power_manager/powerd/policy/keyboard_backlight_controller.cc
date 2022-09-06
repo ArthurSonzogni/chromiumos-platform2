@@ -622,14 +622,8 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
     BacklightBrightnessChange_Cause cause) {
   const int64_t level = PercentToLevel(percent);
   if (!BypassBrightnessPercentageHasChangedTest(transition, cause) &&
-      level == PercentToLevel(current_percent_)) {
-    if (cause == BacklightBrightnessChange_Cause_USER_REQUEST) {
-      EmitBrightnessChangedSignal(
-          dbus_wrapper_, kKeyboardBrightnessChangedSignal, percent, cause);
-    }
-
+      level == PercentToLevel(current_percent_))
     return false;
-  }
 
   if (!backlight_->DeviceExists()) {
     // If the underlying device doesn't exist, save the new percent for later.
