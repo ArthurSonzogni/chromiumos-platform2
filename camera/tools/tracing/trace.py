@@ -17,13 +17,14 @@ import tempfile
 from typing import Optional
 
 
-def generate_trace_config(buffer_size_kb: int, fill_policy: str) -> str:
+def generate_trace_config(
+    enabled_categories: str,
+    disabled_categories: str,
+    enabled_tags: str,
+    buffer_size_kb: int,
+    fill_policy: str,
+) -> str:
     """Generates the trace config."""
-
-    # TODO: Allow customized categories.
-    # By default enable only the camera trace events.
-    enabled_track_event_categories = "camera.*"
-    disabled_track_event_categories = "*"
 
     return f"""
 # Buffer 0
@@ -43,8 +44,9 @@ data_sources: {{
         name: "track_event"
         target_buffer: 0
         track_event_config {{
-            enabled_categories: "{enabled_track_event_categories}"
-            disabled_categories: "{disabled_track_event_categories}"
+            enabled_categories: "{enabled_categories}"
+            disabled_categories: "{disabled_categories}"
+            enabled_tags: "{enabled_tags}"
         }}
     }}
 }}
@@ -147,7 +149,11 @@ class PerfettoSession:
             fill_policy = "DISCARD"
 
         self.trace_config = generate_trace_config(
-            args.buffer_size_kb, fill_policy
+            args.enabled_categories,
+            args.disabled_categories,
+            args.enabled_tags,
+            args.buffer_size_kb,
+            fill_policy,
         )
         self.output_file = args.output_file
         self.remote = args.remote or None
@@ -309,7 +315,10 @@ def main(argv: list):
     # `Record` subcommand.
     record_parser = subparsers.add_parser(
         "record",
-        description="Record a new trace",
+        description=(
+            "Record a new trace. For event categories and tags filtering, "
+            "see http://shortn/_MdNGQVXkGY"
+        ),
         help="Record a new trace",
     )
     record_parser.add_argument(
@@ -339,6 +348,27 @@ def main(argv: list):
         type=int,
         default=65536,
         help="Size of trace buffer in KB",
+    )
+    record_parser.add_argument(
+        "--enabled_categories",
+        type=str,
+        default="camera.*",
+        help="Track event categories to enable (default='%(default)s')",
+    )
+    record_parser.add_argument(
+        "--disabled_categories",
+        type=str,
+        default="*",
+        help="Track event categories to disable (default='%(default)s')",
+    )
+    record_parser.add_argument(
+        "--enabled_tags",
+        type=str,
+        default="",
+        help=(
+            "Track event tags to enable; events tagged as `debug` and `slow` "
+            "are disabled by default (default='%(default)s')"
+        ),
     )
 
     args = parser.parse_args(argv)
