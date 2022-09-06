@@ -12,7 +12,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
 namespace rmad {
@@ -21,17 +20,14 @@ WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WipeSelectionStateHandler::InitializeState() {
@@ -102,13 +98,7 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
   json_store_->SetValue(kWipeDevice, wipe_device);
   RmadState::StateCase next_state = RmadState::StateCase::STATE_NOT_SET;
   if (wp_disable_required_) {
-    if (cr50_utils_->IsFactoryModeEnabled()) {
-      // Skip WP disabling steps if factory mode is already turned on.
-      MetricsUtils::SetMetricsValue(
-          json_store_, kWpDisableMethod,
-          WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_SKIPPED));
-      next_state = RmadState::StateCase::kWpDisableComplete;
-    } else if (ccd_blocked_) {
+    if (ccd_blocked_) {
       if (wipe_device) {
         // Case 1.
         next_state = RmadState::StateCase::kWpDisableRsu;
