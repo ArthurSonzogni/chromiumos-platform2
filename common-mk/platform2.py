@@ -160,7 +160,6 @@ _IUSE = [
     "vtpm_proxy",
     "vulkan",
     "wake_on_wifi",
-    "wifi",
     "wilco",
     "wpa3_sae",
 ]
