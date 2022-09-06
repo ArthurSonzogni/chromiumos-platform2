@@ -84,7 +84,7 @@ struct sl_data_source {
 #define LOCK_SUFFIXLEN 5
 
 #define MIN_AURA_SHELL_VERSION 6
-#define MAX_AURA_SHELL_VERSION 10
+#define MAX_AURA_SHELL_VERSION 38
 
 const char* net_wm_state_to_string(int i) {
   switch (i) {

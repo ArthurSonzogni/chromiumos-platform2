@@ -359,9 +359,21 @@ static void sl_aura_output_device_scale_factor(void* data,
   host->device_scale_factor = device_scale_factor;
 }
 
+static void sl_aura_output_insets(void* data,
+                                  struct zaura_output* output,
+                                  int top,
+                                  int left,
+                                  int bottom,
+                                  int right) {}
+
+static void sl_aura_output_logical_transform(void* data,
+                                             struct zaura_output* output,
+                                             int transform) {}
+
 static const struct zaura_output_listener sl_aura_output_listener = {
     sl_aura_output_scale, sl_aura_output_connection,
-    sl_aura_output_device_scale_factor};
+    sl_aura_output_device_scale_factor, sl_aura_output_insets,
+    sl_aura_output_logical_transform};
 
 static void sl_destroy_host_output(struct wl_resource* resource) {
   struct sl_host_output* host =
