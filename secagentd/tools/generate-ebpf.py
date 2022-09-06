@@ -42,18 +42,41 @@ def do_gen_bpf_skeleton(args):
     arch = args.arch
     includes = args.includes
     clang = args.clang
+    sysroot = args.sysroot
 
     obj = "_".join(os.path.basename(source).split(".")[:-1]) + ".o"
+
+    arch_to_define = {
+        "amd64": "__TARGET_ARCH_x86",
+        "amd64-linux": "__TARGET_ARCH_x86",
+        "arm": "__TARGET_ARCH_arm",
+        "arm-linux": "__TARGET_ARCH_arm",
+        "arm64": "__TARGET_ARCH_arm64",
+        "mips": "__TARGET_ARCH_mips",
+        "ppc": "__TARGET_ARCH_powerpc",
+        "ppc64": "__TARGET_ARCH_powerpc",
+        "ppc64-linux": "__TARGET_ARCH_powerpc",
+        "x86": "__TARGET_ARCH_x86",
+        "x86-linux": "__TARGET_ARCH_x86",
+    }
+    arch = arch_to_define.get(arch, None)
+    if arch is None:
+        print(
+            f"Unable to map arch={arch} to a sensible"
+            "__TARGET_ARCH_XXX for bpf compilation."
+        )
+        return -1
+
     # It may seem odd that the application needs to be compiled with -g but
     # then llvm-strip is ran against the resulting object.
     # The -g is needed for the bpf application to compile properly but we
     # want to reduce the file size by stripping it.
     call_clang = (
-        [clang, "-g", "-O2", "-target", "bpf"]
+        [clang, "-g", "-O2", "-target", "bpf", f"--sysroot={sysroot}"]
         + [f"-I{x}" for x in includes]
-        + [f"-D__TARGET__ARCH_{arch}".upper(), "-c", source, "-o", obj]
+        + [f"-D{arch}", "-c", source, "-o", obj]
     )
-    gen_skeleton = [f"/usr/sbin/bpftool", "gen", "skeleton", obj]
+    gen_skeleton = ["/usr/sbin/bpftool", "gen", "skeleton", obj]
     strip_dwarf = ["llvm-strip", "-g", obj]
 
     # Compile the BPF C application.
@@ -62,6 +85,9 @@ def do_gen_bpf_skeleton(args):
     _run_command(strip_dwarf)
     # Use bpftools to generate skeletons from the BPF object files.
     bpftool_proc = _run_command(gen_skeleton)
+
+    # BPFtools will output the C formatted dump of kernel symbols to stdout.
+    # Write the contents to file.
     with open(out, "w", encoding="utf-8") as bpf_skeleton:
         bpf_skeleton.write(bpftool_proc.stdout)
 
@@ -76,7 +102,7 @@ def do_gen_vmlinux(args):
     sysroot = args.sysroot
     vmlinux_out = args.out
     gen_vmlinux = [
-        f"/usr/sbin/bpftool",
+        "/usr/sbin/bpftool",
         "btf",
         "dump",
         "file",
@@ -118,6 +144,14 @@ def main(argv: typing.List[str]) -> int:
         nargs="+",
         help="Additional include directories.",
     )
+    # We require the board sysroot so that BPF compilations will use board
+    # libbpf headers.
+    gen_skel.add_argument(
+        "--sysroot",
+        required=True,
+        help="The path that should be treated as the root directory.",
+    )
+
     gen_skel.set_defaults(func=do_gen_bpf_skeleton)
 
     gen_vmlinux = subparsers.add_parser("gen_vmlinux")

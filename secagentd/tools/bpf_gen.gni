@@ -44,6 +44,7 @@ template("generate_ebpf_skeletons") {
       "--source={{source}}",
       "--clang=${clang_compiler}",
       "--arch=${arch}",
+      "--sysroot=${sysroot}",
       "--include",
       "${platform2_root}",
       "${root_gen_dir}",
