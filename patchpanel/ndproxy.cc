@@ -145,14 +145,9 @@ std::string Icmp6TypeName(uint32_t type) {
 
 }  // namespace
 
-constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Packet;
-constexpr ssize_t NDProxy::kTranslateErrorNotNDPacket;
-constexpr ssize_t NDProxy::kTranslateErrorInsufficientLength;
-constexpr ssize_t NDProxy::kTranslateErrorBufferMisaligned;
-constexpr ssize_t NDProxy::kTranslateErrorMismatchedIp6Length;
-
 NDProxy::NDProxy() {}
 
+// static
 base::ScopedFD NDProxy::PreparePacketSocket() {
   base::ScopedFD fd(
       socket(AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IPV6)));
@@ -220,6 +215,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
   }
 }
 
+// static
 ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
                                    size_t packet_len,
                                    const MacAddress& local_mac_addr,

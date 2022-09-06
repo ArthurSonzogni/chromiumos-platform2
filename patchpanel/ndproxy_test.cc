@@ -276,13 +276,41 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
   }
 }
 
+// NDProxy with functions interacting with kernel state faked
+class NDProxyUnderTest : NDProxy {
+ public:
+  void RegisterNeighbor(const in6_addr& ipv6_addr, const MacAddress& mac_addr) {
+    neighbor_table_.emplace_back(ipv6_addr, mac_addr);
+  }
+
+ private:
+  std::vector<std::pair<in6_addr, MacAddress>> neighbor_table_;
+
+  bool GetLocalMac(int if_id, MacAddress* mac_addr) override { return false; }
+
+  bool GetNeighborMac(const in6_addr& ipv6_addr,
+                      MacAddress* mac_addr) override {
+    for (const auto& neighbor : neighbor_table_) {
+      if (memcmp(&ipv6_addr, &neighbor.first, sizeof(in6_addr)) == 0) {
+        memcpy(mac_addr, &neighbor.second, ETHER_ADDR_LEN);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool GetLinkLocalAddress(int if_id, in6_addr* link_local) override {
+    return false;
+  }
+
+  FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
+  FRIEND_TEST(NDProxyTest, TranslateFrame);
+};
+
 TEST(NDProxyTest, TranslateFrame) {
   uint8_t* in_buffer = new uint8_t[IP_MAXPACKET];
   uint8_t* out_buffer = new uint8_t[IP_MAXPACKET];
   ssize_t result;
-
-  NDProxy ndproxy;
-  ndproxy.Init();
 
   struct {
     std::string name;
@@ -396,9 +424,9 @@ TEST(NDProxyTest, TranslateFrame) {
         test_case.expected_output_frame_len - ETHER_HDR_LEN;
 
     memcpy(in_buffer, test_case.input_frame + ETHER_HDR_LEN, packet_len);
-    result = ndproxy.TranslateNDPacket(in_buffer, packet_len,
-                                       test_case.local_mac, test_case.src_ip,
-                                       test_case.dst_ip, out_buffer);
+    result = NDProxyUnderTest::TranslateNDPacket(
+        in_buffer, packet_len, test_case.local_mac, test_case.src_ip,
+        test_case.dst_ip, out_buffer);
 
     if (test_case.expected_error != 0) {
       EXPECT_EQ(test_case.expected_error, result);
@@ -416,36 +444,6 @@ TEST(NDProxyTest, TranslateFrame) {
   delete[] in_buffer;
   delete[] out_buffer;
 }
-
-// NDProxy with functions interacting with kernel state faked
-class NDProxyUnderTest : NDProxy {
- public:
-  void RegisterNeighbor(const in6_addr& ipv6_addr, const MacAddress& mac_addr) {
-    neighbor_table_.emplace_back(ipv6_addr, mac_addr);
-  }
-
- private:
-  std::vector<std::pair<in6_addr, MacAddress>> neighbor_table_;
-
-  bool GetLocalMac(int if_id, MacAddress* mac_addr) override { return false; }
-
-  bool GetNeighborMac(const in6_addr& ipv6_addr,
-                      MacAddress* mac_addr) override {
-    for (const auto& neighbor : neighbor_table_) {
-      if (memcmp(&ipv6_addr, &neighbor.first, sizeof(in6_addr)) == 0) {
-        memcpy(mac_addr, &neighbor.second, ETHER_ADDR_LEN);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool GetLinkLocalAddress(int if_id, in6_addr* link_local) override {
-    return false;
-  }
-
-  FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
-};
 
 TEST(NDProxyTest, ResolveDestinationMac) {
   NDProxyUnderTest ndproxy;

@@ -47,45 +47,12 @@ class NDProxy {
 
   virtual ~NDProxy() = default;
 
-  // RFC 4389: Read the input ICMPv6 packet in |in_packet| and determine whether
-  // it should be proxied. If so, fill the |out_packet| buffer with proxied
-  // packet and return the length of proxied packet (usually same with input
-  // frame length). Return a negative value if proxy is not needed or an error
-  // occurred.
-  //   in_packet: buffer containing input IPv6 packet.
-  //   packet_len: the length of input IPv6 packet;
-  //   local_mac_addr: MAC address of interface that will be used to send the
-  //       proxied packet;
-  //   new_src_ip: if not null, address that will be used for the IP header
-  //       source address to send the proxied packet;
-  //   new_dst_ip: if not null, address that will be used for the IP header
-  //       destination address to send the proxied packet;
-  //   out_packet: buffer for output IPv6 pacet; should have at least
-  //       packet_len space.
-  ssize_t TranslateNDPacket(const uint8_t* in_packet,
-                            size_t packet_len,
-                            const MacAddress& local_mac_addr,
-                            const in6_addr* new_src_ip,
-                            const in6_addr* new_dst_ip,
-                            uint8_t* out_packet);
-
   // Given the ICMPv6 packet |icmp6| with header and options (payload) of total
   // byte length |icmp6_len|, returns a pointer to the start of the prefix
   // information, or returns nullptr if no option of type
   // ND_OPT_PREFIX_INFORMATION was found.
   static const nd_opt_prefix_info* GetPrefixInfoOption(const uint8_t* icmp6,
                                                        size_t icmp6_len);
-
-  // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
-  // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
-  // with |target_mac|. |icmp6_len| is the total size in bytes of the ICMPv6
-  // segment. |nd_hdr_len| is the length of ICMPv6 header (so the first option
-  // starts after |nd_hdr_len|.)
-  static void ReplaceMacInIcmpOption(uint8_t* icmp6,
-                                     size_t icmp6_len,
-                                     size_t nd_hdr_len,
-                                     uint8_t opt_type,
-                                     const MacAddress& target_mac);
 
   // Helper function to create a AF_PACKET socket suitable for frame read/write.
   static base::ScopedFD PreparePacketSocket();
@@ -121,6 +88,39 @@ class NDProxy {
   void StopProxy(int if_id1, int if_id2);
 
  protected:
+  // RFC 4389: Read the input ICMPv6 packet in |in_packet| and determine whether
+  // it should be proxied. If so, fill the |out_packet| buffer with proxied
+  // packet and return the length of proxied packet (usually same with input
+  // frame length). Return a negative value if proxy is not needed or an error
+  // occurred.
+  //   in_packet: buffer containing input IPv6 packet.
+  //   packet_len: the length of input IPv6 packet;
+  //   local_mac_addr: MAC address of interface that will be used to send the
+  //       proxied packet;
+  //   new_src_ip: if not null, address that will be used for the IP header
+  //       source address to send the proxied packet;
+  //   new_dst_ip: if not null, address that will be used for the IP header
+  //       destination address to send the proxied packet;
+  //   out_packet: buffer for output IPv6 pacet; should have at least
+  //       packet_len space.
+  static ssize_t TranslateNDPacket(const uint8_t* in_packet,
+                                   size_t packet_len,
+                                   const MacAddress& local_mac_addr,
+                                   const in6_addr* new_src_ip,
+                                   const in6_addr* new_dst_ip,
+                                   uint8_t* out_packet);
+
+  // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
+  // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
+  // with |target_mac|. |icmp6_len| is the total size in bytes of the ICMPv6
+  // segment. |nd_hdr_len| is the length of ICMPv6 header (so the first option
+  // starts after |nd_hdr_len|.)
+  static void ReplaceMacInIcmpOption(uint8_t* icmp6,
+                                     size_t icmp6_len,
+                                     size_t nd_hdr_len,
+                                     uint8_t opt_type,
+                                     const MacAddress& target_mac);
+
   // For destination IP address |dest_ipv6|, resolve it into destination MAC
   // and fill in |dest_mac|. A neighbor table lookup may take place but no NS
   // message will be sent. If the IP cannot be resolved, all-nodes multicast
@@ -182,8 +182,6 @@ class NDProxy {
       router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
-
-  FRIEND_TEST(NDProxyTest, TranslateFrame);
 };
 
 // A wrapper class for running NDProxy in a daemon process. Control messages and
