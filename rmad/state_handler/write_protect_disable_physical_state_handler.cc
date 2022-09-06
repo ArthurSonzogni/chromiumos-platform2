@@ -63,12 +63,9 @@ void WriteProtectDisablePhysicalStateHandler::RunState() {
   if (signal_timer_.IsRunning()) {
     signal_timer_.Stop();
   }
-  // Only poll WP status if we're not ready for the transition.
-  if (!IsReadyForTransition()) {
-    signal_timer_.Start(
-        FROM_HERE, kPollInterval, this,
-        &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
-  }
+  signal_timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
 }
 
 void WriteProtectDisablePhysicalStateHandler::CleanUpState() {

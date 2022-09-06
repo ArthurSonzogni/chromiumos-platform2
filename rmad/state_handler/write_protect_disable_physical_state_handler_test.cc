@@ -123,7 +123,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({0}, true, true, false, true);
+  auto handler = CreateStateHandler({}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_TRUE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -139,7 +139,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_FactoryModeEnabled) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  auto handler = CreateStateHandler({0, 0}, true, true, false, true);
+  auto handler = CreateStateHandler({0}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
@@ -162,7 +162,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_KeepDeviceOpen) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({0, 0}, false, true, false, true);
+  auto handler = CreateStateHandler({0}, false, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
