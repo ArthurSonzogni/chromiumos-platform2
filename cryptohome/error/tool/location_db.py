@@ -20,7 +20,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from xml.dom import pulldom
 
 
@@ -286,6 +286,125 @@ class Verifier:
         return collated_symbols, violating_dup
 
 
+class AuthorManager:
+    """Manages committers and separator in locations.h to avoid collision.
+
+    This class maintains the list of committers who've been allocated their own
+    block of values in locations.h. This will prevent/reduce the amount of
+    merge conflict that could happen in locations.h.
+    """
+
+    # A list of committers and their respective starting value in locations.h
+    # This list should always be sorted by value.
+    COMMITTERS = [
+        (1500, "zuan@chromium.org"),
+        (1700, "yich@google.com"),
+        (1900, "anastasiian@google.com"),
+        (2100, "jadmanski@google.com"),
+        (2300, "thomascedeno@google.com"),
+        (2500, "betuls@google.com"),
+        (2700, "emaxx@chromium.org"),
+        (2900, "dlunev@chromium.org"),
+        (3100, "hardikgoyal@google.com"),
+        (3300, "sherrilin@google.com"),
+    ]
+
+    # Default starting value for committers who are not listed.
+    # The enums start at 100 because we want to reserve the first 100 enum
+    # in case there's any special use case.
+    DEFAULT_START = 100
+
+    def __init__(self):
+        """Constructor for AuthorManager"""
+
+        # Verify that COMMITTERS is indeed sorted.
+        last = AuthorManager.DEFAULT_START
+        for start, _ in AuthorManager.COMMITTERS:
+            assert start > last
+            last = start
+
+    def _get_git_config_email(self) -> str:
+        """Retrieves the email used as git's committing email in cryptohome.
+
+        Returns:
+            str: The email to commit the CL.
+        """
+
+        # Execute git config user.email to get the user's email.
+        result = subprocess.run(
+            ["git", "config", "user.email"], stdout=subprocess.PIPE, check=True
+        )
+        # Note that cwd is not set because we're expected to be at the source
+        # directory.
+        return result.stdout.decode("utf8").strip()
+
+    def get_start(self, commit_email: Optional[str] = None) -> int:
+        """Retrieves the starting value in locations.h for the commit email.
+
+        Args:
+            commit_email: Commit email for getting the starting value. Use None
+                to get the value from git.
+
+        Returns:
+            int: The starting value.
+        """
+
+        if commit_email is None:
+            commit_email = self._get_git_config_email()
+        for start, committer in AuthorManager.COMMITTERS:
+            if committer == commit_email:
+                return start
+        return AuthorManager.DEFAULT_START
+
+    def _generate_single_comment(self, location: int) -> List[str]:
+        """Generates the separator comment block at location.
+
+        Args:
+            location: The location/value at which this block will be placed in
+                locations.h.
+
+        Returns:
+            List[str]: The comments, each element of the list is a line.
+        """
+
+        result = []
+        # This comment block's only purpose is to avoid merge conflict between
+        # different blocks of generated enums.
+        result.append("  //////////////////////////////////////////////////\n")
+        result.append(
+            "  //// This is a separator block at value %d\n" % location
+        )
+        result.append("  //// See location_db.py for more info.\n")
+        result.append("  //////////////////////////////////////////////////\n")
+        return result
+
+    def get_separator_comment(
+        self, previous_value: int, next_value: int
+    ) -> List[str]:
+        """Generates/retrieves the separator comment in locations.h.
+
+        This function generate/retrieve the separator comment block that is
+        supposed to appear between the 2 given value in locations.h
+
+        Args:
+            previous_value: The first value before the comment.
+            next_value: The value right after the comment.
+
+        Returns:
+            List[str]: Each str in the list is a line of comment to be inserted.
+        """
+
+        # From a big O perspective the algorithm below is suboptimal, and could
+        # be replaced with a binary search tree. However, the amount of
+        # committers we've is very low so the optimization is probably not
+        # worth it given the complexity and higher constant time.
+        result = []
+        for start, _ in AuthorManager.COMMITTERS:
+            if previous_value < start and next_value >= start:
+                result += self._generate_single_comment(start)
+        return result
+
+
 class LocationDB:
     """Database in locations.h
 
@@ -345,6 +464,10 @@ class LocationDB:
         # '_next_value' is the next available enum value in locations.h.
         # It is None if we are not loaded yet.
         self._next_value = None
+
+        # '_author_manager' is an instance of AuthorManager, for managing the
+        # start location and separator comment blocks in locations.h
+        self._author_manager = AuthorManager()
 
     def _find_generated_marker(self):
         """Finds and sets the start and end of generated marker.
@@ -428,7 +551,21 @@ class LocationDB:
     def _generate_header_lines(self):
         symbols_list = [s for s in self.symbols.values()]
         symbols_list.sort(key=operator.attrgetter("value"))
-        return [sym.generate_lines() for sym in symbols_list]
+        result = []
+        previous_value = -1
+        for sym in symbols_list:
+            assert isinstance(sym.value, int)
+            result += self._author_manager.get_separator_comment(
+                previous_value, sym.value
+            )
+            result += sym.generate_lines()
+            previous_value = sym.value
+        # 1<<32 is a large value that we know is larger than all known possible
+        # symbol values.
+        result += self._author_manager.get_separator_comment(
+            previous_value, 1 << 32
+        )
+        return result
 
     def store(self) -> None:
         """Save the state in this object back into locations.h.
@@ -443,7 +580,7 @@ class LocationDB:
         # Include the portion that is before the generated content.
         result_lines += self._lines[0 : self._start_line]
         # Add the generated portion
-        result_lines += sum(self._generate_header_lines(), [])
+        result_lines += self._generate_header_lines()
         # Include the portion that is after the generated content.
         result_lines += self._lines[self._end_line - 1 :]
         with open(self.path, "w") as f:
@@ -469,9 +606,7 @@ class LocationDB:
         """
 
         # Clear relevant fields in the current symbols.
-        # The enums start at 100 because we want to reserve the first 100 enum
-        # in case there's any special use case.
-        self._next_value = 100
+        self._next_value = self._author_manager.get_start()
         for sym in self.symbols.values():
             sym.line_num = []
             sym.path = []
