@@ -100,10 +100,18 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsReadyForTransition() const {
-  // To transition to next state, HWWP should be disabled, and we can skip
-  // enabling factory mode (either factory mode is already enabled, or we want
-  // to keep the device open).
-  return CanSkipEnablingFactoryMode() && IsHwwpDisabled();
+  // To transition to next state, all the conditions should meet
+  // - HWWP should be disabled.
+  // - We can skip enabling factory mode, either factory mode is already enabled
+  //   or we want to keep the device open.
+  // - We have triggered an EC reboot.
+  return IsEcRebooted() && CanSkipEnablingFactoryMode() && IsHwwpDisabled();
+}
+
+bool WriteProtectDisablePhysicalStateHandler::IsEcRebooted() const {
+  // TODO(chenghan): Use ectool to probe ro_at_boot for more precise check.
+  bool ec_rebooted = false;
+  return json_store_->GetValue(kEcRebooted, &ec_rebooted) && ec_rebooted;
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
@@ -127,9 +135,6 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
 }
 
 void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
-  // Sync state file before doing EC reboot.
-  json_store_->Sync();
-
   bool powerwash_required = false;
   if (!CanSkipEnablingFactoryMode()) {
     // Enable cr50 factory mode. This no longer reboots the device, so we need
@@ -178,6 +183,8 @@ void WriteProtectDisablePhysicalStateHandler::
 
 void WriteProtectDisablePhysicalStateHandler::RebootEc() {
   LOG(INFO) << "Rebooting EC after physically removing WP";
+  json_store_->SetValue(kEcRebooted, true);
+  json_store_->Sync();
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,
                      base::Unretained(this)));
