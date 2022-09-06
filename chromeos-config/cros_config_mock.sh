@@ -109,12 +109,14 @@ if [[ -f /sys/class/dmi/id/product_sku && -z "${SKU_ID}" ]]; then
   SKU_ID="$(cut -b4- </sys/class/dmi/id/product_sku)"
 fi
 
-if [[ -f /sys/firmware/vpd/ro/custom_label_tag && -z "${CUSTOM_LABEL_TAG}" ]]; then
-  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/ro/custom_label_tag
+if [[ -f /sys/firmware/vpd/ro/custom_label_tag && \
+  -z "${CUSTOM_LABEL_TAG}" ]]; then
+  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/ro/custom_label_tag || true
 fi
 
-if [[ -f /sys/firmware/vpd/whitelabel_tag && -z "${CUSTOM_LABEL_TAG}" ]]; then
-  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/whitelabel_tag
+if [[ -f /sys/firmware/vpd/ro/whitelabel_tag && \
+  -z "${CUSTOM_LABEL_TAG}" ]]; then
+  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/ro/whitelabel_tag || true
 fi
 
 on_exit_unmount () {
