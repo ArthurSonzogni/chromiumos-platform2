@@ -630,7 +630,7 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
   std::string mac;
   result = tpm_utility->PinWeaverInsertLeaf(
       protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
-      delay_schedule, valid_pcr_criteria, 0, &result_code, &root,
+      delay_schedule, valid_pcr_criteria, std::nullopt, &result_code, &root,
       &cred_metadata, &mac);
   if (result || result_code) {
     LOG(ERROR) << "insert_leaf failed! " << result_code << " "
