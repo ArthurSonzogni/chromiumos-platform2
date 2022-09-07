@@ -1,3 +1,1 @@
-include chromiumos/chromite:/OWNERS.build
-
-# COMPONENT: Infra>ChromeOS>Build>Platform
+include chromiumos/owners:v1:/infra/OWNERS.build
