@@ -3252,6 +3252,260 @@ static bool sl_parse_accelerators(struct wl_list* accelerator_list,
   return true;
 }
 
+// Takes the lock and then opens the socket for wayland clients to connect to.
+// Returns a negative value on error. |addr|, |lock_fd| and |sock_fd| will be
+// populated on success.
+int sl_open_wayland_socket(const char* socket_name,
+                           struct sockaddr_un* addr,
+                           int* lock_fd,
+                           int* sock_fd) {
+  int rv;
+
+  const char* runtime_dir = getenv("XDG_RUNTIME_DIR");
+  if (!runtime_dir) {
+    fprintf(stderr, "error: XDG_RUNTIME_DIR not set in the environment\n");
+    return -1;
+  }
+
+  addr->sun_family = AF_LOCAL;
+  snprintf(addr->sun_path, sizeof(addr->sun_path), "%s/%s", runtime_dir,
+           socket_name);
+
+  char* lock_addr = sl_xasprintf("%s%s", addr->sun_path, LOCK_SUFFIX);
+
+  *lock_fd = open(lock_addr, O_CREAT | O_CLOEXEC,
+                  (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP));
+  errno_assert(*lock_fd >= 0);
+
+  rv = flock(*lock_fd, LOCK_EX | LOCK_NB);
+  if (rv < 0) {
+    fprintf(stderr,
+            "error: unable to lock %s, is another compositor running?\n",
+            lock_addr);
+    return rv;
+  }
+  free(lock_addr);
+
+  struct stat sock_stat;
+  rv = stat(addr->sun_path, &sock_stat);
+  if (rv >= 0) {
+    if (sock_stat.st_mode & (S_IWUSR | S_IWGRP))
+      unlink(addr->sun_path);
+  } else {
+    errno_assert(errno == ENOENT);
+  }
+
+  *sock_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
+  errno_assert(*sock_fd >= 0);
+
+  rv = bind(*sock_fd, (struct sockaddr*)addr,
+            offsetof(struct sockaddr_un, sun_path) + strlen(addr->sun_path));
+  errno_assert(rv >= 0);
+
+  rv = listen(*sock_fd, 128);
+  errno_assert(rv >= 0);
+
+  return 0;
+}
+
+int sl_run_parent(int argc,
+                  char** argv,
+                  sl_context* ctx,
+                  const char* socket_name,
+                  const char* peer_cmd_prefix) {
+  struct sockaddr_un addr;
+  int lock_fd;
+  int sock_fd;
+  int rv;
+
+  rv = sl_open_wayland_socket(socket_name, &addr, &lock_fd, &sock_fd);
+  if (rv < 0)
+    return EXIT_FAILURE;
+
+  // Spawn optional child process before we notify systemd that we're ready
+  // to accept connections. WAYLAND_DISPLAY will be set but any attempt to
+  // connect to this socket at this time will fail.
+  if (ctx->runprog && ctx->runprog[0]) {
+    int pid = fork();
+    errno_assert(pid != -1);
+    if (pid == 0) {
+      setenv("WAYLAND_DISPLAY", socket_name, 1);
+      sl_execvp(ctx->runprog[0], ctx->runprog, -1);
+      _exit(EXIT_FAILURE);
+    }
+    while (waitpid(-1, NULL, WNOHANG) != pid)
+      continue;
+  }
+
+  if (ctx->sd_notify)
+    sl_sd_notify(ctx->sd_notify);
+
+  struct sigaction sa;
+  sa.sa_handler = sl_sigchld_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART;
+  rv = sigaction(SIGCHLD, &sa, NULL);
+  errno_assert(rv >= 0);
+
+  do {
+    struct ucred ucred;
+    socklen_t length = sizeof(addr);
+
+    int client_fd = accept(sock_fd, (struct sockaddr*)&addr, &length);
+    if (client_fd < 0) {
+      fprintf(stderr, "error: failed to accept: %m\n");
+      continue;
+    }
+
+    ucred.pid = -1;
+    length = sizeof(ucred);
+    rv = getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &ucred, &length);
+
+    int pid = fork();
+    errno_assert(pid != -1);
+    if (pid == 0) {
+      char* client_fd_str;
+      char* peer_pid_str;
+      char* peer_cmd_prefix_str;
+      char const* args[64];
+      int i = 0;
+
+      close(sock_fd);
+      close(lock_fd);
+
+      if (peer_cmd_prefix) {
+        peer_cmd_prefix_str = sl_xasprintf("%s", peer_cmd_prefix);
+
+        i = sl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
+        if (i > 32) {
+          fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
+          i = 0;
+        }
+      }
+
+      args[i++] = argv[0];
+      peer_pid_str = sl_xasprintf("--peer-pid=%d", ucred.pid);
+      args[i++] = peer_pid_str;
+      client_fd_str = sl_xasprintf("--client-fd=%d", client_fd);
+      args[i++] = client_fd_str;
+
+      // forward some flags.
+      for (int j = 1; j < argc; ++j) {
+        char* arg = argv[j];
+        if (strstr(arg, "--display") == arg || strstr(arg, "--scale") == arg ||
+            strstr(arg, "--direct-scale") == arg ||
+            strstr(arg, "--accelerators") == arg ||
+            strstr(arg, "--windowed-accelerators") == arg ||
+            strstr(arg, "--drm-device") == arg ||
+            strstr(arg, "--support-damage-buffer") == arg) {
+          args[i++] = arg;
+        }
+      }
+
+      args[i++] = NULL;
+
+      execvp(args[0], const_cast<char* const*>(args));
+      _exit(EXIT_FAILURE);
+    }
+    close(client_fd);
+  } while (1);
+
+  // Control should never reach here.
+  assert(false);
+}
+
+void sl_spawn_xwayland(sl_context* ctx,
+                       wl_event_loop* event_loop,
+                       int wayland_socket_fd,
+                       const char* xwayland_cmd_prefix,
+                       const char* xwayland_path,
+                       int xdisplay,
+                       const char* xauth_path,
+                       const char* xfont_path,
+                       const char* xwayland_gl_driver_path,
+                       const char* glamor) {
+  int ds[2];
+  int rv;
+  // Xwayland display ready socket.
+  rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, ds);
+  errno_assert(!rv);
+
+  ctx->display_ready_event_source.reset(
+      wl_event_loop_add_fd(event_loop, ds[0], WL_EVENT_READABLE,
+                           sl_handle_display_ready_event, ctx));
+
+  int wm[2];
+  // X connection to Xwayland.
+  rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wm);
+  errno_assert(!rv);
+
+  ctx->wm_fd = wm[0];
+
+  int pid = fork();
+  errno_assert(pid != -1);
+  if (pid == 0) {
+    char const* args[64];
+    int i = 0;
+
+    if (xwayland_cmd_prefix) {
+      char* xwayland_cmd_prefix_str = sl_xasprintf("%s", xwayland_cmd_prefix);
+
+      i = sl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
+      if (i > 32) {
+        fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
+        i = 0;
+      }
+    }
+
+    args[i++] = sl_xasprintf("%s", xwayland_path ?: XWAYLAND_PATH);
+
+    int fd = dup(ds[1]);
+    char* display_fd_str = sl_xasprintf("%d", fd);
+    fd = dup(wm[1]);
+    char* wm_fd_str = sl_xasprintf("%d", fd);
+
+    if (xdisplay > 0) {
+      args[i++] = sl_xasprintf(":%d", xdisplay);
+    }
+    args[i++] = "-nolisten";
+    args[i++] = "tcp";
+    args[i++] = "-rootless";
+    // Use software rendering unless we have a DRM device and glamor is
+    // enabled.
+    if (!ctx->drm_device || !glamor || !strcmp(glamor, "0"))
+      args[i++] = "-shm";
+    args[i++] = "-displayfd";
+    args[i++] = display_fd_str;
+    args[i++] = "-wm";
+    args[i++] = wm_fd_str;
+    if (xauth_path) {
+      args[i++] = "-auth";
+      args[i++] = sl_xasprintf("%s", xauth_path);
+    }
+    if (xfont_path) {
+      args[i++] = "-fp";
+      args[i++] = sl_xasprintf("%s", xfont_path);
+    }
+    args[i++] = NULL;
+
+    // If a path is explicitly specified via command line or environment
+    // use that instead of the compiled in default.  In either case, only
+    // set the environment variable if the value specified is non-empty.
+    if (xwayland_gl_driver_path) {
+      if (*xwayland_gl_driver_path) {
+        setenv("LIBGL_DRIVERS_PATH", xwayland_gl_driver_path, 1);
+      }
+    } else if (XWAYLAND_GL_DRIVER_PATH && *XWAYLAND_GL_DRIVER_PATH) {
+      setenv("LIBGL_DRIVERS_PATH", XWAYLAND_GL_DRIVER_PATH, 1);
+    }
+
+    sl_execvp(args[0], const_cast<char* const*>(args), wayland_socket_fd);
+    _exit(EXIT_FAILURE);
+  }
+  close(wm[1]);
+  ctx->xwayland_pid = pid;
+}
+
 int real_main(int argc, char** argv) {
   struct sl_context ctx;
   sl_context_init_default(&ctx);
@@ -3275,7 +3529,6 @@ int real_main(int argc, char** argv) {
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
   const char* socket_name = "wayland-0";
-  const char* runtime_dir;
   struct wl_event_loop* event_loop;
   struct wl_listener client_destroy_listener = {};
   client_destroy_listener.notify = sl_client_destroy_notify;
@@ -3284,7 +3537,6 @@ int real_main(int argc, char** argv) {
   int xdisplay = -1;
   int parent = 0;
   int client_fd = -1;
-  int rv;
   int i;
 
   // Ignore SIGUSR1 (used for trace dumping) in all child processes.
@@ -3397,147 +3649,8 @@ int real_main(int argc, char** argv) {
             " --application-id-x11-property\n");
   }
 
-  runtime_dir = getenv("XDG_RUNTIME_DIR");
-  if (!runtime_dir) {
-    fprintf(stderr, "error: XDG_RUNTIME_DIR not set in the environment\n");
-    return EXIT_FAILURE;
-  }
-
   if (parent) {
-    char* lock_addr;
-    struct sockaddr_un addr;
-    struct sigaction sa;
-    struct stat sock_stat;
-    int lock_fd;
-    int sock_fd;
-
-    addr.sun_family = AF_LOCAL;
-    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/%s", runtime_dir,
-             socket_name);
-
-    lock_addr = sl_xasprintf("%s%s", addr.sun_path, LOCK_SUFFIX);
-
-    lock_fd = open(lock_addr, O_CREAT | O_CLOEXEC,
-                   (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP));
-    errno_assert(lock_fd >= 0);
-
-    rv = flock(lock_fd, LOCK_EX | LOCK_NB);
-    if (rv < 0) {
-      fprintf(stderr,
-              "error: unable to lock %s, is another compositor running?\n",
-              lock_addr);
-      return EXIT_FAILURE;
-    }
-    free(lock_addr);
-
-    rv = stat(addr.sun_path, &sock_stat);
-    if (rv >= 0) {
-      if (sock_stat.st_mode & (S_IWUSR | S_IWGRP))
-        unlink(addr.sun_path);
-    } else {
-      errno_assert(errno == ENOENT);
-    }
-
-    sock_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
-    errno_assert(sock_fd >= 0);
-
-    rv = bind(sock_fd, (struct sockaddr*)&addr,
-              offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path));
-    errno_assert(rv >= 0);
-
-    rv = listen(sock_fd, 128);
-    errno_assert(rv >= 0);
-
-    // Spawn optional child process before we notify systemd that we're ready
-    // to accept connections. WAYLAND_DISPLAY will be set but any attempt to
-    // connect to this socket at this time will fail.
-    if (ctx.runprog && ctx.runprog[0]) {
-      pid = fork();
-      errno_assert(pid != -1);
-      if (pid == 0) {
-        setenv("WAYLAND_DISPLAY", socket_name, 1);
-        sl_execvp(ctx.runprog[0], ctx.runprog, -1);
-        _exit(EXIT_FAILURE);
-      }
-      while (waitpid(-1, NULL, WNOHANG) != pid)
-        continue;
-    }
-
-    if (ctx.sd_notify)
-      sl_sd_notify(ctx.sd_notify);
-
-    sa.sa_handler = sl_sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    rv = sigaction(SIGCHLD, &sa, NULL);
-    errno_assert(rv >= 0);
-
-    do {
-      struct ucred ucred;
-      socklen_t length = sizeof(addr);
-
-      client_fd = accept(sock_fd, (struct sockaddr*)&addr, &length);
-      if (client_fd < 0) {
-        fprintf(stderr, "error: failed to accept: %m\n");
-        continue;
-      }
-
-      ucred.pid = -1;
-      length = sizeof(ucred);
-      rv = getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &ucred, &length);
-
-      pid = fork();
-      errno_assert(pid != -1);
-      if (pid == 0) {
-        char* client_fd_str;
-        char* peer_pid_str;
-        char* peer_cmd_prefix_str;
-        char const* args[64];
-        int i = 0, j;
-
-        close(sock_fd);
-        close(lock_fd);
-
-        if (peer_cmd_prefix) {
-          peer_cmd_prefix_str = sl_xasprintf("%s", peer_cmd_prefix);
-
-          i = sl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
-          if (i > 32) {
-            fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
-            i = 0;
-          }
-        }
-
-        args[i++] = argv[0];
-        peer_pid_str = sl_xasprintf("--peer-pid=%d", ucred.pid);
-        args[i++] = peer_pid_str;
-        client_fd_str = sl_xasprintf("--client-fd=%d", client_fd);
-        args[i++] = client_fd_str;
-
-        // forward some flags.
-        for (j = 1; j < argc; ++j) {
-          char* arg = argv[j];
-          if (strstr(arg, "--display") == arg ||
-              strstr(arg, "--scale") == arg ||
-              strstr(arg, "--direct-scale") == arg ||
-              strstr(arg, "--accelerators") == arg ||
-              strstr(arg, "--windowed-accelerators") == arg ||
-              strstr(arg, "--drm-device") == arg ||
-              strstr(arg, "--support-damage-buffer") == arg) {
-            args[i++] = arg;
-          }
-        }
-
-        args[i++] = NULL;
-
-        execvp(args[0], const_cast<char* const*>(args));
-        _exit(EXIT_FAILURE);
-      }
-      close(client_fd);
-    } while (1);
-
-    // Control should never reach here.
-    assert(false);
+    return sl_run_parent(argc, argv, &ctx, socket_name, peer_cmd_prefix);
   }
 
   if (client_fd == -1) {
@@ -3646,7 +3759,7 @@ int real_main(int argc, char** argv) {
 
   if (ctx.runprog || ctx.xwayland) {
     // Wayland connection from client.
-    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
+    int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
     errno_assert(!rv);
 
     client_fd = sv[0];
@@ -3707,89 +3820,9 @@ int real_main(int argc, char** argv) {
     setenv("WAYLAND_DISPLAY", ".", 1);
 
     if (ctx.xwayland) {
-      int ds[2], wm[2];
-
-      // Xwayland display ready socket.
-      rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, ds);
-      errno_assert(!rv);
-
-      ctx.display_ready_event_source.reset(
-          wl_event_loop_add_fd(event_loop, ds[0], WL_EVENT_READABLE,
-                               sl_handle_display_ready_event, &ctx));
-
-      // X connection to Xwayland.
-      rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wm);
-      errno_assert(!rv);
-
-      ctx.wm_fd = wm[0];
-
-      pid = fork();
-      errno_assert(pid != -1);
-      if (pid == 0) {
-        char* display_fd_str;
-        char* wm_fd_str;
-        char* xwayland_cmd_prefix_str;
-        char const* args[64];
-        int i = 0;
-        int fd;
-
-        if (xwayland_cmd_prefix) {
-          xwayland_cmd_prefix_str = sl_xasprintf("%s", xwayland_cmd_prefix);
-
-          i = sl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
-          if (i > 32) {
-            fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
-            i = 0;
-          }
-        }
-
-        args[i++] = sl_xasprintf("%s", xwayland_path ?: XWAYLAND_PATH);
-
-        fd = dup(ds[1]);
-        display_fd_str = sl_xasprintf("%d", fd);
-        fd = dup(wm[1]);
-        wm_fd_str = sl_xasprintf("%d", fd);
-
-        if (xdisplay > 0) {
-          args[i++] = sl_xasprintf(":%d", xdisplay);
-        }
-        args[i++] = "-nolisten";
-        args[i++] = "tcp";
-        args[i++] = "-rootless";
-        // Use software rendering unless we have a DRM device and glamor is
-        // enabled.
-        if (!ctx.drm_device || !glamor || !strcmp(glamor, "0"))
-          args[i++] = "-shm";
-        args[i++] = "-displayfd";
-        args[i++] = display_fd_str;
-        args[i++] = "-wm";
-        args[i++] = wm_fd_str;
-        if (xauth_path) {
-          args[i++] = "-auth";
-          args[i++] = sl_xasprintf("%s", xauth_path);
-        }
-        if (xfont_path) {
-          args[i++] = "-fp";
-          args[i++] = sl_xasprintf("%s", xfont_path);
-        }
-        args[i++] = NULL;
-
-        // If a path is explicitly specified via command line or environment
-        // use that instead of the compiled in default.  In either case, only
-        // set the environment variable if the value specified is non-empty.
-        if (xwayland_gl_driver_path) {
-          if (*xwayland_gl_driver_path) {
-            setenv("LIBGL_DRIVERS_PATH", xwayland_gl_driver_path, 1);
-          }
-        } else if (XWAYLAND_GL_DRIVER_PATH && *XWAYLAND_GL_DRIVER_PATH) {
-          setenv("LIBGL_DRIVERS_PATH", XWAYLAND_GL_DRIVER_PATH, 1);
-        }
-
-        sl_execvp(args[0], const_cast<char* const*>(args), sv[1]);
-        _exit(EXIT_FAILURE);
-      }
-      close(wm[1]);
-      ctx.xwayland_pid = pid;
+      sl_spawn_xwayland(&ctx, event_loop, sv[1], xwayland_cmd_prefix,
+                        xwayland_path, xdisplay, xauth_path, xfont_path,
+                        xwayland_gl_driver_path, glamor);
     } else {
       pid = fork();
       errno_assert(pid != -1);
