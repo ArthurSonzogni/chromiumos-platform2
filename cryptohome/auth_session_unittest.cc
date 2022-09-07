@@ -23,6 +23,7 @@
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
@@ -35,6 +36,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/converter.h"
@@ -392,6 +394,8 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test if AuthSession correctly adds new credentials for a new user, even when
@@ -470,6 +474,8 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test if AuthSession correctly authenticates existing credentials for a
@@ -673,6 +679,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_NE(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test whether PIN is locked out when TpmLockout action is received.
@@ -730,6 +737,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
             user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK);
   EXPECT_NE(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // AuthSession fails authentication, test for failure reply code
@@ -872,6 +880,7 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   ASSERT_THAT(update_future.Get(), NotOk());
   EXPECT_EQ(update_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test if AuthSession correctly updates existing credentials for a new user.
@@ -910,6 +919,8 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
 
   // Verify.
   ASSERT_THAT(update_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test if UpdateAuthSession fails for not matching label.
@@ -942,6 +953,7 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   ASSERT_THAT(update_future.Get(), NotOk());
   EXPECT_EQ(update_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test that the UserSecretStash isn't created by default when a new user is
@@ -1043,6 +1055,8 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test if AuthenticateAuthFactor authenticates existing credentials for a
@@ -1133,6 +1147,8 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test if AuthenticateAuthFactor authenticates existing credentials for a
@@ -1226,6 +1242,8 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test that AuthenticateAuthFactor doesn't add reset seed to LECredentials.
@@ -1354,6 +1372,8 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test that AddAuthFactor can add multiple VaultKeyset-AuthFactor. The first
@@ -1436,6 +1456,9 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
 
   // Verify.
   ASSERT_THAT(add_future2.Get(), IsOk());
+  // The credential verifier should still use the original password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 
   // TODO(b:223222440) Add test to for adding a PIN after reset secret
   // generation function is updated.
@@ -1815,6 +1838,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test that no UserSecretStash is created for an ephemeral user.
@@ -2019,6 +2043,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   ASSERT_THAT(add_future.Get(), NotOk());
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
   ASSERT_EQ(add_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
   std::map<std::string, AuthFactorType> stored_factors =
@@ -2053,6 +2078,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
 
   // Verify.
   ASSERT_THAT(add_future.Get(), NotOk());
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
   ASSERT_EQ(add_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
@@ -2424,6 +2450,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_THAT(authenticate_future.Get(), NotOk());
   EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
@@ -2571,6 +2598,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_THAT(
       stored_factors,
       ElementsAre(Pair(kFakeLabel, AuthFactorType::kCryptohomeRecovery)));
+  // There should be no verifier for the recovery factor.
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 TEST_F(AuthSessionWithUssExperimentTest,
@@ -2703,6 +2732,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+  // There should be no verifier created for the recovery factor.
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
 }
 
 // Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kVerifyOnly`
@@ -3060,7 +3091,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
       user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   request.mutable_auth_factor()->set_label("different new label");
   request.mutable_auth_factor()->mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(new_pass);
 
   TestFuture<CryptohomeStatus> update_future;
   auth_session.UpdateAuthFactor(request, update_future.GetCallback());
@@ -3093,8 +3124,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
   // Calling AddAuthFactor.
   error = AddPasswordAuthFactor(kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-  std::string new_pass = "update fake pass";
 
   // Test.
 
