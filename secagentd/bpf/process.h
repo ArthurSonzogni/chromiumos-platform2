@@ -6,6 +6,7 @@
 #define SECAGENTD_BPF_PROCESS_H_
 
 #ifdef __cplusplus
+#include <stdint.h>
 namespace secagentd::bpf {
 #endif
 

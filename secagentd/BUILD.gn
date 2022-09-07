@@ -22,15 +22,26 @@ generate_ebpf_skeletons("bpf_process") {
 pkg_config("target_defaults") {
   # NOSORT
   pkg_deps = [
+    "absl",
     "libbpf",
     "libbrillo",
     "libchrome",
-    "libmissiveclient",
   ]
+}
+
+static_library("libsecagent") {
+  sources = [
+    "bpf_utils.cc",
+    "process_bpf_skeleton.cc",
+  ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("secagentd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":bpf_process" ]
+  deps = [
+    ":bpf_process",
+    ":libsecagent",
+  ]
 }
