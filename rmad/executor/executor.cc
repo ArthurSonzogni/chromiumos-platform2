@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -50,6 +51,19 @@ std::string FormatTime(const base::Time& time) {
                             e.day_of_month, e.hour, e.minute, e.second);
 }
 
+rmad::Mount TryMount(const base::FilePath& device_file,
+                     const base::FilePath& mount_point,
+                     const std::vector<std::string>& fs_types,
+                     bool read_only) {
+  for (const std::string& fs_type : fs_types) {
+    rmad::Mount mount(device_file, mount_point, fs_type, read_only);
+    if (mount.IsValid()) {
+      return mount;
+    }
+  }
+  return rmad::Mount();
+}
+
 // Powerwash related constants.
 constexpr char kPowerwashRequestFilePath[] =
     "/mnt/stateful_partition/factory_install_reset";
@@ -86,7 +100,8 @@ void Executor::MountAndWriteLog(uint8_t device_id,
   const base::FilePath device_path(base::StringPrintf(
       kDevicePathFormat, device_id, kWriteLogPartitionIndex));
   const base::FilePath mount_point = temp_dir.GetPath();
-  const Mount mount(device_path, mount_point, "vfat", false);
+  const Mount mount =
+      TryMount(device_path, mount_point, {"vfat", "ext2"}, false);
   if (mount.IsValid()) {
     const std::string filename = base::StringPrintf(
         kLogFilenameFormat, FormatTime(base::Time::Now()).c_str());

@@ -17,6 +17,9 @@ namespace rmad {
 
 class Mount {
  public:
+  // Empty mount.
+  Mount();
+  // Mount with specified device path and mount point.
   Mount(const base::FilePath& device_path,
         const base::FilePath& mount_point,
         const std::string& fs_type,
@@ -27,6 +30,11 @@ class Mount {
         const std::string& fs_type,
         bool read_only,
         std::unique_ptr<UdevUtils> udev_utils);
+  // Make the class non-copyable but moveable.
+  Mount(const Mount& mount) = delete;
+  Mount& operator=(const Mount& mount) = delete;
+  Mount(Mount&& mount);
+  Mount& operator=(Mount&& mount);
 
   ~Mount();  // Unmount.
 

@@ -45,6 +45,8 @@ bool IsSupportedFileSystemType(const std::string& fs_type) {
 
 namespace rmad {
 
+Mount::Mount() : valid_(false) {}
+
 Mount::Mount(const base::FilePath& device_path,
              const base::FilePath& mount_point,
              const std::string& fs_type,
@@ -61,6 +63,21 @@ Mount::Mount(const base::FilePath& device_path,
              std::unique_ptr<UdevUtils> udev_utils)
     : mount_point_(mount_point), udev_utils_(std::move(udev_utils)) {
   valid_ = AttemptMount(device_path, mount_point, fs_type, read_only);
+}
+
+Mount::Mount(Mount&& mount)
+    : mount_point_(mount.mount_point_),
+      valid_(mount.valid_),
+      udev_utils_(std::move(mount.udev_utils_)) {
+  mount.valid_ = false;
+}
+
+Mount& Mount::operator=(Mount&& mount) {
+  mount_point_ = mount.mount_point_;
+  udev_utils_ = std::move(mount.udev_utils_);
+  valid_ = mount.valid_;
+  mount.valid_ = false;
+  return *this;
 }
 
 bool Mount::AttemptMount(const base::FilePath& device_path,
