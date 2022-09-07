@@ -4491,6 +4491,33 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeral) {
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+  // Add a mount (and user session) for the ephemeral user.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
+}
+
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))

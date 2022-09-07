@@ -47,6 +47,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/credential_verifier_factory.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
@@ -4855,9 +4856,12 @@ void UserDataAuth::ListAuthFactors(
   // Compute the raw and sanitized user name from the request.
   const std::string& username = request.account_id().account_id();
   std::string obfuscated_username = SanitizeUserName(username);
+  UserSession* user_session = sessions_.Find(username);  // May be null!
 
   // If the user does not exist, we cannot return auth factors for it.
-  if (!keyset_management_->UserExists(obfuscated_username)) {
+  bool is_persistent_user = keyset_management_->UserExists(obfuscated_username);
+  bool is_ephemeral_user = user_session && user_session->IsEphemeral();
+  if (!is_persistent_user && !is_ephemeral_user) {
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
@@ -4894,30 +4898,54 @@ void UserDataAuth::ListAuthFactors(
     }
   }
 
-  // Turn the list of configured types into a set that we can use for computing
-  // the list of supported factors.
-  std::set<AuthFactorType> configured_types;
-  for (const auto& configured_factor : reply.configured_auth_factors()) {
-    if (auto type = AuthFactorTypeFromProto(configured_factor.type())) {
-      configured_types.insert(*type);
+  // How we check for supported authentication methods depends on the nature of
+  // the user. For persistent users we can determine this based on the
+  // underlying storage backend and the existing configured factors, but for
+  // ephemeral users none of that is available and we instead have to determine
+  // it from the set of supported credential verifiers.
+  if (is_persistent_user) {
+    // Turn the list of configured types into a set that we can use for
+    // computing the list of supported factors.
+    std::set<AuthFactorType> configured_types;
+    for (const auto& configured_factor : reply.configured_auth_factors()) {
+      if (auto type = AuthFactorTypeFromProto(configured_factor.type())) {
+        configured_types.insert(*type);
+      }
     }
-  }
 
-  // Determine what auth factors are supported by going through the entire set
-  // of auth factor types and checking each one.
-  for (int raw_type = user_data_auth::AuthFactorType_MIN;
-       raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
-    if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
-      continue;
+    // Determine what auth factors are supported by going through the entire set
+    // of auth factor types and checking each one.
+    for (int raw_type = user_data_auth::AuthFactorType_MIN;
+         raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
+      if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
+        continue;
+      }
+      auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
+      std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
+      if (!type) {
+        continue;
+      }
+      if (auth_block_utility_->IsAuthFactorSupported(*type, storage_type,
+                                                     configured_types)) {
+        reply.add_supported_auth_factors(proto_type);
+      }
     }
-    auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
-    std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
-    if (!type) {
-      continue;
-    }
-    if (auth_block_utility_->IsAuthFactorSupported(*type, storage_type,
-                                                   configured_types)) {
-      reply.add_supported_auth_factors(proto_type);
+  } else if (is_ephemeral_user) {
+    // Determine what auth factors are supported by going through the entire set
+    // of auth factor types and checking each one.
+    for (int raw_type = user_data_auth::AuthFactorType_MIN;
+         raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
+      if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
+        continue;
+      }
+      auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
+      std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
+      if (!type) {
+        continue;
+      }
+      if (IsCredentialVerifierSupported(*type)) {
+        reply.add_supported_auth_factors(proto_type);
+      }
     }
   }
 
