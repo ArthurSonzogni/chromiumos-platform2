@@ -105,10 +105,12 @@ class DlcManagerTest : public ::testing::Test {
   }
 
   void InvokeInstallSuccessFromStored() {
+    ASSERT_FALSE(install_async_success_cb_.is_null());
     std::move(install_async_success_cb_).Run();
   }
 
   void InvokeInstallFailureFromStored(std::string error_code) {
+    ASSERT_FALSE(install_async_error_cb_.is_null());
     auto err = brillo::Error::Create(FROM_HERE, "domain", error_code, "msg");
     std::move(install_async_error_cb_).Run(err.get());
   }
@@ -375,7 +377,8 @@ TEST_F(DlcManagerTest, InstallModemDlcInstallAsyncError) {
   AddWaitForServiceExpects();
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
   EXPECT_CALL(
@@ -384,6 +387,12 @@ TEST_F(DlcManagerTest, InstallModemDlcInstallAsyncError) {
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    InvokeInstallFailureFromStored(dlcservice::kErrorNoImageFound);
+    while (install_async_error_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+  }
   InvokeInstallFailureFromStored(dlcservice::kErrorNoImageFound);
 }
 
@@ -393,11 +402,13 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncError) {
   AddWaitForServiceExpects();
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               GetDlcStateAsync(kDeviceDlc, _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
   EXPECT_CALL(
@@ -407,20 +418,29 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncError) {
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
   InvokeInstallSuccessFromStored();
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    InvokeGetDlcStateFailureFromStored(dlcservice::kErrorNeedReboot);
+    while (install_async_success_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    InvokeInstallSuccessFromStored();
+  }
   InvokeGetDlcStateFailureFromStored(dlcservice::kErrorNeedReboot);
 }
 
-TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncErrorOnSecondCall) {
+TEST_F(DlcManagerTest,
+       InstallModemDlcGetDlcStateAsyncErrorOnSecondAndFutureCalls) {
   SetUpDefaultDlcManagerHelper();
   InstallModemDlcOnceCallbackMock install_cb;
   AddWaitForServiceExpects();
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               GetDlcStateAsync(kDeviceDlc, _, _, _))
-      .Times(2)
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 2)
       .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
@@ -433,6 +453,13 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncErrorOnSecondCall) {
   InvokeInstallSuccessFromStored();
   InvokeGetDlcStateSuccessFromStored(dlcservice::DlcState::INSTALLING);
   task_environment_.FastForwardBy(dlcmanager::kGetDlcStatePollPeriod);
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    InvokeGetDlcStateFailureFromStored(dlcservice::kErrorAllocation);
+    while (install_async_success_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    InvokeInstallSuccessFromStored();
+  }
   InvokeGetDlcStateFailureFromStored(dlcservice::kErrorAllocation);
 }
 
@@ -442,11 +469,13 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncUnexpectedState) {
   AddWaitForServiceExpects();
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               GetDlcStateAsync(kDeviceDlc, _, _, _))
-      .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
   EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(
@@ -455,6 +484,13 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncUnexpectedState) {
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
   InvokeInstallSuccessFromStored();
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    InvokeGetDlcStateSuccessFromStored(dlcservice::DlcState::NOT_INSTALLED);
+    while (install_async_success_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    InvokeInstallSuccessFromStored();
+  }
   InvokeGetDlcStateSuccessFromStored(dlcservice::DlcState::NOT_INSTALLED);
 }
 
@@ -467,11 +503,6 @@ TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
-  EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
-  EXPECT_CALL(
-      *mock_metrics_,
-      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedNoImageFound));
-
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
@@ -480,6 +511,7 @@ TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {
               GetDlcStateAsync(kDeviceDlc, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
+  EXPECT_CALL(install_cb, Run(kDeviceDlcMountPath, nullptr));  // error returned
   EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(DlcInstallResult::kSuccess));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());

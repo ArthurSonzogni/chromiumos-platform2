@@ -34,6 +34,9 @@ extern const base::TimeDelta kInstallTimeout;
 // GetDlcState polling period.
 extern const base::TimeDelta kGetDlcStatePollPeriod;
 
+// Number of retries before falling back to rootfs.
+extern const uint16_t kMaxRetriesBeforeFallbackToRootfs;
+
 // The initial value for retry period.
 extern const base::TimeDelta kInitialInstallRetryPeriod;
 // Max value for the install retry period.
@@ -104,6 +107,7 @@ class DlcManager {
   // used after a powerwash, when the DLCs are not in the device. The period
   // increases on each failure to avoid constant retries.
   base::TimeDelta install_retry_period_;
+  uint16_t install_retry_counter_;
 
   InstallStep install_step_;
   InstallModemDlcOnceCallback install_callback_;

@@ -22,8 +22,12 @@ namespace modemfwd {
 namespace dlcmanager {
 const base::TimeDelta kInstallTimeout = base::Minutes(2);
 const base::TimeDelta kGetDlcStatePollPeriod = base::Seconds(1);
-const base::TimeDelta kInitialInstallRetryPeriod = base::Minutes(5);
+const base::TimeDelta kInitialInstallRetryPeriod = base::Seconds(2);
 const base::TimeDelta kInstallRetryMaxPeriod = base::Hours(2);
+// When the dbus calls don't get stuck, modemfwd will retry
+// kMaxRetriesBeforeFallbackToRootfs times before the kInstallTimeout is
+// reached. (1+2+4+8+16)*kInitialInstallRetryPeriod = 62 seconds.
+const uint16_t kMaxRetriesBeforeFallbackToRootfs = 5;
 }  // namespace dlcmanager
 
 DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
@@ -32,7 +36,8 @@ DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
                        std::string variant)
     : metrics_(metrics),
       variant_(variant),
-      install_retry_period_(base::Minutes(5)),
+      install_retry_period_(dlcmanager::kInitialInstallRetryPeriod),
+      install_retry_counter_(0),
       weak_ptr_factory_(this) {
   DCHECK(!variant_.empty());
   Init(dlc_per_variant);
@@ -49,6 +54,7 @@ DlcManager::DlcManager(
     : metrics_(metrics),
       variant_(variant),
       install_retry_period_(dlcmanager::kInitialInstallRetryPeriod),
+      install_retry_counter_(0),
       weak_ptr_factory_(this) {
   Init(dlc_per_variant);
   dlc_service_proxy_ = std::move(proxy);
@@ -283,14 +289,16 @@ void DlcManager::OnInstallGetDlcStateError(brillo::Error* dbus_error) {
 }
 
 void DlcManager::ProcessInstallError(brillo::ErrorPtr err) {
-  // TODO(b/229148265): Retry the install until it times out before returning
-  //   an error.
-  // Cancel the timeout callback
-  install_timeout_callback_.Cancel();
-  if (!install_callback_.is_null())
-    std::move(install_callback_).Run("", err.get());
+  if (install_retry_counter_ >= dlcmanager::kMaxRetriesBeforeFallbackToRootfs) {
+    // Cancel the timeout callback
+    install_timeout_callback_.Cancel();
+    if (!install_callback_.is_null())
+      std::move(install_callback_).Run("", err.get());
 
-  metrics_->SendDlcInstallResultFailure(err.get());
+    metrics_->SendDlcInstallResultFailure(err.get());
+  }
+
+  install_retry_counter_++;
   PostRetryInstallTask();
 }
 
