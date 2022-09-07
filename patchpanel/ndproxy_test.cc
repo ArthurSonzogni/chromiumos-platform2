@@ -14,9 +14,12 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "patchpanel/net_util.h"
+
+using testing::_;
 
 namespace patchpanel {
 
@@ -165,6 +168,22 @@ const uint8_t tcp_frame[] = {
     0x80, 0x10, 0x01, 0x54, 0x04, 0xb9, 0x00, 0x00, 0x01, 0x01, 0x08,
     0x0a, 0x00, 0x5a, 0x59, 0xc0, 0x32, 0x53, 0x14, 0x3a};
 
+const uint8_t global_na_packet[] = {
+    0x60, 0x00, 0x00, 0x00, 0x00, 0x20, 0x3a, 0xff, 0x2a, 0x00, 0x79, 0xe1,
+    0x0a, 0xbc, 0xf6, 0x05, 0x94, 0x06, 0xd4, 0xff, 0xfe, 0x06, 0x12, 0x58,
+    0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0xfa, 0xe8, 0xff,
+    0xfe, 0x54, 0x07, 0x49, 0x88, 0x00, 0x56, 0x3e, 0x60, 0x00, 0x00, 0x00,
+    0x2a, 0x00, 0x79, 0xe1, 0x0a, 0xbc, 0xf6, 0x05, 0x94, 0x06, 0xd4, 0xff,
+    0xfe, 0x06, 0x12, 0x58, 0x02, 0x01, 0x34, 0x13, 0xe8, 0xb4, 0x24, 0x72};
+
+const uint8_t global_ns_packet[] = {
+    0x60, 0x00, 0x00, 0x00, 0x00, 0x20, 0x3a, 0xff, 0x2a, 0x00, 0x79, 0xe1,
+    0x0a, 0xbc, 0xf6, 0x05, 0x5c, 0x5e, 0xa5, 0xff, 0xfe, 0x32, 0x74, 0x3c,
+    0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+    0xff, 0x06, 0x12, 0x58, 0x87, 0x00, 0xee, 0x8c, 0x00, 0x00, 0x00, 0x00,
+    0x2a, 0x00, 0x79, 0xe1, 0x0a, 0xbc, 0xf6, 0x05, 0x94, 0x06, 0xd4, 0xff,
+    0xfe, 0x06, 0x12, 0x58, 0x01, 0x01, 0x34, 0x13, 0xe8, 0xb4, 0x24, 0x72};
+
 constexpr const char hex_chars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
@@ -277,7 +296,7 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
 }
 
 // NDProxy with functions interacting with kernel state faked
-class NDProxyUnderTest : NDProxy {
+class NDProxyUnderTest : public NDProxy {
  public:
   void RegisterNeighbor(const in6_addr& ipv6_addr, const MacAddress& mac_addr) {
     neighbor_table_.emplace_back(ipv6_addr, mac_addr);
@@ -305,6 +324,7 @@ class NDProxyUnderTest : NDProxy {
 
   FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
   FRIEND_TEST(NDProxyTest, TranslateFrame);
+  FRIEND_TEST(NDProxyTest, GuestDiscoveryCallback);
 };
 
 TEST(NDProxyTest, TranslateFrame) {
@@ -482,6 +502,69 @@ TEST(NDProxyTest, ResolveDestinationMac) {
     const auto expected = MacAddressToString(test_case.dest_mac);
     const auto received = MacAddressToString(dest_mac);
     EXPECT_EQ(expected, received);
+  }
+}
+
+class MockCallbackHandler {
+ public:
+  MOCK_METHOD(void, OnGuestDiscovery, (int, const in6_addr&));
+};
+
+MATCHER_P(EqualsToIpv6Address, ip_str, "") {
+  struct in6_addr addr = StringToIPv6Address(ip_str);
+  return (memcmp(&arg, &addr, sizeof(in6_addr)) == 0);
+}
+
+TEST(NDProxyTest, GuestDiscoveryCallback) {
+  uint8_t buffer[IP_MAXPACKET];
+  NDProxyUnderTest ndproxy;
+  MockCallbackHandler handler;
+  ndproxy.RegisterOnGuestIpDiscoveryHandler(base::BindRepeating(
+      &MockCallbackHandler::OnGuestDiscovery, base::Unretained(&handler)));
+  ndproxy.StartRSRAProxy(1, 1001);
+
+  struct {
+    std::string name;
+    const uint8_t* input_packet;
+    size_t input_packet_len;
+    int recv_ifindex;
+    bool expect_trigger;
+    std::string expected_ip;
+  } test_cases[] = {
+      {"global_na_on_downstream", global_na_packet, sizeof(global_na_packet),
+       1001, true, "2a00:79e1:abc:f605:9406:d4ff:fe06:1258"},
+      {"global_na_on_upstream", global_na_packet, sizeof(global_na_packet), 1,
+       false, "::"},
+      {"global_na_on_other", global_na_packet, sizeof(global_na_packet), 2,
+       false, "::"},
+      {"local_na_on_downstream", na_frame + ETHER_HDR_LEN,
+       sizeof(na_frame) - ETHER_HDR_LEN, 1001, false, "::"},
+      {"rs_on_downstream", rs_frame + ETHER_HDR_LEN,
+       sizeof(rs_frame) - ETHER_HDR_LEN, 1001, false, "::"},
+      {"global_ns_on_downstream", global_ns_packet, sizeof(global_ns_packet),
+       1001, true, "2a00:79e1:abc:f605:5c5e:a5ff:fe32:743c"},
+      {"global_ns_on_upstream", global_ns_packet, sizeof(global_ns_packet), 1,
+       false, "::"},
+      {"global_ns_on_other", global_ns_packet, sizeof(global_ns_packet), 2,
+       false, "::"},
+      {"local_ns_on_downstream", ns_frame + ETHER_HDR_LEN,
+       sizeof(ns_frame) - ETHER_HDR_LEN, 1001, false, "::"},
+  };
+
+  for (const auto& test_case : test_cases) {
+    LOG(INFO) << test_case.name;
+
+    // Copy packet data to a packet-aligned buffer
+    memcpy(buffer, test_case.input_packet, test_case.input_packet_len);
+    if (test_case.expect_trigger) {
+      EXPECT_CALL(handler,
+                  OnGuestDiscovery(test_case.recv_ifindex,
+                                   EqualsToIpv6Address(test_case.expected_ip)));
+    } else {
+      EXPECT_CALL(handler, OnGuestDiscovery(_, _)).Times(0);
+    }
+    ndproxy.NotifyPacketCallbacks(test_case.recv_ifindex, buffer,
+                                  test_case.input_packet_len);
   }
 }
 

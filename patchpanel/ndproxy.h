@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <linux/if_ether.h>
+#include <linux/in6.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
@@ -68,12 +69,11 @@ class NDProxy {
   // NDProxy can trigger a callback upon receiving NA frame with unicast IPv6
   // address from guest OS interface.
   void RegisterOnGuestIpDiscoveryHandler(
-      base::RepeatingCallback<void(const std::string&, const std::string&)>
-          handler);
+      base::RepeatingCallback<void(int, const in6_addr&)> handler);
 
   // Callback upon receiving prefix information from RA frame.
   void RegisterOnRouterDiscoveryHandler(
-      base::RepeatingCallback<void(int, const std::string&)> handler);
+      base::RepeatingCallback<void(int, const in6_addr&)> handler);
 
   // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
   // other way around. If |modify_router_address| is true we modify source
@@ -127,6 +127,12 @@ class NDProxy {
   // address 33:33:00:00:00:01 will be used as a fallback.
   void ResolveDestinationMac(const in6_addr& dest_ipv6, uint8_t* dest_mac);
 
+  // Trigger the router discovery and neighbor discovery callbacks upon
+  // receiving a corresponding packet.
+  void NotifyPacketCallbacks(int recv_ifindex,
+                             const uint8_t* packet,
+                             size_t len);
+
  private:
   // Data structure to store interface mapping for a certain kind of packet to
   // be proxied. For example, {1: {2}, 2: {1}} means that packet from interfaces
@@ -176,10 +182,8 @@ class NDProxy {
   // set up the default route with the host as next hop instead.
   std::set<int> irregular_router_ifs_;
 
-  base::RepeatingCallback<void(const std::string&, const std::string&)>
-      guest_discovery_handler_;
-  base::RepeatingCallback<void(int, const std::string&)>
-      router_discovery_handler_;
+  base::RepeatingCallback<void(int, const in6_addr&)> guest_discovery_handler_;
+  base::RepeatingCallback<void(int, const in6_addr&)> router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
 };
@@ -204,11 +208,10 @@ class NDProxyDaemon : public brillo::Daemon {
   void OnControlMessage(const SubprocessMessage& msg);
 
   // Callback from NDProxy core when receive NA from guest
-  void OnGuestIpDiscovery(const std::string& ifname,
-                          const std::string& ip6addr);
+  void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr);
 
   // Callback from NDProxy core when receive prefix info from router
-  void OnRouterDiscovery(int if_id, const std::string& ip6addr);
+  void OnRouterDiscovery(int if_id, const in6_addr& ip6addr);
 
   void SendMessage(NDProxyMessage::NDProxyEventType type,
                    const std::string& ifname,

@@ -45,12 +45,11 @@ const unsigned char kAllRoutersMulticastMacAddress[] = {0x33, 0x33, 0,
 const unsigned char kSolicitedNodeMulticastMacAddressPrefix[] = {
     0x33, 0x33, 0xff, 0, 0, 0};
 const struct in6_addr kAllNodesMulticastAddress = {
-    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
+    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
 const struct in6_addr kAllRoutersMulticastAddress = {
-    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}}};
+    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}}};
 const struct in6_addr kSolicitedNodeMulticastAddressPrefix = {
-    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0,
-                    0}}};
+    {.u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0, 0}}};
 constexpr int kSolicitedGroupSuffixLength = 3;
 
 // These filter instructions assume that the input is an IPv6 packet and check
@@ -336,51 +335,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       << "Received on interface " << recv_ll_addr.sll_ifindex << ": "
       << Icmp6ToString(in_packet, len);
 
-  // Notify DeviceManager on receiving NA or NS from guest, so a /128 route to
-  // the guest can be added on the host.
-  if (IsGuestInterface(recv_ll_addr.sll_ifindex) &&
-      !guest_discovery_handler_.is_null()) {
-    in6_addr* guest_address = nullptr;
-    if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
-      nd_neighbor_advert* na = reinterpret_cast<nd_neighbor_advert*>(icmp6);
-      guest_address = &(na->nd_na_target);
-    } else if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT) {
-      guest_address = &(ip6->ip6_src);
-    }
-    if (guest_address &&
-        ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
-         (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
-      std::string ifname = IfIndextoname(recv_ll_addr.sll_ifindex);
-      std::string ipv6_addr_str = IPv6AddressToString(*guest_address);
-      guest_discovery_handler_.Run(ifname, ipv6_addr_str);
-    }
-  }
-
-  // On receiving RA from router, generate an address for each guest-facing
-  // interface, and sent it to DeviceManager so it can be assigned. This address
-  // will be used when directly communicating with guest OS through IPv6.
-  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      IsRouterInterface(recv_ll_addr.sll_ifindex) &&
-      !router_discovery_handler_.is_null()) {
-    const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
-        reinterpret_cast<uint8_t*>(icmp6), len - sizeof(ip6_hdr));
-    if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
-      // Generate an EUI-64 address from virtual interface MAC. A prefix
-      // larger that /64 is required.
-      for (int target_if : if_map_ra_[recv_ll_addr.sll_ifindex]) {
-        MacAddress local_mac;
-        if (!GetLocalMac(target_if, &local_mac)) {
-          continue;
-        }
-        in6_addr eui64_ip;
-        GenerateEUI64Address(&eui64_ip, prefix_info->nd_opt_pi_prefix,
-                             local_mac);
-        char eui64_addr_str[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, &eui64_ip, eui64_addr_str, INET6_ADDRSTRLEN);
-        router_discovery_handler_.Run(target_if, std::string(eui64_addr_str));
-      }
-    }
-  }
+  NotifyPacketCallbacks(recv_ll_addr.sll_ifindex, in_packet, len);
 
   // Translate the NDP frame and send it through proxy interface
   auto map_entry =
@@ -509,6 +464,54 @@ const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
     }
   }
   return nullptr;
+}
+
+void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
+                                    const uint8_t* packet,
+                                    size_t len) {
+  const ip6_hdr* ip6 = reinterpret_cast<const ip6_hdr*>(packet);
+  const icmp6_hdr* icmp6 =
+      reinterpret_cast<const icmp6_hdr*>(packet + sizeof(ip6_hdr));
+
+  // Notify DeviceManager on receiving NA or NS from guest, so a /128 route to
+  // the guest can be added on the host.
+  if (IsGuestInterface(recv_ifindex) && !guest_discovery_handler_.is_null()) {
+    const in6_addr* guest_address = nullptr;
+    if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
+      const nd_neighbor_advert* na =
+          reinterpret_cast<const nd_neighbor_advert*>(icmp6);
+      guest_address = &(na->nd_na_target);
+    } else if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT) {
+      guest_address = &(ip6->ip6_src);
+    }
+    if (guest_address &&
+        ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
+         (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
+      guest_discovery_handler_.Run(recv_ifindex, *guest_address);
+    }
+  }
+
+  // On receiving RA from router, generate an address for each guest-facing
+  // interface, and sent it to DeviceManager so it can be assigned. This address
+  // will be used when directly communicating with guest OS through IPv6.
+  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
+      IsRouterInterface(recv_ifindex) && !router_discovery_handler_.is_null()) {
+    const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
+        reinterpret_cast<const uint8_t*>(icmp6), len - sizeof(ip6_hdr));
+    if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
+      // Generate an EUI-64 address from virtual interface MAC. A prefix
+      // larger that /64 is required.
+      for (int target_if : if_map_ra_[recv_ifindex]) {
+        MacAddress local_mac;
+        if (!GetLocalMac(target_if, &local_mac))
+          continue;
+        in6_addr eui64_ip;
+        GenerateEUI64Address(&eui64_ip, prefix_info->nd_opt_pi_prefix,
+                             local_mac);
+        router_discovery_handler_.Run(target_if, eui64_ip);
+      }
+    }
+  }
 }
 
 void NDProxy::ResolveDestinationMac(const in6_addr& dest_ipv6,
@@ -688,13 +691,12 @@ bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
 }
 
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(
-    base::RepeatingCallback<void(const std::string&, const std::string&)>
-        handler) {
+    base::RepeatingCallback<void(int, const in6_addr&)> handler) {
   guest_discovery_handler_ = std::move(handler);
 }
 
 void NDProxy::RegisterOnRouterDiscoveryHandler(
-    base::RepeatingCallback<void(int, const std::string&)> handler) {
+    base::RepeatingCallback<void(int, const in6_addr&)> handler) {
   router_discovery_handler_ = std::move(handler);
 }
 
@@ -876,21 +878,25 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
   }
 }
 
-void NDProxyDaemon::OnGuestIpDiscovery(const std::string& ifname,
-                                       const std::string& ip6addr) {
-  SendMessage(NDProxyMessage::ADD_ROUTE, ifname, ip6addr);
+void NDProxyDaemon::OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
+  std::string ifname = IfIndextoname(if_id);
+  std::string ipv6_addr_str = patchpanel::IPv6AddressToString(ip6addr);
+
+  SendMessage(NDProxyMessage::ADD_ROUTE, ifname, ipv6_addr_str);
 }
 
-void NDProxyDaemon::OnRouterDiscovery(int if_id, const std::string& ip6addr) {
+void NDProxyDaemon::OnRouterDiscovery(int if_id, const in6_addr& ip6addr) {
   std::string ifname = IfIndextoname(if_id);
-  const std::string& current_addr = guest_if_addrs_[if_id];
-  if (current_addr == ip6addr)
+  std::string ipv6_addr_str = patchpanel::IPv6AddressToString(ip6addr);
+
+  std::string current_addr = guest_if_addrs_[if_id];
+  if (current_addr == ipv6_addr_str)
     return;
   if (!current_addr.empty()) {
     SendMessage(NDProxyMessage::DEL_ADDR, ifname, current_addr);
   }
-  SendMessage(NDProxyMessage::ADD_ADDR, ifname, ip6addr);
-  guest_if_addrs_[if_id] = ip6addr;
+  SendMessage(NDProxyMessage::ADD_ADDR, ifname, ipv6_addr_str);
+  guest_if_addrs_[if_id] = ipv6_addr_str;
 }
 
 void NDProxyDaemon::SendMessage(NDProxyMessage::NDProxyEventType type,

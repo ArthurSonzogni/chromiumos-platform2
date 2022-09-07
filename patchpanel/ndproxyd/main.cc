@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <unistd.h>
-#include <net/if.h>
 
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -20,10 +19,14 @@ void OnSocketReadReady(patchpanel::NDProxy* proxy, int fd) {
   proxy->ReadAndProcessOnePacket(fd);
 }
 
-void OnGuestIpDiscovery(const std::string& ifname, const std::string& ip6addr) {
+void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
+  std::string ifname = patchpanel::IfIndextoname(if_id);
+  std::string ip6_str = patchpanel::IPv6AddressToString(ip6addr);
+
   patchpanel::MinijailedProcessRunner runner;
-  if (runner.ip6("route", "replace", {ip6addr + "/128", "dev", ifname}) != 0)
+  if (runner.ip6("route", "replace", {ip6_str + "/128", "dev", ifname}) != 0) {
     LOG(WARNING) << "Failed to setup the IPv6 route for interface " << ifname;
+  }
 }
 
 // Stand-alone daemon to proxy ND frames between a pair of interfaces
