@@ -415,6 +415,7 @@ class AuthSession final {
   // DeriveKeyBlobs call by binding all of the initial parameters to make an
   // AuthBlock::DeriveCallback.
   void LoadUSSMainKeyAndFsKeyset(const std::string& auth_factor_label,
+                                 const AuthInput& auth_input,
                                  std::unique_ptr<AuthSessionPerformanceTimer>
                                      auth_session_performance_timer,
                                  StatusCallback on_done,

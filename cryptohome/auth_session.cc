@@ -2043,7 +2043,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
   // Derive the keyset and then use USS to complete the authentication.
   auto derive_callback = base::BindOnce(
       &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
-      auth_factor_label, std::move(auth_session_performance_timer),
+      auth_factor_label, auth_input, std::move(auth_session_performance_timer),
       std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_factor.auth_block_state(),
@@ -2052,6 +2052,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
     const std::string& auth_factor_label,
+    const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptoStatus callback_error,
@@ -2134,6 +2135,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Flip the status on the successful authentication.
   SetAuthSessionAsAuthenticated(kAllAuthIntents);
+
+  // Set the credential verifier for this credential.
+  if (auth_input.user_input.has_value()) {
+    SetCredentialVerifier(auth_input.user_input.value());
+  }
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());

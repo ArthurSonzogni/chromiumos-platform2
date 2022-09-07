@@ -2276,6 +2276,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test that an existing user with an existing password auth factor can be
@@ -2367,6 +2369,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
   EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
             std::nullopt);
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // Test then failure path with an existing user with an existing password auth
