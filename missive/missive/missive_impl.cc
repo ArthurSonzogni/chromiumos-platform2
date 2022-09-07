@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 
 #include "missive/analytics/resource_collector_cpu.h"
@@ -223,8 +224,11 @@ void MissiveImpl::ConfirmRecordUpload(
     return;
   }
 
-  storage_module_->ReportSuccess(in_request.sequence_information(),
-                                 in_request.force_confirm());
+  // Use StorageModuleInterface as StorageModule, because it was created by
+  // StorageModule::Create.
+  static_cast<StorageModule*>(storage_module_.get())
+      ->ReportSuccess(in_request.sequence_information(),
+                      in_request.force_confirm());
   out_response->Return(response_body);
 }
 
@@ -242,7 +246,10 @@ void MissiveImpl::UpdateEncryptionKey(
     return;
   }
 
-  storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
+  // Use StorageModuleInterface as StorageModule, because it was created by
+  // StorageModule::Create.
+  static_cast<StorageModule*>(storage_module_.get())
+      ->UpdateEncryptionKey(in_request.signed_encryption_info());
   out_response->Return(response_body);
 }
 

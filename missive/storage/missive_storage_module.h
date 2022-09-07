@@ -38,13 +38,8 @@ class MissiveStorageModule : public StorageModuleInterface {
 
     virtual void AddRecord(const Priority priority,
                            Record record,
-                           base::OnceCallback<void(Status)> callback) = 0;
-    virtual void Flush(Priority priority,
-                       base::OnceCallback<void(Status)> callback) = 0;
-    virtual void ReportSuccess(const SequenceInformation& sequence_information,
-                               bool force) = 0;
-    virtual void UpdateEncryptionKey(
-        const SignedEncryptionInfo& signed_encryption_key) = 0;
+                           EnqueueCallback callback) = 0;
+    virtual void Flush(Priority priority, FlushCallback callback) = 0;
   };
 
   // Factory method creates |MissiveStorageModule| object.
@@ -57,26 +52,13 @@ class MissiveStorageModule : public StorageModuleInterface {
   // Calls |missive_delegate_->AddRecord| forwarding the arguments.
   void AddRecord(Priority priority,
                  Record record,
-                 base::OnceCallback<void(Status)> callback) override;
+                 EnqueueCallback callback) override;
 
   // Calls |missive_delegate_->Flush| to initiate upload of collected records
   // according to the priority. Called usually for a queue with an infinite or
   // very large upload period. Multiple |Flush| calls can safely run in
   // parallel. Returns error if cannot start upload.
-  void Flush(Priority priority,
-             base::OnceCallback<void(Status)> callback) override;
-
-  // Once a record has been successfully uploaded, the sequence information
-  // can be passed back to the StorageModule here for record deletion.
-  // If |force| is false (which is used in most cases), |sequence_information|
-  // only affects Storage if no higher sequencing was confirmed before;
-  // otherwise it is accepted unconditionally.
-  void ReportSuccess(SequenceInformation sequence_information,
-                     bool force) override;
-
-  // If the server attached signed encryption key to the response, it needs to
-  // be paased here.
-  void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) override;
+  void Flush(Priority priority, FlushCallback callback) override;
 
  protected:
   // Constructor can only be called by |Create| factory method.
@@ -91,7 +73,6 @@ class MissiveStorageModule : public StorageModuleInterface {
 
   std::unique_ptr<MissiveStorageModuleDelegateInterface> delegate_;
 };
-
 }  // namespace reporting
 
 #endif  // MISSIVE_STORAGE_MISSIVE_STORAGE_MODULE_H_

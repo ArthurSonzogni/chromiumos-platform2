@@ -38,26 +38,13 @@ scoped_refptr<MissiveStorageModule> MissiveStorageModule::Create(
   return base::WrapRefCounted(new MissiveStorageModule(std::move(delegate)));
 }
 
-void MissiveStorageModule::AddRecord(
-    Priority priority,
-    Record record,
-    base::OnceCallback<void(Status)> callback) {
+void MissiveStorageModule::AddRecord(Priority priority,
+                                     Record record,
+                                     EnqueueCallback callback) {
   delegate_->AddRecord(priority, std::move(record), std::move(callback));
 }
 
-void MissiveStorageModule::Flush(Priority priority,
-                                 base::OnceCallback<void(Status)> callback) {
+void MissiveStorageModule::Flush(Priority priority, FlushCallback callback) {
   delegate_->Flush(priority, std::move(callback));
 }
-
-void MissiveStorageModule::ReportSuccess(
-    SequenceInformation sequence_information, bool force) {
-  delegate_->ReportSuccess(sequence_information, force);
-}
-
-void MissiveStorageModule::UpdateEncryptionKey(
-    SignedEncryptionInfo signed_encryption_info) {
-  delegate_->UpdateEncryptionKey(signed_encryption_info);
-}
-
 }  // namespace reporting

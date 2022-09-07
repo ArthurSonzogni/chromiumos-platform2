@@ -12,7 +12,7 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/storage_module_interface.h"
+#include "missive/storage/storage_module.h"
 
 using ::testing::Invoke;
 using ::testing::WithArg;
