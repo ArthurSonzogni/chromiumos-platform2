@@ -1440,6 +1440,11 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
+  // Create the credential verifier if applicable.
+  if (auth_input.user_input.has_value()) {
+    SetCredentialVerifier(auth_input.user_input.value());
+  }
+
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
             << " in USS.";
   label_to_auth_factor_[auth_factor->label()] = std::move(auth_factor);

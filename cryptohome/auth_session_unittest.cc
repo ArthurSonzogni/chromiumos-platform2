@@ -3069,7 +3069,11 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(new_auth_session.authorized_intents(), IsEmpty());
 
-  // Calling AuthenticateAuthFactor.
+  // Verify.
+  // The credential verifier uses the new password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(new_pass));
+  // AuthenticateAuthFactor should succeed using the new password.
   error = AuthenticatePasswordAuthFactor(new_pass, new_auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_EQ(new_auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -3122,6 +3126,9 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
   ASSERT_THAT(update_future.Get(), NotOk());
   EXPECT_EQ(update_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  // The verifier still uses the original password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
@@ -3165,6 +3172,9 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
   ASSERT_THAT(update_future.Get(), NotOk());
   EXPECT_EQ(update_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  // The verifier still uses the original password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 TEST_F(AuthSessionWithUssExperimentTest,
@@ -3210,6 +3220,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_THAT(update_future.Get(), NotOk());
   EXPECT_EQ(update_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  // The verifier still uses the original password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 }  // namespace cryptohome
