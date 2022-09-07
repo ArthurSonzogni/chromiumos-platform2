@@ -442,7 +442,7 @@ Sample output:
 Progress: 100
 Output: {
    "resultDetails": {
-      "bytesTested": 104857600,
+      "bytesTested": "104857600",
       "memtesterVersion": "4.2.2 (64-bit)",
       "subtests": {
          "bitFlip": "ok",

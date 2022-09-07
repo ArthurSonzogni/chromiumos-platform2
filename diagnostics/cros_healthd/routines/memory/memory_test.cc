@@ -61,7 +61,7 @@ std::string ConstructOutput() {
 
   base::Value result_dict(base::Value::Type::DICTIONARY);
   result_dict.SetKey("subtests", std::move(subtest_dict));
-  result_dict.SetIntKey("bytesTested", 104857600);
+  result_dict.SetStringKey("bytesTested", "104857600");
   result_dict.SetStringKey("memtesterVersion", "4.2.2 (64-bit)");
 
   base::Value output_dict(base::Value::Type::DICTIONARY);
