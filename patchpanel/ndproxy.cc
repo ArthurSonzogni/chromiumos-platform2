@@ -396,10 +396,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
     // b/187918638: Overwrite source IP address with host address to workaround
     // irregular router address on Fibocom L850 cell modem, as described above.
-    // b/228574659: Overwrite destination IP address with all nodes multicast
-    // address as well on L850.
     const in6_addr* new_src_ip_p = nullptr;
-    const in6_addr* new_dst_ip_p = nullptr;
     in6_addr new_src_ip;
     if (irregular_router_ifs_.find(recv_ll_addr.sll_ifindex) !=
         irregular_router_ifs_.end()) {
@@ -410,9 +407,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         continue;
       }
       new_src_ip_p = &new_src_ip;
-      if (icmp6->icmp6_type == ND_ROUTER_ADVERT) {
-        new_dst_ip_p = &kAllNodesMulticastAddress;
-      }
+    }
+
+    // Always proxy RA to multicast address, so that every guest will accept it
+    // therefore saving the total amount of RSs we sent to the network.
+    // b/228574659: On L850 only this is a must instead of an optimization.
+    const in6_addr* new_dst_ip_p = nullptr;
+    if (icmp6->icmp6_type == ND_ROUTER_ADVERT) {
+      new_dst_ip_p = &kAllNodesMulticastAddress;
     }
 
     ssize_t result = TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p,
