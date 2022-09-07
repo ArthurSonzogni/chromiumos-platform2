@@ -295,14 +295,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   uint8_t* in_packet = reinterpret_cast<uint8_t*>(in_packet_buffer_);
   uint8_t* out_packet = reinterpret_cast<uint8_t*>(out_packet_buffer_);
 
-  sockaddr_ll dst_addr;
+  sockaddr_ll recv_ll_addr;
   struct iovec iov_in = {
       .iov_base = in_packet,
       .iov_len = IP_MAXPACKET,
   };
   msghdr hdr = {
-      .msg_name = &dst_addr,
-      .msg_namelen = sizeof(dst_addr),
+      .msg_name = &recv_ll_addr,
+      .msg_namelen = sizeof(recv_ll_addr),
       .msg_iov = &iov_in,
       .msg_iovlen = 1,
       .msg_control = nullptr,
@@ -329,16 +329,16 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
   VLOG_IF(2, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
               icmp6->icmp6_type == ND_ROUTER_ADVERT))
-      << "Received on interface " << dst_addr.sll_ifindex << ": "
+      << "Received on interface " << recv_ll_addr.sll_ifindex << ": "
       << Icmp6ToString(in_packet, len);
   VLOG_IF(6, (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT ||
               icmp6->icmp6_type == ND_NEIGHBOR_ADVERT))
-      << "Received on interface " << dst_addr.sll_ifindex << ": "
+      << "Received on interface " << recv_ll_addr.sll_ifindex << ": "
       << Icmp6ToString(in_packet, len);
 
   // Notify DeviceManager on receiving NA or NS from guest, so a /128 route to
   // the guest can be added on the host.
-  if (IsGuestInterface(dst_addr.sll_ifindex) &&
+  if (IsGuestInterface(recv_ll_addr.sll_ifindex) &&
       !guest_discovery_handler_.is_null()) {
     in6_addr* guest_address = nullptr;
     if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
@@ -350,7 +350,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     if (guest_address &&
         ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
          (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
-      std::string ifname = IfIndextoname(dst_addr.sll_ifindex);
+      std::string ifname = IfIndextoname(recv_ll_addr.sll_ifindex);
       std::string ipv6_addr_str = IPv6AddressToString(*guest_address);
       guest_discovery_handler_.Run(ifname, ipv6_addr_str);
     }
@@ -360,14 +360,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   // interface, and sent it to DeviceManager so it can be assigned. This address
   // will be used when directly communicating with guest OS through IPv6.
   if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      IsRouterInterface(dst_addr.sll_ifindex) &&
+      IsRouterInterface(recv_ll_addr.sll_ifindex) &&
       !router_discovery_handler_.is_null()) {
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
         reinterpret_cast<uint8_t*>(icmp6), len - sizeof(ip6_hdr));
     if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
       // Generate an EUI-64 address from virtual interface MAC. A prefix
       // larger that /64 is required.
-      for (int target_if : if_map_ra_[dst_addr.sll_ifindex]) {
+      for (int target_if : if_map_ra_[recv_ll_addr.sll_ifindex]) {
         MacAddress local_mac;
         if (!GetLocalMac(target_if, &local_mac)) {
           continue;
@@ -383,7 +383,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   }
 
   // Translate the NDP frame and send it through proxy interface
-  auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
+  auto map_entry =
+      MapForType(icmp6->icmp6_type)->find(recv_ll_addr.sll_ifindex);
   if (map_entry == MapForType(icmp6->icmp6_type)->end())
     return;
 
@@ -400,7 +401,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     const in6_addr* new_src_ip_p = nullptr;
     const in6_addr* new_dst_ip_p = nullptr;
     in6_addr new_src_ip;
-    if (irregular_router_ifs_.find(dst_addr.sll_ifindex) !=
+    if (irregular_router_ifs_.find(recv_ll_addr.sll_ifindex) !=
         irregular_router_ifs_.end()) {
       if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
         LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
@@ -441,7 +442,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       }
     }
 
-    sockaddr_ll new_dst_addr = {
+    sockaddr_ll send_ll_addr = {
         .sll_family = AF_PACKET,
         .sll_protocol = htons(ETH_P_IPV6),
         .sll_ifindex = target_if,
@@ -449,13 +450,13 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     };
 
     ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
-    ResolveDestinationMac(new_ip6->ip6_dst, new_dst_addr.sll_addr);
-    VLOG_IF(1, memcmp(new_dst_addr.sll_addr, &kAllNodesMulticastMacAddress,
+    ResolveDestinationMac(new_ip6->ip6_dst, send_ll_addr.sll_addr);
+    VLOG_IF(1, memcmp(send_ll_addr.sll_addr, &kAllNodesMulticastMacAddress,
                       ETHER_ADDR_LEN) == 0)
         << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
         << " packet dest IP " << IPv6AddressToString(new_ip6->ip6_dst)
         << " into MAC address, using all-nodes multicast MAC instead. In: "
-        << dst_addr.sll_ifindex << ", out: " << target_if;
+        << recv_ll_addr.sll_ifindex << ", out: " << target_if;
 
     VLOG_IF(3, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
                 icmp6->icmp6_type == ND_ROUTER_ADVERT))
@@ -471,8 +472,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         .iov_len = static_cast<size_t>(len),
     };
     msghdr hdr = {
-        .msg_name = &new_dst_addr,
-        .msg_namelen = sizeof(new_dst_addr),
+        .msg_name = &send_ll_addr,
+        .msg_namelen = sizeof(send_ll_addr),
         .msg_iov = &iov_out,
         .msg_iovlen = 1,
         .msg_control = nullptr,
