@@ -1793,6 +1793,11 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     return;
   }
 
+  // Create the credential verifier if applicable.
+  if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
+    SetCredentialVerifier(auth_input.user_input.value());
+  }
+
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
             << " into USS.";
   label_to_auth_factor_.emplace(auth_factor->label(), std::move(auth_factor));

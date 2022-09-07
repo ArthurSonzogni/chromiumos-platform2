@@ -1915,6 +1915,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
 
   // Verify
   EXPECT_THAT(add_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
@@ -1977,7 +1979,10 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
   TestFuture<CryptohomeStatus> add_future;
   auth_session.AddAuthFactor(request, add_future.GetCallback());
 
+  // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 
   std::map<std::string, AuthFactorType> stored_factors =
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
@@ -2175,6 +2180,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 
   // Ensure that a reset secret for the PIN was added.
   const auto reset_secret =
@@ -2900,10 +2907,14 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   TestFuture<CryptohomeStatus> authenticate_future;
   auth_session.AuthenticateAuthFactor(auth_request,
                                       authenticate_future.GetCallback());
+
   // Verify.
   ASSERT_THAT(authenticate_future.Get(), NotOk());
   EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  // The verifier still uses the password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 // The test adds, removes and adds the same auth factor again.
@@ -2946,6 +2957,9 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   // Add the same pin auth factor again.
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  // The verifier still uses the original password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
@@ -2980,9 +2994,13 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   TestFuture<CryptohomeStatus> remove_future;
   auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
 
+  // Verify.
   ASSERT_THAT(remove_future.Get(), NotOk());
   EXPECT_EQ(remove_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
+  // The verifier is still set after the removal failed.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
 }
 
 TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
