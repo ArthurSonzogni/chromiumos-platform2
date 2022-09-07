@@ -19,7 +19,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
-#include <cryptohome/scrypt_verifier.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
@@ -28,9 +27,11 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/credential_verifier_factory.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -1592,8 +1593,7 @@ std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
 }
 
 void AuthSession::SetCredentialVerifier(const brillo::SecureBlob& passkey) {
-  credential_verifier_.reset(new ScryptVerifier());
-  credential_verifier_->Set(passkey);
+  credential_verifier_ = CreateCredentialVerifier(passkey);
 }
 
 // static

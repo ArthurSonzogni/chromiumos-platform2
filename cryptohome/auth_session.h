@@ -24,6 +24,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
