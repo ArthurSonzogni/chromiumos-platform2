@@ -55,6 +55,10 @@ constexpr char kAndroidGidMap[] =
 constexpr char kFontsSharedDir[] = "/usr/share/fonts";
 constexpr char kFontsSharedDirTag[] = "fonts";
 
+// The maximum of CPU capacity is defined in include/linux/sched.h as
+// SCHED_CAPACITY_SCALE. That is "1 << 10".
+constexpr int kMaxCapacity = 1024;
+
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
   return result;
@@ -558,6 +562,7 @@ void ArcVmCPUTopology::CreateAffinity(void) {
 
   // Create capacity mask.
   int min_cap = -1;
+  int max_cap = -1;
   int last_non_rt_cpu = -1;
   for (const auto& cap : capacity_) {
     for (const auto cpu : cap.second) {
@@ -568,6 +573,7 @@ void ArcVmCPUTopology::CreateAffinity(void) {
         min_cap = cap.first;
         last_non_rt_cpu = cpu;
       }
+      max_cap = std::max(max_cap, static_cast<int>(cap.first));
     }
   }
   // Add RT VCPUs with a lowest capacity.
@@ -577,6 +583,22 @@ void ArcVmCPUTopology::CreateAffinity(void) {
     }
     capacity_mask_ = base::JoinString(cpu_list, ",");
     cpu_list.clear();
+  }
+  // If there are heterogeneous cores, calculate uclamp.min value.
+  if (min_cap != max_cap) {
+    // Calculate a better uclamp.min for Android top-app tasks so that
+    // those tasks will NOT be scheduled on the LITTLE cores.
+    // If ARCVM kernel boots with different capacity CPUs, it enables Capacity
+    // Aware Scheduler (CAS) which schedules the tasks to a CPU comparing with
+    // its capacity and the task's expected CPU utilization.
+    // Since the uclamp.min boosts up the minimum expected utilization to the
+    // given percentage of maximum capacity, if that is bigger than the LITTLE
+    // core capacity, CAS will schedule it on big core.
+    // Thus its value must be *slightly* bigger than LITTLE core capacity.
+    // Because of this reason, this adds 5% more than the LITTLE core capacity
+    // rate. Note that the uclamp value must be a percentage of the maximum
+    // capacity (~= utilization).
+    top_app_uclamp_min_ = std::min(min_cap * 100 / kMaxCapacity + 5, 100);
   }
 
   for (const auto& pkg : package_) {
@@ -739,6 +761,10 @@ const std::string& ArcVmCPUTopology::CapacityMask() {
 
 const std::vector<std::string>& ArcVmCPUTopology::PackageMask() {
   return package_mask_;
+}
+
+int ArcVmCPUTopology::TopAppUclampMin() {
+  return top_app_uclamp_min_;
 }
 
 ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {

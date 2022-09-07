@@ -470,6 +470,11 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
   if (!topology.IsSymmetricCPU() && !topology.CapacityMask().empty()) {
     vm_builder.AppendCustomParam("--cpu-capacity", topology.CapacityMask());
+    // Rise the uclamp_min value of the top-app in the ARCVM. This is a
+    // performance tuning for games on big.LITTLE platform and Capacity
+    // Aware Scheduler (CAS) on Linux.
+    vm_builder.AppendKernelParam(base::StringPrintf(
+        "androidboot.arc_top_app_uclamp_min=%d", topology.TopAppUclampMin()));
   }
 
   if (!topology.IsSymmetricCPU() && !topology.PackageMask().empty()) {
