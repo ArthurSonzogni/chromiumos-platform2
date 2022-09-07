@@ -1354,6 +1354,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .SetAPSecurityMode(info.security)
       .SetAPSecurityEAPInnerProtocol(info.eap_inner)
       .SetAPSecurityEAPOuterProtocol(info.eap_outer)
+      .SetAPBand(info.band)
       .SetAPChannel(info.channel)
       .SetRSSI(info.rssi)
       .SetSSID(info.ssid)
