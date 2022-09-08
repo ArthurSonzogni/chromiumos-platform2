@@ -44,29 +44,3 @@ cmd_systrace() (
     ;;
   esac
 )
-
-# shellcheck disable=SC2034
-USAGE_live_in_a_coal_mine=''
-# shellcheck disable=SC2034
-HELP_live_in_a_coal_mine='
-  Switch to the canary channel.
-
-  WARNING: This is bleeding edge software and is often more buggy than the dev
-  channel.  Please do not use this unless you are a developer.  This is often
-  updated daily and has only passed automated tests -- the QA level is low!
-
-  This channel may not always boot reliably or have a functioning auto update
-  mechanism. Do not do this unless you are prepared to recover your ChromeOS
-  device, please be familiar with this article first:
-  https://support.google.com/chromebook/answer/1080595
-'
-cmd_live_in_a_coal_mine() (
-  shell_read "Are you sure you want to change to the canary channel? [y/N] "
-  case "${REPLY}" in
-  [yY])
-    /usr/bin/update_engine_client -channel=canary-channel
-    /usr/bin/update_engine_client --show_channel
-    ;;
-  *) echo "Fly, my pretties, fly! (not changing channels)";;
-  esac
-)

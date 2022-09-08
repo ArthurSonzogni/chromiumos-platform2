@@ -10,7 +10,10 @@ use std::env;
 use std::error;
 use std::fmt::{self, Display};
 use std::fs::read_to_string;
+use std::io::stdin;
+use std::io::stdout;
 use std::io::Read;
+use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -24,6 +27,8 @@ use sys_util::{clear_signal_handler, error, register_signal_handler};
 
 // 25 seconds is the default timeout for dbus-send.
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
+// Path to update_engine_client.
+pub const UPDATE_ENGINE: &str = "/usr/bin/update_engine_client";
 
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
@@ -200,6 +205,16 @@ fn root_dev() -> Result<String> {
     child.wait()?;
 
     Ok(result.trim().to_string())
+}
+
+/// Print 'msg' followed by a [y/N] prompt and test the user input. Return true for 'y' or 'Y'.
+pub fn prompt_for_yes(msg: &str) -> bool {
+    print!("{} [y/N] ", msg);
+    stdout().flush().ok();
+
+    let mut response = String::new();
+    stdin().read_line(&mut response).ok();
+    matches!(response.as_str(), "y\n" | "Y\n")
 }
 
 #[cfg(test)]

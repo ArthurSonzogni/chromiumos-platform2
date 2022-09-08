@@ -36,7 +36,6 @@ const BASE_COMMANDS: &[&str] = &[
     "p2p_update",
     "ping",
     "rlz",
-    "rollback",
     "route",
     "set_apn",
     "set_arpgw",
@@ -61,7 +60,7 @@ const BASE_COMMANDS: &[&str] = &[
     "wifi_power_save",
 ];
 
-const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "systrace"];
+const DEV_COMMANDS: &[&str] = &["systrace"];
 
 const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
 

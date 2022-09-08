@@ -5,10 +5,12 @@
 // The dev module handles registration of crosh commands only enabled when ChromeOS is in developer
 // mode.
 
+mod live_in_a_coal_mine;
 mod shell;
 
 use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
+    live_in_a_coal_mine::register(dispatcher);
     shell::register(dispatcher);
 }
