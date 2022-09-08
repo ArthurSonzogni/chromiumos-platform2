@@ -150,26 +150,24 @@ void Daemon::DoWXMountCountReporting() {
     }
 
     // Should we send an anomalous system report?
-    if (generate_reports_ && !has_reported_ && wx_mounts_.size() > 0) {
-      // Send one out of every |kSampleFrequency| reports, unless |dev_| is
-      // set. Once a report succeeds, stop reporting.
+    if (generate_reports_ && !has_attempted_report_ && wx_mounts_.size() > 0) {
+      // Stop subsequent reporting attempts for this execution.
+      has_attempted_report_ = true;
+      // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
       // |base::RandInt()| returns a random int in [min, max].
       int range = dev_ ? 1 : kSampleFrequency;
       if (base::RandInt(1, range) > 1) {
         return;
       }
 
-      if (ReportAnomalousSystem(wx_mounts_, range, dev_)) {
-        // Record a successful upload. secanomalyd will stop reporting for this
-        // execution.
-        has_reported_ = true;
-      } else {
+      bool success = ReportAnomalousSystem(wx_mounts_, range, dev_);
+      if (!success) {
         // Reporting is best-effort so on failure we just print a warning.
         LOG(WARNING) << "Failed to report anomalous system";
       }
 
       // Report whether uploading the anomalous system report succeeded.
-      if (!SendAnomalyUploadResultToUMA(has_reported_)) {
+      if (!SendAnomalyUploadResultToUMA(success)) {
         LOG(WARNING) << "Could not upload metrics";
       }
     }

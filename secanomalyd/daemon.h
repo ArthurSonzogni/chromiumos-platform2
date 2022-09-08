@@ -35,7 +35,7 @@ class Daemon : public brillo::DBusDaemon {
   bool generate_reports_ = false;
   bool dev_ = false;
 
-  bool has_reported_ = false;
+  bool has_attempted_report_ = false;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 

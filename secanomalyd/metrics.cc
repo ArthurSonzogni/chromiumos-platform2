@@ -30,7 +30,7 @@ constexpr int kWXMountCountHistogramNumBuckets = 20;
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
 
-MetricsLibraryInterface* metrics_library = NULL;
+MetricsLibraryInterface* metrics_library = nullptr;
 
 void InitializeMetricsIfNecessary() {
   if (!metrics_library) {
