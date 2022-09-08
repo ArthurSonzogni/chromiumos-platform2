@@ -520,6 +520,7 @@ TEST(SaneOptionStringTest, CopiesDoNotAlias) {
 TEST(ValidOptionValues, InvalidDescriptorWordList) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_STRING_LIST;
+  desc.type = SANE_TYPE_INT;
   std::vector<SANE_String_Const> valid_values = {nullptr};
   desc.constraint.string_list = valid_values.data();
 
@@ -531,6 +532,7 @@ TEST(ValidOptionValues, InvalidDescriptorWordList) {
 TEST(ValidOptionValues, EmptyWordList) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_WORD_LIST;
+  desc.type = SANE_TYPE_INT;
   std::vector<SANE_Word> valid_values = {0};
   desc.constraint.word_list = valid_values.data();
 
@@ -540,9 +542,25 @@ TEST(ValidOptionValues, EmptyWordList) {
   EXPECT_EQ(values.value().size(), 0);
 }
 
-TEST(ValidOptionValues, NonEmptyWordList) {
+TEST(ValidOptionValues, NonEmptyWordListFixed) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_WORD_LIST;
+  desc.type = SANE_TYPE_FIXED;
+  std::vector<SANE_Word> valid_values = {4, SANE_FIX(0), SANE_FIX(729.0),
+                                         SANE_FIX(3682.34), SANE_FIX(15)};
+  desc.constraint.word_list = valid_values.data();
+
+  std::optional<std::vector<uint32_t>> values =
+      SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
+  EXPECT_TRUE(values.has_value());
+  EXPECT_EQ(values.value().size(), 4);
+  EXPECT_EQ(values.value(), std::vector<uint32_t>({0, 729, 3682, 15}));
+}
+
+TEST(ValidOptionValues, NonEmptyWordListInt) {
+  SANE_Option_Descriptor desc;
+  desc.constraint_type = SANE_CONSTRAINT_WORD_LIST;
+  desc.type = SANE_TYPE_INT;
   std::vector<SANE_Word> valid_values = {4, 0, 729, 368234, 15};
   desc.constraint.word_list = valid_values.data();
 
@@ -556,6 +574,7 @@ TEST(ValidOptionValues, NonEmptyWordList) {
 TEST(ValidOptionValues, InvalidDescriptorRangeList) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_INT;
   SANE_Range range;
   desc.constraint.range = &range;
 
@@ -567,6 +586,7 @@ TEST(ValidOptionValues, InvalidDescriptorRangeList) {
 TEST(ValidOptionValues, EmptyRangeList) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_INT;
   SANE_Range range;
   range.min = 5;
   range.max = 4;
@@ -579,9 +599,26 @@ TEST(ValidOptionValues, EmptyRangeList) {
   EXPECT_EQ(values.value().size(), 0);
 }
 
-TEST(ValidOptionValues, SingleStepRangeList) {
+TEST(ValidOptionValues, SingleStepRangeListFixed) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_FIXED;
+  SANE_Range range;
+  range.min = SANE_FIX(5);
+  range.max = SANE_FIX(11);
+  range.quant = SANE_FIX(1.2);
+  desc.constraint.range = &range;
+
+  std::optional<std::vector<uint32_t>> values =
+      SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
+  EXPECT_TRUE(values.has_value());
+  EXPECT_EQ(values.value(), std::vector<uint32_t>({5, 6, 7, 8, 9, 10}));
+}
+
+TEST(ValidOptionValues, SingleStepRangeListInt) {
+  SANE_Option_Descriptor desc;
+  desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_INT;
   SANE_Range range;
   range.min = 5;
   range.max = 11;
@@ -594,9 +631,26 @@ TEST(ValidOptionValues, SingleStepRangeList) {
   EXPECT_EQ(values.value(), std::vector<uint32_t>({5, 6, 7, 8, 9, 10, 11}));
 }
 
-TEST(ValidOptionValues, FourStepRangeList) {
+TEST(ValidOptionValues, FourStepRangeListFixed) {
   SANE_Option_Descriptor desc;
   desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_FIXED;
+  SANE_Range range;
+  range.min = SANE_FIX(13);
+  range.max = SANE_FIX(28);
+  range.quant = SANE_FIX(4);
+  desc.constraint.range = &range;
+
+  std::optional<std::vector<uint32_t>> values =
+      SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
+  EXPECT_TRUE(values.has_value());
+  EXPECT_EQ(values.value(), std::vector<uint32_t>({13, 17, 21, 25}));
+}
+
+TEST(ValidOptionValues, FourStepRangeListInt) {
+  SANE_Option_Descriptor desc;
+  desc.constraint_type = SANE_CONSTRAINT_RANGE;
+  desc.type = SANE_TYPE_INT;
   SANE_Range range;
   range.min = 13;
   range.max = 28;
