@@ -469,10 +469,13 @@ void ZslHelper::AttachRequest(Camera3CaptureDescriptor* request) {
     return;
   }
   // Attach our ZSL output buffer.
-  camera3_stream_buffer_t stream_buffer;
-  stream_buffer.buffer = buffer;
-  stream_buffer.stream = bi_stream_.get();
-  stream_buffer.acquire_fence = stream_buffer.release_fence = -1;
+  camera3_stream_buffer_t stream_buffer = {
+      .stream = bi_stream_.get(),
+      .buffer = buffer,
+      .status = CAMERA3_BUFFER_STATUS_OK,
+      .acquire_fence = -1,
+      .release_fence = -1,
+  };
 
   ZslBuffer zsl_buffer(request->frame_number(), stream_buffer);
   zsl_buffer.AttachToRequest(request);
