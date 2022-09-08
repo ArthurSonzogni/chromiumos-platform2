@@ -16,6 +16,8 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/system/invitation.h>
 
+#include "faced/face_auth_service_impl.h"
+
 namespace faced {
 
 // Interface to aid in testing the FaceAuthService
@@ -85,6 +87,8 @@ class FaceAuthService : public FaceAuthServiceInterface {
   base::Thread ipc_thread_;
 
   scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
+
+  std::unique_ptr<FaceAuthServiceImpl> service_;
 };
 
 }  // namespace faced

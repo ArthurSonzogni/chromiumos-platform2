@@ -4,6 +4,7 @@
 
 #include "faced/face_auth_service.h"
 
+#include <memory>
 #include <utility>
 
 #include <absl/status/status.h>
@@ -11,6 +12,8 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/public/cpp/system/invitation.h>
+
+#include "faced/mojom/face_auth.mojom.h"
 
 namespace faced {
 
@@ -63,7 +66,12 @@ void FaceAuthService::SetupMojoPipeOnThread(
     scoped_refptr<base::TaskRunner> callback_runner) {
   DCHECK(mojo_task_runner_->BelongsToCurrentThread());
 
-  // TODO(bkersten): bind invitation to FaceAuthServiceImpl
+  service_ = std::make_unique<FaceAuthServiceImpl>(
+      mojo::PendingReceiver<
+          chromeos::face_auth::mojom::FaceAuthenticationService>(
+          invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken)),
+      base::BindOnce(&FaceAuthService::OnConnectionError,
+                     base::Unretained(this)));
 
   callback_runner->PostTask(FROM_HERE,
                             base::BindOnce(std::move(callback), false));

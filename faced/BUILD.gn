@@ -4,6 +4,7 @@
 
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -27,8 +28,14 @@ install_config("install_init_conf") {
   install_path = "/etc/init"
 }
 
+generate_mojom_bindings("face_auth_mojo_bindings") {
+  mojo_root = "${platform2_root}"
+  sources = [ "mojom/face_auth.mojom" ]
+}
+
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
+    "absl",
     "libbrillo",
     "libchrome",
     "libmojo",
@@ -51,9 +58,12 @@ source_set("libfaced") {
     "dbus_adaptor.cc",
     "face_auth_daemon.cc",
     "face_auth_service.cc",
+    "face_auth_service_impl.cc",
+    "session.cc",
   ]
   all_dependent_configs = [ ":target_defaults_pkg_deps" ]
   deps = [
+    ":face_auth_mojo_bindings",
     ":libfaced_dbus_adaptor",
     ":libfaced_dbus_proxy",
   ]
@@ -67,10 +77,17 @@ executable("faced") {
 
 if (use.test) {
   pkg_config("test_pkg_deps") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
   }
   executable("faced_test_runner") {
-    sources = [ "dbus_adaptor_test.cc" ]
+    sources = [
+      "dbus_adaptor_test.cc",
+      "face_auth_service_impl_test.cc",
+      "testrunner.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults_pkg_deps",

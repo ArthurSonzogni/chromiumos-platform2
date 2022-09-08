@@ -5,7 +5,6 @@
 #include <memory>
 #include <utility>
 
-#include <gmock/gmock-nice-strict.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -16,6 +15,7 @@
 #include <base/bind.h>
 #include <dbus/bus.h>
 #include <gmock/gmock.h>
+#include <gmock/gmock-nice-strict.h>
 #include <gtest/gtest.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -67,13 +67,7 @@ base::ScopedFD CreateFakeFd() {
 
 }  // namespace
 
-class DBusAdaptorTest : public testing::Test {
- private:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
-};
-
-TEST_F(DBusAdaptorTest, BootstrapMojoConnection) {
+TEST(DBusAdaptorTest, BootstrapMojoConnection) {
   StrictMock<MockFaceAuthService> mock_service;
   ON_CALL(mock_service, ReceiveMojoInvitation(_, _, _))
       .WillByDefault(
@@ -101,7 +95,7 @@ TEST_F(DBusAdaptorTest, BootstrapMojoConnection) {
   EXPECT_TRUE(called);
 }
 
-TEST_F(DBusAdaptorTest, BootstrapMojoConnectionFailure) {
+TEST(DBusAdaptorTest, BootstrapMojoConnectionFailure) {
   StrictMock<MockFaceAuthService> mock_service;
   ON_CALL(mock_service, ReceiveMojoInvitation(_, _, _))
       .WillByDefault(

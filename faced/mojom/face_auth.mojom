@@ -1,0 +1,96 @@
+// Copyright 2022 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module chromeos.face_auth.mojom;
+
+// The top-level interface exported by the Face Authentication Daemon to
+// provide face authentication services to the rest of the system.
+//
+// FaceAuthenticationService interface is to be used by Cryptohome.
+interface FaceAuthenticationService {
+
+  // Only a single client can hold an active session (either authentication or
+  // enrollment) at any time.
+
+  // Create and initialize an enrollment session.
+  //
+  // The remote |delegate| will be bound on success.
+  CreateEnrollmentSession(EnrollmentSessionConfig config,
+    pending_remote<FaceEnrollmentSessionDelegate> delegate)
+    => (CreateSessionResult result);
+
+  // Create and initialize an authentication session.
+  //
+  // The remote |delegate| will be bound on success.
+  CreateAuthenticationSession(AuthenticationSessionConfig config,
+    pending_remote<FaceAuthenticationSessionDelegate> delegate)
+    => (CreateSessionResult result);
+};
+
+// CreateSessionResult contains |session_info| on successful binding of the
+// remote interface and |error| when unable to create a session.
+union CreateSessionResult {
+  SessionInfo session_info;
+  SessionCreationError error;
+};
+
+struct SessionInfo {
+  // |session_id| is a randomly generated unique id.
+  // It can be used to identify a session across independent interfaces.
+  uint64 session_id;
+};
+
+// Errors indicating why a session could not be created.
+[Extensible]
+enum SessionCreationError {
+  UNKNOWN = 0,
+  ALREADY_EXISTS,  // An active session already exists.
+};
+
+// Configuration of enrollment session.
+struct EnrollmentSessionConfig {
+  // A hash identifying the user to be enrolled.
+  string user_id;
+
+  // An option to reduce the number of poses required to complete enrollment.
+  bool accessibility;
+};
+
+// Configuration of authentication session.
+struct AuthenticationSessionConfig {
+  // A hash identifying the user to be enrolled.
+  string user_id;
+};
+
+// Status of an enrollment/authentication session update or completion event.
+[Extensible]
+enum FaceOperationStatus {
+  OK = 0,
+  NO_FACE,
+};
+
+// Unrecoverable enrollment/authentication session errors.
+[Extensible]
+enum SessionError {
+  UNKNOWN = 0,
+  NO_ENROLLMENT,
+};
+
+// This interface is implemented by the enrollment client and called by the
+// remote session.
+//
+// The remote calls the delegate's handlers to notify of enrollment events.
+//
+// The delegate can cancel a session by disconnecting from the remote.
+interface FaceEnrollmentSessionDelegate {
+};
+
+// This interface is implemented by the authentication client and called by
+// the remote session.
+//
+// The remote calls the delegate's handlers to notify of authentication events.
+//
+// The delegate can cancel a session by disconnecting from the remote.
+interface FaceAuthenticationSessionDelegate {
+};
