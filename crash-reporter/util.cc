@@ -678,23 +678,23 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
     return std::nullopt;
   }
 
-  base::JSONReader::ValueWithError parsed_metadata =
+  auto parsed_metadata =
       base::JSONReader::ReadAndReturnValueWithError(raw_metadata);
 
-  if (!parsed_metadata.value) {
+  if (!parsed_metadata.has_value()) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
-               << " as JSON: " << parsed_metadata.error_message;
+               << " as JSON: " << parsed_metadata.error().message;
     return std::nullopt;
   }
 
-  if (!parsed_metadata.value->is_dict()) {
+  if (!parsed_metadata->is_dict()) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
                << ": expected outermost value to be a DICTIONARY but got a "
-               << base::Value::GetTypeName(parsed_metadata.value->type());
+               << base::Value::GetTypeName(parsed_metadata->type());
     return std::nullopt;
   }
 
-  const base::Value* content = parsed_metadata.value->FindKey("content");
+  const base::Value* content = parsed_metadata->FindKey("content");
   if (content == nullptr) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
                << ": could not find 'content' key";
