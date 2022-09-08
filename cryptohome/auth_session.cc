@@ -139,6 +139,35 @@ cryptorecovery::RequestMetadata RequestMetadataFromProto(
   return result;
 }
 
+// Utility function to force-remove a keyset file for |obfuscated_username|
+// identified by |label|.
+CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
+                                     const std::string obfuscated_username,
+                                     const std::string label) {
+  std::unique_ptr<VaultKeyset> remove_vk =
+      keyset_management.GetVaultKeyset(obfuscated_username, label);
+  if (!remove_vk.get()) {
+    LOG(WARNING) << "RemoveKeysetByLabel: key to remove not found.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionVKNotFoundInRemoveKeysetByLabel),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  }
+
+  CryptohomeStatus status = keyset_management.ForceRemoveKeyset(
+      obfuscated_username, remove_vk->GetLegacyIndex());
+  if (!status.ok()) {
+    LOG(ERROR) << "RemoveKeysetByLabel: failed to remove keyset file.";
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionRemoveFailedInRemoveKeysetByLabel),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+               user_data_auth::CryptohomeErrorCode::
+                   CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+        .Wrap(std::move(status));
+  }
+  return OkStatus<CryptohomeError>();
+}
 }  // namespace
 
 AuthSession::AuthSession(
@@ -1047,50 +1076,85 @@ void AuthSession::RemoveAuthFactor(
     return;
   }
 
-  if (user_secret_stash_) {
-    // TODO(b/236869367): Wrap the error when it is not a OKStatus.
-    std::move(on_done).Run(
-        RemoveAuthFactorViaUserSecretStash(request.auth_factor_label()));
+  auto auth_factor_label = request.auth_factor_label();
+  auto label_to_auth_factor_iter =
+      label_to_auth_factor_.find(auth_factor_label);
+  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+    LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
 
-  // TODO(b/236869367): Implement for VaultKeyset users.
-  std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(
-          kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-      CryptoError::CE_OTHER_CRYPTO,
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+  if (label_to_auth_factor_.size() == 1) {
+    LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+    return;
+  }
+
+  if (user_secret_stash_) {
+    CryptohomeStatus remove_status = RemoveAuthFactorViaUserSecretStash(
+        auth_factor_label, *label_to_auth_factor_iter->second /*AuthFactor*/);
+    if (!remove_status.ok()) {
+      LOG(ERROR) << "AuthSession: Failed to remove auth factor.";
+      std::move(on_done).Run(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionRemoveAuthFactorViaUserSecretStashFailed),
+              user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
+              .Wrap(std::move(remove_status)));
+      return;
+    }
+    // Remove operation completed successfully, remove the AuthFactor from the
+    // map.
+    label_to_auth_factor_.erase(label_to_auth_factor_iter);
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
+  // UserSecretStash is not enabled, remove VaultKeyset backed factor
+
+  // Authenticated vault_keyset of the current session cannot be removed.
+  if (vault_keyset_ && auth_factor_label == vault_keyset_->GetLabel()) {
+    LOG(ERROR) << "AuthSession: Cannot remove the authenticated VaultKeyset.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveSameVKInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+    return;
+  }
+
+  CryptohomeStatus remove_status = RemoveKeysetByLabel(
+      *keyset_management_, obfuscated_username_, auth_factor_label);
+  if (!remove_status.ok()) {
+    LOG(ERROR) << "AuthSession: Failed to remove the VaultKeyset.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+    return;
+  }
+  // Remove the VaultKeyset from the map.
+  label_to_auth_factor_.erase(label_to_auth_factor_iter);
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(
-    const std::string& auth_factor_label) {
+    const std::string& auth_factor_label, const AuthFactor& auth_factor) {
   // Preconditions.
   DCHECK(user_secret_stash_);
   DCHECK(user_secret_stash_main_key_.has_value());
 
   user_data_auth::RemoveAuthFactorReply reply;
 
-  auto label_to_auth_factor_iter =
-      label_to_auth_factor_.find(auth_factor_label);
-  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
-    LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  }
-
-  if (label_to_auth_factor_.size() == 1) {
-    LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
-  }
-
-  AuthFactor auth_factor = *label_to_auth_factor_iter->second;
   CryptohomeStatus status = auth_factor_manager_->RemoveAuthFactor(
       obfuscated_username_, auth_factor, auth_block_utility_);
   if (!status.ok()) {
@@ -1101,9 +1165,6 @@ CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(
                user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
         .Wrap(std::move(status));
   }
-
-  // Remove the auth factor from the map.
-  label_to_auth_factor_.erase(label_to_auth_factor_iter);
 
   status = RemoveAuthFactorFromUssInMemory(auth_factor_label);
   if (!status.ok()) {
