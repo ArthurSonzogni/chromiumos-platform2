@@ -240,6 +240,7 @@ pub struct VmFeatures {
     pub kernel_params: Vec<String>,
     pub tools_dlc_id: Option<String>,
     pub timeout: u32,
+    pub oem_strings: Vec<String>,
 }
 
 pub enum ContainerSource {
@@ -1258,6 +1259,7 @@ impl Methods {
         request.name = vm_name.to_owned();
         request.kernel_params = protobuf::RepeatedField::from_vec(features.kernel_params);
         request.timeout = features.timeout;
+        request.oem_strings = protobuf::RepeatedField::from_vec(features.oem_strings);
         {
             let disk_image = request.mut_disks().push_default();
             disk_image.path = stateful_disk_path;

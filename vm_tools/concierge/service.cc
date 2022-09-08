@@ -2068,6 +2068,11 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       std::make_move_iterator(request.mutable_kernel_params()->end()));
   features.kernel_params = std::move(params);
 
+  std::vector<std::string> oem_strings(
+      std::make_move_iterator(request.mutable_oem_strings()->begin()),
+      std::make_move_iterator(request.mutable_oem_strings()->end()));
+  features.oem_strings = std::move(oem_strings);
+
   // We use _SC_NPROCESSORS_ONLN here rather than
   // base::SysInfo::NumberOfProcessors() so that offline CPUs are not counted.
   // Also, |untrusted_vm_utils_| may disable SMT leading to cores being

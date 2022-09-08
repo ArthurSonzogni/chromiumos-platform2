@@ -306,6 +306,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   for (const std::string& p : features_.kernel_params)
     vm_builder.AppendKernelParam(p);
 
+  for (const std::string& s : features_.oem_strings)
+    vm_builder.AppendOemString(s);
+
   // Switch off kmsg throttling so we can log all relevant startup messages
   vm_builder.AppendKernelParam("printk.devkmsg=on");
 

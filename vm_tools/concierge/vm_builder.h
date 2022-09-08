@@ -69,6 +69,7 @@ class VmBuilder {
   VmBuilder& SetSocketPath(const std::string& socket_path);
   VmBuilder& AppendTapFd(base::ScopedFD tap_fd);
   VmBuilder& AppendKernelParam(const std::string& param);
+  VmBuilder& AppendOemString(const std::string& string);
   VmBuilder& AppendAudioDevice(const AudioDeviceType type,
                                const std::string& params);
   VmBuilder& AppendSerialDevice(const std::string& device);
@@ -167,6 +168,7 @@ class VmBuilder {
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;
+  std::vector<std::string> oem_strings_;
   std::vector<base::ScopedFD> tap_fds_;
 
   struct AudioDevice {

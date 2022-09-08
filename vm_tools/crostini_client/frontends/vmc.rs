@@ -274,6 +274,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Additional kernel cmdline parameter for the host. Only valid on untrusted VMs.",
             "PARAM",
         );
+        opts.optmulti(
+            "",
+            "oem-string",
+            "Type 11 SMBIOS DMI OEM string to pass to the host.",
+            "STRING",
+        );
         opts.optopt(
             "",
             "bios",
@@ -318,6 +324,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             kernel_params: matches.opt_strs("kernel-param"),
             tools_dlc_id: matches.opt_str("tools-dlc"),
             timeout,
+            oem_strings: matches.opt_strs("oem-string"),
         };
 
         let user_disks = UserDisks {
@@ -965,7 +972,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] <name> |
+   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters]
@@ -1204,6 +1211,24 @@ mod tests {
                 "quiet slub_debug",
             ],
             &["vmc", "start", "--kernel-param", "quiet", "termina"],
+            &["vmc", "start", "--oem-string=my-oem-string-1", "termina"],
+            &["vmc", "start", "--oem-string", "my-oem-string-1", "termina"],
+            &[
+                "vmc",
+                "start",
+                "--oem-string=my-oem-string-1",
+                "--oem-string=my-oem-string-2",
+                "termina",
+            ],
+            &[
+                "vmc",
+                "start",
+                "--oem-string",
+                "my-oem-string-1",
+                "--oem-string",
+                "my-oem-string-2",
+                "termina",
+            ],
             &["vmc", "start", "--bios", "mybios", "termina"],
             &["vmc", "start", "--bios=mybios", "termina"],
             &["vmc", "start", "--tools-dlc", "my-dlc", "termina"],
@@ -1319,6 +1344,7 @@ mod tests {
             &["vmc", "start", "termina", "--rootfs"],
             &["vmc", "start", "termina", "--writable-rootfs", "myrootfs"],
             &["vmc", "start", "termina", "--kernel-param"],
+            &["vmc", "start", "termina", "--oem-string"],
             &["vmc", "start", "termina", "--bios"],
             &["vmc", "start", "termina", "--tools-dlc"],
             &["vmc", "start", "termina", "--timeout"],

@@ -241,6 +241,9 @@ message StartVmRequest {
   // Whether the VM should use storage ballooning.
   bool storage_ballooning = 23;
 
+  // Type 11 SMBIOS DMI OEM strings to pass to the VM.
+  repeated string oem_strings = 24;
+
   reserved 13, 14, 6;
 }
 

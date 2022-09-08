@@ -61,6 +61,9 @@ struct VmFeatures {
 
   // Extra kernel cmdline params passed to the VM.
   std::vector<std::string> kernel_params;
+
+  // Type 11 SMBIOS DMI OEM strings passed to the VM.
+  std::vector<std::string> oem_strings;
 };
 
 // Auxiliary state associated if Termina is started as a sibling VM.

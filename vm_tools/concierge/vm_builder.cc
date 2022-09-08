@@ -173,6 +173,11 @@ VmBuilder& VmBuilder::AppendKernelParam(const std::string& param) {
   return *this;
 }
 
+VmBuilder& VmBuilder::AppendOemString(const std::string& string) {
+  oem_strings_.push_back(string);
+  return *this;
+}
+
 VmBuilder& VmBuilder::AppendAudioDevice(const AudioDeviceType type,
                                         const std::string& params) {
   audio_devices_.push_back(AudioDevice{.type = type, .params = params});
@@ -374,6 +379,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (kernel_params_.size() > 0)
     args.emplace_back("--params", base::JoinString(kernel_params_, " "));
+
+  for (const std::string& s : oem_strings_)
+    args.emplace_back("--oem-strings", s);
 
   if (rootfs_.has_value()) {
     const auto& rootfs = rootfs_.value();
