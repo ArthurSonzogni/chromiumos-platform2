@@ -863,13 +863,6 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::STOP_PROXY: {
       proxy_.StopProxy(msg.if_id_primary(), msg.if_id_secondary());
-      for (const auto& if_id : {msg.if_id_primary(), msg.if_id_secondary()}) {
-        if (guest_if_addrs_.find(if_id) != guest_if_addrs_.end()) {
-          std::string ifname = IfIndextoname(if_id);
-          SendMessage(NDProxyMessage::DEL_ADDR, ifname, guest_if_addrs_[if_id]);
-          guest_if_addrs_.erase(if_id);
-        }
-      }
       break;
     }
     case NDProxyControlMessage::UNKNOWN:
@@ -879,37 +872,30 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
 }
 
 void NDProxyDaemon::OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
-  std::string ifname = IfIndextoname(if_id);
-  std::string ipv6_addr_str = patchpanel::IPv6AddressToString(ip6addr);
-
-  SendMessage(NDProxyMessage::ADD_ROUTE, ifname, ipv6_addr_str);
+  if (!msg_dispatcher_) {
+    return;
+  }
+  NDProxySignalMessage msg;
+  msg.set_type(NDProxySignalMessage::NEIGHBOR_DETECTED);
+  msg.set_if_id(if_id);
+  msg.set_ip(&ip6addr, sizeof(in6_addr));
+  FeedbackMessage fm;
+  *fm.mutable_ndproxy_signal() = msg;
+  SubprocessMessage root_m;
+  *root_m.mutable_feedback_message() = fm;
+  msg_dispatcher_->SendMessage(root_m);
 }
 
 void NDProxyDaemon::OnRouterDiscovery(int if_id, const in6_addr& ip6addr) {
-  std::string ifname = IfIndextoname(if_id);
-  std::string ipv6_addr_str = patchpanel::IPv6AddressToString(ip6addr);
-
-  std::string current_addr = guest_if_addrs_[if_id];
-  if (current_addr == ipv6_addr_str)
+  if (!msg_dispatcher_) {
     return;
-  if (!current_addr.empty()) {
-    SendMessage(NDProxyMessage::DEL_ADDR, ifname, current_addr);
   }
-  SendMessage(NDProxyMessage::ADD_ADDR, ifname, ipv6_addr_str);
-  guest_if_addrs_[if_id] = ipv6_addr_str;
-}
-
-void NDProxyDaemon::SendMessage(NDProxyMessage::NDProxyEventType type,
-                                const std::string& ifname,
-                                const std::string& ip6addr) {
-  if (!msg_dispatcher_)
-    return;
-  NDProxyMessage msg;
-  msg.set_type(type);
-  msg.set_ifname(ifname);
-  msg.set_ip6addr(ip6addr);
+  NDProxySignalMessage msg;
+  msg.set_type(NDProxySignalMessage::ROUTER_DETECTED);
+  msg.set_if_id(if_id);
+  msg.set_ip(&ip6addr, sizeof(in6_addr));
   FeedbackMessage fm;
-  *fm.mutable_ndproxy_message() = msg;
+  *fm.mutable_ndproxy_signal() = msg;
   SubprocessMessage root_m;
   *root_m.mutable_feedback_message() = fm;
   msg_dispatcher_->SendMessage(root_m);

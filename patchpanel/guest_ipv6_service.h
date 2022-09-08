@@ -92,6 +92,9 @@ class GuestIPv6Service {
   // call.
   std::map<std::string, int32_t> if_cache_;
 
+  // Map from downlink ifname to eui address we assigned
+  std::map<std::string, std::string> downlink_addrs;
+
   base::WeakPtrFactory<GuestIPv6Service> weak_factory_{this};
 };
 

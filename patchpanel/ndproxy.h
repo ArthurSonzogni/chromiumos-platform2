@@ -66,8 +66,9 @@ class NDProxy {
   // is needed, translated packets are sent out through the same socket.
   void ReadAndProcessOnePacket(int fd);
 
-  // NDProxy can trigger a callback upon receiving NA frame with unicast IPv6
-  // address from guest OS interface.
+  // NDProxy can trigger a callback upon a neighbor discovered on downlink. This
+  // can be triggered by either receiving a unicast NA, or an NS with non-link
+  // local source address.
   void RegisterOnGuestIpDiscoveryHandler(
       base::RepeatingCallback<void(int, const in6_addr&)> handler);
 
@@ -212,13 +213,6 @@ class NDProxyDaemon : public brillo::Daemon {
 
   // Callback from NDProxy core when receive prefix info from router
   void OnRouterDiscovery(int if_id, const in6_addr& ip6addr);
-
-  void SendMessage(NDProxyMessage::NDProxyEventType type,
-                   const std::string& ifname,
-                   const std::string& ip6addr);
-
-  // Map from guest-facing if_index to eui address we assigned
-  std::map<int, std::string> guest_if_addrs_;
 
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;

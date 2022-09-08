@@ -4,6 +4,8 @@
 
 #include "patchpanel/guest_ipv6_service.h"
 
+#include <netinet/in.h>
+
 #include <set>
 #include <string>
 #include <vector>
@@ -166,6 +168,12 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
     }
   }
 
+  std::string downlink_addr = downlink_addrs[ifname_downlink];
+  if (!downlink_addr.empty()) {
+    datapath_->RemoveIPv6Address(ifname_downlink, downlink_addr);
+  }
+  downlink_addrs.erase(ifname_downlink);
+
   it->downstream_ifnames.erase(ifname_downlink);
   if (it->downstream_ifnames.empty()) {
     forward_record_.erase(it);
@@ -187,6 +195,12 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
   for (const auto& ifname_downlink : it->downstream_ifnames) {
     SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
                        if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
+
+    std::string downlink_addr = downlink_addrs[ifname_downlink];
+    if (!downlink_addr.empty()) {
+      datapath_->RemoveIPv6Address(ifname_downlink, downlink_addr);
+    }
+    downlink_addrs.erase(ifname_downlink);
   }
 
   // Remove proxying between all downlink pairs in the forward group.
@@ -235,33 +249,43 @@ void GuestIPv6Service::SendNDProxyControl(
 }
 
 void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
-  if (!fm.has_ndproxy_message()) {
+  if (!fm.has_ndproxy_signal()) {
     LOG(ERROR) << "Unexpected feedback message type";
     return;
   }
-  const NDProxyMessage& msg = fm.ndproxy_message();
-  LOG_IF(DFATAL, msg.ifname().empty())
-      << "Received DeviceMessage w/ empty dev_ifname";
-  switch (msg.type()) {
-    case NDProxyMessage::ADD_ROUTE:
-      if (!datapath_->AddIPv6HostRoute(msg.ifname(), msg.ip6addr(), 128)) {
-        LOG(WARNING) << "Failed to setup the IPv6 route for interface "
-                     << msg.ifname() << ", addr " << msg.ip6addr();
-      }
-      break;
-    case NDProxyMessage::ADD_ADDR:
-      if (!datapath_->AddIPv6Address(msg.ifname(), msg.ip6addr())) {
-        LOG(WARNING) << "Failed to setup the IPv6 address for interface "
-                     << msg.ifname() << ", addr " << msg.ip6addr();
-      }
-      break;
-    case NDProxyMessage::DEL_ADDR:
-      datapath_->RemoveIPv6Address(msg.ifname(), msg.ip6addr());
-      break;
-    default:
-      LOG(ERROR) << "Unknown NDProxy event " << msg.type();
-      NOTREACHED();
+
+  const NDProxySignalMessage& msg = fm.ndproxy_signal();
+  std::string ifname = IfIndextoname(msg.if_id());
+  in6_addr ip;
+  memcpy(&ip, msg.ip().data(), sizeof(in6_addr));
+  std::string ip6_str = IPv6AddressToString(ip);
+
+  if (msg.type() == NDProxySignalMessage::NEIGHBOR_DETECTED) {
+    if (!datapath_->AddIPv6HostRoute(ifname, ip6_str, 128)) {
+      LOG(WARNING) << "Failed to setup the IPv6 route: " << ip6_str << " to "
+                   << ifname;
+    }
+    return;
   }
+
+  if (msg.type() == NDProxySignalMessage::ROUTER_DETECTED) {
+    const std::string& current_downlink_addr = downlink_addrs[ifname];
+    if (current_downlink_addr == ip6_str) {
+      return;
+    }
+    if (!current_downlink_addr.empty()) {
+      datapath_->RemoveIPv6Address(ifname, current_downlink_addr);
+    }
+    if (!datapath_->AddIPv6Address(ifname, ip6_str)) {
+      LOG(WARNING) << "Failed to setup the IPv6 address for interface "
+                   << ifname << ", addr " << ip6_str;
+    }
+    downlink_addrs[ifname] = ip6_str;
+    return;
+  }
+
+  LOG(ERROR) << "Unknown NDProxy event " << msg.type();
+  NOTREACHED();
 }
 
 }  // namespace patchpanel
