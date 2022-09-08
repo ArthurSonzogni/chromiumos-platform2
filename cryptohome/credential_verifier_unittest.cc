@@ -9,7 +9,8 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include <cryptohome/scrypt_verifier.h>
+#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/scrypt_verifier.h"
 
 namespace cryptohome {
 
@@ -20,6 +21,10 @@ class VerifierTest : public ::testing::Test {
  protected:
   std::unique_ptr<CredentialVerifier> password_verifier_;
 };
+
+TEST_F(VerifierTest, AuthFactorType) {
+  EXPECT_EQ(password_verifier_->auth_factor_type(), AuthFactorType::kPassword);
+}
 
 TEST_F(VerifierTest, Ok) {
   brillo::SecureBlob secret("good");

@@ -5,7 +5,9 @@
 #include "cryptohome/credential_verifier_factory.h"
 
 #include <memory>
+#include <optional>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
@@ -29,11 +31,34 @@ bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type) {
 }
 
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+    std::optional<AuthFactorType> auth_factor_type,
     const brillo::SecureBlob& passkey) {
-  auto verifier = std::make_unique<ScryptVerifier>();
-  if (!verifier->Set(passkey)) {
-    LOG(ERROR) << "Credential verifier initialization failed.";
+  if (auth_factor_type.has_value() &&
+      !IsCredentialVerifierSupported(auth_factor_type.value())) {
     return nullptr;
+  }
+
+  std::unique_ptr<CredentialVerifier> verifier;
+  switch (auth_factor_type.value_or(AuthFactorType::kPassword)) {
+    case AuthFactorType::kPassword: {
+      verifier = std::make_unique<ScryptVerifier>();
+      if (!verifier->Set(passkey)) {
+        LOG(ERROR) << "Credential verifier initialization failed.";
+        return nullptr;
+      }
+      break;
+    }
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified: {
+      return nullptr;
+    }
+  }
+
+  if (auth_factor_type.has_value()) {
+    DCHECK_EQ(auth_factor_type.value(), verifier->auth_factor_type());
   }
   return verifier;
 }

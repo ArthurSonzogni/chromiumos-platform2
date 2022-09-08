@@ -423,22 +423,28 @@ void AuthSession::AddVaultKeyset(
     LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
               << ".";
     vault_keyset_ = std::move(vk_status).value();
-
-    // Flip the flag, so that our future invocations go through AddKeyset()
-    // and not AddInitialKeyset().
-    if (auth_input.user_input.has_value()) {
-      SetCredentialVerifier(auth_input.user_input.value());
-    }
-    user_has_configured_credential_ = true;
   }
 
   std::unique_ptr<AuthFactor> added_auth_factor =
       converter_->VaultKeysetToAuthFactor(username_, key_data.label());
+  std::optional<AuthFactorType> auth_factor_type;
   if (added_auth_factor) {
-    LOG(INFO) << "Label to AuthFactor map is created for the keyset.";
+    auth_factor_type = added_auth_factor->type();
     label_to_auth_factor_.emplace(key_data.label(),
                                   std::move(added_auth_factor));
+  } else {
+    LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
   }
+
+  // Flip the flag, so that our future invocations go through AddKeyset() and
+  // not AddInitialKeyset(). Create a verifier if applicable.
+  if (!user_has_configured_credential_ && auth_input.user_input.has_value()) {
+    // TODO(emaxx): This is overly permissive by creating the verifier even when
+    // AuthFactor conversion failed and the actual factor type is unknown; we
+    // should eventually forbid proceeding with a `nullopt` type here.
+    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+  }
+  user_has_configured_credential_ = true;
 
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -667,13 +673,15 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
 
   AuthBlock::CreateCallback create_callback = base::BindOnce(
       &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
-      credentials.key_data(), auth_input,
-      std::move(auth_session_performance_timer), std::move(on_done));
+      /*request_auth_factor_type=*/std::nullopt, credentials.key_data(),
+      auth_input, std::move(auth_session_performance_timer),
+      std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
 }
 
 void AuthSession::UpdateVaultKeyset(
+    std::optional<AuthFactorType> auth_factor_type,
     const KeyData& key_data,
     AuthInput auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -717,7 +725,7 @@ void AuthSession::UpdateVaultKeyset(
   // credential verifier to cache the secret for future lightweight
   // verifications.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -725,6 +733,7 @@ void AuthSession::UpdateVaultKeyset(
 }
 
 bool AuthSession::AuthenticateViaVaultKeyset(
+    std::optional<AuthFactorType> request_auth_factor_type,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
@@ -758,7 +767,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
   // as a callback that loads |vault_keyset_| and resaves if needed.
   AuthBlock::DeriveCallback derive_callback = base::BindOnce(
       &AuthSession::LoadVaultKeysetAndFsKeys, weak_factory_.GetWeakPtr(),
-      auth_input.user_input, auth_block_type,
+      request_auth_factor_type, auth_input.user_input, auth_block_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
@@ -766,6 +775,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 }
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
+    std::optional<AuthFactorType> request_auth_factor_type,
     const std::optional<brillo::SecureBlob> passkey,
     const AuthBlockType& auth_block_type,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -847,7 +857,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   // Set the credential verifier for this credential.
   if (passkey.has_value()) {
-    SetCredentialVerifier(passkey.value());
+    SetCredentialVerifier(request_auth_factor_type, passkey.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -907,7 +917,8 @@ void AuthSession::Authenticate(
     // For ephemeral session, just authenticate the session,
     // no need to derive KeyBlobs.
     // Set the credential verifier for this credential.
-    SetCredentialVerifier(credentials->passkey());
+    SetCredentialVerifier(/*auth_factor_type=*/std::nullopt,
+                          credentials->passkey());
 
     // SetAuthSessionAsAuthenticated() should already have been called
     // in the constructor by this point.
@@ -928,9 +939,9 @@ void AuthSession::Authenticate(
       .challenge_credential_auth_input =
           CreateChallengeCredentialAuthInput(authorization_request)};
 
-  AuthenticateViaVaultKeyset(auth_input,
-                             std::move(auth_session_performance_timer),
-                             std::move(on_done));
+  AuthenticateViaVaultKeyset(
+      /*request_auth_factor_type=*/std::nullopt, auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
@@ -1020,7 +1031,7 @@ bool AuthSession::AuthenticateAuthFactor(
       std::make_unique<AuthSessionPerformanceTimer>(
           kAuthSessionAuthenticateAuthFactorVKTimer);
 
-  return AuthenticateViaVaultKeyset(auth_input.value(),
+  return AuthenticateViaVaultKeyset(auth_factor.type(), auth_input.value(),
                                     std::move(auth_session_performance_timer),
                                     std::move(on_done));
 }
@@ -1327,9 +1338,9 @@ void AuthSession::UpdateAuthFactorViaVaultKeyset(
   }
 
   AuthBlock::CreateCallback create_callback = base::BindOnce(
-      &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(), key_data,
-      auth_input, std::move(auth_session_performance_timer),
-      std::move(on_done));
+      &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
+      auth_factor_type, key_data, auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
@@ -1463,7 +1474,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
   }
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
@@ -1626,8 +1637,13 @@ std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
 }
 
-void AuthSession::SetCredentialVerifier(const brillo::SecureBlob& passkey) {
-  credential_verifier_ = CreateCredentialVerifier(passkey);
+void AuthSession::SetCredentialVerifier(
+    std::optional<AuthFactorType> auth_factor_type,
+    const brillo::SecureBlob& passkey) {
+  std::unique_ptr<CredentialVerifier> new_verifier =
+      CreateCredentialVerifier(auth_factor_type, passkey);
+  if (new_verifier)
+    credential_verifier_ = std::move(new_verifier);
 }
 
 // static
@@ -1821,7 +1837,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
   }
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
@@ -2069,14 +2085,15 @@ void AuthSession::AuthenticateViaUserSecretStash(
   // Derive the keyset and then use USS to complete the authentication.
   auto derive_callback = base::BindOnce(
       &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
-      auth_factor_label, auth_input, std::move(auth_session_performance_timer),
-      std::move(on_done));
+      auth_factor.type(), auth_factor_label, auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
+    AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -2164,7 +2181,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());

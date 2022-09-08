@@ -113,6 +113,21 @@ SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   return serialized_vk;
 }
 
+SerializedVaultKeyset CreateFakePinVk(const std::string& label) {
+  SerializedVaultKeyset serialized_vk;
+  serialized_vk.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
+  serialized_vk.mutable_key_data()->set_label(label);
+  serialized_vk.mutable_key_data()
+      ->mutable_policy()
+      ->set_low_entropy_credential(true);
+  serialized_vk.set_salt("salt");
+  serialized_vk.set_le_chaps_iv("le-chaps-iv");
+  serialized_vk.set_le_label(0);
+  serialized_vk.set_le_fek_iv("le-fek-iv");
+  return serialized_vk;
+}
+
 void MockLabelToKeyDataMapLoading(
     const std::string& obfuscated_username,
     const std::vector<SerializedVaultKeyset>& serialized_vks,
@@ -1135,6 +1150,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
   ASSERT_TRUE(auth_session);
   MockKeysetCreation(mock_auth_block_utility_);
   MockInitialKeysetAdding(obfuscated_username, keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username,
+                           CreateFakePasswordVk(kPasswordLabel),
+                           keyset_management_);
 
   // Act.
   user_data_auth::AddAuthFactorRequest request;
@@ -1167,6 +1185,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
   ASSERT_TRUE(auth_session);
   MockKeysetCreation(mock_auth_block_utility_);
   MockInitialKeysetAdding(obfuscated_username, keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username,
+                           CreateFakePasswordVk(kPasswordLabel),
+                           keyset_management_);
   // Add the initial keyset.
   user_data_auth::AddAuthFactorRequest password_request;
   password_request.set_auth_session_id(auth_session->serialized_token());
@@ -1181,6 +1202,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // Set up mocks for adding the second keyset.
   MockKeysetCreation(mock_auth_block_utility_);
+  MockKeysetLoadingByLabel(obfuscated_username, CreateFakePinVk(kPinLabel),
+                           keyset_management_);
 
   // Act.
   user_data_auth::AddAuthFactorRequest pin_request;

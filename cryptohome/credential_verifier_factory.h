@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CREDENTIAL_VERIFIER_FACTORY_H_
 
 #include <memory>
+#include <optional>
 
 #include <brillo/secure_blob.h>
 
@@ -18,9 +19,9 @@ namespace cryptohome {
 bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type);
 
 // Creates a credential verifier for the given credential.
-// TODO(b/204482221): Pass `AuthFactorType` and return null for unsupported
-// factors.
+// TODO(b/204482221): Make `auth_factor_type` mandatory.
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+    std::optional<AuthFactorType> auth_factor_type,
     const brillo::SecureBlob& passkey);
 
 }  // namespace cryptohome

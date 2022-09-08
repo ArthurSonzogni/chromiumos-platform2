@@ -7,13 +7,14 @@
 
 #include <brillo/secure_blob.h>
 
-#include <cryptohome/credential_verifier.h>
+#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {
 
 class ScryptVerifier final : public CredentialVerifier {
  public:
-  ScryptVerifier() = default;
+  ScryptVerifier();
   ~ScryptVerifier() override = default;
 
   // Prohibit copy/move/assignment.
