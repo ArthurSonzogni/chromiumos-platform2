@@ -55,13 +55,6 @@ base::ScopedFD WrapStdIn(const base::StringPiece in) {
 
 std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
   switch (static_cast<int>(exit_code)) {
-#define PRINT(s)                                  \
-  case static_cast<int>(Process::ExitCode::k##s): \
-    return out << #s;
-    PRINT(None)
-    PRINT(Success)
-#undef PRINT
-
 #define PRINT(s)                  \
   case MINIJAIL_ERR_SIG_BASE + s: \
     return out << #s;
@@ -100,6 +93,8 @@ std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
 #define PRINT(s) \
   case s:        \
     return out << #s;
+    PRINT(EXIT_SUCCESS)
+    PRINT(EXIT_FAILURE)
     PRINT(MINIJAIL_ERR_NO_ACCESS)
     PRINT(MINIJAIL_ERR_NO_COMMAND)
     PRINT(MINIJAIL_ERR_MOUNT)
@@ -109,7 +104,7 @@ std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
 #undef PRINT
   }
 
-  return out << "Error " << static_cast<int>(exit_code);
+  return out << "exit code " << static_cast<int>(exit_code);
 }
 
 // static
