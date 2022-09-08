@@ -15,6 +15,7 @@ use libc::{
     c_int, c_void, fork, kill, pid_t, waitpid, SIGHUP, SIGINT, SIGKILL, STDERR_FILENO, WIFSTOPPED,
 };
 use libchromeos::chromeos::is_dev_mode;
+use libchromeos::panic_handler::install_memfd_handler;
 use rustyline::completion::Completer;
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
@@ -310,6 +311,7 @@ fn input_loop(dispatcher: Dispatcher) {
 }
 
 fn main() -> Result<(), ()> {
+    install_memfd_handler();
     let mut args = std::env::args();
 
     if let Err(e) = syslog::init() {
