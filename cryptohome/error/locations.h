@@ -1044,7 +1044,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerDeleteFailedInRemove = 609,
   /* ./auth_session.cc */
-  kLocAuthSessionVaultKeysetNotImplementedInRemoveAuthFactor = 610,
+  kLocAuthSessionRemoveVKFailedInRemoveAuthFactor = 610,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveMainKeyFailedInRemoveSecretFromUss = 611,
   /* ./auth_session.cc */
@@ -1205,6 +1205,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManInvalidOutputInStartBiometricsAuth = 689,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManInvalidParamInInsertCred = 690,
+  /* ./auth_Session.cc */
+  kLocAuthSessionRemoveSameVKInRemoveAuthFactor = 691,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveAuthFactorViaUserSecretStashFailed = 692,
+  /* ./auth_session.cc */
+  kLocAuthSessionVKNotFoundInRemoveKeysetByLabel = 693,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFailedInRemoveKeysetByLabel = 694
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

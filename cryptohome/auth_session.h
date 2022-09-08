@@ -504,9 +504,10 @@ class AuthSession final {
   void ResaveVaultKeysetIfNeeded(
       const std::optional<brillo::SecureBlob> user_input);
 
-  // Removes the auth factor with the provided `auth_factor_label` from the USS.
+  // Removes the key block with the provided `auth_factor_label` from the USS
+  // and removes the `auth_factor` from disk.
   CryptohomeStatus RemoveAuthFactorViaUserSecretStash(
-      const std::string& auth_factor_label);
+      const std::string& auth_factor_label, const AuthFactor& auth_factor);
 
   // Remove the factor from the USS in-memory.
   CryptohomeStatus RemoveAuthFactorFromUssInMemory(

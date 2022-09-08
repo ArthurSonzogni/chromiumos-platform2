@@ -100,6 +100,8 @@ constexpr char kPin[] = "1234";
 constexpr char kPinLabel[] = "fake-pin-label";
 // 300 seconds should be left right as we authenticate.
 constexpr int time_left_after_authenticate = 300;
+constexpr char kPasswordLabel2[] = "fake-password-label2";
+
 SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   SerializedVaultKeyset serialized_vk;
   serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -144,7 +146,7 @@ void MockLabelToKeyDataMapLoading(
       .WillRepeatedly(DoAll(SetArgPointee<1>(key_label_map), Return(true)));
 }
 
-void MockKeysetsLoading(
+void MockVKToAuthFactorMapLoading(
     const std::string& obfuscated_username,
     const std::vector<SerializedVaultKeyset>& serialized_vks,
     MockKeysetManagement& keyset_management) {
@@ -154,19 +156,17 @@ void MockKeysetsLoading(
   }
   EXPECT_CALL(keyset_management, GetVaultKeysets(obfuscated_username, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices), Return(true)));
-}
 
-void MockKeysetLoadingByIndex(const std::string& obfuscated_username,
-                              int index,
-                              const SerializedVaultKeyset& serialized_vk,
-                              MockKeysetManagement& keyset_management) {
-  EXPECT_CALL(keyset_management,
-              LoadVaultKeysetForUser(obfuscated_username, index))
-      .WillRepeatedly([=](const std::string&, int) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(serialized_vk);
-        return vk;
-      });
+  for (size_t index = 0; index < serialized_vks.size(); ++index) {
+    const auto& serialized_vk = serialized_vks[index];
+    EXPECT_CALL(keyset_management,
+                LoadVaultKeysetForUser(obfuscated_username, index))
+        .WillRepeatedly([=](const std::string&, int) {
+          auto vk = std::make_unique<VaultKeyset>();
+          vk->InitializeFromSerialized(serialized_vk);
+          return vk;
+        });
+  }
 }
 
 void MockKeysetLoadingByLabel(const std::string& obfuscated_username,
@@ -1338,9 +1338,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
       CreateFakePasswordVk(kPasswordLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
@@ -1384,9 +1384,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       CreateFakePasswordVk(kPasswordLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   MockKeysetDerivation(obfuscated_username, serialized_vk,
@@ -1425,9 +1425,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
       CreateFakePasswordVk(kPasswordLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   // Set up a user session with a mocked credential verifier.
@@ -1615,9 +1614,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
       CreateFakePasswordVk(kConfiguredKeyLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
@@ -1652,9 +1651,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
       CreateFakePasswordVk(kPasswordLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
@@ -1690,9 +1689,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
       CreateFakePasswordVk(kPasswordLabel);
   MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
-  MockKeysetsLoading(obfuscated_username, {serialized_vk}, keyset_management_);
-  MockKeysetLoadingByIndex(obfuscated_username, /*index=*/0, serialized_vk,
-                           keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
@@ -1858,6 +1856,232 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // persistent auth factors.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
+}
+
+// Test that RemoveAuthFactor successfully removes the VaultKeyset with the
+// given label.
+TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  const SerializedVaultKeyset serialized_vk2 =
+      CreateFakePasswordVk(kPasswordLabel2);
+  // AuthSession first loads all KeyData mapped to labels.
+  MockLabelToKeyDataMapLoading(
+      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
+  MockVKToAuthFactorMapLoading(
+      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
+
+  // AuthenticateAuthFactor loads the VK to be authenticated.
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk2,
+                           keyset_management_);
+  // RemoveAuthFactor loads the VK to be removed.
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk2,
+                       CryptoError::CE_NONE, mock_auth_block_utility_);
+  // Decrypt loaded VK.
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk2,
+                            keyset_management_);
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
+  ASSERT_TRUE(auth_session);
+
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session->serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel2);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply auth_reply =
+      AuthenticateAuthFactor(auth_request);
+  EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_reply.authenticated());
+
+  // Act.
+  // Test that RemoveAuthFactor fails to remove the non-existing VK.
+  user_data_auth::RemoveAuthFactorRequest remove_request;
+  remove_request.set_auth_session_id(auth_session->serialized_token());
+  remove_request.set_auth_factor_label(kPasswordLabel);
+  TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  userdataauth_.RemoveAuthFactor(
+      remove_request,
+      remove_reply_future
+          .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  // Assert.
+  EXPECT_EQ(remove_reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+// Test that RemoveAuthFactor returns failure from remove request with the non
+// existing label.
+TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+
+  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
+                       mock_auth_block_utility_);
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
+                            keyset_management_);
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
+  ASSERT_TRUE(auth_session);
+
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session->serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply auth_reply =
+      AuthenticateAuthFactor(auth_request);
+  EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_reply.authenticated());
+
+  // Act.
+  // Test that RemoveAuthFactor fails to remove the non-existing VK.
+  user_data_auth::RemoveAuthFactorRequest remove_request;
+  remove_request.set_auth_session_id(auth_session->serialized_token());
+  remove_request.set_auth_factor_label(kPasswordLabel2);
+  TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  userdataauth_.RemoveAuthFactor(
+      remove_request,
+      remove_reply_future
+          .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  // Assert.
+  EXPECT_EQ(remove_reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+}
+
+// Test that RemoveAuthFactor fails to remove the only factor.
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       RemoveAuthFactorVkFailsNonExitingLabel) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+
+  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
+                       mock_auth_block_utility_);
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
+                            keyset_management_);
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
+  ASSERT_TRUE(auth_session);
+
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session->serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply auth_reply =
+      AuthenticateAuthFactor(auth_request);
+  EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_reply.authenticated());
+
+  // Act.
+  // Test that RemoveAuthFactor fails to remove the non-existing VK.
+  user_data_auth::RemoveAuthFactorRequest remove_request;
+  remove_request.set_auth_session_id(auth_session->serialized_token());
+  remove_request.set_auth_factor_label(kPasswordLabel);
+  TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  userdataauth_.RemoveAuthFactor(
+      remove_request,
+      remove_reply_future
+          .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  // Assert.
+  EXPECT_EQ(remove_reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
+}
+
+// Test that RemoveAuthFactor fails to remove the authenticated VaultKeyset.
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       RemoveAuthFactorVkFailsToRemoveSameVK) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  const SerializedVaultKeyset serialized_vk2 =
+      CreateFakePasswordVk(kPasswordLabel2);
+  // AuthSession first loads all KeyData mapped to labels.
+  MockLabelToKeyDataMapLoading(
+      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
+  MockVKToAuthFactorMapLoading(
+      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
+
+  // AuthenticateAuthFactor loads the VK to be authenticated.
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  // RemoveAuthFactor loads the VK to be removed.
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
+                       mock_auth_block_utility_);
+  // Decrypt loaded VK.
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
+                            keyset_management_);
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
+  ASSERT_TRUE(auth_session);
+
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session->serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply auth_reply =
+      AuthenticateAuthFactor(auth_request);
+  EXPECT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(auth_reply.authenticated());
+
+  // Act.
+  // Test that RemoveAuthFactor fails to remove the non-existing VK.
+  user_data_auth::RemoveAuthFactorRequest remove_request;
+  remove_request.set_auth_session_id(auth_session->serialized_token());
+  remove_request.set_auth_factor_label(kPasswordLabel);
+  TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  userdataauth_.RemoveAuthFactor(
+      remove_request,
+      remove_reply_future
+          .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  // Assert.
+  EXPECT_EQ(remove_reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
 }
 
 }  // namespace
