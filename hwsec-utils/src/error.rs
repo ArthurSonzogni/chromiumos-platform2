@@ -10,6 +10,7 @@ pub enum HwsecError {
     InvalidArgumentError,
     Tpm2Error(u32),
     Tpm2ResponseBadFormatError,
+    GsctoolError(i32),
     GsctoolResponseBadFormatError,
     CommandRunnerError,
     SyslogError,
@@ -22,6 +23,9 @@ impl Display for HwsecError {
             HwsecError::InvalidArgumentError => write!(f, "InvalidArgumentError"),
             HwsecError::Tpm2Error(err_code) => write!(f, "Tpm2Error - Error code: {}", err_code),
             HwsecError::Tpm2ResponseBadFormatError => write!(f, "Tpm2ResponseBadFormatError"),
+            HwsecError::GsctoolError(err_code) => {
+                write!(f, "GsctoolError - Error code : {}", err_code)
+            }
             HwsecError::GsctoolResponseBadFormatError => write!(f, "GsctoolResponseBadFormatError"),
             HwsecError::CommandRunnerError => write!(f, "CommandRunnerError"),
             HwsecError::SyslogError => write!(f, "SyslogError"),
