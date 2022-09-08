@@ -136,6 +136,21 @@ const std::map<int, InnerError>& GetInnerErrorMap() {
   return err_map;
 }
 
+const std::map<int, InnerError>& GetInnerErrorMapForAuthenticateServer() {
+  constexpr int kPreviouslySeenInvalidActivationCode = 4;
+  static std::map<int, InnerError> err_map{
+      {lpa::card::EuiccCard::kNoResponses,
+       {kErrorNoResponse, "No response from eUICC"}},
+      {kPreviouslySeenInvalidActivationCode,
+       {kErrorMalformedResponse,
+        "Malformed response from eUICC. Invalid activation code may have been "
+        "reused"}},
+      {lpa::card::EuiccCard::kSendApduError,
+       {kErrorSendApduFailure, "Failed to send APDU to eUICC"}},
+  };
+  return err_map;
+}
+
 }  // namespace
 
 brillo::ErrorPtr LpaErrorToBrillo(const base::Location& location, int error) {
@@ -153,8 +168,13 @@ brillo::ErrorPtr LpaErrorToBrillo(const base::Location& location, int error) {
   error_message +=
       brillo::GetOrDefault(GetMidErrorMap(), lpa_mid_code, "UnknownMid: ");
 
+  const auto& error_map =
+      lpa_mid_code == lpa::card::EuiccCard::kAuthenticateServerError
+          ? GetInnerErrorMapForAuthenticateServer()
+          : GetInnerErrorMap();
   const auto& inner_error = brillo::GetOrDefault(
-      GetInnerErrorMap(), lpa_inner_code, {kErrorUnknown, "Unknown error"});
+      error_map, lpa_inner_code, {kErrorUnknown, "Unknown error"});
+
   error_message +=
       base::StringPrintf("%s (%d)", inner_error.error_message_, lpa_inner_code);
 
