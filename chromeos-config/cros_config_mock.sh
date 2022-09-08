@@ -132,9 +132,13 @@ if [[ "${CONFIGFS_IMAGE}" != /usr/share/chromeos-config/configfs.img || \
 fi
 
 # file_mismatch filename contents
-# returns 0 if file exists and the contents don't match, 1 otherwise
+# returns 0 if file exists and the contents don't match or
+# file does not exist and content is not empty, 1 otherwise
 file_mismatch () {
   if [[ -f "$1" && "${2,,}" != "$(tr '[:upper:]' '[:lower:]' <"$1")" ]]; then
+    return 0
+  fi
+  if [[ ! -f "$1" && -n "$2" ]]; then
     return 0
   fi
   return 1
