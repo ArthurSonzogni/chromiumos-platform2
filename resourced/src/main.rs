@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,9 +15,11 @@ mod test;
 use std::path::Path;
 
 use anyhow::{bail, Result};
+use libchromeos::panic_handler::install_memfd_handler;
 use sys_util::{info, syslog};
 
 fn main() -> Result<()> {
+    install_memfd_handler();
     if let Err(e) = syslog::init() {
         bail!("Failed to initiailize syslog: {}", e);
     }
