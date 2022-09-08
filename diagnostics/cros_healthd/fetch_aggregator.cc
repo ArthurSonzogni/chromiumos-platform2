@@ -53,7 +53,6 @@ FetchAggregator::FetchAggregator(Context* context)
       memory_fetcher_(context),
       network_fetcher_(context),
       stateful_partition_fetcher_(context),
-      system_fetcher_(context),
       timezone_fetcher_(context),
       tpm_fetcher_(context),
       network_interface_fetcher_(context),
@@ -125,8 +124,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {
-        system_fetcher_.FetchSystemInfo(
-            CreateFetchCallback(&barrier, &info->system_result));
+        FetchSystemInfo(context_,
+                        CreateFetchCallback(&barrier, &info->system_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kNetwork: {

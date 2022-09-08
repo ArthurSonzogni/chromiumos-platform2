@@ -15,26 +15,14 @@
 
 namespace diagnostics {
 
-class SystemFetcher final : public BaseFetcher {
- public:
-  using FetchSystemInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::SystemResultPtr)>;
+namespace mojom = chromeos::cros_healthd::mojom;
 
-  using BaseFetcher::BaseFetcher;
-
-  // Returns either a structure with the system information or the error that
-  // occurred fetching the information.
-  void FetchSystemInfo(FetchSystemInfoCallback callback);
-
- private:
-  bool FetchOsInfoWithoutBootMode(
-      chromeos::cros_healthd::mojom::OsInfoPtr* out_os_info,
-      chromeos::cros_healthd::mojom::ProbeErrorPtr* out_error);
-
-  void FetchBootMode(chromeos::cros_healthd::mojom::SystemInfoPtr system_info,
-                     const base::FilePath& root_dir,
-                     FetchSystemInfoCallback callback);
-};
+// Fetches system info and pass the result to the callback. Returns either a
+// structure with the system information or the error that occurred fetching the
+// information.
+using FetchSystemInfoCallback =
+    base::OnceCallback<void(chromeos::cros_healthd::mojom::SystemResultPtr)>;
+void FetchSystemInfo(Context* context, FetchSystemInfoCallback callback);
 
 }  // namespace diagnostics
 

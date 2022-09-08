@@ -62,7 +62,6 @@ class FetchAggregator final {
   MemoryFetcher memory_fetcher_;
   NetworkFetcher network_fetcher_;
   StatefulPartitionFetcher stateful_partition_fetcher_;
-  SystemFetcher system_fetcher_;
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
   NetworkInterfaceFetcher network_interface_fetcher_;

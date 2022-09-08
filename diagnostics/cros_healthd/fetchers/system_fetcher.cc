@@ -24,6 +24,28 @@ namespace diagnostics {
 
 namespace {
 
+class State {
+ public:
+  explicit State(Context* context);
+  State(const State&) = delete;
+  State& operator=(const State&) = delete;
+  ~State();
+
+  void FetchBootMode(mojom::SystemInfoPtr system_info,
+                     const base::FilePath& root_dir,
+                     FetchSystemInfoCallback callback);
+
+  bool FetchOsInfoWithoutBootMode(mojom::OsInfoPtr* out_os_info,
+                                  mojom::ProbeErrorPtr* out_error);
+
+ private:
+  Context* const context_;
+};
+
+State::State(Context* context) : context_(context) {}
+
+State::~State() = default;
+
 // Fetches information from DMI. Since there are several devices that do not
 // provide DMI information, these fields are optional in SystemInfo. As a
 // result, a missing DMI file does not indicate a ProbeError. A ProbeError is
@@ -158,7 +180,7 @@ bool IsUEFISecureBoot(const std::string& s) {
   }
 }
 
-void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoCallback callback,
+void HandleSecureBootResponse(FetchSystemInfoCallback callback,
                               mojom::SystemInfoPtr system_info,
                               const std::string& content) {
   DCHECK(system_info);
@@ -171,11 +193,9 @@ void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoCallback callback,
       mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
-}  // namespace
-
-void SystemFetcher::FetchBootMode(mojom::SystemInfoPtr system_info,
-                                  const base::FilePath& root_dir,
-                                  FetchSystemInfoCallback callback) {
+void State::FetchBootMode(mojom::SystemInfoPtr system_info,
+                          const base::FilePath& root_dir,
+                          FetchSystemInfoCallback callback) {
   mojom::BootMode* boot_mode = &system_info->os_info->boot_mode;
   // default unknown if there's no match
   *boot_mode = mojom::BootMode::kUnknown;
@@ -211,8 +231,8 @@ void SystemFetcher::FetchBootMode(mojom::SystemInfoPtr system_info,
       mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
-bool SystemFetcher::FetchOsInfoWithoutBootMode(
-    mojom::OsInfoPtr* out_os_info, mojom::ProbeErrorPtr* out_error) {
+bool State::FetchOsInfoWithoutBootMode(mojom::OsInfoPtr* out_os_info,
+                                       mojom::ProbeErrorPtr* out_error) {
   auto os_info = mojom::OsInfo::New();
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
@@ -223,25 +243,28 @@ bool SystemFetcher::FetchOsInfoWithoutBootMode(
   return true;
 }
 
-void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback) {
-  const auto& root_dir = context_->root_dir();
+}  // namespace
+
+void FetchSystemInfo(Context* context, FetchSystemInfoCallback callback) {
+  auto state = std::make_unique<State>(context);
+  const auto& root_dir = context->root_dir();
   mojom::ProbeErrorPtr error;
   auto system_info = mojom::SystemInfo::New();
 
   auto& vpd_info = system_info->vpd_info;
   auto& dmi_info = system_info->dmi_info;
   auto& os_info = system_info->os_info;
-  if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
+  if (!FetchCachedVpdInfo(root_dir, context->system_config()->HasSkuNumber(),
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
-      !FetchOsInfoWithoutBootMode(&os_info, &error)) {
+      !state->FetchOsInfoWithoutBootMode(&os_info, &error)) {
     std::move(callback).Run(mojom::SystemResult::NewError(std::move(error)));
     return;
   }
 
   // os_info.boot_mode requires ipc with executor, handle separately
-  FetchBootMode(std::move(system_info), context_->root_dir(),
-                std::move(callback));
+  state->FetchBootMode(std::move(system_info), context->root_dir(),
+                       std::move(callback));
 }
 
 }  // namespace diagnostics

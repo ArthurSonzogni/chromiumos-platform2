@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/bind.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
@@ -39,11 +40,6 @@ std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
   if (ptr)
     return std::to_string(ptr->value);
   return std::nullopt;
-}
-
-void OnGetSystemInfoResponse(mojom::SystemResultPtr* response_update,
-                             mojom::SystemResultPtr response) {
-  *response_update = std::move(response);
 }
 
 class SystemUtilsTest : public BaseFileTest {
@@ -212,7 +208,7 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchSystemInfo() {
-    auto system_result = FetchSystemInfo();
+    auto system_result = FetchSystemInfoSync();
     ASSERT_FALSE(system_result.is_null());
     ASSERT_FALSE(system_result->is_error());
     ASSERT_TRUE(system_result->is_system_info());
@@ -222,28 +218,33 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchProbeError(const mojom::ErrorType& expected) {
-    auto system_result = FetchSystemInfo();
+    auto system_result = FetchSystemInfoSync();
     ASSERT_TRUE(system_result->is_error());
     EXPECT_EQ(system_result->get_error()->type, expected);
   }
 
  protected:
-  mojom::SystemInfoPtr expected_system_info_;
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-  mojom::SystemResultPtr FetchSystemInfo() {
+
+  mojom::SystemResultPtr FetchSystemInfoSync() {
     base::RunLoop run_loop;
     mojom::SystemResultPtr result;
-    system_fetcher_.FetchSystemInfo(
-        base::BindOnce(&OnGetSystemInfoResponse, &result));
-    run_loop.RunUntilIdle();
+    FetchSystemInfo(
+        &mock_context_,
+        base::BindLambdaForTesting([&](mojom::SystemResultPtr result_inner) {
+          result = std::move(result_inner);
+          run_loop.Quit();
+        }));
+    run_loop.Run();
     return result;
   }
+
+  mojom::SystemInfoPtr expected_system_info_;
 
  private:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  SystemFetcher system_fetcher_{&mock_context_};
   base::FilePath relative_vpd_rw_dir_;
   base::FilePath relative_vpd_ro_dir_;
   base::FilePath relative_dmi_info_path_;
