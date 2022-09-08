@@ -4,6 +4,9 @@ Files in this folder will be compiled by `chromeos-base/chromeos-installer`
 package into few programs, including:
 
 - `chromeos-install`: A shell script for manual installation from USB.
+- `chromeos-install-kernel`: A script which installs kernel and kernel modules
+  from USB.  This script is used by ChromeOS kernel developers to recover
+  from bad kernel updates.
 - `chromeos-recovery`: The main command for recovery shim to install image.
 - `chromeos-postinst`: The script executed by auto update or recovery shim after
     image installation is completed, being the symbolic link of `/postinst`.
