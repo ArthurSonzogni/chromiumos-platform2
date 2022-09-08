@@ -8,6 +8,7 @@ use std::process;
 use std::result;
 
 use getopts::Options;
+use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use log::warn;
 use sys_util::{self, block_signal, PollContext, PollToken};
@@ -101,6 +102,7 @@ fn run_forwarder(local_stream: StreamSocket, remote_stream: StreamSocket) -> Res
 }
 
 fn main() -> Result<()> {
+    install_memfd_handler();
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
 

@@ -18,6 +18,7 @@ use std::time::Duration;
 use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
+use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use log::{error, warn};
 use protobuf::{self, Message as ProtoMessage, ProtobufError};
@@ -589,6 +590,7 @@ fn dbus_thread(
 }
 
 fn main() -> Result<()> {
+    install_memfd_handler();
     syslog::init(IDENT.to_string(), false /* log_to_stderr */).map_err(Error::Syslog)?;
 
     // Block SIGPIPE so the process doesn't exit when writing to a socket that's been shutdown.

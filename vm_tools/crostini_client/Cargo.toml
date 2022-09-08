@@ -21,7 +21,12 @@ base64 = "0.13.0"
 dbus = "0.8"
 getopts = "0.2"
 libc = "0.2.44"
+libchromeos = "0.1.0"
 protobuf = "2.16"
 
 [build-dependencies]
 protoc-rust = "2.16"
+
+[patch.crates-io] # ignored by ebuild
+crosvm-base = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/crosvm-base-0.1.0/" } # ignored by ebuild
+libchromeos = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/libchromeos-0.1.0/" } # ignored by ebuild

@@ -33,6 +33,7 @@ use std::string;
 use std::sync::Arc;
 use std::thread;
 
+use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use sys_util::vsock::*;
 
@@ -334,6 +335,7 @@ fn add_id_mapping<T: Clone + FromStr + Ord>(s: &str, map: &mut p9::ServerIdMap<T
 }
 
 fn main() -> Result<()> {
+    install_memfd_handler();
     let mut opts = getopts::Options::new();
     opts.optopt(
         "",
