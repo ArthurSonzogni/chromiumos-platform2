@@ -130,6 +130,12 @@ esim() {
   fi
   [ -z "${euicc}" ] && error_exit "No euicc found."
 
+  if crossystem 'cros_debug?0'; then
+    if [ "${command}" != "status" ] && [ "${command}" != "refresh_profiles" ] ; then
+      error_exit "${command} not allowed outside of developer mode"
+    fi
+  fi
+
   case "${command}" in
     use_test_certs)
       poll_for_dbus_service "${HERMES}"
@@ -164,13 +170,8 @@ esim() {
       esim_install_pending_profile "${euicc}" "$@"
       ;;
     uninstall)
-      if crossystem 'cros_debug?1'; then
         poll_for_dbus_service "${HERMES}"
         esim_uninstall "${euicc}" "$@"
-      else
-        error_exit "Cannot uninstall profile. Uninstallation allowed in"\
-          "dev mode only"
-      fi
       ;;
     enable)
       poll_for_dbus_service "${HERMES}"
