@@ -225,7 +225,7 @@ pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-impl<'a, C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
+impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
     for DirectoryPowerPreferencesManager<C, P>
 {
     fn update_power_preferences(
