@@ -20,6 +20,7 @@
 #include "init/crossystem_impl.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
+#include "init/startup/flags.h"
 #include "init/startup/platform_impl.h"
 #include "init/startup/security_manager.h"
 
@@ -168,7 +169,6 @@ void ChromeosStartup::EarlySetup() {
       PLOG(WARNING) << "Unable to mount " << sys_config.value();
     }
   }
-
 
   // Mount securityfs as it is used to configure inode security policies below.
   const base::FilePath sys_security = root_.Append(kSysKernelSecurity);
