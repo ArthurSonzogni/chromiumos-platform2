@@ -37,6 +37,8 @@ class FaceAuthServiceImpl
   // `FaceAuthenticationService` implementation.
   void CreateEnrollmentSession(
       chromeos::face_auth::mojom::EnrollmentSessionConfigPtr config,
+      mojo::PendingReceiver<chromeos::face_auth::mojom::FaceEnrollmentSession>
+          receiver,
       mojo::PendingRemote<
           chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate,
       CreateEnrollmentSessionCallback callback) override;

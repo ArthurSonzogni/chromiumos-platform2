@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "faced/face_auth_service_impl.h"
+#include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/face_auth.mojom.h"
 
 namespace faced {
@@ -28,15 +29,16 @@ constexpr char kUserName[] = "someone@example.com";
 
 using ::testing::_;
 using ::testing::Invoke;
-using ::testing::NiceMock;
-using ::testing::Return;
 using ::testing::StrictMock;
 
 using ::chromeos::face_auth::mojom::AuthenticationSessionConfig;
 using ::chromeos::face_auth::mojom::CreateSessionResultPtr;
+using ::chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr;
 using ::chromeos::face_auth::mojom::EnrollmentSessionConfig;
+using ::chromeos::face_auth::mojom::EnrollmentUpdateMessagePtr;
 using ::chromeos::face_auth::mojom::FaceAuthenticationService;
 using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
+using ::chromeos::face_auth::mojom::FaceEnrollmentSession;
 using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
 using ::chromeos::face_auth::mojom::SessionCreationError;
 using ::chromeos::face_auth::mojom::SessionError;
@@ -70,22 +72,61 @@ TEST(FaceAuthServiceImpl, TestCreateEnrollmentSession) {
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
                                    base::OnceClosure());
 
-  FaceEnrollmentSessionDelegate delegate_impl;
-  mojo::Receiver<FaceEnrollmentSessionDelegate> delegate(&delegate_impl);
+  // Create a mock session delegate.
+  StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
 
+  // Request the service to begin an enrollment session.
   base::RunLoop run_loop;
-
+  mojo::Remote<FaceEnrollmentSession> session_remote;
+  mojo::Receiver<FaceEnrollmentSessionDelegate> receiver(&delegate);
   service->CreateEnrollmentSession(
       EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false),
-      delegate.BindNewPipeAndPassRemote(),
+      session_remote.BindNewPipeAndPassReceiver(),
+      receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_session_info());
         run_loop.Quit();
       }));
-
   run_loop.Run();
 
+  // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
+}
+
+TEST(FaceAuthServiceImpl, TestCancelEnrollmentSession) {
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure());
+
+  // Create a mock session delegate, that expects a cancellation event to be
+  // triggered.
+  StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
+  EXPECT_CALL(delegate, OnEnrollmentCancelled()).Times(1);
+
+  // Request the service to begin an enrollment session.
+  base::RunLoop run_loop;
+  mojo::Remote<FaceEnrollmentSession> session_remote;
+  mojo::Receiver<FaceEnrollmentSessionDelegate> receiver(&delegate);
+  service->CreateEnrollmentSession(
+      EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false),
+      session_remote.BindNewPipeAndPassReceiver(),
+      receiver.BindNewPipeAndPassRemote(),
+      base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
+        EXPECT_TRUE(result->is_session_info());
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+
+  // Ensure the service indicates a session is active.
+  EXPECT_TRUE(service_impl.has_active_session());
+
+  // Cancel the session by disconnecting `session_remote`.
+  session_remote.reset();
+
+  // Wait for `service_impl` to report that there is no longer an active
+  // session.
+  RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
+  EXPECT_FALSE(service_impl.has_active_session());
 }
 
 TEST(FaceAuthServiceImpl, TestCreateAuthenticationSession) {
@@ -93,21 +134,22 @@ TEST(FaceAuthServiceImpl, TestCreateAuthenticationSession) {
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
                                    base::OnceClosure());
 
-  FaceAuthenticationSessionDelegate delegate_impl;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&delegate_impl);
+  // Create a session delegate.
+  FaceAuthenticationSessionDelegate delegate;
 
+  // Request the service to begin an authentication session.
   base::RunLoop run_loop;
-
+  mojo::Receiver<FaceAuthenticationSessionDelegate> receiver(&delegate);
   service->CreateAuthenticationSession(
       AuthenticationSessionConfig::New(SampleUserHash()),
-      delegate.BindNewPipeAndPassRemote(),
+      receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_session_info());
         run_loop.Quit();
       }));
-
   run_loop.Run();
 
+  // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
 }
 
@@ -116,65 +158,67 @@ TEST(FaceAuthServiceImpl, TestNoConcurrentSession) {
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
                                    base::OnceClosure());
 
-  FaceAuthenticationSessionDelegate delegate_impl;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&delegate_impl);
+  // Create a session delegate.
+  FaceAuthenticationSessionDelegate delegate;
 
+  // Request the service to begin an authentication session.
   base::RunLoop first_run_loop;
-
+  mojo::Receiver<FaceAuthenticationSessionDelegate> receiver(&delegate);
   service->CreateAuthenticationSession(
       AuthenticationSessionConfig::New(SampleUserHash()),
-      delegate.BindNewPipeAndPassRemote(),
+      receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_session_info());
         first_run_loop.Quit();
       }));
-
   first_run_loop.Run();
 
+  // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
 
-  FaceAuthenticationSessionDelegate second_delegate_impl;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> second_delegate(
-      &delegate_impl);
+  // Create a second session delegate.
+  FaceAuthenticationSessionDelegate second_delegate;
 
+  // Request the service to begin a second authentication session.
   base::RunLoop second_run_loop;
-
+  mojo::Receiver<FaceAuthenticationSessionDelegate> second_receiver(
+      &second_delegate);
   service->CreateAuthenticationSession(
       AuthenticationSessionConfig::New(SampleUserHash()),
-      second_delegate.BindNewPipeAndPassRemote(),
+      second_receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_error());
         EXPECT_EQ(SessionCreationError::ALREADY_EXISTS, result->get_error());
         second_run_loop.Quit();
       }));
-
   second_run_loop.Run();
 }
 
-TEST(FaceAuthServiceImpl, TestCancelSession) {
+TEST(FaceAuthServiceImpl, TestCancelAuthenticationSession) {
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
                                    base::OnceClosure());
 
-  FaceAuthenticationSessionDelegate delegate_impl;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&delegate_impl);
+  // Create a session delegate.
+  FaceAuthenticationSessionDelegate delegate;
 
+  // Request the service to begin an authentication session.
   base::RunLoop run_loop;
-
+  mojo::Receiver<FaceAuthenticationSessionDelegate> receiver(&delegate);
   service->CreateAuthenticationSession(
       AuthenticationSessionConfig::New(SampleUserHash()),
-      delegate.BindNewPipeAndPassRemote(),
+      receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_session_info());
         run_loop.Quit();
       }));
-
   run_loop.Run();
 
+  // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
 
-  // cancel session by disconnecting remote
-  delegate.reset();
+  // Cancel the session by disconnecting `receiver`.
+  receiver.reset();
 
   RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
 
@@ -182,38 +226,38 @@ TEST(FaceAuthServiceImpl, TestCancelSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestDisconnection) {
-  bool disconnected = false;
-
-  base::RunLoop first_run_loop;
   base::RunLoop second_run_loop;
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
                                    base::BindLambdaForTesting([&]() {
-                                     disconnected = true;
                                      second_run_loop.Quit();
                                    }));
 
-  FaceAuthenticationSessionDelegate delegate_impl;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&delegate_impl);
+  // Create a session delegate.
+  FaceAuthenticationSessionDelegate delegate;
 
+  // Request the service to begin an authentication session.
+  base::RunLoop run_loop;
+  mojo::Receiver<FaceAuthenticationSessionDelegate> receiver(&delegate);
   service->CreateAuthenticationSession(
       AuthenticationSessionConfig::New(SampleUserHash()),
-      delegate.BindNewPipeAndPassRemote(),
+      receiver.BindNewPipeAndPassRemote(),
       base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
         EXPECT_TRUE(result->is_session_info());
-        first_run_loop.Quit();
+        run_loop.Quit();
       }));
+  run_loop.Run();
 
-  first_run_loop.Run();
-
+  // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
 
+  // End the session by disconnecting `service`.
   service.reset();
 
   second_run_loop.Run();
 
-  EXPECT_TRUE(disconnected);
+  // Ensure the service indicates a session is inactive.
   EXPECT_FALSE(service_impl.has_active_session());
 }
 

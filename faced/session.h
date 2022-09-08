@@ -11,6 +11,7 @@
 #include <absl/random/random.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "faced/mojom/face_auth.mojom.h"
@@ -36,46 +37,6 @@ class SessionInterface {
   // the session ends and closes the connection.
   virtual void RegisterDisconnectHandler(
       DisconnectCallback disconnect_handler) = 0;
-};
-
-// Enrollment session encapsulates the dependencies needed and operations
-// performed during enrollment.
-class EnrollmentSession : public SessionInterface {
- public:
-  static absl::StatusOr<std::unique_ptr<EnrollmentSession>> Create(
-      absl::BitGen& bitgen,
-      mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate,
-      chromeos::face_auth::mojom::EnrollmentSessionConfigPtr config);
-
-  ~EnrollmentSession() override = default;
-
-  // Disallow copy and move.
-  EnrollmentSession(const EnrollmentSession&) = delete;
-  EnrollmentSession& operator=(const EnrollmentSession&) = delete;
-
-  // `SessionInterface` implementation.
-  uint64_t session_id() override { return session_id_; }
-  void RegisterDisconnectHandler(
-      DisconnectCallback disconnect_handler) override;
-
- private:
-  EnrollmentSession(
-      uint64_t session_id,
-      mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate);
-
-  // Handle the disconnection of the remote.
-  void OnDisconnect();
-
-  int64_t session_id_;
-  mojo::Remote<chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate>
-      delegate_;
-
-  DisconnectCallback disconnect_callback_;
-
-  // Must be last member.
-  base::WeakPtrFactory<EnrollmentSession> weak_ptr_factory_{this};
 };
 
 // Authentication session encapsulates the dependencies needed and operations

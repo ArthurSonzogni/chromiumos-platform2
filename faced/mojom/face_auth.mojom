@@ -15,8 +15,9 @@ interface FaceAuthenticationService {
 
   // Create and initialize an enrollment session.
   //
-  // The remote |delegate| will be bound on success.
+  // The remote |delegate| and |session| receiver will be bound on success.
   CreateEnrollmentSession(EnrollmentSessionConfig config,
+    pending_receiver<FaceEnrollmentSession> session,
     pending_remote<FaceEnrollmentSessionDelegate> delegate)
     => (CreateSessionResult result);
 
@@ -77,13 +78,65 @@ enum SessionError {
   NO_ENROLLMENT,
 };
 
+// This empty interface represents an enrollment session.
+//
+// The remote can cancel a session by disconnecting from the receiver.
+interface FaceEnrollmentSession {};
+
 // This interface is implemented by the enrollment client and called by the
 // remote session.
 //
 // The remote calls the delegate's handlers to notify of enrollment events.
-//
-// The delegate can cancel a session by disconnecting from the remote.
 interface FaceEnrollmentSessionDelegate {
+  // Called when an enrollment update occurs.
+  //
+  // |message| contains latest status from the enrollment session and
+  // list of completed poses.
+  OnEnrollmentUpdate(EnrollmentUpdateMessage message);
+
+  // Only one of OnEnrollmentComplete, OnEnrollmentCancelled or
+  // OnEnrollmentError will be called to signal the end of a session.
+
+  // Called when enrollment is complete.
+  //
+  // |message| contains the final status of the enrollment session.
+  //
+  // Session remote will close the connection once called.
+  OnEnrollmentComplete(EnrollmentCompleteMessage message);
+
+  // Called when enrollment cancellation is complete.
+  //
+  // Session remote will close the connection once called.
+  //
+  // Cancellation is triggered when the client disconnects from the
+  // |FaceEnrollmentSession| delegate while the session is still active.
+  // However, clients must wait for |OnEnrollmentCancelled| before assuming
+  // that the cancel operation was performed. It is possible that closing
+  // the connection may have raced with the enrollment completing, in which
+  // case |OnEnrollmentComplete| or |OnEnrollmentError| may be called instead.
+  OnEnrollmentCancelled();
+
+  // Called with |error| when an unrecoverable error occurs.
+  //
+  // Session remote will close the connection when an error is emitted. A new
+  // session must be created to perform an enrollment.
+  OnEnrollmentError(SessionError error);
+};
+
+// Update of the enrollment operation.
+struct EnrollmentUpdateMessage {
+  FaceOperationStatus status;
+
+  // List of enrollment poses indicating which are completed.
+  //
+  // An enrollment application must have knowledge of which index represents
+  // a particular pose. The array length can vary depending on configuration.
+  array<bool> poses;
+};
+
+// Result of the enrollment operation.
+struct EnrollmentCompleteMessage {
+  FaceOperationStatus status;
 };
 
 // This interface is implemented by the authentication client and called by

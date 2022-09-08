@@ -61,6 +61,7 @@ generate_dbus_adaptors("libfaced_dbus_adaptor") {
 source_set("libfaced") {
   sources = [
     "dbus_adaptor.cc",
+    "enrollment_session.cc",
     "face_auth_daemon.cc",
     "face_auth_service.cc",
     "face_auth_service_impl.cc",
@@ -99,6 +100,7 @@ if (use.test) {
   executable("faced_test_runner") {
     sources = [
       "dbus_adaptor_test.cc",
+      "enrollment_session_test.cc",
       "face_auth_service_impl_test.cc",
       "testrunner.cc",
     ]

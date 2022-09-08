@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <absl/status/status.h>
 #include <base/bind.h>
@@ -22,9 +23,7 @@ namespace {
 using ::chromeos::face_auth::mojom::AuthenticationSessionConfigPtr;
 using ::chromeos::face_auth::mojom::CreateSessionResult;
 using ::chromeos::face_auth::mojom::CreateSessionResultPtr;
-using ::chromeos::face_auth::mojom::EnrollmentSessionConfigPtr;
 using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
 using ::chromeos::face_auth::mojom::FaceOperationStatus;
 using ::chromeos::face_auth::mojom::SessionCreationError;
 using ::chromeos::face_auth::mojom::SessionError;
@@ -40,44 +39,6 @@ uint64_t GenerateSessionId(absl::BitGen& bitgen) {
 }
 
 }  // namespace
-
-absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
-    absl::BitGen& bitgen,
-    mojo::PendingRemote<FaceEnrollmentSessionDelegate> delegate,
-    EnrollmentSessionConfigPtr config) {
-  uint64_t session_id = GenerateSessionId(bitgen);
-
-  // Using `new` to access private constructor of `EnrollmentSession`.
-  std::unique_ptr<EnrollmentSession> session(
-      new EnrollmentSession(session_id, std::move(delegate)));
-
-  session->delegate_.set_disconnect_handler(
-      base::BindOnce(&EnrollmentSession::OnDisconnect,
-                     session->weak_ptr_factory_.GetWeakPtr()));
-
-  return session;
-}
-
-EnrollmentSession::EnrollmentSession(
-    uint64_t session_id,
-    mojo::PendingRemote<FaceEnrollmentSessionDelegate> delegate)
-    : session_id_(session_id), delegate_(std::move(delegate)) {}
-
-void EnrollmentSession::RegisterDisconnectHandler(
-    DisconnectCallback disconnect_handler) {
-  disconnect_callback_ = std::move(disconnect_handler);
-}
-
-void EnrollmentSession::OnDisconnect() {
-  // TODO(bkersten): cancel enrollment session operation
-
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
-  }
-}
 
 absl::StatusOr<std::unique_ptr<AuthenticationSession>>
 AuthenticationSession::Create(
