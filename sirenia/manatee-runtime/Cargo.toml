@@ -2,7 +2,7 @@
 name = "manatee-runtime"
 version = "0.1.0"
 description = "API endpoint for TEEs to communicate with Trichechus."
-authors = ["The Chromium OS Authors"]
+authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 [[bin]]

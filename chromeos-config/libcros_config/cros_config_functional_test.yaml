@@ -1,10 +1,10 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
-author: "Chromium OS Authors"
+author: "ChromiumOS Authors"
 name: "CrosConfigTest"
 harness: "gtest"
 category: "functional"

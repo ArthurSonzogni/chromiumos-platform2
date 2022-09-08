@@ -1,14 +1,14 @@
-# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: cros-im
-Upstream-Contact: The Chromium OS Authors <chromium-os-dev@chromium.org>
+Upstream-Contact: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 Source: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/cros_im/
 
 Files: *
-Copyright: 2021-2022 The Chromium OS Authors <chromium-os-dev@chromium.org>
+Copyright: 2021-2022 The ChromiumOS Authors <chromium-os-dev@chromium.org>
 License: BSD-Google
 
 License: BSD-Google
@@ -22,7 +22,7 @@ License: BSD-Google
  copyright notice, this list of conditions and the following disclaimer
  in the documentation and/or other materials provided with the
  distribution.
-     * Neither the name of Google Inc. nor the names of its
+     * Neither the name of Google LLC nor the names of its
  contributors may be used to endorse or promote products derived from
  this software without specific prior written permission.
 

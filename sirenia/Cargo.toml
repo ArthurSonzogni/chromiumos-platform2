@@ -2,7 +2,7 @@
 name = "sirenia"
 version = "0.24.52"
 description = "a TEE runtime environment."
-authors = ["The Chromium OS Authors"]
+authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 # This is here to absorb the workspace entries in the ebuild, since cros-rust

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -80,7 +80,7 @@ _BASIC_TYPES = [
 _OUTPUT_FILE_H = "tpm_generated.h"
 _OUTPUT_FILE_CC = "tpm_generated.cc"
 _COPYRIGHT_HEADER = (
-    "// Copyright 2019 The Chromium OS Authors. All rights reserved.\n"
+    "// Copyright 2019 The ChromiumOS Authors\n"
     "// Use of this source code is governed by a "
     "BSD-style license that can be\n"
     "// found in the LICENSE file.\n"

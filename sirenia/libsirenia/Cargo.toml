@@ -2,7 +2,7 @@
 name = "libsirenia"
 version = "0.1.0"
 description = "library for the TEE runtime environment"
-authors = ["The Chromium OS Authors"]
+authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 [build-dependencies]

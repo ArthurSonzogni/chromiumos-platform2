@@ -2,7 +2,7 @@
 name = "manatee-client"
 version = "0.24.52"
 description = "D-Bus bindings for ManaTEE"
-authors = ["The Chromium OS Authors"]
+authors = ["The ChromiumOS Authors"]
 edition = "2018"
 exclude = ["*"]
 include = ["Cargo.toml", "build.rs", "src/lib.rs", "src/bindings/*"]

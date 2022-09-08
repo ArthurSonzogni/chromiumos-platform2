@@ -2,7 +2,7 @@
 name = "cronista"
 version = "0.24.52"
 description = "a authenticated log for Chrome OS."
-authors = ["The Chromium OS Authors"]
+authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 [profile.release]

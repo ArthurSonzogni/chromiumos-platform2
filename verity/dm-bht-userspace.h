@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Chromium OS Authors <chromium-os-dev@chromium.org>
+ * Copyright 2011 The ChromiumOS Authors <chromium-os-dev@chromium.org>
  *
  * Device-Mapper block hash tree interface.
  *

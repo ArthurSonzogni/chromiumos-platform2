@@ -1,11 +1,11 @@
-# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 Source: cros-im
 Section: devel
 Priority: optional
-Maintainer: The Chromium OS Authors <chromium-os-dev@chromium.org>
+Maintainer: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 Build-Depends: clang,
                cmake,
                debhelper-compat (= 12),

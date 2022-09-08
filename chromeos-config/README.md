@@ -598,10 +598,10 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | ec-image-name | string |  | False |  | False | The target EC binary name which is placed under /lib/firmware. |
 | files | array - [files](#files) |  | False |  | True |  |
-| product-id | integer |  | False |  | False | The Product ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google Inc. the product-id is 20540(=0x503c). |
+| product-id | integer |  | False |  | False | The Product ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google LLC the product-id is 20540(=0x503c). |
 | touch-image-name | string |  | False |  | False | The touchpad binary name which is placed under /lib/firmware. This is only needed if the detachable base contains touchpad. |
 | usb-path | string |  | False |  | False | Searches and finds the idVendor and idProduct under sysfs /sys/bus/usb/devices/* which matches the vendor-id and product-id. By taking this as an example: '/sys/bus/usb/devices/1-1.1' The usb-path is '1-1.1'. |
-| vendor-id | integer |  | False |  | False | The Vendor ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google Inc. the vendor-id is 6353(=0x18d1). |
+| vendor-id | integer |  | False |  | False | The Vendor ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google LLC the vendor-id is 6353(=0x18d1). |
 
 ### files
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

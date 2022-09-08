@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """A C++ binding code generator for flatbuffers schema.
@@ -152,7 +152,7 @@ _BASE_TYPE_STRING = {
 
 _COPYRIGHT_HEADER = Template(
     """\
-// Copyright {{ year }} The Chromium OS Authors. All rights reserved.
+// Copyright {{ year }} The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 

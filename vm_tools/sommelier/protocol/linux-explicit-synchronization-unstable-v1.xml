@@ -2,7 +2,7 @@
 <protocol name="zwp_linux_explicit_synchronization_unstable_v1">
 
   <copyright>
-    Copyright 2016 The Chromium Authors.
+    Copyright 2016 The Chromium Authors
     Copyright 2017 Intel Corporation
     Copyright 2018 Collabora, Ltd
 

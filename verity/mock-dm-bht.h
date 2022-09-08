@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 The Chromium OS Authors <chromium-os-dev@chromium.org>
+ * Copyright 2022 The ChromiumOS Authors <chromium-os-dev@chromium.org>
  *
  * Device-Mapper block hash tree interface.
  * See Documentation/device-mapper/dm-bht.txt for details.

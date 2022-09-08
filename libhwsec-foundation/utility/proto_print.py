@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -290,7 +290,7 @@ def GenerateFileHeaders(
         ]
     )
     header = """\
-// Copyright %(year)s The Chromium OS Authors. All rights reserved.
+// Copyright %(year)s The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -317,7 +317,7 @@ namespace %(namespace)s {
         "cmd": " ".join(sys.argv),
     }
     impl = """\
-// Copyright %(year)s The Chromium OS Authors. All rights reserved.
+// Copyright %(year)s The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
