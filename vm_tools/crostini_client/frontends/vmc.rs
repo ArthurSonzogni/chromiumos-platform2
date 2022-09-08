@@ -714,7 +714,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .join(user_id_hash)
             .join("log");
 
-        let mut counter = 0;
         for n in (0..6).rev() {
             // Logs are stored in log_root/<base64name>.log, then .1, .2, etc
             // appended as logs are rotated. Start at 5 then work our way back
