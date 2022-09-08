@@ -17,6 +17,7 @@
 #include "init/crossystem.h"
 #include "init/startup/flags.h"
 #include "init/startup/platform_impl.h"
+#include "init/startup/stateful_mount.h"
 
 namespace startup {
 
@@ -38,6 +39,7 @@ class ChromeosStartup {
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
                   std::unique_ptr<Platform> platform);
+
   virtual ~ChromeosStartup() = default;
 
   void Sysctl();
@@ -51,17 +53,20 @@ class ChromeosStartup {
 
  private:
   void CheckClock();
+
   // Runs the bash version of chromeos startup to allow for incremental
   // migration.
   int RunChromeosStartupScript();
 
   std::unique_ptr<CrosSystem> cros_system_;
+  const Flags flags_;
   const base::FilePath lsb_file_;
   const base::FilePath proc_;
   const base::FilePath root_;
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
   std::unique_ptr<Platform> platform_;
+  std::unique_ptr<StatefulMount> stateful_mount_;
 };
 
 }  // namespace startup

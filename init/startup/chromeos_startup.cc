@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
 
@@ -23,6 +24,7 @@
 #include "init/startup/flags.h"
 #include "init/startup/platform_impl.h"
 #include "init/startup/security_manager.h"
+#include "init/startup/stateful_mount.h"
 
 namespace {
 
@@ -103,6 +105,7 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
                                  const base::FilePath& proc_file,
                                  std::unique_ptr<Platform> platform)
     : cros_system_(std::move(cros_system)),
+      flags_(flags),
       lsb_file_(lsb_file),
       proc_(proc_file),
       root_(root),
@@ -211,6 +214,11 @@ int ChromeosStartup::Run() {
   bootstat_.LogEvent("pre-startup");
 
   EarlySetup();
+
+  stateful_mount_ = std::make_unique<StatefulMount>(
+      flags_, root_, stateful_, platform_.get(),
+      std::unique_ptr<brillo::LogicalVolumeManager>());
+  stateful_mount_->MountStateful();
 
   int ret = RunChromeosStartupScript();
   if (ret) {
