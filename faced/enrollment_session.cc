@@ -18,8 +18,6 @@
 
 namespace faced {
 
-namespace {
-
 using ::chromeos::face_auth::mojom::EnrollmentCompleteMessage;
 using ::chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr;
 using ::chromeos::face_auth::mojom::EnrollmentSessionConfigPtr;
@@ -28,17 +26,6 @@ using ::chromeos::face_auth::mojom::EnrollmentUpdateMessagePtr;
 using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
 using ::chromeos::face_auth::mojom::FaceOperationStatus;
 using ::chromeos::face_auth::mojom::SessionError;
-
-// Generate a unique session ID.
-//
-// IDs should be used for debugging and diagnostics, and not security.
-// We assume that the number of sessions during a single system boot is
-// low enough that the probability of a collision is negligible.
-uint64_t GenerateSessionId(absl::BitGen& bitgen) {
-  return absl::Uniform<uint64_t>(bitgen);
-}
-
-}  // namespace
 
 absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
     absl::BitGen& bitgen,

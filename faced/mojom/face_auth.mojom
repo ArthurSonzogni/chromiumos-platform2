@@ -23,8 +23,9 @@ interface FaceAuthenticationService {
 
   // Create and initialize an authentication session.
   //
-  // The remote |delegate| will be bound on success.
+  // The remote |delegate| and |session| receiver will be bound on success.
   CreateAuthenticationSession(AuthenticationSessionConfig config,
+    pending_receiver<FaceAuthenticationSession> session,
     pending_remote<FaceAuthenticationSessionDelegate> delegate)
     => (CreateSessionResult result);
 };
@@ -139,11 +140,57 @@ struct EnrollmentCompleteMessage {
   FaceOperationStatus status;
 };
 
+// This empty interface represents an authentication session.
+//
+// The remote can cancel a session by disconnecting from the receiver.
+interface FaceAuthenticationSession {};
+
 // This interface is implemented by the authentication client and called by
 // the remote session.
 //
 // The remote calls the delegate's handlers to notify of authentication events.
-//
-// The delegate can cancel a session by disconnecting from the remote.
 interface FaceAuthenticationSessionDelegate {
+  // Called when an update occurs.
+  //
+  // |message| contains latest status of authentication session.
+  OnAuthenticationUpdate(AuthenticationUpdateMessage message);
+
+  // Only one of OnAuthenticationComplete, OnAuthenticationCancelled or
+  // OnAuthenticationError will be called to signal the end of a session.
+
+  // Called when authentication is complete.
+  //
+  // |message| contains the final status of the authentication session.
+  //
+  // Session remote will close the connection once called.
+  OnAuthenticationComplete(AuthenticationCompleteMessage message);
+
+  // Called when authentication cancellation is complete.
+  //
+  // Session remote will close the connection once called.
+  //
+  // Cancellation is triggered when the client disconnects from the
+  // |FaceAuthenticationSession| delegate while the session is still active.
+  // However, clients must wait for |OnAuthenticationCancelled| before assuming
+  // that the cancel operation was performed. It is possible that closing
+  // the connection may have raced with an authentication completing, in which
+  // case |OnAuthenticationComplete| or |OnAuthenticationError| may be called
+  // instead.
+  OnAuthenticationCancelled();
+
+  // Called with |error| when an unrecoverable error occurs.
+  //
+  // Session remote will close the connection when an error is emitted. A new
+  // session must be created to perform authentication.
+  OnAuthenticationError(SessionError error);
+};
+
+// Update of the authentication operation.
+struct AuthenticationUpdateMessage {
+  FaceOperationStatus status;
+};
+
+// Result of the authentication operation.
+struct AuthenticationCompleteMessage {
+  FaceOperationStatus status;
 };

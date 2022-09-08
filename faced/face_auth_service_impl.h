@@ -45,6 +45,8 @@ class FaceAuthServiceImpl
 
   void CreateAuthenticationSession(
       chromeos::face_auth::mojom::AuthenticationSessionConfigPtr config,
+      mojo::PendingReceiver<
+          chromeos::face_auth::mojom::FaceAuthenticationSession> receiver,
       mojo::PendingRemote<
           chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate>
           delegate,

@@ -9,8 +9,8 @@
 
 #include <base/bind.h>
 
+#include "faced/authentication_session.h"
 #include "faced/enrollment_session.h"
-#include "faced/session.h"
 
 namespace faced {
 
@@ -18,6 +18,7 @@ using ::chromeos::face_auth::mojom::AuthenticationSessionConfigPtr;
 using ::chromeos::face_auth::mojom::CreateSessionResult;
 using ::chromeos::face_auth::mojom::CreateSessionResultPtr;
 using ::chromeos::face_auth::mojom::EnrollmentSessionConfigPtr;
+using ::chromeos::face_auth::mojom::FaceAuthenticationSession;
 using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
 using ::chromeos::face_auth::mojom::FaceEnrollmentSession;
 using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
@@ -74,6 +75,7 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
 
 void FaceAuthServiceImpl::CreateAuthenticationSession(
     AuthenticationSessionConfigPtr config,
+    ::mojo::PendingReceiver<FaceAuthenticationSession> receiver,
     ::mojo::PendingRemote<FaceAuthenticationSessionDelegate> delegate,
     CreateAuthenticationSessionCallback callback) {
   // If a session is already active, return an error.
@@ -87,8 +89,8 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
 
   // Create a new session, and register for callbacks when it is closed.
   absl::StatusOr<std::unique_ptr<AuthenticationSession>> session =
-      AuthenticationSession::Create(bitgen_, std::move(delegate),
-                                    std::move(config));
+      AuthenticationSession::Create(bitgen_, std::move(receiver),
+                                    std::move(delegate), std::move(config));
 
   // TODO(b/246196994): handle session creation error propagation
 

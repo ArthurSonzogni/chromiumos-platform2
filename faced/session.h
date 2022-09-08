@@ -6,17 +6,18 @@
 #define FACED_SESSION_H_
 
 #include <cstdint>
-#include <memory>
 
 #include <absl/random/random.h>
-#include <absl/status/status.h>
-#include <absl/status/statusor.h>
-#include <mojo/public/cpp/bindings/receiver.h>
-#include <mojo/public/cpp/bindings/remote.h>
-
-#include "faced/mojom/face_auth.mojom.h"
+#include <base/callback_forward.h>
 
 namespace faced {
+
+// Generate a unique session ID.
+//
+// IDs should be used for debugging and diagnostics, and not security.
+// We assume that the number of sessions during a single system boot is
+// low enough that the probability of a collision is negligible.
+uint64_t GenerateSessionId(absl::BitGen& bitgen);
 
 // Interface for registering disconnect handler on a session.
 class SessionInterface {
@@ -37,48 +38,6 @@ class SessionInterface {
   // the session ends and closes the connection.
   virtual void RegisterDisconnectHandler(
       DisconnectCallback disconnect_handler) = 0;
-};
-
-// Authentication session encapsulates the dependencies needed and operations
-// performed during authentication.
-class AuthenticationSession : public SessionInterface {
- public:
-  static absl::StatusOr<std::unique_ptr<AuthenticationSession>> Create(
-      absl::BitGen& bitgen,
-      mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate>
-          delegate,
-      chromeos::face_auth::mojom::AuthenticationSessionConfigPtr config);
-
-  ~AuthenticationSession() override = default;
-
-  // Disallow copy and move.
-  AuthenticationSession(const AuthenticationSession&) = delete;
-  AuthenticationSession& operator=(const AuthenticationSession&) = delete;
-
-  // `SessionInterface` implementation.
-  uint64_t session_id() override { return session_id_; }
-  void RegisterDisconnectHandler(
-      DisconnectCallback disconnect_handler) override;
-
- private:
-  AuthenticationSession(
-      uint64_t session_id,
-      mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate>
-          delegate);
-
-  // Handle the disconnection of the remote.
-  void OnDisconnect();
-
-  int64_t session_id_;
-  mojo::Remote<chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate>
-      delegate_;
-
-  DisconnectCallback disconnect_callback_;
-
-  // Must be last member.
-  base::WeakPtrFactory<AuthenticationSession> weak_ptr_factory_{this};
 };
 
 }  // namespace faced
