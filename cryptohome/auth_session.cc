@@ -16,6 +16,7 @@
 #include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -75,6 +76,24 @@ constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 namespace {
+
+constexpr base::StringPiece IntentToDebugString(AuthIntent intent) {
+  switch (intent) {
+    case AuthIntent::kDecrypt:
+      return "decrypt";
+    case AuthIntent::kVerifyOnly:
+      return "verify-only";
+  }
+}
+
+std::string IntentSetToDebugString(const base::flat_set<AuthIntent>& intents) {
+  std::vector<base::StringPiece> strings;
+  strings.reserve(intents.size());
+  for (auto intent : intents) {
+    strings.push_back(IntentToDebugString(intent));
+  }
+  return base::JoinString(strings, ",");
+}
 
 // Loads all configured auth factors for the given user from the disk. Malformed
 // factors are logged and skipped.
@@ -244,7 +263,7 @@ void AuthSession::RecordAuthSessionStart() const {
   }
   LOG(INFO) << "AuthSession: started with is_ephemeral_user="
             << is_ephemeral_user_
-            << " intent=" << static_cast<int>(auth_intent_)
+            << " intent=" << IntentToDebugString(auth_intent_)
             << " user_exists=" << user_exists_
             << " keys=" << base::JoinString(keys, ",") << ".";
 }
@@ -261,8 +280,9 @@ void AuthSession::SetAuthSessionAsAuthenticated(
     status_ = AuthStatus::kAuthStatusAuthenticated;
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
-    LOG(INFO) << "AuthSession: authenticated.";
   }
+  LOG(INFO) << "AuthSession: authorized for "
+            << IntentSetToDebugString(authorized_intents_) << ".";
   SetTimeoutTimer(kAuthSessionTimeout);
 }
 
