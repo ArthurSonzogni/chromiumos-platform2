@@ -50,6 +50,10 @@ class MockPlatform : public Platform {
               // NOLINTNEXTLINE(runtime/int)
               (int fd, unsigned long request, int* arg1),
               (override));
+  MOCK_METHOD(bool,
+              RunHiberman,
+              (const base::FilePath& output_file),
+              (override));
 };
 
 }  // namespace startup

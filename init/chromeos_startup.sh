@@ -112,11 +112,6 @@ is_tpm_owned() {
   [ "${tpm_owned}" != "0" ]
 }
 
-add_clobber_crash_report() {
-  crash_reporter --early --log_to_stderr --mount_failure --mount_device="$1"
-  sync
-}
-
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
@@ -210,7 +205,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # To support multiple volumes on a single UBI device, if the stateful
   # partition is not found on ubi${PARTITION_NUM_STATE}_0, check
   # ubi0_${PARTITION_NUM_STATE}.
-  STATE_FLAGS="nodev,noexec,nosuid,noatime"
   if [ "${FORMAT_STATE}" = "ubi" ]; then
     STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
     if [ ! -e "${STATE_DEV}" ]; then
@@ -218,16 +212,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     fi
   else
     STATE_DEV="${ROOTDEV_TYPE}${PARTITION_NUM_STATE}"
-    if [ "${FS_FORMAT_STATE}" = "ext4" ]; then
-      DIRTY_EXPIRE_CENTISECS="$(sysctl -n vm.dirty_expire_centisecs)"
-      COMMIT_INTERVAL="$(( DIRTY_EXPIRE_CENTISECS / 100 ))"
-      STATE_FLAGS="${STATE_FLAGS},commit=${COMMIT_INTERVAL},discard"
-    fi
   fi
 
   if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
     # Attempt to get a valid volume group name.
-    bootstat pre-lvm-activation
     vg_name="$(get_volume_group "${STATE_DEV}")"
     if [ -n "${vg_name}" ]; then
       # Check to see if this is a hibernate resume boot. If so, the image that
@@ -243,95 +231,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
         DEV_IMAGE="/dev/mapper/dev-image-rw"
 
       else
-        lvchange -ay "${vg_name}/unencrypted"
         STATE_DEV="/dev/${vg_name}/unencrypted"
         DEV_IMAGE="/dev/${vg_name}/dev-image"
       fi
     fi
-    bootstat lvm-activation-complete
-  fi
-
-  # Check if we enable ext4 features.
-  if [ "${FS_FORMAT_STATE}" = "ext4" ]; then
-    SB_FEATURES=""
-    SB_OPTIONS=""
-    FS_FEATURES=$(dumpe2fs -h "${STATE_DEV}" 2>/dev/null |
-      grep -e "^Filesystem features:.*")
-
-    # Enable directory encryption for existing install.
-    if ! string_contains "${FS_FEATURES}" "encrypt"; then
-      # The stateful partition is not set for encryption.
-      # Check if we should migrate.
-      if ext4_dir_encryption_supported; then
-        # The kernel support encryption, do it!
-        SB_OPTIONS="${SB_OPTIONS},encrypt"
-      fi
-    fi
-
-    # Enable fs-verity for existing install.
-    if ! string_contains "${FS_FEATURES}" "verity"; then
-      # The stateful partition is not set for fs-verity.
-      # Check if we should migrate.
-      if ext4_fsverity_supported; then
-        # The kernel support fs-verity, do it!
-        SB_OPTIONS="${SB_OPTIONS},verity"
-      fi
-    fi
-
-    # Enable/disable quota feature.
-    if ! dumpe2fs -h "${STATE_DEV}" 2>/dev/null | \
-         grep -qe "^Reserved blocks gid.*20119"; then
-      # Add Android's AID_RESERVED_DISK to resgid.
-      SB_FEATURES="${SB_FEATURES} -g 20119"
-    fi
-    if ext4_quota_supported; then
-      # Quota is enabled in the kernel, make sure that quota is enabled in the
-      # filesystem.
-      if ! string_contains "${FS_FEATURES}" "quota"; then
-        SB_OPTIONS="${SB_OPTIONS},quota"
-        SB_FEATURES="${SB_FEATURES} -Qusrquota,grpquota"
-      fi
-      if ext4_prjquota_supported; then
-        if ! string_contains "${FS_FEATURES}" "project"; then
-          SB_FEATURES="${SB_FEATURES} -Qprjquota"
-        fi
-      else
-        if string_contains "${FS_FEATURES}" "project"; then
-          SB_FEATURES="${SB_FEATURES} -Q^prjquota"
-        fi
-      fi
-    else
-      # Quota is not enabled in the kernel, make sure that quota is disabled in
-      # the filesystem.
-      if string_contains "${FS_FEATURES}" "quota"; then
-        SB_OPTIONS="${SB_OPTIONS},^quota"
-        SB_FEATURES="${SB_FEATURES} -Q^usrquota,^grpquota,^prjquota"
-      fi
-    fi
-
-    if [ -n "${SB_FEATURES}" ] || [ -n "${SB_OPTIONS}" ]; then
-      # Ensure to replay the journal first so it doesn't overwrite the flag.
-      e2fsck -p -E journal_only "${STATE_DEV}" || :
-      if [ -n "${SB_OPTIONS}" ]; then
-          SB_FEATURES="${SB_FEATURES} -O ${SB_OPTIONS#,}"
-      fi
-      # Remove quote to treat ' ' as argument separators.
-      tune2fs ${SB_FEATURES} "${STATE_DEV}" || :
-    fi
-  fi
-
-  # Mount stateful partition from STATE_DEV.
-  if ! mount -n -t "${FS_FORMAT_STATE}" -o "${STATE_FLAGS}" \
-         "${STATE_DEV}" /mnt/stateful_partition; then
-    # Try to rebuild the stateful partition by clobber-state. (Not using fast
-    # mode out of security consideration: the device might have gotten into this
-    # state through power loss during dev mode transition).
-    chromeos-boot-alert self_repair
-    clobber-log --repair "${STATE_DEV}" \
-        "Self-repair corrupted stateful partition"
-    dumpe2fs -fh "${STATE_DEV}" > /run/dumpe2fs_stateful.log
-    add_clobber_crash_report "stateful"
-    exec clobber-state "keepimg"
   fi
 
   if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then

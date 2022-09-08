@@ -30,6 +30,10 @@ class FakePlatform : public Platform {
   void SetMountResultForPath(const base::FilePath& path,
                              const std::string& output);
 
+  int GetBootAlertForArg(const std::string& arg);
+
+  void SetClobberLogFile(const base::FilePath& path);
+
   void SetIoctlReturnValue(int ret);
 
   // `startup::Platform` overrides.
@@ -49,12 +53,15 @@ class FakePlatform : public Platform {
   // NOLINTNEXTLINE(runtime/int)
   int Ioctl(int fd, unsigned long request, int* arg1) override;
 
+  void BootAlert(const std::string& arg) override;
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, std::string> mount_result_map_;
   std::vector<std::string> umount_vector_;
   int open_ret_ = -1;
   int ioctl_ret_ = 0;
+  std::unordered_map<std::string, int> alert_result_map_;
 };
 
 }  // namespace startup
