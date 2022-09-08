@@ -70,6 +70,7 @@
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/uss_experiment_config_fetcher.h"
+#include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -4970,12 +4971,8 @@ void UserDataAuth::ListAuthFactors(
 
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
-    for (int raw_type = user_data_auth::AuthFactorType_MIN;
-         raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
-      if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
-        continue;
-      }
-      auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
+    for (auto proto_type :
+         PROTOBUF_ENUM_ALL_VALUES(user_data_auth::AuthFactorType)) {
       std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
       if (!type) {
         continue;
@@ -5001,12 +4998,8 @@ void UserDataAuth::ListAuthFactors(
 
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
-    for (int raw_type = user_data_auth::AuthFactorType_MIN;
-         raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
-      if (!user_data_auth::AuthFactorType_IsValid(raw_type)) {
-        continue;
-      }
-      auto proto_type = static_cast<user_data_auth::AuthFactorType>(raw_type);
+    for (auto proto_type :
+         PROTOBUF_ENUM_ALL_VALUES(user_data_auth::AuthFactorType)) {
       std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
       if (!type) {
         continue;
