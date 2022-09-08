@@ -106,6 +106,7 @@ set_robust_list: 1
 setpriority: 1
 setresuid32: 1
 setresgid32: 1
+sigaltstack: 1
 shutdown: 1
 socket: arg0 == PF_UNIX
 socketpair: 1
