@@ -150,6 +150,35 @@ AuthFactor.
       - auth_factor_label - The label that will be used to identify an
       AuthFactor to remove.
     - *Reply* - CryptohomeErrorCode - Returns if there is any error
+5. **ListAuthFactor** - This call will list all of the configured AuthFactors
+for a given user as well as the supported types of auth factors.
+    - *Input*:
+      - account_id - The username of the user.
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error.
+      - configured_auth_factors - The persistent auth factors that have
+      currently been configured (e.g. by a prior AddAuthFactor call) for this
+      user.
+      - supported_auth_factors - The types of auth factors supported for this
+      user. Should include all configured factor types as well as any additional
+      types that could be added.
+    - *Usage*:
+      - The user specified does not have to be in an authenticated state.
+      However, if the user does not exist (on-disk) or have an active session
+      then this will report an INVALID_ARGUMENT error.
+      - The configured factors reported will be all currently persisted factors.
+      This list can be empty, for example if the user is emphemeral, or if a
+      persistent user has been created but no factors have yet been added.
+      - The supported factor types reported are based on the type of user
+      (persistent or ephemeral), the local hardware available, and the set of
+      existing configured factors. Some examples of how these factors could
+      impact what is supported:
+        - Support for PIN factors depends on having sufficiently advanced TPM
+        hardware and firmware.
+        - If the user has a Kiosk factor configured, all other types of factors
+        will be unavailable.
+        - Conversely, if the user has at least one non-Kiosk factor configured
+        then a Kiosk factor will not be reported as a supported option.
 
 ## Order of Operations
 
