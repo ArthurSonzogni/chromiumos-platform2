@@ -23,7 +23,7 @@ constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(30);
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(10);
 #else
 // TODO(alanlxl): discussion required about the default window.
-constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 5);
+constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 30);
 
 // To avoid spam, retry window should not be shorter than kMinimalRetryWindow.
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
@@ -32,6 +32,7 @@ constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
 // TODO(alanlxl): Just dummpy impl.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id();
+  DVLOG(1) << "cros_event is " << cros_event.DebugString();
 
   if (cros_event.has_eligibility_eval_checkin()) {
     LOG(INFO) << "cros_event has_eligibility_eval_checkin";
@@ -56,12 +57,11 @@ void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   } else if (cros_event.has_epoch_started()) {
     LOG(INFO) << "cros_event.has_epoch_started";
   } else if (cros_event.has_tensorflow_error()) {
-    LOG(INFO) << "cros_event.has_tensorflow_error";
-    DVLOG(1) << cros_event.DebugString();
+    LOG(ERROR) << "cros_event.has_tensorflow_error";
   } else if (cros_event.has_io_error()) {
-    LOG(INFO) << "cros_event.has_io_error";
+    LOG(ERROR) << "cros_event.has_io_error";
   } else if (cros_event.has_example_selector_error()) {
-    LOG(INFO) << "cros_event.has_example_selector_error";
+    LOG(ERROR) << "cros_event.has_example_selector_error";
   } else if (cros_event.has_interruption()) {
     LOG(INFO) << "cros_event.has_interruption";
   } else if (cros_event.has_epoch_completed()) {
@@ -83,7 +83,7 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
   if (cros_secagg_event.has_state_transition())
     LOG(INFO) << "cros_secagg_event.has_state_transition";
   else if (cros_secagg_event.has_error())
-    LOG(INFO) << "cros_secagg_event.has_error";
+    LOG(ERROR) << "cros_secagg_event.has_error";
   else if (cros_secagg_event.has_abort())
     LOG(INFO) << "cros_secagg_event.has_abort";
   else
