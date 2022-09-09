@@ -39,6 +39,7 @@
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
+using ::testing::AtMost;
 using ::testing::Between;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -93,13 +94,7 @@ class StorageQueueTest
     options_.set_directory(base::FilePath(location_.GetPath()));
     // Disallow uploads unless other expectation is set (any later EXPECT_CALL
     // will take precedence over this one).
-    EXPECT_CALL(set_mock_uploader_expectations_, Call(_))
-        .WillRepeatedly(Invoke([](UploaderInterface::UploadReason reason) {
-          return Status(
-              error::UNAVAILABLE,
-              base::StrCat({"Test uploader not provided by the test, reason=",
-                            UploaderInterface::ReasonToString(reason)}));
-        }));
+    EXPECT_CALL(set_mock_uploader_expectations_, Call(_)).Times(0);
   }
 
   void TearDown() override {
@@ -564,6 +559,16 @@ class StorageQueueTest
   // and returns the corresponding result of the operation.
   StatusOr<scoped_refptr<StorageQueue>> CreateTestStorageQueue(
       const QueueOptions& options) {
+    // Handle and reject PERIODIC (optionally), as long as there is no explicit
+    // expectation set.
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillRepeatedly(Invoke([](UploaderInterface::UploadReason reason) {
+          return Status(
+              error::UNAVAILABLE,
+              base::StrCat({"Test uploader not provided by the test, reason=",
+                            UploaderInterface::ReasonToString(reason)}));
+        }));
     CreateTestEncryptionModuleOrDie();
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
@@ -585,6 +590,17 @@ class StorageQueueTest
     // StorageQueue is destructed on a thread,
     // so we need to wait for it to destruct.
     task_environment_.RunUntilIdle();
+    // Handle and reject INIT_RESUME (optionally), in case the queue is
+    // recreated.
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::INIT_RESUME)))
+        .Times(AtMost(1))
+        .WillRepeatedly(Invoke([](UploaderInterface::UploadReason reason) {
+          return Status(
+              error::UNAVAILABLE,
+              base::StrCat({"Test uploader not provided by the test, reason=",
+                            UploaderInterface::ReasonToString(reason)}));
+        }));
   }
 
   void InjectFailures(const test::StorageQueueOperationKind operation_kind,
@@ -619,11 +635,13 @@ class StorageQueueTest
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
                StorageQueueTest* self) {
+              LOG(ERROR) << "Attempt upload, reason="
+                         << UploaderInterface::ReasonToString(reason);
               auto result = self->set_mock_uploader_expectations_.Call(reason);
-              LOG(ERROR) << "Upload reason="
-                         << UploaderInterface::ReasonToString(reason) << " "
-                         << result.status();
               if (!result.ok()) {
+                LOG(ERROR) << "Upload not allowed, reason="
+                           << UploaderInterface::ReasonToString(reason) << " "
+                           << result.status();
                 std::move(start_uploader_cb).Run(result.status());
                 return;
               }
@@ -1627,7 +1645,7 @@ TEST_P(StorageQueueTest, WriteAndImmediateUploadWithFailure) {
     EXPECT_CALL(set_mock_uploader_expectations_,
                 Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
         .WillOnce(Invoke([](UploaderInterface::UploadReason reason) {
-          return Status(error::UNAVAILABLE, "Test uploader unavailable");
+          return Status(error::UNAVAILABLE, "Intended failure in test");
         }))
         .RetiresOnSaturation();
     EXPECT_CALL(set_mock_uploader_expectations_,
@@ -1880,9 +1898,8 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
 }
 
 TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
-  CreateTestStorageQueueOrDie(
-      BuildStorageQueueOptionsPeriodic().set_upload_retry_delay(
-          base::Seconds(1)));
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic(base::Seconds(5))
+                                  .set_upload_retry_delay(base::Seconds(1)));
   WriteStringOrDie(kData[0]);
 
   const auto original_total_memory = options_.memory_resource()->GetTotal();
@@ -1892,7 +1909,7 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
       .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-        // Update total memory to a low amount.
+        // First attempt - update total memory to a low amount.
         options_.memory_resource()->Test_SetTotal(100u);
         return TestUploader::SetUp(&waiter, this)
             .Complete(Status(error::RESOURCE_EXHAUSTED,
@@ -1912,8 +1929,8 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
       .RetiresOnSaturation();
 
   // Trigger upload which will experience insufficient memory.
-  task_environment_.FastForwardBy(base::Seconds(1));
-  // Trigger another upload resetting the memory resource.
+  task_environment_.FastForwardBy(base::Seconds(5));
+  // Trigger another (failure retry) upload resetting the memory resource.
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
