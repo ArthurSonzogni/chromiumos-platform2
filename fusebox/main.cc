@@ -36,6 +36,17 @@
 
 namespace fusebox {
 
+namespace {
+void HandleDBusSignalConnected(const std::string& interface,
+                               const std::string& signal,
+                               bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to D-Bus signal " << interface << "."
+               << signal;
+  }
+}
+}  // namespace
+
 #define kFuseBoxClientPath kFuseBoxReverseServicePath
 
 class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
@@ -46,7 +57,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       : org::chromium::FuseBoxReverseServiceAdaptor(this),
         dbus_object_(nullptr, bus, dbus::ObjectPath(kFuseBoxClientPath)),
         bus_(bus),
-        fuse_(fuse) {}
+        fuse_(fuse),
+        weak_ptr_factory_(this) {}
   FuseBoxClient(const FuseBoxClient&) = delete;
   FuseBoxClient& operator=(const FuseBoxClient&) = delete;
   virtual ~FuseBoxClient() = default;
@@ -58,6 +70,17 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     const auto path = dbus::ObjectPath(kFuseBoxServicePath);
     dbus_proxy_ = bus_->GetObjectProxy(kFuseBoxServiceName, path);
+
+    dbus_proxy_->ConnectToSignal(
+        kFuseBoxServiceInterface, kStorageAttachedSignal,
+        base::BindRepeating(&FuseBoxClient::OnStorageAttached,
+                            weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&HandleDBusSignalConnected));
+    dbus_proxy_->ConnectToSignal(
+        kFuseBoxServiceInterface, kStorageDetachedSignal,
+        base::BindRepeating(&FuseBoxClient::OnStorageDetached,
+                            weak_ptr_factory_.GetWeakPtr()),
+        base::BindOnce(&HandleDBusSignalConnected));
   }
 
   int StartFuseSession(base::OnceClosure stop_callback) {
@@ -110,12 +133,12 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     root_stat = MakeStat(root->ino, root_stat);
     GetInodeTable().SetStat(root->ino, root_stat);
 
-    CHECK_EQ(0, AttachStorage("built_in", INO_BUILT_IN));
+    CHECK_EQ(0, DoAttachStorage("built_in", INO_BUILT_IN));
     BuiltInEnsureNodes(GetInodeTable());
-    CHECK_EQ(0, AttachStorage(kMonikerAttachStorageArg));
+    CHECK_EQ(0, DoAttachStorage(kMonikerAttachStorageArg, 0));
 
     if (!fuse_->name.empty())
-      CHECK_EQ(0, AttachStorage(fuse_->name));
+      CHECK_EQ(0, DoAttachStorage(fuse_->name, 0));
 
     CHECK(userdata) << "FileSystem (userdata) is required";
   }
@@ -193,18 +216,18 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     if (request->IsInterrupted())
       return;
 
-    Node* parent_node = GetInodeTable().Lookup(parent);
-    if (!parent_node) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "lookup parent";
-      return;
-    }
-
     if (parent <= FUSE_ROOT_ID) {
       RootLookup(std::move(request), name);
       return;
     } else if (parent == INO_BUILT_IN) {
       BuiltInLookup(std::move(request), name);
+      return;
+    }
+
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "lookup parent";
       return;
     }
 
@@ -223,16 +246,60 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   void RootLookup(std::unique_ptr<EntryRequest> request, std::string name) {
     VLOG(1) << "root-lookup" << FUSE_ROOT_ID << "/" << name;
 
+    // Look for a device directory that we were previously told about (by
+    // DoAttachStorage, typically via the OnStorageAttached D-Bus signal).
     auto it = device_dir_entry_.find(name);
-    if (it == device_dir_entry_.end()) {
-      errno = request->ReplyError(ENOENT);
-      PLOG(ERROR) << "lookup-local";
+    if (it != device_dir_entry_.end()) {
+      DoRootLookup(std::move(request), it->second.ino);
       return;
     }
 
+    // If we didn't find one, it's probably ENOENT, but there's also the
+    // unlikely possibility that there was a race (since Chrome and FuseBox are
+    // separate processes and D-Bus IPC can also bounce through the kernel)
+    // where we get the FUSE request before the corresponding OnStorageAttached
+    // D-Bus signal. We therefore ask the Chrome process (via a D-Bus method
+    // call) whether the subdir exists (and reply ENOENT if it doesn't).
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
+    dbus::MessageWriter writer(&method);
+    writer.AppendString(name);
+
+    auto stat_response =
+        base::BindOnce(&FuseBoxClient::RootLookupResponse,
+                       base::Unretained(this), std::move(request), name);
+    CallFuseBoxServerMethod(&method, std::move(stat_response));
+  }
+
+  void RootLookupResponse(std::unique_ptr<EntryRequest> request,
+                          std::string name,
+                          dbus::Response* response) {
+    VLOG(1) << "rootlookup-resp " << name;
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response, "rootlookup")) {
+      errno = request->ReplyError(error);
+      PLOG(ERROR) << "rootlookup";
+      return;
+    }
+
+    DoAttachStorage(name, 0);
+
+    auto it = device_dir_entry_.find(name);
+    if (it != device_dir_entry_.end()) {
+      DoRootLookup(std::move(request), it->second.ino);
+      return;
+    }
+    errno = request->ReplyError(ENOENT);
+    PLOG(ERROR) << "rootlookup";
+  }
+
+  void DoRootLookup(std::unique_ptr<EntryRequest> request, ino_t ino) {
     fuse_entry_param entry = {0};
-    entry.ino = static_cast<fuse_ino_t>(it->second.ino);
-    CHECK(GetInodeTable().GetStat(it->second.ino, &entry.attr));
+    entry.ino = static_cast<fuse_ino_t>(ino);
+    CHECK(GetInodeTable().GetStat(ino, &entry.attr));
     entry.attr_timeout = kStatTimeoutSeconds;
     entry.entry_timeout = kEntryTimeoutSeconds;
 
@@ -1015,11 +1082,22 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Open(std::move(request), ino);
   }
 
-  int32_t AttachStorage(const std::string& name) override {
-    return AttachStorage(name, 0);
+  // Deprecated: the D-Bus signal is favored over this D-Bus method.
+  int32_t AttachStorage(const std::string& name) override { return 0; }
+
+  // Deprecated: the D-Bus signal is favored over this D-Bus method.
+  int32_t DetachStorage(const std::string& name) override { return 0; }
+
+  void OnStorageAttached(dbus::Signal* signal) {
+    dbus::MessageReader reader(signal);
+    std::string subdir;
+    if (!reader.PopString(&subdir)) {
+      return;
+    }
+    DoAttachStorage(subdir, 0);
   }
 
-  int32_t AttachStorage(const std::string& name, ino_t ino) {
+  int32_t DoAttachStorage(const std::string& name, ino_t ino) {
     VLOG(1) << "attach-storage " << name;
 
     Device device = GetInodeTable().MakeFromName(name);
@@ -1037,20 +1115,20 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     return 0;
   }
 
-  int32_t DetachStorage(const std::string& name) override {
-    VLOG(1) << "detach-storage " << name;
+  void OnStorageDetached(dbus::Signal* signal) {
+    dbus::MessageReader reader(signal);
+    std::string subdir;
+    if (!reader.PopString(&subdir)) {
+      return;
+    }
 
-    Device device = GetInodeTable().MakeFromName(name);
-    auto it = device_dir_entry_.find(device.name);
+    VLOG(1) << "detach-storage " << subdir;
+
+    auto it = device_dir_entry_.find(subdir);
     if (it == device_dir_entry_.end())
-      return ENOENT;
-
-    ino_t device_ino = it->second.ino;
-    if (!GetInodeTable().DetachDevice(device_ino))
-      return errno;
-
+      return;
+    GetInodeTable().DetachDevice(it->second.ino);
     device_dir_entry_.erase(it);
-    return 0;
   }
 
  private:
@@ -1074,6 +1152,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
   // Active readdir requests.
   std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
+
+  base::WeakPtrFactory<FuseBoxClient> weak_ptr_factory_;
 };
 
 class FuseBoxDaemon : public brillo::DBusServiceDaemon {

@@ -264,6 +264,8 @@ Device InodeTable::MakeFromName(const std::string& name) const {
     device.name = parts.at(0);
   if (parts.size() >= 2)
     device.path = parts.at(1);
+  else
+    device.path = device.name;
   device.mode = "rw";
   if (parts.size() >= 3)
     device.mode = parts.at(2);
