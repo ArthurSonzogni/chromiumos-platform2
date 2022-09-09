@@ -48,11 +48,15 @@ constexpr uint32_t kFullFrameBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
 #if USE_IPU6 || USE_IPU6EP
 // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the camera
 // HAL to process the stream using the still pipe for higher quality output.
-constexpr uint32_t kStillYuvBufferUsage =
-    kFullFrameBufferUsage | GRALLOC_USAGE_PRIVATE_1;
+constexpr uint32_t kStillYuvBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
+                                          GRALLOC_USAGE_HW_TEXTURE |
+                                          GRALLOC_USAGE_PRIVATE_1;
 #else
-constexpr uint32_t kStillYuvBufferUsage = kFullFrameBufferUsage;
+constexpr uint32_t kStillYuvBufferUsage =
+    GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
 #endif  // USE_IPU6 || USE_IPU6EP
+constexpr uint32_t kClientYuvBufferUsage =
+    GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
 constexpr int kSyncWaitTimeoutMs = 300;
 
 // Find the largest (video, still) stream resolutions with full FOV.
@@ -567,9 +571,10 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
         });
   }
 
-  // Set max buffers for the client streams not passed down.
+  // Configure client streams that are not passed down.
   for (auto* s : client_streams_) {
     if (!IsStreamBypassed(s) && s->format != HAL_PIXEL_FORMAT_BLOB) {
+      s->usage |= kClientYuvBufferUsage;
       s->max_buffers = full_frame_stream_.max_buffers;
     }
   }
@@ -868,11 +873,16 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
           static_cast<float>(full_frame_size_.height * b.stream->width) /
               static_cast<float>(full_frame_size_.width * b.stream->height));
     }
-    base::ScopedFD release_fence = CropBufferOnThread(
+    std::optional<base::ScopedFD> release_fence = CropBufferOnThread(
         *full_frame_buffer->buffer, base::ScopedFD(), *b.buffer,
         base::ScopedFD(b.acquire_fence), adjusted_crop_region);
+    if (!release_fence.has_value()) {
+      LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
+      ++metrics_.errors[AutoFramingError::kProcessResultError];
+      return false;
+    }
     b.acquire_fence = -1;
-    b.release_fence = release_fence.release();
+    b.release_fence = release_fence->release();
   }
 
   // Crop the full frame into intermediate buffer for BLOB if an additional
@@ -890,13 +900,18 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
         *ctx->crop_region,
         static_cast<float>(full_frame_size_.height * blob_stream_->width) /
             static_cast<float>(full_frame_size_.width * blob_stream_->height));
-    base::ScopedFD release_fence =
+    std::optional<base::ScopedFD> release_fence =
         CropBufferOnThread(*full_frame_buffer->buffer, base::ScopedFD(),
                            *ctx->cropped_still_yuv_buffer->handle(),
                            base::ScopedFD(), adjusted_crop_region);
+    if (!release_fence.has_value()) {
+      LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
+      ++metrics_.errors[AutoFramingError::kProcessResultError];
+      return false;
+    }
     still_capture_processor_->QueuePendingYuvImage(
         frame_number, *ctx->cropped_still_yuv_buffer->handle(),
-        std::move(release_fence));
+        *std::move(release_fence));
   }
 
   ctx->full_frame_buffer = std::nullopt;
@@ -935,15 +950,20 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
       *ctx->crop_region,
       static_cast<float>(full_frame_size_.height * blob_stream_->width) /
           static_cast<float>(full_frame_size_.width * blob_stream_->height));
-  base::ScopedFD release_fence =
+  std::optional<base::ScopedFD> release_fence =
       CropBufferOnThread(*still_yuv_buffer->buffer,
                          base::ScopedFD(still_yuv_buffer->release_fence),
                          *ctx->cropped_still_yuv_buffer->handle(),
                          base::ScopedFD(), adjusted_crop_region);
+  if (!release_fence.has_value()) {
+    LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
+    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    return false;
+  }
   still_yuv_buffer->release_fence = -1;
   still_capture_processor_->QueuePendingYuvImage(
       frame_number, *ctx->cropped_still_yuv_buffer->handle(),
-      std::move(release_fence));
+      *std::move(release_fence));
 
   ctx->still_yuv_buffer = std::nullopt;
   return true;
@@ -1288,7 +1308,7 @@ void AutoFramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
   capture_contexts_.erase(frame_number);
 }
 
-base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
+std::optional<base::ScopedFD> AutoFramingStreamManipulator::CropBufferOnThread(
     buffer_handle_t input_yuv,
     base::ScopedFD input_release_fence,
     buffer_handle_t output_yuv,
@@ -1299,18 +1319,27 @@ base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
   if (input_release_fence.is_valid() &&
       sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
     LOGF(ERROR) << "sync_wait() timed out on input buffer";
-    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    return std::nullopt;
   }
   if (output_acquire_fence.is_valid() &&
       sync_wait(output_acquire_fence.get(), kSyncWaitTimeoutMs) != 0) {
     LOGF(ERROR) << "sync_wait() timed out on output buffer";
-    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    return std::nullopt;
   }
 
   SharedImage input_image = SharedImage::CreateFromBuffer(
       input_yuv, Texture2D::Target::kTarget2D, true);
+  if (!input_image.IsValid()) {
+    LOGF(ERROR) << "Failed to create shared image from input buffer";
+    return std::nullopt;
+  }
   SharedImage output_image = SharedImage::CreateFromBuffer(
       output_yuv, Texture2D::Target::kTarget2D, true);
+  if (!output_image.IsValid()) {
+    LOGF(ERROR) << "Failed to create shared image from output buffer";
+    return std::nullopt;
+  }
+
   image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
                             crop_region, output_image.y_texture(),
                             output_image.uv_texture(),
