@@ -1638,6 +1638,60 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
   EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
 }
 
+// That that AddAuthFactor succeeds for a freshly prepared ephemeral user. The
+// credential is stored in the user session as a verifier.
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       AddPasswordFactorAfterPrepareEphemeral) {
+  // Arrange.
+  // Pretend to have a different owner user, because otherwise the ephemeral
+  // login is disallowed.
+  EXPECT_CALL(homedirs_, GetPlainOwner(_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(std::string("whoever")), Return(true)));
+  // Set up mocks for the user session creation. Use the real user session class
+  // in order to check session state transitions.
+  auto mount = base::MakeRefCounted<MockMount>();
+  EXPECT_CALL(*mount, IsMounted())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mount, MountEphemeralCryptohome(kUsername))
+      .WillOnce(ReturnOk<StorageError>());
+  EXPECT_CALL(*mount, IsEphemeral()).WillRepeatedly(Return(true));
+  auto user_session = std::make_unique<RealUserSession>(
+      kUsername, &homedirs_, &keyset_management_,
+      &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
+  // Prepare the ephemeral vault, which should also create the session.
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+  ASSERT_TRUE(auth_session);
+  EXPECT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
+              IsOk());
+  UserSession* found_user_session =
+      userdataauth_.FindUserSessionForTest(kUsername);
+  ASSERT_TRUE(found_user_session);
+  EXPECT_TRUE(found_user_session->IsActive());
+  EXPECT_FALSE(found_user_session->HasCredentialVerifier());
+
+  // Act.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kPasswordLabel);
+  request_factor.mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
+  user_data_auth::AddAuthFactorReply reply = AddAuthFactor(request);
+
+  // Assert.
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  // Check the user session has a verifier for the given password.
+  EXPECT_TRUE(found_user_session->HasCredentialVerifier());
+  Credentials credentials(kUsername, brillo::SecureBlob(kPassword));
+  EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+}
+
 }  // namespace
 
 }  // namespace cryptohome

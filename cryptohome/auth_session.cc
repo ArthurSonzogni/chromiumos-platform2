@@ -1649,10 +1649,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
 void AuthSession::SetCredentialVerifier(
     std::optional<AuthFactorType> auth_factor_type,
     const brillo::SecureBlob& passkey) {
-  std::unique_ptr<CredentialVerifier> new_verifier =
-      CreateCredentialVerifier(auth_factor_type, passkey);
-  if (new_verifier)
-    credential_verifier_ = std::move(new_verifier);
+  // Note that we always overwrite the old verifier, even when the creation of
+  // the new one failed - to avoid any risk of accepting old credentials.
+  credential_verifier_ = CreateCredentialVerifier(auth_factor_type, passkey);
 }
 
 // static
@@ -1935,7 +1934,8 @@ void AuthSession::AddAuthFactor(
   if (is_ephemeral_user_) {
     // If AuthSession is configured as an ephemeral user, then we do not save
     // the key to the disk.
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    AddAuthFactorForEphemeral(auth_factor_type, auth_input_status.value(),
+                              std::move(on_done));
     return;
   }
 
@@ -2029,6 +2029,42 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
       std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
+}
+
+void AuthSession::AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
+                                            const AuthInput& auth_input,
+                                            StatusCallback on_done) {
+  DCHECK(is_ephemeral_user_);
+
+  if (!auth_input.user_input.has_value()) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocNoUserInputInAddFactorForEphemeral),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  if (credential_verifier_) {
+    // Adding more than one factor is not supported for ephemeral users at the
+    // moment.
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocVerifierAlreadySetInAddFactorForEphemeral),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    return;
+  }
+
+  SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+  // Check whether the verifier creation failed.
+  if (!credential_verifier_) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocVerifierSettingErrorInAddFactorForEphemeral),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    return;
+  }
+
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 bool AuthSession::AuthenticateViaCredentialVerifier(

@@ -1504,6 +1504,114 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   // generation function is updated.
 }
 
+// Test that AddAuthFactor succeeds for an ephemeral user and creates a
+// credential verifier.
+TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
+  // Setup.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+      AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+
+  // Test.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.AddAuthFactor(request, add_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(add_future.Get(), IsOk());
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
+}
+
+// Test that AddAuthFactor fails for an ephemeral user when PIN is added.
+TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
+  // Setup.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+      AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+
+  // Test.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  request_factor.set_label(kFakePinLabel);
+  request_factor.mutable_pin_metadata();
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
+
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.AddAuthFactor(request, add_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(add_future.Get(), NotOk());
+  EXPECT_EQ(add_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  EXPECT_EQ(auth_session.TakeCredentialVerifier(), nullptr);
+}
+
+// Test that AddAuthFactor fails for an ephemeral user when a second password is
+// added.
+TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeralFails) {
+  // Setup.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+      AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  // Add the first password.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  TestFuture<CryptohomeStatus> first_add_future;
+  auth_session.AddAuthFactor(request, first_add_future.GetCallback());
+  EXPECT_THAT(first_add_future.Get(), IsOk());
+
+  // Test.
+  request_factor.set_label(kFakeOtherLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+  TestFuture<CryptohomeStatus> second_add_future;
+  auth_session.AddAuthFactor(request, second_add_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(second_add_future.Get(), NotOk());
+  EXPECT_EQ(second_add_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  // The verifier still uses the first password.
+  EXPECT_THAT(auth_session.TakeCredentialVerifier(),
+              IsVerifierPtrForPassword(kFakePass));
+}
+
 // UpdateAuthFactor request success when updating authenticated password VK.
 TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   // Setup.

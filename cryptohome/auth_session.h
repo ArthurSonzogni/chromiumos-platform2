@@ -424,6 +424,11 @@ class AuthSession final {
           auth_session_performance_timer,
       StatusCallback on_done);
 
+  // Adds a credential verifier for the ephemeral user session.
+  void AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
+                                 const AuthInput& auth_input,
+                                 StatusCallback on_done);
+
   // Loads and decrypts the USS payload with |auth_factor_label| using the
   // given KeyBlobs. Designed to be used in conjunction with an async
   // DeriveKeyBlobs call by binding all of the initial parameters to make an

@@ -1151,6 +1151,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateFailedInAuthInputForAdd = 662,
   /* ./auth_session.cc */
   kLocNoVkInAuthInputForAdd = 663,
+  /* ./auth_session.cc */
+  kLocNoUserInputInAddFactorForEphemeral = 664,
+  /* ./auth_session.cc */
+  kLocVerifierAlreadySetInAddFactorForEphemeral = 665,
+  /* ./auth_session.cc */
+  kLocVerifierSettingErrorInAddFactorForEphemeral = 666,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
