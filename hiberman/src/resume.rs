@@ -35,7 +35,7 @@ use crate::hiberutil::{
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
 use crate::lvm::activate_physical_lv;
-use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger};
+use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger, MetricsSample};
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
@@ -262,6 +262,30 @@ impl ResumeConductor {
             HibernateCookieValue::ResumeAborting,
         )
         .context("Failed to set hibernate cookie to ResumeAborting")?;
+
+        // Mark this as the time between when login completed and when resume
+        // was attempted. This is as close as we can get to the actual resume
+        // launch while still being able to log a metric.
+        if let Some(ref mut pending_resume_call) = pending_resume_call {
+            let duration = pending_resume_call.when.elapsed();
+            // Choose a range that represents the reasonable values in which a
+            // user might expect to wait for hibernate resume to finish, plus
+            // some padding. Beyond this max, hibernate performance is
+            // so unacceptable that the number itself doesn't matter.
+            self.metrics_logger.log_metric(MetricsSample {
+                name: "Platform.Hibernate.LoginToResumeReady",
+                value: duration.as_millis() as isize,
+                min: 0,
+                max: 60000,
+                buckets: 50,
+            });
+
+            info!(
+                "Login to resume took {}.{:02}s",
+                duration.as_secs(),
+                duration.subsec_millis()
+            );
+        }
 
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;

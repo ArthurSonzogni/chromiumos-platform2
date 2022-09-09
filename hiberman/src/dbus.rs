@@ -8,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context as AnyhowContext, Result};
 use dbus::blocking::Connection;
@@ -44,6 +44,7 @@ struct ResumeRequest {
     account_id: String,
     auth_session_id: Vec<u8>,
     completion_tx: Sender<u32>,
+    when: Instant,
 }
 
 impl ResumeRequest {
@@ -100,6 +101,7 @@ impl HibernateDbusStateInternal {
             account_id: account_id.to_string(),
             auth_session_id: auth_session_id.to_vec(),
             completion_tx,
+            when: Instant::now(),
         };
 
         let _ = self.resume_tx.send(ResumeVerdict::Requested(request));
@@ -274,6 +276,7 @@ impl DerefMut for ResumeSecretSeed {
 /// blocked in the ResumeFromHibernate method.
 pub struct PendingResumeCall {
     pub secret_seed: ResumeSecretSeed,
+    pub when: Instant,
     // When this resume request is dropped, the dbus thread allows the method
     // call to complete.
     _resume_request: ResumeRequest,
@@ -339,9 +342,11 @@ impl HiberDbusConnection {
                     }
 
                     info!("Requesting secret seed");
+                    let when = resume_request.when;
                     let mut pending_call = PendingResumeCall {
                         secret_seed: ResumeSecretSeed::default(),
                         _resume_request: resume_request,
+                        when,
                     };
 
                     get_secret_seed(
