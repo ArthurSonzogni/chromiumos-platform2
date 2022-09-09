@@ -225,6 +225,7 @@ std::string EnumToString(mojom::BusDeviceClass device_class) {
 std::string EnumToString(mojom::FwupdVersionFormat fwupd_version_format) {
   switch (fwupd_version_format) {
     case mojom::FwupdVersionFormat::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
       return "unmapped-enum-field";
     case mojom::FwupdVersionFormat::kUnknown:
       return "unknown";
@@ -316,6 +317,7 @@ std::optional<std::string> EnumToString(mojom::BluetoothDeviceType type) {
 std::string EnumToString(mojom::VulnerabilityInfo::Status status) {
   switch (status) {
     case mojom::VulnerabilityInfo::Status::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
       return "UnmappedEnumField";
     case mojom::VulnerabilityInfo::Status::kNotAffected:
       return "Not affected";
@@ -333,6 +335,7 @@ std::string EnumToString(mojom::VulnerabilityInfo::Status status) {
 std::string EnumToString(mojom::CpuVirtualizationInfo::Type type) {
   switch (type) {
     case mojom::CpuVirtualizationInfo::Type::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
       return "UnmappedEnumField";
     case mojom::CpuVirtualizationInfo::Type::kVMX:
       return "VMX";
@@ -361,6 +364,7 @@ std::string EnumToString(mojom::VirtualizationInfo::SMTControl control) {
 std::string EnumToString(mojom::InputDevice::ConnectionType type) {
   switch (type) {
     case mojom::InputDevice::ConnectionType::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
       return "UnmappedEnumField";
     case mojom::InputDevice::ConnectionType::kInternal:
       return "Internal";
