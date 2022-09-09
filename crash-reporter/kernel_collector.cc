@@ -221,8 +221,8 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
     // use the "^" to anchor to the start of the string
     RE2 banner_re(StringPrintf("(^.*?)(?:"
                                "\n\\*\\*\\* Pre-CBMEM %s console overflow"
-                               "|"
-                               "\n\ncoreboot-[^\n]* %s starting.*\\.\\.\\.\n"
+                               "|\n\n[^\n]*"
+                               "coreboot-[^\n]* %s starting.*\\.\\.\\.\n"
                                ")",
                                stage, stage),
                   opt);

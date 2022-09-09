@@ -217,6 +217,14 @@ TEST_F(KernelCollectorTest, LoadBiosLog) {
       "This is boot 2 depthcharge!\n"
       "jumping to kernel\n"
       "Some more messages logged at runtime, maybe without terminating newline";
+  std::string bootblock_boot_with_marker =
+      "\n\n\025coreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock starting"
+      " (log level: 7)...\n"
+      "\027This is a bootblock with loglevel marker byte!\n";
+  std::string bootblock_boot_with_prefix =
+      "\n\n[NOTE ]  coreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock"
+      " starting (log level: 7)...\n"
+      "[DEBUG]  This is a bootblock with full loglevel prefixes!\n";
 
   // Normal situation of multiple boots in log.
   ASSERT_TRUE(test_util::CreateFile(
@@ -246,6 +254,20 @@ TEST_F(KernelCollectorTest, LoadBiosLog) {
   ASSERT_TRUE(test_util::CreateFile(bios_log_file(), "random crud\n"));
   ASSERT_FALSE(collector_.LoadLastBootBiosLog(&dump));
   ASSERT_EQ("", dump);
+
+  // BIOS log with raw loglevel marker bytes at the start of each line.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      (bootblock_boot_with_marker + bootblock_boot_with_marker).c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_boot_with_marker, "\n" + dump);
+
+  // BIOS log with full loglevel prefix strings at the start of each line.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      (bootblock_boot_with_prefix + bootblock_boot_with_prefix).c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_boot_with_prefix, "\n" + dump);
 }
 
 TEST_F(KernelCollectorTest, EnableMissingKernel) {
