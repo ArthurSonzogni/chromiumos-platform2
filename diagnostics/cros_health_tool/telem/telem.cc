@@ -384,6 +384,20 @@ std::optional<std::string> EnumToString(mojom::DisplayInputType type) {
   }
 }
 
+std::string EnumToString(mojom::OsInfo::EfiPlatformSize size) {
+  switch (size) {
+    case mojom::OsInfo::EfiPlatformSize::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::OsInfo::EfiPlatformSize::kUnknown:
+      return "unknown";
+    case mojom::OsInfo::EfiPlatformSize::k64:
+      return "64";
+    case mojom::OsInfo::EfiPlatformSize::k32:
+      return "32";
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -1032,6 +1046,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
   SET_DICT(marketing_name, os_info, out_os_info);
   SET_DICT(oem_name, os_info, out_os_info);
   SET_DICT(boot_mode, os_info, out_os_info);
+  SET_DICT(efi_platform_size, os_info, out_os_info);
 
   const auto& os_version = os_info->os_version;
   auto* out_os_version = out_os_info->SetKey(
