@@ -44,7 +44,7 @@ class AuthFactor {
   // Executes additional steps needed for auth factor removal before it's
   // deleted from disk. This method can be used before removing or replacing an
   // auth factor.
-  CryptoStatus PrepareForRemoval(AuthBlockUtility* auth_block_utility);
+  CryptoStatus PrepareForRemoval(AuthBlockUtility* auth_block_utility) const;
 
  private:
   // The auth factor public information.

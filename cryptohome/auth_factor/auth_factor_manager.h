@@ -56,7 +56,7 @@ class AuthFactorManager final {
   // 2. Removes the file containing state (AuthBlockState) of the given auth
   // factor from the user's data vault.
   CryptohomeStatus RemoveAuthFactor(const std::string& obfuscated_username,
-                                    AuthFactor& auth_factor,
+                                    const AuthFactor& auth_factor,
                                     AuthBlockUtility* auth_block_utility);
 
   // Updates the auth factor:

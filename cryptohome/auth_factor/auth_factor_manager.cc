@@ -461,7 +461,7 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
 
 CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
     const std::string& obfuscated_username,
-    AuthFactor& auth_factor,
+    const AuthFactor& auth_factor,
     AuthBlockUtility* auth_block_utility) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
       obfuscated_username, auth_factor.type(), auth_factor.label());

@@ -32,7 +32,7 @@ AuthFactor::AuthFactor(AuthFactorType type,
       auth_block_state_(auth_block_state) {}
 
 CryptoStatus AuthFactor::PrepareForRemoval(
-    AuthBlockUtility* auth_block_utility) {
+    AuthBlockUtility* auth_block_utility) const {
   CryptoStatus crypto_error =
       auth_block_utility->PrepareAuthBlockForRemoval(auth_block_state_);
   if (!crypto_error.ok()) {
