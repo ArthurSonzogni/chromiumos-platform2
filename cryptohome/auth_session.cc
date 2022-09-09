@@ -689,6 +689,7 @@ void AuthSession::UpdateVaultKeyset(
         ErrorActionSet(
             {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
         error_code));
+    return;
   }
 
   // Add the new secret to the AuthSession's credential verifier. On successful
