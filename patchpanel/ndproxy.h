@@ -69,12 +69,14 @@ class NDProxy {
   // NDProxy can trigger a callback upon a neighbor discovered on downlink. This
   // can be triggered by either receiving a unicast NA, or an NS with non-link
   // local source address.
+  // Arguments: receiving interface index, neighbor address.
   void RegisterOnGuestIpDiscoveryHandler(
       base::RepeatingCallback<void(int, const in6_addr&)> handler);
 
   // Callback upon receiving prefix information from RA frame.
+  // Arguments: receiving interface index, prefix address, prefix length.
   void RegisterOnRouterDiscoveryHandler(
-      base::RepeatingCallback<void(int, const in6_addr&)> handler);
+      base::RepeatingCallback<void(int, const in6_addr&, int)> handler);
 
   // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
   // other way around. If |modify_router_address| is true we modify source
@@ -184,7 +186,8 @@ class NDProxy {
   std::set<int> irregular_router_ifs_;
 
   base::RepeatingCallback<void(int, const in6_addr&)> guest_discovery_handler_;
-  base::RepeatingCallback<void(int, const in6_addr&)> router_discovery_handler_;
+  base::RepeatingCallback<void(int, const in6_addr&, int)>
+      router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};
 };
@@ -212,7 +215,9 @@ class NDProxyDaemon : public brillo::Daemon {
   void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr);
 
   // Callback from NDProxy core when receive prefix info from router
-  void OnRouterDiscovery(int if_id, const in6_addr& ip6addr);
+  void OnRouterDiscovery(int if_id,
+                         const in6_addr& prefix_addr,
+                         int prefix_len);
 
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;

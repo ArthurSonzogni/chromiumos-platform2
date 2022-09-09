@@ -78,6 +78,10 @@ class GuestIPv6Service {
   // address to guest-facing interface.
   void OnNDProxyMessage(const FeedbackMessage& msg);
 
+  void OnRouterDetected(const std::string& ifname_uplink,
+                        const in6_addr& prefix,
+                        int prefix_len);
+
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
   SubprocessController* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.

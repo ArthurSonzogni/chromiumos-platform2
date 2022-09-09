@@ -325,6 +325,7 @@ class NDProxyUnderTest : public NDProxy {
   FRIEND_TEST(NDProxyTest, ResolveDestinationMac);
   FRIEND_TEST(NDProxyTest, TranslateFrame);
   FRIEND_TEST(NDProxyTest, GuestDiscoveryCallback);
+  FRIEND_TEST(NDProxyTest, RouterDiscoveryCallback);
 };
 
 TEST(NDProxyTest, TranslateFrame) {
@@ -508,6 +509,7 @@ TEST(NDProxyTest, ResolveDestinationMac) {
 class MockCallbackHandler {
  public:
   MOCK_METHOD(void, OnGuestDiscovery, (int, const in6_addr&));
+  MOCK_METHOD(void, OnRouterDiscovery, (int, const in6_addr&, int));
 };
 
 MATCHER_P(EqualsToIpv6Address, ip_str, "") {
@@ -562,6 +564,55 @@ TEST(NDProxyTest, GuestDiscoveryCallback) {
                                    EqualsToIpv6Address(test_case.expected_ip)));
     } else {
       EXPECT_CALL(handler, OnGuestDiscovery(_, _)).Times(0);
+    }
+    ndproxy.NotifyPacketCallbacks(test_case.recv_ifindex, buffer,
+                                  test_case.input_packet_len);
+  }
+}
+
+TEST(NDProxyTest, RouterDiscoveryCallback) {
+  uint8_t buffer[IP_MAXPACKET];
+  NDProxyUnderTest ndproxy;
+  MockCallbackHandler handler;
+  ndproxy.RegisterOnRouterDiscoveryHandler(base::BindRepeating(
+      &MockCallbackHandler::OnRouterDiscovery, base::Unretained(&handler)));
+  ndproxy.StartRSRAProxy(1, 1001);
+
+  struct {
+    std::string name;
+    const uint8_t* input_packet;
+    size_t input_packet_len;
+    int recv_ifindex;
+    bool expect_trigger;
+    std::string expected_ip;
+    uint8_t expected_prefix_len;
+  } test_cases[] = {
+      {"ra_on_upstream", ra_frame + ETHER_HDR_LEN,
+       sizeof(ra_frame) - ETHER_HDR_LEN, 1, true, "2401:fa00:4:2::", 64},
+      {"ra_on_downstream", ra_frame + ETHER_HDR_LEN,
+       sizeof(ra_frame) - ETHER_HDR_LEN, 1001, false, "::", 0},
+      {"ra_on_irrelevant", ra_frame + ETHER_HDR_LEN,
+       sizeof(ra_frame) - ETHER_HDR_LEN, 2, false, "::", 0},
+      {"na_on_upstream", na_frame + ETHER_HDR_LEN,
+       sizeof(na_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+      {"rs_on_upstream", rs_frame + ETHER_HDR_LEN,
+       sizeof(rs_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+      {"ns_on_upstream", ns_frame + ETHER_HDR_LEN,
+       sizeof(ns_frame) - ETHER_HDR_LEN, 1, false, "::", 0},
+  };
+
+  for (const auto& test_case : test_cases) {
+    LOG(INFO) << test_case.name;
+
+    // Copy packet data to a packet-aligned buffer
+    memcpy(buffer, test_case.input_packet, test_case.input_packet_len);
+    if (test_case.expect_trigger) {
+      EXPECT_CALL(handler,
+                  OnRouterDiscovery(test_case.recv_ifindex,
+                                    EqualsToIpv6Address(test_case.expected_ip),
+                                    test_case.expected_prefix_len));
+    } else {
+      EXPECT_CALL(handler, OnRouterDiscovery(_, _, _)).Times(0);
     }
     ndproxy.NotifyPacketCallbacks(test_case.recv_ifindex, buffer,
                                   test_case.input_packet_len);

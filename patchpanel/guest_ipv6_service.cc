@@ -4,6 +4,7 @@
 
 #include "patchpanel/guest_ipv6_service.h"
 
+#include <net/ethernet.h>
 #include <netinet/in.h>
 
 #include <set>
@@ -12,6 +13,7 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_util.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/net_util.h"
@@ -38,6 +40,23 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     default:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
+}
+
+bool GetLocalMac(const std::string& ifname, MacAddress* mac_addr) {
+  auto fd = base::ScopedFD(socket(AF_INET6, SOCK_DGRAM, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "socket() failed for dummy socket";
+    return false;
+  }
+  ifreq ifr = {};
+  base::strlcpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+
+  if (ioctl(fd.get(), SIOCGIFHWADDR, &ifr) < 0) {
+    PLOG(ERROR) << "ioctl() failed to get MAC address on interface " << ifname;
+    return false;
+  }
+  memcpy(mac_addr->data(), ifr.ifr_addr.sa_data, ETHER_ADDR_LEN);
+  return true;
 }
 
 }  // namespace
@@ -255,12 +274,12 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   }
 
   const NDProxySignalMessage& msg = fm.ndproxy_signal();
-  std::string ifname = IfIndextoname(msg.if_id());
-  in6_addr ip;
-  memcpy(&ip, msg.ip().data(), sizeof(in6_addr));
-  std::string ip6_str = IPv6AddressToString(ip);
-
-  if (msg.type() == NDProxySignalMessage::NEIGHBOR_DETECTED) {
+  if (msg.has_neighbor_detected_signal()) {
+    const auto& inner_msg = msg.neighbor_detected_signal();
+    std::string ifname = IfIndextoname(inner_msg.if_id());
+    in6_addr ip;
+    memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
+    std::string ip6_str = IPv6AddressToString(ip);
     if (!datapath_->AddIPv6HostRoute(ifname, ip6_str, 128)) {
       LOG(WARNING) << "Failed to setup the IPv6 route: " << ip6_str << " to "
                    << ifname;
@@ -268,24 +287,59 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
     return;
   }
 
-  if (msg.type() == NDProxySignalMessage::ROUTER_DETECTED) {
-    const std::string& current_downlink_addr = downlink_addrs[ifname];
-    if (current_downlink_addr == ip6_str) {
-      return;
-    }
-    if (!current_downlink_addr.empty()) {
-      datapath_->RemoveIPv6Address(ifname, current_downlink_addr);
-    }
-    if (!datapath_->AddIPv6Address(ifname, ip6_str)) {
-      LOG(WARNING) << "Failed to setup the IPv6 address for interface "
-                   << ifname << ", addr " << ip6_str;
-    }
-    downlink_addrs[ifname] = ip6_str;
+  if (msg.has_router_detected_signal()) {
+    const auto& inner_msg = msg.router_detected_signal();
+    std::string ifname = IfIndextoname(inner_msg.if_id());
+    in6_addr ip;
+    memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
+    OnRouterDetected(ifname, ip, inner_msg.prefix_len());
     return;
   }
 
-  LOG(ERROR) << "Unknown NDProxy event " << msg.type();
+  LOG(ERROR) << "Unknown NDProxy event ";
   NOTREACHED();
+}
+
+void GuestIPv6Service::OnRouterDetected(const std::string& ifname_uplink,
+                                        const in6_addr& prefix,
+                                        int prefix_len) {
+  if (prefix_len > 64) {
+    LOG(WARNING) << "Router announced " << IPv6AddressToString(prefix) << "/"
+                 << prefix_len << " which is smaller than a /64.";
+    return;
+  }
+
+  std::vector<ForwardEntry>::iterator it;
+  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
+    if (it->upstream_ifname == ifname_uplink)
+      break;
+  }
+  if (it == forward_record_.end())
+    return;
+
+  // Add an EUI64 address onto every downlink. This address will be used when
+  // directly communicating with the downstream guest.
+  for (const auto& ifname_downlink : it->downstream_ifnames) {
+    const std::string& current_downlink_addr = downlink_addrs[ifname_downlink];
+    MacAddress local_mac;
+    if (!GetLocalMac(ifname_downlink, &local_mac)) {
+      continue;
+    }
+    in6_addr eui64_ip;
+    GenerateEUI64Address(&eui64_ip, prefix, local_mac);
+    std::string eui64_ip_str = IPv6AddressToString(eui64_ip);
+    if (current_downlink_addr == eui64_ip_str) {
+      continue;
+    }
+    if (!current_downlink_addr.empty()) {
+      datapath_->RemoveIPv6Address(ifname_downlink, current_downlink_addr);
+    }
+    if (!datapath_->AddIPv6Address(ifname_downlink, eui64_ip_str)) {
+      LOG(WARNING) << "Failed to setup the IPv6 address for interface "
+                   << ifname_downlink << ", addr " << eui64_ip_str;
+    }
+    downlink_addrs[ifname_downlink] = eui64_ip_str;
+  }
 }
 
 }  // namespace patchpanel

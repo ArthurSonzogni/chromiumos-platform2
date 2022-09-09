@@ -33,6 +33,7 @@
 #include <base/strings/string_split.h>
 
 #include "patchpanel/ipc.h"
+#include "patchpanel/ipc.pb.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
@@ -473,8 +474,8 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
   const icmp6_hdr* icmp6 =
       reinterpret_cast<const icmp6_hdr*>(packet + sizeof(ip6_hdr));
 
-  // Notify DeviceManager on receiving NA or NS from guest, so a /128 route to
-  // the guest can be added on the host.
+  // GuestDiscovery event is triggered whenever an NA advertising global
+  // address or an NS with a global source address is received on a downlink.
   if (IsGuestInterface(recv_ifindex) && !guest_discovery_handler_.is_null()) {
     const in6_addr* guest_address = nullptr;
     if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
@@ -488,28 +489,22 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
         ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
          (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
       guest_discovery_handler_.Run(recv_ifindex, *guest_address);
+      VLOG(2) << "GuestDiscovery on interface " << recv_ifindex << ": "
+              << IPv6AddressToString(*guest_address);
     }
   }
 
-  // On receiving RA from router, generate an address for each guest-facing
-  // interface, and sent it to DeviceManager so it can be assigned. This address
-  // will be used when directly communicating with guest OS through IPv6.
+  // RouterDiscovery event is triggered whenever an RA is received on a uplink.
   if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
       IsRouterInterface(recv_ifindex) && !router_discovery_handler_.is_null()) {
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
         reinterpret_cast<const uint8_t*>(icmp6), len - sizeof(ip6_hdr));
-    if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
-      // Generate an EUI-64 address from virtual interface MAC. A prefix
-      // larger that /64 is required.
-      for (int target_if : if_map_ra_[recv_ifindex]) {
-        MacAddress local_mac;
-        if (!GetLocalMac(target_if, &local_mac))
-          continue;
-        in6_addr eui64_ip;
-        GenerateEUI64Address(&eui64_ip, prefix_info->nd_opt_pi_prefix,
-                             local_mac);
-        router_discovery_handler_.Run(target_if, eui64_ip);
-      }
+    if (prefix_info != nullptr) {
+      router_discovery_handler_.Run(recv_ifindex, prefix_info->nd_opt_pi_prefix,
+                                    prefix_info->nd_opt_pi_prefix_len);
+      VLOG(2) << "RouterDiscovery on interface " << recv_ifindex << ": "
+              << IPv6AddressToString(prefix_info->nd_opt_pi_prefix) << "/"
+              << prefix_info->nd_opt_pi_prefix_len;
     }
   }
 }
@@ -696,7 +691,7 @@ void NDProxy::RegisterOnGuestIpDiscoveryHandler(
 }
 
 void NDProxy::RegisterOnRouterDiscoveryHandler(
-    base::RepeatingCallback<void(int, const in6_addr&)> handler) {
+    base::RepeatingCallback<void(int, const in6_addr&, int)> handler) {
   router_discovery_handler_ = std::move(handler);
 }
 
@@ -875,27 +870,32 @@ void NDProxyDaemon::OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
   if (!msg_dispatcher_) {
     return;
   }
-  NDProxySignalMessage msg;
-  msg.set_type(NDProxySignalMessage::NEIGHBOR_DETECTED);
+  NeighborDetectedSignal msg;
   msg.set_if_id(if_id);
   msg.set_ip(&ip6addr, sizeof(in6_addr));
+  NDProxySignalMessage nm;
+  *nm.mutable_neighbor_detected_signal() = msg;
   FeedbackMessage fm;
-  *fm.mutable_ndproxy_signal() = msg;
+  *fm.mutable_ndproxy_signal() = nm;
   SubprocessMessage root_m;
   *root_m.mutable_feedback_message() = fm;
   msg_dispatcher_->SendMessage(root_m);
 }
 
-void NDProxyDaemon::OnRouterDiscovery(int if_id, const in6_addr& ip6addr) {
+void NDProxyDaemon::OnRouterDiscovery(int if_id,
+                                      const in6_addr& prefix_addr,
+                                      int prefix_len) {
   if (!msg_dispatcher_) {
     return;
   }
-  NDProxySignalMessage msg;
-  msg.set_type(NDProxySignalMessage::ROUTER_DETECTED);
+  RouterDetectedSignal msg;
   msg.set_if_id(if_id);
-  msg.set_ip(&ip6addr, sizeof(in6_addr));
+  msg.set_ip(&prefix_addr, sizeof(in6_addr));
+  msg.set_prefix_len(prefix_len);
+  NDProxySignalMessage nm;
+  *nm.mutable_router_detected_signal() = msg;
   FeedbackMessage fm;
-  *fm.mutable_ndproxy_signal() = msg;
+  *fm.mutable_ndproxy_signal() = nm;
   SubprocessMessage root_m;
   *root_m.mutable_feedback_message() = fm;
   msg_dispatcher_->SendMessage(root_m);
