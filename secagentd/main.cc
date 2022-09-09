@@ -5,6 +5,7 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include "secagentd/daemon.h"
 
 int main(int argc, char** argv) {
   DEFINE_int32(log_level, 0,
@@ -14,5 +15,6 @@ int main(int argc, char** argv) {
                            "ChromiumOS Security Event Reporting Daemon");
   brillo::InitLog(brillo::kLogToStderr | brillo::kLogToSyslog);
   logging::SetMinLogLevel(FLAGS_log_level);
-  return 0;
+  auto daemon = secagentd::Daemon();
+  return daemon.Run();
 }

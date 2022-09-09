@@ -32,7 +32,10 @@ pkg_config("target_defaults") {
 static_library("libsecagent") {
   sources = [
     "bpf_utils.cc",
+    "daemon.cc",
+    "factories.cc",
     "process_bpf_skeleton.cc",
+    "process_plugin.cc",
   ]
   configs += [ ":target_defaults" ]
 }

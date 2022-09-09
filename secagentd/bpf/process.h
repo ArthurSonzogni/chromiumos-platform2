@@ -7,6 +7,7 @@
 
 #ifdef __cplusplus
 #include <stdint.h>
+#define _Static_assert static_assert
 namespace secagentd::bpf {
 #endif
 
@@ -65,6 +66,9 @@ struct process_start {
   time_ns_t start_time;          // Nanoseconds since boot.
   time_ns_t parent_start_time;   // Nanoseconds since boot.
   char filename[MAX_PATH_SIZE];  // Defined in linux/limits.h.
+  char command_line[MAX_REDUCED_ARG_SIZE];
+  unsigned int uid;
+  unsigned int gid;
   struct image_info image_info;
   struct namespace_info spawn_namespace;
 };
@@ -77,19 +81,9 @@ struct process_exit {
   time_ns_t parent_start_time;  // Nanoseconds since boot.
 };
 
-// Filled out by syscalls execve/execveat.
-// Command line is not accessible to committed_creds LSM hook.
-struct execve_common {
-  char command_line[MAX_REDUCED_ARG_SIZE];
-};
-
 // Indicates the type of process event is contained within the
 // event structure.
-enum process_event_type {
-  process_execve_common_type,
-  process_start_type,
-  process_exit_type
-};
+enum process_event_type { process_start_type, process_exit_type };
 
 // Contains information needed to report process security
 // event telemetry regarding processes.
@@ -97,7 +91,7 @@ struct process_event {
   enum process_event_type type;
   union {
     struct process_start process_start;
-    struct execve_common execve_common;
+    struct process_exit process_exit;
   } data;
 };
 
