@@ -1,7 +1,1 @@
-andrewlamb@chromium.org
-jacobraz@google.com
-jessemcguire@chromium.org
-jrosenth@chromium.org
-nednguyen@chromium.org
-rrangel@chromium.org
-sjg@chromium.org
+include chromiumos/owners:v1:/platform/OWNERS.cros_config
