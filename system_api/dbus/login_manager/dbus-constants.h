@@ -74,6 +74,8 @@ const char kSessionManagerEnableAdbSideload[] = "EnableAdbSideload";
 const char kSessionManagerQueryAdbSideload[] = "QueryAdbSideload";
 const char kSessionManagerStartBrowserDataMigration[] =
     "StartBrowserDataMigration";
+const char kSessionManagerStartBrowserDataBackwardMigration[] =
+    "StartBrowserDataBackwardMigration";
 // Signals
 const char kLoginPromptVisibleSignal[] = "LoginPromptVisible";
 const char kSessionStateChangedSignal[] = "SessionStateChanged";
