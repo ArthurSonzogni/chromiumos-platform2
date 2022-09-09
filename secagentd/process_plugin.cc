@@ -5,13 +5,15 @@
 #include <absl/status/status.h>
 #include <base/logging.h>
 
+#include "secagentd/bpf/process.h"
 #include "secagentd/plugins.h"
 #include "secagentd/skeleton_factory.h"
 
 namespace secagentd {
 
 static void print_process_start(const bpf::process_start& process_start) {
-  LOG(INFO) << "\nppid: " << process_start.ppid << " pid:" << process_start.pid
+  LOG(INFO) << "\n[process_start] ppid: " << process_start.ppid
+            << " pid:" << process_start.pid
             << " fname:" << process_start.filename
             << " cmdline:" << process_start.command_line
             << "\n [ns]pid:" << process_start.spawn_namespace.pid_ns
@@ -21,6 +23,16 @@ static void print_process_start(const bpf::process_start& process_start) {
             << " uts:" << process_start.spawn_namespace.uts_ns
             << " net:" << process_start.spawn_namespace.net_ns
             << " ipc:" << process_start.spawn_namespace.ipc_ns;
+}
+
+static void print_process_change_ns(
+    const struct bpf::process_change_namespace& p) {
+  LOG(INFO) << "\n[namespace_change]pid:" << p.pid
+            << " start_time:" << p.start_time
+            << "\n [ns]pid:" << p.new_ns.pid_ns << " mnt:" << p.new_ns.mnt_ns
+            << " cgrp:" << p.new_ns.cgroup_ns << " usr:" << p.new_ns.user_ns
+            << " uts:" << p.new_ns.uts_ns << " net:" << p.new_ns.net_ns
+            << " ipc:" << p.new_ns.ipc_ns;
 }
 
 ProcessPlugin::ProcessPlugin(
@@ -42,6 +54,9 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::event& bpf_event) const {
       // the reporting pipe. The reporting pipe can enforce the event specific
       // caching policy.
       print_process_start(process_start);
+    } else if (pe.type == bpf::process_change_namespace_type) {
+      const bpf::process_change_namespace& p = pe.data.process_change_namespace;
+      print_process_change_ns(p);
     } else {
       LOG(ERROR) << "ProcessBPF: unknown BPF process event type.";
     }

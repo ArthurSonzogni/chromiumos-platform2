@@ -75,15 +75,29 @@ struct process_start {
 
 // This is the process information collected when a process exits.
 struct process_exit {
-  uint32_t pid;                 // This is actually the tgid.
-  uint32_t ppid;                // The tgid of parent.
-  time_ns_t start_time;         // Nanoseconds since boot.
-  time_ns_t parent_start_time;  // Nanoseconds since boot.
+  // PID and start_time together will form a unique identifier for a process.
+  // This unique identifier can be used to retrieve the rest of the process
+  // information from a userspace process cache.
+  uint32_t ppid;         // The tgid of parent.
+  time_ns_t start_time;  // Nanoseconds since boot.
+};
+
+struct process_change_namespace {
+  // PID and start_time together will form a unique identifier for a process.
+  // This unique identifier can be used to retrieve the rest of the process
+  // information from a userspace process cache.
+  uint32_t pid;
+  time_ns_t start_time;
+  struct namespace_info new_ns;  // The new namespace.
 };
 
 // Indicates the type of process event is contained within the
 // event structure.
-enum process_event_type { process_start_type, process_exit_type };
+enum process_event_type {
+  process_start_type,
+  process_exit_type,
+  process_change_namespace_type
+};
 
 // Contains information needed to report process security
 // event telemetry regarding processes.
@@ -92,6 +106,7 @@ struct process_event {
   union {
     struct process_start process_start;
     struct process_exit process_exit;
+    struct process_change_namespace process_change_namespace;
   } data;
 };
 
