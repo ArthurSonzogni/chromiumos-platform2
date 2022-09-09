@@ -138,29 +138,6 @@ cryptorecovery::RequestMetadata RequestMetadataFromProto(
   return result;
 }
 
-std::optional<AuthInput> CreateAuthInputWithResetSecret(
-    Platform* platform,
-    AuthFactorType auth_factor_type,
-    const user_data_auth::AuthInput& auth_input_proto,
-    const std::string& username,
-    const std::string& obfuscated_username,
-    bool locked_to_single_user,
-    const std::optional<brillo::SecureBlob>&
-        cryptohome_recovery_ephemeral_pub_key,
-    const AuthFactorMetadata& auth_factor_metadata) {
-  std::optional<AuthInput> auth_input = CreateAuthInput(
-      platform, auth_input_proto, username, obfuscated_username,
-      locked_to_single_user, cryptohome_recovery_ephemeral_pub_key,
-      auth_factor_metadata);
-  if (auth_input.has_value() && NeedsResetSecret(auth_factor_type)) {
-    // Anything backed PinWeaver needs a reset secret. The list of is_le_cred
-    // could expand in the future.
-    auth_input->reset_secret = std::make_optional<brillo::SecureBlob>(
-        CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH));
-  }
-  return auth_input;
-}
-
 }  // namespace
 
 AuthSession::AuthSession(
@@ -452,7 +429,7 @@ void AuthSession::AddVaultKeyset(
 }
 
 void AuthSession::CreateKeyBlobsToAddKeyset(
-    AuthInput auth_input,
+    const AuthInput& auth_input,
     const KeyData& key_data,
     bool initial_keyset,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -490,9 +467,8 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
       return;
     }
     // Since this is not the initial keyset, there should now be a valid
-    // authenticated VaultKeyset. Use it to get the reset seed for the PIN VK.
+    // authenticated VaultKeyset.
     DCHECK(vault_keyset_);
-    auth_input.reset_seed = vault_keyset_->GetResetSeed();
   }
 
   auto create_callback = base::BindOnce(
@@ -561,8 +537,6 @@ void AuthSession::AddCredentials(
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
   }
-  // |reset_secret| is updated in CreateKeyBlobsToAddKeyset() if the key type
-  // is LE credentials.
   AuthInput auth_input = {
       .user_input = credentials->passkey(),
       .locked_to_single_user = std::nullopt,
@@ -970,25 +944,21 @@ bool AuthSession::AuthenticateAuthFactor(
   const AuthFactor& auth_factor = *label_to_auth_factor_iter->second;
 
   // Fill up the auth input.
-  AuthFactorMetadata auth_factor_metadata;
-  std::optional<AuthInput> auth_input = CreateAuthInput(
-      platform_, request.auth_input(), username_, obfuscated_username_,
-      auth_block_utility_->GetLockedToSingleUser(),
-      cryptohome_recovery_ephemeral_pub_key_, auth_factor_metadata);
-  if (!auth_input.has_value()) {
-    LOG(ERROR) << "Failed to parse auth input for authenticating auth factor";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionInputParseFailedInAuthAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  CryptohomeStatusOr<AuthInput> auth_input_status =
+      CreateAuthInputForAuthentication(request.auth_input(),
+                                       auth_factor.metadata());
+  if (!auth_input_status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInputParseFailedInAuthAuthFactor))
+            .Wrap(std::move(auth_input_status).status()));
     return false;
   }
 
   // If suitable, attempt lightweight authentication via a credential verifier.
   if (auth_intent_ == AuthIntent::kVerifyOnly &&
       IsCredentialVerifierSupported(auth_factor.type()) &&
-      AuthenticateViaCredentialVerifier(auth_input.value())) {
+      AuthenticateViaCredentialVerifier(auth_input_status.value())) {
     const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
     SetAuthSessionAsAuthenticated(lightweight_intents);
     std::move(on_done).Run(OkStatus<CryptohomeError>());
@@ -1006,7 +976,7 @@ bool AuthSession::AuthenticateAuthFactor(
             kAuthSessionAuthenticateAuthFactorUSSTimer);
 
     AuthenticateViaUserSecretStash(request.auth_factor_label(),
-                                   auth_input.value(),
+                                   auth_input_status.value(),
                                    std::move(auth_session_performance_timer),
                                    auth_factor, std::move(on_done));
     return true;
@@ -1031,9 +1001,9 @@ bool AuthSession::AuthenticateAuthFactor(
       std::make_unique<AuthSessionPerformanceTimer>(
           kAuthSessionAuthenticateAuthFactorVKTimer);
 
-  return AuthenticateViaVaultKeyset(auth_factor.type(), auth_input.value(),
-                                    std::move(auth_session_performance_timer),
-                                    std::move(on_done));
+  return AuthenticateViaVaultKeyset(
+      auth_factor.type(), auth_input_status.value(),
+      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 void AuthSession::RemoveAuthFactor(
@@ -1247,58 +1217,31 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  std::optional<AuthInput> auth_input;
+  // Create and initialize fields for auth_input.
+  CryptohomeStatusOr<AuthInput> auth_input_status = CreateAuthInputForAdding(
+      request.auth_input(), auth_factor_type, auth_factor_metadata);
+  if (!auth_input_status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInUpdateAuthFactor))
+            .Wrap(std::move(auth_input_status).status()));
+    return;
+  }
+
   if (user_secret_stash_) {
     DCHECK(user_has_configured_auth_factor_);
-    auth_input = CreateAuthInputWithResetSecret(
-        platform_, auth_factor_type, request.auth_input(), username_,
-        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
-        /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
-        auth_factor_metadata);
-    if (!auth_input.has_value()) {
-      LOG(ERROR) << "AuthSession: Failed to parse auth input for the updated "
-                    "auth factor.";
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInUpdateAuthFactor),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-      return;
-    }
-
     auto create_callback = base::BindOnce(
         &AuthSession::UpdateAuthFactorViaUserSecretStash,
         weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
-        auth_factor_metadata, auth_input.value(), std::move(on_done));
+        auth_factor_metadata, auth_input_status.value(), std::move(on_done));
     auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-        auth_block_type, auth_input.value(), std::move(create_callback));
+        auth_block_type, auth_input_status.value(), std::move(create_callback));
     return;
   }
 
-  // UserSecretStash is not enabled, UpdateAuthFactor with VaultKeyset.
-
-  // Create and initialize fields for auth_input.
-  auth_input = CreateAuthInput(
-      platform_, request.auth_input(), username_, obfuscated_username_,
-      auth_block_utility_->GetLockedToSingleUser(),
-      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
-      auth_factor_metadata);
-  if (!auth_input.has_value()) {
-    LOG(ERROR) << "Failed to parse auth input for new auth factor";
-    std::move(on_done).Run(
-
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputForVKInUpdateAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
-
-  if (vault_keyset_ && vault_keyset_->HasWrappedResetSeed()) {
-    auth_input.value().reset_seed = vault_keyset_->GetResetSeed();
-  }
-  return UpdateAuthFactorViaVaultKeyset(auth_block_type, auth_factor_type,
-                                        auth_factor_label, auth_input.value(),
-                                        std::move(on_done));
+  return UpdateAuthFactorViaVaultKeyset(
+      auth_block_type, auth_factor_type, auth_factor_label,
+      auth_input_status.value(), std::move(on_done));
 }
 
 void AuthSession::UpdateAuthFactorViaVaultKeyset(
@@ -1637,6 +1580,72 @@ std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
 }
 
+CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
+    const user_data_auth::AuthInput& auth_input_proto,
+    const AuthFactorMetadata& auth_factor_metadata) {
+  std::optional<AuthInput> auth_input = CreateAuthInput(
+      platform_, auth_input_proto, username_, obfuscated_username_,
+      auth_block_utility_->GetLockedToSingleUser(),
+      cryptohome_recovery_ephemeral_pub_key_, auth_factor_metadata);
+  if (!auth_input.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAuth),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  return std::move(auth_input.value());
+}
+
+CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
+    const user_data_auth::AuthInput& auth_input_proto,
+    AuthFactorType auth_factor_type,
+    const AuthFactorMetadata& auth_factor_metadata) {
+  std::optional<AuthInput> auth_input = CreateAuthInput(
+      platform_, auth_input_proto, username_, obfuscated_username_,
+      auth_block_utility_->GetLockedToSingleUser(),
+      cryptohome_recovery_ephemeral_pub_key_, auth_factor_metadata);
+  if (!auth_input.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAdd),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  if (!NeedsResetSecret(auth_factor_type)) {
+    // The factor is not resettable, so no extra data needed to be filled.
+    return std::move(auth_input.value());
+  }
+
+  if (user_secret_stash_) {
+    // When using USS, every resettable factor gets a unique reset secret.
+    auth_input->reset_secret =
+        CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+    return std::move(auth_input.value());
+  }
+
+  // When using VaultKeyset, reset is implemented via a seed that's shared
+  // among all of the user's VKs. Hence copy it from the previously loaded VK.
+  if (!vault_keyset_) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForAdd),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (!vault_keyset_->HasWrappedResetSeed()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocNoWrappedSeedInAuthInputForAdd),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (vault_keyset_->GetResetSeed().empty()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocEmptySeedInAuthInputForAdd),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  auth_input->reset_seed = vault_keyset_->GetResetSeed();
+  return std::move(auth_input.value());
+}
+
 void AuthSession::SetCredentialVerifier(
     std::optional<AuthFactorType> auth_factor_type,
     const brillo::SecureBlob& passkey) {
@@ -1913,6 +1922,16 @@ void AuthSession::AddAuthFactor(
     return;
   }
 
+  CryptohomeStatusOr<AuthInput> auth_input_status = CreateAuthInputForAdding(
+      request.auth_input(), auth_factor_type, auth_factor_metadata);
+  if (!auth_input_status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInAddAuthFactor))
+            .Wrap(std::move(auth_input_status).status()));
+    return;
+  }
+
   if (is_ephemeral_user_) {
     // If AuthSession is configured as an ephemeral user, then we do not save
     // the key to the disk.
@@ -1925,43 +1944,15 @@ void AuthSession::AddAuthFactor(
     // experiment is on or it's an existing user who went through this flow), so
     // proceed with wrapping the USS via the new factor and persisting both.
 
-    std::optional<AuthInput> auth_input = CreateAuthInputWithResetSecret(
-        platform_, auth_factor_type, request.auth_input(), username_,
-        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
-        /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
-        auth_factor_metadata);
-    if (!auth_input.has_value()) {
-      LOG(ERROR) << "Failed to parse auth input for new auth factor with USS";
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputWithUssInAddAuthFactor),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-      return;
-    }
-
     // Report timer for how long AddAuthFactor operation takes.
     auto auth_session_performance_timer =
         std::make_unique<AuthSessionPerformanceTimer>(
             kAuthSessionAddAuthFactorUSSTimer);
 
-    AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
-                                    auth_factor_metadata, auth_input.value(),
-                                    std::move(auth_session_performance_timer),
-                                    std::move(on_done));
-    return;
-  }
-
-  std::optional<AuthInput> auth_input = CreateAuthInput(
-      platform_, request.auth_input(), username_, obfuscated_username_,
-      auth_block_utility_->GetLockedToSingleUser(),
-      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
-      auth_factor_metadata);
-  if (!auth_input.has_value()) {
-    LOG(ERROR) << "Failed to parse auth input for new auth factor";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    AddAuthFactorViaUserSecretStash(
+        auth_factor_type, auth_factor_label, auth_factor_metadata,
+        auth_input_status.value(), std::move(auth_session_performance_timer),
+        std::move(on_done));
     return;
   }
 
@@ -1971,7 +1962,7 @@ void AuthSession::AddAuthFactor(
           kAuthSessionAddAuthFactorVKTimer);
 
   AddAuthFactorViaVaultKeyset(auth_factor_type, auth_factor_label,
-                              auth_factor_metadata, auth_input.value(),
+                              auth_factor_metadata, auth_input_status.value(),
                               std::move(auth_session_performance_timer),
                               std::move(on_done));
 }
@@ -1980,7 +1971,7 @@ void AuthSession::AddAuthFactorViaVaultKeyset(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
-    AuthInput auth_input,
+    const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
   KeyData key_data;

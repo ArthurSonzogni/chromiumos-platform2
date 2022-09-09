@@ -30,6 +30,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
@@ -290,6 +291,17 @@ class AuthSession final {
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request);
 
+  // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
+  // failure.
+  CryptohomeStatusOr<AuthInput> CreateAuthInputForAuthentication(
+      const user_data_auth::AuthInput& auth_input_proto,
+      const AuthFactorMetadata& auth_factor_metadata);
+  // Same as above, but additionally sets extra fields for resettable factors.
+  CryptohomeStatusOr<AuthInput> CreateAuthInputForAdding(
+      const user_data_auth::AuthInput& auth_input_proto,
+      AuthFactorType auth_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata);
+
   // Initializes a ChallengeCredentialAuthInput, i.e.
   // {.public_key_spki_der, .challenge_signature_algorithms} from
   // the challenge_response_key values in in authorization
@@ -316,13 +328,12 @@ class AuthSession final {
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
-  void CreateKeyBlobsToAddKeyset(
-      AuthInput auth_input,
-      const KeyData& key_data,
-      bool initial_keyset,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      StatusCallback on_done);
+  void CreateKeyBlobsToAddKeyset(const AuthInput& auth_input,
+                                 const KeyData& key_data,
+                                 bool initial_keyset,
+                                 std::unique_ptr<AuthSessionPerformanceTimer>
+                                     auth_session_performance_timer,
+                                 StatusCallback on_done);
 
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
@@ -408,7 +419,7 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
-      AuthInput auth_input,
+      const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done);

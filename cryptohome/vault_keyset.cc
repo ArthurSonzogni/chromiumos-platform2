@@ -193,8 +193,6 @@ void VaultKeyset::CreateRandomResetSeed() {
 
 void VaultKeyset::CreateFromFileSystemKeyset(
     const FileSystemKeyset& file_system_keyset) {
-  CHECK(crypto_);
-
   fek_ = file_system_keyset.Key().fek;
   fek_salt_ = file_system_keyset.Key().fek_salt;
   fnek_ = file_system_keyset.Key().fnek;

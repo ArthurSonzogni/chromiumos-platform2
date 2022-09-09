@@ -40,6 +40,7 @@
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -74,6 +75,7 @@ using error::CryptohomeMountError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
@@ -108,6 +110,7 @@ SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   serialized_vk.set_tpm_key("tpm-key");
   serialized_vk.set_extended_tpm_key("tpm-extended-key");
   serialized_vk.set_vkk_iv("iv");
+  serialized_vk.set_wrapped_reset_seed("wrapped-reset-seed");
   serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
   serialized_vk.mutable_key_data()->set_label(label);
   return serialized_vk;
@@ -232,10 +235,21 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
 }
 
 void MockInitialKeysetAdding(const std::string& obfuscated_username,
+                             const SerializedVaultKeyset& serialized_vk,
                              MockKeysetManagement& keyset_management) {
   EXPECT_CALL(keyset_management,
               AddInitialKeysetWithKeyBlobs(obfuscated_username, _, _, _, _, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+      .WillOnce([=](const std::string&, const KeyData&,
+                    const std::optional<
+                        SerializedVaultKeyset_SignatureChallengeInfo>&,
+                    const FileSystemKeyset& file_system_keyset, KeyBlobs,
+                    std::unique_ptr<AuthBlockState>) {
+        // Populate the VK with both public and secret data (like reset seed).
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->InitializeFromSerialized(serialized_vk);
+        vk->CreateFromFileSystemKeyset(file_system_keyset);
+        return vk;
+      });
 }
 
 void MockKeysetLoadingViaBlobs(const std::string& obfuscated_username,
@@ -1148,10 +1162,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
   ASSERT_TRUE(auth_session);
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
   MockKeysetCreation(mock_auth_block_utility_);
-  MockInitialKeysetAdding(obfuscated_username, keyset_management_);
-  MockKeysetLoadingByLabel(obfuscated_username,
-                           CreateFakePasswordVk(kPasswordLabel),
+  MockInitialKeysetAdding(obfuscated_username, serialized_vk,
+                          keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
 
   // Act.
@@ -1183,10 +1199,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
   ASSERT_TRUE(auth_session);
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
   MockKeysetCreation(mock_auth_block_utility_);
-  MockInitialKeysetAdding(obfuscated_username, keyset_management_);
-  MockKeysetLoadingByLabel(obfuscated_username,
-                           CreateFakePasswordVk(kPasswordLabel),
+  MockInitialKeysetAdding(obfuscated_username, serialized_vk,
+                          keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);
   // Add the initial keyset.
   user_data_auth::AddAuthFactorRequest password_request;

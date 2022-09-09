@@ -1103,7 +1103,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoInputInUpdateAuthFactor = 638,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor = 639,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoInputForVKInUpdateAuthFactor = 640,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInUpdateViaUSS = 641,
@@ -1123,7 +1123,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistUSSFailedInUpdateViaUSS = 648,
   /* ./auth_session.cc */
   kLocAuthSessionAddToUssFailedInPersistToUSS = 649,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoInputWithUssInAddAuthFactor = 650,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
@@ -1138,13 +1138,19 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthNoKeyChallengeServiceInAuthAuthFactor = 656,
   /* ./auth_session.cc */
-  kLocAuthSessionCallbackErrorInUpdateKeyset = 657,
+  kLocNoWrappedSeedInAuthInputForAdd = 657,
   /* ./auth_session.cc */
-  kLocAuthSessionWrongLabelInUpdate = 658,
+  kLocEmptySeedInAuthInputForAdd = 658,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInUpdateAuthFactorViaVK = 659,
   /* ./auth_session.cc */
-  kLocAuthSessionConverterFailsInUpdateFactorViaVK = 660
+  kLocAuthSessionConverterFailsInUpdateFactorViaVK = 660,
+  /* ./auth_session.cc */
+  kLocCreateFailedInAuthInputForAuth = 661,
+  /* ./auth_session.cc */
+  kLocCreateFailedInAuthInputForAdd = 662,
+  /* ./auth_session.cc */
+  kLocNoVkInAuthInputForAdd = 663,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
