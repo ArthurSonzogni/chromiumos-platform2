@@ -1497,6 +1497,29 @@ TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
   EXPECT_FALSE(delegate_.suspend_announced());
 }
 
+// Test that user activity and other events that come in while the callbacks are
+// being run don't abort a RESUME_FROM_DISK_PREPARE.
+TEST_F(SuspenderTest, HibernateResumeIgnoresActivityEvents) {
+  Init();
+
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  // Send in some user activity. None of this should cause the suspender to
+  // abort.
+  suspender_.HandleUserActivity();
+  suspender_.HandleWakeNotification();
+  suspender_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  // Should not have unprepared.
+  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
+  // Shutdown, however, should cause the request to abort.
+  suspender_.HandleShutdown();
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+}
+
 // Tests that a hibernate resume abort not prefaced by a prepare is properly
 // ignored.
 TEST_F(SuspenderTest, SpuriousResumeAbortIsIgnored) {

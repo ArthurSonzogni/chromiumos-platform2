@@ -519,6 +519,14 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
       delegate_->IsLidClosedForSuspend())
     return state_;
 
+  // Avoid cancelling if we are preparing for a resume from hibernation, as we
+  // still intend to resume even if there's user activity.
+  if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
+    LOG(INFO) << "Ignoring " << EventToString(event)
+              << " when resuming from disk";
+    return state_;
+  }
+
   LOG(INFO) << "Aborting request in response to event " << EventToString(event);
   FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE, false);
   return State::IDLE;
