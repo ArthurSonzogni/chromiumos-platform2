@@ -267,7 +267,7 @@ void RealUserSession::SetCredentials(const Credentials& credentials) {
 
   key_data_ = credentials.key_data();
 
-  credential_verifier_.reset(new ScryptVerifier());
+  credential_verifier_.reset(new ScryptVerifier(key_data_.label()));
   if (!credential_verifier_->Set(credentials.passkey())) {
     LOG(WARNING) << "CredentialVerifier could not be set";
   }
@@ -299,11 +299,11 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   if (!VerifyUser(credentials.GetObfuscatedUsername())) {
     return false;
   }
-  // If the incoming credentials have no label, then just
-  // test the secret.  If it is labeled, then the label must
-  // match.
+  // If the incoming credentials have no label, then just test the secret. If it
+  // is labeled, then the label must match.
   if (!credentials.key_data().label().empty() &&
-      credentials.key_data().label() != key_data_.label()) {
+      credentials.key_data().label() !=
+          credential_verifier_->auth_factor_label()) {
     return false;
   }
 
@@ -322,7 +322,7 @@ void RealUserSession::RemoveCredentialVerifierForKeyLabel(
 
   // If the credential to remove has the same label as the current credential
   // verifier, then we reset the credential verifier and remove KeyData.
-  if (key_label == key_data_.label()) {
+  if (key_label == credential_verifier_->auth_factor_label()) {
     credential_verifier_.reset();
     key_data_ = KeyData();
   }

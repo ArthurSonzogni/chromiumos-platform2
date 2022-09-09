@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <brillo/secure_blob.h>
 
@@ -22,6 +23,7 @@ bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type);
 // TODO(b/204482221): Make `auth_factor_type` mandatory.
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
     std::optional<AuthFactorType> auth_factor_type,
+    const std::string& auth_factor_label,
     const brillo::SecureBlob& passkey);
 
 }  // namespace cryptohome

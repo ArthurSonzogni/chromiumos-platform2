@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -32,6 +33,7 @@ bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type) {
 
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
     std::optional<AuthFactorType> auth_factor_type,
+    const std::string& auth_factor_label,
     const brillo::SecureBlob& passkey) {
   if (auth_factor_type.has_value() &&
       !IsCredentialVerifierSupported(auth_factor_type.value())) {
@@ -41,7 +43,7 @@ std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
   std::unique_ptr<CredentialVerifier> verifier;
   switch (auth_factor_type.value_or(AuthFactorType::kPassword)) {
     case AuthFactorType::kPassword: {
-      verifier = std::make_unique<ScryptVerifier>();
+      verifier = std::make_unique<ScryptVerifier>(auth_factor_label);
       if (!verifier->Set(passkey)) {
         LOG(ERROR) << "Credential verifier initialization failed.";
         return nullptr;
@@ -57,6 +59,7 @@ std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
     }
   }
 
+  DCHECK_EQ(verifier->auth_factor_label(), auth_factor_label);
   if (auth_factor_type.has_value()) {
     DCHECK_EQ(auth_factor_type.value(), verifier->auth_factor_type());
   }

@@ -311,6 +311,7 @@ class AuthSession final {
 
   // This function sets the credential_verifier_ based on the passkey parameter.
   void SetCredentialVerifier(std::optional<AuthFactorType> auth_factor_type,
+                             const std::string& auth_factor_label,
                              const brillo::SecureBlob& passkey);
 
   // Set the timeout timer to now + delay
@@ -426,6 +427,7 @@ class AuthSession final {
 
   // Adds a credential verifier for the ephemeral user session.
   void AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
+                                 const std::string& auth_factor_label,
                                  const AuthInput& auth_input,
                                  StatusCallback on_done);
 

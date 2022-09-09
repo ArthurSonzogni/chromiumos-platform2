@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_SCRYPT_VERIFIER_H_
 #define CRYPTOHOME_SCRYPT_VERIFIER_H_
 
+#include <string>
+
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -14,7 +16,7 @@ namespace cryptohome {
 
 class ScryptVerifier final : public CredentialVerifier {
  public:
-  ScryptVerifier();
+  explicit ScryptVerifier(const std::string& auth_factor_label);
   ~ScryptVerifier() override = default;
 
   // Prohibit copy/move/assignment.

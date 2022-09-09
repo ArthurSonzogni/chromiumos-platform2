@@ -419,7 +419,8 @@ void AuthSession::AddVaultKeyset(
     // TODO(emaxx): This is overly permissive by creating the verifier even when
     // AuthFactor conversion failed and the actual factor type is unknown; we
     // should eventually forbid proceeding with a `nullopt` type here.
-    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, key_data.label(),
+                          auth_input.user_input.value());
   }
   user_has_configured_credential_ = true;
 
@@ -699,7 +700,8 @@ void AuthSession::UpdateVaultKeyset(
   // credential verifier to cache the secret for future lightweight
   // verifications.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, key_data.label(),
+                          auth_input.user_input.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -831,7 +833,8 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   // Set the credential verifier for this credential.
   if (passkey.has_value()) {
-    SetCredentialVerifier(request_auth_factor_type, passkey.value());
+    SetCredentialVerifier(request_auth_factor_type, key_data_.label(),
+                          passkey.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -891,7 +894,7 @@ void AuthSession::Authenticate(
     // For ephemeral session, just authenticate the session,
     // no need to derive KeyBlobs.
     // Set the credential verifier for this credential.
-    SetCredentialVerifier(/*auth_factor_type=*/std::nullopt,
+    SetCredentialVerifier(/*auth_factor_type=*/std::nullopt, key_data_.label(),
                           credentials->passkey());
 
     // SetAuthSessionAsAuthenticated() should already have been called
@@ -1417,7 +1420,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor->label(),
+                          auth_input.user_input.value());
   }
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
@@ -1648,10 +1652,12 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
 
 void AuthSession::SetCredentialVerifier(
     std::optional<AuthFactorType> auth_factor_type,
+    const std::string& auth_factor_label,
     const brillo::SecureBlob& passkey) {
   // Note that we always overwrite the old verifier, even when the creation of
   // the new one failed - to avoid any risk of accepting old credentials.
-  credential_verifier_ = CreateCredentialVerifier(auth_factor_type, passkey);
+  credential_verifier_ =
+      CreateCredentialVerifier(auth_factor_type, auth_factor_label, passkey);
 }
 
 // static
@@ -1845,7 +1851,8 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor->label(),
+                          auth_input.user_input.value());
   }
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
@@ -1934,8 +1941,8 @@ void AuthSession::AddAuthFactor(
   if (is_ephemeral_user_) {
     // If AuthSession is configured as an ephemeral user, then we do not save
     // the key to the disk.
-    AddAuthFactorForEphemeral(auth_factor_type, auth_input_status.value(),
-                              std::move(on_done));
+    AddAuthFactorForEphemeral(auth_factor_type, auth_factor_label,
+                              auth_input_status.value(), std::move(on_done));
     return;
   }
 
@@ -2031,9 +2038,11 @@ void AuthSession::AddAuthFactorViaUserSecretStash(
       auth_block_type, auth_input, std::move(create_callback));
 }
 
-void AuthSession::AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
-                                            const AuthInput& auth_input,
-                                            StatusCallback on_done) {
+void AuthSession::AddAuthFactorForEphemeral(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input,
+    StatusCallback on_done) {
   DCHECK(is_ephemeral_user_);
 
   if (!auth_input.user_input.has_value()) {
@@ -2054,7 +2063,8 @@ void AuthSession::AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
     return;
   }
 
-  SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+  SetCredentialVerifier(auth_factor_type, auth_factor_label,
+                        auth_input.user_input.value());
   // Check whether the verifier creation failed.
   if (!credential_verifier_) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2208,7 +2218,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor_label,
+                          auth_input.user_input.value());
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
