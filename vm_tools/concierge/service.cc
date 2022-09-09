@@ -421,6 +421,11 @@ void SetVmCpuArgs(int32_t cpus, VmBuilder& vm_builder) {
       vm_builder.AppendCustomParam("--cpu-cluster", cpu_list);
     }
   }
+
+  /* Enable hugepages on devices with > 7 GB memory */
+  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
+    vm_builder.AppendCustomParam("--hugepages", "");
+  }
 }
 
 // Passes |method_call| to |handler| and passes the response to
