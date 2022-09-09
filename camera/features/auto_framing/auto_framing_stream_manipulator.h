@@ -22,11 +22,8 @@
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_metrics.h"
-#include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
-#include "gpu/egl/egl_context.h"
-#include "gpu/image_processor.h"
 
 namespace cros {
 
@@ -68,6 +65,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   AutoFramingStreamManipulator(
       RuntimeOptions* runtime_options,
+      GpuResources* gpu_resources,
       base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
       std::optional<Options> options_override_for_testing = std::nullopt);
@@ -150,17 +148,14 @@ class AutoFramingStreamManipulator : public StreamManipulator {
       base::ScopedFD output_fence,
       const Rect<float>& crop_region);
 
-  bool GetEnabled() const;
+  bool GetEnabled();
 
   ReloadableConfigFile config_;
 
   Options options_;
 
-  std::unique_ptr<EglContext> egl_context_;
-  std::unique_ptr<GpuImageProcessor> image_processor_;
-
   RuntimeOptions* runtime_options_;
-
+  GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   CaptureResultCallback result_callback_;
 
@@ -195,8 +190,6 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   Rect<float> active_crop_region_ = {0.0f, 0.0f, 1.0f, 1.0f};
 
   Metrics metrics_;
-
-  CameraThread thread_;
 };
 
 }  // namespace cros

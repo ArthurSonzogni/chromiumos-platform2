@@ -78,6 +78,7 @@ class AutoFramingTestFixture {
   std::vector<TestStreamConfig> test_stream_configs_;
 
   StreamManipulator::RuntimeOptions runtime_options_;
+  GpuResources gpu_resources_;
   Size active_array_size_;
   android::CameraMetadata static_info_;
   camera3_stream_t client_yuv_stream_ = {};

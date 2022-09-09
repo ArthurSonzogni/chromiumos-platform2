@@ -13,6 +13,7 @@
 #include "common/sw_privacy_switch_stream_manipulator.h"
 #include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
+#include "gpu/gpu_resources.h"
 
 #if USE_CAMERA_FEATURE_HDRNET
 #include "common/still_capture_processor_impl.h"
@@ -93,8 +94,9 @@ void MaybeEnableHdrNetStreamManipulator(
 
 void MaybeEnableAutoFramingStreamManipulator(
     const FeatureProfile& feature_profile,
-    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators,
-    StreamManipulator::RuntimeOptions* runtime_options) {
+    StreamManipulator::RuntimeOptions* runtime_options,
+    GpuResources* gpu_resources,
+    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
     std::unique_ptr<JpegCompressor> jpeg_compressor =
@@ -103,7 +105,7 @@ void MaybeEnableAutoFramingStreamManipulator(
         std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>(
-            runtime_options,
+            runtime_options, gpu_resources,
             feature_profile.GetConfigFilePath(
                 FeatureProfile::FeatureType::kAutoFraming),
             std::move(still_capture_processor)));
@@ -130,8 +132,8 @@ StreamManipulator::GetEnabledStreamManipulators(
   LOGF(INFO) << "FrameAnnotatorLoaderStreamManipulator enabled";
 #endif
 
-  MaybeEnableAutoFramingStreamManipulator(feature_profile, &stream_manipulators,
-                                          runtime_options);
+  MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
+                                          gpu_resources, &stream_manipulators);
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {

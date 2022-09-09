@@ -24,7 +24,6 @@
 #include <sys/types.h>
 
 #include "cros-camera/camera_metadata_utils.h"
-#include "gpu/egl/egl_context.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/shared_image.h"
 
@@ -259,6 +258,7 @@ struct AutoFramingStreamManipulator::CaptureContext {
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator(
     RuntimeOptions* runtime_options,
+    GpuResources* gpu_resources,
     base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     std::optional<Options> options_override_for_testing)
@@ -267,11 +267,10 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
           .override_config_file_path =
               base::FilePath(kOverrideAutoFramingConfigFile)}),
       runtime_options_(runtime_options),
+      gpu_resources_(gpu_resources),
       still_capture_processor_(std::move(still_capture_processor)),
-      camera_metrics_(CameraMetrics::New()),
-      thread_("AutoFramingThread") {
+      camera_metrics_(CameraMetrics::New()) {
   DCHECK_NE(runtime_options_, nullptr);
-  CHECK(thread_.Start());
 
   if (options_override_for_testing) {
     options_ = *options_override_for_testing;
@@ -287,17 +286,16 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
 }
 
 AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
-  thread_.PostTaskAsync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE, base::BindOnce(&AutoFramingStreamManipulator::ResetOnThread,
                                 base::Unretained(this)));
-  thread_.Stop();
 }
 
 bool AutoFramingStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   bool ret;
-  thread_.PostTaskSync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::InitializeOnThread,
                      base::Unretained(this), static_info, result_callback),
@@ -308,7 +306,7 @@ bool AutoFramingStreamManipulator::Initialize(
 bool AutoFramingStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
   bool ret;
-  thread_.PostTaskSync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::ConfigureStreamsOnThread,
                      base::Unretained(this), stream_config),
@@ -319,7 +317,7 @@ bool AutoFramingStreamManipulator::ConfigureStreams(
 bool AutoFramingStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   bool ret;
-  thread_.PostTaskSync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::OnConfiguredStreamsOnThread,
                      base::Unretained(this), stream_config),
@@ -336,7 +334,7 @@ bool AutoFramingStreamManipulator::ConstructDefaultRequestSettings(
 bool AutoFramingStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   bool ret;
-  thread_.PostTaskSync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(
           &AutoFramingStreamManipulator::ProcessCaptureRequestOnThread,
@@ -348,7 +346,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequest(
 bool AutoFramingStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
   bool ret;
-  thread_.PostTaskSync(
+  gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(
           &AutoFramingStreamManipulator::ProcessCaptureResultOnThread,
@@ -368,7 +366,8 @@ bool AutoFramingStreamManipulator::Flush() {
 bool AutoFramingStreamManipulator::InitializeOnThread(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(!result_callback.is_null());
 
   result_callback_ = result_callback;
 
@@ -411,7 +410,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
 
 bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   ResetOnThread();
 
@@ -436,7 +435,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
       hal_streams.push_back(s);
       still_capture_processor_->Initialize(
           s, base::BindPostTask(
-                 thread_.task_runner(),
+                 gpu_resources_->gpu_task_runner(),
                  base::BindRepeating(&AutoFramingStreamManipulator::
                                          ReturnStillCaptureResultOnThread,
                                      base::Unretained(this))));
@@ -510,7 +509,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 
 bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Configured streams from HAL:";
@@ -589,7 +588,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::GetEnabled() const {
+bool AutoFramingStreamManipulator::GetEnabled() {
   // Use option in config file first.
   // TODO(pihsun): Handle multi people mode.
   // TODO(pihsun): ReloadableConfigFile merges new config to old config, so
@@ -600,7 +599,7 @@ bool AutoFramingStreamManipulator::GetEnabled() const {
 
 bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number())
@@ -695,7 +694,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
 
 bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
@@ -797,7 +796,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     CaptureContext* ctx,
     camera3_stream_buffer_t* full_frame_buffer,
     uint32_t frame_number) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
   DCHECK_NE(full_frame_buffer, nullptr);
 
@@ -916,7 +915,7 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
     CaptureContext* ctx,
     camera3_stream_buffer_t* still_yuv_buffer,
     uint32_t frame_number) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
   DCHECK_NE(still_yuv_buffer, nullptr);
 
@@ -965,7 +964,7 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
 
 void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
     Camera3CaptureDescriptor result) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result.frame_number()) << "Still capture result:";
@@ -988,41 +987,20 @@ void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
 
 bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
-  if (!auto_framing_client_.SetUp(AutoFramingClient::Options{
-          .input_size = full_frame_size_,
-          .frame_rate = static_cast<double>(kRequiredVideoFrameRate),
-          .target_aspect_ratio_x = target_aspect_ratio_x,
-          .target_aspect_ratio_y = target_aspect_ratio_y,
-          .detection_rate = options_.detection_rate,
-      })) {
-    return false;
-  }
-
-  if (!egl_context_) {
-    egl_context_ = EglContext::GetSurfacelessContext();
-    if (!egl_context_->IsValid()) {
-      LOGF(ERROR) << "Failed to create EGL context";
-      return false;
-    }
-  }
-  if (!egl_context_->MakeCurrent()) {
-    LOGF(ERROR) << "Failed to make EGL context current";
-    return false;
-  }
-  image_processor_ = std::make_unique<GpuImageProcessor>();
-  if (!image_processor_) {
-    LOGF(ERROR) << "Failed to create GpuImageProcessor";
-    return false;
-  }
-
-  return true;
+  return auto_framing_client_.SetUp(AutoFramingClient::Options{
+      .input_size = full_frame_size_,
+      .frame_rate = static_cast<double>(kRequiredVideoFrameRate),
+      .target_aspect_ratio_x = target_aspect_ratio_x,
+      .target_aspect_ratio_y = target_aspect_ratio_y,
+      .detection_rate = options_.detection_rate,
+  });
 }
 
 void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     Camera3CaptureDescriptor* result) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (!result->has_metadata()) {
     return;
@@ -1093,7 +1071,7 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
 }
 
 void AutoFramingStreamManipulator::ResetOnThread() {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   UploadMetricsOnThread();
 
@@ -1121,7 +1099,7 @@ void AutoFramingStreamManipulator::ResetOnThread() {
 }
 
 void AutoFramingStreamManipulator::UploadMetricsOnThread() {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   const AutoFramingClient::Metrics pipeline_metrics =
       auto_framing_client_.GetMetrics();
@@ -1186,7 +1164,7 @@ void AutoFramingStreamManipulator::UploadMetricsOnThread() {
 
 void AutoFramingStreamManipulator::UpdateOptionsOnThread(
     const base::Value& json_values) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   int filter_mode, max_video_width, max_video_height;
   float detection_rate, enable_delay, disable_delay;
@@ -1232,7 +1210,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
 
 void AutoFramingStreamManipulator::OnOptionsUpdated(
     const base::Value& json_values) {
-  thread_.PostTaskAsync(
+  gpu_resources_->PostGpuTask(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::UpdateOptionsOnThread,
                      base::Unretained(this), json_values.Clone()));
@@ -1241,7 +1219,7 @@ void AutoFramingStreamManipulator::OnOptionsUpdated(
 std::pair<AutoFramingStreamManipulator::State,
           AutoFramingStreamManipulator::State>
 AutoFramingStreamManipulator::StateTransitionOnThread() {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   const State prev_state = state_;
   if (GetEnabled()) {
@@ -1308,7 +1286,7 @@ std::optional<base::ScopedFD> AutoFramingStreamManipulator::CropBufferOnThread(
     buffer_handle_t output_yuv,
     base::ScopedFD output_acquire_fence,
     const Rect<float>& crop_region) {
-  DCHECK(thread_.IsCurrentThread());
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   if (input_release_fence.is_valid() &&
       sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
@@ -1334,10 +1312,10 @@ std::optional<base::ScopedFD> AutoFramingStreamManipulator::CropBufferOnThread(
     return std::nullopt;
   }
 
-  image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
-                            crop_region, output_image.y_texture(),
-                            output_image.uv_texture(),
-                            options_.output_filter_mode);
+  gpu_resources_->image_processor()->CropYuv(
+      input_image.y_texture(), input_image.uv_texture(), crop_region,
+      output_image.y_texture(), output_image.uv_texture(),
+      options_.output_filter_mode);
 
   EglFence fence;
   return fence.GetNativeFd();

@@ -220,12 +220,17 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
 
+  if (!gpu_resources_.Initialize()) {
+    LOGF(ERROR) << "Failed to initialize GPU resources";
+    return false;
+  }
+
   runtime_options_ = StreamManipulator::RuntimeOptions{
       .auto_framing_state = mojom::CameraAutoFramingState::OFF,
   };
   auto_framing_stream_manipulator_ =
       std::make_unique<AutoFramingStreamManipulator>(
-          &runtime_options_, base::FilePath(),
+          &runtime_options_, &gpu_resources_, base::FilePath(),
           std::move(still_capture_processor), options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
