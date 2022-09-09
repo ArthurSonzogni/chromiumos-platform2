@@ -999,18 +999,18 @@ std::string WiFi::AppendBgscan(WiFiService* service,
         base::StringPrintf("%s:%d:%d:%d", method.c_str(), short_interval,
                            signal_threshold, scan_interval);
   }
-  SLOG(nullptr, 3) << "Background scan: '" << config_string << "'";
+  SLOG(nullptr, 4) << "Background scan: '" << config_string << "'";
   service_params->Set<std::string>(WPASupplicant::kNetworkPropertyBgscan,
                                    config_string);
   return config_string;
 }
 
 bool WiFi::ReconfigureBgscan(WiFiService* service) {
-  SLOG(this, 3) << __func__ << " for " << service->log_name();
+  SLOG(this, 4) << __func__ << " for " << service->log_name();
   KeyValueStore bgscan_params;
   std::string bgscan_string = AppendBgscan(service, &bgscan_params);
   if (service->bgscan_string() == bgscan_string) {
-    SLOG(this, 3) << "No change in bgscan parameters.";
+    SLOG(this, 4) << "No change in bgscan parameters.";
     return false;
   }
 
