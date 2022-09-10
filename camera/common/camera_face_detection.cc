@@ -17,17 +17,23 @@
 
 #include "common/tracing.h"
 #include "cros-camera/common.h"
+#include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
 
 namespace cros {
 
+namespace {
+
 // This class only supports gray type model. See go/facessd for more details.
-const char kFaceModelPath[] =
+constexpr char kFaceModelPath[] =
     "/usr/share/cros-camera/ml_models/fssd_small_8bit_gray_4orient_v4.tflite";
-const char kFaceAnchorPath[] =
+constexpr char kFaceAnchorPath[] =
     "/usr/share/cros-camera/ml_models/fssd_anchors_v4.pb";
-const float kScoreThreshold = 0.5;
-const int kImageSizeForDetection = 160;
+constexpr float kScoreThreshold = 0.5;
+constexpr int kImageSizeForDetection = 160;
+constexpr int kDetectTimeoutMs = 1000;
+
+}  // namespace
 
 // static
 std::unique_ptr<FaceDetector> FaceDetector::Create() {
@@ -49,28 +55,35 @@ std::unique_ptr<FaceDetector> FaceDetector::Create() {
 FaceDetector::FaceDetector(
     std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper)
     : buffer_manager_(CameraBufferManager::GetInstance()),
-      wrapper_(std::move(wrapper)) {}
+      wrapper_(std::move(wrapper)),
+      thread_("FaceDetectorThread") {
+  CHECK(thread_.Start());
+}
+
+FaceDetector::~FaceDetector() {
+  thread_.Stop();
+}
 
 FaceDetectResult FaceDetector::Detect(
     buffer_handle_t buffer,
     std::vector<human_sensing::CrosFace>* faces,
     std::optional<Size> active_sensor_array_size) {
-  TRACE_COMMON(kCameraTraceKeyWidth, buffer_manager_->GetWidth(buffer),
-               kCameraTraceKeyHeight, buffer_manager_->GetHeight(buffer));
-
-  DCHECK(faces);
-  ScopedMapping mapping(buffer);
-  if (!mapping.is_valid()) {
-    LOGF(ERROR) << "Failed to map buffer";
-    return FaceDetectResult::kBufferError;
+  auto future = Future<FaceDetectResult>::Create(nullptr);
+  DetectAsync(buffer, active_sensor_array_size,
+              base::BindOnce(
+                  [](base::OnceCallback<void(FaceDetectResult)> callback,
+                     std::vector<human_sensing::CrosFace>* out_faces,
+                     FaceDetectResult detect_result,
+                     std::vector<human_sensing::CrosFace> faces) {
+                    *out_faces = std::move(faces);
+                    std::move(callback).Run(detect_result);
+                  },
+                  GetFutureCallback(future), faces));
+  if (!future->Wait(kDetectTimeoutMs)) {
+    LOGF(ERROR) << "Face detection timeout";
+    return FaceDetectResult::kTimeoutError;
   }
-  int input_stride = mapping.plane(0).stride;
-  Size input_size = Size(buffer_manager_->GetWidth(buffer),
-                         buffer_manager_->GetHeight(buffer));
-  const uint8_t* buffer_addr = static_cast<uint8_t*>(mapping.plane(0).addr);
-
-  return Detect(buffer_addr, input_stride, input_size, faces,
-                active_sensor_array_size);
+  return future->Get();
 }
 
 FaceDetectResult FaceDetector::Detect(
@@ -79,9 +92,69 @@ FaceDetectResult FaceDetector::Detect(
     Size input_size,
     std::vector<human_sensing::CrosFace>* faces,
     std::optional<Size> active_sensor_array_size) {
-  CHECK(faces);
+  auto future = Future<FaceDetectResult>::Create(nullptr);
+  DetectAsync(buffer_addr, input_stride, input_size, active_sensor_array_size,
+              base::BindOnce(
+                  [](base::OnceCallback<void(FaceDetectResult)> callback,
+                     std::vector<human_sensing::CrosFace>* out_faces,
+                     FaceDetectResult detect_result,
+                     std::vector<human_sensing::CrosFace> faces) {
+                    *out_faces = std::move(faces);
+                    std::move(callback).Run(detect_result);
+                  },
+                  GetFutureCallback(future), faces));
+  if (!future->Wait(kDetectTimeoutMs)) {
+    LOGF(ERROR) << "Face detection timeout";
+    return FaceDetectResult::kTimeoutError;
+  }
+  return future->Get();
+}
+
+void FaceDetector::DetectAsync(buffer_handle_t buffer,
+                               std::optional<Size> active_sensor_array_size,
+                               ResultCallback result_callback) {
+  ScopedMapping mapping(buffer);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map buffer";
+    std::move(result_callback).Run(FaceDetectResult::kBufferError, {});
+    return;
+  }
+  int input_stride = mapping.plane(0).stride;
+  Size input_size = Size(buffer_manager_->GetWidth(buffer),
+                         buffer_manager_->GetHeight(buffer));
+  const uint8_t* buffer_addr = static_cast<uint8_t*>(mapping.plane(0).addr);
+
+  DetectAsync(buffer_addr, input_stride, input_size, active_sensor_array_size,
+              std::move(result_callback));
+}
+
+void FaceDetector::DetectAsync(const uint8_t* buffer_addr,
+                               int input_stride,
+                               Size input_size,
+                               std::optional<Size> active_sensor_array_size,
+                               ResultCallback result_callback) {
+  auto buffer_released = Future<void>::Create(nullptr);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&FaceDetector::DetectOnThread, base::Unretained(this),
+                     buffer_addr, input_stride, input_size,
+                     active_sensor_array_size, std::move(result_callback),
+                     GetFutureCallback(buffer_released)));
+  if (!buffer_released->Wait(kDetectTimeoutMs)) {
+    LOGF(ERROR) << "Face detection timeout in releasing input buffer";
+  }
+}
+
+void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
+                                  int input_stride,
+                                  Size input_size,
+                                  std::optional<Size> active_sensor_array_size,
+                                  ResultCallback result_callback,
+                                  base::OnceClosure buffer_release_callback) {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   CHECK(buffer_addr);
-  base::AutoLock l(lock_);
+  TRACE_COMMON(kCameraTraceKeyWidth, input_size.width, kCameraTraceKeyHeight,
+               input_size.height);
 
   Size scaled_size =
       (input_size.width > input_size.height)
@@ -96,20 +169,23 @@ FaceDetectResult FaceDetector::Detect(
                      input_size.height, scaled_buffer_.data(),
                      scaled_size.width, scaled_size.width, scaled_size.height,
                      libyuv::FilterMode::kFilterNone);
+  std::move(buffer_release_callback).Run();
 
+  std::vector<human_sensing::CrosFace> faces;
   {
     TRACE_EVENT_BEGIN(kCameraTraceCategoryCommon, "FaceDetector::Detect::Run");
     if (!wrapper_->Detect(scaled_buffer_.data(), scaled_size.width,
-                          scaled_size.height, faces)) {
-      return FaceDetectResult::kDetectError;
+                          scaled_size.height, &faces)) {
+      std::move(result_callback).Run(FaceDetectResult::kDetectError, {});
+      return;
     }
-    TRACE_EVENT_END(kCameraTraceCategoryCommon, "num_faces", faces->size());
+    TRACE_EVENT_END(kCameraTraceCategoryCommon, "num_faces", faces.size());
   }
 
-  if (!faces->empty()) {
+  if (!faces.empty()) {
     float ratio = static_cast<float>(input_size.width) /
                   static_cast<float>(scaled_size.width);
-    for (auto& f : *faces) {
+    for (auto& f : faces) {
       f.bounding_box.x1 *= ratio;
       f.bounding_box.y1 *= ratio;
       f.bounding_box.x2 *= ratio;
@@ -125,12 +201,13 @@ FaceDetectResult FaceDetector::Detect(
     std::optional<std::tuple<float, float, float>> transform =
         GetCoordinateTransform(input_size, *active_sensor_array_size);
     if (!transform) {
-      return FaceDetectResult::kTransformError;
+      std::move(result_callback).Run(FaceDetectResult::kTransformError, {});
+      return;
     }
     const float scale = std::get<0>(*transform);
     const float offset_x = std::get<1>(*transform);
     const float offset_y = std::get<2>(*transform);
-    for (auto& f : *faces) {
+    for (auto& f : faces) {
       f.bounding_box.x1 = scale * f.bounding_box.x1 + offset_x;
       f.bounding_box.y1 = scale * f.bounding_box.y1 + offset_y;
       f.bounding_box.x2 = scale * f.bounding_box.x2 + offset_x;
@@ -142,7 +219,7 @@ FaceDetectResult FaceDetector::Detect(
     }
   }
 
-  return FaceDetectResult::kDetectOk;
+  std::move(result_callback).Run(FaceDetectResult::kDetectOk, std::move(faces));
 }
 
 // static

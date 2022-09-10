@@ -73,6 +73,9 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   void SetResultAeMetadata(Camera3CaptureDescriptor* result);
   FrameInfo& GetOrCreateFrameInfoEntry(int frame_number);
   void OnOptionsUpdated(const base::Value& json_values);
+  void OnFaceDetected(uint32_t frame_number,
+                      FaceDetectResult detect_result,
+                      std::vector<human_sensing::CrosFace> faces);
 
   // Face detector settings.
   std::unique_ptr<FaceDetector> face_detector_;

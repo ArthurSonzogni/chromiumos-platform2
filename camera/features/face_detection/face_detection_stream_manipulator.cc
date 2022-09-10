@@ -192,24 +192,10 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     for (auto& buffer : result->GetOutputBuffers()) {
       if (buffer.stream == yuv_stream_) {
         std::vector<human_sensing::CrosFace> facessd_faces;
-        auto ret = face_detector_->Detect(*buffer.buffer, &facessd_faces,
-                                          active_array_dimension_);
-        if (ret != FaceDetectResult::kDetectOk) {
-          LOGF(WARNING) << "Cannot run face detection";
-        } else {
-          if (VLOG_IS_ON(2)) {
-            if (facessd_faces.empty()) {
-              VLOGFID(2, result->frame_number()) << "Detected zero faces";
-            } else {
-              VLOGFID(2, result->frame_number())
-                  << "Detected " << facessd_faces.size() << " face(s):";
-              for (const auto& f : facessd_faces) {
-                LogFaceInfo(result->frame_number(), f);
-              }
-            }
-          }
-        }
-        latest_faces_ = std::move(facessd_faces);
+        face_detector_->DetectAsync(
+            *buffer.buffer, active_array_dimension_,
+            base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
+                           base::Unretained(this), result->frame_number()));
         break;
       }
     }
@@ -375,6 +361,28 @@ void FaceDetectionStreamManipulator::OnOptionsUpdated(
   VLOGF(1) << "Face detection config:"
            << " use_cros_face_detector=" << options_.enable
            << " fd_frame_interval=" << options_.fd_frame_interval;
+}
+
+void FaceDetectionStreamManipulator::OnFaceDetected(
+    uint32_t frame_number,
+    FaceDetectResult detect_result,
+    std::vector<human_sensing::CrosFace> faces) {
+  if (detect_result != FaceDetectResult::kDetectOk) {
+    LOGF(WARNING) << "Failed to run face detection";
+    return;
+  }
+  if (VLOG_IS_ON(2)) {
+    if (faces.empty()) {
+      VLOGFID(2, frame_number) << "Detected zero faces";
+    } else {
+      VLOGFID(2, frame_number) << "Detected " << faces.size() << " face(s):";
+      for (const auto& f : faces) {
+        LogFaceInfo(frame_number, f);
+      }
+    }
+  }
+  base::AutoLock lock(lock_);
+  latest_faces_ = std::move(faces);
 }
 
 }  // namespace cros

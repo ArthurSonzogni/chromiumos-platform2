@@ -13,8 +13,10 @@
 #include <tuple>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common_types.h"
@@ -28,12 +30,18 @@ enum class FaceDetectResult {
   kDetectError,
   kBufferError,
   kTransformError,
+  kTimeoutError,
 };
 
 // This class encapsulates Google3 FaceSSD library.
 class CROS_CAMERA_EXPORT FaceDetector {
  public:
+  using ResultCallback = base::OnceCallback<void(
+      FaceDetectResult, std::vector<human_sensing::CrosFace>)>;
+
   static std::unique_ptr<FaceDetector> Create();
+
+  ~FaceDetector();
 
   // Detects human faces. |buffer| should be in NV12 pixel format. The detected
   // results will be stored in |faces|. |human_sensing::CrosFace| includes a
@@ -78,6 +86,20 @@ class CROS_CAMERA_EXPORT FaceDetector {
       std::vector<human_sensing::CrosFace>* faces,
       std::optional<Size> active_sensor_array_size = std::nullopt);
 
+  // Same as the synchronous version but returning status and faces in
+  // |result_callback|.  |buffer| is only used during the function call.
+  void DetectAsync(buffer_handle_t buffer,
+                   std::optional<Size> active_sensor_array_size,
+                   ResultCallback result_callback);
+
+  // Same as the synchronous version but returning status and faces in
+  // |result_callback|.  |buffer_addr| is only used during the function call.
+  void DetectAsync(const uint8_t* buffer_addr,
+                   int input_stride,
+                   Size input_size,
+                   std::optional<Size> active_sensor_array_size,
+                   ResultCallback result_callback);
+
   // For a given size |src| that's downscaled and/or cropped from |dst|, get the
   // transformation parameters that converts a coordinate (x, y) in
   // [0, src.width] x [0, src.height] to [0, dst.width] x [0, dst.height]:
@@ -90,18 +112,26 @@ class CROS_CAMERA_EXPORT FaceDetector {
       const Size src, const Size dst);
 
  private:
-  FaceDetector(
+  explicit FaceDetector(
       std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper);
+
+  void DetectOnThread(const uint8_t* buffer_addr,
+                      int input_stride,
+                      Size input_size,
+                      std::optional<Size> active_sensor_array_size,
+                      ResultCallback result_callback,
+                      base::OnceClosure buffer_release_callback);
 
   void PrepareBuffer(Size img_size);
 
   // Used to import gralloc buffer.
   CameraBufferManager* buffer_manager_;
 
-  base::Lock lock_;
-  std::vector<uint8_t> scaled_buffer_ GUARDED_BY(lock_);
+  std::vector<uint8_t> scaled_buffer_;
 
   std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper_;
+
+  base::Thread thread_;
 };
 
 std::string LandmarkTypeToString(human_sensing::Landmark::Type type);
