@@ -13,7 +13,7 @@
 
 #include <base/check.h>
 #include <base/json/json_writer.h>
-#include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_device_adapter.h"
@@ -28,7 +28,7 @@ std::string ConvertToJsonString(
   base::Value::List val;
   for (const auto& stream : stream_config->streams) {
     base::Value::Dict s;
-    s.Set(kCameraTraceKeyStreamId, base::checked_cast<int>(stream->id));
+    s.Set(kCameraTraceKeyStreamId, base::NumberToString(stream->id));
     s.Set(kCameraTraceKeyWidth, base::checked_cast<int>(stream->width));
     s.Set(kCameraTraceKeyHeight, base::checked_cast<int>(stream->height));
     s.Set(kCameraTraceKeyFormat, base::checked_cast<int>(stream->format));
