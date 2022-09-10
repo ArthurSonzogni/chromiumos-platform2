@@ -417,12 +417,11 @@ KeysetManagement::AddInitialKeysetImpl(
   if (!vk->Save(VaultKeysetPath(obfuscated_username, kInitialKeysetIndex))) {
     LOG(ERROR) << "Failed to encrypt and write keyset for the new user.";
     return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocKeysetManagementSaveFailedInAddInitial),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kReboot}),
-               user_data_auth::CryptohomeErrorCode::
-                   CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-        .Wrap(std::move(callback_result).status());
+        CRYPTOHOME_ERR_LOC(kLocKeysetManagementSaveFailedInAddInitial),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return vk;
 }

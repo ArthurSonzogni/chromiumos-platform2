@@ -56,6 +56,7 @@ using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::StatusChain;
@@ -416,6 +417,30 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
 
   SerializedVaultKeyset svk = vk_status.value()->ToSerialized();
   LOG(INFO) << svk.DebugString();
+}
+
+// Test the scenario when `AddInitialKeyset()` fails due to an error in
+// `Save()`.
+TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
+  // SETUP
+
+  users_[0].credentials.set_key_data(DefaultKeyData());
+  auto vk = std::make_unique<NiceMock<MockVaultKeyset>>();
+  EXPECT_CALL(*vk, Save(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+      .WillOnce(Return(vk.release()));
+
+  // TEST
+
+  CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> status_or =
+      keyset_management_->AddInitialKeyset(users_[0].credentials,
+                                           file_system_keyset_);
+
+  // VERIFY
+
+  ASSERT_THAT(status_or, NotOk());
+  EXPECT_EQ(status_or.status()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
 }
 
 // Successfully adds new keyset
