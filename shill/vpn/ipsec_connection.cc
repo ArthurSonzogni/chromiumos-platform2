@@ -44,6 +44,7 @@ constexpr char kSwanctlPath[] = "/usr/sbin/swanctl";
 constexpr char kCharonPath[] = "/usr/libexec/ipsec/charon";
 constexpr char kViciSocketPath[] = "/run/ipsec/charon.vici";
 constexpr char kSmartcardModuleName[] = "crypto_module";
+constexpr char kPIDPath[] = "/run/ipsec/charon.pid";
 // aes128-sha256-modp3072: new strongSwan default
 // aes128-sha1-modp2048: old strongSwan default
 // 3des-sha1-modp1536: strongSwan fallback
@@ -428,6 +429,9 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       WriteStrongSwanConfig();
       return;
     case ConnectStep::kStrongSwanConfigWritten:
+      CheckPreviousCharonProcess(true);
+      return;
+    case ConnectStep::kStartCharon:
       StartCharon();
       return;
     case ConnectStep::kCharonStarted:
@@ -692,6 +696,30 @@ void IPsecConnection::WriteSwanctlConfig() {
   ScheduleConnectTask(ConnectStep::kSwanctlConfigWritten);
 }
 
+void IPsecConnection::CheckPreviousCharonProcess(bool wait_if_alive) {
+  std::optional<bool> is_charon_alive =
+      process_manager_->IsTerminating(base::FilePath(kPIDPath));
+  if (!is_charon_alive) {
+    NotifyFailure(Service::kFailureInternal, "Failed to get the pid");
+    return;
+  }
+  if (!*is_charon_alive) {
+    ScheduleConnectTask(ConnectStep::kStartCharon);
+    return;
+  }
+  if (!wait_if_alive) {
+    NotifyFailure(Service::kFailureInternal, "Charon is still running");
+    return;
+  }
+  LOG(INFO) << "Old charon is alive. wait for 2 seconds.";
+  dispatcher()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&IPsecConnection::CheckPreviousCharonProcess,
+                     weak_factory_.GetWeakPtr(), false),
+      ProcessManager::kTerminationTimeout);
+  return;
+}
+
 void IPsecConnection::StartCharon() {
   // We should make sure there is no socket file before starting charon, since
   // we rely on its existence to know if charon is ready.
@@ -732,7 +760,7 @@ void IPsecConnection::StartCharon() {
     return;
   }
 
-  LOG(INFO) << "charon started";
+  LOG(INFO) << "Charon started";
 
   if (!base::PathExists(vici_socket_path_)) {
     vici_socket_watcher_ = std::make_unique<base::FilePathWatcher>();
@@ -1154,7 +1182,7 @@ void IPsecConnection::StopCharon() {
   // itself. Note that base::DeleteFile() will return true if the file does not
   // exist.
   if (!base::DeleteFile(vici_socket_path_)) {
-    PLOG(ERROR) << "Failed to delete vici socket file";
+    PLOG(ERROR) << "Failed to delete the vici socket file";
   }
 
   // Removes the XFRM interface if it has been created.

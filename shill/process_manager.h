@@ -21,6 +21,8 @@
 #include <base/lazy_instance.h>
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
+
 #include <brillo/minijail/minijail.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
@@ -62,6 +64,8 @@ class ProcessManager {
     // memory (RLIMIT_AS) will be set to this value. See getrlimit(2).
     std::optional<rlim_t> rlimit_as_soft;
   };
+
+  static constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 
   virtual ~ProcessManager();
 
@@ -150,6 +154,10 @@ class ProcessManager {
 
   // Replace the current exit callback for |pid| with |new_callback|.
   virtual bool UpdateExitCallback(pid_t pid, ExitCallback new_callback);
+
+  // Checks whether the old charon process is alive still alive after sending a
+  // SIGTERM to it or not. Returns std::nullopt on error.
+  virtual std::optional<bool> IsTerminating(const base::FilePath& pid_path);
 
  protected:
   ProcessManager();

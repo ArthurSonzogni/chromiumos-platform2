@@ -65,6 +65,10 @@ class MockProcessManager : public ProcessManager {
               (override));
   MOCK_METHOD(bool, StopProcess, (pid_t), (override));
   MOCK_METHOD(bool, StopProcessAndBlock, (pid_t), (override));
+  MOCK_METHOD(std::optional<bool>,
+              IsTerminating,
+              (const base::FilePath& pid_path),
+              (override));
   MOCK_METHOD(bool, UpdateExitCallback, (pid_t, ExitCallback), (override));
 };
 

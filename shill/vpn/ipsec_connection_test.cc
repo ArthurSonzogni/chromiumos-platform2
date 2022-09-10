@@ -350,9 +350,7 @@ TEST_F(IPsecConnectionTest, StartCharon) {
       .WillOnce(Return(123));
 
   // Triggers the task.
-  ipsec_connection_->InvokeScheduleConnectTask(
-      ConnectStep::kStrongSwanConfigWritten);
-
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   // Creates the socket file, and then IPsecConnection should be notified and
   // forward the step. We use a RunLoop here instead of RunUtilIdle() since it
   // cannot be guaranteed that FilePathWatcher posted the task before
@@ -371,9 +369,7 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithStartProcess) {
 
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
-  ipsec_connection_->InvokeScheduleConnectTask(
-      ConnectStep::kStrongSwanConfigWritten);
-
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   EXPECT_CALL(callbacks_, OnFailure(_));
   dispatcher_.task_environment().RunUntilIdle();
 }
@@ -388,9 +384,7 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
-  ipsec_connection_->InvokeScheduleConnectTask(
-      ConnectStep::kStrongSwanConfigWritten);
-
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   std::move(exit_cb).Run(1);
 
   EXPECT_CALL(callbacks_, OnFailure(_));
@@ -411,9 +405,7 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithSocketNotListening) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
-  ipsec_connection_->InvokeScheduleConnectTask(
-      ConnectStep::kStrongSwanConfigWritten);
-
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   base::ScopedFD vici_server_fd =
       CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/false);
   base::RunLoop run_loop;
@@ -822,6 +814,24 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceFailed) {
   std::move(registered_failure_cb).Run();
   EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, StartCharonWithPreviousPIDFile) {
+  const base::FilePath kPIDPath("/run/ipsec/charon.pid");
+
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kStartCharon))
+      .Times(0);
+  EXPECT_CALL(process_manager_, IsTerminating(kPIDPath))
+      .WillOnce(Return(true))
+      .WillRepeatedly(Return(false));
+
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kStrongSwanConfigWritten);
+
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kStartCharon));
+  dispatcher_.task_environment().FastForwardUntilNoTasksRemain();
 }
 
 }  // namespace

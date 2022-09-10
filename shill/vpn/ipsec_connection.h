@@ -91,6 +91,7 @@ class IPsecConnection : public VPNConnection {
     kStart,
     kStrongSwanConfigWritten,
     kSwanctlConfigWritten,
+    kStartCharon,
     kCharonStarted,
     kSwanctlConfigLoaded,
     kIPsecConnected,
@@ -144,6 +145,18 @@ class IPsecConnection : public VPNConnection {
   // Generates strongswan.conf. On success, this function will trigger
   // |kStrongSwanConfigWritten| step and set |strongswan_conf_path_|.
   void WriteStrongSwanConfig();
+
+  // Checks the existence of the previous charon process and decides
+  // whether or not to enter the ConnectStep::kStartCharon, that triggers
+  // the new charon process starts. It can be checked using the pid file because
+  // the pid file is supposed to be removed by charon itself before the charon
+  // stops. If there is no the pid file, it means the old charon process has
+  // removed it and stopped successfully. Otherwise, there are two cases,
+  // one case is the old charon still exists and it has not removed the pid file
+  // yet. The other case is the old charon has been killed by SIGKILL signal
+  // before removing the pid file itself.
+  void CheckPreviousCharonProcess(bool wait_if_alive);
+
   // Starts charon process with minijail. The charon process will create the
   // vici socket file and then listen on it. This function will trigger
   // |kCharonStarted| step after that socket it ready. |charon_pid_| will be set

@@ -16,9 +16,12 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 
 #include "shill/event_dispatcher.h"
@@ -35,7 +38,6 @@ namespace {
 base::LazyInstance<ProcessManager>::DestructorAtExit g_process_manager =
     LAZY_INSTANCE_INITIALIZER;
 
-static constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 static const int kWaitpidPollTimesForSIGTERM = 10;
 static const int kWaitpidPollTimesForSIGKILL = 8;
 static const unsigned int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
@@ -483,6 +485,32 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
                                kTerminationTimeout);
   pending_termination_processes_[pid] = std::move(termination_callback);
   return true;
+}
+
+std::optional<bool> ProcessManager::IsTerminating(
+    const base::FilePath& pid_path) {
+  if (!base::PathExists(pid_path)) {
+    return false;
+  }
+  std::string filepid;
+  if (!base::ReadFileToString(pid_path, &filepid)) {
+    LOG(ERROR) << "Failed to read the pid file";
+    return std::nullopt;
+  }
+
+  if (!base::TrimString(filepid, "\n", &filepid)) {
+    LOG(ERROR) << "Failed to get the pid: current filepid value is " << filepid;
+    return std::nullopt;
+  }
+  pid_t pid;
+  if (!base::StringToInt(filepid, &pid)) {
+    LOG(ERROR) << "Failed to change type of the pid value from string to int: "
+                  "current filepid value is "
+               << filepid;
+    return std::nullopt;
+  }
+  return pending_termination_processes_.find(pid) !=
+         pending_termination_processes_.end();
 }
 
 }  // namespace shill
