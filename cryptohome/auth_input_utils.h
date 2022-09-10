@@ -11,6 +11,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 
@@ -26,6 +27,11 @@ std::optional<AuthInput> CreateAuthInput(
     const std::optional<brillo::SecureBlob>&
         cryptohome_recovery_ephemeral_pub_key,
     const AuthFactorMetadata& auth_factor_metadata);
+
+// Infers the `AuthFactorType` that the given `AuthInput` should be used with.
+// Returns `nullopt` un unexpected inputs.
+std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
+    const user_data_auth::AuthInput& auth_input_proto);
 
 }  // namespace cryptohome
 

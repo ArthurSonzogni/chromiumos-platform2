@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
@@ -155,6 +156,24 @@ std::optional<AuthInput> CreateAuthInput(
   auth_input.value().locked_to_single_user = locked_to_single_user;
 
   return auth_input;
+}
+
+std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
+    const user_data_auth::AuthInput& auth_input_proto) {
+  switch (auth_input_proto.input_case()) {
+    case user_data_auth::AuthInput::kPasswordInput:
+      return AuthFactorType::kPassword;
+    case user_data_auth::AuthInput::kPinInput:
+      return AuthFactorType::kPin;
+    case user_data_auth::AuthInput::kCryptohomeRecoveryInput:
+      return AuthFactorType::kCryptohomeRecovery;
+    case user_data_auth::AuthInput::kKioskInput:
+      return AuthFactorType::kKiosk;
+    case user_data_auth::AuthInput::kSmartCardInput:
+      return AuthFactorType::kSmartCard;
+    case user_data_auth::AuthInput::INPUT_NOT_SET:
+      return std::nullopt;
+  }
 }
 
 }  // namespace cryptohome
