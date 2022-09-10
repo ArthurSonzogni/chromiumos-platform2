@@ -24,6 +24,7 @@
 namespace cros {
 
 // The camera trace categories.
+constexpr char kCameraTraceCategoryAutoFraming[] = "camera.auto_framing";
 constexpr char kCameraTraceCategoryCommon[] = "camera.common";
 constexpr char kCameraTraceCategoryGcamAe[] = "camera.gcam_ae";
 constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
@@ -66,6 +67,8 @@ constexpr std::string_view TraceCameraEventName(const char* pretty_function) {
               ##__VA_ARGS__)
 
 PERFETTO_DEFINE_CATEGORIES(
+    perfetto::Category(cros::kCameraTraceCategoryAutoFraming)
+        .SetDescription("Events from CrOS Auto Framing pipeline"),
     perfetto::Category(cros::kCameraTraceCategoryCommon)
         .SetDescription("Events from common CrOS Camera library"),
     perfetto::Category(cros::kCameraTraceCategoryGcamAe)

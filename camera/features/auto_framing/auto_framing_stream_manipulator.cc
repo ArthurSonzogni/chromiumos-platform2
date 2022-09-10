@@ -24,6 +24,7 @@
 #include <sys/types.h>
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "features/auto_framing/tracing.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/shared_image.h"
 
@@ -368,6 +369,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     CaptureResultCallback result_callback) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK(!result_callback.is_null());
+  TRACE_AUTO_FRAMING();
 
   result_callback_ = result_callback;
 
@@ -411,6 +413,8 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
 bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
+                     stream_config->ToJsonString());
 
   ResetOnThread();
 
@@ -510,6 +514,8 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
+                     stream_config->ToJsonString());
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Configured streams from HAL:";
@@ -600,6 +606,7 @@ bool AutoFramingStreamManipulator::GetEnabled() {
 bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, request->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number())
@@ -695,6 +702,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
 bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, result->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
