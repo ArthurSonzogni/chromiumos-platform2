@@ -550,6 +550,10 @@ class UserDataAuth {
     user_secret_stash_storage_ = value;
   }
 
+  void set_user_session_map_for_testing(UserSessionMap* user_session_map) {
+    sessions_ = user_session_map;
+  }
+
   // Override |auth_session_manager_| for testing purpose
   void set_auth_session_manager(AuthSessionManager* value) {
     auth_session_manager_ = value;
@@ -681,14 +685,14 @@ class UserDataAuth {
   // Retrieve the session associated with the given user, for testing purpose
   // only.
   UserSession* FindUserSessionForTest(const std::string& username) {
-    return sessions_.Find(username);
+    return sessions_->Find(username);
   }
 
   // Associate a particular session object |session| with the username
   // |username| for testing purpose
   bool AddUserSessionForTest(const std::string& username,
                              std::unique_ptr<UserSession> session) {
-    return sessions_.Add(username, std::move(session));
+    return sessions_->Add(username, std::move(session));
   }
 
   void StartAuthSession(
@@ -1370,7 +1374,9 @@ class UserDataAuth {
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.
-  UserSessionMap sessions_;
+  UserSessionMap default_sessions_;
+  // Usually points to |default_sessions_|, but can be overridden for tests.
+  UserSessionMap* sessions_ = &default_sessions_;
 
   // Manager for auth session objects.
   std::unique_ptr<AuthSessionManager> default_auth_session_manager_;

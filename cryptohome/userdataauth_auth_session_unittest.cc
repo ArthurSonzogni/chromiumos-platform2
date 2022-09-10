@@ -284,6 +284,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
     userdataauth_.set_user_secret_stash_storage_for_testing(
         &user_secret_stash_storage_);
+    userdataauth_.set_user_session_map_for_testing(&user_session_map_);
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_user_activity_timestamp_manager(
         &user_activity_timestamp_manager_);
@@ -1365,7 +1366,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   EXPECT_FALSE(reply.authenticated());
   EXPECT_THAT(reply.authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
-  EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is missing.
