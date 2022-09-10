@@ -452,7 +452,8 @@ class AuthSession final {
 
   // Attempts to authenticate the user using a lightweight check against an
   // in-memory credential verifier.
-  bool AuthenticateViaCredentialVerifier(const AuthInput& auth_input);
+  bool AuthenticateViaCredentialVerifier(
+      const user_data_auth::AuthInput& auth_input);
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
   // and the |auth_factor|.

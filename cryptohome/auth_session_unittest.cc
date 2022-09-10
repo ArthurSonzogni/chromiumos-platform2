@@ -1305,7 +1305,7 @@ TEST_F(AuthSessionTest,
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePin);
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
 
   // Called within the converter_.PopulateKeyDataForVK()
   KeyData key_data;
@@ -1350,6 +1350,52 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+}
+
+// Test that AuthenticateAuthFactor returns an error when supplied label and
+// type mismatch.
+TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
+  // Setup AuthSession.
+  AuthBlockState auth_block_state;
+  auth_block_state.state = PinWeaverAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakePinLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPin, kFakePinLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_, &keyset_management_,
+                           &auth_block_utility_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Test
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakePinLabel);
+  // Note: Intentially creating a missmatch in type and label.
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePin);
+
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_FALSE(auth_session.AuthenticateAuthFactor(
+      request, authenticate_future.GetCallback()));
+
+  // Verify.
+  ASSERT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
 }
 
 // Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor

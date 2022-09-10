@@ -929,12 +929,53 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
 bool AuthSession::AuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     StatusCallback on_done) {
-  LOG(INFO) << "AuthSession: authentication attempt via "
-            << request.auth_factor_label() << " factor.";
-
+  LOG(INFO) << "AuthSession: " << IntentToDebugString(auth_intent_)
+            << " authentication attempt via " << request.auth_factor_label()
+            << " factor.";
   // Check the factor exists either with USS or VaultKeyset.
   auto label_to_auth_factor_iter =
       label_to_auth_factor_.find(request.auth_factor_label());
+
+  {
+    std::optional<AuthFactorType> auth_factor_type =
+        DetermineFactorTypeFromAuthInput(request.auth_input());
+    if (!auth_factor_type.has_value()) {
+      LOG(ERROR) << "Unexpected AuthInput type.";
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return false;
+    }
+
+    // Ensure that if a label is supplied, the requested type matches what we
+    // have on disk for the user.
+    // Note that if we cannot find a stored AuthFactor then this test is
+    // skipped. This can happen in the case of ephemeral users now, later with
+    // legacy fingerprint check for verification intent.
+    if (label_to_auth_factor_iter != label_to_auth_factor_.end() &&
+        auth_factor_type != label_to_auth_factor_iter->second->type()) {
+      LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return false;
+    }
+    // If suitable, attempt lightweight authentication via a credential
+    // verifier.
+    if (auth_intent_ == AuthIntent::kVerifyOnly &&
+        IsCredentialVerifierSupported(auth_factor_type.value()) &&
+        AuthenticateViaCredentialVerifier(request.auth_input())) {
+      const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
+      SetAuthSessionAsAuthenticated(lightweight_intents);
+      std::move(on_done).Run(OkStatus<CryptohomeError>());
+      return true;
+    }
+  }
+
   if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
@@ -957,17 +998,6 @@ bool AuthSession::AuthenticateAuthFactor(
             .Wrap(std::move(auth_input_status).status()));
     return false;
   }
-
-  // If suitable, attempt lightweight authentication via a credential verifier.
-  if (auth_intent_ == AuthIntent::kVerifyOnly &&
-      IsCredentialVerifierSupported(auth_factor.type()) &&
-      AuthenticateViaCredentialVerifier(auth_input_status.value())) {
-    const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
-    SetAuthSessionAsAuthenticated(lightweight_intents);
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
-    return true;
-  }
-
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   // If the user has configured AuthFactors, then we proceed with USS flow.
@@ -2078,18 +2108,25 @@ void AuthSession::AddAuthFactorForEphemeral(
 }
 
 bool AuthSession::AuthenticateViaCredentialVerifier(
-    const AuthInput& auth_input) {
+    const user_data_auth::AuthInput& auth_input) {
   const UserSession* user_session = user_session_map_->Find(username_);
   if (!user_session) {
+    return false;
+  }
+  // TODO(b/244754956): Capture metadata in the verifier and use it here.
+  CryptohomeStatusOr<AuthInput> auth_input_status =
+      CreateAuthInputForAuthentication(auth_input, AuthFactorMetadata());
+  if (!auth_input_status.ok()) {
     return false;
   }
   // Attempt to verify the auth input against the verifier attached to the
   // user's session.
   // TODO(b/240596931): Switch the verifier to using `AuthInput`.
-  if (!auth_input.user_input.has_value()) {
+  if (!auth_input_status.value().user_input.has_value()) {
     return false;
   }
-  Credentials credentials(username_, auth_input.user_input.value());
+  Credentials credentials(username_,
+                          auth_input_status.value().user_input.value());
   return user_session->VerifyCredentials(credentials);
 }
 
