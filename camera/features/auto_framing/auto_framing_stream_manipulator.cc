@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The ChromiumOS Authors
+ * Copyright 2021 The ChromiumOS Authors.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -151,11 +151,6 @@ std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
       desc->GetMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP);
   return timestamp.size() == 1 ? std::make_optional(timestamp[0])
                                : std::nullopt;
-}
-
-template <class T>
-std::vector<T> CopyToVector(base::span<const T> src) {
-  return std::vector<T>(src.begin(), src.end());
 }
 
 Rect<float> AdjustCropRectToTargetAspectRatio(const Rect<float>& rect,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The ChromiumOS Authors
+ * Copyright 2016 The ChromiumOS Authors.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -21,6 +21,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/bind_post_task.h>
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
 #include <hardware/camera3.h>
@@ -185,6 +186,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
       reprocess_effect_thread_("ReprocessEffectThread"),
+      post_processing_thread_("PostProcessThread"),
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(std::move(close_callback)),
@@ -274,20 +276,27 @@ int32_t CameraDeviceAdapter::Initialize(
     LOGF(ERROR) << "Reprocessing effect thread failed to start";
     return -ENODEV;
   }
+  if (!post_processing_thread_.Start()) {
+    LOGF(ERROR) << "Post processing thread failed to start";
+    return -ENODEV;
+  }
 
   for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
     stream_manipulators_[i]->Initialize(
         gpu_resources_, static_info_,
-        base::BindRepeating(
-            [](CameraDeviceAdapter* self,
-               base::span<std::unique_ptr<StreamManipulator>> upper_sms,
-               Camera3CaptureDescriptor result) {
-              for (auto it = upper_sms.rbegin(); it != upper_sms.rend(); ++it) {
-                (*it)->ProcessCaptureResult(&result);
-              }
-              self->ReturnResultToClient(self, std::move(result));
-            },
-            this, base::make_span(stream_manipulators_.begin(), i)));
+        base::BindPostTask(
+            post_processing_thread_.task_runner(),
+            base::BindRepeating(
+                [](CameraDeviceAdapter* self,
+                   base::span<std::unique_ptr<StreamManipulator>> upper_sms,
+                   Camera3CaptureDescriptor result) {
+                  for (auto it = upper_sms.rbegin(); it != upper_sms.rend();
+                       ++it) {
+                    (*it)->ProcessCaptureResult(&result);
+                  }
+                  self->ReturnResultToClient(self, std::move(result));
+                },
+                this, base::make_span(stream_manipulators_.begin(), i))));
   }
 
   base::AutoLock l(callback_ops_delegate_lock_);
@@ -726,6 +735,7 @@ int32_t CameraDeviceAdapter::Close() {
     ret = camera_device_->common.close(&camera_device_->common);
     DCHECK_EQ(ret, 0);
   }
+  post_processing_thread_.Stop();
   {
     base::AutoLock l(fence_sync_thread_lock_);
     fence_sync_thread_.Stop();
@@ -771,44 +781,38 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
 void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
   VLOGF_ENTER();
-  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result->frame_number);
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
 
   self->capture_monitor_.Kick(CameraMonitor::MonitorType::kResultsMonitor);
 
-  // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
-  // so the stream manipulators can unwind the buffer states.
   Camera3CaptureDescriptor result_descriptor(*result);
-  if (self->camera_metadata_inspector_ &&
-      self->camera_metadata_inspector_->IsPositionInspected(
-          self->stream_manipulators_.size())) {
-    self->camera_metadata_inspector_->InspectResult(
-        result_descriptor.LockForResult(), self->stream_manipulators_.size());
-    result_descriptor.Unlock();
-  }
-  for (size_t i = 0; i < self->stream_manipulators_.size(); ++i) {
-    size_t j = self->stream_manipulators_.size() - i - 1;
-    {
-      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureResult",
-                  kCameraTraceKeyFrameNumber, result_descriptor.frame_number());
-      self->stream_manipulators_[j]->ProcessCaptureResult(&result_descriptor);
-    }
-    if (self->camera_metadata_inspector_ &&
-        self->camera_metadata_inspector_->IsPositionInspected(j)) {
-      self->camera_metadata_inspector_->InspectResult(
-          result_descriptor.LockForResult(), j);
-      result_descriptor.Unlock();
-    }
-  }
 
-  {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "Client::ProcessCaptureResult",
-                kCameraTraceKeyFrameNumber, result_descriptor.frame_number(),
-                kCameraTraceKeyCaptureInfo, result_descriptor.ToJsonString());
-    ReturnResultToClient(ops, std::move(result_descriptor));
+  // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
+  // the |result|, and it doesn't out-live this |process_capture_result| call.
+  // Fix them to our maintained storage so we can send |result| safely.
+  if (const auto* b = result_descriptor.GetInputBuffer()) {
+    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b->buffer);
+    CHECK(handle);
+    camera3_stream_buffer_t buffer = *b;
+    buffer.buffer = const_cast<buffer_handle_t*>(&handle->self);
+    result_descriptor.SetInputBuffer(buffer);
   }
+  std::vector<camera3_stream_buffer_t> output_buffers =
+      CopyToVector(result_descriptor.GetOutputBuffers());
+  for (auto& b : output_buffers) {
+    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b.buffer);
+    CHECK(handle);
+    b.buffer = const_cast<buffer_handle_t*>(&handle->self);
+  }
+  result_descriptor.SetOutputBuffers(output_buffers);
+
+  self->post_processing_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &CameraDeviceAdapter::ProcessCaptureResultOnPostProcessingThread,
+          base::Unretained(self), std::move(result_descriptor)));
 }
 
 // static
@@ -1380,6 +1384,41 @@ void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
   DCHECK(camera_callback_ops_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(callback_ops_delegate_lock_);
   callback_ops_delegate_.reset();
+}
+
+void CameraDeviceAdapter::ProcessCaptureResultOnPostProcessingThread(
+    Camera3CaptureDescriptor result) {
+  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result.frame_number());
+
+  // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
+  // so the stream manipulators can unwind the buffer states.
+  if (camera_metadata_inspector_ &&
+      camera_metadata_inspector_->IsPositionInspected(
+          stream_manipulators_.size())) {
+    camera_metadata_inspector_->InspectResult(result.LockForResult(),
+                                              stream_manipulators_.size());
+    result.Unlock();
+  }
+  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
+    size_t j = stream_manipulators_.size() - i - 1;
+    {
+      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureResult",
+                  kCameraTraceKeyFrameNumber, result.frame_number());
+      stream_manipulators_[j]->ProcessCaptureResult(&result);
+    }
+    if (camera_metadata_inspector_ &&
+        camera_metadata_inspector_->IsPositionInspected(j)) {
+      camera_metadata_inspector_->InspectResult(result.LockForResult(), j);
+      result.Unlock();
+    }
+  }
+
+  {
+    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "Client::ProcessCaptureResult",
+                kCameraTraceKeyFrameNumber, result.frame_number(),
+                kCameraTraceKeyCaptureInfo, result.ToJsonString());
+    ReturnResultToClient(this, std::move(result));
+  }
 }
 
 }  // namespace cros
