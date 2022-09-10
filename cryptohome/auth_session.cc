@@ -205,13 +205,6 @@ AuthSession::AuthSession(
   }
 
   RecordAuthSessionStart();
-
-  // If the Auth Session is started for an ephemeral user, we always start in an
-  // authenticated state.
-  // TODO(b/240596931): Remove this in favor of lightweight authentication.
-  if (is_ephemeral_user_) {
-    SetAuthSessionAsAuthenticated(kAllAuthIntents);
-  }
 }
 
 AuthSession::~AuthSession() {
@@ -293,15 +286,16 @@ CryptohomeStatus AuthSession::ExtendTimeoutTimer(
 }
 
 CryptohomeStatus AuthSession::OnUserCreated() {
+  // Since this function is called for a new user, it is safe to put the
+  // AuthSession in an authenticated state.
+  SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  user_exists_ = true;
+
   if (!is_ephemeral_user_) {
     // Creating file_system_keyset to the prepareVault call next.
     if (!file_system_keyset_.has_value()) {
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
-    // Since this function is called for a new user, it is safe to put the
-    // AuthSession in an authenticated state.
-    SetAuthSessionAsAuthenticated(kAllAuthIntents);
-    user_exists_ = true;
     if (IsUserSecretStashExperimentEnabled()) {
       // Check invariants.
       DCHECK(!user_secret_stash_);

@@ -508,10 +508,11 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 
-  // Auth session is authed for ephemeral users.
+  // Auth session is initially not authenticated for ephemeral users.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
-  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(auth_session->GetStatus(),
+              AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // User authed and exists.
   auto user_session = std::make_unique<MockUserSession>();
@@ -527,6 +528,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       .WillOnce(Return(ByMove(std::move(user_session))));
 
   ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
+  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   // Set up expectation for add credential callback success.
   user_data_auth::AddCredentialsRequest request;
@@ -1711,6 +1713,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   EXPECT_TRUE(found_user_session->HasCredentialVerifier());
   Credentials credentials(kUsername, brillo::SecureBlob(kPassword));
   EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+  EXPECT_THAT(
+      auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
 // Test that AuthenticateAuthFactor succeeds for a freshly prepared ephemeral
@@ -1740,6 +1745,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(second_auth_session->authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
 // Test that AuthenticateAuthFactor fails for a freshly prepared ephemeral user
@@ -1771,6 +1778,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert. The error code is such because AuthSession falls back to checking
   // persistent auth factors.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_THAT(second_auth_session->authorized_intents(), IsEmpty());
 }
 
 // Test that AuthenticateAuthFactor fails for a freshly prepared ephemeral user
@@ -1794,6 +1802,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert. The error code is such because AuthSession falls back to checking
   // persistent auth factors.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
 }
 
 }  // namespace

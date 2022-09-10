@@ -4563,16 +4563,18 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
-      GetAuthenticatedAuthSession(auth_session_id);
-  if (!auth_session_status.ok()) {
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(auth_session_id);
+  if (!auth_session) {
     return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault))
-        .Wrap(std::move(auth_session_status).status());
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
   CryptohomeStatusOr<UserSession*> session_status =
-      GetMountableUserSession(auth_session_status.value());
+      GetMountableUserSession(auth_session);
   if (!session_status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
@@ -4580,12 +4582,10 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
         .Wrap(std::move(session_status).status());
   }
 
-  const std::string& obfuscated_username =
-      auth_session_status.value()->obfuscated_username();
-  PreMountHook(obfuscated_username);
+  PreMountHook(auth_session->obfuscated_username());
   ReportTimerStart(kMountExTimer);
-  MountStatus mount_status = session_status.value()->MountEphemeral(
-      auth_session_status.value()->username());
+  MountStatus mount_status =
+      session_status.value()->MountEphemeral(auth_session->username());
   ReportTimerStop(kMountExTimer);
   PostMountHook(session_status.value(), mount_status);
   if (!mount_status.ok()) {
@@ -4593,6 +4593,16 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPrepareEphemeralVault))
         .Wrap(std::move(mount_status).status());
+  }
+
+  // Let the auth session perform any finalization operations for a newly
+  // created user.
+  CryptohomeStatus ret = auth_session->OnUserCreated();
+  if (!ret.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthFinalizeFailedInPrepareEphemeralVault))
+        .Wrap(std::move(ret));
   }
   return OkStatus<CryptohomeError>();
 }

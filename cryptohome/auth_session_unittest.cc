@@ -850,10 +850,11 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
       &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
-  EXPECT_FALSE(auth_session.user_exists());
+  EXPECT_TRUE(auth_session.user_exists());
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
 
   user_data_auth::AddCredentialsRequest add_cred_request;
