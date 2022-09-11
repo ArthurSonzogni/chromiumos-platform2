@@ -319,7 +319,7 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegments(
   std::map<uint16_t, base::span<uint8_t>> apps_segments_index;
   // We can't assume anything on the life-time of |blob_buffer|, so we need to
   // copy the data out from the buffer.
-  if (sync_wait(release_fence.get(), 300) != 0) {
+  if (release_fence.is_valid() && sync_wait(release_fence.get(), 300) != 0) {
     LOGF(ERROR) << "sync_wait timeout on BLOB buffer";
   } else if (!ExtractAppSections(blob_buffer, &apps_segments_buffer,
                                  &apps_segments_index)) {
@@ -398,7 +398,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
                 "EncodeJPEG",
                 kCameraTraceKeyFrameNumber, frame_number);
 
-    if (sync_wait(release_fence.get(), 1000) != 0) {
+    if (release_fence.is_valid() && sync_wait(release_fence.get(), 1000) != 0) {
       LOGF(ERROR) << "sync_wait timeout on YUV buffer";
       // TODO(jcliang): Notify buffer error here.
       return;
