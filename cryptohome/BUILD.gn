@@ -124,9 +124,9 @@ executable("cryptohome") {
 
 executable("cryptohome-path") {
   sources = [ "cryptohome-path.cc" ]
-  deps = [
-    "libs:libcrostpm",
-    "libs:libcryptohome",
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
   ]
 }
 
