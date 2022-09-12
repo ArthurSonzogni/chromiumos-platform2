@@ -3,9 +3,13 @@
 # found in the LICENSE file.
 
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libiioservice_ipc" ]
+  deps = [
+    ":iioservice_ipc",
+    ":libiioservice_ipc",
+  ]
 }
 
 generate_mojom_bindings("libiioservice_ipc_mojom") {
@@ -15,7 +19,7 @@ generate_mojom_bindings("libiioservice_ipc_mojom") {
   ]
   mojo_root = "${platform2_root}"
   use_pic = true
-  standalone = true
+  install_package = "iioservice_ipc"
 }
 
 shared_library("libiioservice_ipc") {
@@ -35,4 +39,23 @@ shared_library("libiioservice_ipc") {
     "libmojo",
   ]
   deps = [ ":libiioservice_ipc_mojom" ]
+  install_path = "lib"
+}
+
+generate_pkg_config("iioservice_ipc") {
+  description = "Iioservice library"
+  version = "1.0"
+  requires_private = [
+    "libchrome",
+    "libmojo",
+  ]
+  libs = [
+    "-liioservice_ipc",
+    "-liioservice_ipc_mojom",
+  ]
+
+  # This flag will faltten the include space. If need to install files directly,
+  # install path should be `/usr/include/iioservice_ipc/iioservice`.
+  cflags = [ "-I/usr/include/iioservice_ipc" ]
+  install = true
 }
