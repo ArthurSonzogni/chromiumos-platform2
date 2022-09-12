@@ -810,6 +810,9 @@ message AuthenticateAuthSessionReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 3;
+
+  // The time left in the current AuthSession after authentication.
+  uint32 seconds_left = 4;
 }
 
 message InvalidateAuthSessionRequest {
@@ -849,6 +852,8 @@ message ExtendAuthSessionReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
+  // The time left in the current AuthSession after extension.
+  uint32 seconds_left = 3;
 }
 
 message UpdateCredentialRequest {
