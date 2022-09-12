@@ -50,6 +50,8 @@ class State {
 
   void HandleSecureBootResponse(const std::string& content);
 
+  void HandleEfiPlatformSize(const std::string& context);
+
   // Sets the error to be reported.
   void SetError(mojom::ErrorType type, const std::string& message);
 
@@ -209,6 +211,7 @@ bool State::FetchOsInfo() {
   if (!FetchOsVersion(os_info->os_version))
     return false;
   FetchBootMode(os_info->boot_mode);
+  os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::kUnknown;
 
   info_->os_info = std::move(os_info);
   return true;
@@ -239,6 +242,18 @@ void State::HandleSecureBootResponse(const std::string& content) {
   DCHECK_EQ(info_->os_info->boot_mode, mojom::BootMode::kCrosEfi);
   if (IsUEFISecureBoot(content))
     info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
+}
+
+void State::HandleEfiPlatformSize(const std::string& content) {
+  if (content == "64") {
+    info_->os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::k64;
+  } else if (content == "32") {
+    info_->os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::k32;
+  } else {
+    info_->os_info->efi_platform_size =
+        mojom::OsInfo::EfiPlatformSize::kUnknown;
+    LOG(ERROR) << "Got unknown efi platform size: " << content;
+  }
 }
 
 void State::SetError(mojom::ErrorType type, const std::string& message) {
@@ -274,6 +289,9 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
   if (state_ptr->info_->os_info->boot_mode == mojom::BootMode::kCrosEfi) {
     state_ptr->context_->executor()->GetUEFISecureBootContent(
         barrier.Depend(base::BindOnce(&State::HandleSecureBootResponse,
+                                      base::Unretained(state_ptr))));
+    state_ptr->context_->executor()->GetUEFIPlatformSizeContent(
+        barrier.Depend(base::BindOnce(&State::HandleEfiPlatformSize,
                                       base::Unretained(state_ptr))));
   }
 }

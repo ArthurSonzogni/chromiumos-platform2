@@ -197,6 +197,7 @@ std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
       .FIELD(oem_name)
       .FIELD(boot_mode)
       .FIELD(os_version)
+      .FIELD(efi_platform_size)
       .GetResult();
 }
 

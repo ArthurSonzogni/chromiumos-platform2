@@ -56,6 +56,8 @@ class Executor final : public mojom::Executor {
                ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(
       GetUEFISecureBootContentCallback callback) override;
+  void GetUEFIPlatformSizeContent(
+      GetUEFIPlatformSizeContentCallback callback) override;
   void GetLidAngle(GetLidAngleCallback callback) override;
 
  private:

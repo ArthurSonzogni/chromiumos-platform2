@@ -90,6 +90,9 @@ interface Executor {
   // Get UEFI Secure Boot variable file content
   GetUEFISecureBootContent() => (string contents);
 
+  // Get UEFI platform size variable file content
+  GetUEFIPlatformSizeContent() => (string contents);
+
   // Obtains lid angle by running ectool and returns the result.
   //
   // The response:

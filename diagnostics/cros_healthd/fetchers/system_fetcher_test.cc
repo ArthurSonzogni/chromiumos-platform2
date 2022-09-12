@@ -79,6 +79,7 @@ class SystemUtilsTest : public BaseFileTest {
     os_info->marketing_name = "Latitude 1234 Chromebook Enterprise";
     os_info->oem_name = "FooOEM";
     os_info->boot_mode = mojom::BootMode::kCrosSecure;
+    os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::kUnknown;
     auto& os_version = os_info->os_version;
     os_version = mojom::OsVersion::New();
     os_version->release_milestone = "87";
@@ -179,6 +180,16 @@ class SystemUtilsTest : public BaseFileTest {
         .WillOnce(WithArg<0>(Invoke(
             [content](
                 mojom::Executor::GetUEFISecureBootContentCallback callback) {
+              std::move(callback).Run(content);
+            })));
+  }
+
+  void SetUEFIPlatformSizeResponse(const std::string& content) {
+    // Set the mock executor response.
+    EXPECT_CALL(*mock_executor(), GetUEFIPlatformSizeContent(_))
+        .WillOnce(WithArg<0>(Invoke(
+            [content](
+                mojom::Executor::GetUEFIPlatformSizeContentCallback callback) {
               std::move(callback).Run(content);
             })));
   }
@@ -350,6 +361,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   // Use string constructor to prevent string truncation from null bytes.
   SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetUEFIPlatformSizeResponse("");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -364,6 +376,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
   // Use string constructor to prevent string truncation from null bytes.
   SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x01", 5));
+  SetUEFIPlatformSizeResponse("");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -371,6 +384,31 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   // returns kCrosEfi as default value
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   SetUEFISecureBootResponse("");
+  SetUEFIPlatformSizeResponse("");
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+}
+
+TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
+  expected_system_info_->os_info->efi_platform_size =
+      mojom::OsInfo::EfiPlatformSize::kUnknown;
+  SetUEFIPlatformSizeResponse("");
+  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->efi_platform_size =
+      mojom::OsInfo::EfiPlatformSize::k64;
+  SetUEFIPlatformSizeResponse("64");
+  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->efi_platform_size =
+      mojom::OsInfo::EfiPlatformSize::k32;
+  SetUEFIPlatformSizeResponse("32");
+  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

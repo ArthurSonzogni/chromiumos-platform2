@@ -55,6 +55,10 @@ class MockExecutor final : public mojom::Executor {
               GetUEFISecureBootContent,
               (GetUEFISecureBootContentCallback),
               (override));
+  MOCK_METHOD(void,
+              GetUEFIPlatformSizeContent,
+              (GetUEFIPlatformSizeContentCallback),
+              (override));
   MOCK_METHOD(void, GetLidAngle, (GetLidAngleCallback), (override));
 };
 
