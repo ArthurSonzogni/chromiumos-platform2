@@ -12,6 +12,7 @@
 
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 
 namespace shill {
@@ -79,6 +80,19 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(void,
               OnPasspointCredentialsMatches,
               (const std::vector<PasspointMatch>&),
+              (override));
+  MOCK_METHOD(void,
+              OnNewWiphy,
+              (const Nl80211Message& nl80211_message),
+              (override));
+  MOCK_METHOD(const WiFiPhy*, GetPhyAtIndex, (uint32_t), (override));
+  MOCK_METHOD(void,
+              RegisterDeviceToPhy,
+              (WiFiConstRefPtr, uint32_t),
+              (override));
+  MOCK_METHOD(void,
+              DeregisterDeviceFromPhy,
+              (WiFiConstRefPtr, uint32_t),
               (override));
 };
 

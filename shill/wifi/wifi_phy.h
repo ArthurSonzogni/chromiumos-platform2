@@ -41,7 +41,7 @@ class WiFiPhy {
   // Parse an NL80211_CMD_NEW_WIPHY netlink message.
   // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and
   // into WiFiProvider.
-  void OnNewWiphy(const Nl80211Message& nl80211_message);
+  mockable void OnNewWiphy(const Nl80211Message& nl80211_message);
 
  private:
   friend class WiFiPhyTest;

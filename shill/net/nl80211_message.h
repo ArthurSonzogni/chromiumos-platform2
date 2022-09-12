@@ -163,6 +163,16 @@ class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
   DeleteStationMessage& operator=(const DeleteStationMessage&) = delete;
 };
 
+class SHILL_EXPORT DelWiphyMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  DelWiphyMessage() : Nl80211Message(kCommand, kCommandString) {}
+  DelWiphyMessage(const DelWiphyMessage&) = delete;
+  DelWiphyMessage& operator=(const DelInterfaceMessage&) = delete;
+};
+
 class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

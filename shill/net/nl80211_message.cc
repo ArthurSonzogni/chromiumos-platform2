@@ -226,6 +226,9 @@ const char DelInterfaceMessage::kCommandString[] = "NL80211_CMD_DEL_INTERFACE";
 const uint8_t DeleteStationMessage::kCommand = NL80211_CMD_DEL_STATION;
 const char DeleteStationMessage::kCommandString[] = "NL80211_CMD_DEL_STATION";
 
+const uint8_t DelWiphyMessage::kCommand = NL80211_CMD_DEL_WIPHY;
+const char DelWiphyMessage::kCommandString[] = "NL80211_CMD_DEL_WIPHY";
+
 const uint8_t DisassociateMessage::kCommand = NL80211_CMD_DISASSOCIATE;
 const char DisassociateMessage::kCommandString[] = "NL80211_CMD_DISASSOCIATE";
 
@@ -277,6 +280,10 @@ GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
                           NetlinkMessage::MessageContext()));
   attributes()->CreateFlagAttribute(NL80211_ATTR_SPLIT_WIPHY_DUMP,
                                     "Split wiphy dump");
+  attributes()->CreateAttribute(
+      NL80211_ATTR_WIPHY,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
 }
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
@@ -487,6 +494,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<DeauthenticateMessage>();
     case DelInterfaceMessage::kCommand:
       return std::make_unique<DelInterfaceMessage>();
+    case DelWiphyMessage::kCommand:
+      return std::make_unique<DelWiphyMessage>();
     case DeleteStationMessage::kCommand:
       return std::make_unique<DeleteStationMessage>();
     case DisassociateMessage::kCommand:

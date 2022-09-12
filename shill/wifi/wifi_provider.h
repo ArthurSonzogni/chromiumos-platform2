@@ -6,10 +6,18 @@
 #define SHILL_WIFI_WIFI_PROVIDER_H_
 
 #include <map>
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+
 #include "shill/data_types.h"
+#include "shill/mockable.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/netlink_message.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 
@@ -21,6 +29,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 class WiFiEndpoint;
+class WiFiPhy;
 class WiFiService;
 class WiFiSecurity;
 
@@ -158,6 +167,25 @@ class WiFiProvider : public ProviderInterface {
   virtual void OnPasspointCredentialsMatches(
       const std::vector<PasspointMatch>& matches);
 
+  // Return the WiFiPhy object at phy_index. Returns a nulltr if there is no
+  // WiFiPhy at phy_index.
+  mockable const WiFiPhy* GetPhyAtIndex(uint32_t phy_index);
+
+  // Register a WiFi device object to a WiFiPhy object. This method asserts that
+  // there is a WiFiPhy object at the given phy_index, so it is expected that
+  // the caller checks this condition before calling.
+  mockable void RegisterDeviceToPhy(WiFiConstRefPtr device, uint32_t phy_index);
+
+  // Deregister a WiFi device from it's associated WiFiPhy object. This function
+  // is a no-op if the WiFi device is not currently registered to the WiFiPhy
+  // at phy_index.
+  mockable void DeregisterDeviceFromPhy(WiFiConstRefPtr device,
+                                        uint32_t phy_index);
+
+  // Handle a NL80211_CMD_NEW_WIPHY. Creates a WiFiPhy object if there isn't one
+  // at the phy index, and forwards the message to the WiFiPhy.
+  mockable void OnNewWiphy(const Nl80211Message& nl80211_message);
+
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
   bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
@@ -197,16 +225,30 @@ class WiFiProvider : public ProviderInterface {
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();
 
+  // Requests the phy at phy_index. If the value kAllPhys is provided, then
+  // request a dump of all phys.
+  void GetPhyInfo(uint32_t phy_index);
+
+  // Callback invoked when broadcasted netlink messages are received. Handles
+  // NL80211_CMD_DEL_WIPHY by deleting the relevant WiFiPhy object. If we
+  // receive any other NL80211 message which includes a phy index value, then
+  // we request phy info for that phy index.
+  void HandleNetlinkBroadcast(const shill::NetlinkMessage& message);
+
   Metrics* metrics() const;
 
   // Sort the internal list of services.
   void SortServices();
 
   Manager* manager_;
+  NetlinkManager* netlink_manager_;
 
   std::vector<WiFiServiceRefPtr> services_;
   EndpointServiceMap service_by_endpoint_;
   PasspointCredentialsMap credentials_by_id_;
+  base::WeakPtrFactory<WiFiProvider> weak_ptr_factory_while_started_;
+  std::map<uint32_t, std::unique_ptr<WiFiPhy>> wifi_phys_;
+  shill::NetlinkManager::NetlinkMessageHandler broadcast_handler_;
 
   bool running_;
 

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -35,6 +36,7 @@
 #include "shill/technology.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_security.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -59,6 +61,10 @@ const char kManagerErrorSSIDTooLong[] = "SSID is too long";
 const char kManagerErrorSSIDTooShort[] = "SSID is too short";
 const char kManagerErrorInvalidSecurityClass[] = "invalid security class";
 const char kManagerErrorInvalidServiceMode[] = "invalid service mode";
+
+// Special value that can be passed into GetPhyInfo() to request a dump of all
+// phys on the system.
+static constexpr uint32_t kAllPhys = UINT32_MAX;
 
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
@@ -224,12 +230,21 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 }  // namespace
 
 WiFiProvider::WiFiProvider(Manager* manager)
-    : manager_(manager), running_(false), disable_vht_(false) {}
+    : manager_(manager),
+      netlink_manager_(NetlinkManager::GetInstance()),
+      weak_ptr_factory_while_started_(this),
+      running_(false),
+      disable_vht_(false) {}
 
 WiFiProvider::~WiFiProvider() = default;
 
 void WiFiProvider::Start() {
   running_ = true;
+  broadcast_handler_ =
+      base::BindRepeating(&WiFiProvider::HandleNetlinkBroadcast,
+                          weak_ptr_factory_while_started_.GetWeakPtr());
+  netlink_manager_->AddBroadcastHandler(broadcast_handler_);
+  GetPhyInfo(kAllPhys);
 }
 
 void WiFiProvider::Stop() {
@@ -241,6 +256,9 @@ void WiFiProvider::Stop() {
     manager_->DeregisterService(service);
   }
   service_by_endpoint_.clear();
+  weak_ptr_factory_while_started_.InvalidateWeakPtrs();
+  netlink_manager_->RemoveBroadcastHandler(broadcast_handler_);
+  wifi_phys_.clear();
   running_ = false;
 }
 
@@ -890,6 +908,109 @@ void WiFiProvider::OnPasspointCredentialsMatches(
     if (service->profile() != match.credentials->profile()) {
       manager_->MoveServiceToProfile(service, match.credentials->profile());
     }
+  }
+}
+
+void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
+  GetWiphyMessage get_wiphy;
+  get_wiphy.AddFlag(NLM_F_DUMP);
+  if (phy_index != kAllPhys) {
+    get_wiphy.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, phy_index);
+  }
+  get_wiphy.attributes()->SetFlagAttributeValue(NL80211_ATTR_SPLIT_WIPHY_DUMP,
+                                                true);
+  netlink_manager_->SendNl80211Message(
+      &get_wiphy,
+      base::BindRepeating(&WiFiProvider::OnNewWiphy,
+                          weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+}
+
+void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
+  // Verify NL80211_CMD_NEW_WIPHY.
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
+    return;
+  }
+  uint32_t phy_index;
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_WIPHY, &phy_index)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
+    return;
+  }
+
+  // Get the WiFiPhy object at phy_index, or create a new WiFiPhy if there isn't
+  // one.
+  if (!base::Contains(wifi_phys_, phy_index)) {
+    SLOG(3) << "Adding a new phy object at index: " << phy_index;
+    wifi_phys_[phy_index] = std::make_unique<WiFiPhy>(phy_index);
+  }
+  // Forward the message to the WiFiPhy object.
+  wifi_phys_[phy_index]->OnNewWiphy(nl80211_message);
+}
+
+void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
+  if (message.message_type() != Nl80211Message::GetMessageType()) {
+    SLOG(7) << __func__ << ": "
+            << "Not a NL80211 Message";
+    return;
+  }
+  const Nl80211Message& nl80211_message =
+      dynamic_cast<const Nl80211Message&>(message);
+  uint32_t phy_index;
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_WIPHY, &phy_index)) {
+    return;
+  }
+
+  if ((nl80211_message.command() == NewWiphyMessage::kCommand)) {
+    OnNewWiphy(nl80211_message);
+    return;
+  }
+
+  if ((nl80211_message.command() == DelWiphyMessage::kCommand)) {
+    wifi_phys_.erase(phy_index);
+    return;
+  }
+  // The NL80211 message includes a phy index for which we have no associated
+  // WiFiPhy object. Request the phy at this index to get us back in sync.
+  // This is needed because the WiFi driver may not broadcast an
+  // NL80211_CMD_NEW_WIPHY when a new phy comes online.
+  if (!base::Contains(wifi_phys_, phy_index)) {
+    SLOG(3) << "Recieved command " << nl80211_message.command_string()
+            << " for unknown phy at index " << phy_index
+            << " requesting phy info";
+    GetPhyInfo(phy_index);
+    return;
+  }
+}
+
+const WiFiPhy* WiFiProvider::GetPhyAtIndex(uint32_t phy_index) {
+  if (!base::Contains(wifi_phys_, phy_index)) {
+    return nullptr;
+  }
+  return wifi_phys_[phy_index].get();
+}
+
+void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
+                                       uint32_t phy_index) {
+  CHECK(device);
+  CHECK(base::Contains(wifi_phys_, phy_index))
+      << "Tried to register WiFi device " << device->link_name()
+      << " to phy_index: " << phy_index << " but the phy does not exist";
+  SLOG(3) << "Registering WiFi device " << device->link_name()
+          << " to phy_index: " << phy_index;
+  wifi_phys_[phy_index]->AddWiFiDevice(device);
+}
+
+void WiFiProvider::DeregisterDeviceFromPhy(WiFiConstRefPtr device,
+                                           uint32_t phy_index) {
+  CHECK(device);
+  SLOG(3) << "Deregistering WiFi device " << device->link_name()
+          << " from phy_index: " << phy_index;
+  if (base::Contains(wifi_phys_, phy_index)) {
+    wifi_phys_[phy_index]->DeleteWiFiDevice(device);
   }
 }
 
