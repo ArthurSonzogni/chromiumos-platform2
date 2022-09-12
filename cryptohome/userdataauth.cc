@@ -4143,7 +4143,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     return;
   }
 
-  if (!session->HasCredentialVerifier() ||
+  if (session->GetCredentialVerifier() == nullptr ||
       override_existing_credential_verifier) {
     session->SetCredentials(auth_session);
   }

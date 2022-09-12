@@ -30,7 +30,7 @@ namespace cryptohome {
 
 class RealUserSession : public UserSession {
  public:
-  RealUserSession();
+  RealUserSession() = default;
   RealUserSession(
       const std::string& username,
       HomeDirs* homedirs,
@@ -104,9 +104,10 @@ class RealUserSession : public UserSession {
   // Sets credentials current session can be re-authenticated with.
   void SetCredentials(AuthSession* auth_session) override;
 
-  // Returns if a |credential_verifier_| is set for this session.
-  bool HasCredentialVerifier() const override {
-    return credential_verifier_ != nullptr;
+  // Returns the credential verifier for this session. Returns null if there is
+  // no verifier that has been set.
+  CredentialVerifier* GetCredentialVerifier() const override {
+    return credential_verifier_.get();
   }
 
   // Removes the credential_verifier if key_label matches the current verifier

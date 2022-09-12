@@ -50,8 +50,6 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
-RealUserSession::RealUserSession() {}
-
 RealUserSession::RealUserSession(
     const std::string& username,
     HomeDirs* homedirs,

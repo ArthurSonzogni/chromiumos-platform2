@@ -56,7 +56,9 @@ using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::IsNull;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
@@ -644,7 +646,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, GetCredentialVerifier()).WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
@@ -687,7 +689,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, GetCredentialVerifier()).WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
@@ -780,7 +782,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, GetCredentialVerifier()).WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
@@ -831,7 +833,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, GetCredentialVerifier()).WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
@@ -867,7 +869,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session2, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session2, GetCredentialVerifier())
+      .WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session2, SetCredentials(auth_session2));
   EXPECT_CALL(*user_session2, MountVault(kUsername2, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
@@ -966,7 +969,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
 
   // Set expectations for credential verifier.
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*user_session, HasCredentialVerifier()).WillOnce(Return(false));
+  EXPECT_CALL(*user_session, GetCredentialVerifier()).WillOnce(Return(nullptr));
   EXPECT_CALL(*user_session, SetCredentials(auth_session));
   // Set up expectation for add credential callback success.
   user_data_auth::AddCredentialsRequest request;
@@ -1701,7 +1704,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       userdataauth_.FindUserSessionForTest(kUsername);
   ASSERT_TRUE(found_user_session);
   EXPECT_TRUE(found_user_session->IsActive());
-  EXPECT_FALSE(found_user_session->HasCredentialVerifier());
+  EXPECT_THAT(found_user_session->GetCredentialVerifier(), IsNull());
 
   // Act.
   user_data_auth::AddAuthFactorReply reply =
@@ -1710,7 +1713,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // Check the user session has a verifier for the given password.
-  EXPECT_TRUE(found_user_session->HasCredentialVerifier());
+  EXPECT_THAT(found_user_session->GetCredentialVerifier(), NotNull());
   Credentials credentials(kUsername, brillo::SecureBlob(kPassword));
   EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
   EXPECT_THAT(

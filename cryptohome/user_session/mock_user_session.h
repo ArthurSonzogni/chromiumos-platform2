@@ -63,7 +63,10 @@ class MockUserSession : public UserSession {
               (override));
   MOCK_METHOD(void, SetCredentials, (const Credentials&), (override));
   MOCK_METHOD(void, SetCredentials, (AuthSession*), (override));
-  MOCK_METHOD(bool, HasCredentialVerifier, (), (const, override));
+  MOCK_METHOD(CredentialVerifier*,
+              GetCredentialVerifier,
+              (),
+              (const, override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
   MOCK_METHOD(void,
