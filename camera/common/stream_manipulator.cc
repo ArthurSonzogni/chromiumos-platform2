@@ -152,7 +152,8 @@ StreamManipulator::GetEnabledStreamManipulators(
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
     stream_manipulators.emplace_back(std::make_unique<EffectsStreamManipulator>(
         feature_profile.GetConfigFilePath(
-            FeatureProfile::FeatureType::kEffects)));
+            FeatureProfile::FeatureType::kEffects),
+        runtime_options));
     LOGF(INFO) << "EffectsStreamManipulator enabled";
   }
 #endif

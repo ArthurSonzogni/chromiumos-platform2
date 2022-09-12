@@ -174,6 +174,25 @@ void CameraHalServerImpl::IPCBridge::SetAutoFramingState(
   camera_hal_adapter_->SetAutoFramingState(state);
 }
 
+void CameraHalServerImpl::IPCBridge::IsCameraEffectSupported(
+    mojom::CameraEffect effect,
+    mojom::CameraHalServer::IsCameraEffectSupportedCallback callback) {
+  std::move(callback).Run(camera_hal_adapter_->IsCameraEffectSupported(effect));
+}
+
+void CameraHalServerImpl::IPCBridge::SetCameraEffect(
+    mojom::EffectsConfigPtr config,
+    mojom::CameraHalServer::SetCameraEffectCallback callback) {
+  std::move(callback).Run(
+      camera_hal_adapter_->SetCameraEffect(std::move(config)));
+}
+
+void CameraHalServerImpl::IPCBridge::IsCameraEffectEnabled(
+    mojom::CameraEffect effect,
+    mojom::CameraHalServer::IsCameraEffectEnabledCallback callback) {
+  std::move(callback).Run(camera_hal_adapter_->IsCameraEffectEnabled(effect));
+}
+
 void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
     mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback) {
   std::move(callback).Run(camera_hal_adapter_->GetCameraSWPrivacySwitchState());

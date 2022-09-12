@@ -36,6 +36,7 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
+#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -117,6 +118,12 @@ class CameraHalAdapter {
   mojom::CameraPrivacySwitchState GetCameraSWPrivacySwitchState();
 
   void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+
+  bool IsCameraEffectSupported(mojom::CameraEffect effect);
+
+  mojom::SwitchEffectSuccess SetCameraEffect(mojom::EffectsConfigPtr config);
+
+  bool IsCameraEffectEnabled(mojom::CameraEffect effect);
 
  protected:
   // Convert the unified public |camera_id| into the corresponding camera

@@ -13,13 +13,9 @@
 #define ML_CORE_BINDINGS_EFFECTS_PIPELINE_BINDINGS_H_
 
 #include <stdint.h>
+#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
-
-// Used by EffectsConfig to indicate which effect the g3 shared library
-// should be applying. Needs to be kept in sync with g3 version found in
-// chromeos/ml/effects_pipeline/effects_pipeline.h
-enum class EffectsType { kNone, kBgBlur, kBgReplace, kRelight, kCount };
 
 // EffectsConfig is intended to be extended and used by the
 // EffectsLibrary to build effects that would like more configurable
@@ -27,7 +23,33 @@ enum class EffectsType { kNone, kBgBlur, kBgReplace, kRelight, kCount };
 // chromeos/ml/effects_pipeline/effects_pipeline.h
 struct BRILLO_EXPORT EffectsConfig {
   // Name of the effect. Used to identify which effect object to instantiate
-  EffectsType effect;
+  mojom::CameraEffect effect = mojom::CameraEffect::NONE;
+
+  // The scale where the input image is blurred. If specified, the value must be
+  // greater than 0.05. If not specified, the blur is at the resolution of the
+  // input mask
+  float blur_scale = 0.25;
+
+  // Number of blur samples in one direction. Approximately how many pixels in
+  // each direction to include to create the blur
+  uint8_t blur_samples = 4;
+
+  // Select which GPU API to use to perform the segmentation inference
+  mojom::GpuApi segmentation_gpu_api = mojom::GpuApi::OPENGL;
+
+  // Maximum number of frames allowed in flight.
+  int graph_max_frames_in_flight = 2;
+
+  inline bool operator==(const EffectsConfig& rhs) const {
+    return effect == rhs.effect && blur_samples == rhs.blur_samples &&
+           blur_scale == rhs.blur_scale &&
+           segmentation_gpu_api == rhs.segmentation_gpu_api &&
+           graph_max_frames_in_flight == rhs.graph_max_frames_in_flight;
+  }
+
+  inline bool operator!=(const EffectsConfig& rhs) const {
+    return !(*this == rhs);
+  }
 };
 }  // namespace cros
 

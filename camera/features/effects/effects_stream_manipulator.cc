@@ -18,12 +18,13 @@
 #include <base/files/file_util.h>
 #include "base/containers/stack_container.h"
 #include <base/callback_helpers.h>
-
 #include <base/time/time.h>
+
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/gles/texture_2d.h"
+#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -42,6 +43,8 @@ bool GetStringFromKey(const base::Value& obj,
 }
 
 constexpr char kEffectKey[] = "effect";
+constexpr char kBlurScaleKey[] = "blur_scale";
+constexpr char kBlurSamplesKey[] = "blur_samples";
 
 constexpr uint8_t kMaxNumBuffers = 8;
 
@@ -72,9 +75,10 @@ class RenderedImageObserver : public ProcessedFrameObserver {
 }  // namespace
 
 EffectsStreamManipulator::EffectsStreamManipulator(
-    base::FilePath config_file_path)
+    base::FilePath config_file_path, const RuntimeOptions* runtime_options)
     : config_(ReloadableConfigFile::Options{
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
+      runtime_options_(runtime_options),
       thread_("EffectsThread") {
   if (!config_.IsValid()) {
     LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
@@ -244,6 +248,11 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
   ScopedMapping scoped_mapping = ScopedMapping(gpu_image_.buffer());
   buffer_ptr_ = scoped_mapping.plane(0).addr;
 
+  auto new_config = GetRuntimeOptionsEffectsConfig();
+  if (active_runtime_effects_config_ != new_config) {
+    active_runtime_effects_config_ = new_config;
+    SetEffect(new_config);
+  }
   pipeline_->ProcessFrame(result->frame_number(),
                           reinterpret_cast<const uint8_t*>(buffer_ptr_),
                           scoped_mapping.width(), scoped_mapping.height(),
@@ -287,23 +296,45 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   if (!pipeline_) {
     return;
   }
+  EffectsConfig new_config;
   std::string tmp;
   if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
     if (tmp == std::string("blur")) {
-      options_.effects_config.effect = EffectsType::kBgBlur;
+      new_config.effect = mojom::CameraEffect::BACKGROUND_BLUR;
+      LoadIfExist(json_values, kBlurScaleKey, &new_config.blur_scale);
+      int blur_samples_tmp;
+      LoadIfExist(json_values, kBlurSamplesKey, &blur_samples_tmp);
+      new_config.blur_samples = static_cast<uint8_t>(blur_samples_tmp);
     } else if (tmp == std::string("replace")) {
-      options_.effects_config.effect = EffectsType::kBgReplace;
+      new_config.effect = mojom::CameraEffect::BACKGROUND_REPLACE;
     } else if (tmp == std::string("relight")) {
-      options_.effects_config.effect = EffectsType::kRelight;
+      new_config.effect = mojom::CameraEffect::PORTRAIT_RELIGHT;
     } else if (tmp == std::string("none")) {
-      options_.effects_config.effect = EffectsType::kNone;
+      new_config.effect = mojom::CameraEffect::NONE;
     } else {
       LOGF(WARNING) << "Unknown Effect: " << tmp;
       return;
     }
     LOGF(INFO) << "Effect Updated: " << tmp;
-    pipeline_->SetEffect(&(options_.effects_config), nullptr);
+
+    pipeline_->SetEffect(&new_config, nullptr);
   }
+}
+
+EffectsConfig EffectsStreamManipulator::GetRuntimeOptionsEffectsConfig() {
+  EffectsConfig new_config;
+  new_config.effect = runtime_options_->effects_config->effect;
+  new_config.blur_scale = runtime_options_->effects_config->blur_scale;
+  new_config.blur_samples = runtime_options_->effects_config->blur_samples;
+  new_config.segmentation_gpu_api =
+      runtime_options_->effects_config->segmentation_gpu_api;
+  new_config.graph_max_frames_in_flight =
+      runtime_options_->effects_config->graph_max_frames_in_flight;
+  return new_config;
+}
+
+void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
+  pipeline_->SetEffect(&new_config, nullptr);
 }
 
 }  // namespace cros

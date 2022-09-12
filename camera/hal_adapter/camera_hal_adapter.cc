@@ -294,6 +294,22 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
   stream_manipulator_runtime_options_.sw_privacy_switch_state = state;
 }
 
+mojom::SwitchEffectSuccess CameraHalAdapter::SetCameraEffect(
+    mojom::EffectsConfigPtr config) {
+  stream_manipulator_runtime_options_.effects_config = std::move(config);
+  return mojom::SwitchEffectSuccess::OK;
+}
+
+bool CameraHalAdapter::IsCameraEffectEnabled(mojom::CameraEffect effect) {
+  return stream_manipulator_runtime_options_.effects_config->effect == effect;
+}
+
+bool CameraHalAdapter::IsCameraEffectSupported(mojom::CameraEffect effect) {
+  // TODO(shafron): determine what is a reasonable check for
+  // an effect being supported
+  return true;
+}
+
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
@@ -423,11 +439,12 @@ void CameraHalAdapter::CloseDeviceCallback(
       base::BindOnce(&CameraHalAdapter::CloseDevice, base::Unretained(this),
                      camera_id, camera_client_type));
   task_runner->PostTask(FROM_HERE, base::BindOnce([]() {
-                          // Inject an empty event to end the CloseDevice event.
-                          // The CameraHalAdapter::CloseDevice event emitted by
-                          // the callback above is usually the last event from
-                          // the cros-camera process, and there's a known issue
-                          // in Perfetto where the last event does not end.
+                          // Inject an empty event to end the CloseDevice
+                          // event. The CameraHalAdapter::CloseDevice event
+                          // emitted by the callback above is usually the last
+                          // event from the cros-camera process, and there's a
+                          // known issue in Perfetto where the last event does
+                          // not end.
                           PERFETTO_INTERNAL_ADD_EMPTY_EVENT();
                         }));
 }
@@ -787,8 +804,8 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
 
   num_builtin_cameras_ = cameras.size();
   sort(cameras.begin(), cameras.end());
-  // Ordering is important here. Unexposed physical camera IDs should be >= |n|
-  // where |n| is the number of builtin cameras.
+  // Ordering is important here. Unexposed physical camera IDs should be >=
+  // |n| where |n| is the number of builtin cameras.
   cameras.insert(cameras.end(), unexposed_physical_cameras.begin(),
                  unexposed_physical_cameras.end());
   for (size_t i = 0; i < cameras.size(); i++) {
@@ -958,8 +975,8 @@ int32_t CameraHalAdapter::SetCallbacks(
       base::BindOnce(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
                      base::Unretained(this), callbacks_id));
 
-  // Send latest status to the new client, so all presented external cameras are
-  // available to the client after SetCallbacks() returns.
+  // Send latest status to the new client, so all presented external cameras
+  // are available to the client after SetCallbacks() returns.
   for (const auto& it : device_status_map_) {
     int camera_id = it.first;
     camera_device_status_t device_status = it.second;

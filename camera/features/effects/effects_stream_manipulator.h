@@ -38,7 +38,8 @@ class EffectsStreamManipulator : public StreamManipulator {
     EffectsConfig effects_config;
   };
 
-  explicit EffectsStreamManipulator(base::FilePath config_file_path);
+  explicit EffectsStreamManipulator(base::FilePath config_file_path,
+                                    const RuntimeOptions* runtime_options);
   ~EffectsStreamManipulator() override = default;
 
   // Implementations of StreamManipulator.
@@ -60,10 +61,16 @@ class EffectsStreamManipulator : public StreamManipulator {
 
  private:
   void OnOptionsUpdated(const base::Value& json_values);
+
+  EffectsConfig GetRuntimeOptionsEffectsConfig();
+  void SetEffect(EffectsConfig new_config);
   void GpuSync();
 
   ReloadableConfigFile config_;
   Options options_;
+  const RuntimeOptions* runtime_options_;
+
+  EffectsConfig active_runtime_effects_config_ = EffectsConfig();
 
   camera3_stream_t* yuv_stream_ = nullptr;
   std::unique_ptr<EffectsPipeline> pipeline_;

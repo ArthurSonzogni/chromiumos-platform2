@@ -24,6 +24,7 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_hal_adapter.h"
+#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -82,6 +83,18 @@ class CameraHalServerImpl final {
 
     void GetAutoFramingSupported(
         mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) final;
+
+    void IsCameraEffectSupported(
+        mojom::CameraEffect effect,
+        mojom::CameraHalServer::IsCameraEffectSupportedCallback callback) final;
+
+    void SetCameraEffect(
+        mojom::EffectsConfigPtr config,
+        mojom::CameraHalServer::SetCameraEffectCallback callback) final;
+
+    void IsCameraEffectEnabled(
+        mojom::CameraEffect effect,
+        mojom::CameraHalServer::IsCameraEffectEnabledCallback callback) final;
 
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,

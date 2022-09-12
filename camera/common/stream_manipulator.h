@@ -9,6 +9,7 @@
 
 #include <hardware/camera3.h>
 
+#include <bitset>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
+#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -47,6 +49,10 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // SetCameraSWPrivacySwitchState.
     mojom::CameraPrivacySwitchState sw_privacy_switch_state =
         mojom::CameraPrivacySwitchState::OFF;
+
+    // The state of camera effects. Which is enabled/disabled and the
+    // configuration parameters to tune it
+    mojom::EffectsConfigPtr effects_config;
   };
 
   // Callback for the StreamManipulator to return capture results to the client

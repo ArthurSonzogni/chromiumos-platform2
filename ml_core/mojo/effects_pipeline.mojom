@@ -1,0 +1,56 @@
+// Copyright 2022 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Next min version: 1
+
+module cros.mojom;
+
+// Set of effects that can be enabled.
+// Used by EffectsConfig to indicate which effect the g3 shared library
+// should be applying. Needs to be kept in sync with g3 version found in
+// chromeos/ml/effects_pipeline/effects_config.h
+[Extensible]
+enum CameraEffect{
+  NONE = 0,
+  BACKGROUND_BLUR = 1,
+  BACKGROUND_REPLACE = 2,
+  PORTRAIT_RELIGHT = 3,
+};
+
+// Set of GPU APIs available.
+[Extensible]
+enum GpuApi {
+  OPENCL = 0,
+  OPENGL = 1
+};
+
+// Indicates the state of requesting a switch effect.
+[Extensible]
+enum SwitchEffectSuccess {
+  OK = 0,
+  ERROR = 1
+};
+
+// Structure used for configuring and enabling video conferencing effects.
+// This should be kept in sync with the google3 version found in:
+// chromeos/ml/effects_pipeline/effects_config.h
+struct EffectsConfig {
+  // Name of the effect to enable.
+  CameraEffect effect = NONE;
+
+  // The scale where the input image is blurred. If specified, the value must be
+  // greater than 0.05. If not specified, the blur is at the resolution of the
+  // input mask.
+  float blur_scale = 0.25;
+
+  // Number of blur samples in one direction. Approximately how many pixels in
+  // each direction to include to create the blur.
+  uint8 blur_samples = 4;
+
+  // Select which GPU API to use to perform the segmentation inference.
+  GpuApi segmentation_gpu_api = OPENGL;
+
+  // Maximum number of frames allowed in flight.
+  uint16 graph_max_frames_in_flight = 2;
+};
