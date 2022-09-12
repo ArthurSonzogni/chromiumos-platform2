@@ -56,18 +56,20 @@ StatusOr<brillo::Blob> ConvertPublicKeyToDER(overalls::Overalls& overalls,
                    ParseRsaFromTpmPubkeyBlob(overalls, public_key),
                    _.WithStatus<TPMError>("Failed to parse RSA public key"));
 
-  int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
+  int der_length = i2d_RSA_PUBKEY(rsa.get(), nullptr);
   if (der_length < 0) {
-    return MakeStatus<TPMError>("Failed to DER-encode public key",
-                                TPMRetryAction::kNoRetry);
+    return MakeStatus<TPMError>(
+        "Failed to DER-encode public key using SubjectPublicKeyInfo",
+        TPMRetryAction::kNoRetry);
   }
 
   brillo::Blob public_key_der(der_length);
   uint8_t* buffer = public_key_der.data();
-  der_length = i2d_RSAPublicKey(rsa.get(), &buffer);
+  der_length = i2d_RSA_PUBKEY(rsa.get(), &buffer);
   if (der_length < 0) {
-    return MakeStatus<TPMError>("Failed to DER-encode public key",
-                                TPMRetryAction::kNoRetry);
+    return MakeStatus<TPMError>(
+        "Failed to DER-encode public key using SubjectPublicKeyInfo",
+        TPMRetryAction::kNoRetry);
   }
   public_key_der.resize(der_length);
 
