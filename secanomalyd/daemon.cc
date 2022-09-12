@@ -33,7 +33,18 @@ namespace secanomalyd {
 
 namespace {
 
-constexpr int kSampleFrequency = 10;
+// Adjust the sampling frequency such that the systems with more W+X mounts are
+// more likely to send a crash report.
+constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
+  if (wx_mount_count <= 5)
+    return 15;
+  else if (wx_mount_count <= 10)
+    return 10;
+  else if (wx_mount_count <= 15)
+    return 5;
+  else
+    return 2;
+}
 
 constexpr base::TimeDelta kCheckInterval = base::Seconds(30);
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
@@ -144,18 +155,19 @@ void Daemon::DoWXMountCheck() {
 }
 
 void Daemon::DoWXMountCountReporting() {
+  size_t wx_mount_count = wx_mounts_.size();
   if (ShouldReport(dev_)) {
-    if (!SendWXMountCountToUMA(wx_mounts_.size())) {
+    if (!SendWXMountCountToUMA(wx_mount_count)) {
       LOG(WARNING) << "Could not upload W+X mount count";
     }
 
     // Should we send an anomalous system report?
-    if (generate_reports_ && !has_attempted_report_ && wx_mounts_.size() > 0) {
+    if (generate_reports_ && !has_attempted_report_ && wx_mount_count > 0) {
       // Stop subsequent reporting attempts for this execution.
       has_attempted_report_ = true;
       // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
       // |base::RandInt()| returns a random int in [min, max].
-      int range = dev_ ? 1 : kSampleFrequency;
+      int range = dev_ ? 1 : CalculateSampleFrequency(wx_mount_count);
       if (base::RandInt(1, range) > 1) {
         return;
       }
