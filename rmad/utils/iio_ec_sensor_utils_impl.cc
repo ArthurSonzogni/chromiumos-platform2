@@ -191,18 +191,18 @@ bool IioEcSensorUtilsImpl::InitializeFromSysfsPath(
                               &frequency_available)) {
     return false;
   }
-  // The value from sysfs could be like "0.000000 13.000000 208.000000"
+  // The value from sysfs could be one of:
+  // 1. A set of small discrete values, such as "0 2 4 6 8".
+  // 2. A range "[min min_step max]", where steps are not linear but power of 2.
   frequency_ = 0;
   re2::StringPiece str_piece(frequency_available);
-  re2::RE2 reg(R"((\d+.\d+))");
+  // Currently, we only used the highest frequency.
+  re2::RE2 reg(R"((\d+(\.\d+)?)\s*$)");
   std::string match;
-  while (RE2::FindAndConsume(&str_piece, reg, &match)) {
-    double freq;
-    if (base::StringToDouble(match, &freq) && freq > frequency_) {
-      frequency_ = freq;
-    }
-  }
-  if (frequency_ == 0) {
+  if (double freq; RE2::FindAndConsume(&str_piece, reg, &match) &&
+                   base::StringToDouble(match, &freq) && freq > frequency_) {
+    frequency_ = freq;
+  } else {
     return false;
   }
 
