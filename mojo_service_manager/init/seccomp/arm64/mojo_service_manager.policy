@@ -29,6 +29,7 @@ fchmodat: 1
 fcntl: 1
 fstatfs: 1
 ftruncate: 1
+futex: 1
 getdents64: 1
 getegid: 1
 geteuid: 1
