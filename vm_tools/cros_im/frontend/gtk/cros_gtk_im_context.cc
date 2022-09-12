@@ -66,11 +66,6 @@ void cros_gtk_im_context_class_finalize(CrosGtkIMContextClass* klass) {}
 // end of GObject integration
 ////////////////////////////////////////////////////////////////////////////////
 
-wl_seat* GetSeat() {
-  return gdk_wayland_seat_get_wl_seat(
-      gdk_display_get_default_seat(gdk_display_get_default()));
-}
-
 uint32_t GetZwpHintsFromGtk(GtkInputHints gtk_hints) {
   uint32_t zwp_hints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_NONE;
 
@@ -470,7 +465,7 @@ void CrosGtkIMContext::Activate() {
 
   pending_activation_ = false;
 
-  backend_->Activate(GetSeat(), surface);
+  backend_->Activate(surface);
 
   GtkInputHints gtk_hints = GTK_INPUT_HINT_NONE;
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;

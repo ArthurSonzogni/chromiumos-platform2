@@ -9,6 +9,7 @@
 
 struct wl_display;
 struct wl_registry;
+struct wl_seat;
 struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
 struct zwp_text_input_manager_v1;
@@ -26,13 +27,16 @@ class WaylandManager {
   static bool HasInstance();
   static WaylandManager* Get();
 
-  // May return nullptr if still initializing.
+  // These return non-null if and only if initialization is complete.
   zwp_text_input_v1* CreateTextInput(const zwp_text_input_v1_listener* listener,
                                      void* listener_data);
   zcr_extended_text_input_v1* CreateExtendedTextInput(
       zwp_text_input_v1* text_input,
       const zcr_extended_text_input_v1_listener* listener,
       void* listener_data);
+
+  // Once initialized, this value will not change.
+  wl_seat* GetSeat() { return wl_seat_; }
 
   // Callbacks for wayland global events.
   void OnGlobal(wl_registry* registry,
@@ -45,6 +49,10 @@ class WaylandManager {
   explicit WaylandManager(wl_display* display);
   ~WaylandManager();
 
+  bool IsInitialized() const;
+
+  wl_seat* wl_seat_ = nullptr;
+  uint32_t wl_seat_id_ = 0;
   // Creates text_input objects
   zwp_text_input_manager_v1* text_input_manager_ = nullptr;
   uint32_t text_input_manager_id_ = 0;

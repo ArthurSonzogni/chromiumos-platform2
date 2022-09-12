@@ -82,7 +82,7 @@ IMContextBackend::~IMContextBackend() {
     zwp_text_input_v1_destroy(text_input_);
 }
 
-void IMContextBackend::Activate(wl_seat* seat, wl_surface* surface) {
+void IMContextBackend::Activate(wl_surface* surface) {
   MaybeInitialize();
 
   if (!text_input_) {
@@ -90,22 +90,23 @@ void IMContextBackend::Activate(wl_seat* seat, wl_surface* surface) {
     return;
   }
 
-  seat_ = seat;
-  zwp_text_input_v1_activate(text_input_, seat_, surface);
+  is_active_ = true;
+  zwp_text_input_v1_activate(text_input_, WaylandManager::Get()->GetSeat(),
+                             surface);
 }
 
 void IMContextBackend::Deactivate() {
   if (!text_input_)
     return;
-  if (!seat_) {
+  if (!is_active_) {
     printf("Attempted to deactivate text input which was not activated.\n");
     return;
   }
 
   if (virtual_keyboard_enabled_)
     zwp_text_input_v1_hide_input_panel(text_input_);
-  zwp_text_input_v1_deactivate(text_input_, seat_);
-  seat_ = nullptr;
+  zwp_text_input_v1_deactivate(text_input_, WaylandManager::Get()->GetSeat());
+  is_active_ = false;
 }
 
 void IMContextBackend::ShowInputPanel() {
@@ -141,13 +142,15 @@ void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {
 }
 
 void IMContextBackend::MaybeInitialize() {
-  if (!text_input_) {
-    text_input_ =
-        WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);
-  }
-  if (!extended_text_input_) {
+  if (text_input_)
+    return;
+
+  text_input_ =
+      WaylandManager::Get()->CreateTextInput(&text_input_listener_, this);
+  if (text_input_) {
     extended_text_input_ = WaylandManager::Get()->CreateExtendedTextInput(
         text_input_, &extended_text_input_listener_, this);
+    assert(extended_text_input_);
   }
 }
 

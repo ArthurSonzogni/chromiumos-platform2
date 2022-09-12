@@ -4,6 +4,8 @@
 
 #include "backend/test/mock_wayland_client.h"
 
+const wl_interface wl_seat_interface = {};
+
 wl_registry* wl_display_get_registry(wl_display*) {
   return nullptr;
 }
@@ -11,6 +13,8 @@ wl_registry* wl_display_get_registry(wl_display*) {
 void wl_registry_add_listener(wl_registry* registry,
                               const wl_registry_listener* listener,
                               void* data) {
+  listener->global(data, registry, /*name=*/0, "wl_seat",
+                   /*version=*/5);
   listener->global(data, registry, /*name=*/0, "zwp_text_input_manager_v1",
                    /*version=*/1);
   listener->global(data, registry, /*name=*/0, "zcr_text_input_extension_v1",

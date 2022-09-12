@@ -12,7 +12,6 @@
 #include "backend/text_input_enums.h"
 
 struct wl_array;
-struct wl_seat;
 struct wl_surface;
 struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
@@ -61,7 +60,7 @@ class IMContextBackend {
   explicit IMContextBackend(Observer* observer);
   ~IMContextBackend();
 
-  void Activate(wl_seat* seat, wl_surface* surface);
+  void Activate(wl_surface* surface);
   void Deactivate();
   void ShowInputPanel();
   void Reset();
@@ -95,7 +94,9 @@ class IMContextBackend {
       extended_text_input_listener_;
   zcr_extended_text_input_v1* extended_text_input_ = nullptr;
 
-  wl_seat* seat_ = nullptr;
+  // Set/cleared when we call `activate`/`deactivate`. We currently ignore the
+  // `enter` event so this may be true even if activation fails.
+  bool is_active_ = false;
 
   Observer* observer_ = nullptr;
 

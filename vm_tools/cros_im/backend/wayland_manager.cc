@@ -4,6 +4,7 @@
 
 #include "backend/wayland_manager.h"
 
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 
@@ -55,7 +56,7 @@ WaylandManager* WaylandManager::Get() {
 
 zwp_text_input_v1* WaylandManager::CreateTextInput(
     const zwp_text_input_v1_listener* listener, void* listener_data) {
-  if (!text_input_manager_)
+  if (!IsInitialized())
     return nullptr;
   auto* text_input =
       zwp_text_input_manager_v1_create_text_input(text_input_manager_);
@@ -68,7 +69,7 @@ zcr_extended_text_input_v1* WaylandManager::CreateExtendedTextInput(
     zwp_text_input_v1* text_input,
     const zcr_extended_text_input_v1_listener* listener,
     void* listener_data) {
-  if (!text_input_extension_)
+  if (!IsInitialized())
     return nullptr;
   auto* extended_text_input =
       zcr_text_input_extension_v1_get_extended_text_input(text_input_extension_,
@@ -83,7 +84,13 @@ void WaylandManager::OnGlobal(wl_registry* registry,
                               uint32_t name,
                               const char* interface,
                               uint32_t version) {
-  if (strcmp(interface, "zwp_text_input_manager_v1") == 0) {
+  if (strcmp(interface, "wl_seat") == 0) {
+    // We don't support compositors which advertise multiple seats.
+    assert(!wl_seat_);
+    wl_seat_ = reinterpret_cast<wl_seat*>(
+        wl_registry_bind(registry, name, &wl_seat_interface, version));
+    wl_seat_id_ = name;
+  } else if (strcmp(interface, "zwp_text_input_manager_v1") == 0) {
     text_input_manager_ =
         reinterpret_cast<zwp_text_input_manager_v1*>(wl_registry_bind(
             registry, name, &zwp_text_input_manager_v1_interface, version));
@@ -97,7 +104,11 @@ void WaylandManager::OnGlobal(wl_registry* registry,
 }
 
 void WaylandManager::OnGlobalRemove(wl_registry* registry, uint32_t name) {
-  if (name == text_input_manager_id_) {
+  if (name == wl_seat_id_) {
+    printf("The global wl_seat was removed.\n");
+    wl_seat_ = nullptr;
+    wl_seat_id_ = 0;
+  } else if (name == text_input_manager_id_) {
     printf("The global zwp_text_input_manager_v1 was removed.\n");
     text_input_manager_ = nullptr;
     text_input_manager_id_ = 0;
@@ -114,5 +125,9 @@ WaylandManager::WaylandManager(wl_display* display) {
 }
 
 WaylandManager::~WaylandManager() = default;
+
+bool WaylandManager::IsInitialized() const {
+  return wl_seat_ && text_input_manager_ && text_input_extension_;
+}
 
 }  // namespace cros_im

@@ -40,4 +40,6 @@ void* wl_registry_bind(wl_registry* wl_registry,
                        const wl_interface* interface,
                        uint32_t version);
 
+extern const wl_interface wl_seat_interface;
+
 #endif  // VM_TOOLS_CROS_IM_BACKEND_TEST_MOCK_WAYLAND_CLIENT_H_
