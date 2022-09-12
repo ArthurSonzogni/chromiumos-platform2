@@ -53,6 +53,7 @@ inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr char kCalibrationInstruction[] = "calibration_instruction";
 inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 inline constexpr char kPowerwashCount[] = "powerwash_count";
+inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 
 // States that requires daemon to quit and restart when entering.
 inline constexpr std::array<RmadState::StateCase, 1> kQuitDaemonStates = {

@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/executor/udev/mock_udev_device.h"
 #include "rmad/executor/udev/mock_udev_utils.h"
 #include "rmad/metrics/metrics_utils.h"

@@ -17,7 +17,6 @@ inline constexpr char kMetrics[] = "metrics";
 inline constexpr char kFirstSetupTimestamp[] = "first_setup_timestamp";
 inline constexpr char kSetupTimestamp[] = "setup_timestamp";
 inline constexpr char kRunningTime[] = "running_time";
-inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 inline constexpr char kOccurredErrors[] = "occurred_errors";
 inline constexpr char kAdditionalActivities[] = "additional_activities";
 
