@@ -88,12 +88,18 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
   }
 
   if (cr50_utils_->IsFactoryModeEnabled()) {
+    json_store_->SetValue(
+        kWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
     MetricsUtils::SetMetricsValue(
-        json_store_, kWpDisableMethod,
+        json_store_, kMetricsWpDisableMethod,
         WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
   } else {
+    json_store_->SetValue(
+        kWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
     MetricsUtils::SetMetricsValue(
-        json_store_, kWpDisableMethod,
+        json_store_, kMetricsWpDisableMethod,
         WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
   }
   return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);

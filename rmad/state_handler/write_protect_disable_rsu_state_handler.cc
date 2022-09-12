@@ -107,8 +107,10 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // If factory mode is already enabled, we can transition to the next state
   // immediately.
   if (IsFactoryModeEnabled()) {
+    json_store_->SetValue(kWpDisableMethod,
+                          WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
     MetricsUtils::SetMetricsValue(
-        json_store_, kWpDisableMethod,
+        json_store_, kMetricsWpDisableMethod,
         WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
     return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }

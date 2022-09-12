@@ -14,11 +14,18 @@ namespace rmad {
 // JsonStore additional keys for metrics usage.
 inline constexpr char kMetrics[] = "metrics";
 
-inline constexpr char kFirstSetupTimestamp[] = "first_setup_timestamp";
-inline constexpr char kSetupTimestamp[] = "setup_timestamp";
-inline constexpr char kRunningTime[] = "running_time";
-inline constexpr char kOccurredErrors[] = "occurred_errors";
-inline constexpr char kAdditionalActivities[] = "additional_activities";
+inline constexpr char kMetricsFirstSetupTimestamp[] = "first_setup_timestamp";
+inline constexpr char kMetricsSetupTimestamp[] = "setup_timestamp";
+inline constexpr char kMetricsRunningTime[] = "running_time";
+inline constexpr char kMetricsIsComplete[] = "is_complete";
+inline constexpr char kMetricsRoFirmwareVerified[] = "ro_firmware_verified";
+inline constexpr char kMetricsReturningOwner[] = "returning_owner";
+inline constexpr char kMetricsMlbReplacement[] = "mainboard_replacement";
+inline constexpr char kMetricsWpDisableMethod[] = "wp_disable_method";
+
+inline constexpr char kMetricsReplacedComponents[] = "replaced_components";
+inline constexpr char kMetricsOccurredErrors[] = "occurred_errors";
+inline constexpr char kMetricsAdditionalActivities[] = "additional_activities";
 
 // This is a dict of dicts for states store info by |state_case|.
 inline constexpr char kStateMetrics[] = "state_metrics";

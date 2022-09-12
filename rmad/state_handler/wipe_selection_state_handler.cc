@@ -11,7 +11,6 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
-#include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
 namespace rmad {

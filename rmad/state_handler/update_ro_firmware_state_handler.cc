@@ -23,7 +23,6 @@
 #include "rmad/constants.h"
 #include "rmad/executor/udev/udev_device.h"
 #include "rmad/executor/udev/udev_utils.h"
-#include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -198,9 +197,8 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
       firmware_updated) {
     return true;
   }
-  if (bool ro_verified; MetricsUtils::GetMetricsValue(
-                            json_store_, kRoFirmwareVerified, &ro_verified) &&
-                        ro_verified) {
+  if (bool ro_verified;
+      json_store_->GetValue(kRoFirmwareVerified, &ro_verified) && ro_verified) {
     return true;
   }
   return false;

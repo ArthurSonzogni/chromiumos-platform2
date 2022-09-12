@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
-#include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/wipe_selection_state_handler.h"
 #include "rmad/utils/mock_crossystem_utils.h"
@@ -51,14 +50,14 @@ class WipeSelectionStateHandlerTest : public StateHandlerTest {
     WpDisableMethod wp_disable_method;
 
     if (expected_skipped) {
-      EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kWpDisableMethod,
-                                                &wp_disable_method_name));
+      EXPECT_TRUE(
+          json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
       EXPECT_TRUE(
           WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
       EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_SKIPPED);
     } else {
-      EXPECT_FALSE(MetricsUtils::GetMetricsValue(json_store_, kWpDisableMethod,
-                                                 &wp_disable_method_name));
+      EXPECT_FALSE(
+          json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
     }
   }
 };

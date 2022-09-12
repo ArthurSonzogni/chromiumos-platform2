@@ -153,8 +153,14 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   // Check |json_store_|.
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method;
-  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kWpDisableMethod,
-                                            &wp_disable_method_name));
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
+  EXPECT_TRUE(
+      WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
+  EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_RSU);
+
+  // Check if the metrics value set correctly.
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(
+      json_store_, kMetricsWpDisableMethod, &wp_disable_method_name));
   EXPECT_TRUE(
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
   EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_RSU);

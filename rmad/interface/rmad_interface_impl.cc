@@ -215,21 +215,26 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
     }
 
     if (!json_store_->SetValue(kRoFirmwareVerified,
-                               status == RoVerificationStatus::PASS)) {
+                               status == RoVerificationStatus::PASS) ||
+        !MetricsUtils::SetMetricsValue(
+            json_store_, kMetricsRoFirmwareVerified,
+            RoVerification_Name(status == RoVerificationStatus::PASS
+                                    ? RMAD_RO_VERIFICATION_PASS
+                                    : RMAD_RO_VERIFICATION_UNSUPPORTED))) {
       LOG(ERROR) << "Could not store RO firmware verification status";
     }
   }
 
   double current_timestamp = base::Time::Now().ToDoubleT();
-  if (!MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+  if (!MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
                                      current_timestamp)) {
     LOG(ERROR) << "Could not store setup time";
     return false;
   }
   if (double first_setup_time;
-      !MetricsUtils::GetMetricsValue(json_store_, kFirstSetupTimestamp,
+      !MetricsUtils::GetMetricsValue(json_store_, kMetricsFirstSetupTimestamp,
                                      &first_setup_time) &&
-      !MetricsUtils::SetMetricsValue(json_store_, kFirstSetupTimestamp,
+      !MetricsUtils::SetMetricsValue(json_store_, kMetricsFirstSetupTimestamp,
                                      current_timestamp)) {
     LOG(ERROR) << "Could not store first setup time";
     return false;
@@ -609,7 +614,7 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
     RecordBrowserActionMetricCallback callback) {
   std::vector<std::string> additional_activities;
   // Ignore the return value, since it may not have been set yet.
-  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+  MetricsUtils::GetMetricsValue(json_store_, kMetricsAdditionalActivities,
                                 &additional_activities);
 
   // TODO(genechang): Add a table to map all actions to metrics to simplify it.
@@ -624,7 +629,7 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
   }
 
   RecordBrowserActionMetricReply reply;
-  if (MetricsUtils::SetMetricsValue(json_store_, kAdditionalActivities,
+  if (MetricsUtils::SetMetricsValue(json_store_, kMetricsAdditionalActivities,
                                     additional_activities)) {
     reply.set_error(RMAD_ERROR_OK);
   } else {

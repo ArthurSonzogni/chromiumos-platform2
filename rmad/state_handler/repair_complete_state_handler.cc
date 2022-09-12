@@ -119,6 +119,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
             json_store_, GetStateCase(), RmadState::STATE_NOT_SET,
             base::Time::Now().ToDoubleT()) ||
+        !MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true) ||
         !metrics_utils_->Record(json_store_, true)) {
       LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
       // TODO(genechang): We should block here if the metrics library is ready.

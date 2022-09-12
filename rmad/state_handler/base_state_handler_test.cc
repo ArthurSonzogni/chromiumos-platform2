@@ -167,7 +167,8 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
   }
 
   std::vector<std::string> occurred_errors;
-  MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
+  MetricsUtils::GetMetricsValue(json_store_, kMetricsOccurredErrors,
+                                &occurred_errors);
   EXPECT_EQ(occurred_errors, target_occurred_errors);
 
   // TODO(genechang): Refactor and check metrics parsing here.
@@ -205,19 +206,19 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
     if (std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
-      EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
-                                                base::Time::Now().ToDoubleT()));
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsSetupTimestamp, base::Time::Now().ToDoubleT()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
-      MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+      MetricsUtils::GetMetricsValue(json_store_, kMetricsRunningTime,
                                     &pre_running_time);
 
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
 
       double running_time;
-      EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
-                                                &running_time));
+      EXPECT_TRUE(MetricsUtils::GetMetricsValue(
+          json_store_, kMetricsRunningTime, &running_time));
       EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
     } else {
       EXPECT_TRUE(handler->StoreAdditionalActivity(activity));
@@ -229,14 +230,14 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
   }
 
   std::vector<std::string> additional_activities;
-  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+  MetricsUtils::GetMetricsValue(json_store_, kMetricsAdditionalActivities,
                                 &additional_activities);
   EXPECT_EQ(additional_activities, target_additional_activities);
   // TODO(genechang): Refactor and check metrics parsing here.
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_JsonFailed) {
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
                                             base::Time::Now().ToDoubleT()));
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
@@ -289,12 +290,12 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
     if (std::find(kExpectedPowerCycleActivities.begin(),
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
-      EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kSetupTimestamp,
-                                                base::Time::Now().ToDoubleT()));
+      EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsSetupTimestamp, base::Time::Now().ToDoubleT()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
-      MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
+      MetricsUtils::GetMetricsValue(json_store_, kMetricsRunningTime,
                                     &pre_running_time);
 
       BaseStateHandler::GetNextStateCaseReply reply =
@@ -303,8 +304,8 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
       EXPECT_EQ(reply.error, RMAD_ERROR_OK);
 
       double running_time;
-      EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kRunningTime,
-                                                &running_time));
+      EXPECT_TRUE(MetricsUtils::GetMetricsValue(
+          json_store_, kMetricsRunningTime, &running_time));
       EXPECT_EQ(running_time - pre_running_time, kDelayTimeInSec);
     } else {
       BaseStateHandler::GetNextStateCaseReply reply =
@@ -319,12 +320,12 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
   }
 
   std::vector<std::string> additional_activities;
-  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
-                                            &additional_activities));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(
+      json_store_, kMetricsAdditionalActivities, &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);
 
   std::vector<std::string> occurred_errors;
-  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kMetricsOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
   // TODO(genechang): Refactor and check metrics parsing here.
@@ -358,12 +359,13 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_JsonFailed) {
   }
 
   std::vector<std::string> additional_activities;
-  MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
+  MetricsUtils::GetMetricsValue(json_store_, kMetricsAdditionalActivities,
                                 &additional_activities);
   EXPECT_EQ(additional_activities, std::vector<std::string>());
 
   std::vector<std::string> occurred_errors;
-  MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors, &occurred_errors);
+  MetricsUtils::GetMetricsValue(json_store_, kMetricsOccurredErrors,
+                                &occurred_errors);
   EXPECT_EQ(occurred_errors, std::vector<std::string>());
 }
 
@@ -406,12 +408,12 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_RunningTimeFailed) {
   }
 
   std::vector<std::string> additional_activities;
-  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kAdditionalActivities,
-                                            &additional_activities));
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(
+      json_store_, kMetricsAdditionalActivities, &additional_activities));
   EXPECT_EQ(additional_activities, target_additional_activities);
 
   std::vector<std::string> occurred_errors;
-  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kOccurredErrors,
+  EXPECT_TRUE(MetricsUtils::GetMetricsValue(json_store_, kMetricsOccurredErrors,
                                             &occurred_errors));
   EXPECT_EQ(occurred_errors, target_occurred_errors);
   // TODO(genechang): Refactor and check metrics parsing here.

@@ -195,8 +195,8 @@ std::string MetricsUtils::GetMetricsSummaryAsString(
   // store, we need to check here.
   CHECK(metrics.is_dict());
   // Remove timestamps for the entire process.
-  metrics.GetDict().Remove(kFirstSetupTimestamp);
-  metrics.GetDict().Remove(kSetupTimestamp);
+  metrics.GetDict().Remove(kMetricsFirstSetupTimestamp);
+  metrics.GetDict().Remove(kMetricsSetupTimestamp);
 
   // Refine readability of state metrics for better understanding.
   const base::Value* original_state_metrics =

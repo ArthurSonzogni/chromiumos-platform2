@@ -50,7 +50,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   auto report = StructuredShimlessRmaReport();
   double current_timestamp = base::Time::Now().ToDoubleT();
   double first_setup_timestamp;
-  if (!GetMetricsValue(json_store, kFirstSetupTimestamp,
+  if (!GetMetricsValue(json_store, kMetricsFirstSetupTimestamp,
                        &first_setup_timestamp)) {
     LOG(ERROR) << "Failed to get timestamp of the first setup.";
     return false;
@@ -59,8 +59,8 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
       static_cast<int>(current_timestamp - first_setup_timestamp));
 
   double setup_timestamp;
-  if (!GetMetricsValue(json_store, kSetupTimestamp, &setup_timestamp) ||
-      !SetMetricsValue(json_store, kSetupTimestamp, current_timestamp)) {
+  if (!GetMetricsValue(json_store, kMetricsSetupTimestamp, &setup_timestamp) ||
+      !SetMetricsValue(json_store, kMetricsSetupTimestamp, current_timestamp)) {
     LOG(ERROR) << "Failed to get and reset setup timestamp for measuring "
                   "running time.";
     return false;
@@ -68,58 +68,56 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   double running_time = 0.0;
   // It could be the first time we have calculated the running time, thus the
   // return value is ignored.
-  GetMetricsValue(json_store, kRunningTime, &running_time);
+  GetMetricsValue(json_store, kMetricsRunningTime, &running_time);
   running_time += current_timestamp - setup_timestamp;
   report.SetRunningTime(static_cast<int>(running_time));
 
-  report.SetIsComplete(is_complete);
+  if (bool is_complete;
+      GetMetricsValue(json_store, kMetricsIsComplete, &is_complete)) {
+    report.SetIsComplete(is_complete);
+  } else {
+    report.SetIsComplete(false);
+  }
 
-  if (bool is_ro_verified;
-      GetMetricsValue(json_store, kRoFirmwareVerified, &is_ro_verified)) {
-    if (is_ro_verified) {
-      report.SetRoVerification(RMAD_RO_VERIFICATION_PASS);
-    } else {
-      report.SetRoVerification(RMAD_RO_VERIFICATION_UNSUPPORTED);
-    }
+  RoVerification ro_verification;
+  if (std::string ro_verification_str;
+      GetMetricsValue(json_store, kMetricsRoFirmwareVerified,
+                      &ro_verification_str) &&
+      RoVerification_Parse(ro_verification_str, &ro_verification)) {
+    report.SetRoVerification(ro_verification);
   } else {
     report.SetRoVerification(RMAD_RO_VERIFICATION_UNKNOWN);
   }
 
-  ReturningOwner returning_owner = RMAD_RETURNING_OWNER_UNKNOWN;
-  // Ignore the else part and leave it as the default value, because we may
-  // abort earlier than we know it.
-  if (bool is_same_owner; json_store->GetValue(kSameOwner, &is_same_owner)) {
-    if (is_same_owner) {
-      returning_owner = RMAD_RETURNING_OWNER_SAME_OWNER;
-    } else {
-      returning_owner = RMAD_RETURNING_OWNER_DIFFERENT_OWNER;
-    }
+  ReturningOwner returning_owner;
+  if (std::string returning_owner_str;
+      GetMetricsValue(json_store, kMetricsReturningOwner,
+                      &returning_owner_str) &&
+      ReturningOwner_Parse(returning_owner_str, &returning_owner)) {
+    report.SetReturningOwner(returning_owner);
+  } else {
+    report.SetReturningOwner(RMAD_RETURNING_OWNER_UNKNOWN);
   }
-  report.SetReturningOwner(returning_owner);
 
-  MainboardReplacement mlb_replacement = RMAD_MLB_REPLACEMENT_UNKNOWN;
-  // Ignore the else part and leave it as the default value, because we may
-  // abort earlier than we know it.
-  if (bool is_mlb_replaced;
-      json_store->GetValue(kMlbRepair, &is_mlb_replaced)) {
-    if (is_mlb_replaced) {
-      mlb_replacement = RMAD_MLB_REPLACEMENT_REPLACED;
-    } else {
-      mlb_replacement = RMAD_MLB_REPLACEMENT_ORIGINAL;
-    }
+  MainboardReplacement mlb_replacement;
+  if (std::string mlb_replacement_str;
+      GetMetricsValue(json_store, kMetricsMlbReplacement,
+                      &mlb_replacement_str) &&
+      MainboardReplacement_Parse(mlb_replacement_str, &mlb_replacement)) {
+    report.SetMainboardReplacement(mlb_replacement);
+  } else {
+    report.SetMainboardReplacement(RMAD_MLB_REPLACEMENT_UNKNOWN);
   }
-  report.SetMainboardReplacement(mlb_replacement);
 
-  std::string wp_disable_method_name;
-  WpDisableMethod wp_disable_method = RMAD_WP_DISABLE_METHOD_UNKNOWN;
-  // Ignore the else part, because we may not have decided on it.
-  if (GetMetricsValue(json_store, kWpDisableMethod, &wp_disable_method_name)) {
-    if (!WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method)) {
-      LOG(ERROR) << "Failed to parse |wp_disable_method|";
-      return false;
-    }
+  WpDisableMethod wp_disable_method;
+  if (std::string wp_disable_method_str;
+      GetMetricsValue(json_store, kMetricsWpDisableMethod,
+                      &wp_disable_method_str) &&
+      WpDisableMethod_Parse(wp_disable_method_str, &wp_disable_method)) {
+    report.SetWriteProtectDisableMethod(wp_disable_method);
+  } else {
+    report.SetWriteProtectDisableMethod(RMAD_WP_DISABLE_METHOD_UNKNOWN);
   }
-  report.SetWriteProtectDisableMethod(wp_disable_method);
 
   if (record_to_system_ && !report.Record()) {
     LOG(ERROR) << "Failed to record shimless rma report to metrics.";
@@ -133,7 +131,8 @@ bool MetricsUtilsImpl::RecordReplacedComponents(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may not replace anything.
   if (std::vector<std::string> replace_component_names;
-      json_store->GetValue(kReplacedComponentNames, &replace_component_names)) {
+      MetricsUtils::GetMetricsValue(json_store, kMetricsReplacedComponents,
+                                    &replace_component_names)) {
     for (const std::string& component_name : replace_component_names) {
       if (RmadComponent component;
           RmadComponent_Parse(component_name, &component)) {
@@ -157,7 +156,7 @@ bool MetricsUtilsImpl::RecordOccurredErrors(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may have no errors.
   if (std::vector<std::string> occurred_errors;
-      GetMetricsValue(json_store, kOccurredErrors, &occurred_errors)) {
+      GetMetricsValue(json_store, kMetricsOccurredErrors, &occurred_errors)) {
     for (const std::string& occurred_error : occurred_errors) {
       if (RmadErrorCode error_code;
           RmadErrorCode_Parse(occurred_error, &error_code)) {
@@ -181,7 +180,7 @@ bool MetricsUtilsImpl::RecordAdditionalActivities(
     scoped_refptr<JsonStore> json_store) {
   // Ignore the else part, because we may have no additional activities.
   if (std::vector<std::string> additional_activities; GetMetricsValue(
-          json_store, kAdditionalActivities, &additional_activities)) {
+          json_store, kMetricsAdditionalActivities, &additional_activities)) {
     for (std::string activity_name : additional_activities) {
       AdditionalActivity additional_activity;
       if (AdditionalActivity_Parse(activity_name, &additional_activity) &&

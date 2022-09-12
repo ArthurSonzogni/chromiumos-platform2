@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/memory/scoped_refptr.h>
@@ -14,7 +13,6 @@
 #include "rmad/constants.h"
 #include "rmad/executor/udev/mock_udev_device.h"
 #include "rmad/executor/udev/mock_udev_utils.h"
-#include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
@@ -38,8 +36,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateRoFirmwareStateHandler> CreateStateHandler(
       bool ro_verified, int hwwp_status) {
-    MetricsUtils::SetMetricsValue(json_store_, kRoFirmwareVerified,
-                                  ro_verified);
+    json_store_->SetValue(kRoFirmwareVerified, ro_verified);
     // Mock |UdevUtils|.
     auto mock_udev_utils = std::make_unique<NiceMock<MockUdevUtils>>();
     ON_CALL(*mock_udev_utils, EnumerateBlockDevices())

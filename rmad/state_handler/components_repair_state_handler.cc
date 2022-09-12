@@ -235,6 +235,10 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   //    WpDisableMethod state.
   if (state_.components_repair().mainboard_rework()) {
     json_store_->SetValue(kSameOwner, false);
+    MetricsUtils::SetMetricsValue(
+        json_store_, kMetricsReturningOwner,
+        ReturningOwner_Name(
+            ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
     if (cryptohome_client_->IsCcdBlocked()) {
@@ -335,7 +339,15 @@ bool ComponentsRepairStateHandler::StoreVars() const {
 
   bool mlb_repair = state_.components_repair().mainboard_rework();
   return json_store_->SetValue(kReplacedComponentNames, replaced_components) &&
-         json_store_->SetValue(kMlbRepair, mlb_repair);
+         MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
+                                       replaced_components) &&
+         json_store_->SetValue(kMlbRepair, mlb_repair) &&
+         MetricsUtils::SetMetricsValue(
+             json_store_, kMetricsMlbReplacement,
+             MainboardReplacement_Name(
+                 mlb_repair
+                     ? MainboardReplacement::RMAD_MLB_REPLACEMENT_REPLACED
+                     : MainboardReplacement::RMAD_MLB_REPLACEMENT_ORIGINAL));
 }
 
 }  // namespace rmad

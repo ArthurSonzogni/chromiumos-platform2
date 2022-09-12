@@ -82,6 +82,9 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   if (device_destination.destination() ==
       DeviceDestinationState::RMAD_DESTINATION_SAME) {
     json_store_->SetValue(kSameOwner, true);
+    MetricsUtils::SetMetricsValue(
+        json_store_, kMetricsReturningOwner,
+        ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
     if (ReplacedComponentNeedHwwpDisabled()) {
       json_store_->SetValue(kWpDisableRequired, true);
       if (cryptohome_client_->IsCcdBlocked()) {
@@ -100,6 +103,10 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
     }
   } else {
     json_store_->SetValue(kSameOwner, false);
+    MetricsUtils::SetMetricsValue(
+        json_store_, kMetricsReturningOwner,
+        ReturningOwner_Name(
+            ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
     if (cryptohome_client_->IsCcdBlocked()) {

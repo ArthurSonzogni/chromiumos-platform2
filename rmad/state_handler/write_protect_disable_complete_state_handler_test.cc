@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
-#include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
@@ -30,8 +29,7 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
         .WillByDefault(Return(disable_swwp_success));
 
-    EXPECT_TRUE(
-        MetricsUtils::SetMetricsValue(json_store_, kWpDisableMethod,
+    EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod,
                                       WpDisableMethod_Name(wp_disable_method)));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
         json_store_, daemon_callback_, std::move(mock_flashrom_utils));
