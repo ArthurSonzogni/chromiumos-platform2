@@ -488,16 +488,27 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
 hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
   // Poll for kAppl (started) or kSpiNotVer (not started)
   base::ElapsedTimer timer;
+  base::TimeDelta elapsed;
   do {
+    Sleep(kApplSleep);
+
+    // We measure time to the start of the request, not the end when
+    // determining timeouts. If a ReadReg call takes a while because I2C was
+    // down when we started the request and we had to wait for the bus to time
+    // out, then we don't allow that to put us past our timeout until we've
+    // made at least one more request.
+    elapsed = timer.Elapsed();
+
     std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
     if (!status) {
-      // TODO(evanbenn) log a metric
-      OnTransientBootFault(FROM_HERE, "ReadReg failure");
-      return BootResult::kRetry;
+      // While launching the application, the MCU temporarily speeds up its
+      // clocks, which requires reconfiguring its I2C interface. So occasional
+      // errors are nothing to be concerned about. Keep going until we reach
+      // the timeout.
+      continue;
     }
     if (status.value() & R2::kAppl) {
-      VLOG(1) << "Application boot after " << timer.Elapsed().InMilliseconds()
-              << "ms";
+      VLOG(1) << "Application boot after " << elapsed.InMilliseconds() << "ms";
       hps_metrics_->SendHpsTurnOnResult(
           HpsTurnOnResult::kSuccess,
           base::TimeTicks::Now() - this->boot_start_time_);
@@ -506,13 +517,12 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
 
     std::optional<uint16_t> error = this->device_->ReadReg(HpsReg::kError);
     if (!error) {
-      // TODO(evanbenn) log a metric
-      OnTransientBootFault(FROM_HERE, "ReadReg failure");
-      return BootResult::kRetry;
+      // As for status check above.
+      continue;
     }
     if (error.value() == RError::kSpiFlashNotVerified) {
-      VLOG(1) << "SPI verification failed after "
-              << timer.Elapsed().InMilliseconds() << "ms";
+      VLOG(1) << "SPI verification failed after " << elapsed.InMilliseconds()
+              << "ms";
       hps_metrics_->SendHpsTurnOnResult(
           HpsTurnOnResult::kSpiNotVerified,
           base::TimeTicks::Now() - this->boot_start_time_);
@@ -520,9 +530,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
     } else if (error.value()) {
       OnBootFault(FROM_HERE);
     }
-
-    Sleep(kApplSleep);
-  } while (timer.Elapsed() < kApplTimeout);
+  } while (elapsed < kApplTimeout);
 
   hps_metrics_->SendHpsTurnOnResult(
       HpsTurnOnResult::kApplNotStarted,
