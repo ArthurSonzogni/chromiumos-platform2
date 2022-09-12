@@ -17,6 +17,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/profiling/profiling.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <openssl/evp.h>
 
@@ -69,6 +70,9 @@ int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  // Start profiling.
+  hwsec_foundation::SetUpProfiling();
 
   // Read the file before we daemonize so it can be deleted as soon as we exit.
   cryptohome::Platform platform;

@@ -190,6 +190,15 @@ allow cros_cryptohomed self:key {
   write
 };
 
+# Permissions to enable code profiling.
+# Ignoring `cros_stateful_partition` as it is already permitted.
+allow cros_cryptohomed {
+    cros_stateful_partition_unencrypted
+}:dir r_dir_perms;
+
+allow cros_cryptohomed cros_stateful_partition_unencrypted_profraws:dir { rw_dir_perms };
+allow cros_cryptohomed cros_stateful_partition_unencrypted_profraws:file { create rw_file_perms };
+
 allow cros_cryptohomed {
   cros_stateful_partition
   cgroup

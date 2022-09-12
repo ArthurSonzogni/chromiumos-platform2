@@ -123,6 +123,7 @@ executable("cryptohomed") {
   configs += [ ":target_defaults" ]
   libs = [
     "chaps",
+    "hwsec-profiling",
     "keyutils",
     "policy",
     "pthread",
@@ -131,7 +132,6 @@ executable("cryptohomed") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
-
   pkg_deps = [
     "dbus-1",
     "libbootlockbox-client",
