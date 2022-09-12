@@ -17,6 +17,9 @@
 namespace {
 
 constexpr int kMaxNumEntries = 1024;
+constexpr int kTimeoutOverheadInMS = 1000;
+constexpr double kSecond2Millisecond = 1000.0;
+
 constexpr char kIioDevicePathPrefix[] = "/sys/bus/iio/devices/iio:device";
 constexpr char kIioDeviceEntryName[] = "name";
 constexpr char kIioDeviceEntryLocation[] = "location";
@@ -29,6 +32,7 @@ constexpr char kIioParameterChannelsPrefix[] = "--channels=";
 constexpr char kIioParameterFrequencyPrefix[] = "--frequency=";
 constexpr char kIioParameterDeviceIdPrefix[] = "--device_id=";
 constexpr char kIioParameterSamplesPrefix[] = "--samples=";
+constexpr char kIioParameterTimeoutPrefix[] = "--timeout=";
 
 }  // namespace
 
@@ -44,6 +48,8 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
                                       int samples,
                                       std::vector<double>* avg_data,
                                       std::vector<double>* variance) {
+  CHECK_GT(channels.size(), 0);
+  CHECK_GT(samples, 0);
   CHECK(avg_data);
 
   if (!initialized_) {
@@ -57,10 +63,16 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
   }
 
   std::vector<std::string> argv{
-      kIioServiceClientCmdPath, parameter_channels,
+      kIioServiceClientCmdPath,
+      parameter_channels,
       kIioParameterFrequencyPrefix + base::NumberToString(frequency_),
       kIioParameterDeviceIdPrefix + base::NumberToString(id_),
-      kIioParameterSamplesPrefix + base::NumberToString(samples)};
+      kIioParameterSamplesPrefix + base::NumberToString(samples),
+      kIioParameterTimeoutPrefix +
+          base::NumberToString(ceil(kSecond2Millisecond / frequency_) +
+                               kTimeoutOverheadInMS),
+  };
+
   std::string value;
   if (!base::GetAppOutputAndError(argv, &value)) {
     std::string whole_cmd;
