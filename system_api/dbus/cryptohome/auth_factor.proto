@@ -130,6 +130,15 @@ message SmartCardMetadata {
   bytes public_key_spki_der = 1;
 }
 
+message CommonMetadata {
+  // Specifies the version AuthFactor was last updated.
+  // The version number is read from CHROMEOS_RELEASE_VERSION field in
+  // /etc/lsb-release whenever AuthFactor is updated or first persisted.
+  // See:https://chromium.googlesource.com/chromiumos/docs/+/HEAD/os_config.md
+  // For example: "11012.0.2018_08_28_1422" could be returned as part of this.
+  bytes version_last_updated = 1;
+}
+
 // AuthFactor is a backing store for any secret stored on Chrome OS in the USS
 // World. This proto definition is used to communicate with the client side.
 // Once it is received on cryptohome side, this proto definition is converted to
@@ -150,6 +159,10 @@ message AuthFactor {
   // is_active indicates if the AuthFactor can be used for Authenticating
   // AuthFactor.
   bool is_active_for_login = 3;
+
+  // Common metadata that is shared across all types.
+  CommonMetadata common_metadata = 9;
+
   // An AuthFactor could also carry with itself some metadata. Since an
   // AuthFactor could only be one type, oneof is used to define the usage of
   // metadata.
