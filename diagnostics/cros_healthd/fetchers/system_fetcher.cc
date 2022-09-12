@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -17,6 +18,7 @@
 #include <base/system/sys_info.h>
 
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
+#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
@@ -31,18 +33,37 @@ class State {
   State& operator=(const State&) = delete;
   ~State();
 
-  void FetchBootMode(mojom::SystemInfoPtr system_info,
-                     const base::FilePath& root_dir,
-                     FetchSystemInfoCallback callback);
-
-  bool FetchOsInfoWithoutBootMode(mojom::OsInfoPtr* out_os_info,
-                                  mojom::ProbeErrorPtr* out_error);
+  static void Fetch(Context* context, FetchSystemInfoCallback callback);
 
  private:
+  bool FetchCachedVpdInfo();
+
+  bool FetchDmiInfo();
+
+  bool GetLsbReleaseValue(const std::string& field, std::string& out_str);
+
+  bool FetchOsVersion(mojom::OsVersionPtr& os_version);
+
+  void FetchBootMode(mojom::BootMode& boot_mode);
+
+  bool FetchOsInfo();
+
+  void HandleSecureBootResponse(const std::string& content);
+
+  // Sets the error to be reported.
+  void SetError(mojom::ErrorType type, const std::string& message);
+
+  // Sends the result. If error is set it will be sent. Otherwise, sends the
+  // |info_| as the result.
+  void HandleResult(FetchSystemInfoCallback callback, bool success);
+
   Context* const context_;
+  mojom::SystemInfoPtr info_;
+  mojom::ProbeErrorPtr error_;
 };
 
-State::State(Context* context) : context_(context) {}
+State::State(Context* context)
+    : context_(context), info_(mojom::SystemInfo::New()) {}
 
 State::~State() = default;
 
@@ -51,14 +72,12 @@ State::~State() = default;
 // result, a missing DMI file does not indicate a ProbeError. A ProbeError is
 // reported when the "chassis_type" field cannot be successfully parsed into an
 // unsigned integer.
-bool FetchDmiInfo(const base::FilePath& root_dir,
-                  mojom::DmiInfoPtr* out_dmi_info,
-                  mojom::ProbeErrorPtr* out_error) {
-  const auto& dmi_path = root_dir.Append(kRelativePathDmiInfo);
-  // If dmi path doesn't exist, the device doesn't support dmi at all. It is
-  // considered as successful.
+bool State::FetchDmiInfo() {
+  const auto& dmi_path = context_->root_dir().Append(kRelativePathDmiInfo);
+  // If dmi path doesn't exist, the device doesn't support dmi at
+  // all. It is considered as successful.
   if (!base::DirectoryExists(dmi_path)) {
-    *out_dmi_info = nullptr;
+    info_->dmi_info = nullptr;
     return true;
   }
 
@@ -83,188 +102,186 @@ bool FetchDmiInfo(const base::FilePath& root_dir,
     if (base::StringToUint64(chassis_type_str, &chassis_type)) {
       dmi_info->chassis_type = mojom::NullableUint64::New(chassis_type);
     } else {
-      *out_error = CreateAndLogProbeError(
-          mojom::ErrorType::kParseError,
-          base::StringPrintf("Failed to convert chassis_type: %s",
-                             chassis_type_str.c_str()));
+      SetError(mojom::ErrorType::kParseError,
+               base::StringPrintf("Failed to convert chassis_type: %s",
+                                  chassis_type_str.c_str()));
       return false;
     }
   }
 
-  *out_dmi_info = std::move(dmi_info);
+  info_->dmi_info = std::move(dmi_info);
   return true;
 }
 
-bool FetchCachedVpdInfo(const base::FilePath& root_dir,
-                        bool has_sku_number,
-                        mojom::VpdInfoPtr* out_vpd_info,
-                        mojom::ProbeErrorPtr* out_error) {
+bool State::FetchCachedVpdInfo() {
   auto vpd_info = mojom::VpdInfo::New();
 
-  const auto ro_path = root_dir.Append(kRelativePathVpdRo);
+  const auto ro_path = context_->root_dir().Append(kRelativePathVpdRo);
   ReadAndTrimString(ro_path, kFileNameMfgDate, &vpd_info->mfg_date);
   ReadAndTrimString(ro_path, kFileNameModelName, &vpd_info->model_name);
   ReadAndTrimString(ro_path, kFileNameRegion, &vpd_info->region);
   ReadAndTrimString(ro_path, kFileNameSerialNumber, &vpd_info->serial_number);
-  if (has_sku_number &&
+  if (context_->system_config()->HasSkuNumber() &&
       !ReadAndTrimString(ro_path, kFileNameSkuNumber, &vpd_info->sku_number)) {
-    *out_error = CreateAndLogProbeError(
-        mojom::ErrorType::kFileReadError,
-        base::StringPrintf("Unable to read VPD file \"%s\" at path: %s",
-                           kFileNameSkuNumber, ro_path.value().c_str()));
+    SetError(mojom::ErrorType::kFileReadError,
+             base::StringPrintf("Unable to read VPD file \"%s\" at path: %s",
+                                kFileNameSkuNumber, ro_path.value().c_str()));
     return false;
   }
 
-  const auto rw_path = root_dir.Append(kRelativePathVpdRw);
+  const auto rw_path = context_->root_dir().Append(kRelativePathVpdRw);
   ReadAndTrimString(rw_path, kFileNameActivateDate, &vpd_info->activate_date);
 
   if (!base::DirectoryExists(ro_path) && !base::DirectoryExists(rw_path)) {
-    // If both the ro and rw path don't exist, sets the whole vpd_info to
-    // nullptr. This indicates that the vpd doesn't exist on this platform. It
-    // is considered as successful.
-    *out_vpd_info = nullptr;
+    // If both the ro and rw path don't exist, sets the whole
+    // vpd_info to nullptr. This indicates that the vpd doesn't
+    // exist on this platform. It is considered as successful.
+    info_->vpd_info = nullptr;
   } else {
-    *out_vpd_info = std::move(vpd_info);
+    info_->vpd_info = std::move(vpd_info);
   }
   return true;
 }
 
-bool GetLsbReleaseValue(const std::string& field,
-                        std::string* out_str,
-                        mojom::ProbeErrorPtr* out_error) {
-  if (base::SysInfo::GetLsbReleaseValue(field, out_str))
+bool State::GetLsbReleaseValue(const std::string& field, std::string& out_str) {
+  if (base::SysInfo::GetLsbReleaseValue(field, &out_str))
     return true;
 
-  *out_error = CreateAndLogProbeError(
-      mojom::ErrorType::kFileReadError,
-      base::StringPrintf("Unable to read %s from /etc/lsb-release",
-                         field.c_str()));
+  SetError(mojom::ErrorType::kFileReadError,
+           base::StringPrintf("Unable to read %s from /etc/lsb-release",
+                              field.c_str()));
   return false;
 }
 
-bool FetchOsVersion(mojom::OsVersionPtr* out_os_version,
-                    mojom::ProbeErrorPtr* out_error) {
-  auto os_version = mojom::OsVersion::New();
+bool State::FetchOsVersion(mojom::OsVersionPtr& os_version) {
+  os_version = mojom::OsVersion::New();
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
-                          &os_version->release_milestone, out_error))
+                          os_version->release_milestone)) {
     return false;
+  }
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
-                          &os_version->build_number, out_error))
+                          os_version->build_number)) {
     return false;
+  }
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
-                          &os_version->patch_number, out_error))
+                          os_version->patch_number)) {
     return false;
+  }
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                          &os_version->release_channel, out_error))
+                          os_version->release_channel)) {
     return false;
-  *out_os_version = std::move(os_version);
+  }
   return true;
 }
 
-bool IsUEFISecureBoot(const std::string& s) {
-  if (s.size() != 5) {
-    LOG(ERROR) << "Expected 5 bytes from UEFISecureBoot variable, but got "
-               << s.size() << " bytes.";
-    return false;
-  }
-  // The first four bytes are the "attributes" of the variable.
-  // The last byte indicates the secure boot state.
-  switch (s.back()) {
-    case '\x00':
-      return false;
-    case '\x01':
-      return true;
-    default:
-      LOG(ERROR) << "Unexpected secure boot value: " << (uint32_t)(s.back());
-      return false;
-  }
-}
-
-void HandleSecureBootResponse(FetchSystemInfoCallback callback,
-                              mojom::SystemInfoPtr system_info,
-                              const std::string& content) {
-  DCHECK(system_info);
-
-  system_info->os_info->boot_mode = !IsUEFISecureBoot(content)
-                                        ? mojom::BootMode::kCrosEfi
-                                        : mojom::BootMode::kCrosEfiSecure;
-
-  std::move(callback).Run(
-      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
-}
-
-void State::FetchBootMode(mojom::SystemInfoPtr system_info,
-                          const base::FilePath& root_dir,
-                          FetchSystemInfoCallback callback) {
-  mojom::BootMode* boot_mode = &system_info->os_info->boot_mode;
-  // default unknown if there's no match
-  *boot_mode = mojom::BootMode::kUnknown;
+void State::FetchBootMode(mojom::BootMode& boot_mode) {
+  // Default to unknown if there's no match.
+  boot_mode = mojom::BootMode::kUnknown;
 
   std::string cmdline;
-  const auto path = root_dir.Append(kFilePathProcCmdline);
-  if (!ReadAndTrimString(path, &cmdline)) {
-    std::move(callback).Run(
-        mojom::SystemResult::NewSystemInfo(std::move(system_info)));
+  const auto path = context_->root_dir().Append(kFilePathProcCmdline);
+  if (!ReadAndTrimString(path, &cmdline))
     return;
-  }
 
   auto tokens = base::SplitString(cmdline, " ", base::TRIM_WHITESPACE,
                                   base::SPLIT_WANT_NONEMPTY);
   for (const auto& token : tokens) {
     if (token == "cros_secure") {
-      *boot_mode = mojom::BootMode::kCrosSecure;
+      boot_mode = mojom::BootMode::kCrosSecure;
       break;
     }
     if (token == "cros_efi") {
-      context_->executor()->GetUEFISecureBootContent(
-          base::BindOnce(&HandleSecureBootResponse, std::move(callback),
-                         std::move(system_info)));
+      boot_mode = mojom::BootMode::kCrosEfi;
       return;
     }
     if (token == "cros_legacy") {
-      *boot_mode = mojom::BootMode::kCrosLegacy;
+      boot_mode = mojom::BootMode::kCrosLegacy;
       break;
     }
   }
-
-  std::move(callback).Run(
-      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
-bool State::FetchOsInfoWithoutBootMode(mojom::OsInfoPtr* out_os_info,
-                                       mojom::ProbeErrorPtr* out_error) {
+bool State::FetchOsInfo() {
   auto os_info = mojom::OsInfo::New();
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
   os_info->oem_name = context_->system_config()->GetOemName();
-  if (!FetchOsVersion(&os_info->os_version, out_error))
+  if (!FetchOsVersion(os_info->os_version))
     return false;
-  *out_os_info = std::move(os_info);
+  FetchBootMode(os_info->boot_mode);
+
+  info_->os_info = std::move(os_info);
   return true;
+}
+
+bool IsUEFISecureBoot(const std::string& content) {
+  if (content.size() != 5) {
+    LOG(ERROR) << "Expected 5 bytes from UEFISecureBoot "
+                  "variable, but got "
+               << content.size() << " bytes.";
+    return false;
+  }
+  // The first four bytes are the "attributes" of the variable.
+  // The last byte indicates the secure boot state.
+  switch (content.back()) {
+    case '\x00':
+      return false;
+    case '\x01':
+      return true;
+    default:
+      LOG(ERROR) << "Unexpected secure boot value: "
+                 << (uint32_t)(content.back());
+      return false;
+  }
+}
+
+void State::HandleSecureBootResponse(const std::string& content) {
+  DCHECK_EQ(info_->os_info->boot_mode, mojom::BootMode::kCrosEfi);
+  if (IsUEFISecureBoot(content))
+    info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
+}
+
+void State::SetError(mojom::ErrorType type, const std::string& message) {
+  LOG(ERROR) << message;
+  // Ignore the error if there is already an error to be returned.
+  if (!error_)
+    error_ = mojom::ProbeError::New(type, message);
+}
+
+void State::HandleResult(FetchSystemInfoCallback callback, bool success) {
+  if (!success) {
+    SetError(mojom::ErrorType::kServiceUnavailable,
+             "Some async task cannot be finish.");
+  }
+
+  std::move(callback).Run(
+      error_ ? mojom::SystemResult::NewError(std::move(error_))
+             : mojom::SystemResult::NewSystemInfo(std::move(info_)));
+}
+
+// static
+void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
+  auto state = std::make_unique<State>(context);
+  State* state_ptr = state.get();
+  CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
+                                         std::move(callback))};
+
+  if (!state_ptr->FetchCachedVpdInfo() || !state_ptr->FetchDmiInfo() ||
+      !state_ptr->FetchOsInfo())
+    return;
+
+  // `base::Unretained` is safe because `state` is hold by CallbackBarrier.
+  if (state_ptr->info_->os_info->boot_mode == mojom::BootMode::kCrosEfi) {
+    state_ptr->context_->executor()->GetUEFISecureBootContent(
+        barrier.Depend(base::BindOnce(&State::HandleSecureBootResponse,
+                                      base::Unretained(state_ptr))));
+  }
 }
 
 }  // namespace
 
 void FetchSystemInfo(Context* context, FetchSystemInfoCallback callback) {
-  auto state = std::make_unique<State>(context);
-  const auto& root_dir = context->root_dir();
-  mojom::ProbeErrorPtr error;
-  auto system_info = mojom::SystemInfo::New();
-
-  auto& vpd_info = system_info->vpd_info;
-  auto& dmi_info = system_info->dmi_info;
-  auto& os_info = system_info->os_info;
-  if (!FetchCachedVpdInfo(root_dir, context->system_config()->HasSkuNumber(),
-                          &vpd_info, &error) ||
-      !FetchDmiInfo(root_dir, &dmi_info, &error) ||
-      !state->FetchOsInfoWithoutBootMode(&os_info, &error)) {
-    std::move(callback).Run(mojom::SystemResult::NewError(std::move(error)));
-    return;
-  }
-
-  // os_info.boot_mode requires ipc with executor, handle separately
-  state->FetchBootMode(std::move(system_info), context->root_dir(),
-                       std::move(callback));
+  State::Fetch(context, std::move(callback));
 }
 
 }  // namespace diagnostics

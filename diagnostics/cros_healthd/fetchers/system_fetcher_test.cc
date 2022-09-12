@@ -366,17 +366,11 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x01", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
-}
 
-// Test that the executor fails to read UEFISecureBoot file content and returns
-// kCrosEfi as default value
-TEST_F(SystemUtilsTest, TestUEFISecureBootFailure) {
+  // Test that the executor fails to read UEFISecureBoot file content and
+  // returns kCrosEfi as default value
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
-      .WillOnce(WithArg<0>(Invoke(
-          [](mojom::Executor::GetUEFISecureBootContentCallback callback) {
-            std::move(callback).Run("");
-          })));
+  SetUEFISecureBootResponse("");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }
