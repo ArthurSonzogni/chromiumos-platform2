@@ -4985,6 +4985,19 @@ void UserDataAuth::ListAuthFactors(
       }
     }
   } else if (is_ephemeral_user) {
+    // Use the credential verifier for the session to determine what types of
+    // factors are configured.
+    if (user_session) {
+      if (CredentialVerifier* verifier =
+              user_session->GetCredentialVerifier()) {
+        if (auto proto_factor = GetAuthFactorProto(
+                verifier->auth_factor_metadata(), verifier->auth_factor_type(),
+                verifier->auth_factor_label())) {
+          *reply.add_configured_auth_factors() = std::move(*proto_factor);
+        }
+      }
+    }
+
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
     for (int raw_type = user_data_auth::AuthFactorType_MIN;

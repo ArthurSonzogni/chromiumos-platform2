@@ -60,6 +60,7 @@
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/protobuf_test_utils.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
@@ -4491,11 +4492,13 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeral) {
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*session_, GetCredentialVerifier())
+      .WillRepeatedly(Return(nullptr));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -4514,6 +4517,40 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeral) {
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
+  // Add a mount (and user session) for the ephemeral user.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
+  ScryptVerifier verifier("password-label");
+  EXPECT_CALL(*session_, GetCredentialVerifier())
+      .WillRepeatedly(Return(&verifier));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  user_data_auth::ListAuthFactorsReply list_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ListAuthFactors(
+        list_request,
+        base::BindOnce(
+            [](user_data_auth::ListAuthFactorsReply* list_reply_ptr,
+               const user_data_auth::ListAuthFactorsReply& reply) {
+              *list_reply_ptr = reply;
+            },
+            base::Unretained(&list_reply)));
+  }
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_EQ(list_reply.configured_auth_factors_size(), 1);
+  EXPECT_EQ(list_reply.configured_auth_factors(0).type(),
+            user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
