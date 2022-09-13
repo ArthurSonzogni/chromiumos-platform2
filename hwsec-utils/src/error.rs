@@ -12,8 +12,11 @@ pub enum HwsecError {
     Tpm2ResponseBadFormatError,
     GsctoolError(i32),
     GsctoolResponseBadFormatError,
+    MetricsClientFailureError(String),
     CommandRunnerError,
     SyslogError,
+    FileError(String),
+    SystemTimeError,
     InternalError,
 }
 
@@ -27,8 +30,13 @@ impl Display for HwsecError {
                 write!(f, "GsctoolError - Error code : {}", err_code)
             }
             HwsecError::GsctoolResponseBadFormatError => write!(f, "GsctoolResponseBadFormatError"),
+            HwsecError::MetricsClientFailureError(err_msg) => {
+                write!(f, "MetricsClientFailureError: {}", err_msg)
+            }
             HwsecError::CommandRunnerError => write!(f, "CommandRunnerError"),
             HwsecError::SyslogError => write!(f, "SyslogError"),
+            HwsecError::FileError(err_msg) => write!(f, "FileError: {}", err_msg),
+            HwsecError::SystemTimeError => write!(f, "SystemTimeError"),
             HwsecError::InternalError => write!(f, "InternalError"),
         }
     }
