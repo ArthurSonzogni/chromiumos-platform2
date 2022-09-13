@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/unguessable_token.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"

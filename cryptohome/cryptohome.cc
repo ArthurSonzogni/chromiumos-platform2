@@ -39,6 +39,7 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

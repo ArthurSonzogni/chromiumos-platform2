@@ -19,6 +19,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"

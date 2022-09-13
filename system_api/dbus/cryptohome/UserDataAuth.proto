@@ -711,20 +711,6 @@ enum AuthSessionFlags {
   reserved 1;
 }
 
-// An intent specifies the set of operations that can be performed after
-// successfully authenticating an Auth Session.
-enum AuthIntent {
-  // Default value.
-  AUTH_INTENT_UNSPECIFIED = 0;
-  // Intent to decrypt the user's file system keys. Authorizing for this intent
-  // allows all privileged operations, e.g., preparing user's vault,
-  // adding/updating/removing factors.
-  AUTH_INTENT_DECRYPT = 1;
-  // Intent to simply check whether the authentication succeeds. Authorizing for
-  // this intent doesn't allow any privileged operation.
-  AUTH_INTENT_VERIFY_ONLY = 2;
-}
-
 message StartAuthSessionRequest {
   // The account of the user whose home directory is requested for mounting.
   cryptohome.AccountIdentifier account_id = 1;

@@ -47,6 +47,20 @@ enum SmartCardSignatureAlgorithm {
   CHALLENGE_RSASSA_PKCS1_V1_5_SHA512 = 4;
 }
 
+// An intent specifies the set of operations that can be performed after
+// successfully authenticating an Auth Session.
+enum AuthIntent {
+  // Default value.
+  AUTH_INTENT_UNSPECIFIED = 0;
+  // Intent to decrypt the user's file system keys. Authorizing for this intent
+  // allows all privileged operations, e.g., preparing user's vault,
+  // adding/updating/removing factors.
+  AUTH_INTENT_DECRYPT = 1;
+  // Intent to simply check whether the authentication succeeds. Authorizing for
+  // this intent doesn't allow any privileged operation.
+  AUTH_INTENT_VERIFY_ONLY = 2;
+}
+
 // Password AuthFactor requires a secret to be passed for derivation and
 // creation of key.
 message PasswordAuthInput {
@@ -156,12 +170,12 @@ message AuthFactor {
   // only consisting of characters from the set {a-z, A-Z, 0-9, _, -}, and whose
   // length doesn't exceed 1000.
   string label = 2;
-  // is_active indicates if the AuthFactor can be used for Authenticating
-  // AuthFactor.
-  bool is_active_for_login = 3;
-
   // Common metadata that is shared across all types.
   CommonMetadata common_metadata = 9;
+  // Indicates if the AuthFactor can be used for light or full
+  // authentication. Gives the set of possible actions after
+  // authentication.
+  repeated AuthIntent supported_intents = 10;
 
   // An AuthFactor could also carry with itself some metadata. Since an
   // AuthFactor could only be one type, oneof is used to define the usage of
@@ -173,4 +187,6 @@ message AuthFactor {
     KioskMetadata kiosk_metadata = 7;
     SmartCardMetadata smart_card_metadata = 8;
   }
+
+  reserved 3;
 }
