@@ -39,7 +39,9 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 
-  context_ = Context::Create(std::move(endpoint), std::move(udev_monitor));
+  context_ = Context::Create(
+      std::move(endpoint), std::move(udev_monitor),
+      base::BindOnce(&CrosHealthd::Quit, base::Unretained(this)));
   CHECK(context_) << "Failed to initialize context.";
 
   fetch_aggregator_ = std::make_unique<FetchAggregator>(context_.get());
@@ -131,29 +133,9 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
       chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
       receiver;
   if (is_chrome) {
-    LOG(INFO) << "Bootstrap from chrome through dbus";
-    if (mojo_service_bind_attempted_) {
-      // This should not normally be triggered, since the other endpoint - the
-      // browser process - should bootstrap the Mojo connection only once, and
-      // when that process is killed the Mojo shutdown notification should have
-      // been received earlier. But handle this case to be on the safe side.
-      // After we restart, the browser process is expected to invoke the
-      // bootstrapping again.
-      ShutDownDueToMojoError(
-          "Repeated Mojo bootstrap request received" /* debug_reason */);
-      // It doesn't matter what we return here, this is just to satisfy the
-      // compiler. ShutDownDueToMojoError will kill cros_healthd.
-      return "";
-    }
-
-    // Connect to mojo in the requesting process.
-    mojo::IncomingInvitation invitation =
-        mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
-            mojo::PlatformHandle(std::move(mojo_fd_copy))));
-    receiver = mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
-        invitation.ExtractMessagePipe(kCrosHealthdMojoConnectionChannelToken));
-    mojo_service_bind_attempted_ = true;
+    LOG(ERROR) << "Cannot bootstrap from chrome through dbus because service "
+                  "manager is used.";
+    return "";
   } else {
     // Create a unique token which will allow the requesting process to connect
     // to us via mojo.
@@ -205,27 +187,17 @@ void CrosHealthd::GetSystemService(
 
 void CrosHealthd::SendNetworkHealthService(
     mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
-        remote) {
-  context_->network_health_adapter()->SetServiceRemote(std::move(remote));
-}
+        remote) {}
 
 void CrosHealthd::SendNetworkDiagnosticsRoutines(
     mojo::PendingRemote<
         chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
-        network_diagnostics_routines) {
-  context_->network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
-      std::move(network_diagnostics_routines));
-}
+        network_diagnostics_routines) {}
 
 void CrosHealthd::SendChromiumDataCollector(
     mojo::PendingRemote<
         chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
-        remote) {
-  // TODO(b/230064284): Remove this after migrate to service manager.
-  static_cast<MojoServiceImpl*>(context_->mojo_service())
-      ->chromium_data_collector_relay()
-      .Bind(std::move(remote));
-}
+        remote) {}
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
   // Our daemon has to be restarted to be prepared for future Mojo connection

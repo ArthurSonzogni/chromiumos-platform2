@@ -63,6 +63,8 @@ void ConfigureAndEnterMinijail() {
   minijail_mount_with_data(jail.get(), "tmpfs", "/run", "tmpfs", 0, "");
   minijail_bind(jail.get(), "/run/dbus", "/run/dbus",
                 0);  // Shared socket file for talking to the D-Bus daemon.
+  minijail_bind(jail.get(), "/run/mojo", "/run/mojo",
+                0);  // The socket file for the mojo service manager.
   minijail_bind(jail.get(), "/run/chromeos-config/v1",
                 "/run/chromeos-config/v1",
                 0);  // Needed for access to chromeos-config.

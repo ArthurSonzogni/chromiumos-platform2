@@ -23,6 +23,7 @@ NetworkDiagnosticsAdapterImpl::~NetworkDiagnosticsAdapterImpl() = default;
 void NetworkDiagnosticsAdapterImpl::SetNetworkDiagnosticsRoutines(
     mojo::PendingRemote<network_diagnostics_ipc::NetworkDiagnosticsRoutines>
         network_diagnostics_routines) {
+  network_diagnostics_routines_.reset();
   network_diagnostics_routines_.Bind(std::move(network_diagnostics_routines));
 }
 

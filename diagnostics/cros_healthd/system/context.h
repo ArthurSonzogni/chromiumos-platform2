@@ -65,7 +65,8 @@ class Context {
 
   static std::unique_ptr<Context> Create(
       mojo::PlatformChannelEndpoint executor_endpoint,
-      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
+      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+      base::OnceClosure shutdown_callback);
 
   // Creates an object for accessing |LibdrmUtil| interface.
   virtual std::unique_ptr<LibdrmUtil> CreateLibdrmUtil();

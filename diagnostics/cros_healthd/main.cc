@@ -18,7 +18,6 @@
 #include "diagnostics/cros_healthd/cros_healthd.h"
 #include "diagnostics/cros_healthd/executor/executor_daemon.h"
 #include "diagnostics/cros_healthd/minijail/minijail_configuration.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace {
 void SetVerbosityLevel(uint32_t verbosity_level) {

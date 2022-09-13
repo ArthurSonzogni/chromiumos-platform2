@@ -504,6 +504,7 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("mojo_service_manager")) {
     builder->AddArg("--disable-mojo-broker");
     builder->AddArg("--ash-use-cros-mojo-service-manager");
+    builder->AddArg("--cros-healthd-uses-service-manager");
   }
 
   SetUpOsInstallFlags(builder);

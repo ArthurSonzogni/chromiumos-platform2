@@ -37,6 +37,14 @@ class MojoService {
   // Returns the mojo interface to ChromiumDataCollector.
   virtual chromeos::cros_healthd::internal::mojom::ChromiumDataCollector*
   GetChromiumDataCollector() = 0;
+
+  // Returns the mojo interface to NetworkHealthService.
+  virtual chromeos::network_health::mojom::NetworkHealthService*
+  GetNetworkHealth() = 0;
+
+  // Returns the mojo interface to NetworkDiagnosticsRoutines.
+  virtual chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
+  GetNetworkDiagnosticsRoutines() = 0;
 };
 
 }  // namespace diagnostics

@@ -25,10 +25,11 @@
 #include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
+
+class Context;
 
 // Daemon class for cros_healthd.
 class CrosHealthd final
@@ -134,9 +135,6 @@ class CrosHealthd final
   mojo::ReceiverSet<
       chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       diagnostics_receiver_set_;
-  // Whether receiver of the Mojo service was attempted. This flag is needed for
-  // detecting repeated Mojo bootstrapping attempts.
-  bool mojo_service_bind_attempted_ = false;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus
   // object exposed by the cros_healthd daemon.

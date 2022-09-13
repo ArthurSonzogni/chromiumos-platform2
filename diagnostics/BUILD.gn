@@ -11,6 +11,7 @@ group("all") {
     ":diagnostics_seccomp",
     ":install_dbus_config",
     ":install_init_config",
+    ":install_service_manager_policy_config",
     ":install_tmpfiles_config",
     "//diagnostics/cros_health_tool:cros-health-tool",
     "//diagnostics/cros_healthd:cros_healthd",
@@ -115,4 +116,9 @@ install_config("install_init_config") {
 install_config("install_tmpfiles_config") {
   sources = [ "init/tmpfiles.d/cros_healthd.conf" ]
   install_path = "/usr/lib/tmpfiles.d/on-demand"
+}
+
+install_config("install_service_manager_policy_config") {
+  sources = [ "init/mojo/cros_healthd.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }

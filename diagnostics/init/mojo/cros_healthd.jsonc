@@ -1,0 +1,20 @@
+[
+  // Policy of cros_healthd for mojo service manager.
+  {
+    "identity": "u:r:cros_healthd:s0",
+    "own": [
+      "CrosHealthdDiagnostics",
+      "CrosHealthdEvent",
+      "CrosHealthdProbe",
+      "CrosHealthdSystem"
+    ]
+  },
+  {
+    "identity": "u:r:cros_browser:s0",
+    "request": [
+      "CrosHealthdDiagnostics",
+      "CrosHealthdEvent",
+      "CrosHealthdProbe"
+    ]
+  }
+]

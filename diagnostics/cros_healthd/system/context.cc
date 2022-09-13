@@ -56,16 +56,13 @@ Context::~Context() = default;
 
 std::unique_ptr<Context> Context::Create(
     mojo::PlatformChannelEndpoint executor_endpoint,
-    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor) {
+    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+    base::OnceClosure shutdown_callback) {
   std::unique_ptr<Context> context(new Context());
 
   // Initiailize static member
   context->root_dir_ = base::FilePath("/");
   context->udev_monitor_ = std::move(udev_monitor);
-
-  // Connect to the root-level executor.
-  context->executor_.Bind(
-      SendInvitationAndConnectToExecutor(std::move(executor_endpoint)));
 
   // Initialize the D-Bus connection.
   auto dbus_bus = context->connection_.Connect();
@@ -91,11 +88,19 @@ std::unique_ptr<Context> Context::Create(
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
-  context->mojo_service_ = MojoServiceImpl::Create();
   context->network_health_adapter_ =
       std::make_unique<NetworkHealthAdapterImpl>();
   context->network_diagnostics_adapter_ =
       std::make_unique<NetworkDiagnosticsAdapterImpl>();
+  context->mojo_service_ = MojoServiceImpl::Create(
+      std::move(shutdown_callback), context->network_health_adapter_.get(),
+      context->network_diagnostics_adapter_.get());
+
+  // Connect to the root-level executor. Must after creating mojo services
+  // because we need to wait the mojo broker (the service manager) being
+  // connected.
+  context->executor_.Bind(
+      SendInvitationAndConnectToExecutor(std::move(executor_endpoint)));
 
   // Create others.
   context->cros_config_ = std::make_unique<brillo::CrosConfig>();
