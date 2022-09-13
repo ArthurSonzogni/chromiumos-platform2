@@ -1,4 +1,4 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2021 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -92,9 +92,12 @@ class StorageQueueTest
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     dm_token_ = testing::get<1>(GetParam());
     options_.set_directory(base::FilePath(location_.GetPath()));
-    // Disallow uploads unless other expectation is set (any later EXPECT_CALL
-    // will take precedence over this one).
-    EXPECT_CALL(set_mock_uploader_expectations_, Call(_)).Times(0);
+    // Turn uploads to no-ops unless other expectation is set (any later
+    // EXPECT_CALL will take precedence over this one).
+    EXPECT_CALL(set_mock_uploader_expectations_, Call(_))
+        .WillRepeatedly(Invoke([this](UploaderInterface::UploadReason reason) {
+          return TestUploader::SetUpDummy(this);
+        }));
   }
 
   void TearDown() override {
@@ -141,8 +144,8 @@ class StorageQueueTest
   // the main test thread.
   class SequenceBoundUpload {
    public:
-    explicit SequenceBoundUpload(const MockUpload* mock_upload)
-        : mock_upload_(mock_upload) {
+    explicit SequenceBoundUpload(std::unique_ptr<const MockUpload> mock_upload)
+        : mock_upload_(std::move(mock_upload)) {
       DETACH_FROM_SEQUENCE(scoped_checker_);
       upload_progress_.assign("\nStart\n");
     }
@@ -229,7 +232,7 @@ class StorageQueueTest
     }
 
    private:
-    const MockUpload* const mock_upload_;
+    const std::unique_ptr<const MockUpload> mock_upload_;
 
     SEQUENCE_CHECKER(scoped_checker_);
 
@@ -362,8 +365,13 @@ class StorageQueueTest
         : uploader_id_(next_uploader_id.fetch_add(1)),
           last_upload_generation_id_(&self->last_upload_generation_id_),
           last_record_digest_map_(&self->last_record_digest_map_),
-          mock_upload_(&self->mock_upload_),
-          sequence_bound_upload_(self->main_task_runner_, &self->mock_upload_) {
+          // Allocate MockUpload as raw pointer and immediately wrap it in
+          // unique_ptr and pass to SequenceBoundUpload to own.
+          // MockUpload outlives TestUploader and is destructed together with
+          // SequenceBoundUpload (on a sequenced task runner).
+          mock_upload_(new ::testing::NiceMock<const MockUpload>()),
+          sequence_bound_upload_(self->main_task_runner_,
+                                 base::WrapUnique(mock_upload_)) {
       DETACH_FROM_SEQUENCE(test_uploader_checker_);
     }
 
@@ -439,6 +447,34 @@ class StorageQueueTest
       DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
       sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadComplete)
           .WithArgs(uploader_id_, status);
+    }
+
+    // Helper method for setting up dummy mock uploader expectations.
+    // To be used only for uploads that we want to just ignore and do not care
+    // about their outcome.
+    static std::unique_ptr<TestUploader> SetUpDummy(StorageQueueTest* self) {
+      auto uploader = std::make_unique<TestUploader>(self);
+      // Any Record, RecordFailure of Gap could be encountered, and
+      // returning false will cut the upload short.
+      EXPECT_CALL(*uploader->mock_upload_,
+                  UploadRecord(Eq(uploader->uploader_id_), _, _))
+          .InSequence(uploader->test_upload_sequence_)
+          .WillRepeatedly(Return(false));
+      EXPECT_CALL(*uploader->mock_upload_,
+                  UploadRecordFailure(Eq(uploader->uploader_id_), _, _))
+          .InSequence(uploader->test_upload_sequence_)
+          .WillRepeatedly(Return(false));
+      EXPECT_CALL(*uploader->mock_upload_,
+                  UploadGap(Eq(uploader->uploader_id_), _, _))
+          .InSequence(uploader->test_upload_sequence_)
+          .WillRepeatedly(Return(false));
+      // Complete will always happen last (whether records/gaps were
+      // encountered or not).
+      EXPECT_CALL(*uploader->mock_upload_,
+                  UploadComplete(Eq(uploader->uploader_id_), _))
+          .InSequence(uploader->test_upload_sequence_)
+          .Times(1);
+      return uploader;
     }
 
    private:
@@ -529,8 +565,7 @@ class StorageQueueTest
     LastRecordDigestMap* const last_record_digest_map_;
 
     const MockUpload* const mock_upload_;
-
-    base::SequenceBound<SequenceBoundUpload> sequence_bound_upload_;
+    const base::SequenceBound<SequenceBoundUpload> sequence_bound_upload_;
 
     Sequence test_encounter_sequence_;
     Sequence test_upload_sequence_;
@@ -705,8 +740,6 @@ class StorageQueueTest
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
   TestUploader::LastRecordDigestMap last_record_digest_map_;
-
-  const ::testing::NiceMock<const MockUpload> mock_upload_;
 
   ::testing::MockFunction<StatusOr<std::unique_ptr<TestUploader>>(
       UploaderInterface::UploadReason /*reason*/)>
