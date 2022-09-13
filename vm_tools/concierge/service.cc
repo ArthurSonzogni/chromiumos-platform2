@@ -227,11 +227,16 @@ constexpr char kArcVmInitialThrottleFeatureQuotaParam[] = "quota";
 const VariationsFeature kArcVmInitialThrottleFeature{
     kArcVmInitialThrottleFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
+// Rational for setting bytes-per-inode to 32KiB (rather than the default 16
+// KiB) in go/borealis-inode.
+const uint64_t kExt4BytesPerInode = 32768;
+
 // Opts to be used when making an ext4 image. Note: these were specifically
 // selected for Borealis, please take care when using outside of Borealis
 // (especially the casefold feature).
 const std::vector<std::string> kExtMkfsOpts = {
-    "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold"};
+    "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold",
+    "-i" + std::to_string(kExt4BytesPerInode)};
 
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
