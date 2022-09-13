@@ -24,16 +24,9 @@ fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output,
     #[cfg(any(feature = "cr50_onboard", feature = "generic_tpm2"))]
     let dflag: Vec<&str> = Vec::<&str>::new();
 
-    let output = ctx
-        .cmd_runner()
+    ctx.cmd_runner()
         .run(GSCTOOL_CMD_NAME, [dflag, options].concat())
-        .map_err(|_| HwsecError::CommandRunnerError)?;
-
-    if output.status.success() {
-        Ok(output)
-    } else {
-        Err(HwsecError::CommandRunnerError)
-    }
+        .map_err(|_| HwsecError::CommandRunnerError)
 }
 
 pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecError> {
