@@ -15,6 +15,7 @@
 #include "typecd/alt_mode.h"
 #include "typecd/metrics.h"
 #include "typecd/peripheral.h"
+#include "typecd/power_profile.h"
 
 namespace typecd {
 
@@ -42,6 +43,10 @@ class Partner : public Peripheral {
   // later get added, a udev event occurs. When this event occurs, read sysfs to
   // get this data if it is available.
   void UpdatePDInfoFromSysfs();
+
+  // Parse the registered PDOs from sysfs and create an object to hold them,
+  // if one doesn't already exist.
+  void UpdatePowerProfile();
 
   // Return the total number of AltModes supported by the partner. If this value
   // hasn't been populated yet, the default value is -1, signifying that
@@ -86,6 +91,7 @@ class Partner : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckNoPartnerType);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
   FRIEND_TEST(PartnerTest, SupportsPD);
+  FRIEND_TEST(PartnerTest, PowerProfile);
 
   // Convenience function used by ReportMetrics to get the right enum for
   // PartnerTypeMetric.
@@ -115,6 +121,7 @@ class Partner : public Peripheral {
   // Pointer to the parent Port for this partner. The port lifecycle exceeds
   // that of the Partner, so it's fine to have this as a raw pointer.
   Port* port_;
+  std::unique_ptr<PowerProfile> power_profile_;
 };
 
 }  // namespace typecd

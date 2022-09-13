@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -32,7 +33,8 @@ Partner::Partner(const base::FilePath& syspath)
       num_alt_modes_(-1),
       supports_pd_(false),
       metrics_reported_(false),
-      port_(nullptr) {
+      port_(nullptr),
+      power_profile_(nullptr) {
   // Search for all alt modes which were already registered prior to daemon
   // init.
   base::FileEnumerator iter(GetSysPath(), false,
@@ -40,6 +42,7 @@ Partner::Partner(const base::FilePath& syspath)
   // This needs to be called explicitly since it's not in the base Peripheral
   // class.
   UpdateSupportsPD();
+  UpdatePowerProfile();
   for (auto path = iter.Next(); !path.empty(); path = iter.Next())
     AddAltMode(path);
 
@@ -100,12 +103,22 @@ bool Partner::IsAltModePresent(int index) {
   return false;
 }
 
+void Partner::UpdatePowerProfile() {
+  if (power_profile_ || !supports_pd_)
+    return;
+  auto path = GetSysPath().Append("usb_power_delivery");
+  // Not all devices have USB power delivery directories.
+  if (base::DirectoryExists(path))
+    power_profile_ = std::make_unique<PowerProfile>(path);
+}
+
 void Partner::UpdatePDInfoFromSysfs() {
   if (GetNumAltModes() == -1)
     SetNumAltModes(ParseNumAltModes());
   UpdatePDIdentityVDOs();
   UpdatePDRevision();
   UpdateSupportsPD();
+  UpdatePowerProfile();
 }
 
 int Partner::ParseNumAltModes() {

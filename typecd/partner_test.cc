@@ -194,4 +194,26 @@ TEST_F(PartnerTest, SupportsPD) {
   EXPECT_FALSE(p.GetSupportsPD());
 }
 
+// Test that a PowerProfile gets successfully created for a partner.
+TEST_F(PartnerTest, PowerProfile) {
+  // Set up fake sysfs paths.
+  auto partner_path = temp_dir_.Append(std::string("port0-partner"));
+  ASSERT_TRUE(base::CreateDirectory(partner_path));
+
+  auto partner = std::make_unique<Partner>(partner_path);
+  // First check that we don't have a PowerProfile when the directory isn't
+  // present.
+  EXPECT_FALSE(partner->power_profile_);
+
+  auto pd_path = partner_path.Append(std::string("usb_power_delivery"));
+  ASSERT_TRUE(base::CreateDirectory(pd_path));
+
+  auto val = std::string("yes");
+  auto supports_path = partner_path.Append("supports_usb_power_delivery");
+  ASSERT_TRUE(base::WriteFile(supports_path, val.c_str(), val.length()));
+
+  partner = std::make_unique<Partner>(partner_path);
+  EXPECT_TRUE(partner->power_profile_);
+}
+
 }  // namespace typecd

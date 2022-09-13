@@ -64,6 +64,7 @@ static_library("typecd_common") {
     "peripheral.cc",
     "port.cc",
     "port_manager.cc",
+    "power_profile.cc",
     "session_manager_proxy.cc",
     "udev_monitor.cc",
     "usb_device.cc",
