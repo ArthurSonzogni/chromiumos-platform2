@@ -206,6 +206,7 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       LOG(ERROR) << "Disk #3 has invalid path: " << disk_path;
       return false;
     }
+    LOG(INFO) << "Android /data disk path: " << disk_path;
   }
   return true;
 }
