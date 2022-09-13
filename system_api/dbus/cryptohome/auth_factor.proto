@@ -23,6 +23,7 @@ enum AuthFactorType {
   AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY = 3;
   AUTH_FACTOR_TYPE_KIOSK = 4;
   AUTH_FACTOR_TYPE_SMART_CARD = 5;
+  AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT = 6;
 }
 
 // Enum to define the purpose of AuthFactor preparation. This would be used
@@ -105,6 +106,10 @@ message SmartCardAuthInput {
   string key_delegate_dbus_service_name = 2;
 }
 
+// LegacyFingerprintAuthInput serves as an auth factor type indicator in
+// AuthenticateAuthFactorRequest.
+message LegacyFingerprintAuthInput {}
+
 // AuthInput is a wrapper around any secret or input data that is required to
 // authenticate or create an AuthFactor on disk.
 message AuthInput {
@@ -117,6 +122,7 @@ message AuthInput {
     CryptohomeRecoveryAuthInput cryptohome_recovery_input = 3;
     KioskAuthInput kiosk_input = 4;
     SmartCardAuthInput smart_card_input = 5;
+    LegacyFingerprintAuthInput legacy_fingerprint_input = 6;
   }
 }
 
@@ -157,6 +163,8 @@ message CommonMetadata {
   bytes chrome_version_last_updated = 2;
 }
 
+message LegacyFingerprintMetadata {}
+
 // AuthFactor is a backing store for any secret stored on Chrome OS in the USS
 // World. This proto definition is used to communicate with the client side.
 // Once it is received on cryptohome side, this proto definition is converted to
@@ -186,6 +194,7 @@ message AuthFactor {
     CryptohomeRecoveryMetadata cryptohome_recovery_metadata = 6;
     KioskMetadata kiosk_metadata = 7;
     SmartCardMetadata smart_card_metadata = 8;
+    LegacyFingerprintMetadata legacy_fingerprint_metadata = 11;
   }
 
   reserved 3, 10;
