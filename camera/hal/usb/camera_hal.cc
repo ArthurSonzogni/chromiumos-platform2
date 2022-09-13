@@ -688,7 +688,11 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
 
     // Uses software timestamp from userspace for external cameras, because the
     // hardware timestamp is not reliable and sometimes even jump backwards.
-    info.quirks |= kQuirkUserSpaceTimestamp;
+    // Exclude detachable camera modules on some devices.
+    if (!(cros_device_config_->GetModelName() == "banshee" &&
+          info.usb_vid == "32ac" && info.usb_pid == "000a")) {
+      info.quirks |= kQuirkUserSpaceTimestamp;
+    }
   }
 
   android::CameraMetadata static_metadata, request_template;
