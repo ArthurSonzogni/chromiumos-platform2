@@ -81,6 +81,9 @@ struct DeviceInfo {
   float horizontal_view_angle_4_3 = 0;
   float vertical_view_angle_16_9 = 0;
   float vertical_view_angle_4_3 = 0;
+
+  // Whether the device is detachable.
+  bool is_detachable = false;
 };
 
 typedef std::vector<DeviceInfo> DeviceInfos;

@@ -63,6 +63,7 @@ struct CrosConfigCameraInfo {
   Interface interface;
   LensFacing facing;
   int orientation;
+  bool detachable;
 };
 
 struct PlatformCameraInfo {
@@ -103,13 +104,16 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // information is not available.
   std::optional<int> GetBuiltInCameraCount() const { return count_; }
 
-  // Gets the total number of cameras on the given interface |interface|, or
-  // nullopt if the information is not available.
-  std::optional<int> GetCameraCount(Interface interface) const;
+  // Gets the total number of cameras on the given |interface|, and is
+  // |detachable| if provided. Returns nullopt if the information is not
+  // available.
+  std::optional<int> GetCameraCount(
+      Interface interface, std::optional<bool> detachable = std::nullopt) const;
 
-  // Gets camera orientation of the camera facing the given |facing| direction,
-  // or nullopt if the information is not available.
-  std::optional<int> GetOrientationFromFacing(LensFacing facing) const;
+  // Gets cros_config information from the facing of camera.  Returns null if
+  // there's no camera with the facing or the config is not available.
+  const CrosConfigCameraInfo* GetCrosConfigInfoFromFacing(
+      LensFacing facing) const;
 
   base::span<const PlatformCameraInfo> GetPlatformCameraInfo();
 

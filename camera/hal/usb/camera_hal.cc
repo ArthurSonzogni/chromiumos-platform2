@@ -450,12 +450,14 @@ int CameraHal::Init() {
   }
 
   bool enough_camera_probed = true;
-  std::optional<int> num_camera_from_config =
-      cros_device_config_ ? cros_device_config_->GetCameraCount(Interface::kUsb)
-                          : std::nullopt;
-  if (num_camera_from_config) {
-    if (num_builtin_cameras_ != *num_camera_from_config) {
-      LOGF(ERROR) << "Expected " << *num_camera_from_config
+  std::optional<int> num_builtin_cameras_from_config;
+  if (cros_device_config_) {
+    num_builtin_cameras_from_config = cros_device_config_->GetCameraCount(
+        Interface::kUsb, /*detachable=*/false);
+  }
+  if (num_builtin_cameras_from_config.has_value()) {
+    if (num_builtin_cameras_ != *num_builtin_cameras_from_config) {
+      LOGF(ERROR) << "Expected " << *num_builtin_cameras_from_config
                   << " cameras from cros_config, found "
                   << num_builtin_cameras_;
       enough_camera_probed = false;
@@ -600,25 +602,30 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   }
 
   DeviceInfo info;
-  const DeviceInfo* info_ptr = characteristics_.Find(vid, pid);
-  if (info_ptr != nullptr) {
-    VLOGF(1) << "Found a built-in camera";
+  bool is_external = true;
+  if (const DeviceInfo* info_ptr = characteristics_.Find(vid, pid)) {
+    is_external = false;
     info = *info_ptr;
-    info.sensor_orientation =
+    const CrosConfigCameraInfo* cros_config_info =
         cros_device_config_
-            ? cros_device_config_->GetOrientationFromFacing(info.lens_facing)
-                  .value_or(0)
-            : 0;
+            ? cros_device_config_->GetCrosConfigInfoFromFacing(info.lens_facing)
+            : nullptr;
+    if (cros_config_info) {
+      info.sensor_orientation = cros_config_info->orientation;
+      info.is_detachable = cros_config_info->detachable;
+    }
     if (info.constant_framerate_unsupported) {
       LOGF(WARNING) << "Camera module " << vid << ":" << pid
                     << " does not support constant frame rate";
     }
-  } else {
-    VLOGF(1) << "Found an external camera";
-    if (callbacks_ == nullptr) {
-      VLOGF(1) << "No callbacks set, ignore it for now";
-      return;
-    }
+  }
+  VLOGF(1) << "Found a "
+           << (is_external ? "external"
+                           : (info.is_detachable ? "detachable" : "built-in"))
+           << " camera";
+  if ((is_external || info.is_detachable) && !callbacks_) {
+    VLOGF(1) << "No callbacks set, ignore it for now";
+    return;
   }
 
   info.device_path = path;
@@ -664,12 +671,13 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
 
   // Mark the camera as v1 if it is a built-in camera and the CrOS device is
   // marked as a v1 device.
-  if (info_ptr != nullptr && cros_device_config_.has_value() &&
+  if (!is_external && cros_device_config_.has_value() &&
       cros_device_config_->IsV1Device()) {
     info.quirks |= kQuirkV1Device;
   }
 
-  if (info_ptr == nullptr) {
+  // Treats detachable camera as external.
+  if (is_external || info.is_detachable) {
     info.lens_facing = LensFacing::kExternal;
 
     // Try to reuse the same id for the same camera.
@@ -689,8 +697,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     // Uses software timestamp from userspace for external cameras, because the
     // hardware timestamp is not reliable and sometimes even jump backwards.
     // Exclude detachable camera modules on some devices.
-    if (!(cros_device_config_->GetModelName() == "banshee" &&
-          info.usb_vid == "32ac" && info.usb_pid == "000a")) {
+    if (!info.is_detachable) {
       info.quirks |= kQuirkUserSpaceTimestamp;
     }
   }
@@ -747,7 +754,7 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
   int id = it->second;
 
   if (id < num_builtin_cameras_) {
-    VLOGF(1) << "Camera " << id << "is a built-in camera, ignore it";
+    VLOGF(1) << "Camera " << id << " is a built-in camera, ignore it";
     return;
   }
 

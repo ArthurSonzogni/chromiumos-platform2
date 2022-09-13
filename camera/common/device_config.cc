@@ -116,7 +116,8 @@ std::optional<DeviceConfig> DeviceConfig::Create() {
   return std::make_optional<DeviceConfig>(res);
 }
 
-std::optional<int> DeviceConfig::GetCameraCount(Interface interface) const {
+std::optional<int> DeviceConfig::GetCameraCount(
+    Interface interface, std::optional<bool> detachable) const {
   if (!count_.has_value())
     return std::nullopt;
   // |count_| includes both MIPI and USB cameras. If |count_| is not 0, we need
@@ -127,17 +128,18 @@ std::optional<int> DeviceConfig::GetCameraCount(Interface interface) const {
     return std::nullopt;
   return std::count_if(
       cros_config_cameras_.begin(), cros_config_cameras_.end(),
-      [=](const CrosConfigCameraInfo& d) { return d.interface == interface; });
+      [=](const CrosConfigCameraInfo& d) {
+        return d.interface == interface &&
+               (!detachable.has_value() || d.detachable == *detachable);
+      });
 }
 
-std::optional<int> DeviceConfig::GetOrientationFromFacing(
+const CrosConfigCameraInfo* DeviceConfig::GetCrosConfigInfoFromFacing(
     LensFacing facing) const {
   auto iter = std::find_if(
       cros_config_cameras_.begin(), cros_config_cameras_.end(),
       [=](const CrosConfigCameraInfo& d) { return d.facing == facing; });
-  if (iter == cros_config_cameras_.end())
-    return std::nullopt;
-  return iter->orientation;
+  return iter != cros_config_cameras_.end() ? &*iter : nullptr;
 }
 
 base::span<const PlatformCameraInfo> DeviceConfig::GetPlatformCameraInfo() {
@@ -383,15 +385,19 @@ bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
                                "interface", &interface)) {
       break;
     }
-    std::string facing, orientation;
+    std::string facing, orientation, detachable;
     CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
                                 "facing", &facing));
     CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
                                 "orientation", &orientation));
+    // Non-detachable if the key doesn't exist.
+    cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
+                          "detachable", &detachable);
     dev_conf->cros_config_cameras_.push_back(CrosConfigCameraInfo{
         .interface = interface == "usb" ? Interface::kUsb : Interface::kMipi,
         .facing = facing == "front" ? LensFacing::kFront : LensFacing::kBack,
         .orientation = std::stoi(orientation),
+        .detachable = detachable == "true",
     });
   }
   if (!dev_conf->cros_config_cameras_.empty()) {

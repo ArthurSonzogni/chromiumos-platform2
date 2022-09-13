@@ -601,10 +601,17 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     //
     // The official document for this field:
     // https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics.html#SENSOR_INFO_PIXEL_ARRAY_SIZE
-    update_static(
-        ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
-        std::vector<int32_t>{static_cast<int32_t>(max_dimensions.width),
-                             static_cast<int32_t>(max_dimensions.height)});
+    if (device_info.sensor_info_pixel_array_size_width > 0 &&
+        device_info.sensor_info_pixel_array_size_height > 0) {
+      update_static(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
+                    std::vector<int32_t>{
+                        device_info.sensor_info_pixel_array_size_width,
+                        device_info.sensor_info_pixel_array_size_height});
+    } else {
+      update_static(
+          ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE,
+          std::vector<int32_t>{active_array_size[2], active_array_size[3]});
+    }
   }
 
   return update_static.ok() && update_request.ok() ? 0 : -EINVAL;
