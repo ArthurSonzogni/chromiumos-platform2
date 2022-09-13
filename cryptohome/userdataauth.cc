@@ -4913,7 +4913,8 @@ void UserDataAuth::ListAuthFactors(
   UserSession* user_session = sessions_->Find(username);  // May be null!
 
   // If the user does not exist, we cannot return auth factors for it.
-  bool is_persistent_user = keyset_management_->UserExists(obfuscated_username);
+  bool is_persistent_user = (user_session && !user_session->IsEphemeral()) ||
+                            keyset_management_->UserExists(obfuscated_username);
   bool is_ephemeral_user = user_session && user_session->IsEphemeral();
   if (!is_persistent_user && !is_ephemeral_user) {
     ReplyWithError(std::move(on_done), reply,
