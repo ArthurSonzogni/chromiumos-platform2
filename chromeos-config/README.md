@@ -537,6 +537,7 @@ In the tables below,
 ### devices
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| detachable | boolean |  | False |  | False | Whether the camera module is detachable. |
 | facing | string |  | True |  | False | Direction the camera faces relative to device screen. |
 | flags | [flags](#flags) |  | True |  | False | Bit flags representing camera capabilities of this device. A camera module can be mounted on this slot only if all the flags match. |
 | has-privacy-switch | boolean |  | False |  | False | The camera has a privacy switch that can disable the output when enabled. |

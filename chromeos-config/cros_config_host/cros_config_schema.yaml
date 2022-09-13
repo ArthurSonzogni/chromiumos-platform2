@@ -584,6 +584,9 @@ properties:
                             For USB cameras this must be 4-digit hexadecimal VID
                             and PID separated by a colon, e.g. 0123:abcd. For
                             MIPI cameras it depends on vendor software usage.
+                      detachable:
+                        type: boolean
+                        description: Whether the camera module is detachable.
                     if:
                       properties:
                         interface:

@@ -1306,6 +1306,7 @@ def _build_camera(hw_topology):
                 "orientation": orientation,
                 "flags": flags,
                 "ids": list(device.ids),
+                "detachable": device.detachable,
             }
             if (
                 device.privacy_switch
