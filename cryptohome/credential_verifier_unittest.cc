@@ -5,6 +5,7 @@
 #include <cryptohome/credential_verifier.h>
 
 #include <memory>
+#include <variant>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -33,6 +34,11 @@ TEST_F(VerifierTest, AuthFactorType) {
 
 TEST_F(VerifierTest, AuthFactorLabel) {
   EXPECT_EQ(password_verifier_->auth_factor_label(), kLabel);
+}
+
+TEST_F(VerifierTest, AuthFactorMetadata) {
+  EXPECT_TRUE(std::holds_alternative<PasswordAuthFactorMetadata>(
+      password_verifier_->auth_factor_metadata().metadata));
 }
 
 TEST_F(VerifierTest, Ok) {
