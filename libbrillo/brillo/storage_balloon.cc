@@ -9,11 +9,17 @@
 #include <fcntl.h>
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
+#include <sys/xattr.h>
+
+#include <string>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
 namespace brillo {
+namespace {
+constexpr char kProvisioningXattr[] = "trusted.provision";
+}  // namespace
 
 // Create a tmpfile for the storage balloon. The file will only exist for
 // the scope of this object.
@@ -61,6 +67,10 @@ bool StorageBalloon::Adjust(int64_t target_space) {
   }
 
   return true;
+}
+
+bool StorageBalloon::DisableProvisioning() {
+  return Setxattr(kProvisioningXattr, "n");
 }
 
 bool StorageBalloon::Deflate() {
@@ -137,6 +147,20 @@ int64_t StorageBalloon::GetCurrentBalloonSize() {
   }
 
   return buf.st_blocks * 512;
+}
+
+bool StorageBalloon::Setxattr(const char* name, const std::string& value) {
+  if (!IsValid()) {
+    LOG(ERROR) << "Invalid balloon";
+    return false;
+  }
+
+  if (fsetxattr(balloon_fd_.get(), name, value.data(), value.size(),
+                0 /* flags */) != 0) {
+    PLOG(ERROR) << "Failed to fsetxattr() on balloon fd";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace brillo

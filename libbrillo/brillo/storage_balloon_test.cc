@@ -7,6 +7,9 @@
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 
+#include <string>
+#include <unordered_map>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -17,6 +20,10 @@ class FakeStorageBalloon : public StorageBalloon {
  public:
   FakeStorageBalloon(uint64_t remaining_size, const base::FilePath& path)
       : StorageBalloon(path), remaining_size_(remaining_size) {}
+
+  std::string Getxattr(const char* name) {
+    return xattr_map_[std::string(name)];
+  }
 
  protected:
   bool Fallocate(int64_t offset, int64_t len) override {
@@ -43,9 +50,16 @@ class FakeStorageBalloon : public StorageBalloon {
     return true;
   }
 
+  bool Setxattr(const char* name, const std::string& value) override {
+    xattr_map_[std::string(name)] = value;
+    return true;
+  }
+
  private:
   uint64_t file_size_ = 0;
   uint64_t remaining_size_;
+
+  std::unordered_map<std::string, std::string> xattr_map_;
 };
 
 TEST(StorageBalloon, InvalidPath) {
@@ -101,6 +115,17 @@ TEST(StorageBalloonTest, Adjustment) {
 
   EXPECT_TRUE(f.Adjust(95 * 4096));
   EXPECT_EQ(f.GetCurrentBalloonSize(), 5 * 4096);
+}
+
+TEST(StorageBalloonTest, DisableProvisioning) {
+  base::ScopedTempDir dir;
+
+  ASSERT_TRUE(dir.CreateUniqueTempDir());
+  FakeStorageBalloon f(100 * 4096, dir.GetPath());
+  EXPECT_EQ(f.IsValid(), true);
+
+  EXPECT_TRUE(f.DisableProvisioning());
+  EXPECT_EQ(f.Getxattr("trusted.provision"), "n");
 }
 
 }  // namespace brillo

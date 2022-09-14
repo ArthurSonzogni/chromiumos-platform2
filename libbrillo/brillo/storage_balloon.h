@@ -8,6 +8,8 @@
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/brillo_export.h>
@@ -31,6 +33,8 @@ class BRILLO_EXPORT StorageBalloon {
   bool Deflate();
   // Get the current balloon size.
   int64_t GetCurrentBalloonSize();
+  // Disable provisioning when fallocate() is called.
+  bool DisableProvisioning();
 
  protected:
   virtual bool Fallocate(int64_t offset, int64_t len);
@@ -40,6 +44,8 @@ class BRILLO_EXPORT StorageBalloon {
   virtual bool FstatFs(struct statfs* buf);
 
   virtual bool Fstat(struct stat* buf);
+
+  virtual bool Setxattr(const char* name, const std::string& value);
 
  private:
   bool CalculateBalloonInflationSize(int64_t target_space,
