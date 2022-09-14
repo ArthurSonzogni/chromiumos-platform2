@@ -87,12 +87,20 @@ class MockStream : public Stream {
   MOCK_METHOD(bool, CloseBlocking, (ErrorPtr*), (override));
 
   MOCK_METHOD(bool,
-              WaitForData,
-              (AccessMode, base::OnceCallback<void(AccessMode)>, ErrorPtr*),
+              WaitForDataRead,
+              (base::OnceClosure, ErrorPtr*),
               (override));
   MOCK_METHOD(bool,
-              WaitForDataBlocking,
-              (AccessMode, base::TimeDelta, AccessMode*, ErrorPtr*),
+              WaitForDataReadBlocking,
+              (base::TimeDelta, ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool,
+              WaitForDataWrite,
+              (base::OnceClosure, ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool,
+              WaitForDataWriteBlocking,
+              (base::TimeDelta, ErrorPtr*),
               (override));
 };
 

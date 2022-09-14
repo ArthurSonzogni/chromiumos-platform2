@@ -34,7 +34,7 @@ class BRILLO_EXPORT FileStream : public Stream {
   // Simple interface to wrap native library calls so that they can be mocked
   // out for testing.
   struct FileDescriptorInterface {
-    using DataCallback = base::OnceCallback<void(Stream::AccessMode)>;
+    using DataCallback = base::OnceClosure;
 
     virtual ~FileDescriptorInterface() = default;
 
@@ -46,12 +46,12 @@ class BRILLO_EXPORT FileStream : public Stream {
     virtual uint64_t GetSize() const = 0;
     virtual int Truncate(off64_t length) const = 0;
     virtual int Close() = 0;
-    virtual bool WaitForData(AccessMode mode,
-                             DataCallback data_callback,
-                             ErrorPtr* error) = 0;
-    virtual int WaitForDataBlocking(AccessMode in_mode,
-                                    base::TimeDelta timeout,
-                                    AccessMode* out_mode) = 0;
+    virtual bool WaitForDataRead(DataCallback data_callback,
+                                 ErrorPtr* error) = 0;
+    virtual int WaitForDataReadBlocking(base::TimeDelta timeout) = 0;
+    virtual bool WaitForDataWrite(DataCallback data_callback,
+                                  ErrorPtr* error) = 0;
+    virtual int WaitForDataWriteBlocking(base::TimeDelta timeout) = 0;
     virtual void CancelPendingAsyncOperations() = 0;
   };
 
@@ -131,18 +131,23 @@ class BRILLO_EXPORT FileStream : public Stream {
 
   // == Data availability monitoring ==========================================
 
-  // Override for Stream::WaitForData to start watching the associated file
-  // descriptor for non-blocking read/write operations.
-  bool WaitForData(AccessMode mode,
-                   base::OnceCallback<void(AccessMode)> callback,
-                   ErrorPtr* error) override;
+  // Override for Stream::WaitForDataRead to start watching the associated file
+  // descriptor for non-blocking read operations.
+  bool WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) override;
 
   // Runs select() on the file descriptor to wait until we can do non-blocking
-  // I/O on it.
-  bool WaitForDataBlocking(AccessMode in_mode,
-                           base::TimeDelta timeout,
-                           AccessMode* out_mode,
-                           ErrorPtr* error) override;
+  // read on it.
+  bool WaitForDataReadBlocking(base::TimeDelta timeout,
+                               ErrorPtr* error) override;
+
+  // Override for Stream::WaitForDataWrite to start watching the associated file
+  // descriptor for non-blocking write operations.
+  bool WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) override;
+
+  // Runs select() on the file descriptor to wait until we can do non-blocking
+  // write on it.
+  bool WaitForDataWriteBlocking(base::TimeDelta timeout,
+                                ErrorPtr* error) override;
 
   // Cancels pending asynchronous read/write operations.
   void CancelPendingAsyncOperations() override;

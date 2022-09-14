@@ -76,8 +76,7 @@ bool Stream::ReadBlocking(void* buffer,
     if (*size_read > 0 || eos)
       break;
 
-    if (!WaitForDataBlocking(AccessMode::READ, base::TimeDelta::Max(), nullptr,
-                             error)) {
+    if (!WaitForDataReadBlocking(base::TimeDelta::Max(), error)) {
       return false;
     }
   }
@@ -148,8 +147,7 @@ bool Stream::WriteBlocking(const void* buffer,
     if (*size_written > 0 || size_to_write == 0)
       break;
 
-    if (!WaitForDataBlocking(AccessMode::WRITE, base::TimeDelta::Max(), nullptr,
-                             error)) {
+    if (!WaitForDataWriteBlocking(base::TimeDelta::Max(), error)) {
       return false;
     }
   }
@@ -202,8 +200,8 @@ bool Stream::ReadAsyncImpl(
     bool force_async_callback) {
   CHECK(!is_async_read_pending_);
   // We set this value to true early in the function so calling others will
-  // prevent us from calling WaitForData() to make calls to
-  // ReadAsync() fail while we run WaitForData().
+  // prevent us from calling WaitForDataRead() to make calls to
+  // ReadAsync() fail while we run WaitForDataRead().
   is_async_read_pending_ = true;
 
   size_t read = 0;
@@ -224,8 +222,7 @@ bool Stream::ReadAsyncImpl(
     return true;
   }
 
-  is_async_read_pending_ = WaitForData(
-      AccessMode::READ,
+  is_async_read_pending_ = WaitForDataRead(
       base::BindOnce(&Stream::OnReadAvailable, weak_ptr_factory_.GetWeakPtr(),
                      buffer, size_to_read, success_callback, error_callback),
       error);
@@ -244,9 +241,7 @@ void Stream::OnReadAvailable(
     void* buffer,
     size_t size_to_read,
     const base::Callback<void(size_t, bool)>& success_callback,
-    const ErrorCallback& error_callback,
-    AccessMode mode) {
-  CHECK(stream_utils::IsReadAccessMode(mode));
+    const ErrorCallback& error_callback) {
   CHECK(is_async_read_pending_);
   is_async_read_pending_ = false;
   ErrorPtr error;
@@ -267,8 +262,8 @@ bool Stream::WriteAsyncImpl(
     bool force_async_callback) {
   CHECK(!is_async_write_pending_);
   // We set this value to true early in the function so calling others will
-  // prevent us from calling WaitForData() to make calls to
-  // ReadAsync() fail while we run WaitForData().
+  // prevent us from calling WaitForDataWrite() to make calls to
+  // ReadAsync() fail while we run WaitForDataWrite().
   is_async_write_pending_ = true;
 
   size_t written = 0;
@@ -287,8 +282,7 @@ bool Stream::WriteAsyncImpl(
     }
     return true;
   }
-  is_async_write_pending_ = WaitForData(
-      AccessMode::WRITE,
+  is_async_write_pending_ = WaitForDataWrite(
       base::BindOnce(&Stream::OnWriteAvailable, weak_ptr_factory_.GetWeakPtr(),
                      buffer, size_to_write, success_callback, error_callback),
       error);
@@ -305,9 +299,7 @@ void Stream::OnWriteAvailable(
     const void* buffer,
     size_t size,
     const base::Callback<void(size_t)>& success_callback,
-    const ErrorCallback& error_callback,
-    AccessMode mode) {
-  CHECK(stream_utils::IsWriteAccessMode(mode));
+    const ErrorCallback& error_callback) {
   CHECK(is_async_write_pending_);
   is_async_write_pending_ = false;
   ErrorPtr error;

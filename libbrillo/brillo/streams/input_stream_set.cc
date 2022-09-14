@@ -156,43 +156,47 @@ bool InputStreamSet::CloseBlocking(ErrorPtr* error) {
   return success;
 }
 
-bool InputStreamSet::WaitForData(AccessMode mode,
-                                 base::OnceCallback<void(AccessMode)> callback,
-                                 ErrorPtr* error) {
+bool InputStreamSet::WaitForDataRead(base::OnceClosure callback,
+                                     ErrorPtr* error) {
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  if (stream_utils::IsWriteAccessMode(mode))
-    return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
-
   if (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
-    return stream->WaitForData(mode, std::move(callback), error);
+    return stream->WaitForDataRead(std::move(callback), error);
   }
 
-  MessageLoop::current()->PostTask(FROM_HERE,
-                                   base::BindOnce(std::move(callback), mode));
+  MessageLoop::current()->PostTask(FROM_HERE, std::move(callback));
   return true;
 }
 
-bool InputStreamSet::WaitForDataBlocking(AccessMode in_mode,
-                                         base::TimeDelta timeout,
-                                         AccessMode* out_mode,
-                                         ErrorPtr* error) {
+bool InputStreamSet::WaitForDataReadBlocking(base::TimeDelta timeout,
+                                             ErrorPtr* error) {
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  if (stream_utils::IsWriteAccessMode(in_mode))
-    return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
-
   if (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
-    return stream->WaitForDataBlocking(in_mode, timeout, out_mode, error);
+    return stream->WaitForDataReadBlocking(timeout, error);
   }
 
-  if (out_mode)
-    *out_mode = in_mode;
   return true;
+}
+
+bool InputStreamSet::WaitForDataWrite(base::OnceClosure /* callback */,
+                                      ErrorPtr* error) {
+  if (!IsOpen())
+    return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+
+  return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+}
+
+bool InputStreamSet::WaitForDataWriteBlocking(base::TimeDelta /* timeout */,
+                                              ErrorPtr* error) {
+  if (!IsOpen())
+    return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+
+  return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
 
 void InputStreamSet::CancelPendingAsyncOperations() {

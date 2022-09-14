@@ -30,33 +30,6 @@ base::TimeDelta CalculateDelay(const base::Time& now,
   return delay;
 }
 
-// Given the current clock time, and expected delays for read and write
-// operations calculates the smaller wait delay of the two and sets the
-// resulting operation to |*mode| and the delay to wait for into |*delay|.
-void GetMinDelayAndMode(const base::Time& now,
-                        bool read,
-                        const base::Time& delay_read_until,
-                        bool write,
-                        const base::Time& delay_write_until,
-                        Stream::AccessMode* mode,
-                        base::TimeDelta* delay) {
-  base::TimeDelta read_delay = base::TimeDelta::Max();
-  base::TimeDelta write_delay = base::TimeDelta::Max();
-
-  if (read)
-    read_delay = CalculateDelay(now, delay_read_until);
-  if (write)
-    write_delay = CalculateDelay(now, delay_write_until);
-
-  if (read_delay > write_delay) {
-    read = false;
-  } else if (read_delay < write_delay) {
-    write = false;
-  }
-  *mode = stream_utils::MakeAccessMode(read, write);
-  *delay = std::min(read_delay, write_delay);
-}
-
 }  // anonymous namespace
 
 FakeStream::FakeStream(Stream::AccessMode mode, base::Clock* clock)
@@ -359,41 +332,54 @@ bool FakeStream::CloseBlocking(ErrorPtr* /* error */) {
   return true;
 }
 
-bool FakeStream::WaitForData(AccessMode mode,
-                             base::OnceCallback<void(AccessMode)> callback,
-                             ErrorPtr* error) {
-  bool read_requested = stream_utils::IsReadAccessMode(mode);
-  bool write_requested = stream_utils::IsWriteAccessMode(mode);
-
-  if ((read_requested && !CanRead()) || (write_requested && !CanWrite()))
+bool FakeStream::WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) {
+  if (!CanRead())
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 
-  if (read_requested && IsReadBufferEmpty())
+  if (IsReadBufferEmpty())
     PopReadPacket();
-  if (write_requested && IsWriteBufferFull())
-    PopWritePacket();
 
-  base::TimeDelta delay;
-  GetMinDelayAndMode(clock_->Now(), read_requested, delay_input_until_,
-                     write_requested, delay_output_until_, &mode, &delay);
-  MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::BindOnce(std::move(callback), mode), delay);
+  base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_input_until_);
+  MessageLoop::current()->PostDelayedTask(FROM_HERE, std::move(callback),
+                                          delay);
   return true;
 }
 
-bool FakeStream::WaitForDataBlocking(AccessMode in_mode,
-                                     base::TimeDelta timeout,
-                                     AccessMode* out_mode,
-                                     ErrorPtr* error) {
-  bool read_requested = stream_utils::IsReadAccessMode(in_mode);
-  bool write_requested = stream_utils::IsWriteAccessMode(in_mode);
-
-  if ((read_requested && !CanRead()) || (write_requested && !CanWrite()))
+bool FakeStream::WaitForDataReadBlocking(base::TimeDelta timeout,
+                                         ErrorPtr* error) {
+  if (!CanRead())
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 
-  base::TimeDelta delay;
-  GetMinDelayAndMode(clock_->Now(), read_requested, delay_input_until_,
-                     write_requested, delay_output_until_, out_mode, &delay);
+  base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_input_until_);
+
+  if (timeout < delay)
+    return stream_utils::ErrorOperationTimeout(FROM_HERE, error);
+
+  LOG(INFO) << "TEST: Would have blocked for " << delay.InMilliseconds()
+            << " ms.";
+
+  return true;
+}
+
+bool FakeStream::WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) {
+  if (!CanWrite())
+    return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+
+  if (IsWriteBufferFull())
+    PopWritePacket();
+
+  base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_output_until_);
+  MessageLoop::current()->PostDelayedTask(FROM_HERE, std::move(callback),
+                                          delay);
+  return true;
+}
+
+bool FakeStream::WaitForDataWriteBlocking(base::TimeDelta timeout,
+                                          ErrorPtr* error) {
+  if (!CanWrite())
+    return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+
+  base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_output_until_);
 
   if (timeout < delay)
     return stream_utils::ErrorOperationTimeout(FROM_HERE, error);

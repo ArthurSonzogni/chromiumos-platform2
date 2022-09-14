@@ -105,13 +105,12 @@ class FakeStream : public Stream {
                         ErrorPtr* error) override;
   bool FlushBlocking(ErrorPtr* error) override;
   bool CloseBlocking(ErrorPtr* error) override;
-  bool WaitForData(AccessMode mode,
-                   base::OnceCallback<void(AccessMode)> callback,
-                   ErrorPtr* error) override;
-  bool WaitForDataBlocking(AccessMode in_mode,
-                           base::TimeDelta timeout,
-                           AccessMode* out_mode,
-                           ErrorPtr* error) override;
+  bool WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) override;
+  bool WaitForDataReadBlocking(base::TimeDelta timeout,
+                               ErrorPtr* error) override;
+  bool WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) override;
+  bool WaitForDataWriteBlocking(base::TimeDelta timeout,
+                                ErrorPtr* error) override;
 
  private:
   // Input data packet to be placed on the read queue.

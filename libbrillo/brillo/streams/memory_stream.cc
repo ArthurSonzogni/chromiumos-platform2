@@ -188,20 +188,25 @@ bool MemoryStream::CheckContainer(ErrorPtr* error) const {
   return container_ || stream_utils::ErrorStreamClosed(FROM_HERE, error);
 }
 
-bool MemoryStream::WaitForData(AccessMode mode,
-                               base::OnceCallback<void(AccessMode)> callback,
-                               ErrorPtr* /* error */) {
-  MessageLoop::current()->PostTask(FROM_HERE,
-                                   base::BindOnce(std::move(callback), mode));
+bool MemoryStream::WaitForDataRead(base::OnceClosure callback,
+                                   ErrorPtr* /* error */) {
+  MessageLoop::current()->PostTask(FROM_HERE, std::move(callback));
   return true;
 }
 
-bool MemoryStream::WaitForDataBlocking(AccessMode in_mode,
-                                       base::TimeDelta /* timeout */,
-                                       AccessMode* out_mode,
-                                       ErrorPtr* /* error */) {
-  if (out_mode)
-    *out_mode = in_mode;
+bool MemoryStream::WaitForDataReadBlocking(base::TimeDelta /* timeout */,
+                                           ErrorPtr* /* error */) {
+  return true;
+}
+
+bool MemoryStream::WaitForDataWrite(base::OnceClosure callback,
+                                    ErrorPtr* /* error */) {
+  MessageLoop::current()->PostTask(FROM_HERE, std::move(callback));
+  return true;
+}
+
+bool MemoryStream::WaitForDataWriteBlocking(base::TimeDelta /* timeout */,
+                                            ErrorPtr* /* error */) {
   return true;
 }
 
