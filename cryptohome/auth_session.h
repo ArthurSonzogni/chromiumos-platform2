@@ -95,7 +95,8 @@ class AuthSession final {
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage);
+      UserSecretStashStorage* user_secret_stash_storage,
+      bool enable_create_backup_vk_with_uss);
   ~AuthSession();
 
   // Returns the full unhashed user name.
@@ -583,6 +584,8 @@ class AuthSession final {
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
+  // Switch to enable creation of the backup VaultKeysets together with the USS.
+  bool enable_create_backup_vk_with_uss_;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
