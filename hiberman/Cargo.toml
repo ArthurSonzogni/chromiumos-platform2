@@ -19,6 +19,7 @@ dbus = "0.9"
 dbus-crossroads = "0.5.0"
 getopts = "0.2"
 libc = "0.2.93"
+libchromeos = "0.1.0"
 log = { version = "0.4", features = ["std", "serde"] }
 once_cell = "1.7"
 openssl = "0.10.36"
@@ -34,7 +35,9 @@ thiserror = "1.0.20"
 zeroize = { version = "1.5.1", features = ["zeroize_derive"] }
 
 [patch.crates-io] # ignored by ebuild
+crosvm-base = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/crosvm-base-0.1.0/" } # ignored by ebuild
 data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" } # ignored by ebuild
+libchromeos = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/libchromeos-0.1.0/" } # ignored by ebuild
 sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild
 sys_util = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util-0.1.0/" } # ignored by ebuild
 sys_util_core = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util_core-0.1.0/" } # ignored by ebuild
