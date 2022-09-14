@@ -24,6 +24,7 @@ shared_library("libcamera_hal") {
     "camera_hal_device_ops.cc",
     "capture_request.cc",
     "fake_stream.cc",
+    "frame_buffer.cc",
     "hal_spec.cc",
     "metadata_handler.cc",
     "request_handler.cc",

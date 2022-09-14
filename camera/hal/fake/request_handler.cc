@@ -105,7 +105,8 @@ bool RequestHandler::FillResultBuffer(camera3_stream_buffer_t& buffer) {
     LOGF(ERROR) << "Unknown stream " << buffer.stream;
     return false;
   }
-  return it->second->FillBuffer(*buffer.buffer);
+  return it->second->FillBuffer(
+      *buffer.buffer, Size(buffer.stream->width, buffer.stream->height));
 }
 
 void RequestHandler::StreamOn(const std::vector<camera3_stream_t*>& streams,
