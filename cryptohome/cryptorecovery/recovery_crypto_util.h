@@ -57,7 +57,7 @@ struct LoggedRecord {
   // Serialized private log entry.
   brillo::Blob private_log_entry;
   // Leaf index of this record in the tree.
-  int leaf_index = -1;
+  int64_t leaf_index = -1;
 };
 
 // LedgerSignedProof is included in HsmResponseAssociatedData.

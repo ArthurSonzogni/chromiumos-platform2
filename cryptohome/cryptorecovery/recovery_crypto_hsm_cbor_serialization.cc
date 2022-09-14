@@ -259,8 +259,8 @@ cbor::Value::MapValue ConvertLedgerSignedProofToCborMap(
   logged_record_map.emplace(
       kPrivateLogEntryProof,
       ledger_signed_proof.logged_record.private_log_entry);
-  logged_record_map.emplace(kLeafIndex,
-                            ledger_signed_proof.logged_record.leaf_index);
+  logged_record_map.emplace(
+      kLeafIndex, cbor::Value(ledger_signed_proof.logged_record.leaf_index));
 
   cbor::Value::MapValue ledger_signed_proof_map;
   ledger_signed_proof_map.emplace(kSchemaVersion, kHsmMetaDataSchemaVersion);
