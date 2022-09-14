@@ -98,6 +98,7 @@ if (use.test) {
       "port_manager_notification_test.cc",
       "port_manager_test.cc",
       "port_test.cc",
+      "power_profile_test.cc",
       "test_utils.cc",
       "udev_monitor_test.cc",
       "usb_monitor_test.cc",
