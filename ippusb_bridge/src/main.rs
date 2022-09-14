@@ -240,6 +240,7 @@ fn run() -> Result<()> {
 }
 
 fn main() {
+    libchromeos::panic_handler::install_memfd_handler();
     // Use run() instead of returning a Result from main() so that we can print
     // errors using Display instead of Debug.
     if let Err(e) = run() {
