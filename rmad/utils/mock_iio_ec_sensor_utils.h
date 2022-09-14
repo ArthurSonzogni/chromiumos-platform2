@@ -27,11 +27,11 @@ class MockIioEcSensorUtils : public IioEcSensorUtils {
                int,
                std::vector<double>*,
                std::vector<double>*),
-              (override));
+              (const override));
   MOCK_METHOD(bool,
               GetSysValues,
-              (const std::vector<std::string>&, std::vector<int>*),
-              (override));
+              (const std::vector<std::string>&, std::vector<double>*),
+              (const override));
 };
 
 }  // namespace rmad

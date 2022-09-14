@@ -5,6 +5,7 @@
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
 
 #include <numeric>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -13,6 +14,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
+
+#include "rmad/utils/cmd_utils_impl.h"
 
 namespace {
 
@@ -41,14 +44,28 @@ namespace rmad {
 
 IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(const std::string& location,
                                            const std::string& name)
-    : IioEcSensorUtils(location, name), initialized_(false) {
+    : IioEcSensorUtils(location, name),
+      sysfs_prefix_(kIioDevicePathPrefix),
+      initialized_(false) {
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+  Initialize();
+}
+
+IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(const std::string& location,
+                                           const std::string& name,
+                                           const std::string& sysfs_prefix,
+                                           std::unique_ptr<CmdUtils> cmd_utils)
+    : IioEcSensorUtils(location, name),
+      sysfs_prefix_(sysfs_prefix),
+      initialized_(false),
+      cmd_utils_(std::move(cmd_utils)) {
   Initialize();
 }
 
 bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
                                       int samples,
                                       std::vector<double>* avg_data,
-                                      std::vector<double>* variance) {
+                                      std::vector<double>* variance) const {
   CHECK_GT(channels.size(), 0);
   CHECK_GT(samples, 0);
   CHECK(avg_data);
@@ -81,7 +98,7 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
   };
 
   std::string value;
-  if (!base::GetAppOutputAndError(argv, &value)) {
+  if (!cmd_utils_->GetOutputAndError(argv, &value)) {
     std::string whole_cmd;
     for (auto arg : argv) {
       whole_cmd += " " + arg;
@@ -148,7 +165,7 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
 }
 
 bool IioEcSensorUtilsImpl::GetSysValues(const std::vector<std::string>& entries,
-                                        std::vector<double>* values) {
+                                        std::vector<double>* values) const {
   if (!initialized_) {
     LOG(ERROR) << location_ << ":" << name_ << " is not initialized.";
     return false;
@@ -174,7 +191,7 @@ bool IioEcSensorUtilsImpl::GetSysValues(const std::vector<std::string>& entries,
 
 void IioEcSensorUtilsImpl::Initialize() {
   for (int i = 0; i < kMaxNumEntries; i++) {
-    base::FilePath sysfs_path(kIioDevicePathPrefix + base::NumberToString(i));
+    base::FilePath sysfs_path(sysfs_prefix_ + base::NumberToString(i));
     if (!base::PathExists(sysfs_path)) {
       break;
     }

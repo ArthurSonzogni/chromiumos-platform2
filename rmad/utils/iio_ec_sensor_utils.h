@@ -31,12 +31,12 @@ class IioEcSensorUtils {
   virtual bool GetAvgData(const std::vector<std::string>& channels,
                           int samples,
                           std::vector<double>* avg_data,
-                          std::vector<double>* variance = nullptr) = 0;
+                          std::vector<double>* variance = nullptr) const = 0;
 
   // Read |entries| to |values| in the sysfs of iioservice.
   // Returns true if it succeeds for all entries, otherwise it returns false.
   virtual bool GetSysValues(const std::vector<std::string>& entries,
-                            std::vector<double>* values) = 0;
+                            std::vector<double>* values) const = 0;
 
  protected:
   // For each sensor, we can identify it by its location (base or lid)

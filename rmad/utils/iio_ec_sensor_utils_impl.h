@@ -7,10 +7,13 @@
 
 #include "rmad/utils/iio_ec_sensor_utils.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+
+#include "rmad/utils/cmd_utils.h"
 
 namespace rmad {
 
@@ -18,14 +21,21 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils {
  public:
   explicit IioEcSensorUtilsImpl(const std::string& location,
                                 const std::string& name);
+  // Used to inject |sysfs_prefix| and |cmd_utils| for testing.
+  explicit IioEcSensorUtilsImpl(const std::string& location,
+                                const std::string& name,
+                                const std::string& sysfs_prefix,
+                                std::unique_ptr<CmdUtils> cmd_utils);
   ~IioEcSensorUtilsImpl() = default;
 
   bool GetAvgData(const std::vector<std::string>& channels,
                   int samples,
                   std::vector<double>* avg_data,
-                  std::vector<double>* variance = nullptr) override;
+                  std::vector<double>* variance = nullptr) const override;
   bool GetSysValues(const std::vector<std::string>& entries,
-                    std::vector<double>* values) override;
+                    std::vector<double>* values) const override;
+
+  bool IsInitialized() const { return initialized_; }
 
  private:
   void Initialize();
@@ -34,11 +44,15 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils {
   // step.
   bool InitializeFromSysfsPath(const base::FilePath& sysfs_path);
 
+  std::string sysfs_prefix_;
   base::FilePath sysfs_path_;
   int id_;
   double frequency_;
   double scale_;
   bool initialized_;
+
+  // External utility.
+  std::unique_ptr<CmdUtils> cmd_utils_;
 };
 
 }  // namespace rmad
