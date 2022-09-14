@@ -405,24 +405,23 @@ class AuthSession final {
       const AuthInput& auth_input,
       const brillo::SecureBlob& uss_credential_secret);
 
-  // Creates a new per-credential secret, adds the key block for the new secret
-  // to the USS and persists it to disk.
-  void AddAuthFactorViaUserSecretStash(
-      AuthFactorType auth_factor_type,
-      const std::string& auth_factor_label,
-      const AuthFactorMetadata& auth_factor_metadata,
-      const AuthInput& auth_input,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      StatusCallback on_done);
+  // Implements the AddauthFactor by adding the credential backing store either
+  // with AuthFactor & UsersecretStash or VaultKeyset.
+  void AddAuthFactorImpl(AuthFactorType auth_factor_type,
+                         const std::string& auth_factor_label,
+                         const AuthFactorMetadata& auth_factor_metadata,
+                         const AuthInput& auth_input,
+                         std::unique_ptr<AuthSessionPerformanceTimer>
+                             auth_session_performance_timer,
+                         StatusCallback on_done);
 
-  // Adds a new VaultKeyset for the |obfuscated_username_| and persists it to
-  // disk.
-  void AddAuthFactorViaVaultKeyset(
-      AuthFactorType auth_factor_type,
+  AuthBlock::CreateCallback GetAddAuthFactorCallback(
+      const AuthFactorType& auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
+      const KeyData& key_data,
       const AuthInput& auth_input,
+      const AuthFactorStorageType auth_factor_storage_type,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done);

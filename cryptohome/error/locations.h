@@ -905,8 +905,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAuthenticateInvalidAuthInput = 539,
   /* ./auth_session.cc */
   kLocAuthSessionVKConverterFailsInAddAuthFactor = 540,
-  /* =Obsolete= */
-  kLocAuthSessionAddViaUSSFailedInAddAuthFactor = 541,
+  /* ./auth_session.cc */
+  kLocAuthSessionTryAddInitialPinInAddAuthfActor = 541,
   /* =Obsolete= */
   kLocAuthBlockUtilGetAuthBlockTypeFailedInCreateKeyBlobsAuthFactor = 542,
   /* =Obsolete= */
@@ -1052,7 +1052,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionPersistUSSFailedInRemoveAuthFactor = 613,
   /* ./auth_session.cc */
-  kLocAuthSessionInvalidBlockTypeInAddViaUSS = 614,
+  kLocAuthSessionInvalidBlockTypeInAddAuthFactorImpl = 614,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInPersistToUSS = 615,
   /* ./auth_session.cc */
