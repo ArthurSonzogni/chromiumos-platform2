@@ -42,6 +42,9 @@ constexpr int kRootfsPartitionIndex = 3;
 
 // Log file format.
 constexpr char kLogFilenameFormat[] = "rma-%s.log";
+// Supported file systems for saving logs.
+const std::vector<std::string> kLogFileSystems = {"vfat", "ext4", "ext3",
+                                                  "ext2"};
 
 std::string FormatTime(const base::Time& time) {
   base::Time::Exploded e;
@@ -101,7 +104,7 @@ void Executor::MountAndWriteLog(uint8_t device_id,
       kDevicePathFormat, device_id, kWriteLogPartitionIndex));
   const base::FilePath mount_point = temp_dir.GetPath();
   const Mount mount =
-      TryMount(device_path, mount_point, {"vfat", "ext2"}, false);
+      TryMount(device_path, mount_point, kLogFileSystems, false);
   if (mount.IsValid()) {
     const std::string filename = base::StringPrintf(
         kLogFilenameFormat, FormatTime(base::Time::Now()).c_str());
