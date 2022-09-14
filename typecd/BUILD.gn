@@ -15,6 +15,7 @@ group("all") {
       ":typecd_cable_fuzzer",
       ":typecd_cros_ec_util_fuzzer",
       ":typecd_partner_fuzzer",
+      ":typecd_pdo_fuzzer",
       ":typecd_port_fuzzer",
       ":typecd_port_manager_fuzzer",
       ":typecd_session_manager_proxy_fuzzer",
@@ -61,6 +62,7 @@ static_library("typecd_common") {
     "metrics.cc",
     "notification_manager.cc",
     "partner.cc",
+    "pdo.cc",
     "peripheral.cc",
     "port.cc",
     "port_manager.cc",
@@ -91,6 +93,7 @@ if (use.test) {
       "cros_ec_util_test.cc",
       "metrics_test.cc",
       "partner_test.cc",
+      "pdo_test.cc",
       "peripheral_test.cc",
       "port_manager_notification_test.cc",
       "port_manager_test.cc",
@@ -125,6 +128,15 @@ if (use.fuzzer) {
 
   executable("typecd_partner_fuzzer") {
     sources = [ "partner_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk/common_fuzzer",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_pdo_fuzzer") {
+    sources = [ "pdo_fuzzer.cc" ]
     configs += [
       ":target_defaults",
       "//common-mk/common_fuzzer",
