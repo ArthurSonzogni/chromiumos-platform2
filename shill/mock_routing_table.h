@@ -27,6 +27,10 @@ class MockRoutingTable : public RoutingTable {
               (int, IPAddress::Family, RoutingTableEntry*),
               (override));
   MOCK_METHOD(bool,
+              GetDefaultRouteFromKernel,
+              (int, RoutingTableEntry*),
+              (override));
+  MOCK_METHOD(bool,
               SetDefaultRoute,
               (int, const IPAddress&, uint32_t),
               (override));

@@ -28,6 +28,11 @@ void MockDHCPController::RegisterCallbacks(UpdateCallback update_callback,
   failure_callback_ = failure_callback;
 }
 
+void MockDHCPController::TriggerUpdateCallback(
+    const IPConfig::Properties& props) {
+  update_callback_.Run(props, /*new_lease_acquired=*/true);
+}
+
 void MockDHCPController::TriggerFailureCallback() {
   failure_callback_.Run();
 }

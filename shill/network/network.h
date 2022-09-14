@@ -127,6 +127,8 @@ class Network {
   // cleaning up the network state is finished.
   void Stop();
 
+  State state() const { return state_; }
+
   mockable bool IsConnected() const { return state_ == State::kConnected; }
 
   // Sets IPv4 properties specific to technology. Currently this is used by
@@ -250,6 +252,9 @@ class Network {
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
     dhcp_provider_ = provider;
   }
+  void set_routing_table_for_testing(RoutingTable* routing_table) {
+    routing_table_ = routing_table;
+  }
   void set_state_for_testing(State state) { state_ = state; }
 
  private:
@@ -262,6 +267,11 @@ class Network {
   // Configures (or reconfigures) the associated Connection object with the
   // given IPConfig.
   void SetupConnection(IPConfig* ipconfig);
+
+  // Creates a Connection object can be used in this Network object. Isolate
+  // this function only for unit tests, so that we can inject a mock Connection
+  // object easily.
+  mockable std::unique_ptr<Connection> CreateConnection() const;
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()

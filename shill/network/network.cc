@@ -146,9 +146,7 @@ void Network::Start(const Network::StartOptions& opts) {
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
   if (connection_ == nullptr) {
-    connection_ = std::make_unique<Connection>(
-        interface_index_, interface_name_, fixed_ip_params_, technology_,
-        device_info_);
+    connection_ = CreateConnection();
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
   state_ = State::kConnected;
@@ -160,6 +158,12 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   if (ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
     current_ipconfig_change_handler_.Run();
   }
+}
+
+std::unique_ptr<Connection> Network::CreateConnection() const {
+  return std::make_unique<Connection>(interface_index_, interface_name_,
+                                      fixed_ip_params_, technology_,
+                                      device_info_);
 }
 
 void Network::Stop() {

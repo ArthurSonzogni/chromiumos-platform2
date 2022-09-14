@@ -26,6 +26,7 @@ class MockDHCPController : public DHCPController {
 
   void RegisterCallbacks(UpdateCallback update_callback,
                          FailureCallback failure_callback) override;
+  void TriggerUpdateCallback(const IPConfig::Properties& props);
   void TriggerFailureCallback();
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override;
