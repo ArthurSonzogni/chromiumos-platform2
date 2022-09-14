@@ -252,8 +252,6 @@ class SessionManagerImpl
   bool StartBrowserDataMigration(brillo::ErrorPtr* error,
                                  const std::string& in_account_id,
                                  const std::string& mode) override;
-  bool StartBrowserDataBackwardMigration(
-      brillo::ErrorPtr* error, const std::string& in_account_id) override;
   bool LoadShillProfile(brillo::ErrorPtr* error,
                         const std::string& in_account_id) override;
 

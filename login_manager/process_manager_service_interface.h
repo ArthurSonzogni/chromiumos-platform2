@@ -72,10 +72,6 @@ class ProcessManagerServiceInterface {
   // browser data migration on chrome launched subsequently.
   virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
                                                   const std::string& mode) = 0;
-  // Calls |BrowserJob::SetBrowserDataBackwardMigrationArgsForUser()| in order
-  // to run browser data backward migration on chrome launched subsequently.
-  virtual void SetBrowserDataBackwardMigrationArgsForUser(
-      const std::string& userhash) = 0;
 
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;

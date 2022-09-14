@@ -735,16 +735,6 @@
     </method>
 
     <!--
-        StartBrowserDataBackwardMigration:
-        @account_id: Account ID of the user to start data backward migration for.
-
-        Makes ash-chrome run browser data backward migration during the subsequent ash-chrome run.
-    -->
-    <method name="StartBrowserDataBackwardMigration">
-      <arg name="account_id" type="s" direction="in" />
-    </method>
-
-    <!--
         UnblockDevModeForInitialStateDetermination:
 
         Dev mode unblocking broker API to unblock the developer mode
