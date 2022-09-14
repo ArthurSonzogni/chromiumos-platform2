@@ -153,6 +153,58 @@ bool Cable::TBT3PDIdentityCheck() {
   return usb_speed == kUSBSuperSpeed31Gen1 || usb_speed == kUSBSuperSpeed31Gen2;
 }
 
+bool Cable::USB4PDIdentityCheck() {
+  auto cable_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                    kIDHeaderVDOProductTypeMask;
+  if (cable_type == kIDHeaderVDOProductTypeCableActive) {
+    auto vdo_version =
+        (GetProductTypeVDO1() >> kActiveCableVDO1VDOVersionOffset) &
+        kActiveCableVDO1VDOVersionBitMask;
+
+    // For VDO version == 1.3, check if Active Cable VDO2 supports USB4.
+    // NOTE: The meaning of this field is inverted; the bit field being set
+    // means USB4 is *not* supported.
+    if (vdo_version == kActiveCableVDO1VDOVersion13) {
+      if (GetProductTypeVDO2() & kActiveCableVDO2USB4SupportedBitField)
+        return false;
+      else
+        return true;
+    }
+
+    // For VDO version != 1.3, don't enable USB4 if the cable:
+    // - doesn't support modal operation, or
+    // - doesn't have an Intel SVID Alt mode, or
+    // - doesn't have rounded support.
+    if (!(GetIdHeaderVDO() & kIDHeaderVDOModalOperationBitField))
+      return false;
+
+    if (!IsAltModeSVIDPresent(kTBTAltModeVID))
+      return false;
+
+    // Go through cable alt modes and check for rounded support in the TBT VDO.
+    auto num_altmodes = GetNumAltModes();
+    for (int i = 0; i < num_altmodes; i++) {
+      AltMode* altmode = GetAltMode(i);
+      if (!altmode || altmode->GetSVID() != kTBTAltModeVID)
+        continue;
+      auto rounded_support =
+          altmode->GetVDO() >> kTBT3CableDiscModeVDORoundedSupportOffset &
+          kTBT3CableDiscModeVDORoundedSupportMask;
+      if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)
+        return true;
+    }
+    return false;
+  } else if (cable_type == kIDHeaderVDOProductTypeCablePassive) {
+    // Apart from USB2.0, USB4 is supported for all other speeds.
+    auto speed = GetProductTypeVDO1() & kUSBSpeedBitMask;
+    if (speed != kUSBSpeed20)
+      return true;
+    else
+      return false;
+  }
+  return false;
+}
+
 bool Cable::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
 }

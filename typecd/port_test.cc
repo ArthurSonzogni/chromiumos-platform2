@@ -429,6 +429,21 @@ TEST_F(PortTest, USB4EntryFalseGatkexActiveTBT3Cable) {
 
 // Check that USB4 mode checks work as expected for the following
 // working case:
+// - OWC Thunderbolt 4 Dock.
+// - Anker USB 3.2 Gen2 cable.
+// Additionally check that CableLimitingUSBSpeed() returns true.
+TEST_F(PortTest, USB4EntryTrueOWCAnker3p2Gen2Cable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddAnkerUSB3p2Gen2Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_TRUE(port->CableLimitingUSBSpeed(false));
+}
+
+// Check that USB4 mode checks work as expected for the following
+// working case:
 // - Intel Gatkex Creek USB4 dock.
 // - Apple Thunderbolt 3 Pro Cable.
 TEST_F(PortTest, USB4EntryTrueGatkexAppleTBT3ProCable) {

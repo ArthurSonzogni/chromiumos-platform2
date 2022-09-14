@@ -172,6 +172,7 @@ class Port {
   FRIEND_TEST(PortTest, USB4EntryTrueGatkexPassiveNonTBT3Cable);
   FRIEND_TEST(PortTest, USB4EntryFalseGatkexPassiveNonTBT3Cable);
   FRIEND_TEST(PortTest, USB4EntryFalseGatkexActiveTBT3Cable);
+  FRIEND_TEST(PortTest, USB4EntryTrueOWCAnker3p2Gen2Cable);
   FRIEND_TEST(PortTest, USB4EntryTrueGatkexAppleTBT3ProCable);
   FRIEND_TEST(PortTest, USB4ToTBT);
   FRIEND_TEST(PortTest, USB4ToDPAltMode);
