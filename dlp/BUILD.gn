@@ -42,14 +42,13 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libsession_manager-client",
+    "sqlite3",
 
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won't be in the right
     # order.
     "system_api",
   ]
-
-  libs = [ "leveldb" ]
 
   if (use.fuzzer) {
     # Link against protobuf for fuzzers so we can use libprotobuf-mutator.
@@ -63,23 +62,17 @@ static_library("libdlp_static") {
   sources = [
     "dlp_adaptor.cc",
     "dlp_daemon.cc",
+    "dlp_database.cc",
     "fanotify_reader_thread.cc",
     "fanotify_watcher.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":dlp_proto" ]
 }
 
 executable("dlp") {
   sources = [ "dlp.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdlp_static" ]
-}
-
-proto_library("dlp_proto") {
-  proto_in_dir = "./proto"
-  proto_out_dir = "include/dlp"
-  sources = [ "${proto_in_dir}/database.proto" ]
 }
 
 # Unit tests.

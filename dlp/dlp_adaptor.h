@@ -18,9 +18,9 @@
 #include <base/files/scoped_file.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <leveldb/db.h>
 
 #include "dlp/dbus-proxies.h"
+#include "dlp/dlp_database.h"
 #include "dlp/fanotify_watcher.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
@@ -87,8 +87,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeleted);
-  // TODO(crbug.com/1338914): LevelDB doesn't work correctly on ARM yet.
-  FRIEND_TEST(DlpAdaptorTest, DISABLED_GetFilesSourcesFileDeleted);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
 
@@ -152,7 +150,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   // Removes entries from |db| that are not present in |inodes| and sets the
   // used database to |db|. |callback| is called if this successfully finishes.
-  void CleanupAndSetDatabase(std::unique_ptr<leveldb::DB> db,
+  void CleanupAndSetDatabase(std::unique_ptr<DlpDatabase> db,
                              base::OnceClosure callback,
                              std::set<ino64_t> inodes);
 
@@ -160,7 +158,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   bool is_fanotify_watcher_started_for_testing_ = false;
 
   // Can be nullptr if failed to initialize or closed during a test.
-  std::unique_ptr<leveldb::DB> db_;
+  std::unique_ptr<DlpDatabase> db_;
 
   std::vector<DlpFilesRule> policy_rules_;
 

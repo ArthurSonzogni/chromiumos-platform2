@@ -694,13 +694,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   EXPECT_EQ(response.files_metadata_size(), 0u);
 }
 
-// TODO(crbug.com/1338914): LevelDB doesn't work correctly on ARM yet.
-#if defined(ARCH_CPU_ARM_FAMILY)
-#define MAYBE_GetFilesSourcesFileDeleted DISABLED_GetFilesSourcesFileDeleted
-#else
-#define MAYBE_GetFilesSourcesFileDeleted GetFilesSourcesFileDeleted
-#endif
-TEST_F(DlpAdaptorTest, MAYBE_GetFilesSourcesFileDeleted) {
+TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeleted) {
   // Create database.
   base::ScopedTempDir database_directory;
   ASSERT_TRUE(database_directory.CreateUniqueTempDir());

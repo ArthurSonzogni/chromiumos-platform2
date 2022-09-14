@@ -28,10 +28,8 @@
 #include <brillo/errors/error.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
-#include <leveldb/write_batch.h>
 #include <session_manager/dbus-proxies.h>
 
-#include "dlp/database.pb.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
 namespace dlp {
@@ -79,12 +77,13 @@ std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
   return sanitized_username;
 }
 
-FileEntry ConvertToFileEntryProto(AddFileRequest request) {
+FileEntry ConvertToFileEntry(ino_t inode, AddFileRequest request) {
   FileEntry result;
+  result.inode = inode;
   if (request.has_source_url())
-    result.set_source_url(request.source_url());
+    result.source_url = request.source_url();
   if (request.has_referrer_url())
-    result.set_referrer_url(request.referrer_url());
+    result.referrer_url = request.referrer_url();
   return result;
 }
 
@@ -131,6 +130,10 @@ void DlpAdaptor::InitDatabaseOnCryptohome() {
   const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
                                            .Append(sanitized_username)
                                            .Append("database");
+  if (!base::CreateDirectory(database_path)) {
+    PLOG(ERROR) << "Can't create database directory";
+    return;
+  }
   InitDatabase(database_path, /*init_callback=*/base::DoNothing());
 }
 
@@ -184,8 +187,6 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
     response.set_error_message("Database is not ready");
     return SerializeProto(response);
   }
-  leveldb::WriteOptions options;
-  options.sync = true;
 
   const ino_t inode = GetInodeValue(request.file_path());
   if (!inode) {
@@ -193,20 +194,11 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
     response.set_error_message("Failed to get inode");
     return SerializeProto(response);
   }
-  const std::string inode_s = base::NumberToString(inode);
 
-  FileEntry file_entry = ConvertToFileEntryProto(request);
-  std::string serialized_proto;
-  if (!file_entry.SerializeToString(&serialized_proto)) {
-    LOG(ERROR) << "Failed to serialize database entry to string";
-    response.set_error_message("Failed to serialize database entry to string");
-    return SerializeProto(response);
-  }
-
-  const leveldb::Status status = db_->Put(options, inode_s, serialized_proto);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to write value to database: " << status.ToString();
-    response.set_error_message(status.ToString());
+  FileEntry file_entry = ConvertToFileEntry(inode, request);
+  if (!db_->InsertFileEntry(file_entry)) {
+    LOG(ERROR) << "Failed to add entry to database";
+    response.set_error_message("Failed to add entry to database");
     return SerializeProto(response);
   }
 
@@ -247,21 +239,16 @@ void DlpAdaptor::RequestFileAccess(
   std::vector<uint64_t> inodes;
   for (const auto& file_path : request.files_paths()) {
     const ino_t inode_n = GetInodeValue(file_path);
-    const std::string inode_s = base::NumberToString(inode_n);
-    std::string serialized_proto;
-    const leveldb::Status get_status =
-        db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
-    if (!get_status.ok()) {
+    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(inode_n);
+    if (!file_entry) {
       // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
     }
-    FileEntry file_entry;
-    file_entry.ParseFromString(serialized_proto);
     inodes.push_back(inode_n);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(inode_n);
-    file_metadata->set_source_url(file_entry.source_url());
+    file_metadata->set_source_url(file_entry->source_url);
     file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
@@ -309,17 +296,11 @@ std::vector<uint8_t> DlpAdaptor::GetFilesSources(
   }
 
   for (const auto& file_inode : request.files_inodes()) {
-    std::string serialized_proto;
-    const leveldb::Status get_status =
-        db_->Get(leveldb::ReadOptions(), base::NumberToString(file_inode),
-                 &serialized_proto);
-    if (get_status.ok()) {
-      FileEntry file_entry;
-      file_entry.ParseFromString(serialized_proto);
-
+    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(file_inode);
+    if (file_entry) {
       FileMetadata* file_metadata = response_proto.add_files_metadata();
       file_metadata->set_inode(file_inode);
-      file_metadata->set_source_url(file_entry.source_url());
+      file_metadata->set_source_url(file_entry->source_url);
     }
   }
 
@@ -350,20 +331,17 @@ void DlpAdaptor::CheckFilesTransfer(
   base::flat_set<std::string> transferred_files;
   for (const auto& file_path : request.files_paths()) {
     const ino_t file_inode = GetInodeValue(file_path);
-    std::string serialized_proto;
-    const leveldb::Status get_status =
-        db_->Get(leveldb::ReadOptions(), base::NumberToString(file_inode),
-                 &serialized_proto);
-    if (!get_status.ok())
+    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(file_inode);
+    if (!file_entry) {
+      // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
+    }
 
-    FileEntry file_entry;
-    file_entry.ParseFromString(serialized_proto);
     transferred_files.insert(file_path);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(file_inode);
-    file_metadata->set_source_url(file_entry.source_url());
+    file_metadata->set_source_url(file_entry->source_url);
     file_metadata->set_path(file_path);
   }
 
@@ -395,26 +373,18 @@ void DlpAdaptor::CheckFilesTransfer(
 void DlpAdaptor::InitDatabase(const base::FilePath database_path,
                               base::OnceClosure init_callback) {
   LOG(INFO) << "Opening database in: " << database_path.value();
-  leveldb::Options options;
-  options.create_if_missing = true;
-  options.paranoid_checks = true;
-  leveldb::DB* db_ptr = nullptr;
-  leveldb::Status status =
-      leveldb::DB::Open(options, database_path.value(), &db_ptr);
-
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to open database: " << status.ToString();
-    status = leveldb::RepairDB(database_path.value(), leveldb::Options());
-    if (status.ok())
-      status = leveldb::DB::Open(options, database_path.value(), &db_ptr);
+  const base::FilePath database_file = database_path.Append("database");
+  if (!base::PathExists(database_file)) {
+    LOG(INFO) << "Creating database file";
+    base::WriteFile(database_path, "\0", 1);
   }
-
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to repair database: " << status.ToString();
+  std::unique_ptr<DlpDatabase> db =
+      std::make_unique<DlpDatabase>(database_file);
+  if (db->Init() != SQLITE_OK) {
+    LOG(ERROR) << "Cannot connect to database " << database_path;
+    std::move(init_callback).Run();
     return;
   }
-
-  std::unique_ptr<leveldb::DB> db(db_ptr);
   base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(
@@ -447,16 +417,11 @@ void DlpAdaptor::ProcessFileOpenRequest(
     return;
   }
 
-  const std::string inode_s = base::NumberToString(inode);
-  std::string serialized_proto;
-  const leveldb::Status get_status =
-      db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
-  if (!get_status.ok()) {
+  std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(inode);
+  if (!file_entry) {
     std::move(callback).Run(/*allowed=*/true);
     return;
   }
-  FileEntry file_entry;
-  file_entry.ParseFromString(serialized_proto);
 
   int lifeline_fd = -1;
   for (const auto& [key, value] : approved_requests_) {
@@ -472,9 +437,9 @@ void DlpAdaptor::ProcessFileOpenRequest(
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
-  request.set_source_url(file_entry.source_url());
+  request.set_source_url(file_entry->source_url);
   request.mutable_file_metadata()->set_inode(inode);
-  request.mutable_file_metadata()->set_source_url(file_entry.source_url());
+  request.mutable_file_metadata()->set_source_url(file_entry->source_url);
   // TODO(crbug.com/1357967)
   // request.mutable_file_metadata()->set_path();
 
@@ -658,27 +623,12 @@ ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
   return file_stats.st_ino;
 }
 
-void DlpAdaptor::CleanupAndSetDatabase(std::unique_ptr<leveldb::DB> db,
+void DlpAdaptor::CleanupAndSetDatabase(std::unique_ptr<DlpDatabase> db,
                                        base::OnceClosure callback,
                                        std::set<ino64_t> inodes) {
   DCHECK(db);
 
-  leveldb::WriteBatch write_batch;
-  leveldb::ReadOptions read_options;
-  ino_t inode;
-  read_options.fill_cache = false;
-  std::unique_ptr<leveldb::Iterator> iter(db->NewIterator(read_options));
-  iter->SeekToFirst();
-  for (; iter->Valid(); iter->Next()) {
-    if (base::StringToUint64(iter->key().ToString(), &inode) &&
-        !base::Contains(inodes, inode)) {
-      write_batch.Delete(iter->key());
-    }
-  }
-  leveldb::Status status = db->Write(leveldb::WriteOptions(), &write_batch);
-  if (!status.ok()) {
-    LOG(ERROR) << "Can't cleanup removed files from database";
-  } else {
+  if (db->DeleteFileEntriesWithInodesNotInSet(inodes)) {
     db_.swap(db);
     std::move(callback).Run();
   }
