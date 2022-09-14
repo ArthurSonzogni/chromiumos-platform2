@@ -33,6 +33,7 @@
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptorecovery/inclusion_proof.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
@@ -844,6 +845,16 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     LOG(ERROR) << "Unable to deserialize Response payload associated data";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadADInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_RECOVERY_FATAL);
+  }
+
+  // Verify inclusion proof.
+  if (!VerifyInclusionProof(response_ad.ledger_signed_proof)) {
+    LOG(ERROR) << "Unable to verify inclusion proof";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadLedgerSignedProof),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);

@@ -15,6 +15,7 @@ executable("cryptohome-test-tool") {
   sources = [
     "../cryptohome-test-tool.cc",
     "../cryptorecovery/fake_recovery_mediator_crypto.cc",
+    "../cryptorecovery/inclusion_proof.cc",
     "../cryptorecovery/recovery_crypto_hsm_cbor_serialization.cc",
   ]
   install_path = "sbin"

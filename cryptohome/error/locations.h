@@ -1297,6 +1297,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryCryptoAESFailedInDecryptResponse = 1909,
   /* ./cryptorecovery/recovery_crypto_impl.cc */
   kLocRecoveryCryptoBadPlainTextInDecryptResponse = 1910,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoBadLedgerSignedProof = 1911,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2100
   //// See location_db.py for more info.
