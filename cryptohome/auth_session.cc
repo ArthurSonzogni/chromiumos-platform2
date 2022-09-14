@@ -151,7 +151,8 @@ AuthSession::AuthSession(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage)
+    UserSecretStashStorage* user_secret_stash_storage,
+    bool enable_create_backup_vk_with_uss)
     : username_(username),
       obfuscated_username_(SanitizeUserName(username_)),
       token_(base::UnguessableToken::Create()),
@@ -166,7 +167,8 @@ AuthSession::AuthSession(
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage) {
+      user_secret_stash_storage_(user_secret_stash_storage),
+      enable_create_backup_vk_with_uss_(enable_create_backup_vk_with_uss) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);

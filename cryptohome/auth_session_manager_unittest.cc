@@ -67,7 +67,8 @@ class AuthSessionManagerTest : public ::testing::Test {
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   AuthSession* auth_session = auth_session_manager_.CreateAuthSession(
-      "foo@example.com", 0, AuthIntent::kDecrypt);
+      "foo@example.com", 0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_THAT(auth_session, NotNull());
   base::UnguessableToken token = auth_session->token();
   ASSERT_THAT(auth_session_manager_.FindAuthSession(token), Eq(auth_session));
@@ -75,8 +76,9 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   ASSERT_THAT(auth_session_manager_.FindAuthSession(token), IsNull());
 
   // Repeat with serialized_token overload.
-  auth_session = auth_session_manager_.CreateAuthSession("foo@example.com", 0,
-                                                         AuthIntent::kDecrypt);
+  auth_session = auth_session_manager_.CreateAuthSession(
+      "foo@example.com", 0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_THAT(auth_session, NotNull());
   std::string serialized_token = auth_session->serialized_token();
   ASSERT_THAT(auth_session_manager_.FindAuthSession(serialized_token),
@@ -88,7 +90,8 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
 
 TEST_F(AuthSessionManagerTest, CreateExpire) {
   AuthSession* auth_session = auth_session_manager_.CreateAuthSession(
-      "foo@example.com", 0, AuthIntent::kDecrypt);
+      "foo@example.com", 0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_THAT(auth_session, NotNull());
   base::UnguessableToken token = auth_session->token();
   ASSERT_THAT(auth_session_manager_.FindAuthSession(token), Eq(auth_session));
@@ -106,11 +109,12 @@ TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
 TEST_F(AuthSessionManagerTest, FlagPassing) {
   // Arrange.
   AuthSession* auth_session = auth_session_manager_.CreateAuthSession(
-      "foo@example.com", 0, AuthIntent::kDecrypt);
+      "foo@example.com", 0, AuthIntent::kDecrypt,
+      /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_TRUE(auth_session);
   AuthSession* ephemeral_auth_session = auth_session_manager_.CreateAuthSession(
       "foo@example.com", user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-      AuthIntent::kDecrypt);
+      AuthIntent::kDecrypt, /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_TRUE(ephemeral_auth_session);
 
   // Assert
@@ -121,12 +125,14 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
 TEST_F(AuthSessionManagerTest, IntentPassing) {
   // Arrange.
   AuthSession* decryption_auth_session =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
-                                              AuthIntent::kDecrypt);
+      auth_session_manager_.CreateAuthSession(
+          "foo@example.com", 0, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_TRUE(decryption_auth_session);
   AuthSession* verification_auth_session =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
-                                              AuthIntent::kVerifyOnly);
+      auth_session_manager_.CreateAuthSession(
+          "foo@example.com", 0, AuthIntent::kVerifyOnly,
+          /*enable_create_backup_vk_with_uss =*/false);
   ASSERT_TRUE(verification_auth_session);
 
   // Assert.
