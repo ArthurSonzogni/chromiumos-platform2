@@ -25,10 +25,6 @@ namespace faced {
 FaceAuthDaemon::FaceAuthDaemon() : DBusServiceDaemon(kFaceAuthDaemonName) {}
 
 int FaceAuthDaemon::OnInit() {
-  int return_code = DBusServiceDaemon::OnInit();
-  if (return_code != EXIT_SUCCESS)
-    return return_code;
-
   mojo::core::Init();
 
   absl::StatusOr<std::unique_ptr<FaceAuthService>> face_auth_service =
@@ -42,6 +38,11 @@ int FaceAuthDaemon::OnInit() {
       base::BindOnce(&FaceAuthDaemon::ShutdownOnConnectionError,
                      weak_ptr_factory_.GetWeakPtr()),
       base::SequencedTaskRunnerHandle::Get());
+
+  int return_code = DBusServiceDaemon::OnInit();
+  if (return_code != EXIT_SUCCESS) {
+    return return_code;
+  }
 
   return EXIT_SUCCESS;
 }

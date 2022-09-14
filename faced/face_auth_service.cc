@@ -66,15 +66,23 @@ void FaceAuthService::SetupMojoPipeOnThread(
     scoped_refptr<base::TaskRunner> callback_runner) {
   DCHECK(mojo_task_runner_->BelongsToCurrentThread());
 
+  mojo::ScopedMessagePipeHandle mojo_pipe_handle =
+      invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken);
+  if (!mojo_pipe_handle.is_valid()) {
+    callback_runner->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), /*success=*/false));
+    return;
+  }
+
   service_ = std::make_unique<FaceAuthServiceImpl>(
       mojo::PendingReceiver<
           chromeos::face_auth::mojom::FaceAuthenticationService>(
-          invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken)),
+          std::move(mojo_pipe_handle)),
       base::BindOnce(&FaceAuthService::OnConnectionError,
                      base::Unretained(this)));
 
-  callback_runner->PostTask(FROM_HERE,
-                            base::BindOnce(std::move(callback), false));
+  callback_runner->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), /*success=*/true));
 
   LOG(INFO) << "Mojo connection bootstrapped.";
 }
