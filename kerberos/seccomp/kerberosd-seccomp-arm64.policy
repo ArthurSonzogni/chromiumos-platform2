@@ -79,3 +79,4 @@ flock: 1
 utimensat: 1
 newfstatat: 1
 fstatfs: 1
+statfs: 1
