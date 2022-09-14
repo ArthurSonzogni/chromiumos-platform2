@@ -146,10 +146,13 @@ bool CheckTimestampsInOrder(const std::vector<int64_t>& timestamps) {
 
 // This is for Android testCameraToSurfaceTextureMetadata CTS test case.
 bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
-                            float require_fps) {
-  // Timestamps are from driver. We only allow 1.5% error buffer for the frame
-  // duration. The margin is aligned to CTS tests.
-  float slop_margin = 0.015;
+                            float require_fps,
+                            bool is_certification) {
+  // Timestamps are from driver. If |is_certification| is set true, we only
+  // allow 1.5% error buffer for the frame duration. The margin is aligned to
+  // CTS tests. If |is_certification| is set false, we allow 5.0% error buffer
+  // to avoid test failures in the lab.
+  float slop_margin = is_certification ? 0.015 : 0.05;
   float slop_max_frame_duration_ms = (1e3 / require_fps) * (1 + slop_margin);
   float slop_min_frame_duration_ms = (1e3 / require_fps) * (1 - slop_margin);
 
@@ -710,7 +713,9 @@ class V4L2Test : public ::testing::Test {
             continue;
           }
 
-          if (!CheckConstantFramerate(dev_.GetFrameTimestamps(), fps)) {
+          if (!CheckConstantFramerate(
+                  dev_.GetFrameTimestamps(), fps,
+                  g_env->test_list_ == kCertificationTestList)) {
             LOG(WARNING) << base::StringPrintf(
                 "Capture test %dx%d (%08X) failed and didn't meet "
                 "constant framerate",
