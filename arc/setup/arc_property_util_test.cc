@@ -24,6 +24,7 @@
 
 using ::testing::_;
 using ::testing::ByMove;
+using ::testing::HasSubstr;
 using ::testing::Return;
 using ::testing::StartsWith;
 
@@ -732,7 +733,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesNoMatch) {
   ASSERT_TRUE(base::WriteFile(family_path, "unknownFamily\n"));
 
   std::string dest = "4=2+2\n";
-  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest, "4=2+2\n");
 }
 
@@ -751,7 +752,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMatch) {
   ASSERT_EQ(chmod(family_path.value().c_str(), 0444), 0);
 
   std::string dest = "jkl=aoe\n";
-  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest,
             "jkl=aoe\n"
             "ro.soc.manufacturer=Qualcomm\n"
@@ -784,7 +785,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesSymlink) {
   ASSERT_EQ(chmod(machine_path.value().c_str(), 0444), 0);
 
   std::string dest = "symlinks=fun\n";
-  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest,
             "symlinks=fun\n"
             "ro.soc.manufacturer=Qualcomm\n"
@@ -819,7 +820,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesTwo) {
   ASSERT_EQ(chmod(family1_path.value().c_str(), 0444), 0);
 
   std::string dest = "one=two\n";
-  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest,
             "one=two\n"
             "ro.soc.manufacturer=Qualcomm\n"
@@ -839,8 +840,20 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesCannotOpenMachineFile) {
   auto socinfo_path = temp_dir.Append("directory.nothere");
 
   std::string dest;
-  AppendArmSocProperties(socinfo_path, &dest);
+  AppendArmSocProperties(socinfo_path, config(), &dest);
   EXPECT_EQ(dest, "");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesHardCodedPlatformMapping) {
+  auto temp_dir = GetTempDir();
+  auto socinfo_path = temp_dir.Append("directory.nothere");
+
+  config()->SetString("/identity", "platform-name", "Kukui");
+  std::string dest;
+  AppendArmSocProperties(socinfo_path, config(), &dest);
+
+  EXPECT_THAT(dest, HasSubstr("ro.soc.manufacturer=Mediatek\n"));
+  EXPECT_THAT(dest, HasSubstr("ro.soc.model=MT8183\n"));
 }
 
 }  // namespace

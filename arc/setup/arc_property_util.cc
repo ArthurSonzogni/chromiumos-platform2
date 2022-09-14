@@ -291,7 +291,7 @@ bool ExpandPropertyContents(const std::string& content,
 
     case ExtraProps::kSoc:
 #if defined(ARCH_CPU_ARM_FAMILY)
-      AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"),
+      AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"), config,
                              &new_properties);
 #else
       AppendX86SocProperties(base::FilePath("/proc/cpuinfo"), &new_properties);
@@ -431,20 +431,43 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
 }
 
 void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
+                            brillo::CrosConfigInterface* config,
                             std::string* dest) {
   const std::string soc_pattern("*");
-  bool found = false;
 
   base::FileEnumerator soc_dir_it(sysfs_socinfo_devices_path, false,
                                   base::FileEnumerator::FileType::DIRECTORIES,
                                   soc_pattern);
 
-  for (auto soc_dir_path = soc_dir_it.Next(); !found && !soc_dir_path.empty();
-       soc_dir_path = soc_dir_it.Next())
-    found = ParseOneSocinfo(soc_dir_path, dest);
+  for (auto soc_dir_path = soc_dir_it.Next(); !soc_dir_path.empty();
+       soc_dir_path = soc_dir_it.Next()) {
+    if (ParseOneSocinfo(soc_dir_path, dest))
+      return;
+  }
 
-  if (!found)
-    LOG(ERROR) << "Unknown ARM SoC";
+  std::string platform;
+
+  if (!config->GetString("/identity", "platform-name", &platform)) {
+    LOG(ERROR) << "Cannot get platform name";
+  } else {
+    LOG(INFO) << "Cannot find SoC info from " << sysfs_socinfo_devices_path
+              << "; attempting to use platform->CPU mapping for: " << platform;
+
+    // Platform names:
+    //   Trogdor: also matches Strongbad and Homestar.
+    //   Kukui: also matches Jacuzzi.
+    // These devices do not have recent-enough firmware and/or kernels to have
+    // a populated /sys/bus/soc/devices.
+    if (platform == "Kukui") {
+      *dest += "ro.soc.manufacturer=Mediatek\n";
+      *dest += "ro.soc.model=MT8183\n";
+    } else if (platform == "Trogdor") {
+      *dest += "ro.soc.manufacturer=Qualcomm\n";
+      *dest += "ro.soc.model=SC7180\n";
+    } else {
+      LOG(ERROR) << "Unexpected platform: " << platform;
+    }
+  }
 }
 
 void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
@@ -521,8 +544,8 @@ bool ExpandPropertyContentsForTesting(const std::string& content,
                                       bool debuggable,
                                       std::string* expanded_content) {
   return ExpandPropertyContents(content, config, nullptr, expanded_content,
-                                /*filter_non_ro_props=*/true,
-                                ExtraProps::kNone, debuggable, std::string());
+                                /*filter_non_ro_props=*/true, ExtraProps::kNone,
+                                debuggable, std::string());
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,

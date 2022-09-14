@@ -31,6 +31,7 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
 // /sys/bus/soc/devices which can be overridden for testing.
 // Appends results to |dest|. Used for ARM architectures.
 void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
+                            brillo::CrosConfigInterface* config,
                             std::string* dest);
 
 // Expands the contents of a template Android property file.  Strings like
