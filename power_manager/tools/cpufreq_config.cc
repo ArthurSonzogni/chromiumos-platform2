@@ -33,10 +33,6 @@ const char kKeyGovernorDischarging[] = "CPUFREQ_GOVERNOR_BATTERY_DISCHARGE";
 const char kCpuBaseDir[] = "/sys/devices/system/cpu";
 const char kCpufreqDir[] = "/sys/devices/system/cpu/cpufreq";
 
-const char kCpufreqGovernorInteractive[] = "interactive";
-const char kCpufreqGovernorOndemand[] = "ondemand";
-const char kCpufreqGovernorConservative[] = "conservative";
-
 const char kSELinuxEnforcePath[] = "/sys/fs/selinux/enforce";
 
 class CpufreqConf {
@@ -219,6 +215,22 @@ bool ConfigureIntelPstate(const CpufreqConf& conf) {
   return ret;
 }
 
+bool GovernorIsConfigurable(std::string governor) {
+  const std::vector<std::string> configurableGovernors = {
+      "interactive",
+      "ondemand",
+      "conservative",
+      "schedutil",
+  };
+
+  for (const auto& cg : configurableGovernors) {
+    if (cg == governor)
+      return true;
+  }
+
+  return false;
+}
+
 bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
   const std::vector<std::string> settings = {
       // "interactive" settings:
@@ -241,6 +253,9 @@ bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
       // "conservative" settings:
       "freq_step",
       "down_threshold",
+
+      // "schedutil" settings:
+      "rate_limit_us",
   };
   bool ret = true;
 
@@ -299,9 +314,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if ((governor == kCpufreqGovernorInteractive ||
-       governor == kCpufreqGovernorOndemand ||
-       governor == kCpufreqGovernorConservative) &&
+  if (GovernorIsConfigurable(governor) &&
       !ConfigureGovernorSettings(conf, governor)) {
     LOG(ERROR) << "Failed to configure " << governor << " settings";
     return EXIT_FAILURE;
