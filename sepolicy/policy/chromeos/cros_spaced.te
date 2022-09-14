@@ -46,7 +46,10 @@ dontaudit cros_spaced {
   usb_device
 }:chr_file getattr;
 
-dontaudit cros_spaced cros_shm:file getattr;
+dontaudit cros_spaced {
+  cros_shm
+  sysfs_zram
+}:file getattr;
 
 dontaudit cros_spaced {
   audio_device
