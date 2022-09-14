@@ -161,17 +161,14 @@ libbrillo_sublibs = [
   {
     library_name = "brillo-streams"
     deps = [ ":libbrillo-core" ]
-    all_dependent_pkg_deps = [ "openssl" ]
     sources = [
       "brillo/streams/file_stream.cc",
       "brillo/streams/input_stream_set.cc",
       "brillo/streams/memory_containers.cc",
       "brillo/streams/memory_stream.cc",
-      "brillo/streams/openssl_stream_bio.cc",
       "brillo/streams/stream.cc",
       "brillo/streams/stream_errors.cc",
       "brillo/streams/stream_utils.cc",
-      "brillo/streams/tls_stream.cc",
     ]
   },
 
@@ -489,7 +486,6 @@ if (use.test) {
       "brillo/streams/input_stream_set_test.cc",
       "brillo/streams/memory_containers_test.cc",
       "brillo/streams/memory_stream_test.cc",
-      "brillo/streams/openssl_stream_bio_test.cc",
       "brillo/streams/stream_test.cc",
       "brillo/streams/stream_utils_test.cc",
       "brillo/strings/string_utils_test.cc",
