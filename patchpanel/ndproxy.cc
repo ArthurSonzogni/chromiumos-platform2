@@ -39,6 +39,15 @@
 
 namespace patchpanel {
 namespace {
+// Currently when we are unable to resolve the destination MAC for a proxied
+// packet (note this can only happen for unicast NA and NS), we send the packet
+// using all-nodes multicast MAC. Change this flag to true to drop those packets
+// on uplinks instead.
+// TODO(b/244271776): Investigate if it is safe to drop such packets, or if
+// there is a legitimate case that these packets are actually required.
+constexpr bool kDropUnresolvableUnicastToUpstream = false;
+
+const unsigned char kZeroMacAddress[] = {0, 0, 0, 0, 0, 0};
 const unsigned char kAllNodesMulticastMacAddress[] = {0x33, 0x33, 0,
                                                       0,    0,    0x01};
 const unsigned char kAllRoutersMulticastMacAddress[] = {0x33, 0x33, 0,
@@ -409,12 +418,21 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
     ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
     ResolveDestinationMac(new_ip6->ip6_dst, send_ll_addr.sll_addr);
-    VLOG_IF(1, memcmp(send_ll_addr.sll_addr, &kAllNodesMulticastMacAddress,
-                      ETHER_ADDR_LEN) == 0)
-        << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
-        << " packet dest IP " << IPv6AddressToString(new_ip6->ip6_dst)
-        << " into MAC address, using all-nodes multicast MAC instead. In: "
-        << recv_ll_addr.sll_ifindex << ", out: " << target_if;
+    if (memcmp(send_ll_addr.sll_addr, &kZeroMacAddress, ETHER_ADDR_LEN) == 0) {
+      VLOG(1) << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
+              << " packet dest IP " << IPv6AddressToString(new_ip6->ip6_dst)
+              << " into MAC address. In: " << recv_ll_addr.sll_ifindex
+              << ", out: " << target_if;
+      if (IsGuestInterface(target_if) || !kDropUnresolvableUnicastToUpstream) {
+        // If we can't resolve the destination IP into MAC from kernel neighbor
+        // table, fill destination MAC with all-nodes multicast MAC instead.
+        memcpy(send_ll_addr.sll_addr, &kAllNodesMulticastMacAddress,
+               ETHER_ADDR_LEN);
+      } else {
+        // Drop the packet.
+        return;
+      }
+    }
 
     VLOG_IF(3, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
                 icmp6->icmp6_type == ND_ROUTER_ADVERT))
@@ -533,11 +551,8 @@ void NDProxy::ResolveDestinationMac(const in6_addr& dest_ipv6,
     memcpy(dest_mac, neighbor_mac.data(), ETHER_ADDR_LEN);
     return;
   }
-  // If we can't resolve the destination IP into MAC from kernel neighbor
-  // table, fill destination MAC with all-nodes multicast MAC instead.
-  // TODO(b/244271776): Investigate whether there is legitimate case we need to
-  // do this, or we should simply drop the packet instead.
-  memcpy(dest_mac, &kAllNodesMulticastMacAddress, ETHER_ADDR_LEN);
+
+  memcpy(dest_mac, &kZeroMacAddress, ETHER_ADDR_LEN);
 }
 
 bool NDProxy::GetLinkLocalAddress(int ifindex, in6_addr* link_local) {

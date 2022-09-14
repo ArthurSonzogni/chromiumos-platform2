@@ -490,9 +490,7 @@ TEST(NDProxyTest, ResolveDestinationMac) {
       {"known_neighbor",
        "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c",
        {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c}},
-      {"unknown_neighbor",
-       "fe80::4868:8aff:fedc:b071",
-       {0x33, 0x33, 0, 0, 0, 0x01}},
+      {"unknown_neighbor", "fe80::4868:8aff:fedc:b071", {0, 0, 0, 0, 0, 0}},
   };
 
   for (const auto& test_case : test_cases) {
