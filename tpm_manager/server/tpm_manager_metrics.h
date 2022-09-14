@@ -31,6 +31,16 @@ enum class TPMPowerWashResult {
   kMaxValue = kTPMClearFailed,
 };
 
+// The result of TPM ownership process. These values are persisted to logs.
+// Entries should not be renumbered and numeric values should never be reused.
+// Please keep in sync with "TPMTakeOwnershipResult" in
+// tools/metrics/histograms/enums.xml in the Chromium repo.
+enum class TPMTakeOwnershipResult {
+  kSuccess = 0,
+  kFailed = 1,
+  kMaxValue = kFailed,
+};
+
 // This class provides wrapping functions for callers to report DA-related
 // metrics without bothering to know all the constant declarations.
 class TpmManagerMetrics : private MetricsLibrary {
@@ -57,6 +67,8 @@ class TpmManagerMetrics : private MetricsLibrary {
   virtual void ReportAlertsData(const TpmStatus::AlertsData& alerts);
 
   virtual void ReportPowerWashResult(TPMPowerWashResult result);
+
+  virtual void ReportTakeOwnershipResult(TPMTakeOwnershipResult result);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {

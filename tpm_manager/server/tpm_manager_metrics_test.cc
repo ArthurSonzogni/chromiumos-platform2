@@ -127,4 +127,20 @@ TEST_F(TpmManagerMetricsTest, ReportPowerWashResult) {
   }
 }
 
+TEST_F(TpmManagerMetricsTest, ReportTakeOwnershipResult) {
+  const TPMTakeOwnershipResult results[]{
+      TPMTakeOwnershipResult::kSuccess,
+      TPMTakeOwnershipResult::kFailed,
+  };
+  constexpr auto max_value =
+      static_cast<int>(TPMTakeOwnershipResult::kMaxValue);
+  for (auto result : results) {
+    EXPECT_CALL(mock_metrics_library_,
+                SendEnumToUMA(kTPMTakeOwnershipResult, static_cast<int>(result),
+                              max_value + 1))
+        .WillOnce(Return(true));
+    tpm_manager_metrics_.ReportTakeOwnershipResult(result);
+  }
+}
+
 }  // namespace tpm_manager

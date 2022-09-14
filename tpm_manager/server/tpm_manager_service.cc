@@ -405,6 +405,8 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     bool already_owned;
     if (!tpm_initializer_->InitializeTpm(&already_owned)) {
       LOG(WARNING) << __func__ << ": TPM initialization failed.";
+      tpm_manager_metrics_->ReportTakeOwnershipResult(
+          TPMTakeOwnershipResult::kFailed);
       dictionary_attack_timer_.Reset();
       reply->set_status(STATUS_NOT_AVAILABLE);
 
@@ -422,6 +424,8 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
       return reply;
     }
     if (!already_owned) {
+      tpm_manager_metrics_->ReportTakeOwnershipResult(
+          TPMTakeOwnershipResult::kSuccess);
       tpm_manager_metrics_->ReportTimeToTakeOwnership(base::TimeTicks::Now() -
                                                       take_ownerhip_start_time);
     }
@@ -839,11 +843,15 @@ std::unique_ptr<TakeOwnershipReply> TpmManagerService::TakeOwnershipTask(
   const base::TimeTicks take_ownerhip_start_time = base::TimeTicks::Now();
   bool already_owned;
   if (!tpm_initializer_->InitializeTpm(&already_owned)) {
+    tpm_manager_metrics_->ReportTakeOwnershipResult(
+        TPMTakeOwnershipResult::kFailed);
     LOG(ERROR) << __func__ << ": failed to initialize TPM";
     reply->set_status(STATUS_DEVICE_ERROR);
     return reply;
   }
   if (!already_owned) {
+    tpm_manager_metrics_->ReportTakeOwnershipResult(
+        TPMTakeOwnershipResult::kSuccess);
     tpm_manager_metrics_->ReportTimeToTakeOwnership(base::TimeTicks::Now() -
                                                     take_ownerhip_start_time);
   }

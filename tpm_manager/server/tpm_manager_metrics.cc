@@ -91,4 +91,12 @@ void TpmManagerMetrics::ReportPowerWashResult(TPMPowerWashResult result) {
                                   max_value + 1);
 }
 
+void TpmManagerMetrics::ReportTakeOwnershipResult(
+    TPMTakeOwnershipResult result) {
+  constexpr auto max_value =
+      static_cast<int>(TPMTakeOwnershipResult::kMaxValue);
+  metrics_library_->SendEnumToUMA(kTPMTakeOwnershipResult,
+                                  static_cast<int>(result), max_value + 1);
+}
+
 }  // namespace tpm_manager

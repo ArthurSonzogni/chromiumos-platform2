@@ -27,6 +27,11 @@ class MockTpmManagerMetrics : public TpmManagerMetrics {
               ReportAlertsData,
               (const TpmStatus::AlertsData&),
               (override));
+  MOCK_METHOD(void, ReportPowerWashResult, (TPMPowerWashResult), (override));
+  MOCK_METHOD(void,
+              ReportTakeOwnershipResult,
+              (TPMTakeOwnershipResult),
+              (override));
 };
 
 }  // namespace tpm_manager
