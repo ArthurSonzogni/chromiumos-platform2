@@ -245,6 +245,11 @@ bool DebugdDBusAdaptor::CupsRemovePrinter(const std::string& name) {
   return cups_tool_->RemovePrinter(name);
 }
 
+std::vector<uint8_t> DebugdDBusAdaptor::CupsRetrievePpd(
+    const std::string& name) {
+  return cups_tool_->RetrievePpd(name);
+}
+
 std::string DebugdDBusAdaptor::GetInterfaces() {
   return netif_tool_->GetInterfaces();
 }

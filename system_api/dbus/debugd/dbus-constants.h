@@ -15,6 +15,7 @@ const char kCupsAddManuallyConfiguredPrinter[] =
     "CupsAddManuallyConfiguredPrinter";
 const char kCupsAddAutoConfiguredPrinter[] = "CupsAddAutoConfiguredPrinter";
 const char kCupsRemovePrinter[] = "CupsRemovePrinter";
+const char kCupsRetrievePpd[] = "CupsRetrievePpd";
 const char kDumpDebugLogs[] = "DumpDebugLogs";
 const char kGetInterfaces[] = "GetInterfaces";
 const char kGetNetworkStatus[] = "GetNetworkStatus";

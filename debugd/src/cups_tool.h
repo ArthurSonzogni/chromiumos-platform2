@@ -36,6 +36,9 @@ class CupsTool {
   // Remove a printer from CUPS using lpadmin.
   bool RemovePrinter(const std::string& name);
 
+  // Retrieve the PPD from CUPS for a given printer.
+  std::vector<uint8_t> RetrievePpd(const std::string& name);
+
   // Run lpstat -l -r -v -a -p -o and pass the stdout to output.
   bool RunLpstat(std::string* output);
 

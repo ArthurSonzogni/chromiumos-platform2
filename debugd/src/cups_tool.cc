@@ -20,6 +20,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <brillo/files/safe_fd.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/constants.h"
@@ -56,6 +59,8 @@ constexpr char kLpadminGroup[] = "lpadmin";
 constexpr char kUriHelperBasename[] = "cups_uri_helper";
 constexpr char kUriHelperSeccompPolicy[] =
     "/usr/share/policy/cups-uri-helper.policy";
+
+constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
 
 // Runs cupstestppd on |ppd_content| returns the result code.  0 is the expected
 // success code. Verify the foomatic command is valid if the PPD uses the
@@ -209,6 +214,61 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 bool CupsTool::RemovePrinter(const std::string& name) {
   LOG(INFO) << "Removing printer " << name;
   return lp_tools_->Lpadmin({"-x", name}) == EXIT_SUCCESS;
+}
+
+std::vector<uint8_t> CupsTool::RetrievePpd(const std::string& name) {
+  LOG(INFO) << "Retrieve PPD for printer " << name;
+  std::string lpstatOutput;
+  if ((lp_tools_->Lpstat({"-l", "-p", name.c_str()}, &lpstatOutput) !=
+       EXIT_SUCCESS) ||
+      lpstatOutput.empty()) {
+    LOG(ERROR) << "Unable to perform lpstat for " << name;
+    return {};
+  }
+
+  // Parse output from lpstat and look for the Interface line, which contains
+  // the path to the PPD
+  std::vector<std::string> lines = base::SplitString(
+      lpstatOutput, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : lines) {
+    if (base::StartsWith(line, kLpstatInterfaceLinePrefix)) {
+      std::string pathToPpd(line.substr(kLpstatInterfaceLinePrefix.length()));
+      base::TrimWhitespaceASCII(pathToPpd, base::TRIM_ALL, &pathToPpd);
+      const base::FilePath filePath(pathToPpd);
+
+      // Get just the filename from the lpstat path and build a new path with
+      // the known cups PPD directory.  Doing it this way for security reasons -
+      // making sure we use a known good directory and not trusting the output
+      // from lpstat.
+      const base::FilePath ppdPath =
+          lp_tools_->GetCupsPpdDir().Append(filePath.BaseName());
+
+      // Use SafeFD to read the file - more secure than just using file utils.
+      auto [ppdFd, err1] = brillo::SafeFD::Root().first.OpenExistingFile(
+          ppdPath, O_RDONLY | O_CLOEXEC);
+      if (brillo::SafeFD::IsError(err1)) {
+        LOG(ERROR) << "Unable to open " << ppdPath << ": "
+                   << static_cast<int>(err1);
+        return {};
+      }
+
+      auto [contents, err2] = ppdFd.ReadContents();
+      if (brillo::SafeFD::IsError(err2)) {
+        LOG(ERROR) << "Unable to read contents of " << ppdPath << ": "
+                   << static_cast<int>(err2);
+        return {};
+      }
+
+      if (contents.size() == 0) {
+        LOG(ERROR) << "Empty PPD: " << ppdPath;
+        return {};
+      }
+
+      return {contents.begin(), contents.end()};
+    }
+  }
+
+  return {};
 }
 
 // Runs lpstat -l -r -v -a -p -o.

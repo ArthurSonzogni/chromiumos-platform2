@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
@@ -83,5 +84,102 @@ class FakeLpTools : public LpTools {
   std::string lpstat_output_;
   base::ScopedTempDir ppd_dir_;
 };
+
+TEST(CupsToolTest, RetrievePpd) {
+  // Test the case where everything works as expected.
+
+  // Create a fake lp tools object and configure it so we know what results we
+  // should expect from CupsTool.
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  const std::string printerName("test-printer");
+  lptools->CreateValidLpstatOutput(printerName);
+  const base::FilePath& ppdDir = lptools->GetCupsPpdDir();
+  const base::FilePath ppdPath = ppdDir.Append(printerName + ".ppd");
+
+  // Create our ppd file that will get read by CupsTool
+  const std::vector<uint8_t> ppdContents = {'T', 'e', 's', 't', ' ', 'd', 'a',
+                                            't', 'a', ' ', 'i', 'n', ' ', 'P',
+                                            'P', 'D', ' ', 'f', 'i', 'l', 'e'};
+  ASSERT_TRUE(base::WriteFile(ppdPath, ppdContents));
+
+  CupsTool cupsTool;
+  cupsTool.SetLpToolsForTesting(std::move(lptools));
+
+  std::vector<uint8_t> retrievedData = cupsTool.RetrievePpd(printerName);
+
+  EXPECT_THAT(ppdContents, testing::ContainerEq(retrievedData));
+}
+
+TEST(CupsToolTest, EmptyFile) {
+  // Test the case where the PPD file is empty.
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  const std::string printerName("test-printer");
+  lptools->CreateValidLpstatOutput(printerName);
+  const base::FilePath& ppdDir = lptools->GetCupsPpdDir();
+  const base::FilePath ppdPath = ppdDir.Append(printerName + ".ppd");
+
+  // Create an empty ppd file that will get read by CupsTool
+  const std::string ppdContents("");
+  ASSERT_TRUE(base::WriteFile(ppdPath, ppdContents));
+
+  CupsTool cupsTool;
+  cupsTool.SetLpToolsForTesting(std::move(lptools));
+  const std::vector<uint8_t> retrievedData = cupsTool.RetrievePpd(printerName);
+
+  EXPECT_TRUE(retrievedData.empty());
+}
+
+TEST(CupsToolTest, PpdFileDoesNotExist) {
+  // Test the case where lpstat works as expected, but the PPD file does not
+  // exist.
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  const std::string printerName("test-printer");
+  lptools->CreateValidLpstatOutput(printerName);
+
+  CupsTool cupsTool;
+  cupsTool.SetLpToolsForTesting(std::move(lptools));
+
+  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd(printerName);
+
+  EXPECT_TRUE(retrievedPpd.empty());
+}
+
+TEST(CupsToolTest, LpstatError) {
+  // Test the case where there is an error running lpstat
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  // Since we have not specified the lpstat output, our fake object will return
+  // an error from running lpstat.
+
+  CupsTool cupsTool;
+  cupsTool.SetLpToolsForTesting(std::move(lptools));
+
+  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd("printer");
+
+  EXPECT_TRUE(retrievedPpd.empty());
+}
+
+TEST(CupsToolTest, LpstatNoPrinter) {
+  // Test the case where lpstat runs but doesn't return the printer we are
+  // looking for.
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  const std::string printerName("test-printer");
+  lptools->SetLpstatOutput("lpstat data not containing our printer name");
+
+  CupsTool cupsTool;
+  cupsTool.SetLpToolsForTesting(std::move(lptools));
+
+  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd(printerName);
+
+  EXPECT_TRUE(retrievedPpd.empty());
+}
 
 }  // namespace debugd
