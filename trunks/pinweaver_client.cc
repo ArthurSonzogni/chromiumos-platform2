@@ -199,8 +199,8 @@ void GetDefaultResetSecret(brillo::SecureBlob* secret) {
 
 void GetDefaultDelaySchedule(std::map<uint32_t, uint32_t>* delay_schedule) {
   delay_schedule->clear();
-  delay_schedule->emplace(5, 1);
-  delay_schedule->emplace(6, 3);
+  delay_schedule->emplace(5, 5);
+  delay_schedule->emplace(6, 10);
   delay_schedule->emplace(7, 300);
   delay_schedule->emplace(8, 600);
   delay_schedule->emplace(9, 1800);
@@ -718,8 +718,7 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
 
   LOG(INFO) << "log_replay";
   result_code = 0;
-  std::string replay_metadata = cred_metadata;
-  std::string replay_mac = mac;
+  std::string replay_metadata, replay_mac;
   result = tpm_utility->PinWeaverLogReplay(protocol_version, root, h_aux,
                                            old_metadata, &result_code, &root,
                                            &replay_metadata, &replay_mac);
@@ -765,7 +764,7 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
       return EXIT_FAILURE;
     }
   }
-  LOG(INFO) << "Now credential should be locked for 1 second.";
+  LOG(INFO) << "Now credential should be locked for 5 seconds.";
 
   LOG(INFO) << "try_auth should fail (rate-limited)";
   result_code = 0;
@@ -784,8 +783,8 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
     return EXIT_FAILURE;
   }
 
-  LOG(INFO) << "try_auth fail after waiting 2 seconds";
-  base::PlatformThread::Sleep(base::Seconds(2));
+  LOG(INFO) << "try_auth fail after waiting 7 seconds";
+  base::PlatformThread::Sleep(base::Seconds(7));
   result_code = 0;
   result = tpm_utility->PinWeaverTryAuth(
       protocol_version, wrong_le_secret, h_aux, cred_metadata, &result_code,
@@ -800,10 +799,10 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
     LOG(ERROR) << "try_auth verification failed!";
     return EXIT_FAILURE;
   }
-  LOG(INFO) << "Now credential should be locked for 3 second.";
+  LOG(INFO) << "Now credential should be locked for 10 seconds.";
 
-  LOG(INFO) << "try_auth should fail (rate-limited) after waiting 2 seconds";
-  base::PlatformThread::Sleep(base::Seconds(2));
+  LOG(INFO) << "try_auth should fail (rate-limited) after waiting 8 seconds";
+  base::PlatformThread::Sleep(base::Seconds(8));
   result_code = 0;
   result = tpm_utility->PinWeaverTryAuth(
       protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
@@ -963,7 +962,7 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
     GetInsertLeafDefaults(&label, &h_aux, &le_secret, &he_secret, &reset_secret,
                           &delay_schedule, &valid_pcr_criteria);
     // Choose a reasonable value to test for credential expiration.
-    uint32_t expiration_delay = 2;
+    uint32_t expiration_delay = 5;
     result = tpm_utility->PinWeaverInsertLeaf(
         protocol_version, label, h_aux, le_secret, he_secret, reset_secret,
         delay_schedule, valid_pcr_criteria, expiration_delay, &result_code,
@@ -974,9 +973,9 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
       return EXIT_FAILURE;
     }
 
-    LOG(INFO) << "the leaf has a 2-second expiration window.";
-    LOG(INFO) << "try_auth should fail (expired) after waiting 3 seconds";
-    base::PlatformThread::Sleep(base::Seconds(2));
+    LOG(INFO) << "the leaf has a 5-second expiration window.";
+    LOG(INFO) << "try_auth should fail (expired) after waiting 7 seconds";
+    base::PlatformThread::Sleep(base::Seconds(7));
     result_code = 0;
     result = tpm_utility->PinWeaverTryAuth(
         protocol_version, le_secret, h_aux, cred_metadata, &result_code, &root,
@@ -1079,7 +1078,7 @@ int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
       LOG(ERROR) << "seconds_since_boot decreased!";
     }
     uint64_t seconds_passed = seconds_since_boot - old_seconds_since_boot;
-    if (seconds_passed < 2 || seconds_passed > 3) {
+    if (seconds_passed < 5 || seconds_passed > 9) {
       LOG(ERROR) << "seconds_passed isn't reasonable!";
     }
   }
