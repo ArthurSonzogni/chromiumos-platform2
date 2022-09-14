@@ -53,6 +53,11 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
   CHECK_GT(samples, 0);
   CHECK(avg_data);
 
+  if (samples == 1 && variance) {
+    LOG(ERROR) << "We can only estimate variance when |samples| > 1.";
+    return false;
+  }
+
   if (!initialized_) {
     LOG(ERROR) << location_ << ":" << name_ << " is not initialized.";
     return false;
@@ -116,6 +121,7 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
     // TODO(genechang): Remove this workaround when new firmware is released.
     data.at(i).erase(data.at(i).begin(),
                      data.at(i).begin() + kNumberFirstReadsDiscarded);
+    CHECK_EQ(data.at(i).size(), samples);
   }
 
   avg_data->resize(channels.size());
@@ -128,13 +134,14 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
     return true;
   }
 
+  CHECK_GT(samples, 1);
   variance->resize(channels.size(), 0.0);
   for (int i = 0; i < channels.size(); i++) {
-    for (const double& value : data.at(i)) {
-      double var = (value - avg_data->at(i)) * (value - avg_data->at(i));
-      variance->at(i) += var;
+    const double avg = avg_data->at(i);
+    for (double value : data.at(i)) {
+      variance->at(i) += (value - avg) * (value - avg);
     }
-    variance->at(i) /= data.at(i).size();
+    variance->at(i) /= data.at(i).size() - 1;
   }
 
   return true;

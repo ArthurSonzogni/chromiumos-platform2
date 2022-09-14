@@ -25,8 +25,9 @@ class IioEcSensorUtils {
 
   // Use the given |channels| to get a specific number (|samples|) of data and
   // save the average value to |avg_data|. If there are any errors, leave
-  // |avg_data| unaffected.
-  // Returns true if it succeeds, otherwise it returns false.
+  // |avg_data| unaffected. If |variance| is set, it is computed when |samples|
+  // > 1, otherwise the function fails. Returns true if the function succeeds,
+  // otherwise returns false.
   virtual bool GetAvgData(const std::vector<std::string>& channels,
                           int samples,
                           std::vector<double>* avg_data,
