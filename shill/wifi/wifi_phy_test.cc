@@ -102,6 +102,18 @@ class WiFiPhyTest : public ::testing::Test {
   void OnNewWiphy(const Nl80211Message& nl80211_message) {
     wifi_phy_.OnNewWiphy(nl80211_message);
   }
+
+  void AddSupportedIface(nl80211_iftype iftype) {
+    wifi_phy_.supported_ifaces_.insert(iftype);
+  }
+
+  bool SupportsIftype(nl80211_iftype iftype) {
+    return wifi_phy_.SupportsIftype(iftype);
+  }
+
+  void ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
+    wifi_phy_.ParseInterfaceTypes(nl80211_message);
+  }
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
@@ -195,6 +207,31 @@ TEST_F(WiFiPhyTest, OnNewWiphy_WrongIndex) {
                HasSubstr(
                    "received NL80211_CMD_NEW_WIPHY for unexpected phy index")));
   OnNewWiphy(msg);
+}
+
+TEST_F(WiFiPhyTest, SupportsIftype) {
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_AP));
+  AddSupportedIface(NL80211_IFTYPE_AP);
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_AP));
+}
+
+TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg_IfTypes, sizeof(kNewWiphyNlMsg_IfTypes));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  ParseInterfaceTypes(msg);
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_ADHOC));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_STATION));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_AP));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_MONITOR));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_P2P_CLIENT));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_P2P_GO));
+  EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_P2P_DEVICE));
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_AP_VLAN));
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_WDS));
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_MESH_POINT));
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_OCB));
+  EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_NAN));
 }
 
 }  // namespace shill

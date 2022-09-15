@@ -39,7 +39,39 @@ void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
                << message_phy_index;
     return;
   }
+  ParseInterfaceTypes(nl80211_message);
   // TODO(b/244630773): Parse out the message and store phy information.
+}
+
+bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) {
+  return base::Contains(supported_ifaces_, iftype);
+}
+
+void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
+  // Verify NL80211_CMD_NEW_WIPHY.
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
+    return;
+  }
+
+  AttributeListConstRefPtr ifaces;
+  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_SUPPORTED_IFTYPES, &ifaces)) {
+    AttributeIdIterator ifaces_iter(*ifaces);
+    for (; !ifaces_iter.AtEnd(); ifaces_iter.Advance()) {
+      uint32_t iface;
+      if (!ifaces->GetU32AttributeValue(ifaces_iter.GetId(), &iface)) {
+        LOG(ERROR) << "Failed to get supported iface type "
+                   << ifaces_iter.GetId();
+        continue;
+      }
+      if (iface < 0 || iface >= NL80211_IFTYPE_MAX) {
+        LOG(ERROR) << "Invalid iface type: " << iface;
+        continue;
+      }
+      supported_ifaces_.insert(nl80211_iftype(iface));
+    }
+  }
 }
 
 }  // namespace shill

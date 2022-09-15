@@ -43,11 +43,15 @@ class WiFiPhy {
   // into WiFiProvider.
   mockable void OnNewWiphy(const Nl80211Message& nl80211_message);
 
+  // Return true if the phy supports iftype, false otherwise.
+  bool SupportsIftype(nl80211_iftype iftype);
+
  private:
   friend class WiFiPhyTest;
   uint32_t phy_index_;
   std::set<WiFiConstRefPtr> wifi_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
+  void ParseInterfaceTypes(const Nl80211Message& nl80211_message);
 };
 
 }  // namespace shill
