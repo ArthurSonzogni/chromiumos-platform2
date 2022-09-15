@@ -1310,6 +1310,9 @@ int HandleBiometricsSelfTest(
     return EXIT_FAILURE;
   }
 
+  std::string old_root = root;
+  std::string old_metadata = cred_metadata;
+
   // 6. Start an authenticate attempt toward the rate-limiter.
   LOG(INFO) << "start_bio_auth success";
   result_code = 0;
@@ -1343,6 +1346,56 @@ int HandleBiometricsSelfTest(
     LOG(ERROR) << "decrypting label_seed failed!";
   }
   brillo::SecureBlob old_label_seed(label_seed);
+
+  LOG(INFO) << "get_log";
+  result_code = 0;
+  std::vector<trunks::PinWeaverLogEntry> log;
+  result = tpm_utility->PinWeaverGetLog(protocol_version, old_root,
+                                        &result_code, &root, &log);
+  if (result || result_code) {
+    LOG(ERROR) << "get_log failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  bool fail = false;
+  if (log.empty()) {
+    LOG(ERROR) << "get_log verification failed: empty log!";
+    fail = true;
+  }
+  if (log.front().root() != root) {
+    LOG(ERROR) << "get_log verification failed: wrong root!";
+    LOG(ERROR) << HexEncode(log.front().root());
+    fail = true;
+  }
+  if (log.front().type_case() != trunks::PinWeaverLogEntry::TypeCase::kAuth) {
+    LOG(ERROR) << "get_log verification failed: wrong entry type!";
+    LOG(ERROR) << log.front().type_case();
+    fail = true;
+  }
+  if (fail) {
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "log_replay";
+  result_code = 0;
+  std::string replay_metadata = cred_metadata;
+  std::string replay_mac = mac;
+  result = tpm_utility->PinWeaverLogReplay(protocol_version, root, h_aux,
+                                           old_metadata, &result_code, &root,
+                                           &replay_metadata, &replay_mac);
+  if (result) {
+    LOG(ERROR) << "log_replay failed! " << result_code << " "
+               << PwErrorStr(result_code);
+    return EXIT_FAILURE;
+  }
+  if (replay_metadata != cred_metadata) {
+    LOG(ERROR) << "log_replay verification failed: bad metadata!";
+    return EXIT_FAILURE;
+  }
+  if (replay_mac != mac) {
+    LOG(ERROR) << "log_replay verification failed: bad HMAC!";
+    return EXIT_FAILURE;
+  }
 
   // 6. Start an authenticate attempt toward the rate-limiter again, and verify
   // the returned secret is identical.
