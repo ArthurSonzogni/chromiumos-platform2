@@ -451,7 +451,7 @@ int pinweaver_eal_ecdh_derive(const struct pw_ba_ecc_pt_t* ecc_pt_in,
   }
 
   if (*secret_size < shared_secret.size()) {
-    PINWEAVER_EAL_INFO("Error: Input secret size is smaller than %lu",
+    PINWEAVER_EAL_INFO("Error: Input secret size is smaller than %zu",
                        shared_secret.size());
     return -1;
   }
