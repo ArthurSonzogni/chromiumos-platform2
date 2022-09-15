@@ -7,6 +7,7 @@
 # pylint: disable=missing-docstring,protected-access
 
 import os
+import pathlib
 import subprocess
 import unittest
 
@@ -55,10 +56,12 @@ class ParseArgsTests(unittest.TestCase):
 class MainTest(unittest.TestCase):
     def test_full_transform(self):
         output_file = "payload_utils/test_data/fake_project.json"
+        dtd_path = pathlib.Path("payload_utils/media_profiles.dtd")
         cros_config_proto_converter.Main(
             project_configs=[PROJECT_CONFIG_FILE],
             program_config=PROGRAM_CONFIG_FILE,
             output=output_file,
+            dtd_path=dtd_path,
         )
 
         changed = (
