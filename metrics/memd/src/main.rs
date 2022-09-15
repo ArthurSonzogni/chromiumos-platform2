@@ -1410,6 +1410,7 @@ fn main() -> Result<()> {
     let mut always_poll_fast = false;
     let mut debug_log = false;
 
+    libchromeos::panic_handler::install_memfd_handler();
     let args: Vec<String> = std::env::args().collect();
     for arg in &args[1..] {
         match arg.as_ref() {

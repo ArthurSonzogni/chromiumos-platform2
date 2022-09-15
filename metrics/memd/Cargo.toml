@@ -10,6 +10,7 @@ chrono = "0.4.2"
 dbus = "0.6.1"
 env_logger = { version = "0.9", default-features = false }
 libc = "0.2.40"
+libchromeos = "0.1.0"
 log = "0.4.1"
 protobuf = "2.3"
 syslog = "6.0.1"
@@ -25,3 +26,7 @@ panic = 'abort'
 protoc-rust = "2.3"
 
 [workspace]
+
+[patch.crates-io] # ignored by ebuild
+crosvm-base = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/crosvm-base-0.1.0/" } # ignored by ebuild
+libchromeos = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/libchromeos-0.1.0/" } # ignored by ebuild
