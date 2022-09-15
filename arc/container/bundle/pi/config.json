@@ -300,6 +300,14 @@
 			]
 		},
 		{
+			"destination": "/var/run/arc/fonts",
+			"type": "bind",
+			"source": "/usr/share/fonts",
+			"options": [
+				"bind"
+			]
+		},
+		{
 			"destination": "/var/run/arc/sdcard",
 			"type": "bind",
 			"source": "/run/arc/sdcard",
