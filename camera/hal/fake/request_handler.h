@@ -34,6 +34,9 @@ class RequestHandler {
   // Handle one request.
   void HandleRequest(std::unique_ptr<CaptureRequest> request);
 
+  // Handle flush request. This function can be called on any thread.
+  void HandleFlush(base::OnceCallback<void()> callback);
+
   // Start streaming and calls callback with resulting status.
   void StreamOn(const std::vector<camera3_stream_t*>& streams,
                 base::OnceCallback<void(absl::Status)> callback);
@@ -48,6 +51,9 @@ class RequestHandler {
   // Stop streaming implementation.
   absl::Status StreamOffImpl();
 
+  // Do not wait buffer sync for aborted requests.
+  void AbortGrallocBufferSync(CaptureRequest& request);
+
   // Handle aborted request.
   void HandleAbortedRequest(CaptureRequest& request);
 
@@ -59,6 +65,9 @@ class RequestHandler {
 
   // Fill one result buffer.
   bool FillResultBuffer(camera3_stream_buffer_t& buffer);
+
+  // Used to notify caller that all requests are handled.
+  void FlushDone(base::OnceCallback<void()> callback);
 
   // id of the camera device.
   const int id_;
@@ -74,6 +83,12 @@ class RequestHandler {
 
   // Camera static characteristics.
   const android::CameraMetadata static_metadata_;
+
+  // Used to notify that flush is called from framework.
+  bool flush_started_ GUARDED_BY(flush_lock_) = false;
+
+  // Used to guard |flush_started_|.
+  base::Lock flush_lock_;
 };
 }  // namespace cros
 

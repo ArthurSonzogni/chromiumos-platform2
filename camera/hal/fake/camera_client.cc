@@ -218,9 +218,15 @@ void CameraClient::Dump(int fd) {
 
 int CameraClient::Flush(const camera3_device_t* dev) {
   VLOGFID(1, id_);
-  DCHECK_CALLED_ON_VALID_SEQUENCE(ops_sequence_checker_);
 
-  // TODO(pihsun): Implement flush
+  if (request_handler_ == nullptr) {
+    return 0;
+  }
+
+  base::WaitableEvent flushed;
+  request_handler_->HandleFlush(
+      base::BindOnce(&base::WaitableEvent::Signal, base::Unretained(&flushed)));
+  flushed.Wait();
   return 0;
 }
 

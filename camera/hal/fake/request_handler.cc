@@ -45,6 +45,17 @@ void RequestHandler::HandleRequest(std::unique_ptr<CaptureRequest> request) {
   uint32_t frame_number = request->GetFrameNumber();
   VLOGFID(1, id_) << "Request Frame: " << frame_number;
 
+  {
+    base::AutoLock l(flush_lock_);
+    if (flush_started_) {
+      VLOGFID(1, id_) << "Request Frame:" << frame_number
+                      << " is aborted due to flush";
+      AbortGrallocBufferSync(*request);
+      HandleAbortedRequest(*request);
+      return;
+    }
+  }
+
   auto& buffers = request->GetStreamBuffers();
 
   // TODO(pihsun): Determine the appropriate timeout for the sync wait.
@@ -155,11 +166,41 @@ absl::Status RequestHandler::StreamOffImpl() {
   return absl::OkStatus();
 }
 
+void RequestHandler::FlushDone(base::OnceCallback<void()> callback) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  VLOGFID(1, id_);
+  {
+    base::AutoLock l(flush_lock_);
+    flush_started_ = false;
+  }
+  std::move(callback).Run();
+}
+
+void RequestHandler::HandleFlush(base::OnceCallback<void()> callback) {
+  VLOGFID(1, id_);
+  {
+    base::AutoLock l(flush_lock_);
+    flush_started_ = true;
+  }
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&RequestHandler::FlushDone,
+                                base::Unretained(this), std::move(callback)));
+}
+
+void RequestHandler::AbortGrallocBufferSync(CaptureRequest& request) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  auto& buffers = request.GetStreamBuffers();
+  for (auto& buffer : buffers) {
+    buffer.release_fence = buffer.acquire_fence;
+    buffer.acquire_fence = -1;
+  }
+}
+
 void RequestHandler::HandleAbortedRequest(CaptureRequest& request) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
   auto& buffers = request.GetStreamBuffers();
-  for (auto buffer : buffers) {
+  for (auto& buffer : buffers) {
     buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
   }
 
