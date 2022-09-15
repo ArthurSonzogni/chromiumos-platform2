@@ -112,6 +112,7 @@ static_library("libdebugd") {
     "src/ipaddrs_tool.cc",
     "src/kernel_feature_tool.cc",
     "src/log_tool.cc",
+    "src/lp_tools.cc",
     "src/memory_tool.cc",
     "src/metrics.cc",
     "src/netif_tool.cc",
@@ -360,6 +361,7 @@ if (use.test) {
   executable("debugd_testrunner") {
     sources = [
       "src/crash_sender_tool_test.cc",
+      "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/dmesg_tool_test.cc",
       "src/drm_trace_tool_test.cc",

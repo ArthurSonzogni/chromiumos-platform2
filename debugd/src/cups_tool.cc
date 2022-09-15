@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -45,101 +46,16 @@ startxref
 
 constexpr char kGzipCommand[] = "/bin/gzip";
 constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
-constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
-constexpr char kLpadminSeccompPolicy[] =
-    "/usr/share/policy/lpadmin-seccomp.policy";
-constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
-constexpr char kLpstatSeccompPolicy[] =
-    "/usr/share/policy/lpstat-seccomp.policy";
 constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
 constexpr char kTestPPDSeccompPolicy[] =
     "/usr/share/policy/cupstestppd-seccomp.policy";
 
 constexpr char kLpadminUser[] = "lpadmin";
 constexpr char kLpadminGroup[] = "lpadmin";
-constexpr char kLpGroup[] = "lp";
 
 constexpr char kUriHelperBasename[] = "cups_uri_helper";
 constexpr char kUriHelperSeccompPolicy[] =
     "/usr/share/policy/cups-uri-helper.policy";
-
-// Returns the exit code for the executed process.
-// By default disallow root mount namespace. Passing true as optional argument
-// enables root mount namespace.
-int RunAsUser(const std::string& user,
-              const std::string& group,
-              const std::string& command,
-              const std::string& seccomp_policy,
-              const ProcessWithOutput::ArgList& arg_list,
-              const std::vector<uint8_t>* std_input = nullptr,
-              bool inherit_usergroups = false,
-              std::string* out = nullptr) {
-  ProcessWithOutput process;
-  process.set_separate_stderr(true);
-  process.SandboxAs(user, group);
-
-  if (!seccomp_policy.empty())
-    process.SetSeccompFilterPolicyFile(seccomp_policy);
-
-  if (inherit_usergroups)
-    process.InheritUsergroups();
-
-  if (!process.Init())
-    return ProcessWithOutput::kRunError;
-
-  process.AddArg(command);
-  for (const std::string& arg : arg_list) {
-    process.AddArg(arg);
-  }
-
-  // Starts a process, writes data from the buffer to its standard input and
-  // waits for the process to finish.
-  int result = ProcessWithOutput::kRunError;
-  process.RedirectUsingPipe(STDIN_FILENO, true);
-  if (process.Start()) {
-    // Ignore SIGPIPE.
-    const struct sigaction kSigIgn = {.sa_handler = SIG_IGN,
-                                      .sa_flags = SA_RESTART};
-    struct sigaction old_sa;
-    if (sigaction(SIGPIPE, &kSigIgn, &old_sa)) {
-      PLOG(ERROR) << "sigaction failed";
-      return 1;
-    }
-    // Restore the old signal handler at the end of the scope.
-    const base::ScopedClosureRunner kRestoreSignal(base::BindOnce(
-        [](const struct sigaction& sa) {
-          if (sigaction(SIGPIPE, &sa, nullptr)) {
-            PLOG(ERROR) << "sigaction failed";
-          }
-        },
-        old_sa));
-    int stdin_fd = process.GetPipe(STDIN_FILENO);
-
-    bool succeeded = true;
-    if (std_input) {
-      succeeded &= base::WriteFileDescriptor(stdin_fd, *std_input);
-    }
-    succeeded &= IGNORE_EINTR(close(stdin_fd)) == 0;
-    // Kill the process if writing to or closing the pipe fails.
-    if (!succeeded) {
-      process.Kill(SIGKILL, 0);
-    }
-    result = process.Wait();
-    if (out && !process.GetOutput(out)) {
-      PLOG(ERROR) << "Failed to get process output";
-      return 1;
-    }
-  }
-
-  if (result != 0) {
-    std::string error_msg;
-    process.GetError(&error_msg);
-    LOG(ERROR) << "Child process exited with status " << result;
-    LOG(ERROR) << "stderr was: " << error_msg;
-  }
-
-  return result;
-}
 
 // Runs cupstestppd on |ppd_content| returns the result code.  0 is the expected
 // success code. Verify the foomatic command is valid if the PPD uses the
@@ -148,15 +64,15 @@ int TestPPD(const std::vector<uint8_t>& ppd_data) {
   std::vector<uint8_t> ppd_content = ppd_data;
   if (ppd_content[0] == 0x1f && ppd_content[1] == 0x8b) {  // gzip header
     std::string out;
-    int ret = RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "", {"-cfd"},
-                        &ppd_content, false, &out);
+    int ret = LpTools::RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "",
+                                 {"-cfd"}, &ppd_content, false, &out);
     if (ret || out.empty()) {
       LOG(ERROR) << "gzip failed";
       return ret ? ret : 1;
     }
     ppd_content.assign(out.begin(), out.end());
   }
-  int ret = RunAsUser(
+  int ret = LpTools::RunAsUser(
       kLpadminUser, kLpadminGroup, kTestPPDCommand, kTestPPDSeccompPolicy,
       {"-W", "translations", "-W", "constraints", "-"}, &ppd_content);
   // Check if the foomatic-rip cups filter is present in the PPD file.
@@ -186,31 +102,13 @@ int TestPPD(const std::vector<uint8_t>& ppd_data) {
     env->SetVar("PPD", ppd_file.MaybeAsASCII());
     const std::vector<uint8_t> kPdf(std::begin(kPdfContent),
                                     std::end(kPdfContent));
-    ret = RunAsUser(kLpadminUser, kLpadminGroup, kFoomaticCommand, "",
-                    {"1" /*jobID*/, "chronos" /*user*/, "Untitled" /*title*/,
-                     "1" /*copies*/, "" /*options*/},
-                    &kPdf);
+    ret = LpTools::RunAsUser(
+        kLpadminUser, kLpadminGroup, kFoomaticCommand, "",
+        {"1" /*jobID*/, "chronos" /*user*/, "Untitled" /*title*/,
+         "1" /*copies*/, "" /*options*/},
+        &kPdf);
   }
   return ret;
-}
-
-// Runs lpadmin with the provided |arg_list| and |std_input|.
-int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-            bool inherit_usergroups = false,
-            const std::vector<uint8_t>* std_input = nullptr) {
-  // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
-                   kLpadminSeccompPolicy, arg_list, std_input,
-                   inherit_usergroups);
-}
-
-// Runs lpstat with the provided |arg_list| and |std_input|.
-int Lpstat(const ProcessWithOutput::ArgList& arg_list, std::string* output) {
-  // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunAsUser(kLpadminUser, kLpGroup, kLpstatCommand, kLpstatSeccompPolicy,
-                   arg_list,
-                   /*std_input=*/nullptr,
-                   /*inherit_usergroups=*/false, output);
 }
 
 // Translates a return code from lpadmin to a CupsResult value.
@@ -261,6 +159,10 @@ bool IppEverywhereURI(const std::string& uri) {
 
 }  // namespace
 
+void CupsTool::SetLpToolsForTesting(std::unique_ptr<LpTools> lptools) {
+  lp_tools_ = std::move(lptools);
+}
+
 // Invokes lpadmin with arguments to configure a new printer using '-m
 // everywhere'.
 int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
@@ -278,8 +180,8 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
   const bool is_ippusb =
       base::StartsWith(uri, "ippusb://", base::CompareCase::INSENSITIVE_ASCII);
   LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
-  const int result =
-      Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, is_ippusb);
+  const int result = lp_tools_->Lpadmin(
+      {"-v", uri, "-p", name, "-m", "everywhere", "-E"}, is_ippusb);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/true);
 }
 
@@ -298,15 +200,15 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
   }
 
   LOG(INFO) << "Adding manual printer " << name << " at " << uri;
-  const int result =
-      Lpadmin({"-v", uri, "-p", name, "-P", "-", "-E"}, false, &ppd_contents);
+  const int result = lp_tools_->Lpadmin(
+      {"-v", uri, "-p", name, "-P", "-", "-E"}, false, &ppd_contents);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/false);
 }
 
 // Invokes lpadmin with -x to delete a printer.
 bool CupsTool::RemovePrinter(const std::string& name) {
   LOG(INFO) << "Removing printer " << name;
-  return Lpadmin({"-x", name}) == EXIT_SUCCESS;
+  return lp_tools_->Lpadmin({"-x", name}) == EXIT_SUCCESS;
 }
 
 // Runs lpstat -l -r -v -a -p -o.
@@ -321,7 +223,8 @@ bool CupsTool::RemovePrinter(const std::string& name) {
 // -o [destination(s)] shows the jobs queued on the specified destinations.
 //   If no destinations are specified all jobs are shown.
 bool CupsTool::RunLpstat(std::string* output) {
-  return Lpstat({"-l", "-r", "-v", "-a", "-p", "-o"}, output) == EXIT_SUCCESS;
+  return lp_tools_->Lpstat({"-l", "-r", "-v", "-a", "-p", "-o"}, output) ==
+         EXIT_SUCCESS;
 }
 
 // Tests a URI's visual similarity with an HTTP URI.
@@ -336,9 +239,9 @@ bool CupsTool::UriSeemsReasonable(const std::string& uri) {
     return false;
   }
 
-  int cups_uri_helper_exit_code =
-      RunAsUser(SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-                helper_path, kUriHelperSeccompPolicy, args);
+  int cups_uri_helper_exit_code = LpTools::RunAsUser(
+      SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+      helper_path, kUriHelperSeccompPolicy, args);
   if (cups_uri_helper_exit_code == 0) {
     return true;
   }

@@ -5,10 +5,13 @@
 #ifndef DEBUGD_SRC_CUPS_TOOL_H_
 #define DEBUGD_SRC_CUPS_TOOL_H_
 
+#include "debugd/src/lp_tools.h"
+
 #include <stdint.h>
 
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace debugd {
 
@@ -41,6 +44,12 @@ class CupsTool {
   // which the trailing port spec is optional. In addition, they must
   // already be appropriately percent-encoded.
   bool UriSeemsReasonable(const std::string& uri);
+
+  // Used to specify a specific implementation of LpTools (mainly for testing).
+  void SetLpToolsForTesting(std::unique_ptr<LpTools> lptools);
+
+ private:
+  std::unique_ptr<LpTools> lp_tools_ = std::make_unique<LpToolsImpl>();
 };
 
 }  // namespace debugd
