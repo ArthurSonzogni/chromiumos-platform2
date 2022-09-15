@@ -113,6 +113,7 @@ class FakeDiagnosticsService final
   void RunArcHttpRoutine(RunArcHttpRoutineCallback) override;
   void RunArcPingRoutine(RunArcPingRoutineCallback) override;
   void RunArcDnsResolutionRoutine(RunArcDnsResolutionRoutineCallback) override;
+  void RunSensitiveSensorRoutine(RunSensitiveSensorRoutineCallback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

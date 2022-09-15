@@ -107,6 +107,8 @@ class FakeRoutineService final
   void RunArcPingRoutine(RunArcPingRoutineCallback callback) override;
   void RunArcDnsResolutionRoutine(
       RunArcDnsResolutionRoutineCallback callback) override;
+  void RunSensitiveSensorRoutine(
+      RunSensitiveSensorRoutineCallback callback) override;
 };
 
 }  // namespace diagnostics

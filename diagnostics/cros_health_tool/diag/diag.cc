@@ -260,6 +260,9 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution:
         routine_result = actions.ActionRunArcDnsResolutionRoutine();
         break;
+      case mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor:
+        routine_result = false;
+        break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
         NOTREACHED();

@@ -366,6 +366,11 @@ void CrosHealthdRoutineService::RunArcDnsResolutionRoutine(
              std::move(callback));
 }
 
+void CrosHealthdRoutineService::RunSensitiveSensorRoutine(
+    RunSensitiveSensorRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 void CrosHealthdRoutineService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,

@@ -24,7 +24,7 @@ import "diagnostics/mojom/public/wilco_ec.mojom";
 // network-related implementations to the cros_healthd daemon.
 //
 // NextMinVersion: 2, NextIndex: 7
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.CrosHealthdServiceFactory"]
+[Stable]
 interface CrosHealthdServiceFactory {
   // Returns a bound interface to the diagnostics service.
   GetDiagnosticsService@0(pending_receiver<CrosHealthdDiagnosticsService> service);
@@ -54,8 +54,8 @@ interface CrosHealthdServiceFactory {
 
 // Diagnostics interface exposed by the cros_healthd daemon.
 //
-// NextMinVersion: 2, NextIndex: 33
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.CrosHealthdDiagnosticsService"]
+// NextMinVersion: 3, NextIndex: 34
+[Stable]
 interface CrosHealthdDiagnosticsService {
   // Returns an array of all diagnostic routines that the platform supports.
   GetAvailableRoutines@0()
@@ -483,12 +483,25 @@ interface CrosHealthdDiagnosticsService {
   // * |response| - contains a unique identifier and status for the created
   //                routine.
   RunArcDnsResolutionRoutine@31() => (RunRoutineResponse response);
+
+  // Requests that the SensitiveSensor routine is created and started on the
+  // platform. This routine checks that the device's sensors are working
+  // correctly by monitoring the sensor sample data without user interaction.
+  // This routine only support sensitive sensors including accelerometers,
+  // gyro sensors, gravity sensors and magnitude sensors. This routine is only
+  // available if GetAvailableRoutines returned kSensitiveSensor.
+  //
+  // The response:
+  // * |response| - contains a unique identifier and status for the created
+  //                routine.
+  [MinVersion=2] RunSensitiveSensorRoutine@33()
+      => (RunRoutineResponse response);
 };
 
 // Event interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 2, NextIndex: 7
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.CrosHealthdEventService"]
+[Stable]
 interface CrosHealthdEventService {
   // Adds an observer to be notified on Bluetooth events. The caller can remove
   // the observer created by this call by closing their end of the message pipe.
@@ -548,7 +561,7 @@ interface CrosHealthdEventService {
 // Probe interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 2, NextIndex: 3
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.CrosHealthdProbeService"]
+[Stable]
 interface CrosHealthdProbeService {
   // Returns information about a specific process running on the device.
   //
@@ -597,7 +610,7 @@ interface CrosHealthdProbeService {
 // Contains data about the current service instance of cros_healthd.
 //
 // NextMinVersion: 1, NextIndex: 2
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.ServiceStatus"]
+[Stable]
 struct ServiceStatus {
   // Boolean flag if the NetworkHealthService mojo remote has been sent from
   // Chrome and bound in cros_healthd.
@@ -610,7 +623,7 @@ struct ServiceStatus {
 // Interface to query the status of the cros_healthd service.
 //
 // NextMinVersion: 1, NextIndex: 1
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.CrosHealthdSystemService"]
+[Stable]
 interface CrosHealthdSystemService {
   // Returns the status of the cros_healthd service and external mojo remotes.
   GetServiceStatus@0() => (ServiceStatus response);
@@ -627,7 +640,7 @@ interface CrosHealthdSystemService {
 // See go/wilco-ec for more information
 //
 // NextMinVersion: 1, NextIndex: 4
-[Stable, RenamedFrom="chromeos.cros_healthd.mojom.WilcoEcServiceController"]
+[Stable]
 interface WilcoEcServiceController {
   // Adds an observer to be notified on EC events. The caller can remove the
   // observer created by this call by closing their end of the message pipe.

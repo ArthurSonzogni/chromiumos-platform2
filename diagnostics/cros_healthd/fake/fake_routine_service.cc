@@ -200,4 +200,9 @@ void FakeRoutineService::RunArcDnsResolutionRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunSensitiveSensorRoutine(
+    RunSensitiveSensorRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics
