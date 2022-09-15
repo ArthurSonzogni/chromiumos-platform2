@@ -9,6 +9,7 @@
 #include "base/strings/string_tokenizer.h"
 #include "base/strings/stringprintf.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/skeleton_factory.h"
 
@@ -73,9 +74,11 @@ static void print_process_change_ns(
 }
 
 ProcessPlugin::ProcessPlugin(
-    std::unique_ptr<BpfSkeletonFactoryInterface> factory)
-    : weak_ptr_factory_(this) {
+    std::unique_ptr<BpfSkeletonFactoryInterface> factory,
+    scoped_refptr<MessageSender> message_sender)
+    : weak_ptr_factory_(this), message_sender_(message_sender) {
   factory_ = std::move(factory);
+  CHECK(message_sender != nullptr);
 }
 
 std::string ProcessPlugin::GetPluginName() const {
@@ -83,6 +86,11 @@ std::string ProcessPlugin::GetPluginName() const {
 }
 
 void ProcessPlugin::HandleRingBufferEvent(const bpf::event& bpf_event) const {
+  absl::Status status = message_sender_->SendMessage(bpf_event);
+  if (status != absl::OkStatus()) {
+    LOG(ERROR) << "SendMessage FAILED: Message not sent. status=" << status;
+  }
+
   if (bpf_event.type == bpf::process_type) {
     const bpf::process_event& pe = bpf_event.data.process_event;
     if (pe.type == bpf::process_start_type) {

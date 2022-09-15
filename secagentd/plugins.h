@@ -11,6 +11,7 @@
 #include <absl/status/status.h>
 
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/message_sender.h"
 #include "secagentd/skeleton_factory.h"
 
 namespace secagentd {
@@ -27,7 +28,8 @@ class PluginInterface {
 
 class ProcessPlugin : public PluginInterface {
  public:
-  explicit ProcessPlugin(std::unique_ptr<BpfSkeletonFactoryInterface> factory);
+  ProcessPlugin(std::unique_ptr<BpfSkeletonFactoryInterface> factory,
+                scoped_refptr<MessageSender> message_sender);
   bool PolicyIsEnabled() const override;
   absl::Status LoadAndRun() override;
   std::string GetPluginName() const override;
@@ -38,6 +40,7 @@ class ProcessPlugin : public PluginInterface {
   // This is static because it must be accessible to a C style function.
   static struct BpfCallbacks callbacks_;
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
+  scoped_refptr<MessageSender> message_sender_;
   std::unique_ptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };

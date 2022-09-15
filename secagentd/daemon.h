@@ -12,7 +12,9 @@
 #include <memory>
 #include <vector>
 
+#include "base/memory/scoped_refptr.h"
 #include "secagentd/factories.h"
+#include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 
 namespace secagentd {
@@ -27,6 +29,7 @@ namespace secagentd {
 class Daemon : public brillo::DBusDaemon {
   struct Inject {
     std::unique_ptr<BpfPluginFactoryInterface> bpf_plugin_factory_;
+    scoped_refptr<MessageSender> message_sender_;
   };
 
  public:
@@ -42,11 +45,13 @@ class Daemon : public brillo::DBusDaemon {
   int CreateAndRunBpfPlugins();
   int CreateAndRunAgentPlugins();
   void HeartBeat();
+  void OnShutdown(int*) override;
   void SendMetricReport();
 
  private:
   base::RepeatingTimer heart_beat_;
   base::RepeatingTimer send_report_;
+  scoped_refptr<MessageSender> message_sender_;
   std::unique_ptr<BpfPluginFactoryInterface> bpf_plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> bpf_plugins_;
 };

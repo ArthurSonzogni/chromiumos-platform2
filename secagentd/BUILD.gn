@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 import("//secagentd/tools/bpf_gen.gni")
 
 group("all") {
@@ -43,6 +44,8 @@ pkg_config("target_defaults") {
     "libbpf",
     "libbrillo",
     "libchrome",
+    "libmissiveclient",
+    "protobuf",
   ]
   defines = global_use_defines
 }
@@ -52,6 +55,7 @@ static_library("libsecagent") {
     "bpf_utils.cc",
     "daemon.cc",
     "factories.cc",
+    "message_sender.cc",
     "process_bpf_skeleton.cc",
     "process_plugin.cc",
   ]

@@ -7,19 +7,22 @@
 
 #include <memory>
 
+#include "base/memory/scoped_refptr.h"
 #include "secagentd/plugins.h"
 
 namespace secagentd {
 
 class BpfPluginFactoryInterface {
  public:
-  virtual std::unique_ptr<PluginInterface> CreateProcessPlugin() = 0;
+  virtual std::unique_ptr<PluginInterface> CreateProcessPlugin(
+      scoped_refptr<MessageSender> message_sender) = 0;
   virtual ~BpfPluginFactoryInterface() = default;
 };
 
 class BpfPluginFactory : public BpfPluginFactoryInterface {
  public:
-  std::unique_ptr<PluginInterface> CreateProcessPlugin() override;
+  std::unique_ptr<PluginInterface> CreateProcessPlugin(
+      scoped_refptr<MessageSender> message_sender) override;
 };
 
 }  // namespace secagentd
