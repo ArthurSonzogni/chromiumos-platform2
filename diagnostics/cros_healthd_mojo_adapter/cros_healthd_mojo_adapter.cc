@@ -179,6 +179,10 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   ash::cros_healthd::mojom::RunRoutineResponsePtr RunArcDnsResolutionRoutine()
       override;
 
+  // Runs the sensitive sensor routine.
+  ash::cros_healthd::mojom::RunRoutineResponsePtr RunSensitiveSensorRoutine()
+      override;
+
   // Returns which routines are available on the platform.
   std::optional<std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() override;
@@ -872,6 +876,21 @@ CrosHealthdMojoAdapterImpl::RunArcDnsResolutionRoutine() {
   ash::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunArcDnsResolutionRoutine(base::BindOnce(
+      &OnMojoResponseReceived<ash::cros_healthd::mojom::RunRoutineResponsePtr>,
+      &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+ash::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapterImpl::RunSensitiveSensorRoutine() {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
+
+  ash::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunSensitiveSensorRoutine(base::BindOnce(
       &OnMojoResponseReceived<ash::cros_healthd::mojom::RunRoutineResponsePtr>,
       &response, run_loop.QuitClosure()));
   run_loop.Run();

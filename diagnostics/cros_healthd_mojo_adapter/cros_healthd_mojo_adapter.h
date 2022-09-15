@@ -185,6 +185,10 @@ class CrosHealthdMojoAdapter {
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
   RunArcDnsResolutionRoutine() = 0;
 
+  // Runs the sensitive sensor routine.
+  virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
+  RunSensitiveSensorRoutine() = 0;
+
   // Returns which routines are available on the platform.
   virtual std::optional<
       std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>

@@ -368,7 +368,9 @@ void CrosHealthdRoutineService::RunArcDnsResolutionRoutine(
 
 void CrosHealthdRoutineService::RunSensitiveSensorRoutine(
     RunSensitiveSensorRoutineCallback callback) {
-  NOTIMPLEMENTED();
+  RunRoutine(routine_factory_->MakeSensitiveSensorRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
+             std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunRoutine(

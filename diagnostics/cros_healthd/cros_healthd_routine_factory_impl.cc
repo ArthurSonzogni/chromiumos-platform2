@@ -36,6 +36,7 @@
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/prime_search/prime_search.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/signal_strength/signal_strength.h"
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
@@ -252,6 +253,11 @@ CrosHealthdRoutineFactoryImpl::MakeArcPingRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcDnsResolutionRoutine() {
   return CreateArcDnsResolutionRoutine(context_->network_diagnostics_adapter());
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeSensitiveSensorRoutine() {
+  return std::make_unique<SensitiveSensorRoutine>();
 }
 
 }  // namespace diagnostics
