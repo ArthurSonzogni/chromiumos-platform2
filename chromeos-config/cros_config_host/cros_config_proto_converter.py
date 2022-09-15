@@ -504,17 +504,12 @@ def _build_ash_flags(config: Config) -> List[str]:
         _add_flag("oobe-large-screen-special-scaling")
         _add_flag("enable-virtual-keyboard")
 
-    # This affects a large number of projects, so stage the rollout behind each
-    # program updating to configure platform capabilities.
-    # TODO(b/218220022, b/195298103): Remove this condition once all programs
-    # have opted-in or generated configs are not checked-in.
-    if config.program.platform.HasField("capabilities"):
-        if form_factor in (
-            topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE,
-            topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
-            topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE,
-        ):
-            _add_flag("enable-touchview")
+    if form_factor in (
+        topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE,
+        topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE,
+    ):
+        _add_flag("enable-touchview")
 
     return sorted([f"--{k}={v}" if v else f"--{k}" for k, v in flags.items()])
 
