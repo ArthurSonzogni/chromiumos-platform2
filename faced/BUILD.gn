@@ -10,8 +10,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":faced",
+    ":faced_cli",
     ":install_dbus_conf",
     ":install_init_conf",
+    "faced_cli:all",
   ]
   if (use.test) {
     deps += [ ":faced_test_runner" ]
@@ -76,6 +78,15 @@ executable("faced") {
   install_path = "/usr/sbin"
 }
 
+executable("faced_cli") {
+  sources = [ "faced_cli/main.cc" ]
+  deps = [
+    ":libfaced",
+    "faced_cli",
+  ]
+  install_path = "/usr/sbin"
+}
+
 if (use.test) {
   pkg_config("test_pkg_deps") {
     pkg_deps = [
@@ -98,6 +109,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":libfaced",
+      "faced_cli:unit_tests",
       "//common-mk/testrunner",
     ]
   }
