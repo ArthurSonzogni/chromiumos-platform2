@@ -232,7 +232,6 @@ fn read_int(path: &Path) -> Result<u32> {
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     Ok(content
-        .trim()
         .split_whitespace()
         .into_iter()
         .next()
@@ -374,7 +373,7 @@ impl FileWatcher {
             return Err("has_fired_fd: fd is too large".into());
         }
         // see comment for |set()|
-        Ok(unsafe { libc::FD_ISSET(fd, &mut self.inout_read_fds) })
+        Ok(unsafe { libc::FD_ISSET(fd, &self.inout_read_fds) })
     }
 
     fn watch(&mut self, timeout: &Duration, timer: &mut dyn Timer) -> Result<usize> {
@@ -981,9 +980,7 @@ impl<'a> Sampler<'a> {
         log_from_procfs(out, psv, "min_free_kbytes")?;
         log_from_procfs(out, psv, "extra_free_kbytes")?;
 
-        let mut zoneinfo = ZoneinfoFile {
-            0: File::open(&self.paths.zoneinfo)?,
-        };
+        let mut zoneinfo = ZoneinfoFile(File::open(&self.paths.zoneinfo)?);
         let watermarks = zoneinfo.read_watermarks()?;
         writeln!(out, "min_water_mark_kbytes {}", watermarks.min * 4)?;
         writeln!(out, "low_water_mark_kbytes {}", watermarks.low * 4)?;

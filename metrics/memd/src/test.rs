@@ -561,11 +561,11 @@ fn expected_clips(descriptor: &[u8]) -> Vec<(i64, i64)> {
 
     for &c in descriptor {
         if c != previous_char {
-            if (previous_char as char).is_digit(10) {
+            if (previous_char as char).is_ascii_digit() {
                 // End of clip.
                 clips.push((clip_start_time, time));
             }
-            if (c as char).is_digit(10) {
+            if (c as char).is_ascii_digit() {
                 // Start of clip.
                 clip_start_time = time;
                 assert_eq!(c, previous_clip + 1, "malformed clip descriptor");
@@ -581,7 +581,7 @@ fn expected_clips(descriptor: &[u8]) -> Vec<(i64, i64)> {
 // Converts a string starting with a timestamp in seconds (#####.##, with two
 // decimal digits) to a timestamp in milliseconds.
 fn time_from_sample_string(line: &str) -> Result<i64> {
-    let mut tokens = line.split(|c: char| !c.is_digit(10));
+    let mut tokens = line.split(|c: char| !c.is_ascii_digit());
     let seconds = match tokens.next() {
         Some(digits) => digits.parse::<i64>().unwrap(),
         None => return Err("no digits in string".into()),
