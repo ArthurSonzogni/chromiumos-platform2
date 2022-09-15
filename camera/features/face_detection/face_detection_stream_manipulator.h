@@ -78,7 +78,6 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
                       std::vector<human_sensing::CrosFace> faces);
 
   // Face detector settings.
-  std::unique_ptr<FaceDetector> face_detector_;
   ReloadableConfigFile config_;
   Options options_;
   Size active_array_dimension_;
@@ -100,6 +99,10 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
 
   // Metadata logger for tests and debugging.
   MetadataLogger metadata_logger_;
+
+  // face_detector_ needs to be destructed first since the OnFaceDetected
+  // callback use other members.
+  std::unique_ptr<FaceDetector> face_detector_;
 };
 
 }  // namespace cros
