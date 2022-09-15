@@ -10,10 +10,10 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "mojo_service_manager/daemon/mojo_test_environment.h"
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy_test_util.h"
-#include "mojo_service_manager/daemon/test.mojom.h"
+#include "mojo_service_manager/testing/mojo_test_environment.h"
+#include "mojo_service_manager/testing/test.mojom.h"
 
 namespace chromeos {
 namespace mojo_service_manager {

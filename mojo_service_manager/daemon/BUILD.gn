@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("daemon") {
@@ -74,15 +73,9 @@ if (use.test) {
     ]
   }
 
-  generate_mojom_bindings("daemon_test_mojom") {
-    sources = [ "test.mojom" ]
-    mojo_root = "${platform2_root}"
-  }
-
   executable("mojo_service_manager_test") {
     sources = [
       "daemon_test.cc",
-      "mojo_test_runner.cc",
       "service_manager_test.cc",
       "service_policy_loader_test.cc",
       "service_policy_test.cc",
@@ -96,9 +89,9 @@ if (use.test) {
     run_test = true
     deps = [
       ":daemon_test_helper",
-      ":daemon_test_mojom",
       ":libmojo_service_manager_daemon",
-      "//common-mk/testrunner:testrunner",
+      "//mojo_service_manager/testing:mojo_test_runner",
+      "//mojo_service_manager/testing:test_mojom",
     ]
   }
 }

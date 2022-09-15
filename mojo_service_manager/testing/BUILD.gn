@@ -1,0 +1,23 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_default") {
+  pkg_deps = [ "libmojo" ]
+}
+
+generate_mojom_bindings("test_mojom") {
+  sources = [ "test.mojom" ]
+  mojo_root = "${platform2_root}"
+}
+
+source_set("mojo_test_runner") {
+  sources = [ "mojo_test_runner.cc" ]
+  configs += [
+    "//common-mk:test",
+    ":target_default",
+  ]
+}

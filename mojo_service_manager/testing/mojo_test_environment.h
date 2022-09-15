@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOJO_SERVICE_MANAGER_DAEMON_MOJO_TEST_ENVIRONMENT_H_
-#define MOJO_SERVICE_MANAGER_DAEMON_MOJO_TEST_ENVIRONMENT_H_
+#ifndef MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_
+#define MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_
 
 #include <base/test/task_environment.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -29,4 +29,4 @@ class MojoTaskEnvironment : public base::test::SingleThreadTaskEnvironment {
 }  // namespace mojo_service_manager
 }  // namespace chromeos
 
-#endif  // MOJO_SERVICE_MANAGER_DAEMON_MOJO_TEST_ENVIRONMENT_H_
+#endif  // MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_

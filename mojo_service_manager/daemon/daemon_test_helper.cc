@@ -25,9 +25,9 @@
 #include <mojo/public/cpp/platform/platform_channel.h>
 #include <mojo/public/cpp/system/invitation.h>
 
-#include "mojo_service_manager/daemon/mojo_test_environment.h"
 #include "mojo_service_manager/lib/connect.h"
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
+#include "mojo_service_manager/testing/mojo_test_environment.h"
 
 namespace {
 
