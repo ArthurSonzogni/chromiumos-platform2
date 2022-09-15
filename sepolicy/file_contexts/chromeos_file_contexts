@@ -375,6 +375,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /etc/passwd                     u:object_r:cros_passwd_file:s0
 /etc/shadow                     u:object_r:cros_shadow_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
+/etc/featured(/.*)?             u:object_r:cros_featured_file:s0
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.

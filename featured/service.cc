@@ -26,7 +26,7 @@
 namespace featured {
 
 namespace {
-constexpr char kPlatformFeaturesPath[] = "/etc/init/platform-features.json";
+constexpr char kPlatformFeaturesPath[] = "/etc/featured/platform-features.json";
 
 // Allow featured do write operations to path with these prefixes only.
 std::vector<std::string> allowedPrefixes = {"/proc", "/sys"};
@@ -296,7 +296,7 @@ bool DbusFeaturedService::ParseFeatureList() {
   std::string file_contents;
   if (!ReadFileToString(base::FilePath(kPlatformFeaturesPath),
                         &file_contents)) {
-    LOG(ERROR) << "Failed to read conf file: " << kPlatformFeaturesPath;
+    PLOG(ERROR) << "Failed to read conf file: " << kPlatformFeaturesPath;
     return false;
   }
 

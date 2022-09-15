@@ -8,4 +8,5 @@ cros_dbus_client(cros_featured)
 allow cros_featured sysfs_cpuidle:file rw_file_perms;
 rw_dir_file(cros_featured, proc_sys_kernel);
 rw_dir_file(cros_featured, debugfs_tracing);
+r_dir_file(cros_featured, cros_featured_file);
 create_dir_file(cros_featured, debugfs_tracing_instances);
