@@ -999,6 +999,7 @@ class _AudioConfigBuilder:
     def _audio(self):
         return self._hw_features.audio
 
+    @property
     def _design_name(self):
         return self._config.hw_design.name.lower()
 
