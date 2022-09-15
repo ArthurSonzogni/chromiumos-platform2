@@ -221,6 +221,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optflag(
             "",
+            "enable-virtgpu-native-context",
+            "when starting the vm, enable virtgpu native context support (implies --enable-gpu)",
+        );
+        opts.optflag(
+            "",
             "software-tpm",
             "provide software-based virtual Trusted Platform Module",
         );
@@ -315,7 +320,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let vulkan = matches.opt_present("enable-vulkan");
         let big_gl = matches.opt_present("enable-big-gl");
-        let gpu = big_gl || vulkan || matches.opt_present("enable-gpu");
+        let virtgpu_native_context = matches.opt_present("enable-virtgpu-native-context");
+        let gpu = virtgpu_native_context || big_gl || vulkan || matches.opt_present("enable-gpu");
         let timeout = matches
             .opt_str("timeout")
             .map(|x| x.parse())
@@ -325,6 +331,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             gpu,
             vulkan,
             big_gl,
+            virtgpu_native_context,
             software_tpm: matches.opt_present("software-tpm"),
             vtpm_proxy: matches.opt_present("vtpm-proxy"),
             audio_capture: matches.opt_present("enable-audio-capture"),
@@ -1016,7 +1023,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
+   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters] |
@@ -1178,6 +1185,8 @@ mod tests {
             &["vmc", "start", "termina", "--enable-gpu", "--enable-vulkan"],
             &["vmc", "start", "termina", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-gpu", "--enable-big-gl"],
+            &["vmc", "start", "termina", "--enable-virtgpu-native-context"],
+            &["vmc", "start", "termina", "--enable-gpu", "--enable-virtgpu-native-context"],
             &[
                 "vmc",
                 "start",
