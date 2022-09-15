@@ -4271,21 +4271,21 @@ void UserDataAuth::ExtendAuthSession(
         on_done) {
   AssertOnMountThread();
 
-  AuthSession* auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
   user_data_auth::ExtendAuthSessionReply reply;
-  if (!auth_session) {
-    // Token lookup failed.
+  // Fetch only authenticated authsession. This is because the timer only runs
+  // AuthSession is authenticated. If the timer is not running, then there is
+  // nothing to extend.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthSessionNotFoundInExtendAuthSession),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                       ErrorAction::kReboot}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+                           kLocUserDataAuthSessionNotFoundInExtendAuthSession))
+                       .Wrap(std::move(auth_session_status).status()));
     return;
   }
+  AuthSession* auth_session = auth_session_status.value();
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());

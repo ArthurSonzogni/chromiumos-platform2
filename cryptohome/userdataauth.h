@@ -1475,6 +1475,7 @@ class UserDataAuth {
 
   friend class UserDataAuthExTest;
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail);
   FRIEND_TEST(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication);
   FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);

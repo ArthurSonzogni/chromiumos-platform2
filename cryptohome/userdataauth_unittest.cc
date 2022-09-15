@@ -4393,6 +4393,61 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   EXPECT_LT(time_difference, base::Seconds(1));
 }
 
+TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
+  // Setup.
+  PrepareArguments();
+
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+
+  AuthSession* auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  EXPECT_THAT(auth_session, NotNull());
+
+  // Test.
+  user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
+  ext_auth_session_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  ext_auth_session_req.set_extension_duration(kAuthSessionExtensionDuration);
+
+  // Extend the AuthSession.
+  bool extended_called = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ExtendAuthSession(
+        ext_auth_session_req,
+        base::BindOnce(
+            [](bool& extended_ref,
+               const user_data_auth::ExtendAuthSessionReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+                        reply.error());
+              EXPECT_EQ(FALSE, reply.has_seconds_left());
+              extended_ref = true;
+            },
+            std::ref(extended_called)));
+    EXPECT_EQ(TRUE, extended_called);
+  }
+}
+
 TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
   // Setup.
   PrepareArguments();
