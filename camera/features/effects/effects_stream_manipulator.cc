@@ -86,7 +86,6 @@ EffectsStreamManipulator::EffectsStreamManipulator(
 }
 
 bool EffectsStreamManipulator::Initialize(
-    GpuResources* gpu_resources,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   return true;

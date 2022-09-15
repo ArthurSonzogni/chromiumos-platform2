@@ -85,8 +85,8 @@ class HdrnetResourceCache : public GpuResources::CacheContainer {
   // long as we reset the IIR filter every time we start a new stream, we can
   // cache and reuse the denoisers.
   //
-  // TODO: We might need to separate the denoisers of two streams with the same
-  // resolution for some use-caes.
+  // TODO(jcliang): We might need to separate the denoisers of two streams with
+  // the same resolution for some use-caes.
   SpatiotemporalDenoiser* GetDenoiser(const Size& input_size) {
     auto it = denoisers_.Get(input_size);
     if (it == denoisers_.end()) {
@@ -191,11 +191,13 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
 //
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
+    GpuResources* gpu_resources,
     base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     HdrNetProcessor::Factory hdrnet_processor_factory,
     HdrNetConfig::Options* options)
-    : hdrnet_processor_factory_(
+    : gpu_resources_(gpu_resources),
+      hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
               : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
@@ -228,10 +230,8 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
 }
 
 bool HdrNetStreamManipulator::Initialize(
-    GpuResources* gpu_resources,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
-  gpu_resources_ = gpu_resources;
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,

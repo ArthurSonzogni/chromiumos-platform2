@@ -182,10 +182,11 @@ class HdrNetStreamManipulatorTest : public Test {
     CHECK(gpu_resources_.Initialize());
     HdrNetConfig::Options test_options = {.hdrnet_enable = true};
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
-        base::FilePath(), std::make_unique<tests::FakeStillCaptureProcessor>(),
+        &gpu_resources_, base::FilePath(),
+        std::make_unique<tests::FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(
-        &gpu_resources_, nullptr,
+        nullptr,
         base::BindRepeating(&HdrNetStreamManipulatorTest::ProcessCaptureResult,
                             base::Unretained(this)));
   }

@@ -40,12 +40,10 @@ FrameAnnotatorLoaderStreamManipulator::
 }
 
 bool FrameAnnotatorLoaderStreamManipulator::Initialize(
-    GpuResources* gpu_resources,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   if (stream_manipulator_) {
-    return stream_manipulator_->Initialize(gpu_resources, static_info,
-                                           result_callback);
+    return stream_manipulator_->Initialize(static_info, result_callback);
   }
   return true;
 }

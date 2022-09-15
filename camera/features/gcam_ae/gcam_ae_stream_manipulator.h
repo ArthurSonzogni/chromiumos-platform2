@@ -17,7 +17,6 @@
 
 #include "common/reloadable_config_file.h"
 #include "features/gcam_ae/gcam_ae_controller.h"
-#include "gpu/gpu_resources.h"
 
 namespace cros {
 
@@ -43,8 +42,7 @@ class GcamAeStreamManipulator : public StreamManipulator {
   ~GcamAeStreamManipulator() override = default;
 
   // Implementations of StreamManipulator.
-  bool Initialize(GpuResources* gpu_resources,
-                  const camera_metadata_t* static_info,
+  bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;

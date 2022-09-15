@@ -45,6 +45,7 @@ namespace {
 void MaybeEnableHdrNetStreamManipulator(
     const FeatureProfile& feature_profile,
     const StreamManipulator::Options& options,
+    GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_HDRNET
   if (!feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)) {
@@ -73,6 +74,7 @@ void MaybeEnableHdrNetStreamManipulator(
         JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
     out_stream_manipulators->emplace_back(
         std::make_unique<HdrNetStreamManipulator>(
+            gpu_resources,
             feature_profile.GetConfigFilePath(
                 FeatureProfile::FeatureType::kHdrnet),
             std::make_unique<StillCaptureProcessorImpl>(
@@ -117,6 +119,7 @@ std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(
     Options options,
     RuntimeOptions* runtime_options,
+    GpuResources* gpu_resources,
     CameraMojoChannelManagerToken* mojo_manager_token) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
@@ -140,7 +143,7 @@ StreamManipulator::GetEnabledStreamManipulators(
   }
 #endif
 
-  MaybeEnableHdrNetStreamManipulator(feature_profile, options,
+  MaybeEnableHdrNetStreamManipulator(feature_profile, options, gpu_resources,
                                      &stream_manipulators);
 
 #if USE_CAMERA_FEATURE_EFFECTS

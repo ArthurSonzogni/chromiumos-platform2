@@ -72,6 +72,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   GetEnabledStreamManipulators(
       Options options,
       RuntimeOptions* runtime_options,
+      GpuResources* gpu_resources,
       CameraMojoChannelManagerToken* mojo_manager_token);
 
   virtual ~StreamManipulator() = default;
@@ -81,8 +82,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_device_ops::initialize(). Will be called by
   // CameraDeviceAdapter with the camera device static metadata |static_info|.
-  virtual bool Initialize(GpuResources* gpu_resources,
-                          const camera_metadata_t* static_info,
+  virtual bool Initialize(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback) = 0;
 
   // A hook to the upper part of camera3_device_ops::configure_streams(). Will

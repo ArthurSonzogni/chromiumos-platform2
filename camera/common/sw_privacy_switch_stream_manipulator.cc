@@ -52,7 +52,6 @@ SWPrivacySwitchStreamManipulator::SWPrivacySwitchStreamManipulator(
       jpeg_compressor_(JpegCompressor::GetInstance(mojo_manager_token)) {}
 
 bool SWPrivacySwitchStreamManipulator::Initialize(
-    GpuResources* gpu_resources_,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   return true;

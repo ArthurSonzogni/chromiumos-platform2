@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The ChromiumOS Authors.
+ * Copyright 2021 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -294,7 +294,6 @@ AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
 }
 
 bool AutoFramingStreamManipulator::Initialize(
-    GpuResources* gpu_resources_,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   bool ret;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The ChromiumOS Authors.
+ * Copyright 2016 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -220,7 +220,6 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
 }
 
 bool CameraDeviceAdapter::Start(
-    GpuResources* gpu_resources,
     HasReprocessEffectVendorTagCallback
         has_reprocess_effect_vendor_tag_callback,
     ReprocessEffectCallback reprocess_effect_callback) {
@@ -232,7 +231,6 @@ bool CameraDeviceAdapter::Start(
     LOGF(ERROR) << "Failed to start CameraCallbackOpsThread";
     return false;
   }
-  gpu_resources_ = gpu_resources;
   device_ops_delegate_ = std::make_unique<Camera3DeviceOpsDelegate>(
       this, camera_device_ops_thread_.task_runner());
   partial_result_count_ = [&]() {
@@ -283,7 +281,7 @@ int32_t CameraDeviceAdapter::Initialize(
 
   for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
     stream_manipulators_[i]->Initialize(
-        gpu_resources_, static_info_,
+        static_info_,
         base::BindPostTask(
             post_processing_thread_.task_runner(),
             base::BindRepeating(

@@ -29,8 +29,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   ~FrameAnnotatorStreamManipulator() override;
 
   // Implementations of StreamManipulator.
-  bool Initialize(GpuResources* gpu_resources,
-                  const camera_metadata_t* static_info,
+  bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;

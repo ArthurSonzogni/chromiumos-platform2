@@ -99,7 +99,6 @@ FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
 }
 
 bool FrameAnnotatorStreamManipulator::Initialize(
-    GpuResources* gpu_resources,
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(

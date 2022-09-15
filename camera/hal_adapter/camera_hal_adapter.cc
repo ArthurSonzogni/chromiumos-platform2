@@ -254,7 +254,7 @@ int32_t CameraHalAdapter::OpenDevice(
       std::move(get_public_camera_id_callback), std::move(close_callback),
       StreamManipulator::GetEnabledStreamManipulators(
           std::move(options), &stream_manipulator_runtime_options_,
-          mojo_manager_token_));
+          gpu_resources_, mojo_manager_token_));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
@@ -264,7 +264,7 @@ int32_t CameraHalAdapter::OpenDevice(
       base::BindRepeating(&ReprocessEffectManager::ReprocessRequest,
                           base::Unretained(&reprocess_effect_manager_));
   if (!device_adapters_[camera_id]->Start(
-          gpu_resources_, std::move(has_reprocess_effect_vendor_tag_callback),
+          std::move(has_reprocess_effect_vendor_tag_callback),
           std::move(reprocess_effect_callback))) {
     device_adapters_.erase(camera_id);
     return -ENODEV;
