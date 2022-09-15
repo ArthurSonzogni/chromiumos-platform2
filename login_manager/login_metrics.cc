@@ -33,8 +33,8 @@ const char kLoginBrowserShutdownTimeMetric[] = "Login.BrowserShutdownTime";
 const char kArcBugReportBackupTimeMetric[] = "Login.ArcBugReportBackupTime";
 
 // A metric to track the time taken to execute arc-boot-continue impulse.
-const char kArcContinueBootImpulseTime2Metric[] =
-    "Login.ArcContinueBootImpulseTime2";
+const char kArcContinueBootImpulseTime3Metric[] =
+    "Login.ArcContinueBootImpulseTime3";
 const char kArcContinueBootImpulseStatus[] =
     "Login.ArcContinueBootImpulseStatus";
 
@@ -186,10 +186,10 @@ void LoginMetrics::SendArcContinueBootImpulseTime(
   // ARC continue-arc-boot impulse time is between 0 - 60s and split it up into
   // 50 buckets.
   metrics_lib_.SendToUMA(
-      kArcContinueBootImpulseTime2Metric,
+      kArcContinueBootImpulseTime3Metric,
       static_cast<int>(arc_continue_boot_impulse_time.InMilliseconds()),
       static_cast<int>(base::Milliseconds(1).InMilliseconds()),
-      static_cast<int>(base::Seconds(60).InMilliseconds()), 50);
+      static_cast<int>(base::Seconds(40).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendSwitchToFeatureFlagMappingStatus(
