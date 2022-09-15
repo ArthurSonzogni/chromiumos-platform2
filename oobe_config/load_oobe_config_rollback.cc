@@ -92,8 +92,6 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   dictionary.Set("welcomeNext", true);
   // Always skip network selection screen if possible.
   dictionary.Set("networkUseConnected", true);
-  // We don't want updates after rolling back.
-  dictionary.Set("updateSkipNonCritical", true);
   // Set whether metrics should be enabled if it exists in |rollback_data|.
   dictionary.Set("eulaSendStatistics", rollback_data.eula_send_statistics());
   // Set whether the EULA as already accepted and can be skipped if the field is
