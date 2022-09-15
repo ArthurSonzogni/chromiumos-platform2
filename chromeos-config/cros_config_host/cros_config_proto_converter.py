@@ -115,13 +115,15 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def _upsert(field, target, target_name):
+def _upsert(field, target, target_name, suffix=None):
     """Updates or inserts `field` within `target`.
 
     If `target_name` already exists within `target` an update is performed,
     otherwise, an insert is performed.
     """
     if field or field == 0:
+        if suffix is not None:
+            field += suffix
         if target_name in target:
             target[target_name].update(field)
         else:
@@ -845,10 +847,11 @@ def _build_hardware_properties(hw_topology):
     return result
 
 
-def _fw_bcs_path(payload):
+def _fw_bcs_path(payload, ap_fw_suffix=""):
     if payload and payload.firmware_image_name:
-        return "bcs://%s.%d.%d.%d.tbz2" % (
+        return "bcs://%s%s.%d.%d.%d.tbz2" % (
             payload.firmware_image_name,
+            ap_fw_suffix.title(),
             payload.version.major,
             payload.version.minor,
             payload.version.patch,
@@ -862,6 +865,14 @@ def _fw_build_target(payload):
         return payload.build_target_name
 
     return None
+
+
+def _calculate_image_name_suffix(config):
+    fw_config = config.hw_design_config.hardware_features.fw_config
+    return "".join(
+        f"_{customization}"
+        for customization in sorted(fw_config.coreboot_customizations)
+    )
 
 
 def _build_firmware(config):
@@ -879,7 +890,15 @@ def _build_firmware(config):
     _upsert(
         fw_build_config.build_targets.depthcharge, build_targets, "depthcharge"
     )
-    _upsert(fw_build_config.build_targets.coreboot, build_targets, "coreboot")
+
+    ap_fw_suffix = _calculate_image_name_suffix(config)
+
+    _upsert(
+        fw_build_config.build_targets.coreboot,
+        build_targets,
+        "coreboot",
+        suffix=ap_fw_suffix,
+    )
     _upsert(fw_build_config.build_targets.ec, build_targets, "ec")
     _upsert(
         list(fw_build_config.build_targets.ec_extras),
@@ -899,10 +918,16 @@ def _build_firmware(config):
         "build-targets": build_targets,
     }
 
-    _upsert(main_ro.firmware_image_name.lower(), result, "image-name")
+    if main_ro and main_ro.firmware_image_name:
+        _upsert(
+            config.hw_design.id.value.lower(),
+            result,
+            "image-name",
+            suffix=ap_fw_suffix,
+        )
 
-    _upsert(_fw_bcs_path(main_ro), result, "main-ro-image")
-    _upsert(_fw_bcs_path(main_rw), result, "main-rw-image")
+    _upsert(_fw_bcs_path(main_ro, ap_fw_suffix), result, "main-ro-image")
+    _upsert(_fw_bcs_path(main_rw, ap_fw_suffix), result, "main-rw-image")
     _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
     _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
 
@@ -917,7 +942,10 @@ def _build_firmware(config):
 
 def _build_fw_signing(config, whitelabel):
     if config.sw_config.firmware and config.device_signer_config:
+        ap_fw_suffix = _calculate_image_name_suffix(config)
         hw_design = config.hw_design.name.lower()
+        if ap_fw_suffix:
+            hw_design += ap_fw_suffix
         brand_scan_config = config.brand_config.scan_config
         if brand_scan_config and brand_scan_config.whitelabel_tag:
             signature_id = "%s-%s" % (
