@@ -581,11 +581,16 @@ ShillParser::ShillParser(bool testonly_send_all)
 
 constexpr LazyRE2 mm_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.(\S+), (.*))"};
+constexpr LazyRE2 sim_not_inserted_failure = {
+    R"(dbus.*org.freedesktop.ModemManager1.Error.Core.WrongState.*)"};
 
 MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string error_code;
   std::string error_message;
   if (!RE2::PartialMatch(line, *mm_failure, &error_code, &error_message)) {
+    return std::nullopt;
+  }
+  if (RE2::PartialMatch(line, *sim_not_inserted_failure)) {
     return std::nullopt;
   }
 

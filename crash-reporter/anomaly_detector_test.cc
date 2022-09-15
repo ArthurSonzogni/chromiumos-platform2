@@ -643,3 +643,9 @@ TEST(AnomalyDetectorTest, CellularFailure) {
   ShillParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_CELLULAR_FAILURE", {modem_failure}, &parser);
 }
+
+TEST(AnomalyDetectorTest, CellularFailureBlocked) {
+  ParserRun modem_failure = {.expected_size = 0};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_FAILURE_BLOCKED", {modem_failure}, &parser);
+}
