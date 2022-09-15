@@ -16,6 +16,7 @@
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
 
+#include "ml/custom_ops/transpose_conv_bias.h"
 #include "ml/request_metrics.h"
 
 namespace ml {
@@ -104,6 +105,8 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
 
   // Instantiate interpreter.
   tflite::ops::builtin::BuiltinOpResolver resolver;
+  resolver.AddCustom("Convolution2DTransposeBias",
+                     custom_ops::RegisterConvolution2DTransposeBias());
   std::unique_ptr<tflite::Interpreter> interpreter;
   const TfLiteStatus resolve_status =
       tflite::InterpreterBuilder(*model_, resolver)(&interpreter);

@@ -125,6 +125,7 @@ source_set("example_preprocessor") {
 
 static_library("ml_common") {
   sources = [
+    "custom_ops/transpose_conv_bias.cc",
     "daemon.cc",
     "dlcservice_client.cc",
     "document_scanner_impl.cc",
@@ -229,6 +230,7 @@ proto_library("benchmark_proto") {
 shared_library("libml_for_benchmark") {
   sources = [
     "benchmark.cc",
+    "custom_ops/transpose_conv_bias.cc",
     "graph_executor_delegate.cc",
     "graph_executor_impl.cc",
     "metrics.cc",
