@@ -150,7 +150,11 @@ message CommonMetadata {
   // /etc/lsb-release whenever AuthFactor is updated or first persisted.
   // See:https://chromium.googlesource.com/chromiumos/docs/+/HEAD/os_config.md
   // For example: "11012.0.2018_08_28_1422" could be returned as part of this.
-  bytes version_last_updated = 1;
+  bytes chromeos_version_last_updated = 1;
+  // This version number will be supplied by chrome when it calls AddAuthFactor
+  // or UpdateAuthFactor.
+  // Note: The format of this version will be maintained by chrome.
+  bytes chrome_version_last_updated = 2;
 }
 
 // AuthFactor is a backing store for any secret stored on Chrome OS in the USS
