@@ -4,6 +4,7 @@
 
 #include "permission_broker/usb_driver_tracker.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/usbdevice_fs.h>
 #include <sys/epoll.h>
@@ -181,7 +182,9 @@ bool UsbDriverTracker::DisconnectInterface(int fd, uint8_t iface_num) {
   dio.ioctl_code = USBDEVFS_DISCONNECT;
   dio.data = nullptr;
   int rc = ioctl(fd, USBDEVFS_IOCTL, &dio);
-  if (rc < 0) {
+  // ENODATA is a benign error code which is when the interface isn't
+  // associated with any driver.
+  if (rc < 0 && errno != ENODATA) {
     PLOG(ERROR) << "Failed to disconnect interface "
                 << static_cast<int>(iface_num) << " with fd " << fd;
     return false;
