@@ -1673,3 +1673,35 @@ message PrepareAsyncAuthFactorReply {
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
 }
+
+// Fingerprint scan results.
+enum FingerprintScanResult {
+  FINGERPRINT_SCAN_RESULT_SUCCESS = 0;
+  FINGERPRINT_SCAN_RESULT_RETRY = 1;
+  FINGERPRINT_SCAN_RESULT_LOCKOUT = 2;
+  FINGERPRINT_SCAN_RESULT_FATAL_ERROR = 3;
+}
+
+// The message included in signal AsyncAuthScanResultSignal.
+message AsyncAuthScanResult {
+  // The result of the scan
+  oneof scan_result {
+    FingerprintScanResult fingerprint_result = 1;
+  }
+}
+
+// Fingerprint enrollment progress.
+message FingerprintEnrollmentProgress {
+  int32 percent_complete = 1;
+}
+
+// The message included in signal AsyncAuthEnrollmentProgressSignal
+message AsyncAuthEnrollmentProgress {
+  // The result of the latest scan
+  AsyncAuthScanResult scan_result = 1;
+  bool done = 2;
+  // The biometrics-type specific progress
+  oneof progress {
+    FingerprintEnrollmentProgress fingerprint_progress = 3;
+  }
+}
