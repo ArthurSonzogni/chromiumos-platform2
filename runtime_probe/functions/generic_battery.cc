@@ -151,7 +151,7 @@ void GenericBattery::PostHelperEvalImpl(
       // Check if values in sysfs are prefixes of values in EC.
       if (base::StartsWith(*mfr_ec, *mfr_sysfs) &&
           base::StartsWith(*model_ec, *model_sysfs)) {
-        bat_sysfs.GetDict().Merge(*bat_ec);
+        bat_sysfs.GetDict().Merge(std::move(*bat_ec));
         find_match = true;
         break;
       }
