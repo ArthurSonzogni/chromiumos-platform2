@@ -224,6 +224,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     return false;
   }
 
+  // Sommelier relies on implicit modifier, which does not pass host modifier to
+  // zwp_linux_buffer_params_v1_add. Graphics will be broken if modifiers are
+  // enabled.  Sommelier shall be fixed to mirror what arc wayland_service does,
+  // and then we can re-enable UBWC here.
+  //
+  // See b/229147702
+  setenv("MINIGBM_DEBUG", "nocompression", 0);
+
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
   if (classification_ == VmInfo::BOREALIS) {
