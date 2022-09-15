@@ -60,6 +60,7 @@ source_set("libfaced") {
     "face_auth_service.cc",
     "face_auth_service_impl.cc",
     "session.cc",
+    "util/status.h",
   ]
   all_dependent_configs = [ ":target_defaults_pkg_deps" ]
   deps = [
@@ -87,6 +88,7 @@ if (use.test) {
       "dbus_adaptor_test.cc",
       "face_auth_service_impl_test.cc",
       "testrunner.cc",
+      "util/status_test.cc",
     ]
     configs += [
       "//common-mk:test",
