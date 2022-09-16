@@ -8,6 +8,7 @@ JOB=$(basename "$0")
 
 bootstat ui-post-stop
 set +e
+# shellcheck source=/dev/null
 . /sbin/killers
 
 # Terminate PKCS #11 services.
@@ -16,7 +17,7 @@ cryptohome --action=pkcs11_terminate
 # Thaw any renderers that may have been left behind. If we
 # have crashed while renderers are frozen, they'll be unkillable
 # until we do this.
-echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR}/to_be_frozen/freezer.state"
+echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR:-}/to_be_frozen/freezer.state"
 
 # Terminate any processes with files open on the mount point
 # TODO(wad) parallelize with VFS/PID namespaces.
@@ -48,12 +49,12 @@ for container in /run/containers/*-run_oci ; do
   if [ -d "${container}" ]; then
     run_oci --signal=KILL kill "${container##*/}"
     NUM_RETRIES=3
-    for i in $(seq ${NUM_RETRIES}) ; do
+    for i in $(seq "${NUM_RETRIES}") ; do
       # Both sleep and polling are needed here because 'run_oci destroy' fails
       # if the container process is still alive.
       sleep 1
       run_oci destroy "${container##*/}" && break
-      if [ ${i} = ${NUM_RETRIES} ]; then
+      if [ "${i}" = "${NUM_RETRIES}" ]; then
         logger -i -p crit "Failed to destroy ${container##*/}"
       fi
     done
