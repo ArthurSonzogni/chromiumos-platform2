@@ -31,6 +31,7 @@
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_service.h"
 
 namespace shill {
@@ -1336,10 +1337,9 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAPOUI(info.ap_oui)
       .Record();
-  // TODO(b/230820059): Report the OUI as 0xFFFFFFFF until we've implemented
-  // an allowlist of sufficiently popular manufacturers that can be reported
-  // along the rest of the connection information.
-  int unknown_oui = 0xFFFFFFFF;
+
+  int oui = shill::WiFiMetricsUtils::CanReportOUI(info.ap_oui) ? info.ap_oui
+                                                               : 0xFFFFFFFF;
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(this, WiFiService::kSessionTagMinimumLogVerbosity)
@@ -1361,7 +1361,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       .SetSSIDProvisioningMode(info.provisioning_mode)
       .SetSSIDHidden(info.ssid_hidden)
       .SetBSSID(info.bssid)
-      .SetAPOUI(unknown_oui)
+      .SetAPOUI(oui)
       .SetAP_80211krv_NLSSupport(
           info.ap_features.krv_info.neighbor_list_supported)
       .SetAP_80211krv_OTA_FTSupport(info.ap_features.krv_info.ota_ft_supported)

@@ -322,6 +322,7 @@ static_library("libshill") {
     "wifi/wifi.cc",
     "wifi/wifi_cqm.cc",
     "wifi/wifi_endpoint.cc",
+    "wifi/wifi_metrics_utils.cc",
     "wifi/wifi_provider.cc",
     "wifi/wifi_security.cc",
     "wifi/wifi_service.cc",
