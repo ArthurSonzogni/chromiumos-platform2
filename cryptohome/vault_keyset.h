@@ -239,6 +239,11 @@ class VaultKeyset {
       const ChallengeCredentialAuthBlockState& auth_state);
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
 
+  // Returns whether the VaultKeyset is setup for backup purpose.
+  bool IsForBackup() { return backup_vk_; }
+
+  // Setter for the |backup_vk_|.
+  void set_backup_vk_for_testing(bool value) { backup_vk_ = value; }
   // The protected functions that can be override for the testing purpose.
  protected:
   // This function serves as a factory method to return the authblock used in
@@ -356,6 +361,8 @@ class VaultKeyset {
   // Group 1. AuthBlockState. This is metadata used to derive the keys,
   // persisted as plaintext.
   int32_t flags_;
+  // Field to tag the VaultKeyset as a backup VaultKeyset for USS.
+  bool backup_vk_;
   // The salt used to derive the user input in auth block.
   brillo::SecureBlob auth_salt_;
   // The IV used to encrypt the encryption key.
