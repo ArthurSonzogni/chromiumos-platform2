@@ -34,6 +34,9 @@ class IPConfig {
   };
 
   struct Properties {
+    Properties();
+    ~Properties();
+
     // Whether this struct contains both IP address and DNS, and thus is ready
     // to be used for network connection.
     bool HasIPAddressAndDNS() const;

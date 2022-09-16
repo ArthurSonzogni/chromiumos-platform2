@@ -67,6 +67,7 @@ VPNConnection::VPNConnection(std::unique_ptr<Callbacks> callbacks,
     : callbacks_(std::move(callbacks)),
       state_(State::kIdle),
       dispatcher_(dispatcher) {}
+VPNConnection::~VPNConnection() = default;
 
 void VPNConnection::Connect() {
   CheckCallWithState(__func__, state_, {State::kIdle});

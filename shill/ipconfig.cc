@@ -42,6 +42,9 @@ void ApplyOptional(const std::optional<T>& src, T* dst) {
 
 }  // namespace
 
+IPConfig::Properties::Properties() = default;
+IPConfig::Properties::~Properties() = default;
+
 bool IPConfig::Properties::HasIPAddressAndDNS() const {
   return !address.empty() && !dns_servers.empty();
 }

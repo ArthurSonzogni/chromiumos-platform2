@@ -28,6 +28,9 @@ struct NetworkConfig {
     std::optional<std::vector<std::string>> excluded_route_prefixes;
   };
 
+  NetworkConfig();
+  ~NetworkConfig();
+
   // IPv4 address in CIDR format on the interface.
   std::optional<std::string> ipv4_address_cidr;
   RouteProperties ipv4_route;

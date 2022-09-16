@@ -72,7 +72,7 @@ class VPNConnection {
   // Note that we cannot guarantee that when destructor is called, the state is
   // kIdle or kStopped, so the derived class should check the state and release
   // resources (e.g., call OnDisconnect()) if needed.
-  virtual ~VPNConnection() = default;
+  virtual ~VPNConnection();
 
   void Connect();
   void Disconnect();

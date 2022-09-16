@@ -283,6 +283,7 @@ static_library("libshill") {
     "network/dhcp_provider.cc",
     "network/dhcpv4_config.cc",
     "network/network.cc",
+    "network/network_config.cc",
     "portal_detector.cc",
     "power_manager.cc",
     "process_manager.cc",

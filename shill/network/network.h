@@ -119,7 +119,7 @@ class Network {
                    EventDispatcher* dispatcher);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
-  virtual ~Network() = default;
+  virtual ~Network();
 
   // Starts the network with the given |options|.
   void Start(const StartOptions& options);

@@ -73,6 +73,8 @@ Network::Network(int interface_index,
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {}
 
+Network::~Network() = default;
+
 void Network::Start(const Network::StartOptions& opts) {
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
