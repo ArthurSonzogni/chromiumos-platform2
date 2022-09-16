@@ -50,6 +50,7 @@ restart_syscall: 1
 rt_sigreturn: 1
 set_robust_list: 1
 stat: 1
+statfs: 1
 symlink: 1
 unlink: 1
 wait4: 1
