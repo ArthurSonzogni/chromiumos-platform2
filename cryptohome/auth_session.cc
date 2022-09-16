@@ -2286,7 +2286,7 @@ void AuthSession::ResetLECredentials() {
   }
 }
 
-base::TimeDelta AuthSession::GetRemainingTime() {
+base::TimeDelta AuthSession::GetRemainingTime() const {
   DCHECK(timeout_timer_.IsRunning());
   auto time_passed = base::TimeTicks::Now() - timeout_timer_start_time_;
   auto time_left = timeout_timer_.GetCurrentDelay() - time_passed;

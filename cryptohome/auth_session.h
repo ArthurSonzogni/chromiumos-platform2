@@ -267,7 +267,7 @@ class AuthSession final {
   void SetStatus(const AuthStatus status) { status_ = status; }
 
   // Get the time remaining for this AuthSession's life.
-  base::TimeDelta GetRemainingTime();
+  base::TimeDelta GetRemainingTime() const;
 
   // Get the hibernate secret, derived from the file system keyset.
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();

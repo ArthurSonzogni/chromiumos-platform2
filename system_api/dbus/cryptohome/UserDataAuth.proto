@@ -1507,6 +1507,8 @@ message AuthenticateAuthFactorReply {
   // an empty set when the session is created, and is updated when a factor is
   // successfully authenticated.
   repeated AuthIntent authorized_for = 4;
+  // The time left in the current AuthSession after authentication.
+  optional uint32 seconds_left = 5;
 }
 
 // UpdateAuthFactorRequest is built when a user is trying to

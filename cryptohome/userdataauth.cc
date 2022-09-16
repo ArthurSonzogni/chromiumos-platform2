@@ -321,6 +321,11 @@ void ReplyWithAuthenticationResult(
   for (AuthIntent auth_intent : auth_session->authorized_intents()) {
     reply.add_authorized_for(AuthIntentToProto(auth_intent));
   }
+
+  if (auth_session->GetStatus() == AuthStatus::kAuthStatusAuthenticated) {
+    reply.set_seconds_left(auth_session->GetRemainingTime().InSeconds());
+  }
+
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 

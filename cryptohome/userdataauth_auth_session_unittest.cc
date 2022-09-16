@@ -98,7 +98,8 @@ constexpr char kPassword3[] = "password3";
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPin[] = "1234";
 constexpr char kPinLabel[] = "fake-pin-label";
-
+// 300 seconds should be left right as we authenticate.
+constexpr int time_left_after_authenticate = 300;
 SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   SerializedVaultKeyset serialized_vk;
   serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -320,6 +321,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
 
  protected:
   TaskEnvironment task_environment{
+      TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
   NiceMock<MockPlatform> platform_;
   UserSessionMap user_session_map_;
@@ -529,6 +531,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
   EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
 
   // Set up expectation for add credential callback success.
   user_data_auth::AddCredentialsRequest request;
@@ -946,6 +950,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
   EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
 
   // Set UserSession expectations for upcoming mount.
   // Auth and prepare.
@@ -1000,6 +1006,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
   EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
 
   // Called again. User exists, vault should not be created again.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
@@ -1330,6 +1338,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_TRUE(reply.authenticated());
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
   EXPECT_THAT(
       reply.authorized_for(),
       UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
@@ -1372,6 +1382,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1413,6 +1424,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   // Assert. The legacy `authenticated` field stays false.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
 }
@@ -1436,6 +1448,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1460,6 +1473,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1489,6 +1503,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1515,6 +1530,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1532,6 +1548,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   ASSERT_TRUE(auth_session);
   EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1587,6 +1605,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1621,6 +1640,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
