@@ -225,6 +225,12 @@ TEST_F(KernelCollectorTest, LoadBiosLog) {
       "\n\n[NOTE ]  coreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock"
       " starting (log level: 7)...\n"
       "[DEBUG]  This is a bootblock with full loglevel prefixes!\n";
+  std::string bootblock_overflow =
+      "\n*** Pre-CBMEM bootblock console overflowed, log truncated! ***\n"
+      "[DEBUG]  This is a bootblock where the pre-CBMEM console overflowed!\n";
+  std::string romstage_overflow =
+      "\n*** Pre-CBMEM romstage console overflowed, log truncated! ***\n"
+      "[DEBUG]  This is a romstage where the pre-CBMEM console overflowed!\n";
 
   // Normal situation of multiple boots in log.
   ASSERT_TRUE(test_util::CreateFile(
@@ -268,6 +274,30 @@ TEST_F(KernelCollectorTest, LoadBiosLog) {
       (bootblock_boot_with_prefix + bootblock_boot_with_prefix).c_str()));
   ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
   ASSERT_EQ(bootblock_boot_with_prefix, "\n" + dump);
+
+  // BIOS log where bootblock overflowed but romstage is normal.
+  ASSERT_TRUE(test_util::CreateFile(bios_log_file(),
+                                    (bootblock_overflow + romstage_boot_1 +
+                                     bootblock_overflow + romstage_boot_2)
+                                        .c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_overflow + romstage_boot_1, "\n" + dump);
+
+  // BIOS log where bootblock is normal but romstage overflowed.
+  ASSERT_TRUE(test_util::CreateFile(bios_log_file(),
+                                    (bootblock_boot_1 + romstage_overflow +
+                                     bootblock_boot_2 + romstage_overflow)
+                                        .c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_boot_1 + romstage_overflow, "\n" + dump);
+
+  // BIOS log where both bootblock and romstage overflowed.
+  ASSERT_TRUE(test_util::CreateFile(bios_log_file(),
+                                    (bootblock_overflow + romstage_overflow +
+                                     bootblock_overflow + romstage_overflow)
+                                        .c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_overflow + romstage_overflow, "\n" + dump);
 }
 
 TEST_F(KernelCollectorTest, EnableMissingKernel) {
