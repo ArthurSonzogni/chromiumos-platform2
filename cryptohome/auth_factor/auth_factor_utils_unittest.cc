@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "UserDataAuth.pb.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
@@ -166,7 +167,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosNoFactors) {
   // Setup
   NiceMock<MockPlatform> platform;
   AuthFactorManager manager(&platform);
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor> protos;
+  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
+      protos;
 
   // Test
   LoadUserAuthFactorProtos(&manager, kObfuscatedUsername, &protos);
@@ -184,7 +186,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithFactors) {
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
   auto factor2 = CreatePinAuthFactor();
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor2), IsOk());
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor> protos;
+  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
+      protos;
 
   // Test
   LoadUserAuthFactorProtos(&manager, kObfuscatedUsername, &protos);
@@ -192,17 +195,17 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithFactors) {
   // Sort the protos by label. This is done to produce a consistent ordering
   // which makes it easier to verify the results.
   std::sort(protos.pointer_begin(), protos.pointer_end(),
-            [](const user_data_auth::AuthFactor* lhs,
-               const user_data_auth::AuthFactor* rhs) {
-              return lhs->label() < rhs->label();
+            [](const user_data_auth::AuthFactorWithStatus* lhs,
+               const user_data_auth::AuthFactorWithStatus* rhs) {
+              return lhs->auth_factor().label() < rhs->auth_factor().label();
             });
 
   // Verify
   ASSERT_EQ(protos.size(), 2);
-  EXPECT_EQ(protos[0].label(), kLabel);
-  EXPECT_TRUE(protos[0].has_password_metadata());
-  EXPECT_EQ(protos[1].label(), kPinLabel);
-  EXPECT_TRUE(protos[1].has_pin_metadata());
+  EXPECT_EQ(protos[0].auth_factor().label(), kLabel);
+  EXPECT_TRUE(protos[0].auth_factor().has_password_metadata());
+  EXPECT_EQ(protos[1].auth_factor().label(), kPinLabel);
+  EXPECT_TRUE(protos[1].auth_factor().has_pin_metadata());
 }
 
 // Test `LoadUserAuthFactorProtos()` with some auth factors that we can't read.
@@ -214,7 +217,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithUnreadableFactors) {
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
   auto factor2 = CreatePinAuthFactor();
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor2), IsOk());
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor> protos;
+  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
+      protos;
   // Make all file reads fail now, so that we can't read the auth factors.
   EXPECT_CALL(platform, ReadFile(_, _)).WillRepeatedly(Return(false));
 

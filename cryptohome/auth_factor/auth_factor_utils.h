@@ -46,7 +46,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 void LoadUserAuthFactorProtos(
     AuthFactorManager* manager,
     const std::string& obfuscated_username,
-    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor>*
+    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
         out_auth_factors);
 
 // This returns if a given |auth_factor_type| is PinWeaver backed, and thus

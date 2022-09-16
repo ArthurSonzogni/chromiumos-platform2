@@ -244,8 +244,8 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 void LoadUserAuthFactorProtos(
     AuthFactorManager* manager,
     const std::string& obfuscated_username,
-    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactor>*
-        out_auth_factors) {
+    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
+        out_auth_factors_status) {
   for (const auto& [label, auth_factor_type] :
        manager->ListAuthFactors(obfuscated_username)) {
     // Try to load the auth factor. If this fails we just skip it and move on
@@ -262,7 +262,10 @@ void LoadUserAuthFactorProtos(
     auto auth_factor_proto = GetAuthFactorProto(
         auth_factor.metadata(), auth_factor.type(), auth_factor.label());
     if (auth_factor_proto) {
-      *out_auth_factors->Add() = std::move(*auth_factor_proto);
+      user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+      *auth_factor_with_status.mutable_auth_factor() =
+          std::move(*auth_factor_proto);
+      *out_auth_factors_status->Add() = std::move(auth_factor_with_status);
     }
   }
 }

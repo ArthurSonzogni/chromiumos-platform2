@@ -4592,7 +4592,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
@@ -4622,7 +4622,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
@@ -4652,11 +4652,16 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_EQ(list_reply.configured_auth_factors_size(), 1);
-  EXPECT_EQ(list_reply.configured_auth_factors(0).type(),
-            user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
+  ASSERT_EQ(list_reply.configured_auth_factors_with_status_size(), 1);
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(0).auth_factor().type(),
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
@@ -4688,7 +4693,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
@@ -4724,7 +4729,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_PIN,
@@ -4767,7 +4772,7 @@ TEST_F(UserDataAuthExTest,
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(
       list_reply.supported_auth_factors(),
       UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
@@ -4870,12 +4875,19 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   }
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_EQ(list_reply.configured_auth_factors_size(), 2);
-  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
-  EXPECT_EQ(list_reply.configured_auth_factors(1).label(),
-            "password-scrypt-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(1).has_password_metadata());
+  ASSERT_EQ(list_reply.configured_auth_factors_with_status_size(), 2);
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(1).auth_factor().label(),
+      "password-scrypt-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_password_metadata());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
@@ -4917,7 +4929,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
         base::BindOnce(save_reply, base::Unretained(&list_reply)));
   }
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors(), IsEmpty());
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_PIN));
@@ -4955,17 +4967,26 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
         base::BindOnce(save_reply, base::Unretained(&list_reply)));
   }
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  std::sort(list_reply.mutable_configured_auth_factors()->pointer_begin(),
-            list_reply.mutable_configured_auth_factors()->pointer_end(),
-            [](const user_data_auth::AuthFactor* lhs,
-               const user_data_auth::AuthFactor* rhs) {
-              return lhs->label() < rhs->label();
-            });
-  ASSERT_EQ(list_reply.configured_auth_factors_size(), 2);
-  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
-  EXPECT_EQ(list_reply.configured_auth_factors(1).label(), "pin-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(1).has_pin_metadata());
+  std::sort(
+      list_reply.mutable_configured_auth_factors_with_status()->pointer_begin(),
+      list_reply.mutable_configured_auth_factors_with_status()->pointer_end(),
+      [](const user_data_auth::AuthFactorWithStatus* lhs,
+         const user_data_auth::AuthFactorWithStatus* rhs) {
+        return lhs->auth_factor().label() < rhs->auth_factor().label();
+      });
+  ASSERT_EQ(list_reply.configured_auth_factors_with_status_size(), 2);
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(1).auth_factor().label(),
+      "pin-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_pin_metadata());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
@@ -4984,9 +5005,13 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
         base::BindOnce(save_reply, base::Unretained(&list_reply)));
   }
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_EQ(list_reply.configured_auth_factors_size(), 1);
-  EXPECT_EQ(list_reply.configured_auth_factors(0).label(), "password-label");
-  EXPECT_TRUE(list_reply.configured_auth_factors(0).has_password_metadata());
+  ASSERT_EQ(list_reply.configured_auth_factors_with_status_size(), 1);
+  EXPECT_EQ(
+      list_reply.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,

@@ -48,7 +48,6 @@
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier_factory.h"
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -58,7 +57,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
-#include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -67,7 +65,6 @@
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
-#include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/uss_experiment_config_fetcher.h"
 #include "cryptohome/util/proto_enum.h"
@@ -4944,16 +4941,21 @@ void UserDataAuth::ListAuthFactors(
     auto auth_factor_proto = GetAuthFactorProto(
         auth_factor->metadata(), auth_factor->type(), auth_factor->label());
     if (auth_factor_proto) {
-      *reply.add_configured_auth_factors() = std::move(*auth_factor_proto);
+      user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+      *auth_factor_with_status.mutable_auth_factor() =
+          std::move(*auth_factor_proto);
+      *reply.add_configured_auth_factors_with_status() =
+          std::move(auth_factor_with_status);
     }
   }
   // If the auth factor map is empty then there were no VK keys, try USS.
   if (auth_factor_map.empty()) {
-    LoadUserAuthFactorProtos(auth_factor_manager_, obfuscated_username,
-                             reply.mutable_configured_auth_factors());
+    LoadUserAuthFactorProtos(
+        auth_factor_manager_, obfuscated_username,
+        reply.mutable_configured_auth_factors_with_status());
     // We assume USS is available either if there are already auth factors in
     // USS, or if there are no auth factors but the experiment is enabled.
-    if (!reply.configured_auth_factors().empty() ||
+    if (!reply.configured_auth_factors_with_status().empty() ||
         IsUserSecretStashExperimentEnabled()) {
       storage_type = AuthFactorStorageType::kUserSecretStash;
     }
@@ -4968,8 +4970,10 @@ void UserDataAuth::ListAuthFactors(
     // Turn the list of configured types into a set that we can use for
     // computing the list of supported factors.
     std::set<AuthFactorType> configured_types;
-    for (const auto& configured_factor : reply.configured_auth_factors()) {
-      if (auto type = AuthFactorTypeFromProto(configured_factor.type())) {
+    for (const auto& configured_factor_status :
+         reply.configured_auth_factors_with_status()) {
+      if (auto type = AuthFactorTypeFromProto(
+              configured_factor_status.auth_factor().type())) {
         configured_types.insert(*type);
       }
     }
@@ -4996,7 +5000,11 @@ void UserDataAuth::ListAuthFactors(
         if (auto proto_factor = GetAuthFactorProto(
                 verifier->auth_factor_metadata(), verifier->auth_factor_type(),
                 verifier->auth_factor_label())) {
-          *reply.add_configured_auth_factors() = std::move(*proto_factor);
+          user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+          *auth_factor_with_status.mutable_auth_factor() =
+              std::move(*proto_factor);
+          *reply.add_configured_auth_factors_with_status() =
+              std::move(auth_factor_with_status);
         }
       }
     }
@@ -5013,6 +5021,15 @@ void UserDataAuth::ListAuthFactors(
         reply.add_supported_auth_factors(proto_type);
       }
     }
+  }
+
+  // TODO(b/247122507): Remove this with configured_auth_factor field once tast
+  // test cleanup is done.
+  for (auto configured_auth_factors_with_status :
+       reply.configured_auth_factors_with_status()) {
+    user_data_auth::AuthFactor auth_factor;
+    auth_factor.CopyFrom(configured_auth_factors_with_status.auth_factor());
+    *reply.add_configured_auth_factors() = std::move(auth_factor);
   }
 
   // Successfully completed, send the response with OK.
