@@ -71,11 +71,13 @@
 #include "shill/testing.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
+#include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_service.h"
 
 using ::testing::_;
@@ -108,9 +110,10 @@ const uint16_t kRandomScanFrequency1 = 5600;
 const uint16_t kRandomScanFrequency2 = 5560;
 const uint16_t kRandomScanFrequency3 = 2422;
 const int kInterfaceIndex = 1234;
+const uint32_t kPhyIndex = 5678;
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
-// capabilities of a NIC with wiphy index |kNewWiphyNlMsg_WiphyIndex| which
+// capabilities of a NIC with wiphy index |kNewWiphyNlMsg_PhyIndex| which
 // supports operating bands with the frequencies specified in
 // |kNewWiphyNlMsg_UniqueFrequencies|.
 const uint8_t kNewWiphyNlMsg[] = {
@@ -379,7 +382,8 @@ const uint8_t kNewWiphyNlMsg[] = {
     0x1e, 0x00, 0x94, 0x00, 0x42, 0x08, 0x1f, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-const uint32_t kNewWiphyNlMsg_WiphyIndex = 2;
+const uint32_t kNewWiphyNlMsg_PhyIndex = 2;
+const uint32_t kNewWiphyNlMsg_ChangedPhyIndex = 3;
 const int kNewWiphyNlMsg_Nl80211AttrWiphyOffset = 4;
 const uint16_t kNewWiphyNlMsg_UniqueFrequencies[] = {
     2412, 2417, 2422, 2427, 2432, 2437, 2442, 2447, 2452, 2457,
@@ -387,7 +391,7 @@ const uint16_t kNewWiphyNlMsg_UniqueFrequencies[] = {
     5300, 5320, 5500, 5520, 5540, 5560, 5580, 5600, 5620, 5640,
     5660, 5680, 5700, 5745, 5765, 5785, 5805, 5825};
 
-const uint32_t kScanTriggerMsgWiphyIndex = 0;
+const uint32_t kScanTriggerMsgPhyIndex = 0;
 const uint8_t kActiveScanTriggerNlMsg[] = {
     0x44, 0x01, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x21, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
@@ -468,6 +472,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
                          "wifi",
                          "",
                          kInterfaceIndex,
+                         kPhyIndex,
                          std::make_unique<MockWakeOnWiFi>())) {}
   ~WiFiPropertyTest() override = default;
 
@@ -594,6 +599,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                        kDeviceName,
                        kDeviceAddress,
                        kInterfaceIndex,
+                       kPhyIndex,
                        std::make_unique<MockWakeOnWiFi>())),
         bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
@@ -684,6 +690,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     if (supplicant_bss_proxy_) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
+    EXPECT_CALL(*wifi_provider(),
+                DeregisterDeviceFromPhy(wifi(), GetPhyIndex()));
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
@@ -942,6 +950,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   IEEE_80211::WiFiReasonCode GetSupplicantDisconnectReason() {
     return wifi_->supplicant_disconnect_reason_;
   }
+  const WiFiPhy* GetWiFiPhy() { return wifi_->GetWiFiPhy(); }
+
+  void SetWiFiPhy(const WiFiPhy* phy) {
+    ON_CALL(*wifi_provider(), GetPhyAtIndex(wifi_->phy_index_))
+        .WillByDefault(Return(phy));
+  }
+
   void ClearCachedCredentials(const WiFiService* service) {
     return wifi_->ClearCachedCredentials(service);
   }
@@ -1209,13 +1224,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->broadcast_probe_was_skipped_;
   }
 
-  bool ParseWiphyIndex(const Nl80211Message& nl80211_message) {
-    return wifi_->ParseWiphyIndex(nl80211_message);
+  uint32_t GetPhyIndex() { return wifi_->phy_index_; }
+
+  uint32_t SetPhyIndex(uint32_t phy_index) {
+    return wifi_->phy_index_ = phy_index;
   }
-
-  uint32_t GetWiphyIndex() { return wifi_->wiphy_index_; }
-
-  void SetWiphyIndex(uint32_t index) { wifi_->wiphy_index_ = index; }
 
   void ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     wifi_->ParseFeatureFlags(nl80211_message);
@@ -4812,11 +4825,14 @@ TEST_F(WiFiMainTest, BackgroundScan) {
 }
 
 TEST_F(WiFiMainTest, OnNewWiphy) {
+  SetPhyIndex(kNewWiphyNlMsg_PhyIndex);
   NewWiphyMessage new_wiphy_message;
   NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
   new_wiphy_message.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, ParseWakeOnWiFiCapabilities(_));
-  EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(kNewWiphyNlMsg_WiphyIndex));
+  EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(kNewWiphyNlMsg_PhyIndex));
+  EXPECT_CALL(*wifi_provider(),
+              RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
   GetAllScanFrequencies()->clear();
   OnNewWiphy(new_wiphy_message);
   EXPECT_EQ(std::size(kNewWiphyNlMsg_UniqueFrequencies),
@@ -4825,6 +4841,31 @@ TEST_F(WiFiMainTest, OnNewWiphy) {
     EXPECT_TRUE(GetAllScanFrequencies()->find(freq) !=
                 GetAllScanFrequencies()->end());
   }
+}
+
+TEST_F(WiFiMainTest, OnNewWiphy_IndexChanged) {
+  SetPhyIndex(kNewWiphyNlMsg_PhyIndex);
+  NewWiphyMessage new_wiphy_message;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  new_wiphy_message.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  EXPECT_CALL(*wifi_provider(),
+              RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
+  EXPECT_CALL(*wifi_provider(), OnNewWiphy(_));
+  OnNewWiphy(new_wiphy_message);
+  EXPECT_EQ(GetPhyIndex(), kNewWiphyNlMsg_PhyIndex);
+
+  // A second call to OnNewWiphy with a new index should cause the device to
+  // deregister from the previous phy and register to a new one. The phy_index
+  // should also change.
+  new_wiphy_message.attributes()->SetU32AttributeValue(
+      NL80211_ATTR_WIPHY, kNewWiphyNlMsg_ChangedPhyIndex);
+  EXPECT_CALL(*wifi_provider(),
+              DeregisterDeviceFromPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
+  EXPECT_CALL(*wifi_provider(),
+              RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_ChangedPhyIndex));
+  EXPECT_CALL(*wifi_provider(), OnNewWiphy(_));
+  OnNewWiphy(new_wiphy_message);
+  EXPECT_EQ(GetPhyIndex(), kNewWiphyNlMsg_ChangedPhyIndex);
 }
 
 TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
@@ -5030,21 +5071,10 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
   EXPECT_EQ(2, endpoints_by_rpcid.size());
 }
 
-TEST_F(WiFiMainTest, ParseWiphyIndex_Success) {
-  // Verify that the wiphy index in kNewWiphyNlMsg is parsed, and that the flag
-  // for having the wiphy index is set by ParseWiphyIndex.
-  EXPECT_EQ(GetWiphyIndex(), WiFi::kDefaultWiphyIndex);
-  NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(ParseWiphyIndex(msg));
-  EXPECT_EQ(GetWiphyIndex(), kNewWiphyNlMsg_WiphyIndex);
-}
-
-TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
+TEST_F(WiFiMainTest, OnNewWiphy_ExcludesIndex) {
   ScopedMockLog log;
   // Change the NL80211_ATTR_WIPHY U32 attribute to the NL80211_ATTR_WIPHY_FREQ
-  // U32 attribute, so that this message no longer contains a wiphy_index to be
+  // U32 attribute, so that this message no longer contains a phy_index to be
   // parsed.
   NewWiphyMessage msg;
   MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
@@ -5056,7 +5086,8 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
                        "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY"));
-  EXPECT_FALSE(ParseWiphyIndex(msg));
+  EXPECT_CALL(*wifi_provider(), RegisterDeviceToPhy(_, _)).Times(0);
+  OnNewWiphy(msg);
   EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(_)).Times(0);
 }
 
@@ -5217,7 +5248,8 @@ TEST_F(WiFiMainTest, RandomMacProperty_SupplicantFailed) {
 }
 
 TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
-  SetWiphyIndex(kScanTriggerMsgWiphyIndex);
+  SetPhyIndex(kScanTriggerMsgPhyIndex);
+  SetWiFiPhy(new NiceMock<WiFiPhy>(kScanTriggerMsgPhyIndex));
   TriggerScanMessage msg;
   NetlinkPacket packet(kActiveScanTriggerNlMsg,
                        sizeof(kActiveScanTriggerNlMsg));
@@ -5227,7 +5259,8 @@ TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
 }
 
 TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
-  SetWiphyIndex(kScanTriggerMsgWiphyIndex);
+  SetPhyIndex(kScanTriggerMsgPhyIndex);
+  SetWiFiPhy(new NiceMock<WiFiPhy>(kScanTriggerMsgPhyIndex));
   TriggerScanMessage msg;
   NetlinkPacket packet(kPassiveScanTriggerNlMsg,
                        sizeof(kPassiveScanTriggerNlMsg));
@@ -5579,6 +5612,12 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
                        HasSubstr(kPacketReceiveSuccessesProperty)))
       .Times(1);
   ReportReceivedStationInfo(new_station);
+}
+
+TEST_F(WiFiMainTest, GetWiFiPhy) {
+  NiceMock<WiFiPhy>* phy = new NiceMock<WiFiPhy>(kPhyIndex);
+  SetWiFiPhy(phy);
+  EXPECT_EQ(phy, GetWiFiPhy());
 }
 
 }  // namespace shill

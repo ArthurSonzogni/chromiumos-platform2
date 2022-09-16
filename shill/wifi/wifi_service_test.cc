@@ -67,7 +67,7 @@ class WiFiServiceTest : public PropertyStoreTest {
   WiFiServiceTest()
       : mock_manager_(control_interface(), dispatcher(), metrics()),
         wifi_(new NiceMock<MockWiFi>(
-            manager(), "wifi", fake_mac, 0, new MockWakeOnWiFi())),
+            manager(), "wifi", fake_mac, 0, 0, new MockWakeOnWiFi())),
         simple_ssid_(1, 'a'),
         simple_ssid_string_("a") {}
   ~WiFiServiceTest() override = default;
@@ -169,7 +169,7 @@ class WiFiServiceTest : public PropertyStoreTest {
                            false);
   }
   scoped_refptr<MockWiFi> MakeSimpleWiFi(const std::string& link_name) {
-    return new NiceMock<MockWiFi>(manager(), link_name, fake_mac, 0,
+    return new NiceMock<MockWiFi>(manager(), link_name, fake_mac, 0, 0,
                                   new MockWakeOnWiFi());
   }
   ServiceMockAdaptor* GetAdaptor(WiFiService* service) {

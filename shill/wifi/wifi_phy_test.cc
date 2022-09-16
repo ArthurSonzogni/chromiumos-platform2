@@ -74,7 +74,8 @@ uint32_t kWiFiPhyIndex = 0;
 class WiFiPhyTest : public ::testing::Test {
  public:
   WiFiPhyTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_), wifi_phy_(0) {}
+      : manager_(&control_interface_, &dispatcher_, &metrics_),
+        wifi_phy_(kWiFiPhyIndex) {}
   ~WiFiPhyTest() override = default;
 
  protected:
@@ -104,10 +105,12 @@ class WiFiPhyTest : public ::testing::Test {
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
-  scoped_refptr<MockWiFi> device0 = new NiceMock<MockWiFi>(
-      &manager_, "null0", "aabbccddeeff", 0, new MockWakeOnWiFi());
-  scoped_refptr<MockWiFi> device1 = new NiceMock<MockWiFi>(
-      &manager_, "null1", "ffeeddccbbaa", 0, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device0 =
+      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
+                             kWiFiPhyIndex, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device1 =
+      new NiceMock<MockWiFi>(&manager_, "null1", "ffeeddccbbaa", 0,
+                             kWiFiPhyIndex, new MockWakeOnWiFi());
 
   EXPECT_FALSE(HasWiFiDevice(device0));
   EXPECT_FALSE(HasWiFiDevice(device1));
@@ -130,8 +133,9 @@ TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
 }
 
 TEST_F(WiFiPhyTest, AddDeviceTwice) {
-  scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
-      &manager_, "null0", "aabbccddeeff", 0, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device =
+      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
+                             kWiFiPhyIndex, new MockWakeOnWiFi());
 
   AddWiFiDevice(device);
   EXPECT_TRUE(HasWiFiDevice(device));
@@ -146,8 +150,9 @@ TEST_F(WiFiPhyTest, AddDeviceTwice) {
 }
 
 TEST_F(WiFiPhyTest, DeleteDeviceTwice) {
-  scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
-      &manager_, "null0", "aabbccddeeff", 0, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device =
+      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
+                             kWiFiPhyIndex, new MockWakeOnWiFi());
 
   AddWiFiDevice(device);
   EXPECT_TRUE(HasWiFiDevice(device));

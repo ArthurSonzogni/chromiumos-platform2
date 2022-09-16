@@ -1570,6 +1570,13 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
     LOG(ERROR) << "Message contains no interface type";
     return;
   }
+
+  uint32_t phy_index;
+  if (!msg.const_attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY,
+                                                    &phy_index)) {
+    LOG(ERROR) << "Message contains no phy index";
+    return;
+  }
   const Info* info = GetInfo(interface_index);
   if (!info) {
     LOG(ERROR) << "Could not find device info for interface index "
@@ -1599,7 +1606,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   auto wake_on_wifi = std::unique_ptr<WakeOnWiFi>(nullptr);
 #endif  // DISABLE_WAKE_ON_WIFI
   DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
-                                 std::move(wake_on_wifi));
+                                 phy_index, std::move(wake_on_wifi));
   device->network()->EnableIPv6Privacy();
   RegisterDevice(device);
 }

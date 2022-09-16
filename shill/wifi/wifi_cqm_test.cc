@@ -75,7 +75,7 @@ class WiFiCQMTest : public ::testing::Test {
   WiFiCQMTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         wifi_(new MockWiFi(
-            &manager_, "wifi", kDeviceAddress, 0, new MockWakeOnWiFi())),
+            &manager_, "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())),
         wifi_cqm_(new WiFiCQM(&metrics_, wifi().get())) {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
   }

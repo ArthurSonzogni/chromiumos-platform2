@@ -2048,6 +2048,14 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_AP);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
+                       HasSubstr("Message contains no phy index")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_WIPHY, NetlinkMessage::MessageContext());
+  message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, 0);
+  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
                        HasSubstr("Could not find device info for interface")));
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
@@ -2061,7 +2069,6 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(&manager_);
-
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_STATION);
   EXPECT_CALL(manager_, RegisterDevice(_));

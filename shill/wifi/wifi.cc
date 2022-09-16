@@ -61,6 +61,7 @@
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -90,7 +91,6 @@ const int WiFi::kSingleEndpointBgscanIntervalSeconds = 86400;
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 const int WiFi::kNumFastScanAttempts = 3;
-const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
 
 // The default random MAC mask is FF:FF:FF:00:00:00. Bits which are a 1 in
 // the mask stay the same during randomization, and bits which are 0 are
@@ -262,6 +262,7 @@ WiFi::WiFi(Manager* manager,
            const std::string& link,
            const std::string& address,
            int interface_index,
+           uint32_t phy_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
     : Device(manager, link, address, interface_index, Technology::kWiFi),
       provider_(manager->wifi_provider()),
@@ -303,7 +304,7 @@ WiFi::WiFi(Manager* manager,
       hs20_bss_count_(0),
       need_interworking_select_(false),
       receive_byte_count_at_connect_(0),
-      wiphy_index_(kDefaultWiphyIndex),
+      phy_index_(phy_index),
       wifi_cqm_(new WiFiCQM(metrics(), this)),
       wake_on_wifi_(std::move(wake_on_wifi)),
       weak_ptr_factory_while_started_(this),
@@ -392,6 +393,9 @@ void WiFi::Start(const EnabledStateChangedCallback& callback) {
                                       NetlinkManager::kEventTypeRegulatory);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                       NetlinkManager::kEventTypeMlme);
+
+  // TODO(b/244630773): Get rid of this call altogether once phy capabilities
+  // are tracked in WiFiPhy.
   GetPhyInfo();
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
@@ -444,6 +448,9 @@ void WiFi::Stop(const EnabledStateChangedCallback& callback) {
   StopPendingTimer();
   StopReconnectTimer();
   StopRequestingStationInfo();
+
+  // TODO(b/248054832): Move this deregistration into WiFiProvider.
+  provider_->DeregisterDeviceFromPhy(this, phy_index_);
 
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
@@ -1790,20 +1797,6 @@ void WiFi::PendingScanResultsHandler() {
   pending_scan_results_.reset();
 }
 
-bool WiFi::ParseWiphyIndex(const Nl80211Message& nl80211_message) {
-  // Verify NL80211_CMD_NEW_WIPHY.
-  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
-    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
-    return false;
-  }
-  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
-          NL80211_ATTR_WIPHY, &wiphy_index_)) {
-    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
-    return false;
-  }
-  return true;
-}
-
 void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY.
   if (nl80211_message.command() != NewWiphyMessage::kCommand) {
@@ -1929,13 +1922,13 @@ void WiFi::OnScanStarted(const Nl80211Message& scan_trigger_msg) {
                   << "Not a NL80211_CMD_TRIGGER_SCAN message";
     return;
   }
-  uint32_t wiphy_index;
+  uint32_t phy_index;
   if (!scan_trigger_msg.const_attributes()->GetU32AttributeValue(
-          NL80211_ATTR_WIPHY, &wiphy_index)) {
+          NL80211_ATTR_WIPHY, &phy_index)) {
     LOG(ERROR) << "NL80211_CMD_TRIGGER_SCAN had no NL80211_ATTR_WIPHY";
     return;
   }
-  if (wiphy_index != wiphy_index_) {
+  if (phy_index != phy_index_) {
     SLOG(this, 7) << __func__ << ": "
                   << "Scan trigger not meant for this interface";
     return;
@@ -3477,16 +3470,34 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
     LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
     return;
   }
-  if (wake_on_wifi_) {
-    wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
-  }
-  // Parse and set wiphy_index_.
-  bool wiphy_index_parsed = ParseWiphyIndex(nl80211_message);
-  if (wiphy_index_parsed && wake_on_wifi_) {
-    wake_on_wifi_->OnWiphyIndexReceived(wiphy_index_);
+  uint32_t phy_index;
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_WIPHY, &phy_index)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
+    return;
   }
 
-  // Requires wiphy_index_.
+  if (phy_index_ != phy_index) {
+    LOG(WARNING) << "Incorrect phy index in NL80211_CMD_NEW_WIPHY. Got index "
+                 << phy_index << " but device has index: " << phy_index_;
+    // If the message has a different |phy_index|, update |phy_index_| to its
+    // value, deregister this device from its current phy, and continue parsing
+    // the message.
+    // TODO(b/248292473): Check for this warning in feedback reports.
+    provider_->DeregisterDeviceFromPhy(this, phy_index_);
+    phy_index_ = phy_index;
+  }
+
+  provider_->OnNewWiphy(nl80211_message);
+  // TODO(b/248054832): Move this registration into WiFiProvider.
+  provider_->RegisterDeviceToPhy(this, phy_index_);
+
+  if (wake_on_wifi_) {
+    // TODO(b/247124602): These can be combined into a single function.
+    wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
+    wake_on_wifi_->OnWiphyIndexReceived(phy_index_);
+  }
+
   GetRegulatory();
 
   // This checks NL80211_ATTR_FEATURE_FLAGS.
@@ -3540,10 +3551,7 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
 
 void WiFi::GetRegulatory() {
   GetRegMessage reg_msg;
-  if (wiphy_index_ != kDefaultWiphyIndex) {
-    reg_msg.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                               wiphy_index_);
-  }
+  reg_msg.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, phy_index_);
   netlink_manager_->SendNl80211Message(
       &reg_msg,
       base::Bind(&WiFi::OnGetReg, weak_ptr_factory_while_started_.GetWeakPtr()),
@@ -4263,8 +4271,13 @@ void WiFi::OnReceivedRtnlLinkStatistics(old_rtnl_link_stats64& stats) {
   current_rtnl_network_event_ = NetworkEvent::kUnknown;
 }
 
-bool WiFi::SupportsWEP() {
+bool WiFi::SupportsWEP() const {
   return (base::Contains(supported_cipher_suites_, kWEP40CipherCode) &&
           base::Contains(supported_cipher_suites_, kWEP104CipherCode));
 }
+
+const WiFiPhy* WiFi::GetWiFiPhy() {
+  return provider_->GetPhyAtIndex(phy_index_);
+}
+
 }  // namespace shill

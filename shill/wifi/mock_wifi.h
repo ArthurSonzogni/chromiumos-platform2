@@ -30,6 +30,7 @@ class MockWiFi : public WiFi {
            const std::string& link_name,
            const std::string& address,
            int interface_index,
+           uint32_t phy_index,
            WakeOnWiFiInterface* wake_on_wifi);
   MockWiFi(const MockWiFi&) = delete;
   MockWiFi& operator=(const MockWiFi&) = delete;

@@ -42,7 +42,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
  public:
   WiFiEndpointTest()
       : wifi_(new NiceMock<MockWiFi>(
-            manager(), "wifi", kDeviceAddress, 0, new MockWakeOnWiFi())) {}
+            manager(), "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())) {}
   ~WiFiEndpointTest() override = default;
 
  protected:

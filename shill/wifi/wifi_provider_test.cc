@@ -2133,7 +2133,7 @@ TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
 TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
   const uint32_t phy_index = 0;
   scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
-      &manager_, "null0", "addr0", 0, new MockWakeOnWiFi());
+      &manager_, "null0", "addr0", 0, phy_index, new MockWakeOnWiFi());
 
   // Registering a device to a non-existent phy should result in a failed CHECK.
   EXPECT_DEATH(RegisterDeviceToPhy(device, phy_index),

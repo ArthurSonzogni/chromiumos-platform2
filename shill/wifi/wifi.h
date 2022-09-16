@@ -112,6 +112,7 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WakeOnWiFiInterface;
 class WiFiCQM;
+class WiFiPhy;
 class WiFiProvider;
 class WiFiService;
 
@@ -184,6 +185,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
        const std::string& link,
        const std::string& address,
        int interface_index,
+       uint32_t phy_index,
        std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi);
   WiFi(const WiFi&) = delete;
   WiFi& operator=(const WiFi&) = delete;
@@ -424,7 +426,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
   // kFastScanInterval
   FRIEND_TEST(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining);
-  FRIEND_TEST(WiFiMainTest, ParseWiphyIndex_Success);  // kDefaultWiphyIndex
   // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ResetScanStateWhenScanFailed);
   // kPostScanFailedDelay
@@ -459,10 +460,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // its state.
   static constexpr base::TimeDelta kPostWakeConnectivityReportDelay =
       base::Seconds(1);
-  // Used to instantiate |wiphy_index_| in WiFi. Assigned a large value so that
-  // any attempts to match the default value of |wiphy_index_| against an actual
-  // wiphy index reported in an NL80211 message will fail.
-  static const uint32_t kDefaultWiphyIndex;
   // Time to wait after failing to launch a scan before resetting the scan state
   // to idle.
   static constexpr base::TimeDelta kPostScanFailedDelay = base::Seconds(10);
@@ -749,11 +746,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void PendingScanResultsHandler();
 
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
-  // wiphy index of the NIC and sets |wiphy_index_| with the parsed index.
-  // Returns true iff the wiphy index was parsed successfully, false otherwise.
-  bool ParseWiphyIndex(const Nl80211Message& nl80211_message);
-
-  // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // feature flags and sets members of this WiFi class appropriately.
   void ParseFeatureFlags(const Nl80211Message& nl80211_message);
 
@@ -815,7 +807,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Get total received byte counters for the underlying network interface.
   uint64_t GetReceiveByteCount();
 
-  bool SupportsWEP();
+  bool SupportsWEP() const;
+
+  // Get the WiFiPhy object from provider which corresponds to phy_index_.
+  const WiFiPhy* GetWiFiPhy();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
@@ -966,8 +961,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   NetworkEvent current_rtnl_network_event_;
   NetworkEvent current_nl80211_network_event_;
 
-  // Wiphy interface index of this WiFi device.
-  uint32_t wiphy_index_;
+  // Phy interface index of this WiFi device.
+  uint32_t phy_index_;
 
   // Used to access connection quality monitor features.
   std::unique_ptr<WiFiCQM> wifi_cqm_;

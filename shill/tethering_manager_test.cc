@@ -4,6 +4,10 @@
 
 #include "shill/tethering_manager.h"
 
+#include <set>
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -26,7 +30,7 @@ class TetheringManagerTest : public PropertyStoreTest {
  public:
   TetheringManagerTest()
       : device_(new NiceMock<MockWiFi>(
-            manager(), "wifi", kDeviceAddress, 0, new MockWakeOnWiFi())) {}
+            manager(), "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())) {}
   ~TetheringManagerTest() override = default;
 
  protected:
