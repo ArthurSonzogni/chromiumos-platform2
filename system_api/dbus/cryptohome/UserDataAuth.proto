@@ -729,6 +729,23 @@ message StartAuthSessionRequest {
   // |key.secret()|, or |key.data().provider_data()| entries.
 }
 
+// AuthFactorWithStatus returns read-only AuthFactor with relevant status
+// information about |auth_factor|. This can later be expanded to include
+// time a particular factor is available for, etc. Note: This should not be used
+// with authenticate, add or update AuthFactor operations.
+message AuthFactorWithStatus {
+  // AuthFactor read from disk.
+  AuthFactor auth_factor = 1;
+  // Gives the set of possible actions available for this
+  // auth_factor. For example:
+  // 1) If a pinweaver backed pin is available for login, then the following
+  // would be returned:
+  // available_for_intents = {AUTH_INTENT_DECRYPT,AUTH_INTENT_VERIFY_ONLY}
+  // 2) If a pinweaver backed pin is not available (aka locked out), then an
+  // empty available_for_intents would be returned.
+  repeated AuthIntent available_for_intents = 2;
+}
+
 message StartAuthSessionReply {
   reserved 7;
 
@@ -748,8 +765,8 @@ message StartAuthSessionReply {
   repeated AuthFactor auth_factors = 5;
 
   // Indicate an error if this field exists.
-  // This field is replacing the |error| field above, for more information on
-  // which field to use and the process on the migration, see comment in
+  // This field is replacing the |error| field above, for more information
+  // on which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 6;
 }
@@ -1587,6 +1604,9 @@ message ListAuthFactorsReply {
   CryptohomeErrorInfo error_info = 2;
   // All of the auth factors configured for the user.
   repeated AuthFactor configured_auth_factors = 3;
+  // AuthFactor with status returns available authfactors for account_id
+  // provided in the request, along with their status information.
+  repeated AuthFactorWithStatus configured_auth_factors_with_status = 5;
   // All of the auth factor types supported for this user.
   repeated AuthFactorType supported_auth_factors = 4;
 }

@@ -176,10 +176,6 @@ message AuthFactor {
   string label = 2;
   // Common metadata that is shared across all types.
   CommonMetadata common_metadata = 9;
-  // Indicates if the AuthFactor can be used for light or full
-  // authentication. Gives the set of possible actions after
-  // authentication.
-  repeated AuthIntent supported_intents = 10;
 
   // An AuthFactor could also carry with itself some metadata. Since an
   // AuthFactor could only be one type, oneof is used to define the usage of
@@ -192,5 +188,5 @@ message AuthFactor {
     SmartCardMetadata smart_card_metadata = 8;
   }
 
-  reserved 3;
+  reserved 3, 10;
 }
