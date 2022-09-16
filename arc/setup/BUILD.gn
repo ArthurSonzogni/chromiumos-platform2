@@ -65,6 +65,7 @@ config("target_defaults") {
     "USE_HOUDINI=${use.houdini}",
     "USE_HOUDINI64=${use.houdini64}",
     "USE_IIOSERVICE=${use.iioservice}",
+    "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_NDK_TRANSLATION=${use.ndk_translation}",
   ]
 }

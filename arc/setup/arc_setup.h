@@ -259,6 +259,9 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Removes the FIFO file for emulating /dev/kmsg.
   void RemoveAndroidKmsgFifo();
 
+  // Removes ARC /data in LVM stateful partition.
+  void RemoveDataInLvm();
+
   // Fills |out_boot_type| with the boot type.
   // If Android's packages.xml exists, fills |out_data_sdk_version| with the SDK
   // version for the internal storage found in the XML. If packages.xml doesn't

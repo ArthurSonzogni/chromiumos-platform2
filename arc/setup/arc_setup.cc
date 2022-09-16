@@ -52,8 +52,10 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crypto/random.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "arc/setup/arc_property_util.h"
 #include "arc/setup/art_container.h"
@@ -199,6 +201,10 @@ constexpr uid_t kShellUid = AID_SHELL + kShiftUid;
 constexpr uid_t kShellGid = AID_SHELL + kShiftGid;
 constexpr gid_t kSdcardRwGid = AID_SDCARD_RW + kShiftGid;
 constexpr gid_t kEverybodyGid = AID_EVERYBODY + kShiftGid;
+
+// Time to wait for a ResetApplicationContainerReply from DBus.
+// The value is taken from kDefaultTimeoutMs in cryptohome/cryptohome.cc.
+constexpr int kResetLvmDbusTimeoutMs = 300000;
 
 // The maximum time to wait for /data/media setup.
 constexpr base::TimeDelta kInstalldTimeout = base::Seconds(60);
@@ -2476,6 +2482,45 @@ void ArcSetup::OnRemoveData() {
                  << ", err=" << static_cast<int>(err) << ", errno=" << errno;
     }
   }
+
+  // Ensure to remove ARC /data in LVM stateful partition.
+  if (USE_ARCVM && USE_LVM_STATEFUL_PARTITION)
+    RemoveDataInLvm();
+}
+
+void ArcSetup::RemoveDataInLvm() {
+  brillo::DBusConnection connection;
+  scoped_refptr<dbus::Bus> bus = connection.Connect();
+  if (!bus) {
+    LOG(ERROR) << "Failed to connect to system D-Bus service";
+    return;
+  }
+
+  auto userdataauth_proxy = org::chromium::UserDataAuthInterfaceProxy(bus);
+  user_data_auth::ResetApplicationContainerRequest request;
+  user_data_auth::ResetApplicationContainerReply reply;
+  brillo::ErrorPtr err;
+
+  request.set_application_name("arcvm");
+  const std::string chromeos_user = config_.GetStringOrDie("CHROMEOS_USER");
+  request.mutable_account_id()->set_account_id(chromeos_user);
+
+  LOG(INFO) << "Attempting to remove ARC /data in LVM";
+  if (!userdataauth_proxy.ResetApplicationContainer(request, &reply, &err,
+                                                    kResetLvmDbusTimeoutMs) ||
+      err) {
+    std::string msg;
+    if (err.get())
+      msg = err->GetDomain() + "," + err->GetCode() + "," + err->GetMessage();
+    LOG(ERROR) << "ResetApplicationContainer call failed: " << msg;
+    return;
+  }
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to reset application container: " << reply.error();
+    return;
+  }
+  LOG(INFO) << "Successfully removed ARC /data in LVM";
 }
 
 void ArcSetup::OnRemoveStaleData() {
