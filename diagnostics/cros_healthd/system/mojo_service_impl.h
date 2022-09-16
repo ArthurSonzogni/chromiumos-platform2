@@ -10,7 +10,6 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-#include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
@@ -45,7 +44,6 @@ class MojoServiceImpl : public MojoService {
       override;
   chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
   GetNetworkDiagnosticsRoutines() override;
-  cros::mojom::SensorService* GetSensorService() override;
 
  protected:
   MojoServiceImpl();
@@ -96,7 +94,6 @@ class MojoServiceImpl : public MojoService {
       network_health_;
   mojo::Remote<chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
       network_diagnostics_routines_;
-  mojo::Remote<cros::mojom::SensorService> sensor_service_;
 
   // Network adapters. TODO(b/237239654): Remove this after migration.
   NetworkHealthAdapter* const network_health_adapter_;
