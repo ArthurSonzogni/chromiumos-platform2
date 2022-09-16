@@ -268,6 +268,7 @@ impl Server {
 }
 
 fn main() -> Result<()> {
+    libchromeos::panic_handler::install_memfd_handler();
     if let Err(err) = install_logger::init(Path::new("/var/log/os_install_service")) {
         // If logging somehow fails to initialize, just print the
         // error and continue on.

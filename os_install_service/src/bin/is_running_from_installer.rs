@@ -7,6 +7,7 @@ use std::process;
 use os_install_service::disk::is_running_from_installer;
 
 fn main() {
+    libchromeos::panic_handler::install_memfd_handler();
     match is_running_from_installer() {
         Ok(true) => {
             println!("yes");
