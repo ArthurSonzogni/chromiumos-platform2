@@ -4,7 +4,8 @@
 # found in the LICENSE file.
 
 # Pull out types.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   # Mark tables and section boundaries.
   sed 's/^[0-9][0-9]*\([.][0-9][0-9]*\)\+.*$/_SECTION_BOUNDARY/' |
   sed 's/^Table [0-9]* . Definition of .*Types[^.]*$/_TYPES/' |
@@ -49,7 +50,8 @@ cat $1 |
   '
 
 # Pull out interface types.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   awk '
     BEGIN { print "_BEGIN_TYPES"; FS = "[ ()]+"; }
     /^Table [0-9]* . Definition of \([A-Z_]*\) TPMI_.* Type[^.]*$/ {
@@ -78,7 +80,8 @@ cat $1 |
   '
 
 # Pull out attribute types.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   awk '
     BEGIN { print "_BEGIN_TYPES"; FS = "[ ()]+"; }
     /^Table [0-9]* . Definition of \([A-Z_0-9]*\) TPM[A-Z_]* Bits[^.]*$/ {
@@ -101,7 +104,8 @@ cat $1 |
   '
 
 # Pull out constant values.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   # Mark tables and section boundaries.
   sed 's/^[0-9][0-9]*\([.][0-9][0-9]*\)\+.*$/_SECTION_BOUNDARY/' |
   sed 's/^Table [0-9]* . Definition of \(.*\) Constants[^.]*$/_CONSTANTS \1/' |
@@ -176,7 +180,8 @@ cat $1 |
   '
 
 # Pull out structures.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   # Mark tables and section boundaries.
   sed 's/^[0-9][0-9]*\([.][0-9][0-9]*\)\+.*$/_SECTION_BOUNDARY/' |
   sed 's/^Table [0-9]* . Definition of \(.*\) Structure[^.]*$/_STRUCTURE \1/' |
@@ -243,7 +248,8 @@ cat $1 |
   '
 
 # Pull out unions.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   # Mark tables and section boundaries.
   sed 's/^[0-9][0-9]*\([.][0-9][0-9]*\)\+.*$/_SECTION_BOUNDARY/' |
   sed 's/^Table [0-9]* . Definition of \(.*\) Union[^.]*$/_UNION \1/' |
@@ -314,7 +320,8 @@ cat $1 |
   '
 
 # Pull out default defines.
-cat $1 |
+# shellcheck disable=SC2002
+cat "$1" |
   sed 's/^[A-Z]\([.][0-9][0-9]*\)\+.*$/_SECTION_BOUNDARY/' |
   sed 's/^Table [0-9]* . Defines for \([^.]*\)$/_DEFINES \1/' |
   sed 's/^_DEFINES Implemented Commands$//' |
