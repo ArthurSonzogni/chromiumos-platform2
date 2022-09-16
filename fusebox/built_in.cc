@@ -133,7 +133,7 @@ void BuiltInRead(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
   PLOG(ERROR) << "BuiltInRead";
 }
 
-void BuiltInReadDir(off_t off, DirEntryResponse* response) {
+void BuiltInReadDir(off_t off, std::unique_ptr<DirEntryResponse> response) {
   std::vector<DirEntry> entries;
 
   if (off == 0) {

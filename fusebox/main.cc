@@ -477,39 +477,21 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return;
     }
 
-    auto it = readdir_.find(handle);
-    if (it != readdir_.end()) {
-      DirEntryResponse* response = it->second.get();
-      response->Append(std::move(request));
-      return;
-    }
-
-    auto& buffer = readdir_[handle];
-    buffer.reset(new DirEntryResponse(node->ino, handle));
-    buffer->Append(std::move(request));
+    auto dir_entry_response = std::make_unique<DirEntryResponse>(ino, handle);
+    dir_entry_response->Append(std::move(request));
 
     if (node->ino <= FUSE_ROOT_ID) {
-      RootReadDir(off, buffer.get());
+      RootReadDir(off, std::move(dir_entry_response));
       return;
     } else if (node->ino == INO_BUILT_IN) {
-      BuiltInReadDir(off, buffer.get());
+      BuiltInReadDir(off, std::move(dir_entry_response));
       return;
     }
-
-    dbus::MethodCall method(kFuseBoxServiceInterface, kReadDirMethod);
-    dbus::MessageWriter writer(&method);
-
-    auto path = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(path);
-    writer.AppendUint64(handle);
-
-    auto readdir_started =
-        base::BindOnce(&FuseBoxClient::ReadDirStarted,
-                       weak_ptr_factory_.GetWeakPtr(), node->ino, handle);
-    CallFuseBoxServerMethod(&method, std::move(readdir_started));
+    CallReadDir2(ino, GetInodeTable().GetDevicePath(node), 0, 0,
+                 std::move(dir_entry_response));
   }
 
-  void RootReadDir(off_t off, DirEntryResponse* response) {
+  void RootReadDir(off_t off, std::unique_ptr<DirEntryResponse> response) {
     VLOG(1) << "root-readdir fh " << response->handle() << " off " << off;
 
     std::vector<DirEntry> entries;
@@ -519,64 +501,77 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     response->Append(std::move(entries), true);
   }
 
-  void ReadDirStarted(ino_t ino, uint64_t handle, dbus::Response* response) {
-    VLOG(1) << "readdir-resp fh " << handle;
+  void CallReadDir2(ino_t parent_ino,
+                    std::string parent_path,
+                    uint64_t cookie,
+                    int32_t cancel_error_code,
+                    std::unique_ptr<DirEntryResponse> dir_entry_response) {
+    ReadDir2RequestProto request_proto;
+    request_proto.set_file_system_url(parent_path);
+    request_proto.set_cookie(cookie);
+    request_proto.set_cancel_error_code(cancel_error_code);
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kReadDir2Method);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto readdir2_response = base::BindOnce(
+        &FuseBoxClient::ReadDir2Response, weak_ptr_factory_.GetWeakPtr(),
+        parent_path, parent_ino, std::move(dir_entry_response));
+    CallFuseBoxServerMethod(&method, std::move(readdir2_response));
+  }
+
+  void ReadDir2Response(std::string parent_path,
+                        ino_t parent_ino,
+                        std::unique_ptr<DirEntryResponse> dir_entry_response,
+                        dbus::Response* response) {
+    VLOG(1) << "readdir2-resp";
 
     dbus::MessageReader reader(response);
-    int error = GetResponseErrno(&reader, response, "readdir");
-    if (!error)
+    ReadDir2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      dir_entry_response->Append(EINVAL);
       return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      dir_entry_response->Append(posix_error_code);
+      return;
+    }
+    uint64_t cookie = response_proto.has_cookie() ? response_proto.cookie() : 0;
 
-    auto it = readdir_.find(handle);
-    if (it != readdir_.end()) {
-      DirEntryResponse* response = it->second.get();
-      response->Append(error);
+    std::vector<fusebox::DirEntry> entries;
+    for (const auto& item : response_proto.entries()) {
+      const char* name = item.name().c_str();
+      if (Node* node = GetInodeTable().Ensure(parent_ino, name)) {
+        entries.push_back(
+            {node->ino, item.name(), MakeStatModeBits(item.mode_bits())});
+      } else {
+        dir_entry_response->Append(errno);
+        PLOG(ERROR) << "readdir2-resp";
+        if (cookie != 0) {
+          CallReadDir2(parent_ino, std::move(parent_path), cookie, errno,
+                       std::move(dir_entry_response));
+        }
+        return;
+      }
+    }
+    dir_entry_response->Append(std::move(entries), cookie == 0);
+
+    if (cookie != 0) {
+      CallReadDir2(parent_ino, std::move(parent_path), cookie, 0,
+                   std::move(dir_entry_response));
     }
   }
 
+  // Deprecated: ReadDir2 is favored over ReadDir / ReplyToReadDir.
   void ReplyToReadDir(uint64_t handle,
                       int32_t error,
                       const std::vector<uint8_t>& list,
                       bool has_more) override {
-    VLOG(1) << "reply-to-readdir fh " << handle;
-
-    auto it = readdir_.find(handle);
-    if (it == readdir_.end())
-      return;
-
-    DirEntryResponse* response = it->second.get();
-    if (error) {
-      errno = response->Append(error);
-      PLOG(ERROR) << "reply-to-readdir";
-      return;
-    }
-
-    const ino_t parent = response->parent();
-    if (!GetInodeTable().Lookup(parent)) {
-      response->Append(errno);
-      PLOG(ERROR) << "reply-to-readdir parent";
-      return;
-    }
-
-    fusebox::DirEntryListProto proto;
-    std::vector<fusebox::DirEntry> entries;
-    CHECK(proto.ParseFromArray(list.data(), list.size()));
-
-    for (const auto& item : proto.entries()) {
-      const char* name = item.name().c_str();
-      if (Node* node = GetInodeTable().Ensure(parent, name)) {
-        Device device = GetInodeTable().GetDevice(node);
-        mode_t mode = item.is_directory() ? S_IFDIR | 0770 : S_IFREG | 0770;
-        auto item_perms = MakeStatModeBits(mode, device.mode == "ro");
-        entries.push_back({node->ino, item.name(), item_perms});
-      } else {
-        response->Append(errno);
-        PLOG(ERROR) << "reply-to-readdir";
-        return;
-      }
-    }
-
-    response->Append(std::move(entries), !has_more);
+    NOTREACHED();
   }
 
   void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) override {
@@ -592,7 +587,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     fusebox::CloseFile(request->fh());
-    readdir_.erase(request->fh());
     request->ReplyOk();
   }
 
@@ -1162,9 +1156,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
-
-  // Active readdir requests.
-  std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
 
   base::WeakPtrFactory<FuseBoxClient> weak_ptr_factory_;
 };

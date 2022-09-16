@@ -30,7 +30,7 @@ void BuiltInRead(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
                  size_t size,
                  off_t off);
 
-void BuiltInReadDir(off_t off, DirEntryResponse* response);
+void BuiltInReadDir(off_t off, std::unique_ptr<DirEntryResponse> response);
 
 }  // namespace fusebox
 
