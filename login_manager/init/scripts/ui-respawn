@@ -55,13 +55,15 @@ under_limit() {
   local time="$2"
   local limit="$3"
 
-  local tfile=$(mktemp)
-  local curtime=$(date +%s)
+  local tfile
+  tfile=$(mktemp)
+  local curtime
+  curtime=$(date +%s)
   echo "${curtime}" >>"${file}"  # To ensure the file exists.
   awk "\$0 >= ${curtime} - ${time}" "${file}" >"${tfile}"
   mv "${tfile}" "${file}"
 
-  if [ $(wc -l < "${file}") -gt ${limit} ]; then
+  if [ "$(wc -l < "${file}")" -gt "${limit}" ]; then
     return 1
   else
     return 0
@@ -69,18 +71,18 @@ under_limit() {
 }
 
 over_ui_crash_limit() {
-  ! under_limit $TOO_CRASHY_TIMESTAMP_FILE $TOO_CRASHY_WINDOW_SECONDS \
-      $TOO_CRASHY_LIMIT
+  ! under_limit "${TOO_CRASHY_TIMESTAMP_FILE}" "${TOO_CRASHY_WINDOW_SECONDS}" \
+      "${TOO_CRASHY_LIMIT}"
 }
 
 under_reboot_limit() {
-  under_limit $REBOOT_TIMESTAMP_FILE $REBOOT_WINDOW_SECONDS \
-      $REBOOT_LIMIT
+  under_limit "${REBOOT_TIMESTAMP_FILE}" "${REBOOT_WINDOW_SECONDS}" \
+      "${REBOOT_LIMIT}"
 }
 
 under_respawn_limit() {
-  under_limit $RESPAWN_TIMESTAMP_FILE $RESPAWN_WINDOW_SECONDS \
-      $RESPAWN_LIMIT
+  under_limit "${RESPAWN_TIMESTAMP_FILE}" "${RESPAWN_WINDOW_SECONDS}" \
+      "${RESPAWN_LIMIT}"
 }
 
 # ${RESULT}, ${EXIT_STATUS}, ${EXIT_SIGNAL} and {JOB} are standard
@@ -93,8 +95,8 @@ create_variables_for_systemd() {
     RESULT="failure"
     JOB="ui.service"
 
-    EXIT_SIGNAL=$(systemctl show -p ExecMainCode ${JOB} | cut -f 2 -d '=')
-    EXIT_STATUS=$(systemctl show -p ExecMainStatus ${JOB} | cut -f 2 -d '=')
+    EXIT_SIGNAL=$(systemctl show -p ExecMainCode "${JOB}" | cut -f 2 -d '=')
+    EXIT_STATUS=$(systemctl show -p ExecMainStatus "${JOB}" | cut -f 2 -d '=')
   fi
 }
 
