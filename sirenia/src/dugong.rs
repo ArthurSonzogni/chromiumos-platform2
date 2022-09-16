@@ -34,6 +34,7 @@ use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
 use getopts::Options;
 use libchromeos::chromeos::is_dev_mode;
+use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use libsirenia::app_info::AppManifest;
 use libsirenia::build_info::BUILD_TIMESTAMP;
@@ -320,6 +321,7 @@ fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    install_memfd_handler();
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optflag(

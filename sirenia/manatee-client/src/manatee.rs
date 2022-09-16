@@ -46,6 +46,7 @@ use dbus::blocking::Connection;
 use dbus::blocking::Proxy;
 use getopts::Options;
 use libchromeos::chromeos::is_dev_mode;
+use libchromeos::panic_handler::install_memfd_handler;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::cli::VerbosityOption;
@@ -505,6 +506,7 @@ fn main() -> Result<()> {
 
     const ALLOW_UNVERIFIED_LONG_NAME: &str = "allow-unverified";
 
+    install_memfd_handler();
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
     options.optflag(
