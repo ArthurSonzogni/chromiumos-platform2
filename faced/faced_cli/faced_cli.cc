@@ -31,6 +31,9 @@ Commands:
   connect             Set up a Mojo connection to Faced by bootstrapping over
                       Dbus and then disconnect the session.
 
+  enroll              Enroll a user
+    --user=<string>     User to enroll (eg. someone).
+
 Full details of options can be shown using "--help".
 )";
 
@@ -39,6 +42,9 @@ std::optional<Command> ParseCommand(std::string_view command) {
   if (command == "connect") {
     return Command::kConnectToFaced;
   }
+  if (command == "enroll") {
+    return Command::kEnroll;
+  }
   return std::nullopt;
 }
 
@@ -46,6 +52,8 @@ absl::Status RunCommand(const CommandLineArgs& command) {
   switch (command.command) {
     case Command::kConnectToFaced:
       return ConnectAndDisconnectFromFaced();
+    case Command::kEnroll:
+      return Enroll(command.user);
   }
 }
 
@@ -56,6 +64,8 @@ absl::StatusOr<CommandLineArgs> ParseCommandLine(int argc,
                                                  const char* const* argv) {
   CHECK(argc > 0)
       << "Argv must contain at least one element, the program name.";
+
+  DEFINE_string(user, "", "User to enroll (eg. someone).");
 
   if (!brillo::FlagHelper::Init(argc, argv, std::string(kUsage),
                                 brillo::FlagHelper::InitFuncType::kReturn)) {
@@ -74,8 +84,26 @@ absl::StatusOr<CommandLineArgs> ParseCommandLine(int argc,
         absl::StrFormat("Unknown command '%s'.", commands[0]));
   }
 
+  switch (command.value()) {
+    case Command::kConnectToFaced:
+      if (!FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            absl::StrFormat("--user argument '%s' was provided for 'connect' "
+                            "command which does not use this argument.",
+                            FLAGS_user));
+      }
+      break;
+    case Command::kEnroll:
+      if (FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            "No --user argument was provided for 'enroll' command.");
+      }
+      break;
+  }
+
   return CommandLineArgs{
       .command = *command,
+      .user = FLAGS_user,
   };
 }
 

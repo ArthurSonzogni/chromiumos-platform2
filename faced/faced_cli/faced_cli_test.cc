@@ -41,6 +41,13 @@ TEST_F(ParseCommandLineTest, ConnectToFaced) {
   EXPECT_EQ(args.command, Command::kConnectToFaced);
 }
 
+TEST_F(ParseCommandLineTest, EnrollCommandIsParsedCorrectly) {
+  CommandLineArgs args = faced::ValueOrDie(
+      ParseCommandLine({"faced_cli", "enroll", "--user=someone"}));
+  EXPECT_EQ(args.command, Command::kEnroll);
+  EXPECT_EQ(args.user, "someone");
+}
+
 TEST_F(ParseCommandLineTest, NoArgs) {
   EXPECT_THAT(ParseCommandLine({"faced_cli"}),
               IsErrorContainingString("Expected exactly one command"));

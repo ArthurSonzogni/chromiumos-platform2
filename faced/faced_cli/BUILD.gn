@@ -14,6 +14,7 @@ pkg_config("target_defaults") {
 
 static_library("faced_cli") {
   sources = [
+    "face_enrollment_session_delegate_impl.cc",
     "faced_cli.cc",
     "faced_client.cc",
   ]
@@ -21,7 +22,10 @@ static_library("faced_cli") {
 }
 
 source_set("unit_tests") {
-  sources = [ "faced_cli_test.cc" ]
+  sources = [
+    "faced_cli_test.cc",
+    "faced_client_test.cc",
+  ]
   deps = [ ":faced_cli" ]
   configs += [ ":target_defaults" ]
 }

@@ -15,6 +15,7 @@ namespace faced {
 // Command for the tool to run.
 enum class Command {
   kConnectToFaced,  // "connect"
+  kEnroll,          // "enroll"
 };
 
 // Parsed command line arguments.
@@ -22,9 +23,12 @@ struct CommandLineArgs {
   // Command specified by the user.
   Command command;
 
+  // Option used by "enroll" command.
+  std::string user;  // User to enroll (eg. someone).
+
   inline friend bool operator==(const CommandLineArgs& a,
                                 const CommandLineArgs& b) {
-    return a.command == b.command;
+    return std::tie(a.command, a.user) == std::tie(b.command, b.user);
   }
 };
 

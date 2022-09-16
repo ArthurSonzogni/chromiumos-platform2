@@ -8,9 +8,14 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
+#include "faced/mojom/faceauth.mojom.h"
+
 namespace faced {
+
+using EnrollmentComplete = base::OnceCallback<void(absl::Status)>;
 
 // Components of a connection to the Faced daemon
 struct FacedConnection {
@@ -26,6 +31,18 @@ absl::StatusOr<FacedConnection> ConnectToFaced();
 
 // Establish a Mojo connection to Faced bootstrapped over DBus then disconnect
 absl::Status ConnectAndDisconnectFromFaced();
+
+// Run an enrollment via Faced for a given user
+absl::Status Enroll(std::string_view user);
+
+// Internal implementation details (exposed for testing) below.
+
+// Run an enrollment for a given user using a remote FaceAuthenticationService
+void EnrollWithRemoteService(
+    std::string_view user,
+    mojo::Remote<::chromeos::faceauth::mojom::FaceAuthenticationService>&
+        service,
+    EnrollmentComplete enrollment_complete);
 
 }  // namespace faced
 
