@@ -4498,14 +4498,27 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
 
   KeyData key_data;
   key_data.set_label(kFakeLabel);
-  key_data.set_type(KeyData::KEY_TYPE_FINGERPRINT);
+  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
   KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(keyLabelData), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(keyLabelData), Return(true)));
+  std::vector<int> vk_indicies = {0};
+  EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
+      .WillOnce([key_data](const std::string&, int) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        vk->SetKeyData(key_data);
+        vk->SetTPMKey(SecureBlob("fake tpm key"));
+        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        return vk;
+      });
 
-  user_data_auth::StartAuthSessionReply auth_session_reply;
+  user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartAuthSession(
@@ -4515,13 +4528,18 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
                const user_data_auth::StartAuthSessionReply& reply) {
               *auth_reply_ptr = reply;
             },
-            base::Unretained(&auth_session_reply)));
+            base::Unretained(&start_auth_session_reply)));
   }
 
-  EXPECT_THAT(auth_session_reply.key_label_data().at(kFakeLabel).label(),
+  EXPECT_THAT(start_auth_session_reply.key_label_data().at(kFakeLabel).label(),
               kFakeLabel);
-  EXPECT_THAT(auth_session_reply.key_label_data().at(kFakeLabel).type(),
-              KeyData::KEY_TYPE_FINGERPRINT);
+  EXPECT_THAT(start_auth_session_reply.key_label_data().at(kFakeLabel).type(),
+              KeyData::KEY_TYPE_PASSWORD);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
+              kFakeLabel);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
