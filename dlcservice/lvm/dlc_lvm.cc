@@ -43,6 +43,8 @@ bool DlcLvm::CreateDlcLogicalVolumes() {
   lv_config_a.set_name(LogicalVolumeName(id_, BootSlotInterface::Slot::A));
   lv_config_b.set_name(LogicalVolumeName(id_, BootSlotInterface::Slot::B));
   auto size = manifest_->preallocated_size();
+  // Convert to MiB from bytes.
+  size /= 1024 * 1024;
   lv_config_a.set_size(size);
   lv_config_b.set_size(size);
   if (!SystemState::Get()->lvmd_wrapper()->CreateLogicalVolumes({
