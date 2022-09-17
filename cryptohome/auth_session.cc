@@ -325,7 +325,7 @@ CryptohomeStatus AuthSession::OnUserCreated() {
   return OkStatus<CryptohomeError>();
 }
 
-void AuthSession::AddVaultKeyset(
+void AuthSession::CreateAndPersistVaultKeyset(
     const KeyData& key_data,
     AuthInput auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -353,50 +353,18 @@ void AuthSession::AddVaultKeyset(
     return;
   }
 
-  if (user_has_configured_credential_) {  // AddKeyset
-    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
-    user_data_auth::CryptohomeErrorCode error =
-        static_cast<user_data_auth::CryptohomeErrorCode>(
-            keyset_management_->AddKeysetWithKeyBlobs(
-                obfuscated_username_, key_data, *vault_keyset_.get(),
-                std::move(*key_blobs.get()), std::move(auth_state),
-                true /*clobber*/));
-    if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
-          ErrorActionSet({ErrorAction::kReboot}), error));
-      return;
-    }
-    LOG(INFO) << "AuthSession: added additional keyset " << key_data.label()
-              << ".";
-  } else {  // AddInitialKeyset
-    if (!file_system_keyset_.has_value()) {
-      LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->AddInitialKeysetWithKeyBlobs(
-            obfuscated_username_, key_data,
-            /*challenge_credentials_keyset_info*/ std::nullopt,
-            file_system_keyset_.value(), std::move(*key_blobs.get()),
-            std::move(auth_state));
-    if (!vk_status.ok()) {
-      vault_keyset_ = nullptr;
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-    LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
-              << ".";
-    vault_keyset_ = std::move(vk_status).value();
+  CryptohomeStatus status =
+      AddVaultKeyset(key_data, !user_has_configured_credential_,
+                     std::move(key_blobs), std::move(auth_state));
+
+  if (!status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionAddVaultKeysetFailedinAddAuthFactor),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
   }
 
   std::unique_ptr<AuthFactor> added_auth_factor =
@@ -426,6 +394,60 @@ void AuthSession::AddVaultKeyset(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
+CryptohomeStatus AuthSession::AddVaultKeyset(
+    const KeyData& key_data,
+    bool initial_keyset,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) {
+  DCHECK(key_blobs);
+  DCHECK(auth_state);
+  if (initial_keyset) {
+    if (!file_system_keyset_.has_value()) {
+      LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
+    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
+    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->AddInitialKeysetWithKeyBlobs(
+            obfuscated_username_, key_data,
+            /*challenge_credentials_keyset_info*/ std::nullopt,
+            file_system_keyset_.value(), std::move(*key_blobs.get()),
+            std::move(auth_state));
+    if (!vk_status.ok()) {
+      vault_keyset_ = nullptr;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
+    LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
+              << ".";
+    vault_keyset_ = std::move(vk_status).value();
+  } else {
+    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
+    user_data_auth::CryptohomeErrorCode error =
+        static_cast<user_data_auth::CryptohomeErrorCode>(
+            keyset_management_->AddKeysetWithKeyBlobs(
+                obfuscated_username_, key_data, *vault_keyset_.get(),
+                std::move(*key_blobs.get()), std::move(auth_state),
+                true /*clobber*/));
+    if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
+          ErrorActionSet({ErrorAction::kReboot}), error);
+    }
+    LOG(INFO) << "AuthSession: added additional keyset " << key_data.label()
+              << ".";
+  }
+
+  return OkStatus<CryptohomeError>();
+}
+
 void AuthSession::CreateKeyBlobsToAddKeyset(
     const AuthInput& auth_input,
     const KeyData& key_data,
@@ -452,8 +474,9 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
   // Parameterize the AuthSession performance timer by AuthBlockType
   auth_session_performance_timer->auth_block_type = auth_block_type;
 
-  // |auth_state| will be the input to AuthSession::AddVaultKeyset(),
-  // which calls VaultKeyset::Encrypt().
+  // |auth_state| will be the input to
+  // AuthSession::CreateAndPersistVaultKeyset(), which calls
+  // VaultKeyset::Encrypt().
   if (auth_block_type == AuthBlockType::kPinWeaver) {
     if (initial_keyset) {
       // The initial keyset cannot be a PIN, when using vault keysets.
@@ -469,8 +492,8 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
   }
 
   auto create_callback = base::BindOnce(
-      &AuthSession::AddVaultKeyset, weak_factory_.GetWeakPtr(), key_data,
-      auth_input, std::move(auth_session_performance_timer),
+      &AuthSession::CreateAndPersistVaultKeyset, weak_factory_.GetWeakPtr(),
+      key_data, auth_input, std::move(auth_session_performance_timer),
       std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
@@ -1766,6 +1789,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
+    const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptoStatus callback_error,
@@ -1834,6 +1858,29 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
             user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
             .Wrap(std::move(encrypted_uss_container).status()));
     return;
+  }
+
+  // Generate and persist the backup VaultKeyset
+  if (enable_create_backup_vk_with_uss_) {
+    // Clobbering is on by default, in case of failure the VaultKeyset with the
+    // existing label is overridden. We assume label is unique identifier across
+    // all type of VaultKeysets, i.e backup, migrated, regular. So override is
+    // only to guarantee power glitches don't cause any issue.
+    status = AddVaultKeyset(key_data, !user_has_configured_auth_factor_,
+                            std::move(key_blobs), std::move(auth_block_state));
+    if (!status.ok()) {
+      // Abort the operation, on the next run VaultKeyset with the same label
+      // will be overridden.
+      LOG(ERROR) << "Failed to create VaultKeyset for a backup to new added "
+                    "AuthFactor.";
+      std::move(on_done).Run(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionAddBackupVKFailedInPersistToUSS),
+              user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+              .Wrap(std::move(encrypted_uss_container).status()));
+      return;
+    }
   }
 
   // Persist the factor.
@@ -2059,11 +2106,11 @@ AuthBlock::CreateCallback AuthSession::GetAddAuthFactorCallback(
       return base::BindOnce(&AuthSession::PersistAuthFactorToUserSecretStash,
                             weak_factory_.GetWeakPtr(), auth_factor_type,
                             auth_factor_label, auth_factor_metadata, auth_input,
-                            std::move(auth_session_performance_timer),
+                            key_data, std::move(auth_session_performance_timer),
                             std::move(on_done));
 
     case AuthFactorStorageType::kVaultKeyset:
-      return base::BindOnce(&AuthSession::AddVaultKeyset,
+      return base::BindOnce(&AuthSession::CreateAndPersistVaultKeyset,
                             weak_factory_.GetWeakPtr(), key_data, auth_input,
                             std::move(auth_session_performance_timer),
                             std::move(on_done));

@@ -1103,8 +1103,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoInputInUpdateAuthFactor = 638,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor = 639,
-  /* =Obsolete= */
-  kLocAuthSessionNoInputForVKInUpdateAuthFactor = 640,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddVaultKeysetFailedinAddAuthFactor = 640,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInUpdateViaUSS = 641,
   /* ./auth_session.cc */
@@ -1123,8 +1123,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistUSSFailedInUpdateViaUSS = 648,
   /* ./auth_session.cc */
   kLocAuthSessionAddToUssFailedInPersistToUSS = 649,
-  /* =Obsolete= */
-  kLocAuthSessionNoInputWithUssInAddAuthFactor = 650,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddBackupVKFailedInPersistToUSS = 650,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
   /* ./le_credential_manager_impl.cc */

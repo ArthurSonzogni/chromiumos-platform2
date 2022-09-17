@@ -346,17 +346,23 @@ class AuthSession final {
 
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
-  // based on whether any keyset is generated for the user or not. This function
-  // is needed for processing callback results in an asynchronous manner through
-  // |on_done| callback.
-  void AddVaultKeyset(const KeyData& key_data,
-                      AuthInput auth_input,
-                      std::unique_ptr<AuthSessionPerformanceTimer>
-                          auth_session_performance_timer,
-                      StatusCallback on_done,
-                      CryptoStatus callback_error,
-                      std::unique_ptr<KeyBlobs> key_blobs,
-                      std::unique_ptr<AuthBlockState> auth_state);
+  // based on |initial_keyset|.
+  CryptohomeStatus AddVaultKeyset(const KeyData& key_data,
+                                  bool initial_keyset,
+                                  std::unique_ptr<KeyBlobs> key_blobs,
+                                  std::unique_ptr<AuthBlockState> auth_state);
+
+  // Creates and persist VaultKeyset for the |obfuscated_username_|. This
+  // function is needed for processing callback results in an asynchronous
+  // manner through |on_done| callback.
+  void CreateAndPersistVaultKeyset(const KeyData& key_data,
+                                   AuthInput auth_input,
+                                   std::unique_ptr<AuthSessionPerformanceTimer>
+                                       auth_session_performance_timer,
+                                   StatusCallback on_done,
+                                   CryptoStatus callback_error,
+                                   std::unique_ptr<KeyBlobs> key_blobs,
+                                   std::unique_ptr<AuthBlockState> auth_state);
 
   // Updates a VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::UpdateKeysetWithKeyBlobs(). The VaultKeyset and it's
@@ -392,6 +398,7 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
+      const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
