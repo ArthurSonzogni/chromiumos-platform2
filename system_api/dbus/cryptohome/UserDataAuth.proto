@@ -288,8 +288,7 @@ message IsMountedReply {
 // Currently we only support unmounting all mounted cryptohomes but in the
 // future we may implement per-user unmount, at which point we can extend this
 // proto with the necessary information.
-message UnmountRequest {
-}
+message UnmountRequest {}
 
 // Output parameters for Unmount()
 message UnmountReply {
@@ -595,8 +594,8 @@ message GetHibernateSecretReply {
   bytes hibernate_secret = 2;
 }
 
-// TODO(b/126307305): For the messages, below, we'll need to add the documentations
-// for them.
+// TODO(b/126307305): For the messages, below, we'll need to add the
+// documentations for them.
 
 // Input parameters to StartMigrateToDircrypto().
 message StartMigrateToDircryptoRequest {
@@ -664,8 +663,7 @@ message NeedsDircryptoMigrationReply {
 }
 
 // Input parameters to GetSupportedKeyPolicies().
-message GetSupportedKeyPoliciesRequest {
-}
+message GetSupportedKeyPoliciesRequest {}
 
 // Output parameters for GetSupportedKeyPolicies().
 // This informs the caller which KeyPolicy features are supported.
@@ -1244,8 +1242,7 @@ message InstallAttributesFinalizeReply {
 }
 
 // Input parameters to InstallAttributesGetStatus()
-message InstallAttributesGetStatusRequest {
-}
+message InstallAttributesGetStatusRequest {}
 
 // Output parameters for InstallAttributesGetStatus()
 message InstallAttributesGetStatusReply {
@@ -1277,8 +1274,7 @@ message FirmwareManagementParameters {
 }
 
 // Input parameters to GetFirmwareManagementParameters()
-message GetFirmwareManagementParametersRequest {
-}
+message GetFirmwareManagementParametersRequest {}
 
 // Output parameters for GetFirmwareManagementParameters()
 message GetFirmwareManagementParametersReply {
@@ -1595,6 +1591,7 @@ message ListAuthFactorsRequest {
 }
 
 message ListAuthFactorsReply {
+  reserved 3;
   // Return the status of the request.
   CryptohomeErrorCode error = 1;
   // Indicate an error if this field exists.
@@ -1602,8 +1599,6 @@ message ListAuthFactorsReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
-  // All of the auth factors configured for the user.
-  repeated AuthFactor configured_auth_factors = 3;
   // AuthFactor with status returns available authfactors for account_id
   // provided in the request, along with their status information.
   repeated AuthFactorWithStatus configured_auth_factors_with_status = 5;
