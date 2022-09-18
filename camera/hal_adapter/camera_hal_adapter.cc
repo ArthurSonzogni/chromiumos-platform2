@@ -898,12 +898,14 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
   camera_metrics_->SendSessionDuration(session_timer_map_[camera_id].Elapsed());
   session_timer_map_.erase(camera_id);
 
-  gpu_resources_->gpu_task_runner()->PostTask(
-      FROM_HERE, base::BindOnce([]() {
-        // To end the last event posted by the camera device on the GPU thread
-        // properly.
-        PERFETTO_INTERNAL_ADD_EMPTY_EVENT();
-      }));
+  if (gpu_resources_) {
+    gpu_resources_->gpu_task_runner()->PostTask(
+        FROM_HERE, base::BindOnce([]() {
+          // To end the last event posted by the camera device on the GPU thread
+          // properly.
+          PERFETTO_INTERNAL_ADD_EMPTY_EVENT();
+        }));
+  }
 }
 
 void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {

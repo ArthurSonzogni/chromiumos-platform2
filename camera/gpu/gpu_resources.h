@@ -59,6 +59,8 @@ class CROS_CAMERA_EXPORT GpuResources {
   GpuResources(GpuResources&&) = delete;
   GpuResources& operator=(GpuResources&&) = delete;
 
+  [[nodiscard]] static bool IsSupported();
+
   [[nodiscard]] bool Initialize();
 
   template <typename T>

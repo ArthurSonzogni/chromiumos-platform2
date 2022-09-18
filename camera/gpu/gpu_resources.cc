@@ -10,10 +10,19 @@
 
 #include "base/bind.h"
 #include "base/sequence_checker.h"
+#include "cros-camera/device_config.h"
 #include "cros-camera/future.h"
 #include "gpu/tracing.h"
 
 namespace cros {
+
+namespace {
+
+const char* kGpuResourceDenyList[] = {
+    "reven",
+};
+
+}  // namespace
 
 GpuResources::GpuResources() : gpu_thread_("GpuResourcesThread") {
   CHECK(gpu_thread_.Start());
@@ -22,6 +31,23 @@ GpuResources::GpuResources() : gpu_thread_("GpuResourcesThread") {
 GpuResources::~GpuResources() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(gpu_thread_sequence);
   gpu_thread_.Stop();
+}
+
+// static
+bool GpuResources::IsSupported() {
+  std::optional<DeviceConfig> device_config = DeviceConfig::Create();
+  if (!device_config) {
+    LOGF(WARNING) << "Cannot identify device model; disable GPU computing";
+    return false;
+  }
+  for (auto* name : kGpuResourceDenyList) {
+    if (device_config->GetModelName() == name) {
+      LOGF(WARNING) << "GPU computing disabled on unsupported device "
+                    << std::quoted(device_config->GetModelName());
+      return false;
+    }
+  }
+  return true;
 }
 
 bool GpuResources::Initialize() {

@@ -74,9 +74,12 @@ void CameraHalServerImpl::Start() {
   VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
-  if (!gpu_resources_.Initialize()) {
-    LOGF(ERROR) << "Failed to initialize GPU resources";
-    ExitOnMainThread(-ENODEV);
+  if (GpuResources::IsSupported()) {
+    gpu_resources_ = std::make_unique<GpuResources>();
+    if (!gpu_resources_->Initialize()) {
+      LOGF(ERROR) << "Failed to initialize GPU resources";
+      ExitOnMainThread(-ENODEV);
+    }
   }
 
   int result = LoadCameraHal();
@@ -315,7 +318,7 @@ int CameraHalServerImpl::LoadCameraHal() {
 
   LOGF(INFO) << "Running camera HAL adapter on " << getpid();
 
-  if (!camera_hal_adapter_->Start(&gpu_resources_)) {
+  if (!camera_hal_adapter_->Start(gpu_resources_.get())) {
     LOGF(ERROR) << "Failed to start camera HAL adapter";
     return -ENODEV;
   }
