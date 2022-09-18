@@ -8,8 +8,10 @@
 
 #include <iomanip>
 
-#include "base/functional/bind.h"
-#include "base/sequence_checker.h"
+#include <base/functional/bind.h>
+#include <base/sequence_checker.h>
+
+#include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/device_config.h"
 #include "cros-camera/future.h"
 #include "gpu/tracing.h"
@@ -113,6 +115,50 @@ void GpuResources::ClearCache(const std::string id) {
 
   if (cache_.erase(id) == 0) {
     VLOGF(1) << "Cache entry for " << std::quoted(id) << " does not exist";
+  }
+}
+
+void GpuResources::DumpSharedImage(const SharedImage& image,
+                                   base::FilePath output_file_path) {
+  DCHECK(gpu_thread_.IsCurrentThread());
+  TRACE_GPU();
+
+  if (image.buffer() != nullptr) {
+    glFinish();
+    if (!WriteBufferIntoFile(image.buffer(), output_file_path)) {
+      LOGF(ERROR) << "Failed to dump image buffer";
+    }
+  } else {
+    uint32_t kDumpBufferUsage = GRALLOC_USAGE_SW_WRITE_OFTEN |
+                                GRALLOC_USAGE_SW_READ_OFTEN |
+                                GRALLOC_USAGE_HW_TEXTURE;
+    int image_width = image.texture().width(),
+        image_height = image.texture().height();
+    if (!dump_buffer_ ||
+        (CameraBufferManager::GetWidth(*dump_buffer_) != image_width) ||
+        (CameraBufferManager::GetHeight(*dump_buffer_) != image_height)) {
+      dump_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+          image.texture().width(), image.texture().height(),
+          HAL_PIXEL_FORMAT_RGBX_8888, kDumpBufferUsage);
+      if (!dump_buffer_) {
+        LOGF(ERROR) << "Failed to allocate dump buffer";
+        return;
+      }
+      dump_image_ = SharedImage::CreateFromBuffer(*dump_buffer_,
+                                                  Texture2D::Target::kTarget2D);
+      if (!dump_image_.texture().IsValid()) {
+        LOGF(ERROR) << "Failed to create SharedImage for dump buffer";
+        return;
+      }
+    }
+    // Use the gamma correction shader with Gamma == 1.0 to copy the contents
+    // from the GPU texture to the DMA-buf.
+    image_processor_->ApplyGammaCorrection(1.0f, image.texture(),
+                                           dump_image_.texture());
+    glFinish();
+    if (!WriteBufferIntoFile(*dump_buffer_, output_file_path)) {
+      LOGF(ERROR) << "Failed to dump GPU texture";
+    }
   }
 }
 

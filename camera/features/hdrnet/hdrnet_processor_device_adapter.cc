@@ -25,7 +25,10 @@ HdrNetProcessorDeviceAdapter::CreateInstance(
 #endif
 }
 
-bool HdrNetProcessorDeviceAdapter::Initialize() {
+bool HdrNetProcessorDeviceAdapter::Initialize(
+    GpuResources* gpu_resources,
+    Size input_size,
+    const std::vector<Size>& output_sizes) {
   return true;
 }
 
@@ -39,17 +42,11 @@ bool HdrNetProcessorDeviceAdapter::WriteRequestParameters(
 void HdrNetProcessorDeviceAdapter::ProcessResultMetadata(
     Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {}
 
-bool HdrNetProcessorDeviceAdapter::Preprocess(
-    const HdrNetConfig::Options& options,
-    const SharedImage& input_external_yuv,
-    const SharedImage& output_rgba) {
-  return true;
-}
-
-bool HdrNetProcessorDeviceAdapter::Postprocess(
-    const HdrNetConfig::Options& options,
-    const SharedImage& input_rgba,
-    const SharedImage& output_nv12) {
+bool HdrNetProcessorDeviceAdapter::Run(int frame_number,
+                                       const HdrNetConfig::Options& options,
+                                       const SharedImage& input,
+                                       const SharedImage& output,
+                                       HdrnetMetrics* hdrnet_metrics) {
   return true;
 }
 

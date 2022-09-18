@@ -12,15 +12,19 @@
 #include <string>
 #include <utility>
 
+#include <hardware/gralloc.h>
+
 #include <base/location.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/task/single_thread_task_runner.h>
 
-#include "base/sequence_checker.h"
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/export.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/image_processor.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
 
@@ -99,6 +103,10 @@ class CROS_CAMERA_EXPORT GpuResources {
     return image_processor_.get();
   }
 
+  // Dumps the raw pixel data from shared image |image| to |output_file_path|.
+  void DumpSharedImage(const SharedImage& image,
+                       base::FilePath output_file_path);
+
  private:
   void InitializeOnGpuThread(base::OnceCallback<void(bool)> cb);
 
@@ -109,7 +117,12 @@ class CROS_CAMERA_EXPORT GpuResources {
   std::unique_ptr<GpuImageProcessor> image_processor_;
   std::map<std::string, std::unique_ptr<CacheContainer>> cache_;
 
-  // A sequence checker to verify we stat and stop |gpu_thread_| on the same
+  // A buffer that's only allocated when we need to dump the intermediate images
+  // for debugging.
+  ScopedBufferHandle dump_buffer_ = nullptr;
+  SharedImage dump_image_;
+
+  // A sequence checker to verify we start and stop |gpu_thread_| on the same
   // sequence.
   SEQUENCE_CHECKER(gpu_thread_sequence);
 };

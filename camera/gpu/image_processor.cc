@@ -32,6 +32,7 @@ constexpr const char* kGammaCorrectionFilename = "gamma_correction.frag";
 constexpr const char* kLutFilename = "lut.frag";
 constexpr const char* kCropFilename = "crop.frag";
 constexpr const char* kYuyvToNv12Filename = "yuyv_to_nv12.frag";
+constexpr const char* kSubsampleChromaFilename = "subsample_chroma.frag";
 
 }  // namespace
 
@@ -110,6 +111,14 @@ GpuImageProcessor::GpuImageProcessor()
                            std::string(src.data(), src.size()));
     CHECK(fragment_shader.IsValid());
     yuyv_to_nv12_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
+  }
+  {
+    base::span<const char> src = gpu_shaders.Get(kSubsampleChromaFilename);
+    Shader fragment_shader(GL_FRAGMENT_SHADER,
+                           std::string(src.data(), src.size()));
+    CHECK(fragment_shader.IsValid());
+    subsample_chroma_program_ =
+        ShaderProgram({&vertex_shader, &fragment_shader});
   }
 }
 
@@ -671,6 +680,42 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
   glActiveTexture(GL_TEXTURE0 + kInputTextureBinding);
   y_input.Unbind();
   Sampler::Unbind(kInputTextureBinding);
+
+  return true;
+}
+
+bool GpuImageProcessor::SubsampleChroma(const Texture2D& input_uv,
+                                        const Texture2D& output_uv) {
+  FramebufferGuard fb_guard;
+  ViewportGuard viewport_guard;
+  ProgramGuard program_guard;
+  VertexArrayGuard va_guard;
+
+  rect_.SetAsVertexInput();
+
+  constexpr int kUvInputBinding = 0;
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  input_uv.Bind();
+  nearest_clamp_to_edge_.Bind(kUvInputBinding);
+
+  subsample_chroma_program_.UseProgram();
+
+  // Set shader uniforms.
+  std::vector<float> texture_matrix = TextureSpaceFromNdc();
+  GLint uTextureMatrix =
+      subsample_chroma_program_.GetUniformLocation("uTextureMatrix");
+  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
+
+  Framebuffer fb;
+  fb.Bind();
+  fb.Attach(GL_COLOR_ATTACHMENT0, output_uv);
+  glViewport(0, 0, output_uv.width(), output_uv.height());
+  rect_.Draw();
+
+  // Clean up.
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  input_uv.Unbind();
+  Sampler::Unbind(kUvInputBinding);
 
   return true;
 }

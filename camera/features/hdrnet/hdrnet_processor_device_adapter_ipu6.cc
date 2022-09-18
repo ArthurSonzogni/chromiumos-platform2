@@ -8,15 +8,20 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/timer/elapsed_timer.h>
 
 #include "common/embed_file_toc.h"
+#include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "features/gcam_ae/ae_info.h"
 #include "features/hdrnet/embedded_hdrnet_processor_shaders_ipu6_toc.h"
+#include "features/hdrnet/hdrnet_metrics.h"
 #include "features/hdrnet/ipu6_gamma.h"
 #include "features/hdrnet/tracing.h"
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
@@ -32,7 +37,10 @@ namespace {
 constexpr const char kVertexShaderFilename[] =
     "fullscreen_rect_highp_310_es.vert";
 constexpr const char kPreprocessorFilename[] = "preprocess_ipu6.frag";
-constexpr const char kPostprocessorFilename[] = "postprocess_ipu6.frag";
+constexpr const char kModelDir[] = "/usr/share/cros-camera/ml_models/hdrnet";
+
+constexpr int kCoeffInputWidth = 256;
+constexpr int kCoeffInputHeight = 192;
 
 }  // namespace
 
@@ -46,9 +54,43 @@ HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
   num_curve_points_ = *max_curve_points;
 }
 
-bool HdrNetProcessorDeviceAdapterIpu6::Initialize() {
+bool HdrNetProcessorDeviceAdapterIpu6::Initialize(
+    GpuResources* gpu_resources,
+    Size input_size,
+    const std::vector<Size>& output_sizes) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET_DEBUG();
+
+  CHECK(gpu_resources);
+  gpu_resources_ = gpu_resources;
+  // In the current implementation |task_runner_| should always be the GPU
+  // resource task runner.
+  // TODO(jcliang): Consolidate and clean up the task runner and GPU threads.
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+
+  VLOGF(1) << "Create HDRnet pipeline with: input_width=" << input_size.width
+           << " input_height=" << input_size.height
+           << " output_width=" << input_size.width
+           << " output_height=" << input_size.height;
+  HdrNetLinearRgbPipelineCrOS::CreateOptions options{
+      .input_width = static_cast<int>(input_size.width),
+      .input_height = static_cast<int>(input_size.height),
+      .output_width = static_cast<int>(input_size.width),
+      .output_height = static_cast<int>(input_size.height),
+      .intermediate_format = GL_RGBA16F,
+      .min_hdr_ratio = 1.0f,
+      .max_hdr_ratio = 15.0f,
+  };
+  std::string model_dir = "";
+  if (base::PathExists(base::FilePath(kModelDir))) {
+    model_dir = kModelDir;
+  }
+  hdrnet_pipeline_ =
+      HdrNetLinearRgbPipelineCrOS::CreatePipeline(options, model_dir);
+  if (!hdrnet_pipeline_) {
+    LOGF(ERROR) << "Failed to create HDRnet pipeline";
+    return false;
+  }
 
   rect_ = std::make_unique<ScreenSpaceRect>();
   nearest_clamp_to_edge_ = Sampler(NearestClampToEdge());
@@ -76,20 +118,15 @@ bool HdrNetProcessorDeviceAdapterIpu6::Initialize() {
     }
     preprocessor_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
   }
-  {
-    base::span<const char> src =
-        hdrnet_processor_shaders.Get(kPostprocessorFilename);
-    Shader fragment_shader(GL_FRAGMENT_SHADER,
-                           std::string(src.data(), src.size()));
-    if (!fragment_shader.IsValid()) {
-      LOGF(ERROR) << "Failed to load postprocess shader";
-      return false;
-    }
-    postprocessor_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
-  }
 
   gamma_lut_ = intel_ipu6::CreateGammaLutTexture();
   inverse_gamma_lut_ = intel_ipu6::CreateInverseGammaLutTexture();
+
+  coeff_prediction_rgb_ = SharedImage::CreateFromGpuTexture(
+      GL_RGBA16F, kCoeffInputWidth, kCoeffInputHeight);
+
+  output_uv_intermediate_ = SharedImage::CreateFromGpuTexture(
+      GL_RG16F, input_size.width, input_size.height);
 
   VLOGF(1) << "Created IPU6 HDRnet device processor";
   initialized_ = true;
@@ -144,10 +181,196 @@ void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
   }
 }
 
-bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
-    const HdrNetConfig::Options& options,
-    const SharedImage& input_yuv,
-    const SharedImage& output_rgba) {
+bool HdrNetProcessorDeviceAdapterIpu6::Run(int frame_number,
+                                           const HdrNetConfig::Options& options,
+                                           const SharedImage& input,
+                                           const SharedImage& output,
+                                           HdrnetMetrics* hdrnet_metrics) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  CHECK(gpu_resources_);
+
+  TRACE_HDRNET();
+
+  bool success = false;
+  {
+    TRACE_HDRNET_EVENT(kEventPreprocess, "frame_number", frame_number);
+    base::ElapsedTimer t;
+    // Run the HDRnet pipeline.
+    success = CreateCoeffPredictionImage(input, coeff_prediction_rgb_);
+    hdrnet_metrics->accumulated_preprocessing_latency_us +=
+        t.Elapsed().InMicroseconds();
+  }
+  if (options.dump_buffer) {
+    gpu_resources_->DumpSharedImage(
+        coeff_prediction_rgb_,
+        base::FilePath(base::StringPrintf(
+            "preprocess_out_rgba_%dx%d_result#%d.rgba",
+            coeff_prediction_rgb_.texture().width(),
+            coeff_prediction_rgb_.texture().height(), frame_number)));
+  }
+  if (!success) {
+    LOGF(ERROR) << "Cannot produce coefficient prediction input";
+    return false;
+  }
+
+  // Run the HDRnet linear RGB pipeline
+  HdrNetLinearRgbPipelineCrOS::RunOptions run_options = {
+      .hdr_ratio = options.hdr_ratio,
+      .min_gain = 1.0f,
+      .max_gain = options.hdr_ratio,
+      .max_gain_blend_threshold = options.max_gain_blend_threshold,
+      .spatial_filter_sigma = options.spatial_filter_sigma,
+      .range_filter_sigma = options.range_filter_sigma,
+      .iir_filter_strength = options.iir_filter_strength,
+  };
+
+  // Pipeline inputs.
+  Texture2DDescriptor input_y = {
+      .id = base::checked_cast<GLint>(input.y_texture().handle()),
+      .internal_format = GL_R16F,
+      .width = input.y_texture().width(),
+      .height = input.y_texture().height()};
+  Texture2DDescriptor input_uv = {
+      .id = base::checked_cast<GLint>(input.uv_texture().handle()),
+      .internal_format = GL_RG16F,
+      .width = input.uv_texture().width(),
+      .height = input.uv_texture().height()};
+  Texture2DDescriptor coeff_prediction_rgb = {
+      .id = base::checked_cast<GLint>(coeff_prediction_rgb_.texture().handle()),
+      .internal_format = GL_RGBA16F,
+      .width = coeff_prediction_rgb_.texture().width(),
+      .height = coeff_prediction_rgb_.texture().height()};
+
+  // Pre-/post-process curves.
+  Texture2DDescriptor inverse_gamma_curve = {
+      .id = base::checked_cast<GLint>(inverse_gamma_lut_.handle()),
+      .internal_format = GL_R16F,
+      .width = inverse_gamma_lut_.width(),
+      .height = inverse_gamma_lut_.height(),
+  };
+  Texture2DDescriptor inverse_adtm_curve = {
+      .id = base::checked_cast<GLint>(inverse_gtm_lut_.handle()),
+      .internal_format = GL_R16F,
+      .width = inverse_gtm_lut_.width(),
+      .height = inverse_gtm_lut_.height(),
+  };
+  Texture2DDescriptor gamma_curve = {
+      .id = base::checked_cast<GLint>(gamma_lut_.handle()),
+      .internal_format = GL_R16F,
+      .width = gamma_lut_.width(),
+      .height = gamma_lut_.height(),
+  };
+  Texture2DDescriptor adtm_curve = {
+      .id = base::checked_cast<GLint>(gtm_lut_.handle()),
+      .internal_format = GL_R16F,
+      .width = gtm_lut_.width(),
+      .height = gtm_lut_.height(),
+  };
+
+  // Pipeline output.
+  Texture2DDescriptor output_y = {
+      .id = base::checked_cast<GLint>(output.y_texture().handle()),
+      .internal_format = GL_R16F,
+      .width = output.y_texture().width(),
+      .height = output.y_texture().height()};
+  Texture2DDescriptor output_uv_intermediate = {
+      .id =
+          base::checked_cast<GLint>(output_uv_intermediate_.texture().handle()),
+      .internal_format = GL_RG16F,
+      .width = output_uv_intermediate_.texture().width(),
+      .height = output_uv_intermediate_.texture().height()};
+
+  bool result = hdrnet_pipeline_->RunIntelIpu6Pipeline(
+      std::move(input_y), std::move(input_uv), std::move(inverse_gamma_curve),
+      std::move(inverse_adtm_curve), std::move(gamma_curve),
+      std::move(adtm_curve), std::move(coeff_prediction_rgb),
+      std::move(output_y), std::move(output_uv_intermediate), run_options);
+  if (!result) {
+    LOGF(WARNING) << "Failed to run HDRnet pipeline";
+    return false;
+  }
+
+  // Downsample to produce the UV plane for the output NV12 buffer.
+  gpu_resources_->image_processor()->SubsampleChroma(
+      output_uv_intermediate_.texture(), output.uv_texture());
+
+  return true;
+}
+
+Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
+    base::span<const float> tonemap_curve, bool inverse) {
+  TRACE_HDRNET_DEBUG();
+
+  auto interpolate = [](float i, float x0, float y0, float x1,
+                        float y1) -> float {
+    float kEpsilon = 1e-8;
+    if (std::abs(x1 - x0) < kEpsilon) {
+      return y0;
+    }
+    float slope = (y1 - y0) / (x1 - x0);
+    return y0 + (i - x0) * slope;
+  };
+
+  if (gtm_lut_buffer_.size() < num_curve_points_) {
+    gtm_lut_buffer_.resize(num_curve_points_);
+  }
+
+  // |tonemap_curve| is an array of |num_curve_points_| (v, g) pairs of floats,
+  // with v in [0, 1] and g > 0. Each (v, g) pair specifies the gain `g` to
+  // apply when the pixel value is `v`. Note that the Intel IPU6 GTM LUT is
+  // "gain-based" and is different from the plain LUT as defined in [1]. It is
+  // assumed that v * g is non-decreasing otherwise the LUT cannot be reasonably
+  // inversed.
+  //
+  // For the forward LUT, we build a table with |num_curve_points_| (v, g)
+  // entries, where `g` is the gain to apply for pre-gain pixel value `v`. This
+  // is similar to the input |tonemap_curve|.
+  //
+  // For the inverse LUT, we build a table with |num_curve_points_| (u, g)
+  // entries, where `g` is the estimated gain applied on post-gain pixel value
+  // `u`. The shader would divide `u` by `g` to transform the pixel value back
+  // to pseudo-linear domain.
+  //
+  // [1]:
+  // https://developer.android.com/reference/android/hardware/camera2/CaptureRequest#TONEMAP_CURVE
+  int lut_index = 0;
+  float x0 = 0.0, y0 = 1.0;
+  for (int i = 0; i < num_curve_points_; ++i) {
+    int idx = i * 2;
+    float x1 = tonemap_curve[idx], y1 = tonemap_curve[idx + 1];
+    if (inverse) {
+      x1 = x1 * y1;  // x-axis is the value with gain applied.
+    }
+    const int scaled_x1 = x1 * static_cast<float>(num_curve_points_);
+    for (; lut_index <= scaled_x1 && lut_index < num_curve_points_;
+         ++lut_index) {
+      gtm_lut_buffer_[lut_index] = interpolate(
+          static_cast<float>(lut_index) / static_cast<float>(num_curve_points_),
+          x0, y0, x1, y1);
+      DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
+                                      gtm_lut_buffer_[lut_index], inverse);
+    }
+    x0 = x1;
+    y0 = y1;
+  }
+  for (; lut_index < num_curve_points_; ++lut_index) {
+    gtm_lut_buffer_[lut_index] = interpolate(
+        static_cast<float>(lut_index) / static_cast<float>(num_curve_points_),
+        x0, y0, 1.0, 1.0);
+    DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
+                                    gtm_lut_buffer_[lut_index], inverse);
+  }
+
+  Texture2D lut_texture(GL_R16F, num_curve_points_, 1);
+  CHECK(lut_texture.IsValid());
+  lut_texture.Bind();
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, num_curve_points_, 1, GL_RED,
+                  GL_FLOAT, gtm_lut_buffer_.data());
+  return lut_texture;
+}
+
+bool HdrNetProcessorDeviceAdapterIpu6::CreateCoeffPredictionImage(
+    const SharedImage& input_yuv, const SharedImage& output_rgba) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET_DEBUG();
 
@@ -227,164 +450,6 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
   Sampler::Unbind(kInverseGtmLutBinding);
 
   return true;
-}
-
-bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
-    const HdrNetConfig::Options& options,
-    const SharedImage& input_rgba,
-    const SharedImage& output_nv12) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET_DEBUG();
-
-  if (!gtm_lut_.IsValid()) {
-    return false;
-  }
-  if (!input_rgba.texture().IsValid() || !output_nv12.y_texture().IsValid() ||
-      !output_nv12.uv_texture().IsValid()) {
-    return false;
-  }
-  if ((output_nv12.y_texture().width() / 2 !=
-       output_nv12.uv_texture().width()) ||
-      (output_nv12.y_texture().height() / 2 !=
-       output_nv12.uv_texture().height())) {
-    LOGF(ERROR) << "Invalid Y (" << output_nv12.y_texture().width() << ", "
-                << output_nv12.y_texture().height() << ") and UV ("
-                << output_nv12.uv_texture().width() << ", "
-                << output_nv12.uv_texture().height() << ") output dimension";
-    return false;
-  }
-
-  FramebufferGuard fb_guard;
-  ViewportGuard viewport_guard;
-  ProgramGuard program_guard;
-  VertexArrayGuard va_guard;
-
-  rect_->SetAsVertexInput();
-
-  constexpr int kInputBinding = 0;
-  constexpr int kGammaLutBinding = 1;
-  constexpr int kGtmLutBinding = 2;
-
-  glActiveTexture(GL_TEXTURE0 + kInputBinding);
-  input_rgba.texture().Bind();
-  nearest_clamp_to_edge_.Bind(kInputBinding);
-  glActiveTexture(GL_TEXTURE0 + kGammaLutBinding);
-  gamma_lut_.Bind();
-  linear_clamp_to_edge_.Bind(kGammaLutBinding);
-  glActiveTexture(GL_TEXTURE0 + kGtmLutBinding);
-  gtm_lut_.Bind();
-  linear_clamp_to_edge_.Bind(kGtmLutBinding);
-
-  postprocessor_program_.UseProgram();
-
-  // Set shader uniforms.
-  std::vector<float> texture_matrix = TextureSpaceFromNdc();
-  GLint uTextureMatrix =
-      postprocessor_program_.GetUniformLocation("uTextureMatrix");
-  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
-  GLint uIsYPlane = postprocessor_program_.GetUniformLocation("uIsYPlane");
-
-  Framebuffer fb;
-  fb.Bind();
-  // Y pass.
-  {
-    glUniform1i(uIsYPlane, true);
-    glViewport(0, 0, output_nv12.y_texture().width(),
-               output_nv12.y_texture().height());
-    fb.Attach(GL_COLOR_ATTACHMENT0, output_nv12.y_texture());
-    rect_->Draw();
-  }
-  // UV pass.
-  {
-    glUniform1i(uIsYPlane, false);
-    glViewport(0, 0, output_nv12.uv_texture().width(),
-               output_nv12.uv_texture().height());
-    fb.Attach(GL_COLOR_ATTACHMENT0, output_nv12.uv_texture());
-    rect_->Draw();
-  }
-
-  // Clean up.
-  glActiveTexture(GL_TEXTURE0 + kInputBinding);
-  input_rgba.texture().Unbind();
-  Sampler::Unbind(kInputBinding);
-  glActiveTexture(GL_TEXTURE0 + kGammaLutBinding);
-  gamma_lut_.Unbind();
-  Sampler::Unbind(kGammaLutBinding);
-  glActiveTexture(GL_TEXTURE0 + kGtmLutBinding);
-  gtm_lut_.Unbind();
-  Sampler::Unbind(kGtmLutBinding);
-
-  return true;
-}
-
-Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
-    base::span<const float> tonemap_curve, bool inverse) {
-  TRACE_HDRNET_DEBUG();
-
-  auto interpolate = [](float i, float x0, float y0, float x1,
-                        float y1) -> float {
-    float kEpsilon = 1e-8;
-    if (std::abs(x1 - x0) < kEpsilon) {
-      return y0;
-    }
-    float slope = (y1 - y0) / (x1 - x0);
-    return y0 + (i - x0) * slope;
-  };
-
-  if (gtm_lut_buffer_.size() < num_curve_points_) {
-    gtm_lut_buffer_.resize(num_curve_points_);
-  }
-
-  // |tonemap_curve| is an array of |num_curve_points_| (v, g) pairs of floats,
-  // with v in [0, 1] and g > 0. Each (v, g) pair specifies the gain `g` to
-  // apply when the pixel value is `v`. Note that the Intel IPU6 GTM LUT is
-  // "gain-based" and is different from the plain LUT as defined in [1]. It is
-  // assumed that v * g is non-decreasing otherwise the LUT cannot be reasonably
-  // inversed.
-  //
-  // For the forward LUT, we build a table with |num_curve_points_| (v, g)
-  // entries, where `g` is the gain to apply for pre-gain pixel value `v`. This
-  // is similar to the input |tonemap_curve|.
-  //
-  // For the inverse LUT, we build a table with |num_curve_points_| (u, g)
-  // entries, where `g` is the estimated gain applied on post-gain pixel value
-  // `u`. The shader would divide `u` by `g` to transform the pixel value back
-  // to pseudo-linear domain.
-  //
-  // [1]:
-  // https://developer.android.com/reference/android/hardware/camera2/CaptureRequest#TONEMAP_CURVE
-  int lut_index = 0;
-  float x0 = 0.0, y0 = 1.0;
-  for (int i = 0; i < num_curve_points_; ++i) {
-    int idx = i * 2;
-    float x1 = tonemap_curve[idx], y1 = tonemap_curve[idx + 1];
-    if (inverse) {
-      x1 = x1 * y1;  // x-axis is the value with gain applied.
-    }
-    const int scaled_x1 = x1 * num_curve_points_;
-    for (; lut_index <= scaled_x1 && lut_index < num_curve_points_;
-         ++lut_index) {
-      gtm_lut_buffer_[lut_index] = interpolate(
-          static_cast<float>(lut_index) / num_curve_points_, x0, y0, x1, y1);
-      DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
-                                      gtm_lut_buffer_[lut_index], inverse);
-    }
-    x0 = x1;
-    y0 = y1;
-  }
-  for (; lut_index < num_curve_points_; ++lut_index) {
-    gtm_lut_buffer_[lut_index] = interpolate(
-        static_cast<float>(lut_index) / num_curve_points_, x0, y0, 1.0, 1.0);
-    DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
-                                    gtm_lut_buffer_[lut_index], inverse);
-  }
-
-  Texture2D lut_texture(GL_R16F, num_curve_points_, 1);
-  CHECK(lut_texture.IsValid());
-  lut_texture.Bind();
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, num_curve_points_, 1, GL_RED,
-                  GL_FLOAT, gtm_lut_buffer_.data());
-  return lut_texture;
 }
 
 }  // namespace cros

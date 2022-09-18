@@ -6,14 +6,14 @@
 
 #include "features/hdrnet/hdrnet_processor_impl.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <hardware/gralloc.h>
+#include <base/timer/elapsed_timer.h>
 #include <sync/sync.h>
 
-#include "base/timer/elapsed_timer.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
@@ -22,14 +22,9 @@
 #include "cros-camera/tracing.h"
 #include "features/hdrnet/tracing.h"
 #include "gpu/egl/egl_fence.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
-
-namespace {
-
-constexpr const char kModelDir[] = "/usr/share/cros-camera/ml_models/hdrnet";
-
-}  // namespace
 
 // static
 std::unique_ptr<HdrNetProcessor> HdrNetProcessorImpl::CreateInstance(
@@ -67,38 +62,10 @@ bool HdrNetProcessorImpl::Initialize(GpuResources* gpu_resources,
     }
   }
 
-  if (!processor_device_adapter_->Initialize()) {
+  if (!processor_device_adapter_->Initialize(gpu_resources, input_size,
+                                             output_sizes)) {
     LOGF(ERROR) << "Failed to initialized HdrNetProcessorDeviceAdapter";
     return false;
-  }
-
-  VLOGF(1) << "Create HDRnet pipeline with: input_width=" << input_size.width
-           << " input_height=" << input_size.height
-           << " output_width=" << input_size.width
-           << " output_height=" << input_size.height;
-  HdrNetLinearRgbPipelineCrOS::CreateOptions options{
-      .input_width = static_cast<int>(input_size.width),
-      .input_height = static_cast<int>(input_size.height),
-      .output_width = static_cast<int>(input_size.width),
-      .output_height = static_cast<int>(input_size.height),
-      .intermediate_format = GL_RGBA16F,
-      .min_hdr_ratio = 1.0f,
-      .max_hdr_ratio = 15.0f,
-  };
-  std::string model_dir = "";
-  if (base::PathExists(base::FilePath(kModelDir))) {
-    model_dir = kModelDir;
-  }
-  hdrnet_pipeline_ =
-      HdrNetLinearRgbPipelineCrOS::CreatePipeline(options, model_dir);
-  if (!hdrnet_pipeline_) {
-    LOGF(ERROR) << "Failed to create HDRnet pipeline";
-    return false;
-  }
-
-  for (auto& i : intermediates_) {
-    i = SharedImage::CreateFromGpuTexture(GL_RGBA16F, input_size.width,
-                                          input_size.height);
   }
 
   return true;
@@ -205,34 +172,21 @@ base::ScopedFD HdrNetProcessorImpl::Run(
           buf_mgr->Deregister(input_yuv.buffer());
         } while (false);
       }
-      {
-        TRACE_HDRNET_EVENT(kEventPreprocess, "frame_number", frame_number);
-        base::ElapsedTimer t;
-        // Run the HDRnet pipeline.
-        success = processor_device_adapter_->Preprocess(options, input_yuv,
-                                                        intermediates_[0]);
-        hdrnet_metrics->accumulated_preprocessing_latency_us +=
-            t.Elapsed().InMicroseconds();
-      }
-      if (options.dump_buffer) {
-        DumpGpuTextureSharedImage(
-            intermediates_[0],
-            base::FilePath(base::StringPrintf(
-                "preprocess_out_rgba_%dx%d_result#%d.rgba",
-                intermediates_[0].texture().width(),
-                intermediates_[0].texture().height(), frame_number)));
-      }
-      if (!success) {
-        LOGF(ERROR) << "Failed to pre-process HDRnet pipeline input";
-        ++hdrnet_metrics->errors[HdrnetError::kPreprocessingError];
-        break;
-      }
+
+      // Render the HDRnet output on the largest buffer and downscale to the
+      // other smaller buffers when needed.
+      auto largest_img = std::max_element(
+          output_images.begin(), output_images.end(),
+          [](const SharedImage& a, const SharedImage& b) {
+            return a.y_texture().width() > b.y_texture().width();
+          });
+
       {
         TRACE_HDRNET_EVENT(kEventLinearRgbPipeline, "frame_number",
                            frame_number);
         base::ElapsedTimer t;
-        success =
-            RunLinearRgbPipeline(options, intermediates_[0], intermediates_[1]);
+        success = processor_device_adapter_->Run(
+            frame_number, options, input_yuv, *largest_img, hdrnet_metrics);
         hdrnet_metrics->accumulated_rgb_pipeline_latency_us +=
             t.Elapsed().InMicroseconds();
       }
@@ -242,21 +196,25 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         break;
       }
       if (options.dump_buffer) {
-        DumpGpuTextureSharedImage(
-            intermediates_[1],
+        gpu_resources_->DumpSharedImage(
+            *largest_img,
             base::FilePath(base::StringPrintf(
-                "linear_rgb_pipeline_out_rgba_%dx%d_result#%d.rgba",
-                intermediates_[1].texture().width(),
-                intermediates_[1].texture().height(), frame_number)));
+                "hdrnet_pipeline_out_nv12_%dx%d_result#%d.yuv",
+                largest_img->y_texture().width(),
+                largest_img->y_texture().height(), frame_number)));
       }
-      for (const auto& output_nv12 : output_images) {
+
+      for (auto& output_nv12 : output_images) {
+        if (&(*largest_img) == &output_nv12) {
+          continue;
+        }
+
         // Here we assume all the streams have the same aspect ratio, so no
         // cropping is done.
         {
           TRACE_HDRNET_EVENT(kEventPostprocess, "frame_number", frame_number);
           base::ElapsedTimer t;
-          success = processor_device_adapter_->Postprocess(
-              options, intermediates_[1], output_nv12);
+          success = YUVToNV12(*largest_img, output_nv12);
           hdrnet_metrics->accumulated_postprocessing_latency_us +=
               t.Elapsed().InMicroseconds();
         }
@@ -302,7 +260,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
   }
 }
 
-void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
+bool HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
                                     const SharedImage& output_nv12) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET();
@@ -313,6 +271,7 @@ void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
   if (!result) {
     VLOGF(1) << "Failed to produce NV12 output";
   }
+  return result;
 }
 
 Texture2DDescriptor CreateTextureInfo(const SharedImage& image) {
@@ -321,70 +280,6 @@ Texture2DDescriptor CreateTextureInfo(const SharedImage& image) {
       .internal_format = GL_RGBA16F,
       .width = image.texture().width(),
       .height = image.texture().height()};
-}
-
-bool HdrNetProcessorImpl::RunLinearRgbPipeline(
-    const HdrNetConfig::Options& options,
-    const SharedImage& input_rgba,
-    const SharedImage& output_rgba) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
-
-  // Run the HDRnet linear RGB pipeline
-  HdrNetLinearRgbPipelineCrOS::RunOptions run_options = {
-      .hdr_ratio = options.hdr_ratio,
-      .min_gain = 1.0f,
-      .max_gain = options.hdr_ratio,
-      .max_gain_blend_threshold = options.max_gain_blend_threshold,
-      .spatial_filter_sigma = options.spatial_filter_sigma,
-      .range_filter_sigma = options.range_filter_sigma,
-      .iir_filter_strength = options.iir_filter_strength,
-  };
-  bool result = hdrnet_pipeline_->Run(
-      CreateTextureInfo(input_rgba), Texture2DDescriptor(),
-      CreateTextureInfo(output_rgba), run_options);
-  if (!result) {
-    LOGF(WARNING) << "Failed to run HDRnet pipeline";
-    return false;
-  }
-  return true;
-}
-
-void HdrNetProcessorImpl::DumpGpuTextureSharedImage(
-    const SharedImage& image, base::FilePath output_file_path) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET_DEBUG();
-
-  uint32_t kDumpBufferUsage = GRALLOC_USAGE_SW_WRITE_OFTEN |
-                              GRALLOC_USAGE_SW_READ_OFTEN |
-                              GRALLOC_USAGE_HW_TEXTURE;
-  int image_width = image.texture().width(),
-      image_height = image.texture().height();
-  if (!dump_buffer_ ||
-      (CameraBufferManager::GetWidth(*dump_buffer_) != image_width) ||
-      (CameraBufferManager::GetHeight(*dump_buffer_) != image_height)) {
-    dump_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        image.texture().width(), image.texture().height(),
-        HAL_PIXEL_FORMAT_RGBX_8888, kDumpBufferUsage);
-    if (!dump_buffer_) {
-      LOGF(ERROR) << "Failed to allocate dump buffer";
-      return;
-    }
-    dump_image_ = SharedImage::CreateFromBuffer(*dump_buffer_,
-                                                Texture2D::Target::kTarget2D);
-    if (!dump_image_.texture().IsValid()) {
-      LOGF(ERROR) << "Failed to create SharedImage for dump buffer";
-      return;
-    }
-  }
-  // Use the gamma correction shader with Gamma == 1.0 to copy the contents from
-  // the GPU texture to the DMA-buf.
-  gpu_resources_->image_processor()->ApplyGammaCorrection(
-      1.0f, image.texture(), dump_image_.texture());
-  glFinish();
-  if (!WriteBufferIntoFile(*dump_buffer_, output_file_path)) {
-    LOGF(ERROR) << "Failed to dump GPU texture";
-  }
 }
 
 }  // namespace cros

@@ -249,6 +249,19 @@ class CROS_CAMERA_EXPORT GpuImageProcessor {
                const Texture2D& uv_output,
                FilterMode filter_mode);
 
+  // Subsamples the chroma plane |input_uv| to produce the output chroma plane
+  // |output_uv|.
+  //
+  // Args:
+  //     |input_uv|:
+  //         The input 2D texture of format GR8 for the input UV plane.
+  //     |output_uv|:
+  //         The output 2D texture of format GB8 for the output UV plane.
+  //
+  // Returns:
+  //   true if GL commands are successfully submitted; false otherwise.
+  bool SubsampleChroma(const Texture2D& input_uv, const Texture2D& output_uv);
+
  private:
   Sampler& GetSampler(FilterMode filter_mode);
 
@@ -263,6 +276,7 @@ class CROS_CAMERA_EXPORT GpuImageProcessor {
   ShaderProgram lut_program_;
   ShaderProgram crop_yuv_program_;
   ShaderProgram yuyv_to_nv12_program_;
+  ShaderProgram subsample_chroma_program_;
 
   Sampler nearest_clamp_to_edge_;
   Sampler linear_clamp_to_edge_;
