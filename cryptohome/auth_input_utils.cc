@@ -142,6 +142,9 @@ std::optional<AuthInput> CreateAuthInput(
                                           public_key_spki_der);
       break;
     }
+    // Legacy fingerprint auth input proto does not produce an actual internal
+    // auth input for an auth block.
+    case user_data_auth::AuthInput::kLegacyFingerprintInput:
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;
   }
@@ -171,6 +174,9 @@ std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
       return AuthFactorType::kKiosk;
     case user_data_auth::AuthInput::kSmartCardInput:
       return AuthFactorType::kSmartCard;
+    // Legacy fingerprint does not produce internal AuthFactorType.
+    case user_data_auth::AuthInput::kLegacyFingerprintInput:
+      return AuthFactorType::kUnspecified;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       return std::nullopt;
   }

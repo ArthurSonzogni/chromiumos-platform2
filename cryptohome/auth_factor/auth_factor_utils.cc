@@ -136,6 +136,9 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
       return AuthFactorType::kKiosk;
     case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
       return AuthFactorType::kSmartCard;
+    // Legacy fingerprint does not produce internal auth factor type.
+    case user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT:
+      return AuthFactorType::kUnspecified;
     default:
       return std::nullopt;
   }
