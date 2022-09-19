@@ -1545,7 +1545,7 @@ class _AudioConfigBuilder:
             )
 
         card_init_config_source_path = self._build_source_path(
-            card_config.sound_card_init_config, "sound_card_init"
+            card_config.sound_card_init_config, "sound-card-init-config"
         )
 
         if card_init_config_source_path:
@@ -1593,7 +1593,7 @@ class _AudioConfigBuilder:
             self._audio.cras_config, "cras-config"
         )
         if cras_config_source_path:
-            for filename in ["dsp.ini", "board.ini"]:
+            for filename in ["dsp.ini", "board.ini", "apm.ini"]:
                 self._files.append(
                     _file(
                         cras_config_source_path.joinpath(filename),
