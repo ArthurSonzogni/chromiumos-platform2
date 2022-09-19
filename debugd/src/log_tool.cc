@@ -236,9 +236,13 @@ const std::array kCommandLogs {
   Log{kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
   Log{kCommand, "crosid", "/usr/bin/crosid -v"},
   Log{kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
+  // Only collect VM logs for dGVybWluYQ== which is the default Crostini VM
+  // (called "termina"), we don't want logs for random other VMs which might
+  // have non-CrOS kernels sending us PII we don't want. See b/245504047 for a
+  // few more details.
   Log{kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
-    " /run/daemon-store/crosvm/*/log/*.log.1"
-    " /run/daemon-store/crosvm/*/log/*.log'", kRoot, kRoot},
+    " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log.1"
+    " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log'", kRoot, kRoot},
   Log{kGlob, "display-debug", "/var/log/display_debug/*",
     kRoot, kRoot,
     4 * 1024 * 1024, LogTool::Encoding::kUtf8},
