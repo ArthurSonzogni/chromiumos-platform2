@@ -926,6 +926,44 @@ def _build_rtw88_config(rtw88_config):
     return result
 
 
+def _build_rtw89_config(rtw89_config):
+    """Builds the wifi configuration for the rtw89 driver.
+
+    Args:
+        rtw89_config: Rtw89Config config.
+
+    Returns:
+        wifi configuration for the rtw89 driver.
+    """
+    result = {}
+
+    def power_chain(power):
+        return {
+            "limit-2g": power.limit_2g,
+            "limit-5g-1": power.limit_5g_1,
+            "limit-5g-3": power.limit_5g_3,
+            "limit-5g-4": power.limit_5g_4,
+        }
+
+    result["tablet-mode-power-table-rtw"] = power_chain(
+        rtw89_config.tablet_mode_power_table
+    )
+    result["non-tablet-mode-power-table-rtw"] = power_chain(
+        rtw89_config.non_tablet_mode_power_table
+    )
+
+    def offsets(offset):
+        return {
+            "offset-2g": offset.offset_2g,
+            "offset-5g": offset.offset_5g,
+        }
+
+    result["geo-offsets-fcc"] = offsets(rtw89_config.offset_fcc)
+    result["geo-offsets-eu"] = offsets(rtw89_config.offset_eu)
+    result["geo-offsets-rest-of-world"] = offsets(rtw89_config.offset_other)
+    return result
+
+
 def _build_intel_config(config, config_files):
     """Builds the wifi configuration for the intel driver.
 
@@ -1012,6 +1050,8 @@ def _build_wifi(config, config_files):
         return _build_intel_config(config, config_files)
     if config_field == "mtk_config":
         return _build_mtk_config(config.sw_config.wifi_config.mtk_config)
+    if config_field == "rtw89_config":
+        return _build_rtw89_config(config.sw_config.wifi_config.rtw89_config)
     return {}
 
 
