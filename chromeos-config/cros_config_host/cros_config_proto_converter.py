@@ -1080,6 +1080,32 @@ def _build_health_battery(health_config):
     return result
 
 
+def _build_health_routines(health_config):
+    """Builds the health service routines configuration.
+
+    Args:
+        health_config: Health Config namedtuple.
+
+    Returns:
+        health routines configuration.
+    """
+    if not health_config.HasField("routines"):
+        return None
+
+    routines = health_config.routines
+    result = {}
+
+    if routines.HasField("battery_health"):
+        battery_health_result = {}
+        _upsert(
+            routines.battery_health.percent_battery_wear_allowed,
+            battery_health_result,
+            "percent-battery-wear-allowed",
+        )
+        _upsert(battery_health_result, result, "battery-health")
+    return result
+
+
 def _build_health(config: Config):
     """Builds the health configuration.
 
@@ -1096,6 +1122,7 @@ def _build_health(config: Config):
     result = {}
     _upsert(_build_health_cached_vpd(health_config), result, "cached-vpd")
     _upsert(_build_health_battery(health_config), result, "battery")
+    _upsert(_build_health_routines(health_config), result, "routines")
     return result
 
 
