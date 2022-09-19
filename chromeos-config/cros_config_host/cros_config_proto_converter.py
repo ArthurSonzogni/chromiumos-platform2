@@ -406,6 +406,54 @@ def _build_derived_platform_power_prefs(capabilities) -> dict:
     return result
 
 
+def _build_derived_connectivity_power_prefs(config: Config) -> dict:
+    present = topology_pb2.HardwareFeatures.PRESENT
+    hw_features = config.hw_design_config.hardware_features
+    form_factor = hw_features.form_factor.form_factor
+    result = {}
+
+    if (
+        hw_features.cellular.present == present
+        and hw_features.cellular.HasField("dynamic_power_reduction_config")
+    ):
+        dpr_config = hw_features.cellular.dynamic_power_reduction_config
+        result[
+            "set-cellular-transmit-power-for-proximity"
+        ] = hw_features.HasField("proximity")
+        if form_factor in (
+            topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE,
+            topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
+        ):
+            if dpr_config.HasField("tablet_mode"):
+                result[
+                    "set-cellular-transmit-power-for-tablet-mode"
+                ] = dpr_config.tablet_mode.value
+            else:
+                result["set-cellular-transmit-power-for-tablet-mode"] = (
+                    form_factor
+                    == topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE
+                )
+        else:
+            result["set-cellular-transmit-power-for-tablet-mode"] = False
+
+        if (
+            result["set-cellular-transmit-power-for-tablet-mode"]
+            or result["set-cellular-transmit-power-for-proximity"]
+        ):
+            if dpr_config.HasField("gpio"):
+                result[
+                    "set-cellular-transmit-power-dpr-gpio"
+                ] = wrappers_pb2.UInt32Value(value=dpr_config.gpio)
+            elif dpr_config.HasField("modem_manager"):
+                result["use-modemmanager-for-dynamic-sar"] = True
+
+    result[
+        "set-wifi-transmit-power-for-tablet-mode"
+    ] = hw_features.wifi.HasField("wifi_config")
+
+    return result
+
+
 def _brightness_nits_to_percent(nits, max_screen_brightness):
     max_percent = 100
     max_brightness_steps = 16
@@ -559,6 +607,7 @@ def _build_derived_power_prefs(config: Config) -> dict:
             config.program.platform.capabilities
         )
     )
+    result.update(_build_derived_connectivity_power_prefs(config))
 
     result["usb-min-ac-watts"] = hw_features.power_supply.usb_min_ac_watts
 
