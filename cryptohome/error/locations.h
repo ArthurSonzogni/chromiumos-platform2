@@ -1235,6 +1235,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRevocationRemoveCredentialFailedInRevoke = 704,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFailedInRemoveKeysetByLabel = 705,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceVerifyCouldNotGetFpManager = 706,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceCheckResultFailedYesRetry = 707,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceCheckResultFailedNoRetry = 708,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

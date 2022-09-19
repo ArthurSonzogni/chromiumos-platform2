@@ -10,6 +10,7 @@
 #include <utility>
 #include <variant>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/bind.h>
@@ -29,8 +30,10 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
@@ -48,6 +51,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_le_credential_manager.h"
@@ -107,8 +111,28 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
   }
 
+  // Helper function to construct a fingerprint auth block service using the
+  // mocks built into this test fixture.
+  std::unique_ptr<FingerprintAuthBlockService>
+  MakeFingerprintAuthBlockService() {
+    return std::make_unique<FingerprintAuthBlockService>(
+        base::BindRepeating(&AuthBlockUtilityImplTest::GetFingerprintManager,
+                            base::Unretained(this)));
+  }
+
+  // Helper function to construct a "standard" auth block utility impl using the
+  // mocks built into this test fixture.
+  void MakeAuthBlockUtilityImpl() {
+    auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+        keyset_management_.get(), &crypto_, &platform_,
+        MakeFingerprintAuthBlockService());
+  }
+
  protected:
+  FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
+
   MockPlatform platform_;
+  MockFingerprintManager fp_manager_;
   brillo::SecureBlob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
@@ -122,8 +146,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 };
 
 TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPassword, AuthFactorStorageType::kVaultKeyset, {}));
@@ -212,8 +235,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
   crypto_.Init();
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -254,8 +276,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   EXPECT_CALL(*le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   PinWeaverAuthBlockState pin_state = {
       .le_label = 0, .salt = salt, .chaps_iv = chaps_iv, .fek_iv = fek_iv};
@@ -291,8 +312,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
       .WillByDefault(ReturnValue(brillo::Blob()));
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -339,8 +359,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(auth_block_utility_impl_
                   ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr,
@@ -363,8 +382,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   EXPECT_CALL(hwsec_, Encrypt(_, _)).WillOnce(ReturnValue(encrypt_out));
 
   // Test
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
   KeyBlobs out_key_blobs;
   AuthBlockState out_state;
   EXPECT_TRUE(auth_block_utility_impl_
@@ -410,8 +428,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(
       auth_block_utility_impl_
@@ -439,8 +456,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
       .WillOnce(ReturnValue(brillo::Blob()))
       .WillOnce(ReturnValue(brillo::Blob()));
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -491,8 +507,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(auth_block_utility_impl_
                   ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmEcc,
@@ -509,8 +524,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -609,8 +623,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(auth_block_utility_impl_
                   ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kScrypt,
@@ -708,8 +721,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(
       auth_block_utility_impl_
@@ -726,8 +738,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateChallengeCredentialAuthBlock) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -828,8 +839,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveChallengeCredentialAuthBlock) {
 
   // Test
   KeyBlobs out_key_blobs;
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(
       auth_block_utility_impl_
@@ -857,8 +867,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
   ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
       .WillByDefault(ReturnValue(brillo::Blob()));
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -912,8 +921,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt};
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
@@ -953,8 +961,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
   auto mock_key_challenge_service =
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   auth_block_utility_impl_->InitializeForChallengeCredentials(
       &challenge_credentials_helper_);
@@ -1081,8 +1088,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
   auto mock_key_challenge_service =
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   auth_block_utility_impl_->InitializeForChallengeCredentials(
       &challenge_credentials_helper_);
@@ -1129,8 +1135,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
   brillo::SecureBlob scrypt_derived_key;
   crypto_.Init();
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   AuthInput auth_input = {
       credentials.passkey(), std::nullopt /*locked_to_single_user*=*/,
@@ -1156,8 +1161,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockWrongTypeFails) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test
   KeyBlobs out_key_blobs;
@@ -1197,7 +1201,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
 
   KeyBlobs out_key_blobs;
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      &keyset_management, &crypto_, &platform_);
+      &keyset_management, &crypto_, &platform_,
+      MakeFingerprintAuthBlockService());
 
   // Test
   AuthBlockState out_state;
@@ -1420,8 +1425,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
   crypto_.Init();
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   // Test for kScrypt
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
@@ -1493,8 +1497,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
   auto mock_key_challenge_service =
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   auth_block_utility_impl_->InitializeForChallengeCredentials(
       &challenge_credentials_helper_);
@@ -1515,8 +1518,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   crypto_.Init();
   // Test. No valid challenge_credentials, no valid key_challenge_service or
   // account_id.
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
@@ -1538,8 +1540,7 @@ TEST_F(AuthBlockUtilityImplTest,
   };
   AuthBlockState auth_state = {.state = recovery_state};
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(
       auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
@@ -1574,8 +1575,7 @@ TEST_F(AuthBlockUtilityImplTest,
       .revocation_state = revocation_state,
   };
 
-  auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_);
+  MakeAuthBlockUtilityImpl();
 
   EXPECT_TRUE(
       auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
@@ -1622,8 +1622,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
         generate_hsm_payload_response.hsm_payload, &hsm_payload_));
 
     crypto_.Init();
-    auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        keyset_management_.get(), &crypto_, &platform_);
+    MakeAuthBlockUtilityImpl();
   }
 
  protected:

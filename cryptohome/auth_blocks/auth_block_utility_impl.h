@@ -16,6 +16,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
@@ -39,7 +40,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // AuthBlockUtilityImpl.
   AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                        Crypto* crypto,
-                       Platform* platform);
+                       Platform* platform,
+                       std::unique_ptr<FingerprintAuthBlockService> fp_service);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
@@ -141,6 +143,10 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // Non-owned platform object used in this class. Must be alive for the entire
   // lifecycle of the class.
   Platform* const platform_;
+
+  // Fingerprint service, used by operations that need to interact with
+  // fingerprint sensors.
+  std::unique_ptr<FingerprintAuthBlockService> fp_service_;
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.

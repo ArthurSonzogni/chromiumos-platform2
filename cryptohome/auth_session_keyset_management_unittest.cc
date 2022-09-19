@@ -109,7 +109,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, base::WrapUnique(mock_vault_keyset_factory_));
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
-        keyset_management_.get(), &crypto_, &platform_);
+        keyset_management_.get(), &crypto_, &platform_,
+        FingerprintAuthBlockService::MakeNullService());
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
         auth_block_utility_.get(), &auth_factor_manager_,

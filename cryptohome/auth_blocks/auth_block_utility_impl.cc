@@ -56,12 +56,15 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
-AuthBlockUtilityImpl::AuthBlockUtilityImpl(KeysetManagement* keyset_management,
-                                           Crypto* crypto,
-                                           Platform* platform)
+AuthBlockUtilityImpl::AuthBlockUtilityImpl(
+    KeysetManagement* keyset_management,
+    Crypto* crypto,
+    Platform* platform,
+    std::unique_ptr<FingerprintAuthBlockService> fp_service)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
+      fp_service_(std::move(fp_service)),
       challenge_credentials_helper_(nullptr),
       key_challenge_service_(nullptr) {
   DCHECK(keyset_management);

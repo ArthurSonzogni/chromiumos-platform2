@@ -429,8 +429,9 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
-                                             &platform_);
+      std::make_unique<AuthBlockUtilityImpl>(
+          &keyset_management_, &crypto_, &platform_,
+          FingerprintAuthBlockService::MakeNullService());
   // Setting the expectation that the user does not exist.
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
@@ -490,8 +491,9 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
-                                             &platform_);
+      std::make_unique<AuthBlockUtilityImpl>(
+          &keyset_management_, &crypto_, &platform_,
+          FingerprintAuthBlockService::MakeNullService());
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
@@ -993,8 +995,9 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   // For AuthSession::UpdateKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
-                                             &platform_);
+      std::make_unique<AuthBlockUtilityImpl>(
+          &keyset_management_, &crypto_, &platform_,
+          FingerprintAuthBlockService::MakeNullService());
 
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1445,8 +1448,9 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
 
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl =
-      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
-                                             &platform_);
+      std::make_unique<AuthBlockUtilityImpl>(
+          &keyset_management_, &crypto_, &platform_,
+          FingerprintAuthBlockService::MakeNullService());
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,

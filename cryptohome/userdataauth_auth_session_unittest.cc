@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -389,7 +390,8 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
  protected:
   AuthSessionInterfaceTest() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        &keyset_management_, &crypto_, &platform_);
+        &keyset_management_, &crypto_, &platform_,
+        FingerprintAuthBlockService::MakeNullService());
     CreateAuthSessionManager(auth_block_utility_impl_.get());
   }
 

@@ -36,6 +36,7 @@
 #include <metrics/timer.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
@@ -477,7 +478,9 @@ bool UserDataAuth::Initialize() {
 
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
-        keyset_management_, crypto_, platform_);
+        keyset_management_, crypto_, platform_,
+        std::make_unique<FingerprintAuthBlockService>(base::BindRepeating(
+            &UserDataAuth::GetFingerprintManager, base::Unretained(this))));
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -701,6 +704,11 @@ void UserDataAuth::CreateFingerprintManager() {
     }
     fingerprint_manager_ = default_fingerprint_manager_.get();
   }
+}
+
+FingerprintManager* UserDataAuth::GetFingerprintManager() const {
+  AssertOnMountThread();
+  return fingerprint_manager_;
 }
 
 void UserDataAuth::OnOwnershipTakenSignal() {

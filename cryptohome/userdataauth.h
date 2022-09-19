@@ -989,6 +989,10 @@ class UserDataAuth {
   // and connects to signals.
   void CreateFingerprintManager();
 
+  // Called on Mount thread. The returns a pointer to the fingerprint manager,
+  // or null if it has not been created.
+  FingerprintManager* GetFingerprintManager() const;
+
   // Called on Mount thread when fingerprint auth session starts or fails to
   // start.
   void OnFingerprintStartAuthSessionResp(
