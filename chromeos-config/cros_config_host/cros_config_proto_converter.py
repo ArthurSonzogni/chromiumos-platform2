@@ -1126,6 +1126,29 @@ def _build_health(config: Config):
     return result
 
 
+def _build_nnpalm(config: Config):
+    """Builds the nnpalm configuration.
+
+    Args:
+        config: Config namedtuple
+
+    Returns:
+        nnpalm configuration.
+    """
+    if not config.sw_config.nnpalm_config:
+        return None
+
+    nnpalm_config = config.sw_config.nnpalm_config
+    if not nnpalm_config.touch_compatible:
+        return None
+
+    result = {}
+    _upsert(nnpalm_config.model, result, "model")
+    _upsert(nnpalm_config.radius_polynomial, result, "radius-polynomial")
+    _upsert(nnpalm_config.touch_compatible, result, "touch-compatible")
+    return result
+
+
 def _build_branding(config: Config):
     """Builds the branding configuration.
 
@@ -1992,6 +2015,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_bluetooth(config), result, "bluetooth")
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
+    _upsert(_build_nnpalm(config), result, "nnpalm")
     _upsert(_build_branding(config), result, "branding")
     _upsert(config.brand_config.wallpaper, result, "wallpaper")
     _upsert(config.brand_config.regulatory_label, result, "regulatory-label")
