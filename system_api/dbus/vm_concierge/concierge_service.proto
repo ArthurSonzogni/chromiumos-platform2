@@ -247,6 +247,9 @@ message StartVmRequest {
 
   // Type 11 SMBIOS DMI OEM strings to pass to the VM.
   repeated string oem_strings = 24;
+
+  // Enable virtgpu drm native context:
+  bool enable_virtgpu_native_context = 25;
 }
 
 // Information that must be included with every StartPluginVm request.
