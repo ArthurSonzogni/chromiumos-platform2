@@ -641,6 +641,14 @@ def _build_power(config: Config) -> dict:
     return power_prefs_map
 
 
+def _build_resource(config: Config) -> dict:
+    """Builds the 'resource' property for cros_config_schema."""
+
+    return json_format.MessageToDict(
+        config.sw_config.resource_config, including_default_value_fields=True
+    )
+
+
 def _build_ash_flags(config: Config) -> List[str]:
     """Returns a list of Ash flags for config.
 
@@ -1888,6 +1896,7 @@ def _transform_build_config(config, config_files, whitelabel):
     )
     _upsert(_build_ui(config), result, "ui")
     _upsert(_build_power(config), result, "power")
+    _upsert(_build_resource(config), result, "resource")
     if config_files.camera_map:
         camera_file = config_files.camera_map.get(config.hw_design.name, {})
         _upsert(camera_file, result, "camera")
