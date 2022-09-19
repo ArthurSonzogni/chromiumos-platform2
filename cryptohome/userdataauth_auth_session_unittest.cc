@@ -81,6 +81,7 @@ using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using user_data_auth::AUTH_INTENT_DECRYPT;
 using user_data_auth::AUTH_INTENT_VERIFY_ONLY;
+using user_data_auth::AUTH_INTENT_WEBAUTHN;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 using AuthenticateCallback = base::OnceCallback<void(
@@ -630,7 +631,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
       /*enable_create_backup_vk_with_uss =*/false);
-  SetAuthSessionAsAuthenticated(auth_session, kAllAuthIntents);
+  SetAuthSessionAsAuthenticated(auth_session, kAuthorizedIntentsForFullAuth);
 
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
@@ -2084,6 +2085,54 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert.
   EXPECT_EQ(remove_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
+}
+
+// Test that AuthenticateAuthFactor succeeds for an existing user and a
+// VautKeyset-based factor when using the correct credential, and that the
+// WebAuthn secret is prepared when `AuthIntent::kWebAuthn` is requested.
+TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
+                       mock_auth_block_utility_);
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
+                            keyset_management_);
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
+  EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      kUsername, /*flags=*/0, AuthIntent::kWebAuthn,
+      /*enable_create_backup_vk_with_uss =*/false);
+  ASSERT_TRUE(auth_session);
+
+  // Act.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  request.set_auth_factor_label(kPasswordLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply reply =
+      AuthenticateAuthFactor(request);
+
+  // Assert.
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(reply.authenticated());
+  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
+            time_left_after_authenticate);
+  EXPECT_THAT(reply.authorized_for(),
+              UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
+                                   AUTH_INTENT_WEBAUTHN));
 }
 
 }  // namespace

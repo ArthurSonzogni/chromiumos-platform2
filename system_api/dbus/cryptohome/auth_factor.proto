@@ -60,6 +60,9 @@ enum AuthIntent {
   // Intent to simply check whether the authentication succeeds. Authorizing for
   // this intent doesn't allow any privileged operation.
   AUTH_INTENT_VERIFY_ONLY = 2;
+  // Intent to specify the WebAuthn secret should be populated after authorizing
+  // when applicable, i.e., when the AuthFactor type isn't kLegacyFingerprint.
+  AUTH_INTENT_WEBAUTHN = 3;
 }
 
 // Password AuthFactor requires a secret to be passed for derivation and

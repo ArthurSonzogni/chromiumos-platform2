@@ -17,6 +17,9 @@ enum class AuthIntent {
   // Intent to simply check whether the authentication succeeds. Authorizing for
   // this intent doesn't allow any privileged operation.
   kVerifyOnly,
+  // Intent to unlock the WebAuthn capability. Authorizing for this intent
+  // allows the WebAuthn operation.
+  kWebAuthn,
 };
 
 }  // namespace cryptohome

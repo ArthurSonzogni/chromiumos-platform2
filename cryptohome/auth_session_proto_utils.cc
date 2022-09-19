@@ -19,6 +19,8 @@ user_data_auth::AuthIntent AuthIntentToProto(AuthIntent auth_intent) {
       return user_data_auth::AUTH_INTENT_DECRYPT;
     case AuthIntent::kVerifyOnly:
       return user_data_auth::AUTH_INTENT_VERIFY_ONLY;
+    case AuthIntent::kWebAuthn:
+      return user_data_auth::AUTH_INTENT_WEBAUTHN;
   }
 }
 
@@ -29,6 +31,8 @@ std::optional<AuthIntent> AuthIntentFromProto(
       return AuthIntent::kDecrypt;
     case user_data_auth::AUTH_INTENT_VERIFY_ONLY:
       return AuthIntent::kVerifyOnly;
+    case user_data_auth::AUTH_INTENT_WEBAUTHN:
+      return AuthIntent::kWebAuthn;
     default:
       LOG(WARNING) << "Unknown AuthIntent " << auth_intent;
       return std::nullopt;

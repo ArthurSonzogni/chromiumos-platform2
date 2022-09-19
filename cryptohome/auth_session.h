@@ -60,10 +60,11 @@ enum class AuthStatus {
   // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
 };
 
-// The list of all intents. Useful for places that want to set the "fully
-// authenticated" state.
-constexpr AuthIntent kAllAuthIntents[] = {AuthIntent::kDecrypt,
-                                          AuthIntent::kVerifyOnly};
+// The list of all intents satisfied when the auth session is "fully
+// authenticated". Useful for places that want to set the "fully authenticated"
+// state.
+constexpr AuthIntent kAuthorizedIntentsForFullAuth[] = {
+    AuthIntent::kDecrypt, AuthIntent::kVerifyOnly};
 
 // This class starts a session for the user to authenticate with their
 // credentials.
@@ -522,6 +523,9 @@ class AuthSession final {
       CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
+
+  // Prepares the WebAuthn secret using file_system_keyset.
+  CryptohomeStatus PrepareWebAuthnSecret();
 
   const std::string username_;
   const std::string obfuscated_username_;

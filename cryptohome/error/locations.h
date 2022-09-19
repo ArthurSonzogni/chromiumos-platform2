@@ -1243,6 +1243,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceCheckResultFailedNoRetry = 708,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnknownUnsupportedInVerifyWithAuthFactor = 709,
+  /* ./auth_session.cc */
+  kLocAuthSessionPrepareWebAuthnSecretNoFileSystemKeyset = 710,
+  /* ./auth_session.cc */
+  kLocAuthSessionPrepareWebAuthnSecretNoUserSession = 711,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

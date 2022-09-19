@@ -85,6 +85,8 @@ constexpr base::StringPiece IntentToDebugString(AuthIntent intent) {
       return "decrypt";
     case AuthIntent::kVerifyOnly:
       return "verify-only";
+    case AuthIntent::kWebAuthn:
+      return "webauthn";
   }
 }
 
@@ -321,7 +323,7 @@ CryptohomeStatus AuthSession::ExtendTimeoutTimer(
 CryptohomeStatus AuthSession::OnUserCreated() {
   // Since this function is called for a new user, it is safe to put the
   // AuthSession in an authenticated state.
-  SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
   user_exists_ = true;
 
   if (!is_ephemeral_user_) {
@@ -876,8 +878,19 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   ResaveVaultKeysetIfNeeded(passkey);
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
 
+  CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
+  if (auth_intent_ == AuthIntent::kWebAuthn) {
+    // Even if we failed to prepare WebAuthn secret, file system keyset
+    // is already populated and we should proceed to set AuthSession as
+    // authenticated. Just return the error status at last.
+    prepare_status = PrepareWebAuthnSecret();
+    if (!prepare_status.ok()) {
+      LOG(ERROR) << "Failed to prepare WebAuthn secret.";
+    }
+  }
+
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Set the credential verifier for this credential.
   if (passkey.has_value()) {
@@ -886,7 +899,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
-  std::move(on_done).Run(OkStatus<error::CryptohomeError>());
+  std::move(on_done).Run(std::move(prepare_status));
 }
 
 void AuthSession::Authenticate(
@@ -2403,8 +2416,19 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // LECredential.
   ResetLECredentials();
 
+  CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
+  if (auth_intent_ == AuthIntent::kWebAuthn) {
+    // Even if we failed to prepare WebAuthn secret, file system keyset
+    // is already populated and we should proceed to set AuthSession as
+    // authenticated. Just return the error status at last.
+    prepare_status = PrepareWebAuthnSecret();
+    if (!prepare_status.ok()) {
+      LOG(ERROR) << "Failed to prepare WebAuthn secret.";
+    }
+  }
+
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Set the credential verifier for this credential.
   if (auth_input.user_input.has_value()) {
@@ -2413,7 +2437,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
-  std::move(on_done).Run(OkStatus<CryptohomeError>());
+  std::move(on_done).Run(std::move(prepare_status));
 }
 
 void AuthSession::ResetLECredentials() {
@@ -2465,6 +2489,31 @@ std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
   return std::make_unique<brillo::SecureBlob>(HmacSha256(
       brillo::SecureBlob::Combine(fs_keyset.Key().fnek, fs_keyset.Key().fek),
       brillo::Blob(message.cbegin(), message.cend())));
+}
+
+CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {
+  if (!file_system_keyset_.has_value()) {
+    LOG(ERROR) << "No file system keyset when preparing WebAuthn secret.";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionPrepareWebAuthnSecretNoFileSystemKeyset),
+        ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO,
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  }
+  UserSession* const session = user_session_map_->Find(username_);
+  if (!session) {
+    LOG(ERROR) << "No user session found when preparing WebAuthn secret.";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionPrepareWebAuthnSecretNoUserSession),
+        ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO,
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  }
+  session->PrepareWebAuthnSecret(file_system_keyset_->Key().fek,
+                                 file_system_keyset_->Key().fnek);
+  authorized_intents_.insert(AuthIntent::kWebAuthn);
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 }  // namespace cryptohome

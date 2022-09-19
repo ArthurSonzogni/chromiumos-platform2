@@ -3160,7 +3160,7 @@ TEST_F(UserDataAuthExTest,
   ASSERT_THAT(auth_session, NotNull());
 
   // Migration only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(auth_session_reply.auth_session_id());
@@ -4357,7 +4357,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   EXPECT_THAT(auth_session, NotNull());
 
   // Extension only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -4483,7 +4483,7 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
   EXPECT_EQ(auth_session->timeout_timer_start_time_, base::TimeTicks());
 
   // Extension only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAllAuthIntents);
+  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Test timer is correctly set after authentication.
   EXPECT_TRUE(auth_session->timeout_timer_.IsRunning());
