@@ -1041,17 +1041,22 @@ def _build_wifi(config, config_files):
     Returns:
         wifi configuration.
     """
-    config_field = config.sw_config.wifi_config.WhichOneof("wifi_config")
+    if config.hw_design_config.hardware_features.wifi.HasField("wifi_config"):
+        wifi_config = config.hw_design_config.hardware_features.wifi.wifi_config
+    else:
+        wifi_config = config.sw_config.wifi_config
+
+    config_field = wifi_config.WhichOneof("wifi_config")
     if config_field == "ath10k_config":
-        return _build_ath10k_config(config.sw_config.wifi_config.ath10k_config)
+        return _build_ath10k_config(wifi_config.ath10k_config)
     if config_field == "rtw88_config":
-        return _build_rtw88_config(config.sw_config.wifi_config.rtw88_config)
+        return _build_rtw88_config(wifi_config.rtw88_config)
     if config_field == "intel_config":
         return _build_intel_config(config, config_files)
     if config_field == "mtk_config":
-        return _build_mtk_config(config.sw_config.wifi_config.mtk_config)
+        return _build_mtk_config(wifi_config.mtk_config)
     if config_field == "rtw89_config":
-        return _build_rtw89_config(config.sw_config.wifi_config.rtw89_config)
+        return _build_rtw89_config(wifi_config.rtw89_config)
     return {}
 
 
@@ -2560,10 +2565,17 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
     sw_configs = list(configs.software_configs)
     for hw_design in configs.design_list:
         for hw_design_config in hw_design.configs:
-            sw_config = _sw_config(sw_configs, hw_design_config.id.value)
-            if sw_config.wifi_config.HasField("intel_config"):
+            wifi = hw_design_config.hardware_features.wifi
+            if hw_design_config.hardware_features.wifi.HasField("wifi_config"):
+                wifi_config = wifi.wifi_config
+            else:
+                wifi_config = _sw_config(
+                    sw_configs, hw_design_config.id.value
+                ).wifi_config
+
+            if wifi_config.HasField("intel_config"):
                 sar_file_content = _create_intel_sar_file_content(
-                    sw_config.wifi_config.intel_config
+                    wifi_config.intel_config
                 )
                 design_name = hw_design.name.lower()
                 wifi_sar_id = _extract_fw_config_value(
