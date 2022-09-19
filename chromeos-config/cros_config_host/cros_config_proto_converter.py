@@ -19,7 +19,6 @@ import pathlib
 import pprint
 import re
 import sys
-from typing import List
 
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_pb2
@@ -649,21 +648,37 @@ def _build_resource(config: Config) -> dict:
     )
 
 
-def _build_ash_flags(config: Config) -> List[str]:
-    """Returns a list of Ash flags for config.
+def _build_ash_flags(config: Config) -> dict:
+    """Returns a dict of ash flags and features.
 
     Ash is the window manager and system UI for ChromeOS, see
     https://chromium.googlesource.com/chromium/src/+/HEAD/ash/.
     """
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals,too-many-statements
 
     # A map from flag name -> value. Value may be None for boolean flags.
     flags = {}
+
+    # Sets of ash features to enable and disable, respectively.
+    enabled_features = set()
+    disabled_features = set()
 
     # Adds a flag name -> value pair to flags map. |value| may be None for
     # boolean flags.
     def _add_flag(name, value=None):
         flags[name] = value
+
+    # Adds a feature name to the set of enabled features, removing it from the
+    # set of disabled features if present.
+    def _enable_feature(name):
+        enabled_features.add(name)
+        disabled_features.discard(name)
+
+    # Adds a feature name to the set of disabled features, removing it from the
+    # set of enabled features if present.
+    def _disable_feature(name):
+        disabled_features.add(name)
+        enabled_features.discard(name)
 
     hw_features = config.hw_design_config.hardware_features
     if (
@@ -710,6 +725,18 @@ def _build_ash_flags(config: Config) -> List[str]:
     regulatory_label = config.brand_config.regulatory_label
     if regulatory_label:
         _add_flag("regulatory-label-dir", regulatory_label)
+
+    if (
+        config.brand_config.cloud_gaming_device
+        or config.sw_config.ui_config.cloud_gaming_device
+    ):
+        _enable_feature("CloudGamingDevice")
+
+    if (
+        component_pb2.Component.DisplayPanel.SEAMLESS_REFRESH_RATE_SWITCHING
+        in hw_features.screen.panel_properties.features
+    ):
+        _enable_feature("SeamlessRefreshRateSwitching")
 
     _add_flag(
         "arc-build-properties",
@@ -777,6 +804,12 @@ def _build_ash_flags(config: Config) -> List[str]:
         _add_flag("oobe-large-screen-special-scaling")
         _add_flag("enable-virtual-keyboard")
 
+    touch = (
+        config.hw_design_config.hardware_topology.touch.hardware_feature.touch
+    )
+    if touch.HasField("touch_slop_distance"):
+        _add_flag("touch-slop-distance", touch.touch_slop_distance.value)
+
     if form_factor in (
         topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE,
         topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
@@ -784,12 +817,21 @@ def _build_ash_flags(config: Config) -> List[str]:
     ):
         _add_flag("enable-touchview")
 
-    return sorted([f"--{k}={v}" if v else f"--{k}" for k, v in flags.items()])
+    result = {
+        "extra-ash-flags": sorted(
+            [f"--{k}={v}" if v else f"--{k}" for k, v in flags.items()]
+        ),
+    }
+    if disabled_features:
+        result["ash-disabled-features"] = sorted(disabled_features)
+    if enabled_features:
+        result["ash-enabled-features"] = sorted(enabled_features)
+    return result
 
 
 def _build_ui(config: Config) -> dict:
     """Builds the 'ui' property from cros_config_schema."""
-    result = {"extra-ash-flags": _build_ash_flags(config)}
+    result = _build_ash_flags(config)
     help_content_id = config.brand_config.help_content_id
     if help_content_id:
         result["help-content-id"] = help_content_id
