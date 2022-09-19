@@ -163,6 +163,8 @@ message StartVmRequest {
   // If true, concierge should also perform termina-specific setup.
   bool start_termina = 5;
 
+  reserved 6;
+
   // The owner of the vm.
   string owner_id = 7;
 
@@ -189,17 +191,10 @@ message StartVmRequest {
   // CPUs on the device and cannot be 0.
   uint32 cpus = 12;
 
+  reserved 13, 14;
+
   // Make the rootfs writable.
   bool writable_rootfs = 15;
-
-  // Kernel cmdline parameters that will be passed to crosvm.
-  repeated string kernel_params = 17;
-
-  // Enable Vulkan in the started Vm.
-  bool enable_vulkan = 18;
-
-  // Enable Big GL rendering for the started Vm (default is GLES).
-  bool enable_big_gl = 19;
 
   enum FdType {
     // Kernel image.
@@ -218,6 +213,15 @@ message StartVmRequest {
   // For each FdType in fds a file descriptor must be passed along with the
   // message and that file descriptor will be used for the type's purpose.
   repeated FdType fds = 16;
+
+  // Kernel cmdline parameters that will be passed to crosvm.
+  repeated string kernel_params = 17;
+
+  // Enable Vulkan in the started Vm.
+  bool enable_vulkan = 18;
+
+  // Enable Big GL rendering for the started Vm (default is GLES).
+  bool enable_big_gl = 19;
 
   // Timeout (seconds) for VM startup
   uint32 timeout = 20;
@@ -243,8 +247,6 @@ message StartVmRequest {
 
   // Type 11 SMBIOS DMI OEM strings to pass to the VM.
   repeated string oem_strings = 24;
-
-  reserved 13, 14, 6;
 }
 
 // Information that must be included with every StartPluginVm request.
