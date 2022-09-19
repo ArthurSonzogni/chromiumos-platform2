@@ -12,11 +12,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_fake_ref_design_2147483647.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_fake_ref_design_2147483647.xml",
             "system-path": "/etc/hardware_features_fake_ref_design_2147483647.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_fake_ref_design_2147483647.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_fake_ref_design_2147483647.xml",
             "system-path": "/etc/media_profiles_fake_ref_design_2147483647.xml"
           }
         },
@@ -217,11 +217,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_fake_ref_design_0.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_fake_ref_design_0.xml",
             "system-path": "/etc/hardware_features_fake_ref_design_0.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_fake_ref_design_0.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_fake_ref_design_0.xml",
             "system-path": "/etc/media_profiles_fake_ref_design_0.xml"
           }
         },
@@ -425,11 +425,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_a.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_a.xml",
             "system-path": "/etc/hardware_features_project_a.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_a.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_a.xml",
             "system-path": "/etc/media_profiles_project_a.xml"
           }
         },
@@ -639,11 +639,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_b.xml",
             "system-path": "/etc/hardware_features_project_b.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_b.xml",
             "system-path": "/etc/media_profiles_project_b.xml"
           }
         },
@@ -818,11 +818,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_b.xml",
             "system-path": "/etc/hardware_features_project_b.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_b.xml",
             "system-path": "/etc/media_profiles_project_b.xml"
           }
         },
@@ -1021,11 +1021,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_b.xml",
             "system-path": "/etc/hardware_features_project_b.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_b.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_b.xml",
             "system-path": "/etc/media_profiles_project_b.xml"
           }
         },
@@ -1216,11 +1216,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_c.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_c.xml",
             "system-path": "/etc/hardware_features_project_c.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_c.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_c.xml",
             "system-path": "/etc/media_profiles_project_c.xml"
           }
         },
@@ -1399,11 +1399,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_wl.xml",
             "system-path": "/etc/hardware_features_project_wl.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_wl.xml",
             "system-path": "/etc/media_profiles_project_wl.xml"
           },
           "scale": 280
@@ -1547,11 +1547,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_wl.xml",
             "system-path": "/etc/hardware_features_project_wl.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_wl.xml",
             "system-path": "/etc/media_profiles_project_wl.xml"
           },
           "scale": 280
@@ -1697,11 +1697,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_wl.xml",
             "system-path": "/etc/hardware_features_project_wl.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_wl.xml",
             "system-path": "/etc/media_profiles_project_wl.xml"
           },
           "scale": 280
@@ -1847,11 +1847,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_wl.xml",
             "system-path": "/etc/hardware_features_project_wl.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_wl.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_wl.xml",
             "system-path": "/etc/media_profiles_project_wl.xml"
           },
           "scale": 280
@@ -1997,11 +1997,11 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_rebrand.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_rebrand.xml",
             "system-path": "/etc/hardware_features_project_rebrand.xml"
           },
           "media-profiles": {
-            "build-path": "payload_utils/test_data/arc/media_profiles_project_rebrand.xml",
+            "build-path": "test_data/proto_converter/arc/media_profiles_project_rebrand.xml",
             "system-path": "/etc/media_profiles_project_rebrand.xml"
           },
           "scale": 280
@@ -2159,7 +2159,7 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_box_128.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_box_128.xml",
             "system-path": "/etc/hardware_features_project_box_128.xml"
           },
           "scale": 280
@@ -2307,7 +2307,7 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_box_129.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_box_129.xml",
             "system-path": "/etc/hardware_features_project_box_129.xml"
           },
           "scale": 280
@@ -2445,7 +2445,7 @@
             "product": "fake_program"
           },
           "hardware-features": {
-            "build-path": "payload_utils/test_data/arc/hardware_features_project_box_130.xml",
+            "build-path": "test_data/proto_converter/arc/hardware_features_project_box_130.xml",
             "system-path": "/etc/hardware_features_project_box_130.xml"
           },
           "scale": 280
