@@ -7,6 +7,4 @@ by observing io to the storage device via iostat, as well as by listening to an
 explicit signal an application can send.
 
 ## TODOs
-* Add SELinux policies
 * Add/Tune state transition rules
-* Include build into image

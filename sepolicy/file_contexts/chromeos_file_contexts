@@ -180,6 +180,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/cryptohome-namespace-mounter u:object_r:cros_cryptohome_namespace_mounter_exec:s0
 /usr/sbin/cupsd                 u:object_r:cros_cupsd_exec:s0
 /usr/sbin/daisydog              u:object_r:cros_daisydog_exec:s0
+/usr/sbin/discod                u:object_r:cros_discod_exec:s0
 /usr/sbin/dlcservice            u:object_r:cros_dlcservice_exec:s0
 /usr/sbin/dnsproxyd             u:object_r:cros_dnsproxyd_exec:s0
 /usr/sbin/gsctool               u:object_r:cros_gsctool_exec:s0
