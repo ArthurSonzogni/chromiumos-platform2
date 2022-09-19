@@ -2234,12 +2234,13 @@ def _get_arc_camera_features(camera, camera_config):
     return features
 
 
-def _generate_arc_hardware_features(hw_features, sw_config):
+def _generate_arc_hardware_features(hw_features, sw_config, _program):
     """Generates ARC hardware_features.xml file content.
 
     Args:
         hw_features: HardwareFeatures proto message.
         sw_config: SoftwareConfig proto message.
+        _program: Unused.
 
     Returns:
         bytes of the hardware_features.xml content.
@@ -2289,18 +2290,21 @@ def _generate_arc_hardware_features(hw_features, sw_config):
     return XML_DECLARATION + etree.tostring(root, pretty_print=True)
 
 
-def _generate_arc_media_profiles(hw_features, sw_config, dtd_path):
+def _generate_arc_media_profiles(hw_features, sw_config, program, dtd_path):
     """Generates ARC media_profiles.xml file content.
 
     Args:
         hw_features: HardwareFeatures proto message.
         sw_config: SoftwareConfig proto message.
+        program: Corresponding program in ConfigBundle.program_list.
         dtd_path: Full path to dtd media profiles file.
 
     Returns:
         bytes of the media_profiles.xml content, or None if |sw_config|
         disables the generation or there's no camera.
     """
+
+    # pylint: disable=too-many-locals
 
     def _gen_camcorder_profiles(camera_id, resolutions):
         elem = etree.Element(
@@ -2394,7 +2398,10 @@ def _generate_arc_media_profiles(hw_features, sw_config, dtd_path):
         )
 
     camera_config = sw_config.camera_config
-    if not camera_config.generate_media_profiles:
+    if (
+        not camera_config.generate_media_profiles
+        and not program.generate_camera_media_profiles
+    ):
         return None
 
     camera_pb = topology_pb2.HardwareFeatures.Camera
@@ -2487,13 +2494,15 @@ def _write_files_by_design_config(
     # pylint: disable=too-many-arguments,too-many-locals
     result = {}
     configs_by_design = {}
+    programs = {x.id.value: x for x in configs.program_list}
     for hw_design in configs.design_list:
+        program = _lookup(hw_design.program_id, programs)
         for design_config in hw_design.configs:
             sw_config = _sw_config(
                 configs.software_configs, design_config.id.value
             )
             config_content = generate_file_content(
-                design_config.hardware_features, sw_config
+                design_config.hardware_features, sw_config, program
             )
             if not config_content:
                 continue
