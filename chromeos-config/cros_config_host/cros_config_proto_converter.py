@@ -1536,12 +1536,11 @@ class _AudioConfigBuilder:
             card_config.cras_config, "cras-config"
         )
         if cras_config_source_path:
+            card_settings = f"{card}.card_settings"
             self._files.append(
                 _file(
-                    cras_config_source_path.joinpath(card).with_suffix(
-                        ".card_settings"
-                    ),
-                    self._CRAS_PATH.joinpath(self._design_name, card),
+                    cras_config_source_path / card_settings,
+                    self._CRAS_PATH.joinpath(self._design_name, card_settings),
                 )
             )
 
