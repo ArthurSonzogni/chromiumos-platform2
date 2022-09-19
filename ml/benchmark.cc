@@ -231,8 +231,10 @@ BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
     metric.set_units(Metric::MS);
     metric.set_direction(Metric::SMALLER_IS_BETTER);
     metric.set_cardinality(Metric::SINGLE);
-    metric.add_values(chrome::ml_benchmark::ComputePercentile(
-        accumulative_result->cputimes_in_us, i));
+    metric.add_values(
+        static_cast<double>(chrome::ml_benchmark::ComputePercentile(
+            accumulative_result->cputimes_in_us, i)) /
+        1000.0);
   }
 
   return benchmark_result;
