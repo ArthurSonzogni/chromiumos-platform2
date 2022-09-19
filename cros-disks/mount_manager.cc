@@ -92,16 +92,18 @@ void MountManager::Mount(const std::string& source,
 
   if (real_path.empty()) {
     LOG(ERROR) << "Cannot mount an invalid path: " << redact(source);
-    std::move(mount_callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT);
+    std::move(mount_callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT, false);
     return;
   }
 
   if (RemoveParamsEqualTo(&options, "remount")) {
     // Remount an already-mounted drive.
     std::string mount_path;
+    bool read_only = false;
     const MountErrorType error =
-        Remount(real_path, filesystem_type, std::move(options), &mount_path);
-    return std::move(mount_callback).Run(mount_path, error);
+        Remount(real_path, filesystem_type, std::move(options), &mount_path,
+                &read_only);
+    return std::move(mount_callback).Run(mount_path, error, read_only);
   }
 
   // Mount a new drive.
@@ -111,23 +113,27 @@ void MountManager::Mount(const std::string& source,
 
 MountErrorType MountManager::Remount(const std::string& source,
                                      const std::string& /*filesystem_type*/,
-                                     std::vector<std::string> options,
-                                     std::string* mount_path) {
+                                     const std::vector<std::string>& options,
+                                     std::string* const mount_path,
+                                     bool* const read_only) {
   MountPoint* const mount_point = FindMountBySource(source);
   if (!mount_point) {
     LOG(WARNING) << "Not currently mounted: " << quote(source);
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
 
-  bool read_only = IsReadOnlyMount(options);
-
   // Perform the underlying mount operation.
-  if (const MountErrorType error = mount_point->Remount(read_only)) {
+  if (const MountErrorType error =
+          mount_point->Remount(IsReadOnlyMount(options))) {
     LOG(ERROR) << "Cannot remount " << quote(source) << ": " << error;
     return error;
   }
 
   *mount_path = mount_point->path().value();
+
+  DCHECK_NE(read_only, nullptr);
+  *read_only = mount_point->is_read_only();
+
   LOG(INFO) << "Remounted " << quote(source) << " on " << quote(*mount_path);
   return MOUNT_ERROR_NONE;
 }
@@ -142,7 +148,8 @@ void MountManager::MountNewSource(const std::string& source,
   if (const MountPoint* const mp = FindMountBySource(source)) {
     LOG(ERROR) << redact(source) << " is already mounted on "
                << redact(mp->path());
-    return std::move(mount_callback).Run(mp->path().value(), mp->error());
+    return std::move(mount_callback)
+        .Run(mp->path().value(), mp->error(), mp->is_read_only());
   }
 
   // Extract the mount label string from the passed options.
@@ -158,7 +165,7 @@ void MountManager::MountNewSource(const std::string& source,
   base::FilePath mount_path;
   if (const MountErrorType error =
           CreateMountPathForSource(source, label, &mount_path))
-    return std::move(mount_callback).Run("", error);
+    return std::move(mount_callback).Run("", error, false);
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
@@ -185,7 +192,7 @@ void MountManager::MountNewSource(const std::string& source,
 
     if (!ShouldReserveMountPathOnError(error)) {
       platform_->RemoveEmptyDirectory(mount_path.value());
-      return std::move(mount_callback).Run("", error);
+      return std::move(mount_callback).Run("", error, false);
     }
 
     DCHECK(!mount_point);
@@ -219,7 +226,8 @@ void MountManager::MountNewSource(const std::string& source,
     mount_point->SetProgressCallback(std::move(progress_callback));
   } else {
     // There is no FUSE process.
-    std::move(mount_callback).Run(mount_path.value(), error);
+    std::move(mount_callback)
+        .Run(mount_path.value(), error, mount_point->is_read_only());
   }
 
   mount_points_.push_back(std::move(mount_point));
@@ -231,7 +239,9 @@ void MountManager::OnLauncherExit(
     const base::WeakPtr<const MountPoint> mount_point,
     const MountErrorType error) {
   DCHECK(mount_callback);
-  std::move(mount_callback).Run(mount_path.value(), error);
+  std::move(mount_callback)
+      .Run(mount_path.value(), error,
+           mount_point ? mount_point->is_read_only() : false);
 
   if (!mount_point)
     return;

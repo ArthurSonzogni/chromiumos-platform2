@@ -181,17 +181,21 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
     return ptr;
   }
 
-  void OnMountCompleted(const std::string& path, MountErrorType error) {
+  void OnMountCompleted(const std::string& path,
+                        const MountErrorType error,
+                        const bool read_only) {
     EXPECT_FALSE(mount_completed_);
     mount_path_ = path;
     mount_error_ = error;
     mount_completed_ = true;
+    read_only_ = read_only;
   }
 
   MountManager::MountCallback GetMountCallback() {
     mount_path_.clear();
     mount_error_ = MOUNT_ERROR_NONE;
     mount_completed_ = false;
+    read_only_ = false;
 
     return base::BindOnce(&DiskManagerTest::OnMountCompleted,
                           base::Unretained(this));
@@ -211,6 +215,7 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
   std::string mount_path_;
   MountErrorType mount_error_;
   bool mount_completed_;
+  bool read_only_;
 };
 
 MATCHER_P(HasBits, bits, "") {
@@ -223,6 +228,7 @@ TEST_F(DiskManagerTest, MountBootDeviceNotAllowed) {
   manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
   monitor_.disks_.push_back({
       .is_on_boot_device = true,
       .device_file = "/dev/sda1",
@@ -231,6 +237,7 @@ TEST_F(DiskManagerTest, MountBootDeviceNotAllowed) {
   manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
 }
 
 TEST_F(DiskManagerTest, MountNonExistingDevice) {
@@ -245,6 +252,7 @@ TEST_F(DiskManagerTest, MountNonExistingDevice) {
   manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
 }
 
 TEST_F(DiskManagerTest, MountUsesLabel) {
@@ -261,6 +269,7 @@ TEST_F(DiskManagerTest, MountUsesLabel) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_FALSE(read_only_);
   EXPECT_EQ("foo", base::FilePath(mount_path_).BaseName().value());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
@@ -289,6 +298,7 @@ TEST_F(DiskManagerTest, MountFAT) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_FALSE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
@@ -321,6 +331,7 @@ TEST_F(DiskManagerTest, MountExFAT) {
 
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_FALSE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
@@ -356,6 +367,7 @@ TEST_F(DiskManagerTest, MountNTFS) {
 
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_FALSE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
@@ -386,6 +398,7 @@ TEST_F(DiskManagerTest, MountCD) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_TRUE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
@@ -411,6 +424,7 @@ TEST_F(DiskManagerTest, MountDVD) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_TRUE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
@@ -436,6 +450,7 @@ TEST_F(DiskManagerTest, MountHFS) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_FALSE(read_only_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
@@ -462,6 +477,7 @@ TEST_F(DiskManagerTest, MountReadOnlyMedia) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_TRUE(read_only_);
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -484,6 +500,7 @@ TEST_F(DiskManagerTest, MountForcedReadOnly) {
   manager_->Mount("/dev/sda1", "", {"ro"}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_TRUE(read_only_);
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -510,6 +527,7 @@ TEST_F(DiskManagerTest, MountRetryReadOnlyIfFailed) {
   manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_TRUE(read_only_);
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
       .WillOnce(Return(MOUNT_ERROR_NONE));

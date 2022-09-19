@@ -123,7 +123,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
                         MountSourceType source_type,
                         const std::string& filesystem_type,
                         const std::string& mount_path,
-                        MountErrorType error);
+                        MountErrorType error,
+                        bool read_only);
 
   // The callback called when a partitioning operation has completed.
   void OnPartitionCompleted(

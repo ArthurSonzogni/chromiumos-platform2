@@ -33,6 +33,7 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
+#include "dbus/cros-disks/dbus-constants.h"
 
 namespace cros_disks {
 
@@ -320,27 +321,27 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     return nullptr;
   }
 
-  std::string device_filesystem_type =
+  const std::string fstype =
       filesystem_type.empty() ? disk.filesystem_type : filesystem_type;
   metrics()->RecordDeviceMediaType(disk.media_type);
-  metrics()->RecordFilesystemType(device_filesystem_type);
-  if (device_filesystem_type.empty()) {
+  metrics()->RecordFilesystemType(fstype);
+  if (fstype.empty()) {
     LOG(ERROR) << "Cannot determine filesystem type of device "
                << quote(source_path);
     *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
     return nullptr;
   }
 
-  const auto it = mounters_.find(device_filesystem_type);
+  const auto it = mounters_.find(fstype);
   if (it == mounters_.end()) {
-    LOG(ERROR) << "Cannot handle filesystem type "
-               << quote(device_filesystem_type) << " of device "
-               << quote(source_path);
+    LOG(ERROR) << "Cannot handle filesystem type " << quote(fstype)
+               << " of device " << quote(source_path);
     *error = MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
     return nullptr;
   }
 
   const Mounter* const mounter = it->second.get();
+  DCHECK(mounter);
 
   auto applied_options = options;
   if (const bool media_read_only = disk.is_read_only || disk.IsOpticalDisk();
@@ -354,10 +355,22 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     DCHECK(!mount_point);
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!IsReadOnlyMount(applied_options)) {
-      LOG(INFO) << "Trying to mount " << quote(source_path) << " read-only";
+      LOG(INFO) << "Trying to mount " << quote(disk.device_file)
+                << " again, but in read-only mode this time";
       applied_options.push_back("ro");
       mount_point =
           mounter->Mount(disk.device_file, mount_path, applied_options, error);
+      if (*error == MOUNT_ERROR_NONE) {
+        // crbug.com/1366204: Managed to mount the external media in read-only
+        // mode after failing to mount it in read-write mode.
+        DCHECK(mount_point);
+        DCHECK(mount_point->is_read_only());
+        LOG(WARNING) << "Mounted " << quote(mount_point->source())
+                     << " as read-only " << quote(mount_point->fstype())
+                     << " filesystem at mount point "
+                     << redact(mount_point->path())
+                     << " because it could not be mounted in read-write mode";
+      }
     }
   }
 

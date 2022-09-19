@@ -114,17 +114,21 @@ class MountManagerTest : public ::testing::Test {
         &platform_);
   }
 
-  void OnMountCompleted(const std::string& path, MountErrorType error) {
+  void OnMountCompleted(const std::string& path,
+                        const MountErrorType error,
+                        const bool read_only) {
     EXPECT_FALSE(mount_completed_);
     mount_path_ = path;
     mount_error_ = error;
     mount_completed_ = true;
+    read_only_ = read_only;
   }
 
   MountManager::MountCallback GetMountCallback() {
     mount_path_.clear();
     mount_error_ = MOUNT_ERROR_NONE;
     mount_completed_ = false;
+    read_only_ = false;
 
     return base::BindOnce(&MountManagerTest::OnMountCompleted,
                           base::Unretained(this));
@@ -139,6 +143,7 @@ class MountManagerTest : public ::testing::Test {
   std::string mount_path_;
   MountErrorType mount_error_;
   bool mount_completed_;
+  bool read_only_;
   std::vector<std::string> options_;
 };
 
@@ -225,6 +230,7 @@ TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
   manager_.Mount("", filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARGUMENT, mount_error_);
+  EXPECT_FALSE(read_only_);
 }
 
 // Verifies that MountManager::Mount() returns an error when it is invoked
@@ -241,11 +247,13 @@ TEST_F(MountManagerTest, MountFailedWithInvalidSuggestedMountPath) {
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
 
   options_.push_back("mountlabel=custom_label");
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
 }
 
 // Verifies that MountManager::Mount() returns an error when it is invoked
@@ -264,6 +272,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidMountLabel) {
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
+  EXPECT_FALSE(read_only_);
 }
 
 // Verifies that MountManager::Mount() returns an error when it fails to
@@ -280,6 +289,7 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED, mount_error_);
   EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(read_only_);
 }
 
 // Verifies that MountManager::Mount() returns an error when it fails to
@@ -296,6 +306,7 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_DIRECTORY_CREATION_FAILED, mount_error_);
   EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
@@ -320,6 +331,7 @@ TEST_F(MountManagerTest, MountFailsWithNoMountPointAndNoError) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mount_error_);
   EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
@@ -352,6 +364,7 @@ TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mount_error_);
   EXPECT_EQ("", mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_FALSE(manager_.IsMountPathInCache(kMountPath));
 }
 
@@ -379,6 +392,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   {
@@ -421,6 +435,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_TRUE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   {
@@ -458,6 +473,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_TRUE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   {
@@ -495,6 +511,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
@@ -532,6 +549,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(final_mount_path, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(final_mount_path)))
@@ -564,6 +582,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   // Mount an already-mounted source path
@@ -571,6 +590,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   // Mount an already-mounted source path
@@ -578,6 +598,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
+  EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   // Unmount

@@ -85,8 +85,8 @@ class MountManager {
   virtual MountSourceType GetMountSourceType() const = 0;
 
   // Callback called when the mount operation succeeds or fails.
-  using MountCallback = base::OnceCallback<void(const std::string& mount_path,
-                                                MountErrorType error)>;
+  using MountCallback = base::OnceCallback<void(
+      const std::string& mount_path, MountErrorType error, bool read_only)>;
 
   // Callback called when the FUSE 'launcher' process is signaling progress.
   using ProgressCallback = MountPoint::ProgressCallback;
@@ -135,8 +135,9 @@ class MountManager {
   // Remounts |source| on |mount_path| as |filesystem_type| with |options|.
   MountErrorType Remount(const std::string& source,
                          const std::string& filesystem_type,
-                         std::vector<std::string> options,
-                         std::string* mount_path);
+                         const std::vector<std::string>& options,
+                         std::string* mount_path,
+                         bool* read_only);
 
   // Implemented by a derived class to mount |source| to |mount_path| as
   // |filesystem_type| with |options|. An implementation may append their own

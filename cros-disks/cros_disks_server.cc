@@ -132,14 +132,16 @@ void CrosDisksServer::OnMountProgress(const MountPoint* const mount_point) {
             << mount_point->progress_percent() << "%";
   SendMountProgressSignal(mount_point->progress_percent(),
                           mount_point->source(), mount_point->source_type(),
-                          mount_point->path().value());
+                          mount_point->path().value(),
+                          mount_point->is_read_only());
 }
 
 void CrosDisksServer::OnMountCompleted(const std::string& source,
                                        MountSourceType source_type,
                                        const std::string& filesystem_type,
                                        const std::string& mount_path,
-                                       MountErrorType error) {
+                                       MountErrorType error,
+                                       bool read_only) {
   if (error) {
     LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
                << quote(filesystem_type) << ": " << error;
@@ -148,7 +150,7 @@ void CrosDisksServer::OnMountCompleted(const std::string& source,
               << quote(filesystem_type) << " on " << redact(mount_path);
   }
 
-  SendMountCompletedSignal(error, source, source_type, mount_path);
+  SendMountCompletedSignal(error, source, source_type, mount_path, read_only);
 }
 
 void CrosDisksServer::Mount(const std::string& source,
@@ -159,7 +161,7 @@ void CrosDisksServer::Mount(const std::string& source,
     LOG(ERROR) << "Cannot find mounter for " << redact(source) << " of type "
                << quote(filesystem_type);
     SendMountCompletedSignal(MOUNT_ERROR_INVALID_PATH, source,
-                             MOUNT_SOURCE_INVALID, "");
+                             MOUNT_SOURCE_INVALID, "", false);
     return;
   }
 
