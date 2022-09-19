@@ -1434,7 +1434,10 @@ class _AudioConfigBuilder:
 
     @property
     def _design_name(self):
-        return self._config.hw_design.name.lower()
+        design_id = self._config.hw_design.id
+        if design_id.HasField("config_design_id_override"):
+            return design_id.config_design_id_override.value.lower()
+        return design_id.value.lower()
 
     @property
     def _hw_features(self):
