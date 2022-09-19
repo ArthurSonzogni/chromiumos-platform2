@@ -71,6 +71,8 @@ class CrosGtkIMContext : public GtkIMContext {
 
   bool RetrieveSurrounding();
 
+  bool is_x11_;
+
   // Ref counted
   GdkWindow* gdk_window_ = nullptr;
   GdkWindow* top_level_gdk_window_ = nullptr;

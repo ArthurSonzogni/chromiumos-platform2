@@ -48,6 +48,7 @@ setup_deps() {
   mkdir -p protocols
   cp ../sommelier/protocol/text-input-extension-unstable-v1.xml protocols
   cp ../sommelier/protocol/text-input-unstable-v1.xml protocols
+  cp ../sommelier/protocol/text-input-x11-unstable-v1.xml protocols
 }
 
 cleanup() {

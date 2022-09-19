@@ -15,6 +15,7 @@ using cros_im::test::Request;
 
 const wl_interface zwp_text_input_manager_v1_interface = {};
 const wl_interface zcr_text_input_extension_v1_interface = {};
+const wl_interface zcr_text_input_x11_v1_interface = {};
 
 namespace {
 
@@ -132,6 +133,13 @@ void zcr_extended_text_input_v1_add_listener(
     void* listener_data) {
   extended_text_input->listener = listener;
   extended_text_input->listener_data = listener_data;
+}
+
+void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1* text_input_x11,
+                                    zwp_text_input_v1* text_input,
+                                    wl_seat*,
+                                    uint32_t x11_id) {
+  HandleRequest(text_input, Request::kActivate);
 }
 
 namespace cros_im {

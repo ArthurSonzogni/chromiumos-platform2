@@ -16,16 +16,32 @@ struct zwp_text_input_manager_v1;
 struct zcr_extended_text_input_v1;
 struct zcr_extended_text_input_v1_listener;
 struct zcr_text_input_extension_v1;
+struct zcr_text_input_x11_v1;
 
 namespace cros_im {
 
 // WaylandManager manages the Wayland connection and provides text_input objects
-// to clients.
+// to clients. It supports using an existing Wayland connection or creating a
+// new one (for X11 app support).
 class WaylandManager {
  public:
   static void CreateInstance(wl_display* display);
+  // Returns whether we were successfully able to make a connection.
+  static bool CreateX11Instance(const char* display_name);
   static bool HasInstance();
   static WaylandManager* Get();
+
+  // These functions let X11 clients integrate the Wayland requests and events
+  // into their event loop.
+
+  // The file descriptor for receiving events. Should only be poll()'d from a
+  // single thread to avoid potential deadlocks.
+  uint32_t GetFd();
+  // Flush pending requests to the compositor.
+  void FlushRequests();
+  // Dispatches any received events. This blocks if there are no events to read
+  // from the fd (it is not possible to check if there are events available).
+  void DispatchEvents();
 
   // These return non-null if and only if initialization is complete.
   zwp_text_input_v1* CreateTextInput(const zwp_text_input_v1_listener* listener,
@@ -35,8 +51,9 @@ class WaylandManager {
       const zcr_extended_text_input_v1_listener* listener,
       void* listener_data);
 
-  // Once initialized, this value will not change.
+  // Once initialized, these are not expected to change.
   wl_seat* GetSeat() { return wl_seat_; }
+  zcr_text_input_x11_v1* GetTextInputX11() { return text_input_x11_; }
 
   // Callbacks for wayland global events.
   void OnGlobal(wl_registry* registry,
@@ -46,10 +63,18 @@ class WaylandManager {
   void OnGlobalRemove(wl_registry* registry, uint32_t name);
 
  private:
-  explicit WaylandManager(wl_display* display);
+  enum class AppType {
+    kWayland,
+    kX11,
+  };
+  explicit WaylandManager(AppType app_type, wl_display* display);
   ~WaylandManager();
 
   bool IsInitialized() const;
+
+  AppType app_type_;
+
+  wl_display* display_ = nullptr;
 
   wl_seat* wl_seat_ = nullptr;
   uint32_t wl_seat_id_ = 0;
@@ -59,6 +84,9 @@ class WaylandManager {
   // Creates extended_text_input objects
   zcr_text_input_extension_v1* text_input_extension_ = nullptr;
   uint32_t text_input_extension_id_ = 0;
+  // For X11 app support
+  zcr_text_input_x11_v1* text_input_x11_ = nullptr;
+  uint32_t text_input_x11_id_ = 0;
 };
 
 }  // namespace cros_im

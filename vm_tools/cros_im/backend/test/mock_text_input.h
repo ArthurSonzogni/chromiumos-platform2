@@ -145,6 +145,18 @@ void zcr_extended_text_input_v1_add_listener(
     const zcr_extended_text_input_v1_listener*,
     void* listener_data);
 
+// Mocks for zcr_text_input_x11_v1
+
+struct zcr_text_input_x11_v1_listener;
+struct zcr_text_input_x11_v1;
+
+extern const wl_interface zcr_text_input_x11_v1_interface;
+
+void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1*,
+                                    zwp_text_input_v1*,
+                                    wl_seat*,
+                                    uint32_t x11_id);
+
 namespace cros_im {
 namespace test {
 

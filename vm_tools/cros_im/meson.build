@@ -27,6 +27,7 @@ wl_generators = [
 wl_protocols = [
   'text-input-extension-unstable-v1.xml',
   'text-input-unstable-v1.xml',
+  'text-input-x11-unstable-v1.xml',
 ]
 
 wl_outs = []
@@ -55,6 +56,8 @@ gtk_sources = backend_sources + [
   'frontend/gtk/cros_gtk_im_context.cc',
   'frontend/gtk/cros_gtk_im_context.h',
   'frontend/gtk/im_cros.cc',
+  'frontend/gtk/x11.cc',
+  'frontend/gtk/x11.h',
 ]
 
 libim_cros_gtk = shared_library('im_cros_gtk',

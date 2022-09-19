@@ -9,9 +9,9 @@
 #include <cstdint>
 
 // This file provides mock implementations of the APIs normally defined and
-// implemented in wayland-client.h.
+// implemented in wayland-client.h and wayland-client-protocol.h.
 
-struct wl_display;
+struct wl_display {};
 struct wl_registry;
 struct zwp_text_input_v1;
 
@@ -30,6 +30,13 @@ struct wl_registry_listener {
                  uint32_t version);
   void (*global_remove)(void*, wl_registry*, uint32_t name);
 };
+
+// Functions for X11 integrations
+wl_display* wl_display_connect(const char* name);
+int wl_display_get_fd(wl_display* display);
+int wl_display_flush(wl_display* display);
+int wl_display_dispatch(wl_display* display);
+void wl_display_disconnect(wl_display* display);
 
 wl_registry* wl_display_get_registry(wl_display*);
 

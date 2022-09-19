@@ -3,10 +3,15 @@
 // found in the LICENSE file.
 
 #include <gdk/gdkwayland.h>
+#include <gdk/gdkx.h>
+// Remove definitions from X11 headers that collide with our code.
+#undef FocusIn
+#undef FocusOut
 #include <gtk/gtk.h>
 
 #include "backend/wayland_manager.h"
 #include "frontend/gtk/cros_gtk_im_context.h"
+#include "frontend/gtk/x11.h"
 
 // This file defines the functions required to wire up a GTK IM module.
 
@@ -44,15 +49,20 @@ void im_module_init(GTypeModule* module) {
   g_type_module_use(module);
 
   GdkDisplay* gdk_display = gdk_display_get_default();
-  if (!gdk_display || !GDK_IS_WAYLAND_DISPLAY(gdk_display)) {
-    g_warning(
-        "The cros IM module currently only supports running directly under "
-        "Wayland.");
+  if (!gdk_display) {
+    g_warning("GdkDisplay wasn't found");
     return;
   }
-
-  WaylandManager::CreateInstance(
-      gdk_wayland_display_get_wl_display(gdk_display));
+  if (GDK_IS_X11_DISPLAY(gdk_display)) {
+    if (!SetUpWaylandForX11())
+      return;
+  } else if (GDK_IS_WAYLAND_DISPLAY(gdk_display)) {
+    WaylandManager::CreateInstance(
+        gdk_wayland_display_get_wl_display(gdk_display));
+  } else {
+    g_warning("Unknown GdkDisplay type");
+    return;
+  }
 
   CrosGtkIMContext::RegisterType(module);
 }

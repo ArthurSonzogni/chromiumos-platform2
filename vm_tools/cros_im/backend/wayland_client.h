@@ -9,6 +9,7 @@
 #include "backend/test/mock_wayland_client.h"
 #else
 #include <wayland-client.h>
+#include <wayland-client-protocol.h>
 #endif
 
 #endif  // VM_TOOLS_CROS_IM_BACKEND_WAYLAND_CLIENT_H_

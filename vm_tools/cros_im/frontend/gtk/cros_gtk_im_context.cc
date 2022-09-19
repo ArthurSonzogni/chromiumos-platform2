@@ -6,6 +6,10 @@
 
 #include <gdk/gdk.h>
 #include <gdk/gdkwayland.h>
+#include <gdk/gdkx.h>
+// Remove definitions from X11 headers that collide with our code.
+#undef FocusIn
+#undef FocusOut
 #include <cstring>
 #include <iostream>
 #include <utility>
@@ -194,7 +198,9 @@ CrosGtkIMContext* CrosGtkIMContext::Create() {
 
 CrosGtkIMContext::CrosGtkIMContext()
     : backend_observer_(this),
-      backend_(std::make_unique<IMContextBackend>(&backend_observer_)) {}
+      backend_(std::make_unique<IMContextBackend>(&backend_observer_)) {
+  is_x11_ = GDK_IS_X11_DISPLAY(gdk_display_get_default());
+}
 
 CrosGtkIMContext::~CrosGtkIMContext() = default;
 
@@ -262,6 +268,8 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   if (!gdk_window_)
     return;
 
+  // TODO(timloh): This is wrong for X11 apps. We might need to subtract the
+  // top_level_gdk_window_'s origin.
   int offset_x = 0, offset_y = 0;
   gdk_window_get_origin(gdk_window_, &offset_x, &offset_y);
 
@@ -440,16 +448,19 @@ void CrosGtkIMContext::Activate() {
     return;
   }
 
-  wl_surface* surface =
-      gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
-  if (!surface) {
-    g_warning("GdkWindow doesn't have an associated wl_surface.");
-    return;
+  if (is_x11_) {
+    backend_->ActivateX11(gdk_x11_window_get_xid(top_level_gdk_window_));
+  } else {
+    wl_surface* surface =
+        gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
+    if (!surface) {
+      g_warning("GdkWindow doesn't have an associated wl_surface.");
+      return;
+    }
+    backend_->Activate(surface);
   }
 
   pending_activation_ = false;
-
-  backend_->Activate(surface);
 
   GtkInputHints gtk_hints = GTK_INPUT_HINT_NONE;
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;

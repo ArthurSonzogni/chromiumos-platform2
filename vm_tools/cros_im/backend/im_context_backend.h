@@ -61,6 +61,7 @@ class IMContextBackend {
   ~IMContextBackend();
 
   void Activate(wl_surface* surface);
+  void ActivateX11(uint32_t x11_id);
   void Deactivate();
   void ShowInputPanel();
   void Reset();

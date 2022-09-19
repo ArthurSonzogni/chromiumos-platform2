@@ -7,6 +7,8 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <errno.h>
+#include <string>
 
 #include "backend/text_input.h"
 #include "backend/wayland_client.h"
@@ -18,6 +20,7 @@ namespace {
 constexpr int kWlSeatVersion = 1;
 constexpr int kTextInputManagerVersion = 1;
 constexpr int kTextInputExtensionVersion = 4;
+constexpr int kTextInputX11Version = 1;
 
 WaylandManager* g_instance = nullptr;
 
@@ -47,7 +50,24 @@ void WaylandManager::CreateInstance(wl_display* display) {
     return;
   }
 
-  g_instance = new WaylandManager(display);
+  g_instance = new WaylandManager(AppType::kWayland, display);
+}
+
+bool WaylandManager::CreateX11Instance(const char* display_name) {
+  if (g_instance) {
+    printf("WaylandManager has already been instantiated.\n");
+    return false;
+  }
+
+  std::string wl_id = std::string("DISPLAY-") + display_name + "-wl";
+  struct wl_display* display = wl_display_connect(wl_id.c_str());
+  if (!display) {
+    printf("Failed to connect to Wayland compositor \"%s\".\n", wl_id.c_str());
+    return false;
+  }
+
+  g_instance = new WaylandManager(AppType::kX11, display);
+  return true;
 }
 
 bool WaylandManager::HasInstance() {
@@ -56,6 +76,29 @@ bool WaylandManager::HasInstance() {
 
 WaylandManager* WaylandManager::Get() {
   return g_instance;
+}
+
+uint32_t WaylandManager::GetFd() {
+  return wl_display_get_fd(display_);
+}
+
+void WaylandManager::FlushRequests() {
+  // TODO(b/252723634): This may fail (return -1) and set errno to EAGAIN if it
+  // couldn't write all data.
+  int res = wl_display_flush(display_);
+  if (res == -1) {
+    printf("Error flushing requests, error: %d (%s)\n", errno,
+           std::strerror(errno));
+  }
+}
+
+void WaylandManager::DispatchEvents() {
+  FlushRequests();
+  int res = wl_display_dispatch(display_);
+  if (res == -1) {
+    printf("Error dispatching events, error: %d (%s)\n", errno,
+           std::strerror(errno));
+  }
 }
 
 zwp_text_input_v1* WaylandManager::CreateTextInput(
@@ -109,6 +152,13 @@ void WaylandManager::OnGlobal(wl_registry* registry,
         wl_registry_bind(registry, name, &zcr_text_input_extension_v1_interface,
                          kTextInputExtensionVersion));
     text_input_extension_id_ = name;
+  } else if (strcmp(interface, "zcr_text_input_x11_v1") == 0) {
+    assert(!text_input_x11_);
+    assert(version >= kTextInputX11Version);
+    text_input_x11_ = reinterpret_cast<zcr_text_input_x11_v1*>(
+        wl_registry_bind(registry, name, &zcr_text_input_x11_v1_interface,
+                         kTextInputX11Version));
+    text_input_x11_id_ = name;
   }
 }
 
@@ -125,18 +175,33 @@ void WaylandManager::OnGlobalRemove(wl_registry* registry, uint32_t name) {
     printf("The global zcr_text_input_extension_v1 was removed.\n");
     text_input_extension_ = nullptr;
     text_input_extension_id_ = 0;
+  } else if (name == text_input_x11_id_) {
+    printf("The global zcr_text_input_x11_v1 was removed.\n");
+    text_input_x11_ = nullptr;
+    text_input_x11_id_ = 0;
   }
 }
 
-WaylandManager::WaylandManager(wl_display* display) {
+WaylandManager::WaylandManager(AppType app_type, wl_display* display)
+    : app_type_(app_type), display_(display) {
+  display_ = display;
   wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &kRegistryListener, this);
 }
 
-WaylandManager::~WaylandManager() = default;
+WaylandManager::~WaylandManager() {
+  if (app_type_ == AppType::kX11)
+    wl_display_disconnect(display_);
+}
 
 bool WaylandManager::IsInitialized() const {
-  return wl_seat_ && text_input_manager_ && text_input_extension_;
+  if (!(wl_seat_ && text_input_manager_ && text_input_extension_))
+    return false;
+
+  if (app_type_ == AppType::kX11 && !text_input_x11_)
+    return false;
+
+  return true;
 }
 
 }  // namespace cros_im

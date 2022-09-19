@@ -95,6 +95,21 @@ void IMContextBackend::Activate(wl_surface* surface) {
                              surface);
 }
 
+void IMContextBackend::ActivateX11(uint32_t x11_id) {
+  MaybeInitialize();
+
+  if (!text_input_) {
+    printf("The text input manager is not ready yet or not available.\n");
+    return;
+  }
+
+  is_active_ = true;
+  auto* wayland_manager = WaylandManager::Get();
+  zcr_text_input_x11_v1_activate(wayland_manager->GetTextInputX11(),
+                                 text_input_, wayland_manager->GetSeat(),
+                                 x11_id);
+}
+
 void IMContextBackend::Deactivate() {
   if (!text_input_)
     return;
