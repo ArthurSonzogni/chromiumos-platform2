@@ -49,10 +49,7 @@ AuthSessionManager::AuthSessionManager(
 }
 
 AuthSession* AuthSessionManager::CreateAuthSession(
-    const std::string& account_id,
-    uint32_t flags,
-    AuthIntent auth_intent,
-    bool enable_create_backup_vk_with_uss) {
+    const std::string& account_id, uint32_t flags, AuthIntent auth_intent) {
   // The lifetime of AuthSessionManager instance will outlast AuthSession
   // which is why usage of |Unretained| is safe.
   auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,
@@ -61,8 +58,7 @@ AuthSession* AuthSessionManager::CreateAuthSession(
   std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
       account_id, flags, auth_intent, std::move(on_timeout), crypto_, platform_,
       user_session_map_, keyset_management_, auth_block_utility_,
-      auth_factor_manager_, user_secret_stash_storage_,
-      enable_create_backup_vk_with_uss);
+      auth_factor_manager_, user_secret_stash_storage_);
 
   auto token = auth_session->token();
   if (auth_sessions_.count(token) > 0) {

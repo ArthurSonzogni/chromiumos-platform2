@@ -177,8 +177,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
@@ -192,8 +191,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
@@ -206,8 +204,7 @@ TEST_F(AuthSessionTest, Username) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_EQ(auth_session.username(), kFakeUsername);
   EXPECT_EQ(auth_session.obfuscated_username(),
@@ -220,15 +217,13 @@ TEST_F(AuthSessionTest, Intent) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   AuthSession verification_auth_session(
       kFakeUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
       AuthIntent::kVerifyOnly,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_EQ(decryption_auth_session.auth_intent(), AuthIntent::kDecrypt);
   EXPECT_EQ(verification_auth_session.auth_intent(), AuthIntent::kVerifyOnly);
@@ -243,8 +238,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated(kAllAuthIntents);
@@ -300,8 +294,7 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
@@ -340,8 +333,7 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   AuthSession auth_session(
       kFakeUsername, 0, AuthIntent::kDecrypt, std::move(on_timeout), &crypto_,
       &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
       .WillOnce(Return(ByMove(fake_pass_blob)));
   EXPECT_EQ(auth_session.GetStatus(),
@@ -385,11 +377,11 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
       std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
                                              &platform_);
   // Setting the expectation that the user does not exist.
-  AuthSession auth_session(
-      kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
-      &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      auth_block_utility_impl_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/false);
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           std::move(on_timeout), &crypto_, &platform_,
+                           &user_session_map_, &keyset_management_,
+                           auth_block_utility_impl_.get(),
+                           &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -451,8 +443,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            auth_block_utility_impl_.get(),
-                           &auth_factor_manager_, &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test adding the first credential.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -539,8 +530,7 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -608,8 +598,7 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -676,8 +665,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -740,8 +728,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -803,8 +790,7 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -870,8 +856,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
 
   // Test.
@@ -914,8 +899,7 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   user_data_auth::UpdateCredentialRequest update_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
@@ -951,11 +935,11 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
 
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  AuthSession auth_session(
-      kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
-      &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      auth_block_utility_impl_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/false);
+  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
+                           std::move(on_timeout), &crypto_, &platform_,
+                           &user_session_map_, &keyset_management_,
+                           auth_block_utility_impl_.get(),
+                           &auth_factor_manager_, &user_secret_stash_storage_);
   auth_session.SetStatus(AuthStatus::kAuthStatusAuthenticated);
   user_data_auth::UpdateCredentialRequest update_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
@@ -988,8 +972,7 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
   user_data_auth::UpdateCredentialRequest update_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
@@ -1020,8 +1003,7 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -1055,8 +1037,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1135,8 +1116,7 @@ TEST_F(AuthSessionTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1228,8 +1208,7 @@ TEST_F(AuthSessionTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1323,8 +1302,7 @@ TEST_F(AuthSessionTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1402,8 +1380,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1444,8 +1421,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            auth_block_utility_impl.get(), &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Setting the expectation that the user does not exist.
   EXPECT_EQ(auth_session.GetStatus(),
@@ -1501,8 +1477,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Setting the expectation that the user does not exist.
   EXPECT_EQ(auth_session.GetStatus(),
@@ -1592,8 +1567,7 @@ TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
       auth_session.authorized_intents(),
@@ -1625,8 +1599,7 @@ TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
       auth_session.authorized_intents(),
@@ -1660,8 +1633,7 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeralFails) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   EXPECT_THAT(
       auth_session.authorized_intents(),
@@ -1706,8 +1678,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1781,8 +1752,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
@@ -1832,8 +1802,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -2076,8 +2045,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2103,8 +2071,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
@@ -2126,8 +2093,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2189,8 +2155,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2255,8 +2220,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2319,8 +2283,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
 
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -2352,8 +2315,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2488,8 +2450,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2579,8 +2540,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2673,8 +2633,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2767,8 +2726,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -2818,8 +2776,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -2912,8 +2869,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
@@ -3020,8 +2976,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
       AuthIntent::kVerifyOnly,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
   auth_factor_map.emplace(
       kFakeLabel,
@@ -3059,8 +3014,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
       AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
   auth_factor_map.emplace(
       kFakeLabel,
@@ -3110,8 +3064,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3191,8 +3144,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3236,8 +3188,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3278,8 +3229,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Test.
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -3301,8 +3251,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3328,8 +3277,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
       kFakeUsername, flags, AuthIntent::kDecrypt,
       /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
       &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*enable_create_backup_vk_with_uss =*/false);
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(new_auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(new_auth_session.authorized_intents(), IsEmpty());
@@ -3356,8 +3304,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3406,8 +3353,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
@@ -3454,8 +3400,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*enable_create_backup_vk_with_uss =*/false);
+                           &user_secret_stash_storage_);
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);

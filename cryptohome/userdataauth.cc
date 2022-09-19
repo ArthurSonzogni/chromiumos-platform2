@@ -329,9 +329,6 @@ void ReplyWithAuthenticationResult(
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
-// Control switch value for enabling backup VaultKeyset creation with USS.
-constexpr bool kEnableCreateBackupVK = false;
-
 }  // namespace
 
 UserDataAuth::UserDataAuth()
@@ -3993,8 +3990,7 @@ void UserDataAuth::StartAuthSession(
   }
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
-      request.account_id().account_id(), request.flags(), auth_intent.value(),
-      kEnableCreateBackupVK);
+      request.account_id().account_id(), request.flags(), auth_intent.value());
   if (!auth_session) {
     ReplyWithError(
         std::move(on_done), reply,
