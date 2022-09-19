@@ -142,7 +142,6 @@ LEGACYLIST = {
     "verity",
     "virtual_file_provider",
     "vpn-manager",
-    "webserver",
     "wifi-testbed",
 }
 
