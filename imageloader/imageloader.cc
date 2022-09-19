@@ -51,6 +51,7 @@ void ImageLoader::EnterSandbox() {
   minijail_remount_proc_readonly(jail.get());
   CHECK_EQ(0, minijail_change_user(jail.get(), kImageLoaderUserName));
   CHECK_EQ(0, minijail_change_group(jail.get(), kImageLoaderGroupName));
+  minijail_inherit_usergroups(jail.get());
   minijail_enter(jail.get());
 }
 
