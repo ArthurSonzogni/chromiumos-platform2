@@ -308,6 +308,61 @@ def _format_als_step(als_step: component_pb2.Component.AlsStep) -> str:
     )
 
 
+def _build_charging_ports(ports: [topology_pb2.HardwareFeatures.UsbC]) -> str:
+    overridden_indices = {}
+    port_positions = set()
+    for port in ports:
+        if port.position == topology_pb2.HardwareFeatures.PortPosition.UNKNOWN:
+            raise Exception(
+                "Invalid port position %s"
+                % topology_pb2.HardwareFeatures.PortPosition.Name(port.position)
+            )
+
+        if port.position in port_positions:
+            raise Exception(
+                "Duplicate port position %s"
+                % topology_pb2.HardwareFeatures.PortPosition.Name(port.position)
+            )
+        port_positions.add(port.position)
+
+        if port.HasField("index_override"):
+            if port.index_override.value in overridden_indices:
+                raise Exception(
+                    "Duplicate port index_override %d"
+                    % port.index_override.value
+                )
+            if port.index_override.value >= len(ports):
+                raise Exception(
+                    "Port index_override %d outside range [0, %d)"
+                    % (port.index_override.value, len(ports))
+                )
+            overridden_indices[port.index_override.value] = port
+
+    ordered_ports = []
+
+    def handle_overridden_port():
+        override = overridden_indices.get(len(ordered_ports), None)
+        while override:
+            ordered_ports.append(override)
+            override = overridden_indices.get(len(ordered_ports), None)
+
+    for port in ports:
+        handle_overridden_port()
+
+        if port.HasField("index_override"):
+            continue
+
+        ordered_ports.append(port)
+
+    handle_overridden_port()
+
+    return "\n".join(
+        "CROS_USBPD_CHARGER%d %s"
+        % (idx, topology_pb2.HardwareFeatures.PortPosition.Name(port.position))
+        for idx, port in enumerate(ordered_ports)
+    )
+
+
 def _format_power_pref_value(value) -> str:
     if isinstance(value, str):
         return value
@@ -487,6 +542,17 @@ def _build_derived_power_prefs(config: Config) -> dict:
         ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
 
     result.update(_build_derived_panel_power_prefs(config))
+
+    if len(hw_features.usb_c.ports) > 1:
+        if len(hw_features.usb_c.ports) != hw_features.usb_c.count.value:
+            raise Exception(
+                "Only %d of %d USB-C ports have locations configured."
+                % (len(hw_features.usb_c.ports), hw_features.usb_c.count.value)
+            )
+
+        result["charging-ports"] = _build_charging_ports(
+            hw_features.usb_c.ports
+        )
 
     result.update(
         _build_derived_platform_power_prefs(
