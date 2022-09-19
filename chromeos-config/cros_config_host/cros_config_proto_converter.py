@@ -1639,6 +1639,7 @@ class _AudioConfigBuilder:
 
 def _build_audio(config):
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     if not config.sw_config.audio_configs:
         builder = _AudioConfigBuilder(config)
         return builder.build()
@@ -1657,6 +1658,10 @@ def _build_audio(config):
     for audio in config.sw_config.audio_configs:
         card = audio.card_name
         card_with_suffix = audio.card_name
+
+        if audio.cras_custom_name:
+            design_name = audio.cras_custom_name
+
         if audio.ucm_suffix:
             # TODO: last ucm_suffix wins.
             ucm_suffix = audio.ucm_suffix
