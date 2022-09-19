@@ -1134,7 +1134,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Modem not available.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
@@ -1142,7 +1142,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Inhibited.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
@@ -1151,7 +1151,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error error_temp = Error(Error::kWrongState, "Connect already pending.");
     LOG(WARNING) << error_temp.message();
     NotifyCellularConnectionResult(error_temp, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
@@ -1168,7 +1168,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "Connect Failed: ICCID not available.");
       NotifyCellularConnectionResult(*error, service->iccid(),
-                                     service_->is_in_user_connect());
+                                     service->is_in_user_connect());
     }
     return;
   }
@@ -1184,7 +1184,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Connect Failed: Modem not started.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
@@ -1192,7 +1192,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
@@ -1207,12 +1207,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Connect Failed: Modem not registered.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     // If using an attach APN, send detailed metrics since |kNotRegistered| is
     // a very common error when using Attach APNs.
-    if (service_->GetLastAttachApn())
+    if (service->GetLastAttachApn())
       NotifyDetailedCellularConnectionResult(*error,
-                                             *service_->GetLastAttachApn());
+                                             *service->GetLastAttachApn());
     return;
   }
 
@@ -1220,14 +1220,14 @@ void Cellular::Connect(CellularService* service, Error* error) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Connect Failed: Roaming disallowed.");
     NotifyCellularConnectionResult(*error, service->iccid(),
-                                   service_->is_in_user_connect());
+                                   service->is_in_user_connect());
     return;
   }
 
   OnConnecting();
   capability_->Connect(
       base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
-                 service->iccid(), service_->is_in_user_connect()));
+                 service->iccid(), service->is_in_user_connect()));
 
   metrics()->NotifyDeviceConnectStarted(interface_index());
 }
