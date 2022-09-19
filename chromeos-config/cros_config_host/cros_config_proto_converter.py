@@ -1174,11 +1174,13 @@ def _build_fingerprint(hw_topology):
     result = {}
     if fp.location != topology_pb2.HardwareFeatures.Fingerprint.NOT_PRESENT:
         location = fp.Location.DESCRIPTOR.values_by_number[fp.location].name
-        result["sensor-location"] = location.lower().replace("_", "-")
-        if fp.board:
-            result["board"] = fp.board
-        if fp.ro_version:
-            result["ro-version"] = fp.ro_version
+    else:
+        location = "none"
+    result["sensor-location"] = location.lower().replace("_", "-")
+    if fp.board:
+        result["board"] = fp.board
+    if fp.ro_version:
+        result["ro-version"] = fp.ro_version
 
     return result
 
