@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
 
@@ -50,6 +51,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     void SetEffectsConfig(mojom::EffectsConfigPtr config);
     bool IsEffectEnabled(mojom::CameraEffect effect);
     EffectsConfig GetEffectsConfig();
+    base::FilePath GetDlcRootPath();
+    void SetDlcRootPath(const base::FilePath& path);
 
     mojom::CameraAutoFramingState auto_framing_state();
     mojom::CameraPrivacySwitchState sw_privacy_switch_state();
@@ -71,6 +74,9 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // The state of camera effects. Which is enabled/disabled and the
     // configuration parameters to tune it.
     mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_);
+
+    // Path to DLC. Empty if DLC isn't available / ready.
+    base::FilePath dlc_root_path GUARDED_BY(lock_);
   };
 
   // Callback for the StreamManipulator to return capture results to the client

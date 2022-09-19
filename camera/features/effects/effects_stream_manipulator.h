@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "common/camera_buffer_pool.h"
@@ -64,6 +65,7 @@ class EffectsStreamManipulator : public StreamManipulator {
 
   void SetEffect(EffectsConfig new_config);
   void GpuSync();
+  void CreatePipeline(const base::FilePath& dlc_root_path);
 
   ReloadableConfigFile config_;
   Options options_;

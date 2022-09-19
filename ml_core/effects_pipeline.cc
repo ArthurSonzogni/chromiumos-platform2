@@ -13,7 +13,7 @@
 
 namespace {
 
-constexpr char kLibraryPath[] = "libcros_ml_core_internal.so";
+constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
 
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
@@ -52,12 +52,13 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
 
  protected:
   EffectsPipelineImpl() {}
-  bool Initialize() {
+  bool Initialize(const base::FilePath& dlc_root_path) {
     base::NativeLibraryOptions native_library_options;
     base::NativeLibraryLoadError load_error;
     native_library_options.prefer_own_symbols = true;
     library_.emplace(base::LoadNativeLibraryWithOptions(
-        base::FilePath(kLibraryPath), native_library_options, &load_error));
+        dlc_root_path.Append(kLibraryName), native_library_options,
+        &load_error));
 
     if (!library_->is_valid()) {
       LOG(ERROR) << "Pipeline library load error: " << load_error.ToString();
@@ -138,10 +139,11 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
 
 namespace cros {
 
-std::unique_ptr<EffectsPipeline> EffectsPipeline::Create() {
+std::unique_ptr<EffectsPipeline> EffectsPipeline::Create(
+    const base::FilePath& dlc_root_path) {
   auto pipeline =
       std::unique_ptr<EffectsPipelineImpl>(new EffectsPipelineImpl());
-  if (!pipeline->Initialize()) {
+  if (!pipeline->Initialize(dlc_root_path)) {
     return nullptr;
   }
   return pipeline;

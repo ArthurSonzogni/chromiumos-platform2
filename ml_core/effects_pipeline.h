@@ -11,6 +11,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include "bindings/effects_pipeline_bindings.h"
 
 namespace cros {
@@ -34,7 +36,8 @@ class BRILLO_EXPORT EffectsPipeline {
   virtual ~EffectsPipeline() = default;
 
   // Create an instance of the Pipeline.
-  static std::unique_ptr<EffectsPipeline> Create();
+  static std::unique_ptr<EffectsPipeline> Create(
+      const base::FilePath& dlc_root_path);
 
   // Queue an input frame (ImageFormat::SRGB / RG24 / RGB888) for processing.
   virtual bool ProcessFrame(int64_t timestamp,

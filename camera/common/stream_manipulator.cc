@@ -142,13 +142,27 @@ bool StreamManipulator::RuntimeOptions::IsEffectEnabled(
 
 EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
-  return EffectsConfig{
-      .effect = effects_config_->effect,
-      .blur_scale = effects_config_->blur_scale,
-      .blur_samples = effects_config_->blur_samples,
-      .segmentation_gpu_api = effects_config_->segmentation_gpu_api,
-      .graph_max_frames_in_flight = effects_config_->graph_max_frames_in_flight,
-  };
+  EffectsConfig config;
+  if (effects_config_) {
+    config.effect = effects_config_->effect;
+    config.blur_scale = effects_config_->blur_scale;
+    config.blur_samples = effects_config_->blur_samples;
+    config.segmentation_gpu_api = effects_config_->segmentation_gpu_api;
+    config.graph_max_frames_in_flight =
+        effects_config_->graph_max_frames_in_flight;
+  }
+  return config;
+}
+
+base::FilePath StreamManipulator::RuntimeOptions::GetDlcRootPath() {
+  base::AutoLock lock(lock_);
+  return dlc_root_path;
+}
+
+void StreamManipulator::RuntimeOptions::SetDlcRootPath(
+    const base::FilePath& path) {
+  base::AutoLock lock(lock_);
+  dlc_root_path = path;
 }
 
 mojom::CameraAutoFramingState

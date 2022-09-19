@@ -84,13 +84,21 @@ EffectsStreamManipulator::EffectsStreamManipulator(
     LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
     options_.enable = false;
   }
-  pipeline_ = EffectsPipeline::Create();
+
+  if (!runtime_options_->GetDlcRootPath().empty()) {
+    CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
+  }
+  CHECK(thread_.Start());
+}
+
+void EffectsStreamManipulator::CreatePipeline(
+    const base::FilePath& dlc_root_path) {
+  pipeline_ = EffectsPipeline::Create(dlc_root_path);
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
                           base::Unretained(this))));
   config_.SetCallback(base::BindRepeating(
       &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
-  CHECK(thread_.Start());
 }
 
 bool EffectsStreamManipulator::Initialize(
@@ -196,6 +204,12 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
 
 bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
+  if (!pipeline_ && !runtime_options_->GetDlcRootPath().empty()) {
+    CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
+  }
+  if (!pipeline_)
+    return true;
+
   camera3_stream_buffer_t yuv_buffer = {};
   base::StackVector<camera3_stream_buffer_t, kMaxNumBuffers> result_buffers;
   for (auto& b : result->GetOutputBuffers()) {
@@ -293,6 +307,7 @@ void EffectsStreamManipulator::OnFrameProcessed(int64_t timestamp,
 void EffectsStreamManipulator::OnOptionsUpdated(
     const base::Value& json_values) {
   if (!pipeline_) {
+    LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
     return;
   }
   EffectsConfig new_config;
@@ -321,7 +336,11 @@ void EffectsStreamManipulator::OnOptionsUpdated(
 }
 
 void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
-  pipeline_->SetEffect(&new_config, nullptr);
+  if (pipeline_) {
+    pipeline_->SetEffect(&new_config, nullptr);
+  } else {
+    LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
+  }
 }
 
 }  // namespace cros

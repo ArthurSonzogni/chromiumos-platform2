@@ -35,6 +35,7 @@
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
+#include "features/feature_profile.h"
 #include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_associated_delegate.h"
@@ -124,6 +125,19 @@ bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
   if (!camera_module_callbacks_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraCallbacksThread";
     return false;
+  }
+
+  if (FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+    dlc_client_ = DlcClient::Create(
+        base::BindOnce(
+            [](StreamManipulator::RuntimeOptions* options,
+               const base::FilePath& dlc_path) {
+              options->SetDlcRootPath(dlc_path);
+            },
+            base::Unretained(&stream_manipulator_runtime_options_)),
+        base::BindOnce(
+            [](const std::string& error_msg) { LOGF(ERROR) << error_msg; }));
+    dlc_client_->InstallDlc();
   }
 
   auto future = cros::Future<bool>::Create(nullptr);

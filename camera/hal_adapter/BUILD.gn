@@ -14,11 +14,15 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libcros_camera",
     "libcros_camera_android_deps",
+    "libdlcservice-client",
     "libdrm",
     "libmojo",
     "libsync",
     "libyuv",
+    "perfetto",
+    "protobuf",
     "re2",
+    "system_api",
   ]
 }
 
@@ -41,6 +45,7 @@ executable("cros_camera_service") {
     "camera_module_delegate.cc",
     "camera_trace_event.cc",
     "cros_camera_main.cc",
+    "dlc_client.cc",
     "reprocess_effect/gpu_algo_manager.cc",
     "reprocess_effect/portrait_mode_effect.cc",
     "reprocess_effect/reprocess_effect_manager.cc",
