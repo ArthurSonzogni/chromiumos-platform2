@@ -165,6 +165,13 @@ def _check_percentage_value(value: float, description: str):
         )
 
 
+def _check_nits_value(value: float, maximum: float, description: str):
+    if not 0 <= value <= maximum:
+        raise Exception(
+            f"Value {value:.1f} out of range [0, {maximum:.1f}] for {description}"
+        )
+
+
 def _check_increasing_sequence(values: [float], description: str):
     for lhs, rhs in zip(values, values[1:]):
         if lhs >= rhs:
@@ -175,26 +182,76 @@ def _check_increasing_sequence(values: [float], description: str):
 
 
 def _check_als_steps(
-    steps: [component_pb2.Component.AlsStep], description: str
+    steps: [component_pb2.Component.AlsStep],
+    max_screen_brightness_nits: float,
+    description: str,
 ):
+    sequence_in_percent = None
     for idx, step in enumerate(steps):
-        _check_percentage_value(
-            step.ac_backlight_percent,
-            "%s[%d].ac_backlight_percent" % (description, idx),
+        if step.ac_backlight_nits and step.battery_backlight_nits:
+            if sequence_in_percent is True:
+                raise Exception(
+                    "Als steps not specified in consistent units "
+                    "(expected percent, got nits) for %s[%d]"
+                    % (description, idx)
+                )
+            sequence_in_percent = False
+            if not max_screen_brightness_nits:
+                raise Exception(
+                    "max_screen_brightness must be set for panel when "
+                    "specifying brightness in nits"
+                )
+            _check_nits_value(
+                step.ac_backlight_nits,
+                max_screen_brightness_nits,
+                "%s[%d].ac_backlight_nits" % (description, idx),
+            )
+            _check_nits_value(
+                step.battery_backlight_nits,
+                max_screen_brightness_nits,
+                "%s[%d].battery_backlight_nits" % (description, idx),
+            )
+        elif step.ac_backlight_percent and step.battery_backlight_percent:
+            if sequence_in_percent is False:
+                raise Exception(
+                    "Als steps not specified in consistent units "
+                    "(expected nits, got percent) for %s[%d]"
+                    % (description, idx)
+                )
+            sequence_in_percent = True
+            _check_percentage_value(
+                step.ac_backlight_percent,
+                "%s[%d].ac_backlight_percent" % (description, idx),
+            )
+            _check_percentage_value(
+                step.battery_backlight_percent,
+                "%s[%d].battery_backlight_percent" % (description, idx),
+            )
+        else:
+            raise Exception(
+                "Als step battery and AC brightness given in different "
+                "units for %s[%d]" % (description, idx)
+            )
+
+    if sequence_in_percent:
+        _check_increasing_sequence(
+            [step.ac_backlight_percent for step in steps],
+            "%s.ac_backlight_percent" % description,
         )
-        _check_percentage_value(
-            step.battery_backlight_percent,
-            "%s[%d].battery_backlight_percent" % (description, idx),
+        _check_increasing_sequence(
+            [step.battery_backlight_percent for step in steps],
+            "%s.battery_backlight_percent" % description,
+        )
+    else:
+        _check_increasing_sequence(
+            [step.ac_backlight_nits for step in steps],
+            "%s.ac_backlight_nits" % description,
+        )
+        _check_increasing_sequence(
+            [step.battery_backlight_nits for step in steps],
+            "%s.battery_backlight_nits" % description,
         )
 
-    _check_increasing_sequence(
-        [step.ac_backlight_percent for step in steps],
-        "%s.ac_backlight_percent" % description,
-    )
-    _check_increasing_sequence(
-        [step.battery_backlight_percent for step in steps],
-        "%s.battery_backlight_percent" % description,
-    )
     _check_increasing_sequence(
         [step.lux_increase_threshold for step in steps[:-1]],
         "%s.lux_increase_threshold" % description,
@@ -217,13 +274,34 @@ def _check_als_steps(
 
 
 def _format_als_step(als_step: component_pb2.Component.AlsStep) -> str:
+    ac_percent = ""
     battery_percent = ""
-    if als_step.battery_backlight_percent != als_step.ac_backlight_percent:
+
+    if als_step.ac_backlight_nits:
+        ac_percent = _format_power_pref_value(
+            _brightness_nits_to_percent(
+                als_step.ac_backlight_nits, als_step.max_screen_brightness
+            )
+        )
+    else:
+        ac_percent = _format_power_pref_value(als_step.ac_backlight_percent)
+
+    if (
+        als_step.battery_backlight_nits
+        and als_step.battery_backlight_nits != als_step.ac_backlight_nits
+    ):
+        battery_percent = " %s" % _format_power_pref_value(
+            _brightness_nits_to_percent(
+                als_step.battery_backlight_nits, als_step.max_screen_brightness
+            )
+        )
+    elif als_step.battery_backlight_percent != als_step.ac_backlight_percent:
         battery_percent = " %s" % _format_power_pref_value(
             als_step.battery_backlight_percent
         )
+
     return "%s%s %s %s" % (
-        _format_power_pref_value(als_step.ac_backlight_percent),
+        ac_percent,
         battery_percent,
         _format_power_pref_value(als_step.lux_decrease_threshold),
         _format_power_pref_value(als_step.lux_increase_threshold),
@@ -269,6 +347,87 @@ def _build_derived_platform_power_prefs(capabilities) -> dict:
         )
     result["suspend-to-idle"] = capabilities.suspend_to_idle
     result["wake-on-dp"] = capabilities.wake_on_dp
+
+    return result
+
+
+def _brightness_nits_to_percent(nits, max_screen_brightness):
+    max_percent = 100
+    max_brightness_steps = 16
+    min_visible_percent = max_percent / max_brightness_steps
+
+    linear_fraction = nits / max_screen_brightness
+    percent = min_visible_percent + (max_percent - min_visible_percent) * pow(
+        linear_fraction, 0.5
+    )
+    return round(percent, 1)
+
+
+def _build_derived_panel_power_prefs(config: Config) -> dict:
+    """Builds a partial 'power' property derived from hardware features."""
+    present = topology_pb2.HardwareFeatures.PRESENT
+    hw_features = config.hw_design_config.hardware_features
+
+    result = {}
+
+    if hw_features.screen.panel_properties.min_visible_backlight_level:
+        result[
+            "min-visible-backlight-level"
+        ] = hw_features.screen.panel_properties.min_visible_backlight_level
+
+    if hw_features.screen.panel_properties.HasField(
+        "turn_off_screen_timeout_ms"
+    ):
+        result[
+            "turn-off-screen-timeout-ms"
+        ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
+
+    light_sensor = hw_features.light_sensor
+    if light_sensor.lid_lightsensor == present:
+        if hw_features.screen.panel_properties.als_steps:
+            _check_als_steps(
+                hw_features.screen.panel_properties.als_steps,
+                hw_features.screen.panel_properties.max_screen_brightness,
+                "hw_features.screen.panel_properties.als_steps",
+            )
+            result[
+                "internal-backlight-als-steps"
+            ] = hw_features.screen.panel_properties.als_steps
+    else:
+        panel_properties = hw_features.screen.panel_properties
+        if panel_properties.no_als_battery_brightness:
+            _check_percentage_value(
+                panel_properties.no_als_battery_brightness,
+                "screen.panel_properties.no_als_battery_brightness",
+            )
+            result[
+                "internal-backlight-no-als-battery-brightness"
+            ] = panel_properties.no_als_battery_brightness
+        elif panel_properties.no_als_battery_brightness_nits:
+            brightness_pct_calc = _brightness_nits_to_percent(
+                panel_properties.no_als_battery_brightness_nits,
+                panel_properties.max_screen_brightness,
+            )
+            result[
+                "internal-backlight-no-als-battery-brightness"
+            ] = brightness_pct_calc
+
+        if hw_features.screen.panel_properties.no_als_ac_brightness:
+            _check_percentage_value(
+                hw_features.screen.panel_properties.no_als_ac_brightness,
+                "screen.panel_properties.no_als_ac_brightness",
+            )
+            result[
+                "internal-backlight-no-als-ac-brightness"
+            ] = hw_features.screen.panel_properties.no_als_ac_brightness
+        elif hw_features.screen.panel_properties.no_als_ac_brightness_nits:
+            brightness_pct_calc = _brightness_nits_to_percent(
+                hw_features.screen.panel_properties.no_als_ac_brightness_nits,
+                hw_features.screen.panel_properties.max_screen_brightness,
+            )
+            result[
+                "internal-backlight-no-als-ac-brightness"
+            ] = brightness_pct_calc
 
     return result
 
@@ -327,33 +486,7 @@ def _build_derived_power_prefs(config: Config) -> dict:
             "turn-off-screen-timeout-ms"
         ] = hw_features.screen.panel_properties.turn_off_screen_timeout_ms
 
-    if light_sensor.lid_lightsensor == present:
-        if hw_features.screen.panel_properties.als_steps:
-            _check_als_steps(
-                hw_features.screen.panel_properties.als_steps,
-                "hw_features.screen.panel_properties.als_steps",
-            )
-            result[
-                "internal-backlight-als-steps"
-            ] = hw_features.screen.panel_properties.als_steps
-    else:
-        if hw_features.screen.panel_properties.no_als_battery_brightness:
-            _check_percentage_value(
-                hw_features.screen.panel_properties.no_als_battery_brightness,
-                "screen.panel_properties.no_als_battery_brightness",
-            )
-            result[
-                "internal-backlight-no-als-battery-brightness"
-            ] = hw_features.screen.panel_properties.no_als_battery_brightness
-
-        if hw_features.screen.panel_properties.no_als_ac_brightness:
-            _check_percentage_value(
-                hw_features.screen.panel_properties.no_als_ac_brightness,
-                "screen.panel_properties.no_als_ac_brightness",
-            )
-            result[
-                "internal-backlight-no-als-ac-brightness"
-            ] = hw_features.screen.panel_properties.no_als_ac_brightness
+    result.update(_build_derived_panel_power_prefs(config))
 
     result.update(
         _build_derived_platform_power_prefs(
