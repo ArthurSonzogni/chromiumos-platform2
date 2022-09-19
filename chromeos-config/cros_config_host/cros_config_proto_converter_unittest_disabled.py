@@ -6,7 +6,6 @@
 
 # pylint: disable=missing-docstring,protected-access
 
-import os
 import pathlib
 import subprocess
 import unittest
@@ -15,7 +14,8 @@ from chromiumos.config.test import fake_config as fake_config_mod
 import cros_config_proto_converter
 
 
-THIS_DIR = os.path.dirname(__file__)
+THIS_DIR = pathlib.Path(__file__).parent
+TEST_DATA_DIR = pathlib.Path("test_data/proto_converter")
 
 PROGRAM_CONFIG_FILE = fake_config_mod.FAKE_PROGRAM_CONFIG
 PROJECT_CONFIG_FILE = fake_config_mod.FAKE_PROJECT_CONFIG
@@ -55,8 +55,8 @@ class ParseArgsTests(unittest.TestCase):
 
 class MainTest(unittest.TestCase):
     def test_full_transform(self):
-        output_file = "payload_utils/test_data/fake_project.json"
-        dtd_path = pathlib.Path("payload_utils/media_profiles.dtd")
+        output_file = TEST_DATA_DIR / "fake_project.json"
+        dtd_path = THIS_DIR / "media_profiles.dtd"
         cros_config_proto_converter.Main(
             project_configs=[PROJECT_CONFIG_FILE],
             program_config=PROGRAM_CONFIG_FILE,
@@ -66,7 +66,7 @@ class MainTest(unittest.TestCase):
 
         changed = (
             subprocess.run(
-                ["git", "diff", "--exit-code", "payload_utils/test_data"],
+                ["git", "diff", "--exit-code", TEST_DATA_DIR],
                 check=False,
             ).returncode
             != 0
