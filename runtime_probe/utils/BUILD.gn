@@ -36,6 +36,7 @@ if (use.test) {
     sources = [
       "file_test_utils_test.cc",
       "file_utils_test.cc",
+      "value_utils_test.cc",
     ]
     configs += [
       ":target_defaults",
