@@ -10,3 +10,6 @@ pub use constants::*;
 
 pub mod utils;
 pub use utils::*;
+
+pub mod set_board_id;
+pub use set_board_id::*;
