@@ -38,3 +38,6 @@ regen_test_data test_arm
 
 # x86 test data
 regen_test_data test
+
+# Regen proto_converter test data.
+python3 -m cros_config_host.cros_config_proto_converter --regen

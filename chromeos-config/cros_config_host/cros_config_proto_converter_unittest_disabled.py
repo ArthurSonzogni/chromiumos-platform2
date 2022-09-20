@@ -6,12 +6,15 @@
 
 # pylint: disable=missing-docstring,protected-access
 
+import filecmp
 import pathlib
 import subprocess
 import unittest
 
 from chromiumos.config.test import fake_config as fake_config_mod
 import cros_config_proto_converter
+
+from chromite.lib import cros_test_lib
 
 
 THIS_DIR = pathlib.Path(__file__).parent
@@ -53,9 +56,9 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, "output")
 
 
-class MainTest(unittest.TestCase):
+class MainTest(cros_test_lib.TempDirTestCase):
     def test_full_transform(self):
-        output_file = TEST_DATA_DIR / "fake_project.json"
+        output_file = self.tempdir / "fake_project.json"
         dtd_path = THIS_DIR / "media_profiles.dtd"
         cros_config_proto_converter.Main(
             project_configs=[PROJECT_CONFIG_FILE],
@@ -64,20 +67,37 @@ class MainTest(unittest.TestCase):
             dtd_path=dtd_path,
         )
 
-        changed = (
-            subprocess.run(
-                ["git", "diff", "--exit-code", TEST_DATA_DIR],
-                check=False,
-            ).returncode
-            != 0
-        )
+        # Replace paths which reference the tempdir with the source directory.
+        contents = output_file.read_text()
+        contents = contents.replace(str(self.tempdir), str(TEST_DATA_DIR))
+        output_file.write_text(contents)
 
-        if changed:
-            msg = (
-                "Fake project transform does not match.\n"
-                "If the differences are correct per the changes in\n"
-                "your changelist then check them in and try again."
+        dircmp = filecmp.dircmp(self.tempdir, TEST_DATA_DIR)
+        if (
+            dircmp.diff_files
+            or dircmp.left_only
+            or dircmp.right_only
+            or dircmp.funny_files
+        ):
+            dircmp.report_full_closure()
+            msg = ""
+
+            # Add a diff output for convenience / debugging.
+            for path in dircmp.diff_files:
+                # pylint: disable=subprocess-run-check
+                result = subprocess.run(
+                    ["diff", "-u", TEST_DATA_DIR / path, self.tempdir / path],
+                    stdout=subprocess.PIPE,
+                    encoding="utf-8",
+                )
+                # pylint: enable=subprocess-run-check
+                msg += result.stdout
+
+            msg += (
+                "\nFake project transform does not match.\n"
+                "Please run ./regen.sh and amend your changes if necessary.\n"
             )
+
             self.fail(msg)
 
 
