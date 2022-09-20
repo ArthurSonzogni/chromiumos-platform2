@@ -9,7 +9,8 @@ use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::process::Command;
+use std::path::PathBuf;
+use std::process::{exit, Command};
 use std::str;
 use std::time::Duration;
 
@@ -17,6 +18,8 @@ use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 use thiserror::Error as ThisError;
 
+use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
+use crate::hiberlog::{redirect_log, HiberlogOut};
 use crate::metrics::{MetricsLogger, MetricsSample};
 use crate::mmapbuf::MmapBuffer;
 
@@ -446,11 +449,30 @@ pub fn checked_command_output(command: &mut std::process::Command) -> Result<std
     }
 }
 
-pub fn reboot_system() -> Result<()> {
+/// Perform emergency bailout procedures (like syncing logs), set the cookie to
+/// indicate something went very wrong, and reboot the system.
+pub fn emergency_reboot(reason: &str) {
+    error!("Performing emergency reboot: {}", reason);
+    // Attempt to set the cookie, but do not stop if it fails.
+    if let Err(e) = set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::EmergencyReboot) {
+        error!("Failed to set cookie to EmergencyReboot: {}", e);
+    }
+    // Redirect the log to in-memory, which flushes out any pending logs if
+    // logging is already directed to a file.
+    redirect_log(HiberlogOut::BufferInMemory);
+    reboot_system().unwrap();
+    // Exit with a weird error code to avoid going through this path multiple
+    // times.
+    exit(9);
+}
+
+/// Perform an orderly reboot.
+fn reboot_system() -> Result<()> {
     error!("Rebooting system!");
     checked_command(&mut Command::new("/sbin/reboot")).context("Failed to reboot system")
 }
 
+/// Invoke initctl to fire off an upstart event.
 pub fn emit_upstart_event(name: &str) -> Result<()> {
     debug!("Emitting upstart event: {}", name);
     checked_command(Command::new("/sbin/initctl").args(["emit", "--no-wait", name]))

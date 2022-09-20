@@ -9,12 +9,12 @@ use anyhow::Result;
 use log::{error, info, warn};
 
 use std::convert::TryInto;
-use std::panic;
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use crate::dbus::send_abort;
+use crate::hiberutil::emergency_reboot;
 use crate::volume::get_snapshot_size;
 
 /// Define how full the snapshot has to get (as a percentage of its overall
@@ -48,8 +48,7 @@ impl DmSnapshotSpaceMonitor {
                 .send(SnapshotMonitorMessage::Stop)
                 .expect("Snapshot monitor channel should never fill");
             if let Err(e) = thread.join() {
-                warn!("Failed to join dm-snapshot space monitor thread");
-                panic::resume_unwind(e);
+                warn!("Failed to join dm-snapshot space monitor thread: {:?}", e);
             }
         }
     }
@@ -98,7 +97,8 @@ fn snapshot_monitor_thread(mut state: DmSnapshotSpaceMonitorState) {
                             state.aborted = true;
                         }
                         Err(e) => {
-                            error!("Failed to send abort: {}", e);
+                            error!("Attempting to abort returned: {}", e);
+                            emergency_reboot("Failed to abort from snapshot monitor thread");
                         }
                     }
                 }
@@ -109,8 +109,7 @@ fn snapshot_monitor_thread(mut state: DmSnapshotSpaceMonitorState) {
                 // consistent state from hibernate time.
                 if percent_full == 100 {
                     error!("Snapshot {} is totally full, rebooting!", state.name);
-                    // TODO: Sync logs, set cookie value to something special so
-                    // resume logs get collected, and reboot.
+                    emergency_reboot("Snapshot filled completely");
                 }
             }
             Err(e) => {

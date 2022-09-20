@@ -83,13 +83,13 @@ impl ResumeConductor {
         // Create a variable that will merge the stateful snapshots when this
         // function returns one way or another.
         let mut volume_manager = VolumeManager::new()?;
-        let pending_merge = PendingStatefulMerge::new(&mut volume_manager)?;
+        let mut pending_merge = PendingStatefulMerge::new(&mut volume_manager)?;
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
-        let result = self.resume_inner(&mut dbus_connection);
+        let result = self.resume_inner(&mut dbus_connection, &mut pending_merge);
         // Move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
@@ -119,8 +119,12 @@ impl ResumeConductor {
 
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
-    fn resume_inner(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
-        self.decide_to_resume()?;
+    fn resume_inner(
+        &mut self,
+        dbus_connection: &mut HiberDbusConnection,
+        pending_merge: &mut PendingStatefulMerge,
+    ) -> Result<()> {
+        self.decide_to_resume(pending_merge)?;
         let mut meta_file = open_metafile()?;
         debug!("Loading metadata");
         let mut metadata = HibernateMetadata::load_from_reader(&mut meta_file)?;
@@ -164,7 +168,7 @@ impl ResumeConductor {
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
     /// not to continue with resume.
-    fn decide_to_resume(&self) -> Result<()> {
+    fn decide_to_resume(&self, pending_merge: &mut PendingStatefulMerge) -> Result<()> {
         // If the cookie left by hibernate and updated by resume-init doesn't
         // indicate readiness, skip the resume unless testing manually.
         let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
@@ -191,6 +195,10 @@ impl ResumeConductor {
                         HibernateCookieValue::NoResume,
                     )
                     .context("Failed to clear emergency reboot cookie")?;
+                    // Resume-init doesn't activate the hibervol LV in order to
+                    // minimize failures in the critical path. Activate it now
+                    // so logs can be replayed.
+                    pending_merge.volume_manager.setup_hibernate_lv(false)?;
                 }
 
                 return Err(HibernateError::CookieError(format!(

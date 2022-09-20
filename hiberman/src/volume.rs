@@ -22,8 +22,8 @@ use std::time::{Duration, Instant};
 use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
 use crate::files::HIBERNATE_DIR;
 use crate::hiberutil::{
-    checked_command, checked_command_output, get_device_mounted_at_dir, get_page_size,
-    get_total_memory_pages, log_io_duration, reboot_system, stateful_block_partition_one,
+    checked_command, checked_command_output, emergency_reboot, get_device_mounted_at_dir,
+    get_page_size, get_total_memory_pages, log_io_duration, stateful_block_partition_one,
     HibernateError,
 };
 use crate::lvm::{
@@ -70,7 +70,7 @@ const MERGE_TIMEOUT_MS: i64 = 1000 * 60 * 20;
 /// The pending stateful merge is an object that when dropped will ask the
 /// volume manager to merge the stateful snapshots.
 pub struct PendingStatefulMerge<'a> {
-    volume_manager: &'a mut VolumeManager,
+    pub volume_manager: &'a mut VolumeManager,
     monitors: Vec<DmSnapshotSpaceMonitor>,
 }
 
@@ -90,10 +90,10 @@ impl Drop for PendingStatefulMerge<'_> {
             .volume_manager
             .merge_stateful_snapshots(&mut self.monitors)
         {
-            error!("Failed to merge stateful snapshots: {:?}", e);
+            error!("Attempting to merge stateful snapshots returned: {:?}", e);
             // If we failed to merge the snapshots, the system is in a bad way.
             // Reboot to try and recover.
-            reboot_system().unwrap();
+            emergency_reboot("Failed to merge stateful snapshots");
         }
     }
 }
