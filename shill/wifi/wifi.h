@@ -112,6 +112,7 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WakeOnWiFiInterface;
 class WiFiCQM;
+class WiFiLinkStatistics;
 class WiFiPhy;
 class WiFiProvider;
 class WiFiService;
@@ -152,31 +153,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     // A network validation attempt has completed but Internet connectivity
     // was not verified.
     kNetworkValidationFailure,
-  };
-
-  struct Nl80211LinkStatistics {
-    uint32_t rx_packets_success;
-    uint32_t tx_packets_success;
-    uint32_t rx_bytes_success;
-    uint32_t tx_bytes_success;
-    uint32_t tx_packets_failure;
-    uint32_t tx_retries;
-    uint64_t rx_packets_dropped;
-    int32_t last_rx_signal_dbm;
-    int32_t avg_rx_signal_dbm;
-  };
-
-  struct WiFiLinkStatistics {
-    // rtnl link statistics
-    old_rtnl_link_stats64 rtnl_link_statistics;
-    // nl80211 station information
-    Nl80211LinkStatistics nl80211_link_statistics;
-    // The NetworkEvent at which the snapshot of WiFiLinkStatistics was made
-    NetworkEvent rtnl_network_event;
-    NetworkEvent nl80211_network_event;
-    // The timestamp at which the snapshot of WiFiLinkStatistics was made
-    base::Time rtnl_timestamp;
-    base::Time nl80211_timestamp;
   };
 
   using FreqSet = std::set<uint32_t>;
@@ -306,7 +282,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void EnsureScanAndConnectToBestService(Error* error);
 
   // Process old_rtnl_link_stats64 information
-  void OnReceivedRtnlLinkStatistics(old_rtnl_link_stats64& stats);
+  void OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats);
 
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
@@ -952,14 +928,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;
 
-  // Used for the diagnosis during DHCP and captive portal detection.
-  // The snapshot of WiFi link statistics is updated if the network event is not
-  // kUnknown. The difference between the current and the previous snapshots is
-  // printed to the log on NetworkEvent kDHCPFailure, kNetworkValidationFailure.
-  WiFiLinkStatistics last_wifi_link_statistics_;
-
-  NetworkEvent current_rtnl_network_event_;
-  NetworkEvent current_nl80211_network_event_;
+  // Used for the diagnosis on link failures defined in NetworkEvent
+  std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;
+  // Keep the current network event for RTNL and nl80211 link statistics
+  NetworkEvent current_rtnl_network_event_ = NetworkEvent::kUnknown;
+  NetworkEvent current_nl80211_network_event_ = NetworkEvent::kUnknown;
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;

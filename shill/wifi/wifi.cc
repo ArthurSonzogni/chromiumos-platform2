@@ -61,6 +61,7 @@
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_link_statistics.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -133,129 +134,6 @@ bool IsWPAStateConnectionInProgress(const std::string& state) {
          state == WPASupplicant::kInterfaceState4WayHandshake ||
          state == WPASupplicant::kInterfaceStateGroupHandshake;
 }
-
-std::string NetworkEventToString(WiFi::NetworkEvent event) {
-  switch (event) {
-    case WiFi::NetworkEvent::kUnknown:
-      return "kUnknown";
-    case WiFi::NetworkEvent::kIPConfigurationStart:
-      return "kIPConfigurationStart";
-    case WiFi::NetworkEvent::kConnected:
-      return "kConnected";
-    case WiFi::NetworkEvent::kDHCPRenewOnRoam:
-      return "kDHCPRenewOnRoam";
-    case WiFi::NetworkEvent::kDHCPSuccess:
-      return "kDHCPSuccess";
-    case WiFi::NetworkEvent::kDHCPFailure:
-      return "kDHCPFailure";
-    case WiFi::NetworkEvent::kSlaacFinished:
-      return "kSlaacFinished";
-    case WiFi::NetworkEvent::kNetworkValidationStart:
-      return "kNetworkValidationStart";
-    case WiFi::NetworkEvent::kNetworkValidationSuccess:
-      return "kNetworkValidationSuccess";
-    case WiFi::NetworkEvent::kNetworkValidationFailure:
-      return "kNetworkValidationFailure";
-    default:
-      LOG(ERROR) << "Undefined NetworkEvent: " << (unsigned int)event;
-      return "Undefined NetworkEvent";
-  }
-}
-
-// Determine if the WiFi link statistics should be print to log.
-bool ShouldPrintWiFiLinkStatistics(WiFi::NetworkEvent event) {
-  // Service::IsConnected() == true doesn’t necessarily determine if the WiFi
-  // link statistics should be printed.
-  // 1. For IPv6-only networks, the network event transition may be
-  // kIPConfigurationStart -> kSlaacFinished -> kConnected -> kDHCPFailure, the
-  // WiFi link statistics should not be printed.
-  // 2. Suppose a device has a static IPv4 configuration but it still needs DHCP
-  // to succeed (to obtain vendor options, like proxy settings) and DHCP fails
-  // due to poor link connection, the WiFi link statistics should be printed.
-  // Removing Service::IsConnected() from the condition makes the device print
-  // unnecessary WiFi link statistics in some cases. It is acceptable as the
-  // WiFi link statistics are two lines.
-  return event == WiFi::NetworkEvent::kDHCPFailure ||
-         event == WiFi::NetworkEvent::kNetworkValidationFailure;
-}
-
-// Calculate the difference between NL80211 link statistics old_stats and
-// new_stats
-WiFi::Nl80211LinkStatistics Nl80211LinkStatisticsDiff(
-    const WiFi::Nl80211LinkStatistics& old_stats,
-    const WiFi::Nl80211LinkStatistics& new_stats) {
-  WiFi::Nl80211LinkStatistics diff_stats;
-  diff_stats.rx_packets_success =
-      new_stats.rx_packets_success - old_stats.rx_packets_success;
-  diff_stats.tx_packets_success =
-      new_stats.tx_packets_success - old_stats.tx_packets_success;
-  diff_stats.rx_bytes_success =
-      new_stats.rx_bytes_success - old_stats.rx_bytes_success;
-  diff_stats.tx_bytes_success =
-      new_stats.tx_bytes_success - old_stats.tx_bytes_success;
-  diff_stats.tx_packets_failure =
-      new_stats.tx_packets_failure - old_stats.tx_packets_failure;
-  diff_stats.tx_retries = new_stats.tx_retries - old_stats.tx_retries;
-  diff_stats.rx_packets_dropped =
-      new_stats.rx_packets_dropped - old_stats.rx_packets_dropped;
-  diff_stats.last_rx_signal_dbm = new_stats.last_rx_signal_dbm;
-  diff_stats.avg_rx_signal_dbm = new_stats.avg_rx_signal_dbm;
-  return diff_stats;
-}
-
-// Calculate the difference between RTNL link statistics old_stats and
-// new_stats
-old_rtnl_link_stats64 RtnlLinkStatisticsDiff(
-    const old_rtnl_link_stats64& old_stats,
-    const old_rtnl_link_stats64& new_stats) {
-  old_rtnl_link_stats64 diff_stats;
-  diff_stats.rx_packets = new_stats.rx_packets - old_stats.rx_packets;
-  diff_stats.tx_packets = new_stats.tx_packets - old_stats.tx_packets;
-  diff_stats.rx_bytes = new_stats.rx_bytes - old_stats.rx_bytes;
-  diff_stats.tx_bytes = new_stats.tx_bytes - old_stats.tx_bytes;
-  diff_stats.rx_errors = new_stats.rx_errors - old_stats.rx_errors;
-  diff_stats.tx_errors = new_stats.tx_errors - old_stats.tx_errors;
-  diff_stats.rx_dropped = new_stats.rx_dropped - old_stats.rx_dropped;
-  diff_stats.tx_dropped = new_stats.tx_dropped - old_stats.tx_dropped;
-  return diff_stats;
-}
-
-// Convert RTNL link statistics to string
-std::string RtnlLinkStatisticsToString(
-    const old_rtnl_link_stats64& diff_stats) {
-  return "rx_packets " + std::to_string(diff_stats.rx_packets) +
-         " tx_packets " + std::to_string(diff_stats.tx_packets) + " rx_bytes " +
-         std::to_string(diff_stats.rx_bytes) + " tx_bytes " +
-         std::to_string(diff_stats.tx_bytes) + " rx_errors " +
-         std::to_string(diff_stats.rx_errors) + " tx_errors " +
-         std::to_string(diff_stats.tx_errors) + " rx_dropped " +
-         std::to_string(diff_stats.rx_dropped) + " tx_dropped " +
-         std::to_string(diff_stats.tx_dropped);
-}
-
-// Convert NL80211 link statistics to string
-std::string Nl80211LinkStatisticsToString(
-    const WiFi::Nl80211LinkStatistics& diff_stats) {
-  return std::string(kPacketReceiveSuccessesProperty) + " " +
-         std::to_string(diff_stats.rx_packets_success) + " " +
-         kPacketTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_packets_success) + " " +
-         kByteReceiveSuccessesProperty + " " +
-         std::to_string(diff_stats.rx_bytes_success) + " " +
-         kByteTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_bytes_success) + " " +
-         kPacketTransmitFailuresProperty + " " +
-         std::to_string(diff_stats.tx_packets_failure) + " " +
-         kTransmitRetriesProperty + " " +
-         std::to_string(diff_stats.tx_retries) + " " +
-         kPacketReceiveDropProperty + " " +
-         std::to_string(diff_stats.rx_packets_dropped) +
-         "; the current signal information: " + kLastReceiveSignalDbmProperty +
-         " " + std::to_string(diff_stats.last_rx_signal_dbm) + " " +
-         kAverageReceiveSignalDbmProperty + " " +
-         std::to_string(diff_stats.avg_rx_signal_dbm);
-}
-
 }  // namespace
 
 WiFi::WiFi(Manager* manager,
@@ -304,6 +182,7 @@ WiFi::WiFi(Manager* manager,
       hs20_bss_count_(0),
       need_interworking_select_(false),
       receive_byte_count_at_connect_(0),
+      wifi_link_statistics_(new WiFiLinkStatistics()),
       phy_index_(phy_index),
       wifi_cqm_(new WiFiCQM(metrics(), this)),
       wake_on_wifi_(std::move(wake_on_wifi)),
@@ -4008,70 +3887,10 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
       link_statistics_.Set<std::string>(kReceiveBitrateProperty, str);
     }
   }
-
-  // nl80211 station information for WiFi link diagnosis
-  if (current_nl80211_network_event_ == NetworkEvent::kUnknown) {
-    return;
-  }
-  Nl80211LinkStatistics stats;
-  std::vector<std::pair<std::string, uint32_t*>>
-      nl80211_sta_info_properties_u32 = {
-          {kPacketReceiveSuccessesProperty, &stats.rx_packets_success},
-          {kPacketTransmitSuccessesProperty, &stats.tx_packets_success},
-          {kByteReceiveSuccessesProperty, &stats.rx_bytes_success},
-          {kByteTransmitSuccessesProperty, &stats.tx_bytes_success},
-          {kPacketTransmitFailuresProperty, &stats.tx_packets_failure},
-          {kTransmitRetriesProperty, &stats.tx_retries}};
-
-  for (const auto& kv : nl80211_sta_info_properties_u32) {
-    if (link_statistics_.Contains<uint32_t>(kv.first)) {
-      *kv.second = link_statistics_.Get<uint32_t>(kv.first);
-    }
-  }
-
-  std::vector<std::pair<std::string, uint64_t*>>
-      nl80211_sta_info_properties_u64 = {
-          {kPacketReceiveDropProperty, &stats.rx_packets_dropped}};
-
-  for (const auto& kv : nl80211_sta_info_properties_u64) {
-    if (link_statistics_.Contains<uint64_t>(kv.first)) {
-      *kv.second = link_statistics_.Get<uint64_t>(kv.first);
-    }
-  }
-
-  std::vector<std::pair<std::string, int32_t*>>
-      nl80211_sta_info_properties_s32 = {
-          {kLastReceiveSignalDbmProperty, &stats.last_rx_signal_dbm},
-          {kAverageReceiveSignalDbmProperty, &stats.avg_rx_signal_dbm}};
-
-  for (const auto& kv : nl80211_sta_info_properties_s32) {
-    if (link_statistics_.Contains<int32_t>(kv.first)) {
-      *kv.second = link_statistics_.Get<int32_t>(kv.first);
-    }
-  }
-
-  const auto current_time = base::Time::Now();
-  if (ShouldPrintWiFiLinkStatistics(current_nl80211_network_event_)) {
-    Nl80211LinkStatistics diff_stats = Nl80211LinkStatisticsDiff(
-        last_wifi_link_statistics_.nl80211_link_statistics, stats);
-    LOG(INFO) << "Network event related to NL80211 link statistics: " +
-                     NetworkEventToString(
-                         last_wifi_link_statistics_.nl80211_network_event) +
-                     " -> " +
-                     NetworkEventToString(current_nl80211_network_event_) +
-                     "; the NL80211 link statistics delta for the last " +
-                     std::to_string(
-                         (current_time -
-                          last_wifi_link_statistics_.nl80211_timestamp)
-                             .InSeconds()) +
-                     " seconds is " + Nl80211LinkStatisticsToString(diff_stats);
-  }
-  last_wifi_link_statistics_.nl80211_link_statistics = stats;
-  last_wifi_link_statistics_.nl80211_network_event =
-      current_nl80211_network_event_;
-  last_wifi_link_statistics_.nl80211_timestamp = current_time;
-  // Reset current_nl80211_network_event_, so that NL80211 link
-  // statistics is not updated/printed repeatedly.
+  wifi_link_statistics_->UpdateNl80211LinkStatistics(
+      current_nl80211_network_event_, link_statistics_);
+  // Reset current_nl80211_network_event_ to prevent unnecessary
+  // WiFiLinkStatistics update/print
   current_nl80211_network_event_ = NetworkEvent::kUnknown;
 }
 
@@ -4244,30 +4063,11 @@ uint64_t WiFi::GetReceiveByteCount() {
   return rx_byte_count;
 }
 
-void WiFi::OnReceivedRtnlLinkStatistics(old_rtnl_link_stats64& stats) {
-  if (current_rtnl_network_event_ == NetworkEvent::kUnknown) {
-    return;
-  }
-  const auto current_time = base::Time::Now();
-  if (ShouldPrintWiFiLinkStatistics(current_rtnl_network_event_)) {
-    old_rtnl_link_stats64 diff_stats = RtnlLinkStatisticsDiff(
-        last_wifi_link_statistics_.rtnl_link_statistics, stats);
-    LOG(INFO) << "Network event related to RTNL link statistics: " +
-                     NetworkEventToString(
-                         last_wifi_link_statistics_.rtnl_network_event) +
-                     " -> " +
-                     NetworkEventToString(current_rtnl_network_event_) +
-                     "; the RTNL link statistics delta for the last " +
-                     std::to_string((current_time -
-                                     last_wifi_link_statistics_.rtnl_timestamp)
-                                        .InSeconds()) +
-                     " seconds is " + RtnlLinkStatisticsToString(diff_stats);
-  }
-  last_wifi_link_statistics_.rtnl_link_statistics = stats;
-  last_wifi_link_statistics_.rtnl_network_event = current_rtnl_network_event_;
-  last_wifi_link_statistics_.rtnl_timestamp = current_time;
-  // Reset current_rtnl_network_event_, so that RTNL link statistics is not
-  // updated/printed repeatedly.
+void WiFi::OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
+  wifi_link_statistics_->UpdateRtnlLinkStatistics(current_rtnl_network_event_,
+                                                  stats);
+  // Reset current_rtnl_network_event_ to prevent unnecessary WiFiLinkStatistics
+  // update/print
   current_rtnl_network_event_ = NetworkEvent::kUnknown;
 }
 

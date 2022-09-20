@@ -71,12 +71,14 @@
 #include "shill/testing.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
+#include "shill/wifi/mock_wifi_link_statistics.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_link_statistics.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -607,6 +609,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         dhcp_hostname_("chromeos"),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
+        wifi_link_statistics_(new NiceMock<MockWiFiLinkStatistics>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
@@ -660,6 +663,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->time_ = &time_;
     wifi_->netlink_manager_ = &netlink_manager_;
     wifi_->adaptor_.reset(adaptor_);  // Transfers ownership.
+    wifi_->wifi_link_statistics_.reset(wifi_link_statistics_);
 
     manager_.set_power_manager(power_manager_);  // Transfers ownership.
 
@@ -1030,6 +1034,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void ReportReceivedStationInfo(const Nl80211Message& nl80211_message) {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
+  void ReportReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
+    wifi_->OnReceivedRtnlLinkStatistics(stats);
+  }
   KeyValueStore GetLinkStatistics() {
     return wifi_->GetLinkStatistics(nullptr);
   }
@@ -1384,6 +1391,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   // and manager so we can perform expectations against them.
   DeviceMockAdaptor* adaptor_;
   MockSupplicantEAPStateHandler* eap_state_handler_;
+  MockWiFiLinkStatistics* wifi_link_statistics_;
 
  private:
   std::unique_ptr<SupplicantInterfaceProxyInterface>
@@ -5554,9 +5562,6 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
   SetCurrentService(service);
   RpcIdentifier connected_bss = GetSupplicantBSS();
   SetSupplicantBSS(connected_bss);
-  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
   old_rtnl_link_stats64 stats;
   NewStationMessage new_station;
@@ -5578,40 +5583,54 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
   new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
 
   // Test DHCP failure
-  RetrieveLinkStatistics(WiFi::NetworkEvent::kIPConfigurationStart);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
-      .Times(0);
-  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr(kPacketReceiveSuccessesProperty)))
-      .Times(0);
-  ReportReceivedStationInfo(new_station);
-  RetrieveLinkStatistics(WiFi::NetworkEvent::kDHCPFailure);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
-      .Times(1);
-  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr(kPacketReceiveSuccessesProperty)))
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateNl80211LinkStatistics(WiFi::NetworkEvent::kIPConfigurationStart, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateRtnlLinkStatistics(WiFi::NetworkEvent::kIPConfigurationStart, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
 
-  // Test portal detection failure
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kDHCPFailure);
+
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(WiFi::NetworkEvent::kDHCPFailure, _))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(WiFi::NetworkEvent::kDHCPFailure, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
+
+  // Test network validation failure
   RetrieveLinkStatistics(WiFi::NetworkEvent::kNetworkValidationStart);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
-      .Times(0);
-  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr(kPacketReceiveSuccessesProperty)))
-      .Times(0);
+
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(
+                  WiFi::NetworkEvent::kNetworkValidationStart, _))
+      .Times(1);
   ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateRtnlLinkStatistics(WiFi::NetworkEvent::kNetworkValidationStart, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
+
   RetrieveLinkStatistics(WiFi::NetworkEvent::kNetworkValidationFailure);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("rx_packets")))
-      .Times(1);
-  const_cast<WiFi*>(wifi().get())->OnReceivedRtnlLinkStatistics(stats);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr(kPacketReceiveSuccessesProperty)))
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(
+                  WiFi::NetworkEvent::kNetworkValidationFailure, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(
+                  WiFi::NetworkEvent::kNetworkValidationFailure, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
 }
 
 TEST_F(WiFiMainTest, GetWiFiPhy) {

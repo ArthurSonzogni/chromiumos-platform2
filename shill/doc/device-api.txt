@@ -610,7 +610,7 @@ Properties	string Address [readonly]
 				Reports the number of failed packet
 				transmission attempts.
 
-				uint32 PacketTrasmitSuccesses
+				uint32 PacketTransmitSuccesses
 
 				Reports the number of successful packet
 				transmission attempts.
