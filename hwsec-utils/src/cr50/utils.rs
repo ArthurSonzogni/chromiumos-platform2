@@ -27,7 +27,7 @@ use crate::tpm2::ERASED_BOARD_ID;
 fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output, HwsecError> {
     #[cfg(feature = "ti50_onboard")]
     let dflag: Vec<&str> = vec!["-D"];
-    #[cfg(any(feature = "cr50_onboard", feature = "generic_tpm2"))]
+    #[cfg(not(feature = "ti50_onboard"))]
     let dflag: Vec<&str> = Vec::<&str>::new();
 
     ctx.cmd_runner()
