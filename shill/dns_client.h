@@ -98,7 +98,7 @@ class DnsClient {
   int timeout_ms_;
   bool running_;
   std::unique_ptr<DnsClientState> resolver_state_;
-  base::CancelableClosure timeout_closure_;
+  base::CancelableOnceClosure timeout_closure_;
   base::WeakPtrFactory<DnsClient> weak_ptr_factory_;
   Ares* ares_;
   Time* time_;

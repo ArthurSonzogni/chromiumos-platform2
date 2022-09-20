@@ -306,10 +306,10 @@ bool DnsClient::RefreshHandles() {
   int action_bits =
       ares_->GetSock(resolver_state_->channel, sockets, ARES_GETSOCK_MAXNUM);
 
-  base::Callback<void(int)> read_callback(
-      base::Bind(&DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
-  base::Callback<void(int)> write_callback(
-      base::Bind(&DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
+  base::RepeatingCallback<void(int)> read_callback(base::BindRepeating(
+      &DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
+  base::RepeatingCallback<void(int)> write_callback(base::BindRepeating(
+      &DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       if (base::Contains(old_read, sockets[i])) {
@@ -370,8 +370,8 @@ bool DnsClient::RefreshHandles() {
     timersub(&timeout_tv, &elapsed_time, &max);
     struct timeval* tv =
         ares_->Timeout(resolver_state_->channel, &max, &ret_tv);
-    timeout_closure_.Reset(
-        base::Bind(&DnsClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
+    timeout_closure_.Reset(base::BindOnce(&DnsClient::HandleTimeout,
+                                          weak_ptr_factory_.GetWeakPtr()));
     dispatcher_->PostDelayedTask(
         FROM_HERE, timeout_closure_.callback(),
         base::Seconds(tv->tv_sec) + base::Microseconds(tv->tv_usec));
