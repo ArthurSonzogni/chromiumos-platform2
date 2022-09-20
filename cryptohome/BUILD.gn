@@ -26,14 +26,6 @@ group("all") {
     ":stateful_recovery_lib",
     ":tpm-manager",
   ]
-  if (use.cert_provision) {
-    deps += [
-      ":cert_provision",
-      ":cert_provision-proto",
-      ":cert_provision-static",
-      ":cert_provision_client",
-    ]
-  }
   if (use.test) {
     deps += [
       ":boot_lockbox_unittests",
@@ -274,62 +266,6 @@ executable("stateful-recovery") {
   pkg_deps = [ "dbus-1" ]
 }
 
-if (use.cert_provision) {
-  proto_library("cert_provision-proto") {
-    proto_in_dir = "./cert"
-    proto_out_dir = "include/cert"
-    use_pic = true
-    sources = [ "cert/cert_provision.proto" ]
-  }
-
-  shared_library("cert_provision") {
-    deps = [ ":cert_provision-static" ]
-  }
-
-  pkg_config("cert_provision_deps") {
-    pkg_deps = [
-      "libattestation-client",
-      "libbrillo",
-      "libchrome",
-      "system_api",
-    ]
-    if (use.fuzzer) {
-      pkg_deps += [ "protobuf" ]
-    } else {
-      pkg_deps += [ "protobuf-lite" ]
-    }
-  }
-
-  static_library("cert_provision-static") {
-    sources = [
-      "cert/cert_provision.cc",
-      "cert/cert_provision_keystore.cc",
-      "cert/cert_provision_util.cc",
-    ]
-
-    # libcert_provision-static.a is used by a shared_libary
-    # object, so we need to build it with '-fPIC' instead of '-fPIE'.
-    configs -= [ "//common-mk:pie" ]
-    configs += [ "//common-mk:pic" ]
-    libs = [
-      "chaps",
-      "pthread",
-    ]
-
-    all_dependent_configs = [ ":cert_provision_deps" ]
-
-    deps = [
-      ":cert_provision-proto",
-      "libs:cryptohome-proto",
-    ]
-  }
-
-  executable("cert_provision_client") {
-    sources = [ "cert/cert_provision_client.cc" ]
-    deps = [ ":cert_provision" ]
-  }
-}
-
 if (use.test) {
   static_library("fake_platform-static") {
     sources = [
@@ -493,14 +429,6 @@ if (use.test) {
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
       ]
-    }
-
-    if (use.cert_provision) {
-      sources += [
-        "cert/cert_provision_keystore_unittest.cc",
-        "cert/cert_provision_unittest.cc",
-      ]
-      deps += [ ":cert_provision-static" ]
     }
   }
 
