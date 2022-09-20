@@ -351,11 +351,16 @@ impl VolumeManager {
     }
 
     /// Create monitor threads for each dm-snapshot set up by hiberman that
-    /// trigger a resume abort if the snapshot gets too full.
+    /// triggers a resume abort if the snapshot gets too full.
     pub fn monitor_stateful_snapshots(&self) -> Result<Vec<DmSnapshotSpaceMonitor>> {
         let mut monitors = vec![];
         for name in Self::get_snapshot_file_names()? {
-            monitors.push(DmSnapshotSpaceMonitor::new(&format!("{}-rw", name))?);
+            let snapshot_name = format!("{}-rw", name);
+            // Only monitor snapshots that are actually set up, which
+            // resume-init may not set up if the cookie was set to EmergencyReboot.
+            if get_dm_status(&snapshot_name).is_ok() {
+                monitors.push(DmSnapshotSpaceMonitor::new(&snapshot_name)?);
+            }
         }
 
         Ok(monitors)

@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use log::info;
+use log::{info, warn};
 
 use crate::cookie::{
     cookie_description, get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue,
@@ -50,7 +50,7 @@ impl ResumeInitConductor {
             {
                 info!(
                     "Hibernate interrupted (cookie was {}), wiring up snapshots",
-                    cookie_description(cookie)
+                    cookie_description(&cookie)
                 );
                 self.setup_snapshots()?;
                 // The snapshots are valid and wired. Indicate to the main
@@ -60,6 +60,17 @@ impl ResumeInitConductor {
                     .context("Failed to set hibernate cookie to ResumeAborting")?;
 
                 return Ok(());
+
+            // This is the bad error path, where the previous attempt to resume
+            // or abort resulted in an emergency reboot. Do nothing here, as our
+            // only goal in this state is to replay logs and proceed with a
+            // normal boot.
+            } else if cookie == HibernateCookieValue::EmergencyReboot {
+                warn!("System emergency rebooted, not wiring up snapshots");
+                return Err(HibernateError::CookieError(
+                    "Emergency reboot, not wiring up snapshots".to_string(),
+                ))
+                .context("Not preparing for resume");
             }
         }
 

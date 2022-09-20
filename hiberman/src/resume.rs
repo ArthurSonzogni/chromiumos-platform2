@@ -170,14 +170,29 @@ impl ResumeConductor {
         let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
             .context("Failed to get hibernate cookie")?;
         if cookie != HibernateCookieValue::ResumeInProgress {
-            let description = cookie_description(cookie);
+            let description = cookie_description(&cookie);
             if self.options.dry_run {
                 info!(
                     "Hibernate cookie was {}, continuing anyway due to --dry-run",
                     description
                 );
             } else {
-                warn!("Hibernate cookie was {}, abandoning resume", description);
+                if cookie == HibernateCookieValue::NoResume {
+                    info!("No resume pending");
+                } else {
+                    warn!("Hibernate cookie was {}, abandoning resume", description);
+                }
+
+                // If the cookie indicates an emergency reboot, clear it back to
+                // nothing, as the problem was logged.
+                if cookie == HibernateCookieValue::EmergencyReboot {
+                    set_hibernate_cookie(
+                        Some(&self.stateful_block_path),
+                        HibernateCookieValue::NoResume,
+                    )
+                    .context("Failed to clear emergency reboot cookie")?;
+                }
+
                 return Err(HibernateError::CookieError(format!(
                     "Cookie was {}, abandoning resume",
                     description

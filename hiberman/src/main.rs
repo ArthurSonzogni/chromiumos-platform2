@@ -55,7 +55,7 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     opts.optflag("v", "verbose", "Print more during the command");
     opts.optopt("V",
                 "value",
-                "Set the cookie to a specific value (options are no_resume, resume_ready, in_progress, or aborting)",
+                "Set the cookie to a specific value (options are no_resume, resume_ready, in_progress, aborting, or ereboot)",
                 "value");
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
@@ -97,6 +97,7 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
                 "resume_ready" => HibernateCookieValue::ResumeReady,
                 "in_progress" => HibernateCookieValue::ResumeInProgress,
                 "aborting" => HibernateCookieValue::ResumeAborting,
+                "ereboot" => HibernateCookieValue::EmergencyReboot,
                 _ => {
                     eprintln!("Invalid cookie value: {}", value);
                     cookie_usage(true, &opts);
@@ -127,7 +128,7 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
         };
 
         let is_ready = value == hiberman::cookie::HibernateCookieValue::ResumeReady;
-        let description = hiberman::cookie::cookie_description(value);
+        let description = hiberman::cookie::cookie_description(&value);
         if verbose {
             println!("Hibernate cookie is set to: {}", description);
         }

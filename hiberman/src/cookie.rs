@@ -35,6 +35,7 @@ struct HibernateCookie {
 /// Define the size of the region we update.
 const COOKIE_READ_SIZE: usize = 0x400;
 const COOKIE_WRITE_SIZE: usize = 0x400;
+
 /// Define the magic value the GPT stamps down, which we will use to verify
 /// we're writing to an area that we expect. If somehow the world shifted out
 /// from under us, this could prevent us from silently corrupting data.
@@ -46,6 +47,7 @@ const GPT_MAGIC: u64 = 0x5452415020494645; // 'EFI PART'
 /// whole sector. Define the offset towards the end of the region where the
 /// cookie will be written.
 const COOKIE_MAGIC_OFFSET: usize = 0x3E0;
+
 /// Define the magic token values we write to indicate a valid hibernate
 /// partition. This is both big (as in bigger than a single bit), and points the
 /// finger at an obvious culprit, in the case this does end up unintentionally
@@ -54,21 +56,33 @@ const COOKIE_MAGIC_OFFSET: usize = 0x3E0;
 /// dm-snapshots for stateful systems in preparation for resuming from
 /// hibernate.
 const COOKIE_RESUME_READY_VALUE: &[u8] = b"HibernateCookie!";
+
 /// Define a known "not valid" value as well. This is treated identically to
 /// anything else that is invalid, but again could serve as a more useful
 /// breadcrumb to someone debugging than 16 vanilla zeroes. If this is seen on
 /// boot, a normal boot continues with no preparations for resume from
 /// hibernate.
 const COOKIE_NO_RESUME_VALUE: &[u8] = b"No_Hiber_Resume!";
+
 /// As soon as a valid cookie is read, it's changed to in-progress, to avoid
 /// boot loops that get stuck in a hibernate resume. If a booting system sees
 /// this value, it will not attempt resume, but treat it instead the same as
 /// the aborting case.
 const COOKIE_RESUME_IN_PROGRESS_VALUE: &[u8] = b"ResumeInProgress";
+
 /// This cookie value indicates a resume abort was started but got interrupted.
 /// If a booting system sees this, it should re-install the dm-snapshots and
 /// restart the merge back to stateful.
 const COOKIE_RESUME_ABORTING_VALUE: &[u8] = b"ResumeIsAborting";
+
+/// This cookie value indicates something went wrong within the abort path and
+/// the system was forced to do an emergency reboot. In this case we do not try
+/// to wire up dm-snapshots again (since it didn't go well last time), but
+/// instead simply try to dump logs and continue forward with the cold boot. In
+/// some cases we may be able to proceed forward normally here if the snapshots
+/// are not partially synced.
+const COOKIE_EMERGENCY_REBOOT_VALUE: &[u8] = b"EmergencyReboot!";
+
 /// Define the size of the magic token, in bytes.
 const COOKIE_SIZE: usize = 16;
 
@@ -79,6 +93,7 @@ pub enum HibernateCookieValue {
     ResumeReady,
     ResumeInProgress,
     ResumeAborting,
+    EmergencyReboot,
 }
 
 impl HibernateCookie {
@@ -137,6 +152,8 @@ impl HibernateCookie {
             Ok(HibernateCookieValue::ResumeInProgress)
         } else if value == COOKIE_RESUME_ABORTING_VALUE {
             Ok(HibernateCookieValue::ResumeAborting)
+        } else if value == COOKIE_EMERGENCY_REBOOT_VALUE {
+            Ok(HibernateCookieValue::EmergencyReboot)
         } else {
             Ok(HibernateCookieValue::Uninitialized)
         }
@@ -164,6 +181,7 @@ impl HibernateCookie {
             HibernateCookieValue::ResumeReady => COOKIE_RESUME_READY_VALUE,
             HibernateCookieValue::ResumeInProgress => COOKIE_RESUME_IN_PROGRESS_VALUE,
             HibernateCookieValue::ResumeAborting => COOKIE_RESUME_ABORTING_VALUE,
+            HibernateCookieValue::EmergencyReboot => COOKIE_EMERGENCY_REBOOT_VALUE,
         };
 
         let buffer_slice = self.buffer.u8_slice_mut();
@@ -204,13 +222,14 @@ pub fn set_hibernate_cookie<P: AsRef<Path>>(
 }
 
 /// Convert a hibernate cookie value to a human description
-pub fn cookie_description(value: HibernateCookieValue) -> &'static str {
+pub fn cookie_description(value: &HibernateCookieValue) -> &'static str {
     match value {
         HibernateCookieValue::Uninitialized => "Uninitialized",
         HibernateCookieValue::NoResume => "No Resume",
         HibernateCookieValue::ResumeReady => "Resume Ready",
         HibernateCookieValue::ResumeInProgress => "Resume in Progress",
         HibernateCookieValue::ResumeAborting => "Resume Aborting",
+        HibernateCookieValue::EmergencyReboot => "Emergency Reboot",
     }
 }
 
