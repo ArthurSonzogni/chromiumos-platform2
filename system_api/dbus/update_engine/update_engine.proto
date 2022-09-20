@@ -110,6 +110,9 @@ message StatusResult {
 
   // List of features managed by update_engine.
   repeated Feature features = 13;
+
+  // Whether the update is interactive.
+  bool is_interactive = 14;
 }
 
 // This is the message flags that influences how updates are performed.
