@@ -79,8 +79,8 @@ void FingerprintAuthBlockService::Verify(
 
   // Set up a callback with the manager to check the result and forward it to
   // the on_done callback.
-  fp_manager->SetAuthScanDoneCallback(base::BindRepeating(
-      &CheckFingerprintResult, base::Passed(std::move(on_done))));
+  fp_manager->SetAuthScanDoneCallback(
+      base::BindOnce(&CheckFingerprintResult, std::move(on_done)));
 }
 
 }  // namespace cryptohome

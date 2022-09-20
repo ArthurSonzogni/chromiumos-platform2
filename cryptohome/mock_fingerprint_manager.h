@@ -19,14 +19,12 @@ class MockFingerprintManager : public FingerprintManager {
   MOCK_METHOD(void,
               StartAuthSessionAsyncForUser,
               (const std::string& user,
-               base::OnceCallback<void(bool success)>
-                   auth_session_start_client_callback),
+               StartSessionCallback auth_session_start_client_callback),
               (override));
 
   MOCK_METHOD(void,
               SetAuthScanDoneCallback,
-              (base::RepeatingCallback<void(FingerprintScanStatus status)>
-                   auth_scan_done_callback),
+              (ResultCallback auth_scan_done_callback),
               (override));
 
   MOCK_METHOD(bool,

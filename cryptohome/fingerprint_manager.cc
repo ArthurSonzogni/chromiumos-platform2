@@ -172,7 +172,7 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
 
   VLOG(1) << "Authentication succeeded.";
   if (auth_scan_done_callback_)
-    auth_scan_done_callback_.Run(FingerprintScanStatus::SUCCESS);
+    std::move(auth_scan_done_callback_).Run(FingerprintScanStatus::SUCCESS);
   state_ = State::AUTH_SESSION_LOCKED;
 }
 
@@ -187,13 +187,13 @@ void FingerprintManager::ProcessRetry() {
     error = FingerprintScanStatus::FAILED_RETRY_ALLOWED;
   }
   if (auth_scan_done_callback_)
-    auth_scan_done_callback_.Run(error);
+    std::move(auth_scan_done_callback_).Run(error);
 }
 
 void FingerprintManager::ProcessFailed() {
   if (auth_scan_done_callback_) {
-    auth_scan_done_callback_.Run(
-        FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+    std::move(auth_scan_done_callback_)
+        .Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   }
   state_ = State::AUTH_SESSION_LOCKED;
 }
@@ -207,8 +207,8 @@ void FingerprintManager::SetAuthScanDoneCallback(
 
   // Don't allow any operation if we are not in an auth session.
   if (state_ != State::AUTH_SESSION_OPEN) {
-    auth_scan_done_callback.Run(
-        FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+    std::move(auth_scan_done_callback)
+        .Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
     return;
   }
 
@@ -258,8 +258,8 @@ void FingerprintManager::EndAuthSession() {
   // Return an error to any pending call. This is for the case where the client
   // decides to cancel fingerprint auth before receiving a response from us.
   if (auth_scan_done_callback_) {
-    auth_scan_done_callback_.Run(
-        FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+    std::move(auth_scan_done_callback_)
+        .Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   }
   proxy_->EndAuthSession();
   Reset();

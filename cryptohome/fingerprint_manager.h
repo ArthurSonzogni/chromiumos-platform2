@@ -30,8 +30,7 @@ enum class FingerprintScanStatus {
 class FingerprintManager {
  public:
   using StartSessionCallback = base::OnceCallback<void(bool success)>;
-  using ResultCallback =
-      base::RepeatingCallback<void(FingerprintScanStatus status)>;
+  using ResultCallback = base::OnceCallback<void(FingerprintScanStatus status)>;
 
   // Factory method. Returns nullptr if Biometrics Daemon is not in a good
   // state or if the device does not have fingerprint support.
@@ -97,7 +96,6 @@ class FingerprintManager {
         : fingerprint_manager_(fingerprint_manager) {}
 
     ~AuthScanDoneResourceManager() {
-      fingerprint_manager_->auth_scan_done_callback_.Reset();
       // If auth session is still open, then we are waiting for retry, so keep
       // |current_user_|.
       if (fingerprint_manager_->state_ != State::AUTH_SESSION_OPEN)
