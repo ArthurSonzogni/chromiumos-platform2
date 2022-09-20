@@ -333,6 +333,12 @@ int main(int argc, char* argv[]) {
 
   brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Reporter");
 
+  if (FLAGS_early) {
+    // Work around b/244755427.
+    // TODO(b/244755427): Remove this once the bug is properly fixed.
+    setenv("TZ", "UTC+0", 1);
+  }
+
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
 
