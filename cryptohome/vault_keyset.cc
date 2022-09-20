@@ -78,6 +78,7 @@ VaultKeyset::VaultKeyset()
       loaded_(false),
       encrypted_(false),
       flags_(0),
+      backup_vk_(false),
       legacy_index_(-1),
       auth_locked_(false) {}
 
@@ -1610,11 +1611,14 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
     serialized.set_vkk_iv(vkk_iv_->data(), vkk_iv_->size());
   }
 
+  serialized.set_backup_vk(backup_vk_);
+
   return serialized;
 }
 
 void VaultKeyset::ResetVaultKeyset() {
   flags_ = -1;
+  backup_vk_ = false;
   auth_salt_.clear();
   legacy_index_ = -1;
   tpm_public_key_hash_.reset();
@@ -1741,6 +1745,8 @@ void VaultKeyset::InitializeFromSerialized(
     vkk_iv_ = brillo::SecureBlob(serialized.vkk_iv().begin(),
                                  serialized.vkk_iv().end());
   }
+
+  backup_vk_ = serialized.backup_vk();
 }
 
 const base::FilePath& VaultKeyset::GetSourceFile() const {

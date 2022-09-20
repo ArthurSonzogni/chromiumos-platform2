@@ -127,6 +127,10 @@ message SerializedVaultKeyset {
   // The IV to decrypt EVK.
   optional bytes vkk_iv = 21;
 
+  // Used to determine whether the VaultKeyset is a backup for the new key
+  // storage.
+  optional bool backup_vk = 22;
+
   // Deprecated fields that were removed.
   reserved 7, 19;
 }
