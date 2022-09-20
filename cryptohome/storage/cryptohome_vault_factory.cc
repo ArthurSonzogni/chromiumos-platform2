@@ -4,6 +4,7 @@
 
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -22,6 +23,7 @@
 namespace {
 // Size of logical volumes to use for the dm-crypt cryptohomes.
 constexpr uint64_t kLogicalVolumeSizePercent = 90;
+constexpr uint32_t kArcContainerIVOffset = 2823358739;
 
 // By default, each ext4 filesystem takes up ~2% of the entire filesystem space
 // for storing filesystem metadata including inode tables. Tune the number of
@@ -38,6 +40,22 @@ uint64_t CalculateInodeCount(int64_t filesystem_size) {
     return 2 * kBaseInodeCount;
 
   return 4 * kBaseInodeCount;
+}
+
+// Get IV offsets for containers.
+uint32_t GetContainerIVOffset(const std::string& container_name) {
+  // For each container, generate a random 32-bit value to use as the IV offset
+  // so that dmcrypt containers (for or compatibility with eMMC Inline
+  // Encryption spec, that allows only 32-bit IVs).
+  if (container_name == "arcvm") {
+    // Make sure that the IVs don't wrap around with 32-bit devices with 128GB
+    // storage.
+    static_assert(kArcContainerIVOffset < std::numeric_limits<uint32_t>::max() -
+                                              128UL * 1024 * 1024 * 2);
+    return kArcContainerIVOffset;
+  }
+
+  return 0;
 }
 
 }  // namespace
@@ -200,6 +218,7 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     }
     if (enable_application_containers_) {
       for (const auto& app : std::vector<std::string>{"arcvm"}) {
+        app_dm_options.iv_offset = GetContainerIVOffset(app);
         std::unique_ptr<EncryptedContainer> tmp_container =
             GenerateEncryptedContainer(container_type, obfuscated_username,
                                        key_reference, app, app_dm_options);

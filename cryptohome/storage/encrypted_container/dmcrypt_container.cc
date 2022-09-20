@@ -43,6 +43,7 @@ DmcryptContainer::DmcryptContainer(
     : dmcrypt_device_name_(config.dmcrypt_device_name),
       dmcrypt_cipher_(config.dmcrypt_cipher),
       is_raw_device_(config.is_raw_device),
+      iv_offset_(config.iv_offset),
       mkfs_opts_(config.mkfs_opts),
       tune2fs_opts_(config.tune2fs_opts),
       backing_device_(std::move(backing_device)),
@@ -143,7 +144,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
           // encryption key descriptor.
           key_descriptor,
           // iv offset.
-          0,
+          iv_offset_,
           // device path.
           *backing_device_path,
           // device offset.

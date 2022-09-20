@@ -47,6 +47,7 @@ class CryptohomeVaultFactory {
   struct DmOptions {
     bool keylocker_enabled = false;
     bool is_raw_device = false;
+    uint32_t iv_offset = 0;
   };
 
   virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(

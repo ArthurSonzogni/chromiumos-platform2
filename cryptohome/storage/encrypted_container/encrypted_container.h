@@ -35,6 +35,7 @@ struct DmcryptConfig {
   std::string dmcrypt_device_name;
   std::string dmcrypt_cipher;
   bool is_raw_device;
+  uint32_t iv_offset;
   std::vector<std::string> mkfs_opts;
   std::vector<std::string> tune2fs_opts;
 };
