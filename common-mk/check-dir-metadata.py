@@ -119,7 +119,6 @@ LEGACYLIST = {
     "print_tools",
     "regions",
     "resourced",
-    "rmad",
     "run_oci",
     "runtime_probe",
     "screen-capture-utils",
