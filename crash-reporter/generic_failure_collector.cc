@@ -27,7 +27,7 @@ const char* const GenericFailureCollector::kSuspendFailure = "suspend-failure";
 const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
     "arc-service-failure";
-const char* const GenericFailureCollector::kModemFailure = "ModemManager";
+const char* const GenericFailureCollector::kModemFailure = "cellular-failure";
 
 GenericFailureCollector::GenericFailureCollector()
     : CrashCollector("generic_failure"), failure_report_path_("/dev/stdin") {}
