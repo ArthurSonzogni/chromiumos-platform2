@@ -45,6 +45,9 @@ constexpr const char kSysNetIPv6ConfPrefix[] = "/proc/sys/net/ipv6/conf/";
 // Suffix for accepting Router Advertisements on an interface and
 // autoconfiguring it with IPv6 parameters.
 constexpr const char kSysNetIPv6AcceptRaSuffix[] = "/accept_ra";
+// Enables/Disables IPv6 cross-inteface NDP response.
+constexpr const char kSysNetIPv6ProxyNDPPath[] =
+    "/proc/sys/net/ipv6/conf/all/proxy_ndp";
 
 int net_util_IfNametoindex(const std::string& ifname) {
   return IfNametoindex(ifname);
@@ -106,6 +109,8 @@ bool System::SysNetSet(SysNet target,
       return Write(kSysNetConntrackHelperPath, content);
     case SysNet::IPv6Disable:
       return Write(kSysNetDisableIPv6Path, content);
+    case SysNet::IPv6ProxyNDP:
+      return Write(kSysNetIPv6ProxyNDPPath, content);
     default:
       LOG(ERROR) << "Unknown SysNet value " << target;
       return false;

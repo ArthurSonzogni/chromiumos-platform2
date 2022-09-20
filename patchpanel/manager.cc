@@ -515,6 +515,8 @@ void Manager::OnIPv6NetworkChanged(const std::string& ifname,
   if (ipv6_address.empty())
     return;
 
+  ipv6_svc_->OnUplinkIPv6Changed(ifname, ipv6_address);
+
   for (auto& [_, nsinfo] : connected_namespaces_) {
     if (nsinfo.outbound_ifname != ifname) {
       continue;

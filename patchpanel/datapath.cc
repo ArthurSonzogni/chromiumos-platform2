@@ -152,9 +152,13 @@ void Datapath::Start() {
                << " apps may not work correctly.";
   }
 
-  // Enable IPv6 packet forwarding
+  // Enable IPv6 packet forwarding and cross-interface proxying
   if (!system_->SysNetSet(System::SysNet::IPv6Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
+               << " IPv6 functionality may be broken.";
+  }
+  if (!system_->SysNetSet(System::SysNet::IPv6ProxyNDP, "1")) {
+    LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
   }
 
@@ -1430,21 +1434,38 @@ bool Datapath::MaskInterfaceFlags(const std::string& ifname,
 
 bool Datapath::AddIPv6HostRoute(const std::string& ifname,
                                 const std::string& ipv6_addr,
-                                int ipv6_prefix_len) {
+                                int ipv6_prefix_len,
+                                const std::string& src_addr) {
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  return process_runner_->ip6("route", "replace",
-                              {ipv6_addr_cidr, "dev", ifname}) == 0;
+  if (src_addr != "") {
+    return process_runner_->ip6(
+               "route", "replace",
+               {ipv6_addr_cidr, "dev", ifname, "src", src_addr}) == 0;
+  } else {
+    return process_runner_->ip6("route", "replace",
+                                {ipv6_addr_cidr, "dev", ifname}) == 0;
+  }
 }
 
-void Datapath::RemoveIPv6HostRoute(const std::string& ifname,
-                                   const std::string& ipv6_addr,
+void Datapath::RemoveIPv6HostRoute(const std::string& ipv6_addr,
                                    int ipv6_prefix_len) {
   std::string ipv6_addr_cidr =
       ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
 
-  process_runner_->ip6("route", "del", {ipv6_addr_cidr, "dev", ifname});
+  process_runner_->ip6("route", "del", {ipv6_addr_cidr});
+}
+
+bool Datapath::AddIPv6NeighborProxy(const std::string& ifname,
+                                    const std::string& ipv6_addr) {
+  return process_runner_->ip6("neighbor", "add",
+                              {"proxy", ipv6_addr, "dev", ifname}) == 0;
+}
+
+void Datapath::RemoveIPv6NeighborProxy(const std::string& ifname,
+                                       const std::string& ipv6_addr) {
+  process_runner_->ip6("neighbor", "del", {"proxy", ipv6_addr, "dev", ifname});
 }
 
 bool Datapath::AddIPv6Address(const std::string& ifname,

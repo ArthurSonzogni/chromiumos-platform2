@@ -45,6 +45,8 @@ class System {
     ConntrackHelper,
     // Used for modifying "net.ipv6.conf.all.disable_ipv6"
     IPv6Disable,
+    // Used for modifying "net.ipv6.conf.all.proxy_ndp"
+    IPv6ProxyNDP,
   };
 
   System() = default;

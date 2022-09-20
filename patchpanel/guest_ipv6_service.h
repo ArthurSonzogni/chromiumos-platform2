@@ -47,6 +47,9 @@ class GuestIPv6Service {
 
   void StopUplink(const std::string& ifname_uplink);
 
+  void OnUplinkIPv6Changed(const std::string& ifname,
+                           const std::string& ipv6_address);
+
   // For local hotspot there is no uplink. We need to first start the RA
   // server on the tethering link with the provided prefix info.
   // StartForwarding() is still expected to be called among this link and
@@ -78,9 +81,10 @@ class GuestIPv6Service {
   // address to guest-facing interface.
   void OnNDProxyMessage(const FeedbackMessage& msg);
 
-  void OnRouterDetected(const std::string& ifname_uplink,
-                        const in6_addr& prefix,
-                        int prefix_len);
+  // Helper functions to find corresponding uplink interface for a downlink and
+  // all downlink interfaces for an uplink.
+  std::optional<std::string> DownlinkToUplink(const std::string& downlink);
+  const std::set<std::string>& UplinkToDownlinks(const std::string& uplink);
 
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
   SubprocessController* nd_proxy_;
@@ -90,14 +94,19 @@ class GuestIPv6Service {
   ShillClient* shill_client_;
 
   std::vector<ForwardEntry> forward_record_;
+
   // We cache the if_ids of netdevices when start forwarding to ensure that the
   // same ones are used when stop forwarding. Note that it is possible that the
   // netdevice is already no longer available when we received the StopUplink()
   // call.
   std::map<std::string, int32_t> if_cache_;
 
-  // Map from downlink ifname to eui address we assigned
-  std::map<std::string, std::string> downlink_addrs;
+  // Uplink ifname -> the IPv6 address on that uplink, read from shill.
+  std::map<std::string, std::string> uplink_ips_;
+
+  // The IP address of neighbors discovered on each downlink. This information
+  // is used to add /128 routes to those downlinks.
+  std::map<std::string, std::set<std::string>> downstream_neighbors_;
 
   base::WeakPtrFactory<GuestIPv6Service> weak_factory_{this};
 };

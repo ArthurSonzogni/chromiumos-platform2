@@ -143,8 +143,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                               provider.ConsumeIntegral<uint16_t>());
   datapath.AddIPv6HostRoute(ifname, ipv6_addr_str,
                             static_cast<int>(prefix_len));
-  datapath.RemoveIPv6HostRoute(ifname, ipv6_addr_str,
-                               static_cast<int>(prefix_len));
+  datapath.RemoveIPv6HostRoute(ipv6_addr_str, static_cast<int>(prefix_len));
   datapath.AddIPv6Address(ifname, ipv6_addr_str);
   datapath.RemoveIPv6Address(ifname, ipv6_addr_str);
 

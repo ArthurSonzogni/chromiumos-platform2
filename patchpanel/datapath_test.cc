@@ -281,6 +281,7 @@ TEST(DatapathTest, Start) {
   EXPECT_CALL(system,
               SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103", ""));
   EXPECT_CALL(system, SysNetSet(System::SysNet::IPv6Forward, "1", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv6ProxyNDP, "1", ""));
 
   static struct {
     IpFamily family;

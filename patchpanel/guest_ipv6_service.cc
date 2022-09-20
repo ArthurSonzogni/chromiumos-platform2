@@ -7,6 +7,7 @@
 #include <net/ethernet.h>
 #include <netinet/in.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -40,23 +41,6 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     default:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
-}
-
-bool GetLocalMac(const std::string& ifname, MacAddress* mac_addr) {
-  auto fd = base::ScopedFD(socket(AF_INET6, SOCK_DGRAM, 0));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "socket() failed for dummy socket";
-    return false;
-  }
-  ifreq ifr = {};
-  base::strlcpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-
-  if (ioctl(fd.get(), SIOCGIFHWADDR, &ifr) < 0) {
-    PLOG(ERROR) << "ioctl() failed to get MAC address on interface " << ifname;
-    return false;
-  }
-  memcpy(mac_addr->data(), ifr.ifr_addr.sa_data, ETHER_ADDR_LEN);
-  return true;
 }
 
 }  // namespace
@@ -154,6 +138,16 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                          if_id_downlink2);
     }
   }
+
+  // Allow IPv6 address on uplink to be resolvable on the downlink
+  if (uplink_ips_[ifname_uplink] != "") {
+    if (!datapath_->AddIPv6NeighborProxy(ifname_downlink,
+                                         uplink_ips_[ifname_uplink])) {
+      LOG(WARNING) << "Failed to setup the IPv6 neighbor: "
+                   << uplink_ips_[ifname_uplink] << " proxy on dev "
+                   << ifname_downlink;
+    }
+  }
 }
 
 void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
@@ -187,11 +181,16 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
     }
   }
 
-  std::string downlink_addr = downlink_addrs[ifname_downlink];
-  if (!downlink_addr.empty()) {
-    datapath_->RemoveIPv6Address(ifname_downlink, downlink_addr);
+  // Remove ip neigh proxy entry
+  if (uplink_ips_[ifname_uplink] != "") {
+    datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
+                                       uplink_ips_[ifname_uplink]);
   }
-  downlink_addrs.erase(ifname_downlink);
+  // Remove downlink /128 routes
+  for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+    datapath_->RemoveIPv6HostRoute(neighbor_ip, 128);
+  }
+  downstream_neighbors_[ifname_downlink].clear();
 
   it->downstream_ifnames.erase(ifname_downlink);
   if (it->downstream_ifnames.empty()) {
@@ -214,12 +213,6 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
   for (const auto& ifname_downlink : it->downstream_ifnames) {
     SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
                        if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
-
-    std::string downlink_addr = downlink_addrs[ifname_downlink];
-    if (!downlink_addr.empty()) {
-      datapath_->RemoveIPv6Address(ifname_downlink, downlink_addr);
-    }
-    downlink_addrs.erase(ifname_downlink);
   }
 
   // Remove proxying between all downlink pairs in the forward group.
@@ -231,7 +224,60 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     }
   }
 
+  for (const auto& ifname_downlink : it->downstream_ifnames) {
+    // Remove ip neigh proxy entry
+    if (uplink_ips_[ifname_uplink] != "") {
+      datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
+                                         uplink_ips_[ifname_uplink]);
+    }
+    // Remove downlink /128 routes
+    for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+      datapath_->RemoveIPv6HostRoute(neighbor_ip, 128);
+    }
+    downstream_neighbors_[ifname_downlink].clear();
+  }
+
   forward_record_.erase(it);
+}
+
+void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
+                                           const std::string& uplink_ip) {
+  VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {" << uplink_ips_[ifname]
+          << "} to {" << uplink_ip << "}";
+  if (uplink_ips_[ifname] == uplink_ip) {
+    return;
+  }
+
+  // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
+  // certain so the `ip neigh proxy` and /128 route changes need to be handled
+  // in both code paths. When an uplink is newly connected to, StartForwarding()
+  // get called first and then we received OnUplinkIPv6Changed() when uplink get
+  // an IPv6 address. When default network switches to an existing uplink,
+  // StartForwarding() is after OnUplinkIPv6Changed() (which was already called
+  // when it was not default yet).
+  for (const auto& ifname_downlink : UplinkToDownlinks(ifname)) {
+    // Update ip neigh proxy entries
+    if (uplink_ips_[ifname] != "") {
+      datapath_->RemoveIPv6NeighborProxy(ifname_downlink, uplink_ips_[ifname]);
+    }
+    if (uplink_ip != "") {
+      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, uplink_ip)) {
+        LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << uplink_ip
+                     << " proxy on dev " << ifname_downlink;
+      }
+    }
+
+    // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
+    // route replace` so we don't need to remove the old one first.
+    for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+      if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip, 128, uplink_ip)) {
+        LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
+                     << " dev " << ifname << " src " << uplink_ip;
+      }
+    }
+  }
+
+  uplink_ips_[ifname] = uplink_ip;
 }
 
 void GuestIPv6Service::StartLocalHotspot(
@@ -276,23 +322,32 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   const NDProxySignalMessage& msg = fm.ndproxy_signal();
   if (msg.has_neighbor_detected_signal()) {
     const auto& inner_msg = msg.neighbor_detected_signal();
-    std::string ifname = IfIndextoname(inner_msg.if_id());
     in6_addr ip;
     memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
     std::string ip6_str = IPv6AddressToString(ip);
-    if (!datapath_->AddIPv6HostRoute(ifname, ip6_str, 128)) {
-      LOG(WARNING) << "Failed to setup the IPv6 route: " << ip6_str << " to "
-                   << ifname;
+    std::string ifname = IfIndextoname(inner_msg.if_id());
+    downstream_neighbors_[ifname].insert(ip6_str);
+
+    const auto& uplink = DownlinkToUplink(ifname);
+    if (!uplink) {
+      LOG(WARNING) << "OnNeighborDetectedSignal: " << ifname << ", neighbor IP "
+                   << ip6_str << ", no corresponding uplink";
+      return;
+    } else {
+      VLOG(3) << "OnNeighborDetectedSignal: " << ifname << ", neighbor IP "
+              << ip6_str << ", corresponding uplink " << uplink.value() << "["
+              << uplink_ips_[uplink.value()] << "]";
+    }
+    if (!datapath_->AddIPv6HostRoute(ifname, ip6_str, 128,
+                                     uplink_ips_[uplink.value()])) {
+      LOG(WARNING) << "Failed to setup the IPv6 route: " << ip6_str << " dev "
+                   << ifname << " src " << uplink_ips_[uplink.value()];
     }
     return;
   }
 
   if (msg.has_router_detected_signal()) {
-    const auto& inner_msg = msg.router_detected_signal();
-    std::string ifname = IfIndextoname(inner_msg.if_id());
-    in6_addr ip;
-    memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
-    OnRouterDetected(ifname, ip, inner_msg.prefix_len());
+    // This event is currently not used.
     return;
   }
 
@@ -300,46 +355,26 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   NOTREACHED();
 }
 
-void GuestIPv6Service::OnRouterDetected(const std::string& ifname_uplink,
-                                        const in6_addr& prefix,
-                                        int prefix_len) {
-  if (prefix_len > 64) {
-    LOG(WARNING) << "Router announced " << IPv6AddressToString(prefix) << "/"
-                 << prefix_len << " which is smaller than a /64.";
-    return;
+std::optional<std::string> GuestIPv6Service::DownlinkToUplink(
+    const std::string& downlink) {
+  std::vector<ForwardEntry>::iterator it;
+  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
+    if (it->downstream_ifnames.find(downlink) != it->downstream_ifnames.end())
+      return it->upstream_ifname;
   }
+  return std::nullopt;
+}
+
+const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
+    const std::string& uplink) {
+  static std::set<std::string> empty_set;
 
   std::vector<ForwardEntry>::iterator it;
   for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
+    if (it->upstream_ifname == uplink)
+      return it->downstream_ifnames;
   }
-  if (it == forward_record_.end())
-    return;
-
-  // Add an EUI64 address onto every downlink. This address will be used when
-  // directly communicating with the downstream guest.
-  for (const auto& ifname_downlink : it->downstream_ifnames) {
-    const std::string& current_downlink_addr = downlink_addrs[ifname_downlink];
-    MacAddress local_mac;
-    if (!GetLocalMac(ifname_downlink, &local_mac)) {
-      continue;
-    }
-    in6_addr eui64_ip;
-    GenerateEUI64Address(&eui64_ip, prefix, local_mac);
-    std::string eui64_ip_str = IPv6AddressToString(eui64_ip);
-    if (current_downlink_addr == eui64_ip_str) {
-      continue;
-    }
-    if (!current_downlink_addr.empty()) {
-      datapath_->RemoveIPv6Address(ifname_downlink, current_downlink_addr);
-    }
-    if (!datapath_->AddIPv6Address(ifname_downlink, eui64_ip_str)) {
-      LOG(WARNING) << "Failed to setup the IPv6 address for interface "
-                   << ifname_downlink << ", addr " << eui64_ip_str;
-    }
-    downlink_addrs[ifname_downlink] = eui64_ip_str;
-  }
+  return empty_set;
 }
 
 }  // namespace patchpanel
