@@ -107,14 +107,17 @@ bool FilterNone(const std::string&) {
   return true;
 }
 
-bool DumpDirectory(const DirAdder& entry) {
+bool DumpDirectory(const DirAdder& entry, bool one_filesystem) {
   std::vector<std::string> duArgv{"du", "--human-readable", "--total",
-                                  "--summarize", "--one-file-system"};
+                                  "--summarize"};
+
+  if (one_filesystem)
+    duArgv.push_back("--one-file-system");
 
   auto argCount = duArgv.size();
 
   if (!entry.AppendDirEntries(&duArgv)) {
-    LOG(ERROR) << "Failed to generate directory list for: " << entry.GetPath();
+    DLOG(ERROR) << "Failed to generate directory list for: " << entry.GetPath();
     return false;
   }
 
@@ -126,7 +129,7 @@ bool DumpDirectory(const DirAdder& entry) {
   // Get the output of du.
   std::string output;
   if (!base::GetAppOutputAndError(base::CommandLine(duArgv), &output)) {
-    LOG(ERROR) << "Failed to generate directory dump for: " << entry.GetPath();
+    DLOG(ERROR) << "Failed to generate directory dump for: " << entry.GetPath();
     return false;
   }
 
@@ -145,27 +148,6 @@ bool DumpDirectory(const DirAdder& entry) {
   std::cout << output;
 
   return true;
-}
-
-const DirAdder kSystemDirs[]{
-    {"/home/chronos/", FilterUserDirs, false},
-    {"/home/.shadow/", FilterUserDirs, false},
-    {"/mnt/stateful_partition/", FilterStateful, false},
-    {"/mnt/stateful_partition/encrypted/", FilterEncrypted, false},
-    {"/run/", FilterNone, true},
-    {"/tmp/", FilterNone, true},
-    {"/var/", FilterNone, true},
-};
-
-bool DumpSystemDirectories() {
-  bool result = true;
-  for (const auto& entry : kSystemDirs) {
-    if (!DumpDirectory(entry)) {
-      result = false;
-    }
-  }
-
-  return result;
 }
 
 bool DumpDaemonStore() {
@@ -201,7 +183,8 @@ bool DumpDaemonStore() {
 
   for (const auto& entry : deamonPaths) {
     // Ignore errors for unmounted users.
-    DumpDirectory(DirAdder(entry.c_str(), FilterNone, true));
+    DumpDirectory(DirAdder(entry.c_str(), FilterNone, true),
+                  /* one_filesystem=*/false);
   }
 
   return result;
@@ -230,7 +213,7 @@ uint64_t ObfuscateSize(uint64_t size) {
 // Only prints information at the MiB level.
 // For individual user directories only the 2 most significant bits of the
 // value are kept. We are only interested in the distribution of data.
-bool DumpUserFolders() {
+bool DumpUserFolders(bool aggregate_only) {
   const DirAdder shadowAdder(kShadowPath, FilterNonUserDirs, true);
 
   std::vector<std::string> paths;
@@ -258,13 +241,46 @@ bool DumpUserFolders() {
   // Convert to MiB.
   sum /= 1024 * 1024;
 
-  for (int i = 0; i < results.size(); i++) {
-    std::cout << i << ": " << results[i] << " MiB" << std::endl;
+  if (!aggregate_only) {
+    for (int i = 0; i < results.size(); i++) {
+      std::cout << i << ": " << results[i] << " MiB" << std::endl;
+    }
   }
 
   std::cout << "Sum: " << sum << " MiB" << std::endl;
 
   return true;
+}
+
+const DirAdder kSystemDirs[]{
+    {"/home/chronos/", FilterUserDirs, false},
+    {"/home/.shadow/", FilterUserDirs, false},
+    {"/mnt/stateful_partition/", FilterStateful, false},
+    {"/mnt/stateful_partition/encrypted/", FilterEncrypted, false},
+    {"/run/", FilterNone, true},
+    {"/tmp/", FilterNone, true},
+    {"/var/", FilterNone, true},
+};
+
+bool DumpSystemDirectories() {
+  bool result = true;
+  for (const auto& entry : kSystemDirs) {
+    if (!DumpDirectory(entry, /* one_filesystem=*/true)) {
+      result = false;
+    }
+  }
+
+  std::cout << "--- Daemon store ---" << std::endl;
+  if (!DumpDaemonStore()) {
+    result = false;
+  }
+
+  std::cout << "--- Other users (aggregate) ---" << std::endl;
+  if (!DumpUserFolders(/* aggregate_only=*/true)) {
+    result = false;
+  }
+
+  return result;
 }
 
 const DirAdder kUserDir("/home/chronos/user/", FilterNone, true);
@@ -278,12 +294,12 @@ bool DumpUserDirectories() {
   }
 
   std::cout << "--- User directory ---" << std::endl;
-  if (!DumpDirectory(kUserDir)) {
+  if (!DumpDirectory(kUserDir, /* one_filesystem=*/false)) {
     result = false;
   }
 
   std::cout << "--- Other users ---" << std::endl;
-  if (!DumpUserFolders()) {
+  if (!DumpUserFolders(/* aggregate_only=*/false)) {
     result = false;
   }
 
