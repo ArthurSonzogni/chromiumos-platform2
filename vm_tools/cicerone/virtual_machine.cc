@@ -799,6 +799,10 @@ VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
     std::string* out_error) {
   DCHECK(container);
   DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::UpgradeContainerStatus::FAILED;
+  }
 
   vm_tools::tremplin::UpgradeContainerRequest request;
   vm_tools::tremplin::UpgradeContainerResponse response;
@@ -1031,6 +1035,11 @@ VirtualMachine::UpdateContainerDevices(
 VirtualMachine::StartLxdStatus VirtualMachine::StartLxd(
     bool reset_lxd_db, std::string* out_error) {
   DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::StartLxdStatus::FAILED;
+  }
+
   vm_tools::tremplin::StartLxdRequest request;
   vm_tools::tremplin::StartLxdResponse response;
 
