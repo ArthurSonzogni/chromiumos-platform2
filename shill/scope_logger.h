@@ -64,11 +64,11 @@ class ScopeLogger {
   // Returns a singleton of this class.
   static ScopeLogger* GetInstance();
 
-  ~ScopeLogger();
-
   // Returns true if logging is enabled for |scope| and |verbose_level|, i.e.
   // scope_enable_[|scope|] is true and |verbose_level| <= |verbose_level_|
-  bool IsLogEnabled(Scope scope, int verbose_level) const;
+  static bool IsLogEnabled(Scope scope, int verbose_level);
+
+  ~ScopeLogger();
 
   // Returns true if logging is enabled for |scope| at any verbosity level.
   bool IsScopeEnabled(Scope scope) const;

@@ -36,21 +36,21 @@
 
 #define GET_MACRO_OVERLOAD2(arg1, arg2, macro_name, ...) macro_name
 
-#define SLOG_IS_ON(scope, verbose_level)             \
-  ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
-      ::shill::ScopeLogger::k##scope, verbose_level)
+#define SLOG_IS_ON(scope, verbose_level)                             \
+  ::shill::ScopeLogger::IsLogEnabled(::shill::ScopeLogger::k##scope, \
+                                     verbose_level)
 
 #define SLOG_STREAM(verbose_level) \
   ::logging::LogMessage(__FILE__, __LINE__, -verbose_level).stream()
 
-#define SLOG_1ARG(verbose_level)                                 \
-  LAZY_STREAM(SLOG_STREAM(verbose_level),                        \
-              ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
+#define SLOG_1ARG(verbose_level)                  \
+  LAZY_STREAM(SLOG_STREAM(verbose_level),         \
+              ::shill::ScopeLogger::IsLogEnabled( \
                   ::shill::Logging::kModuleLogScope, verbose_level))
 
 #define SLOG_2ARG(object, verbose_level)                             \
   LAZY_STREAM(SLOG_STREAM(verbose_level),                            \
-              ::shill::ScopeLogger::GetInstance()->IsLogEnabled(     \
+              ::shill::ScopeLogger::IsLogEnabled(                    \
                   ::shill::Logging::kModuleLogScope, verbose_level)) \
       << (object ? ::shill::Logging::ObjectID(object) : "(anon)") << " "
 

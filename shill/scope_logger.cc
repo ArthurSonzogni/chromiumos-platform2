@@ -42,13 +42,16 @@ ScopeLogger* ScopeLogger::GetInstance() {
   return instance.get();
 }
 
+// static
+bool ScopeLogger::IsLogEnabled(Scope scope, int verbose_level) {
+  auto* logger = GetInstance();
+  return logger->IsScopeEnabled(scope) &&
+         verbose_level <= logger->verbose_level_;
+}
+
 ScopeLogger::ScopeLogger() : verbose_level_(kDefaultVerboseLevel) {}
 
 ScopeLogger::~ScopeLogger() {}
-
-bool ScopeLogger::IsLogEnabled(Scope scope, int verbose_level) const {
-  return IsScopeEnabled(scope) && verbose_level <= verbose_level_;
-}
 
 bool ScopeLogger::IsScopeEnabled(Scope scope) const {
   CHECK_GE(scope, 0);
