@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
 
 namespace faced {
@@ -23,15 +23,15 @@ namespace faced {
 // performed during enrollment.
 class EnrollmentSession
     : public SessionInterface,
-      public chromeos::face_auth::mojom::FaceEnrollmentSession {
+      public chromeos::faceauth::mojom::FaceEnrollmentSession {
  public:
   static absl::StatusOr<std::unique_ptr<EnrollmentSession>> Create(
       absl::BitGen& bitgen,
-      mojo::PendingReceiver<chromeos::face_auth::mojom::FaceEnrollmentSession>
+      mojo::PendingReceiver<chromeos::faceauth::mojom::FaceEnrollmentSession>
           receiver,
       mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate,
-      chromeos::face_auth::mojom::EnrollmentSessionConfigPtr config);
+          chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
+      chromeos::faceauth::mojom::EnrollmentSessionConfigPtr config);
 
   ~EnrollmentSession() override = default;
 
@@ -47,9 +47,9 @@ class EnrollmentSession
   // Notify FaceEnrollmentSessionDelegate of enrollment state changes.
   //
   // Notify of enrollment progress.
-  void NotifyUpdate(chromeos::face_auth::mojom::FaceOperationStatus status);
+  void NotifyUpdate(chromeos::faceauth::mojom::FaceOperationStatus status);
   // Notify of completed enrollment and close the connection.
-  void NotifyComplete(chromeos::face_auth::mojom::FaceOperationStatus status);
+  void NotifyComplete(chromeos::faceauth::mojom::FaceOperationStatus status);
   // Notify of cancelled enrollment and close the connection.
   void NotifyCancelled();
   // Notify of unrecoverable error and close the connection.
@@ -58,10 +58,10 @@ class EnrollmentSession
  private:
   EnrollmentSession(
       uint64_t session_id,
-      mojo::PendingReceiver<chromeos::face_auth::mojom::FaceEnrollmentSession>
+      mojo::PendingReceiver<chromeos::faceauth::mojom::FaceEnrollmentSession>
           receiver,
       mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate);
+          chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate);
 
   // Handle the disconnection of the session receiver.
   void OnSessionDisconnect();
@@ -69,8 +69,8 @@ class EnrollmentSession
   void OnDelegateDisconnect();
 
   int64_t session_id_;
-  mojo::Receiver<chromeos::face_auth::mojom::FaceEnrollmentSession> receiver_;
-  mojo::Remote<chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate>
+  mojo::Receiver<chromeos::faceauth::mojom::FaceEnrollmentSession> receiver_;
+  mojo::Remote<chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate>
       delegate_;
 
   DisconnectCallback disconnect_callback_;

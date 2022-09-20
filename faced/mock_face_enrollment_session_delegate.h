@@ -7,28 +7,27 @@
 
 #include <gmock/gmock.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
 class MockFaceEnrollmentSessionDelegate
-    : public chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate {
+    : public chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate {
  public:
   MOCK_METHOD(void,
               OnEnrollmentUpdate,
-              (chromeos::face_auth::mojom::EnrollmentUpdateMessagePtr message),
+              (chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr message),
               (override));
 
-  MOCK_METHOD(
-      void,
-      OnEnrollmentComplete,
-      (chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr message),
-      (override));
+  MOCK_METHOD(void,
+              OnEnrollmentComplete,
+              (chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr message),
+              (override));
 
   MOCK_METHOD(void, OnEnrollmentCancelled, (), (override));
   MOCK_METHOD(void,
               OnEnrollmentError,
-              (chromeos::face_auth::mojom::SessionError error),
+              (chromeos::faceauth::mojom::SessionError error),
               (override));
 };
 

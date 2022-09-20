@@ -11,7 +11,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
 
 namespace faced {
@@ -20,7 +20,7 @@ namespace faced {
 //
 // Creates and manages enrollment and authentication sessions.
 class FaceAuthServiceImpl
-    : public chromeos::face_auth::mojom::FaceAuthenticationService {
+    : public chromeos::faceauth::mojom::FaceAuthenticationService {
  public:
   using DisconnectionCallback = base::OnceCallback<void()>;
 
@@ -36,19 +36,19 @@ class FaceAuthServiceImpl
 
   // `FaceAuthenticationService` implementation.
   void CreateEnrollmentSession(
-      chromeos::face_auth::mojom::EnrollmentSessionConfigPtr config,
-      mojo::PendingReceiver<chromeos::face_auth::mojom::FaceEnrollmentSession>
+      chromeos::faceauth::mojom::EnrollmentSessionConfigPtr config,
+      mojo::PendingReceiver<chromeos::faceauth::mojom::FaceEnrollmentSession>
           receiver,
       mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate> delegate,
+          chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
       CreateEnrollmentSessionCallback callback) override;
 
   void CreateAuthenticationSession(
-      chromeos::face_auth::mojom::AuthenticationSessionConfigPtr config,
+      chromeos::faceauth::mojom::AuthenticationSessionConfigPtr config,
       mojo::PendingReceiver<
-          chromeos::face_auth::mojom::FaceAuthenticationSession> receiver,
+          chromeos::faceauth::mojom::FaceAuthenticationSession> receiver,
       mojo::PendingRemote<
-          chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate>
+          chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate>
           delegate,
       CreateAuthenticationSessionCallback callback) override;
 
@@ -58,7 +58,7 @@ class FaceAuthServiceImpl
   // Handle the disconnection of the receiver.
   void HandleDisconnect(base::OnceClosure callback);
 
-  mojo::Receiver<chromeos::face_auth::mojom::FaceAuthenticationService>
+  mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationService>
       receiver_;
 
   absl::BitGen bitgen_;

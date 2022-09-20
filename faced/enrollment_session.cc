@@ -14,18 +14,18 @@
 #include <base/location.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
-using ::chromeos::face_auth::mojom::EnrollmentCompleteMessage;
-using ::chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr;
-using ::chromeos::face_auth::mojom::EnrollmentSessionConfigPtr;
-using ::chromeos::face_auth::mojom::EnrollmentUpdateMessage;
-using ::chromeos::face_auth::mojom::EnrollmentUpdateMessagePtr;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceOperationStatus;
-using ::chromeos::face_auth::mojom::SessionError;
+using ::chromeos::faceauth::mojom::EnrollmentCompleteMessage;
+using ::chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::EnrollmentSessionConfigPtr;
+using ::chromeos::faceauth::mojom::EnrollmentUpdateMessage;
+using ::chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::FaceOperationStatus;
+using ::chromeos::faceauth::mojom::SessionError;
 
 absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
     absl::BitGen& bitgen,

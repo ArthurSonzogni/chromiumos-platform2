@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-module chromeos.face_auth.mojom;
+module chromeos.faceauth.mojom;
 
 // The top-level interface exported by the Face Authentication Daemon to
 // provide face authentication services to the rest of the system.

@@ -13,7 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/public/cpp/system/invitation.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
@@ -76,7 +76,7 @@ void FaceAuthService::SetupMojoPipeOnThread(
 
   service_ = std::make_unique<FaceAuthServiceImpl>(
       mojo::PendingReceiver<
-          chromeos::face_auth::mojom::FaceAuthenticationService>(
+          chromeos::faceauth::mojom::FaceAuthenticationService>(
           std::move(mojo_pipe_handle)),
       base::BindOnce(&FaceAuthService::OnConnectionError,
                      base::Unretained(this)));

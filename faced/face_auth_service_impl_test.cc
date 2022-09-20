@@ -21,7 +21,7 @@
 #include "faced/face_auth_service_impl.h"
 #include "faced/mock_face_authentication_session_delegate.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
@@ -33,21 +33,21 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::StrictMock;
 
-using ::chromeos::face_auth::mojom::AuthenticationCompleteMessagePtr;
-using ::chromeos::face_auth::mojom::AuthenticationSessionConfig;
-using ::chromeos::face_auth::mojom::AuthenticationUpdateMessagePtr;
-using ::chromeos::face_auth::mojom::CreateSessionResultPtr;
-using ::chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr;
-using ::chromeos::face_auth::mojom::EnrollmentSessionConfig;
-using ::chromeos::face_auth::mojom::EnrollmentUpdateMessagePtr;
-using ::chromeos::face_auth::mojom::FaceAuthenticationService;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSession;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSession;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
-using ::chromeos::face_auth::mojom::SessionCreationError;
-using ::chromeos::face_auth::mojom::SessionError;
-using ::chromeos::face_auth::mojom::SessionInfo;
+using ::chromeos::faceauth::mojom::AuthenticationCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::AuthenticationSessionConfig;
+using ::chromeos::faceauth::mojom::AuthenticationUpdateMessagePtr;
+using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
+using ::chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
+using ::chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr;
+using ::chromeos::faceauth::mojom::FaceAuthenticationService;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::SessionCreationError;
+using ::chromeos::faceauth::mojom::SessionError;
+using ::chromeos::faceauth::mojom::SessionInfo;
 
 using ::brillo::cryptohome::home::SanitizeUserName;
 

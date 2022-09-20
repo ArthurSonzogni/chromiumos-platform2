@@ -14,21 +14,21 @@
 #include <base/location.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
-using ::chromeos::face_auth::mojom::AuthenticationCompleteMessage;
-using ::chromeos::face_auth::mojom::AuthenticationCompleteMessagePtr;
-using ::chromeos::face_auth::mojom::AuthenticationSessionConfigPtr;
-using ::chromeos::face_auth::mojom::AuthenticationUpdateMessage;
-using ::chromeos::face_auth::mojom::AuthenticationUpdateMessagePtr;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSession;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceOperationStatus;
-using ::chromeos::face_auth::mojom::SessionCreationError;
-using ::chromeos::face_auth::mojom::SessionError;
-using ::chromeos::face_auth::mojom::SessionInfo;
+using ::chromeos::faceauth::mojom::AuthenticationCompleteMessage;
+using ::chromeos::faceauth::mojom::AuthenticationCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::AuthenticationSessionConfigPtr;
+using ::chromeos::faceauth::mojom::AuthenticationUpdateMessage;
+using ::chromeos::faceauth::mojom::AuthenticationUpdateMessagePtr;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;
+using ::chromeos::faceauth::mojom::FaceOperationStatus;
+using ::chromeos::faceauth::mojom::SessionCreationError;
+using ::chromeos::faceauth::mojom::SessionError;
+using ::chromeos::faceauth::mojom::SessionInfo;
 
 absl::StatusOr<std::unique_ptr<AuthenticationSession>>
 AuthenticationSession::Create(

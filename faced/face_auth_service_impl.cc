@@ -14,16 +14,16 @@
 
 namespace faced {
 
-using ::chromeos::face_auth::mojom::AuthenticationSessionConfigPtr;
-using ::chromeos::face_auth::mojom::CreateSessionResult;
-using ::chromeos::face_auth::mojom::CreateSessionResultPtr;
-using ::chromeos::face_auth::mojom::EnrollmentSessionConfigPtr;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSession;
-using ::chromeos::face_auth::mojom::FaceAuthenticationSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSession;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
-using ::chromeos::face_auth::mojom::SessionCreationError;
-using ::chromeos::face_auth::mojom::SessionInfo;
+using ::chromeos::faceauth::mojom::AuthenticationSessionConfigPtr;
+using ::chromeos::faceauth::mojom::CreateSessionResult;
+using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
+using ::chromeos::faceauth::mojom::EnrollmentSessionConfigPtr;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
+using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::SessionCreationError;
+using ::chromeos::faceauth::mojom::SessionInfo;
 
 FaceAuthServiceImpl::FaceAuthServiceImpl(
     mojo::PendingReceiver<FaceAuthenticationService> receiver,

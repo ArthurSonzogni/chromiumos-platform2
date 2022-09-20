@@ -20,7 +20,7 @@
 
 #include "faced/enrollment_session.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
-#include "faced/mojom/face_auth.mojom.h"
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
@@ -32,12 +32,12 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::StrictMock;
 
-using ::chromeos::face_auth::mojom::EnrollmentCompleteMessagePtr;
-using ::chromeos::face_auth::mojom::EnrollmentSessionConfig;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSession;
-using ::chromeos::face_auth::mojom::FaceEnrollmentSessionDelegate;
-using ::chromeos::face_auth::mojom::FaceOperationStatus;
-using ::chromeos::face_auth::mojom::SessionError;
+using ::chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
+using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::FaceOperationStatus;
+using ::chromeos::faceauth::mojom::SessionError;
 
 using ::brillo::cryptohome::home::SanitizeUserName;
 
