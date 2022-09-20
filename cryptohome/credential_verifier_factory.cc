@@ -26,6 +26,7 @@ bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type) {
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
     case AuthFactorType::kSmartCard:
+    case AuthFactorType::kLegacyFingerprint:
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -54,6 +55,7 @@ std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
     case AuthFactorType::kSmartCard:
+    case AuthFactorType::kLegacyFingerprint:
     case AuthFactorType::kUnspecified: {
       return nullptr;
     }

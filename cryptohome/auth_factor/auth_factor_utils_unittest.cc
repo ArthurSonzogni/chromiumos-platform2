@@ -338,8 +338,9 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kKiosk));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kCryptohomeRecovery));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kSmartCard));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kLegacyFingerprint));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
-  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 5,
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 6,
                 "All types of AuthFactorType are not all included here");
 }
 

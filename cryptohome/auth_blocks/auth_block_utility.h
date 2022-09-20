@@ -20,8 +20,8 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
@@ -56,6 +56,23 @@ class AuthBlockUtility {
       AuthFactorType auth_factor_type,
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const = 0;
+
+  // Given an AuthFactorType, returns a boolean indicating if this factor
+  // supports Verify via VerifyWithAuthFactorAsync. Note that (unlike
+  // IsAuthFactorSupported) this is purely an indicator of software support
+  // being present for a particular factor.
+  virtual bool IsVerifyWithAuthFactorSupported(
+      AuthFactorType auth_factor_type) const = 0;
+
+  // If the verify succeeds, |error| will be ok. Otherwise it will contain an
+  // error describing the nature of the failure.
+  using VerifyCallback = base::OnceCallback<void(CryptohomeStatus error)>;
+
+  // Given an AuthFactorType, attempt to verify the given input against it.
+  // Returns through the asynchronous verify_callback.
+  virtual void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
+                                         const AuthInput& auth_input,
+                                         VerifyCallback callback) = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from

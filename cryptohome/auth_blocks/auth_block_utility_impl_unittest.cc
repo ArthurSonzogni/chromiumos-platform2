@@ -13,9 +13,14 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
@@ -47,6 +52,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -59,16 +65,19 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
+using ::base::test::TestFuture;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::Exactly;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -130,6 +139,11 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 
  protected:
   FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
+
+  base::test::SingleThreadTaskEnvironment task_environment_ = {
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  scoped_refptr<base::SequencedTaskRunner> task_runner_ =
+      base::SequencedTaskRunnerHandle::Get();
 
   MockPlatform platform_;
   MockFingerprintManager fp_manager_;
@@ -211,10 +225,81 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
       {AuthFactorType::kPassword}));
 
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kLegacyFingerprint, AuthFactorStorageType::kVaultKeyset,
+      {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kLegacyFingerprint,
+      AuthFactorStorageType::kUserSecretStash, {}));
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kUnspecified, AuthFactorStorageType::kVaultKeyset, {}));
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kUnspecified, AuthFactorStorageType::kUserSecretStash,
       {}));
+}
+
+TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
+  MakeAuthBlockUtilityImpl();
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kPassword));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kPin));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kCryptohomeRecovery));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kKiosk));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kSmartCard));
+  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kLegacyFingerprint));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthFactorType::kUnspecified));
+}
+
+TEST_F(AuthBlockUtilityImplTest, VerifyPasswordFailure) {
+  MakeAuthBlockUtilityImpl();
+
+  // Run the Verify, it should fail because there's no password implementation.
+  TestFuture<CryptohomeStatus> on_done_result;
+  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
+      AuthFactorType::kPassword, {}, on_done_result.GetCallback());
+  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+}
+
+TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
+  MakeAuthBlockUtilityImpl();
+
+  // Signal a successful auth scan.
+  EXPECT_CALL(fp_manager_, SetAuthScanDoneCallback(_))
+      .WillOnce([](FingerprintManager::ResultCallback callback) {
+        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
+      });
+
+  // Run the Verify and check the result.
+  TestFuture<CryptohomeStatus> on_done_result;
+  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
+      AuthFactorType::kLegacyFingerprint, {}, on_done_result.GetCallback());
+  EXPECT_THAT(on_done_result.Get(), IsOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
+  MakeAuthBlockUtilityImpl();
+
+  // Signal a successful auth scan.
+  EXPECT_CALL(fp_manager_, SetAuthScanDoneCallback(_))
+      .WillOnce([](FingerprintManager::ResultCallback callback) {
+        std::move(callback).Run(
+            FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+      });
+
+  // Run the Verify and check the result.
+  TestFuture<CryptohomeStatus> on_done_result;
+  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
+      AuthFactorType::kLegacyFingerprint, {}, on_done_result.GetCallback());
+  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs

@@ -13,6 +13,7 @@ enum class AuthFactorType {
   kCryptohomeRecovery,
   kKiosk,
   kSmartCard,
+  kLegacyFingerprint,
   kUnspecified,
 };
 

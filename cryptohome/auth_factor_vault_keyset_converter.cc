@@ -92,7 +92,7 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
       return AuthFactorType::kPin;
     case AuthBlockType::kChallengeCredential:
       return AuthFactorType::kSmartCard;
-    case AuthBlockType::kCryptohomeRecovery:   // Never reported by a VK.
+    case AuthBlockType::kCryptohomeRecovery:  // Never reported by a VK.
     case AuthBlockType::kMaxValue:
       return AuthFactorType::kUnspecified;
   }
@@ -243,6 +243,9 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
       challenge_key->set_public_key_spki_der(public_key_string);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
+    case AuthFactorType::kLegacyFingerprint:
+      LOG(ERROR) << "Verify-only fingerprints do not have key data";
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
     case AuthFactorType::kUnspecified:
       LOG(ERROR) << "Unimplemented AuthFactorType.";
       return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;

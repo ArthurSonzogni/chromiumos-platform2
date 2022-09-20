@@ -41,6 +41,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -48,6 +49,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::status::MakeStatus;
@@ -110,8 +112,57 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
       hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
       return is_ready.ok() && is_ready.value();
     }
+    case AuthFactorType::kLegacyFingerprint:
+      return false;
     case AuthFactorType::kUnspecified:
       return false;
+  }
+}
+
+bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
+    AuthFactorType auth_factor_type) const {
+  switch (auth_factor_type) {
+    case AuthFactorType::kLegacyFingerprint:
+      return true;
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified:
+      return false;
+  }
+}
+
+void AuthBlockUtilityImpl::VerifyWithAuthFactorAsync(
+    AuthFactorType auth_factor_type,
+    const AuthInput& auth_input,
+    VerifyCallback callback) {
+  switch (auth_factor_type) {
+    case AuthFactorType::kLegacyFingerprint: {
+      // The auth input does not matter for legacy fingerprint verification.
+      // Just forward the request to the FP auth block service.
+      fp_service_->Verify(std::move(callback));
+      return;
+    }
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified: {
+      // These factors are not supported for verify. Trigger the callback
+      // immediately with an error.
+      CryptohomeStatus status = MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilUnknownUnsupportedInVerifyWithAuthFactor),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+      std::move(callback).Run(std::move(status));
+      return;
+    }
   }
 }
 

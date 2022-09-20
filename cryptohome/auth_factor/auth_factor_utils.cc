@@ -103,6 +103,14 @@ std::optional<user_data_auth::AuthFactor> ToSmartCardProto(
       brillo::BlobToString(metadata.public_key_spki_der));
   return proto;
 }
+
+// Creates a D-Bus proto for a legacy fingerprint auth factor.
+std::optional<user_data_auth::AuthFactor> ToLegacyFingerprintProto() {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  return proto;
+}
+
 }  // namespace
 
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
@@ -117,6 +125,8 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
       return user_data_auth::AUTH_FACTOR_TYPE_KIOSK;
     case AuthFactorType::kSmartCard:
       return user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD;
+    case AuthFactorType::kLegacyFingerprint:
+      return user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT;
     case AuthFactorType::kUnspecified:
       return user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED;
   }
@@ -137,9 +147,8 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
       return AuthFactorType::kKiosk;
     case user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD:
       return AuthFactorType::kSmartCard;
-    // Legacy fingerprint does not produce internal auth factor type.
     case user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT:
-      return AuthFactorType::kUnspecified;
+      return AuthFactorType::kLegacyFingerprint;
     default:
       return std::nullopt;
   }
@@ -230,6 +239,10 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
           &auth_factor_metadata.metadata);
       proto = smart_card_metadata ? ToSmartCardProto(*smart_card_metadata)
                                   : std::nullopt;
+      break;
+    }
+    case AuthFactorType::kLegacyFingerprint: {
+      proto = ToLegacyFingerprintProto();
       break;
     }
     case AuthFactorType::kUnspecified: {

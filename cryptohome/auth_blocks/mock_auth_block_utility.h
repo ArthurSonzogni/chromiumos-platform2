@@ -36,6 +36,16 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthFactorStorageType,
                const std::set<AuthFactorType>&),
               (const, override));
+  MOCK_METHOD(bool,
+              IsVerifyWithAuthFactorSupported,
+              (AuthFactorType),
+              (const, override));
+  MOCK_METHOD(void,
+              VerifyWithAuthFactorAsync,
+              (AuthFactorType auth_factor_type,
+               const AuthInput& auth_input,
+               VerifyCallback callback),
+              (override));
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,

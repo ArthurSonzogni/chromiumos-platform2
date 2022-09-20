@@ -21,7 +21,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
@@ -53,6 +52,13 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthFactorType auth_factor_type,
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
+
+  bool IsVerifyWithAuthFactorSupported(
+      AuthFactorType auth_factor_type) const override;
+
+  void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
+                                 const AuthInput& auth_input,
+                                 VerifyCallback callback) override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
