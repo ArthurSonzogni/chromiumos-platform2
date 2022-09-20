@@ -85,6 +85,9 @@ void PrintUsage() {
   puts("  resetleaf [...] - sends an reset auth command.");
   puts("  getlog [...] - sends an get log command.");
   puts("  replay [...] - sends an log replay command.");
+  puts(
+      "  generate_ba_pk <auth_channel> <public_key.x> <public_key.y> - sends "
+      "a generate ba pk command.");
   puts("  selftest [--protocol=<version>] - runs a self test with the");
   puts("           following commands:");
   puts("  biometrics_selftest - runs a self test for the biometrics pinweaver");
@@ -145,6 +148,20 @@ std::string PwErrorStr(int code) {
       return "PW_ERR_NV_LENGTH_MISMATCH";
     case PW_ERR_NV_VERSION_MISMATCH:
       return "PW_ERR_NV_VERSION_MISMATCH";
+    case PW_ERR_PCR_NOT_MATCH:
+      return "PW_ERR_PCR_NOT_MATCH";
+    case PW_ERR_INTERNAL_FAILURE:
+      return "PW_ERR_INTERNAL_FAILURE";
+    case PW_ERR_EXPIRED:
+      return "PW_ERR_EXPIRED";
+    case PW_ERR_BIO_AUTH_CHANNEL_INVALID:
+      return "PW_ERR_BIO_AUTH_CHANNEL_INVALID";
+    case PW_ERR_BIO_AUTH_PUBLIC_KEY_VERSION_MISMATCH:
+      return "PW_ERR_BIO_AUTH_PUBLIC_KEY_VERSION_MISMATCH";
+    case PW_ERR_BIO_AUTH_ACCESS_DENIED:
+      return "PW_ERR_BIO_AUTH_ACCESS_DENIED";
+    case PW_ERR_BIO_AUTH_PK_NOT_ESTABLISHED:
+      return "PW_ERR_BIO_AUTH_PK_NOT_ESTABLISHED";
     default:
       return "?";
   }
@@ -590,6 +607,61 @@ int HandleReplay(base::CommandLine::StringVector::const_iterator begin,
   outcome.Set("mac", HexEncode(mac_out));
   puts(GetOutcomeJson(outcome).c_str());
   return result;
+}
+
+int HandleGenerateBiometricsAuthPk(
+    base::CommandLine::StringVector::const_iterator begin,
+    base::CommandLine::StringVector::const_iterator end,
+    TrunksFactoryImpl* factory) {
+  uint8_t auth_channel;
+  trunks::PinWeaverEccPoint client_pt;
+  if (end - begin != 3) {
+    puts("Invalid options!");
+    PrintUsage();
+    return EXIT_FAILURE;
+  } else {
+    auth_channel = std::stoul(begin[0]);
+
+    std::vector<uint8_t> bytes;
+    if (!base::HexStringToBytes(begin[1], &bytes) ||
+        bytes.size() != trunks::PinWeaverEccPointSize) {
+      puts("Invalid point!");
+      return EXIT_FAILURE;
+    }
+    memcpy(client_pt.x, bytes.data(), bytes.size());
+
+    bytes.clear();
+    if (!base::HexStringToBytes(begin[2], &bytes) ||
+        bytes.size() != trunks::PinWeaverEccPointSize)
+      return EXIT_FAILURE;
+    memcpy(client_pt.y, bytes.data(), bytes.size());
+  }
+
+  uint32_t result_code = 0;
+  std::string root;
+  trunks::PinWeaverEccPoint server_pt;
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
+  trunks::TPM_RC result = tpm_utility->PinWeaverGenerateBiometricsAuthPk(
+      protocol_version, auth_channel, client_pt, &result_code, &root,
+      &server_pt);
+
+  if (result) {
+    LOG(ERROR) << "PinWeaverGenerateBiometricsAuthPk: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+
+  base::Value::Dict outcome = SetupBaseOutcome(result_code, root);
+  if (result_code == 0) {
+    base::Value::Dict server_public_key;
+    server_public_key.Set(
+        "x", base::HexEncode(server_pt.x, trunks::PinWeaverEccPointSize));
+    server_public_key.Set(
+        "y", base::HexEncode(server_pt.y, trunks::PinWeaverEccPointSize));
+    outcome.Set("server_public_key", std::move(server_public_key));
+  }
+  puts(GetOutcomeJson(outcome).c_str());
+  return 0;
 }
 
 int HandleSelfTest(base::CommandLine::StringVector::const_iterator begin,
@@ -1594,6 +1666,7 @@ int main(int argc, char** argv) {
       {"resetleaf", HandleResetLeaf},
       {"getlog", HandleGetLog},
       {"replay", HandleReplay},
+      {"generate_ba_pk", HandleGenerateBiometricsAuthPk},
       {"selftest", HandleSelfTest},
       {"biometrics_selftest", HandleBiometricsSelfTest},
       // clang-format on
