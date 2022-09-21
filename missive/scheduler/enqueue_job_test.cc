@@ -23,6 +23,7 @@
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
+#include "missive/util/test_util.h"
 
 namespace reporting {
 namespace {
@@ -33,15 +34,6 @@ using ::testing::Invoke;
 using ::testing::NotNull;
 using ::testing::StrEq;
 using ::testing::WithArgs;
-
-MATCHER_P(EqualsProto,
-          message,
-          "Match a proto Message equal to the matcher's argument.") {
-  std::string expected_serialized, actual_serialized;
-  message.SerializeToString(&expected_serialized);
-  arg.SerializeToString(&actual_serialized);
-  return expected_serialized == actual_serialized;
-}
 
 class MockStorageModule : public StorageModuleInterface {
  public:

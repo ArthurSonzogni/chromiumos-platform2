@@ -5,6 +5,7 @@
 #include "missive/missive/missive_impl.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/storage/test_storage_module.h"
 #include "missive/util/test_support_callbacks.h"
+#include "missive/util/test_util.h"
 
 using ::testing::_;
 using ::testing::Eq;
@@ -34,15 +36,6 @@ using ::testing::WithArg;
 
 namespace reporting {
 namespace {
-
-MATCHER_P(EqualsProto,
-          message,
-          "Match a proto Message equal to the matcher's argument.") {
-  std::string expected_serialized, actual_serialized;
-  message.SerializeToString(&expected_serialized);
-  arg.SerializeToString(&actual_serialized);
-  return expected_serialized == actual_serialized;
-}
 
 class MissiveImplTest : public ::testing::Test {
  public:
