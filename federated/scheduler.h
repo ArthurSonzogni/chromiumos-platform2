@@ -30,13 +30,14 @@ class Scheduler {
   Scheduler(const Scheduler&) = delete;
   Scheduler& operator=(const Scheduler&) = delete;
   // TODO(alanlxl): create a destructor or finalize method that deletes examples
-  //                from the database.
-  ~Scheduler() = default;
+  // from the database.
+  virtual ~Scheduler() = default;
 
+  // virtual for mocking.
   // Tries to schedule tasks if the library dlc is already installed, otherwise
   // triggers dlc install and schedules tasks when it receives a DlcStateChanged
   // signal indicating the library dlc is installed.
-  void Schedule();
+  virtual void Schedule();
 
  private:
   // Loads federated library from the given `dlc_root_path`, then for each
@@ -69,6 +70,10 @@ class Scheduler {
       dlcservice_client_;
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  // Whether the scheduling already started, to avoid multiple calls to
+  // Schedule() by e.g. federated_service_impl.
+  bool scheduling_started_;
 
   const base::WeakPtrFactory<Scheduler> weak_ptr_factory_;
 };

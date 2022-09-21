@@ -18,8 +18,10 @@ namespace federated {
 FederatedServiceImpl::FederatedServiceImpl(
     mojo::ScopedMessagePipeHandle pipe,
     base::OnceClosure disconnect_handler,
-    StorageManager* const storage_manager)
+    StorageManager* const storage_manager,
+    Scheduler* const scheduler)
     : storage_manager_(storage_manager),
+      scheduler_(scheduler),
       registered_clients_(GetClientNames()),
       receiver_(
           this,
@@ -53,6 +55,12 @@ void FederatedServiceImpl::ReportExample(
           ConvertToTensorFlowExampleProto(example).SerializeAsString())) {
     VLOG(1) << "Failed to insert the example from client " << client_name;
   }
+}
+
+void FederatedServiceImpl::StartScheduling() {
+  // This is no-op if the scheduling already started.
+  DVLOG(1) << "Received StartScheduling call.";
+  scheduler_->Schedule();
 }
 
 }  // namespace federated

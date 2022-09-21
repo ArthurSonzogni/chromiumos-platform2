@@ -38,11 +38,14 @@ int Daemon::OnInit() {
   // Create DeviceStatusMonitor
   auto device_status_monitor = DeviceStatusMonitor::CreateFromDBus(bus_.get());
 
-  // Creates the scheduler and schedules the tasks.
+  // Creates the scheduler.
   scheduler_ =
       std::make_unique<Scheduler>(StorageManager::GetInstance(),
                                   std::move(device_status_monitor), bus_.get());
-  scheduler_->Schedule();
+  // Starts the scheduling if it's initialized so.
+  if (should_schedule_) {
+    scheduler_->Schedule();
+  }
 
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
@@ -119,7 +122,7 @@ void Daemon::BootstrapMojoConnection(
   federated_service_ = std::make_unique<FederatedServiceImpl>(
       invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken),
       base::BindOnce(&Daemon::OnMojoDisconnection, base::Unretained(this)),
-      StorageManager::GetInstance());
+      StorageManager::GetInstance(), scheduler_.get());
 
   // Sends success response.
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));

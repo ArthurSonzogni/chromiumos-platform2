@@ -47,9 +47,15 @@ Scheduler::Scheduler(StorageManager* storage_manager,
       dlcservice_client_(
           std::make_unique<org::chromium::DlcServiceInterfaceProxy>(bus)),
       task_runner_(base::SequencedTaskRunnerHandle::Get()),
+      scheduling_started_(false),
       weak_ptr_factory_(this) {}
 
 void Scheduler::Schedule() {
+  if (scheduling_started_) {
+    DVLOG(1) << "Scheduling already started, does nothing.";
+    return;
+  }
+
   dlcservice::DlcState dlc_state;
   brillo::ErrorPtr error;
   // Gets current dlc state.
@@ -63,8 +69,8 @@ void Scheduler::Schedule() {
     return;
   }
 
-  // If installed, calls `Schedule()` instantly, otherwise triggers dlc install
-  // and waits for DlcStateChanged signals.
+  // If installed, calls `ScheduleInternal()` instantly, otherwise triggers dlc
+  // install and waits for DlcStateChanged signals.
   if (dlc_state.state() == dlcservice::DlcState::INSTALLED) {
     DVLOG(1) << "dlc fcp is already installed, root path is "
              << dlc_state.root_path();
@@ -89,6 +95,11 @@ void Scheduler::Schedule() {
 }
 
 void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
+  if (scheduling_started_) {
+    DVLOG(1) << "Scheduling already started, does nothing.";
+    return;
+  }
+
   DCHECK(!dlc_root_path.empty()) << "dlc_root_path is empty.";
   DCHECK(clients_.empty()) << "Clients are already scheduled.";
 
@@ -115,6 +126,8 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
         kServiceUri, kApiKey, kv.second, device_status_monitor_.get()));
     KeepSchedulingJobForClient(&clients_.back());
   }
+
+  scheduling_started_ = true;
 }
 
 void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {

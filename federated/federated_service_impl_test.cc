@@ -5,14 +5,17 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/run_loop.h>
+#include <dbus/mock_bus.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "federated/federated_metadata.h"
 #include "federated/federated_service_impl.h"
+#include "federated/mock_scheduler.h"
 #include "federated/mock_storage_manager.h"
 #include "federated/mojom/federated_service.mojom.h"
 #include "federated/protos/example.pb.h"
@@ -24,52 +27,72 @@ namespace {
 
 using chromeos::federated::mojom::FederatedService;
 using testing::_;
+using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
 
-TEST(FederatedServiceImplTest, TestReportExample) {
-  const std::unique_ptr<MockStorageManager> storage_manager(
-      new StrictMock<MockStorageManager>());
+class FederatedServiceImplTest : public testing::Test {
+ public:
+  FederatedServiceImplTest()
+      : mock_dbus_(new NiceMock<dbus::MockBus>(dbus::Bus::Options())) {}
+  FederatedServiceImplTest(const FederatedServiceImplTest&) = delete;
+  FederatedServiceImplTest& operator=(const FederatedServiceImplTest&) = delete;
 
+  void SetUp() override {
+    storage_manager_ = std::make_unique<StrictMock<MockStorageManager>>();
+    scheduler_ = std::make_unique<StrictMock<MockScheduler>>(
+        storage_manager_.get(),
+        std::make_unique<DeviceStatusMonitor>(
+            std::vector<std::unique_ptr<TrainingCondition>>()),
+        mock_dbus_.get());
+    federated_service_impl_ = std::make_unique<FederatedServiceImpl>(
+        federated_service_.BindNewPipeAndPassReceiver().PassPipe(),
+        base::OnceClosure(), storage_manager_.get(), scheduler_.get());
+  }
+
+ protected:
+  std::unique_ptr<MockStorageManager> storage_manager_;
+  std::unique_ptr<MockScheduler> scheduler_;
+  mojo::Remote<FederatedService> federated_service_;
+
+ private:
+  scoped_refptr<dbus::MockBus> mock_dbus_;
+  std::unique_ptr<FederatedServiceImpl> federated_service_impl_;
+};
+
+TEST_F(FederatedServiceImplTest, TestReportExample) {
   const std::string registered_client_name = *GetClientNames().begin();
-  EXPECT_CALL(*storage_manager, OnExampleReceived(_, _))
+  EXPECT_CALL(*storage_manager_, OnExampleReceived(registered_client_name, _))
       .Times(1)
       .WillOnce(Return(true));
 
-  mojo::Remote<FederatedService> federated_service;
-  const FederatedServiceImpl federated_service_impl(
-      federated_service.BindNewPipeAndPassReceiver().PassPipe(),
-      base::OnceClosure(), storage_manager.get());
-
   // Reports examples with a registered client_name then an unknown client_name,
   // will trigger storage_manager->OnExampleReceived only once.
-  federated_service->ReportExample(registered_client_name, CreateExamplePtr());
-  federated_service->ReportExample("unknown_client", CreateExamplePtr());
+  federated_service_->ReportExample(registered_client_name, CreateExamplePtr());
+  federated_service_->ReportExample("unknown_client", CreateExamplePtr());
 
   base::RunLoop().RunUntilIdle();
 }
 
-TEST(FederatedServiceImplTest, TestClone) {
-  const std::unique_ptr<MockStorageManager> storage_manager(
-      new StrictMock<MockStorageManager>());
-
+TEST_F(FederatedServiceImplTest, TestClone) {
   const std::string registered_client_name = *GetClientNames().begin();
-  EXPECT_CALL(*storage_manager, OnExampleReceived(registered_client_name, _))
+  EXPECT_CALL(*storage_manager_, OnExampleReceived(registered_client_name, _))
       .Times(1)
       .WillOnce(Return(true));
 
-  mojo::Remote<FederatedService> federated_service;
-  const FederatedServiceImpl federated_service_impl(
-      federated_service.BindNewPipeAndPassReceiver().PassPipe(),
-      base::OnceClosure(), storage_manager.get());
-
   // Call Clone to bind another FederatedService.
   mojo::Remote<FederatedService> federated_service_2;
-  federated_service->Clone(federated_service_2.BindNewPipeAndPassReceiver());
+  federated_service_->Clone(federated_service_2.BindNewPipeAndPassReceiver());
 
   federated_service_2->ReportExample(registered_client_name,
                                      CreateExamplePtr());
 
+  base::RunLoop().RunUntilIdle();
+}
+
+TEST_F(FederatedServiceImplTest, TestStartScheduling) {
+  EXPECT_CALL(*scheduler_, Schedule()).Times(1);
+  federated_service_->StartScheduling();
   base::RunLoop().RunUntilIdle();
 }
 
