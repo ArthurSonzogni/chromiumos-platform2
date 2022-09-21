@@ -370,6 +370,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
                      << " filesystem at mount point "
                      << redact(mount_point->path())
                      << " because it could not be mounted in read-write mode";
+        metrics()->RecordReadOnlyFileSystem(fstype);
       }
     }
   }

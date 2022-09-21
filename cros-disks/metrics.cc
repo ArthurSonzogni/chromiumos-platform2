@@ -6,6 +6,7 @@
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 
 namespace cros_disks {
@@ -83,27 +84,35 @@ void Metrics::RecordArchiveType(const base::FilePath& path) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.ArchiveType",
                                       GetArchiveType(path.value()),
                                       kArchiveMaxValue))
-    LOG(WARNING) << "Failed to send archive type sample to UMA";
+    LOG(ERROR) << "Cannot send archive type to UMA";
 }
 
-void Metrics::RecordFilesystemType(const std::string& filesystem_type) {
+void Metrics::RecordFilesystemType(const base::StringPiece fs_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.FilesystemType",
-                                      GetFilesystemType(filesystem_type),
+                                      GetFilesystemType(fs_type),
                                       kFilesystemMaxValue))
-    LOG(WARNING) << "Failed to send filesystem type sample to UMA";
+    LOG(ERROR) << "Cannot send filesystem type to UMA";
+}
+
+void Metrics::RecordReadOnlyFileSystem(const base::StringPiece fs_type) {
+  if (!metrics_library_.SendEnumToUMA("CrosDisks.ReadOnlyFileSystemAfterError",
+                                      GetFilesystemType(fs_type),
+                                      kFilesystemMaxValue))
+    LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
 void Metrics::RecordDeviceMediaType(DeviceMediaType device_media_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.DeviceMediaType",
                                       device_media_type,
                                       DEVICE_MEDIA_NUM_VALUES))
-    LOG(WARNING) << "Failed to send device media type sample to UMA";
+    LOG(ERROR) << "Cannot send device media type to UMA";
 }
 
-void Metrics::RecordFuseMounterErrorCode(const std::string& mounter_name,
+void Metrics::RecordFuseMounterErrorCode(const base::StringPiece mounter_name,
                                          const int error_code) {
-  metrics_library_.SendSparseToUMA("CrosDisks.Fuse." + mounter_name,
-                                   error_code);
+  if (!metrics_library_.SendSparseToUMA(
+          base::StrCat({"CrosDisks.Fuse.", mounter_name}), error_code))
+    LOG(ERROR) << "Cannot send FUSE mounter error code to UMA";
 }
 
 }  // namespace cros_disks

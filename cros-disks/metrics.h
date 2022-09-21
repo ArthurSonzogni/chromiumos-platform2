@@ -28,13 +28,17 @@ class Metrics {
   void RecordArchiveType(const base::FilePath& path);
 
   // Records the type of filesystem that cros-disks is trying to mount.
-  void RecordFilesystemType(const std::string& filesystem_type);
+  void RecordFilesystemType(base::StringPiece fs_type);
+
+  // Records a filesystem type that cros-disks had to mount in read-only mode
+  // because of an error when trying to mount it in read-write mode.
+  void RecordReadOnlyFileSystem(base::StringPiece fs_type);
 
   // Records the type of device media that cros-disks is trying to mount.
   void RecordDeviceMediaType(DeviceMediaType device_media_type);
 
   // Records the error code returned by a FUSE mounter program.
-  void RecordFuseMounterErrorCode(const std::string& mounter_name,
+  void RecordFuseMounterErrorCode(base::StringPiece mounter_name,
                                   int error_code);
 
  private:
