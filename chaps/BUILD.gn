@@ -184,6 +184,7 @@ executable("chapsd") {
     ":chapsd_config",
     ":target_defaults",
   ]
+  libs = [ "hwsec-profiling" ]
   deps = [
     ":chaps_common",
     ":libchaps",

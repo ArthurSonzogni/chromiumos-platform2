@@ -31,6 +31,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/profiling/profiling.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -264,6 +265,10 @@ int main(int argc, char** argv) {
   // below.
   MaskSignals();
   LOG(INFO) << "Starting D-Bus dispatcher.";
+
+  // Start profiling.
+  hwsec_foundation::SetUpProfiling();
+
   chaps::Daemon(srk_auth_data, auto_load_system_token).Run();
   return 0;
 }

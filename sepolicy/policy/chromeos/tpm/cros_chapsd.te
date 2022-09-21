@@ -14,6 +14,15 @@ r_dir_file(cros_chapsd, cgroup);
 allow cros_chapsd self:capability { setuid setgid };
 
 rw_dir_file(cros_chapsd, cros_var_lib_chaps);
+
+allow cros_chapsd {
+    cros_stateful_partition
+    cros_stateful_partition_unencrypted
+}:dir { r_dir_perms };
+
+allow cros_chapsd cros_stateful_partition_unencrypted_profraws:dir { rw_dir_perms };
+allow cros_chapsd cros_stateful_partition_unencrypted_profraws:file { create rw_file_perms };
+
 allow cros_chapsd cros_var_lib_chaps:{file dir} { create unlink rename };
 allow cros_chapsd cros_var_lock:dir rw_dir_perms;
 
