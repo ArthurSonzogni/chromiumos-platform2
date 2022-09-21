@@ -768,7 +768,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     }
 
     if (ino < FIRST_UNRESERVED_INO) {
-      BuiltInRead(std::move(request), ino, size, off);
+      BuiltInRead(dbus_proxy_, std::move(request), ino, size, off);
       return;
     }
 

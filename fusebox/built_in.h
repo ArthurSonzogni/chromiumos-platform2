@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 
+#include <dbus/object_proxy.h>
+
 #include "fusebox/fuse_path_inodes.h"
 #include "fusebox/fuse_request.h"
 
@@ -22,7 +24,8 @@ void BuiltInGetStat(ino_t ino, struct stat* stat);
 void BuiltInLookup(std::unique_ptr<EntryRequest> request,
                    const std::string& name);
 
-void BuiltInRead(std::unique_ptr<BufferRequest> request,
+void BuiltInRead(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
+                 std::unique_ptr<BufferRequest> request,
                  ino_t ino,
                  size_t size,
                  off_t off);

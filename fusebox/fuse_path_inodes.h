@@ -24,6 +24,7 @@ enum {
   // Skip FUSE_ROOT_ID = 1.
   INO_BUILT_IN = 2,
   INO_BUILT_IN_FUSE_STATUS = 3,
+  INO_BUILT_IN_PING = 4,
   // This final number is arbitrary, other than being larger than the above.
   FIRST_UNRESERVED_INO = 100,
 };
