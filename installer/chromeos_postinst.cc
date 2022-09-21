@@ -10,12 +10,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 
 #include "installer/cgpt_manager.h"
@@ -24,12 +26,25 @@
 #include "installer/chromeos_postinst.h"
 #include "installer/chromeos_setimage.h"
 #include "installer/inst_util.h"
+#include "installer/metrics.h"
 #include "installer/slow_boot_notify.h"
 
 using std::string;
 
 namespace {
 const char kStatefulMount[] = "/mnt/stateful_partition";
+
+const char kUMABiosType[] = "Installer.Postinstall.BiosType";
+const char kUMANonChromebookBiosSuccessEFI[] =
+    "Installer.Postinstall.NonChromebookBiosSuccess.EFI";
+const char kUMANonChromebookBiosSuccessLegacy[] =
+    "Installer.Postinstall.NonChromebookBiosSuccess.Legacy";
+const char kUMANonChromebookBiosSuccessSecure[] =
+    "Installer.Postinstall.NonChromebookBiosSuccess.Secure";
+const char kUMANonChromebookBiosSuccessUBoot[] =
+    "Installer.Postinstall.NonChromebookBiosSuccess.UBoot";
+const char kUMANonChromebookBiosSuccessUnknown[] =
+    "Installer.Postinstall.NonChromebookBiosSuccess.Unknown";
 
 bool GetKernelCommandLine(string* kernel_cmd_line) {
   if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
@@ -122,6 +137,38 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
 }
 
 namespace {
+
+// Send UMA for non-Chromebook postinst success.
+// The reven board expands the variety of bios_types we expect to be in use.
+// This helps us monitor failures for non-Chromebook bios types.
+// NB: If a user reboots shortly after a failure here and the failure results in
+// an inability to boot back into the OS, the metric may never be sent. We
+// expect this to underreport failures.
+void SendNonChromebookBiosSuccess(MetricsInterface& metrics,
+                                  BiosType bios_type,
+                                  bool success) {
+  // This matches a set of metrics in histograms.xml, and should not be altered.
+  std::string uma_name;
+  switch (bios_type) {
+    case BiosType::kUnknown:
+      uma_name = kUMANonChromebookBiosSuccessUnknown;
+      break;
+    case BiosType::kSecure:
+      uma_name = kUMANonChromebookBiosSuccessSecure;
+      break;
+    case BiosType::kUBoot:
+      uma_name = kUMANonChromebookBiosSuccessUBoot;
+      break;
+    case BiosType::kLegacy:
+      uma_name = kUMANonChromebookBiosSuccessLegacy;
+      break;
+    case BiosType::kEFI:
+      uma_name = kUMANonChromebookBiosSuccessEFI;
+      break;
+  }
+
+  metrics.SendBooleanMetric(uma_name, success);
+}
 
 // Run the cr50 script with the given args. Returns zero on success, exit code
 // on failure.
@@ -521,6 +568,15 @@ bool RunPostInstall(const string& install_dev,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
                     int* exit_code) {
+  std::unique_ptr<MetricsInterface> metrics =
+      MetricsInterface::GetMetricsInstance();
+
+  // Send UMA for bios type.
+  // The reven board expands the variety of bios_types we expect to be in use.
+  // Watching usage distribution helps make educated decisions.
+  metrics->SendEnumMetric(kUMABiosType, static_cast<int>(bios_type),
+                          static_cast<int>(BiosType::kMaxValue));
+
   InstallConfig install_config;
 
   if (!ConfigureInstall(install_dev, install_dir, bios_type,
@@ -648,6 +704,8 @@ bool RunPostInstall(const string& install_dev,
 
       break;
   }
+
+  SendNonChromebookBiosSuccess(*metrics, bios_type, success);
 
   // Unmount the EFI system partition.
   LOG(INFO) << "umount " << install_config.boot.mount();

@@ -40,6 +40,13 @@ if (use.manage_efi_boot_entries) {
   }
 }
 
+# See docs/postinst_metrics.md
+if (use.postinst_metrics) {
+  pkg_config("metrics") {
+    pkg_deps = [ "libmetrics" ]
+  }
+}
+
 static_library("libcros_installer") {
   sources = [
     "cgpt_manager.cc",
@@ -63,6 +70,12 @@ static_library("libcros_installer") {
     ]
   } else {
     sources += [ "efi_boot_management_stub.cc" ]
+  }
+  if (use.postinst_metrics) {
+    configs += [ ":metrics" ]
+    sources += [ "metrics.cc" ]
+  } else {
+    sources += [ "metrics_stub.cc" ]
   }
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libcros_installer_config" ]
@@ -130,6 +143,10 @@ if (!use.cros_host && use.test) {
     if (use.manage_efi_boot_entries) {
       sources += [ "efi_boot_management_test.cc" ]
       configs += [ ":efi_boot_management" ]
+    }
+    if (use.postinst_metrics) {
+      sources += [ "chromeos_postinst_test.cc" ]
+      configs += [ ":metrics" ]
     }
     deps = [
       ":libcros_installer",

@@ -9,12 +9,15 @@
 
 #include "installer/inst_util.h"
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class BiosType {
-  kUnknown,
-  kSecure,
-  kUBoot,
-  kLegacy,
-  kEFI,
+  kUnknown = 0,
+  kSecure = 1,
+  kUBoot = 2,
+  kLegacy = 3,
+  kEFI = 4,
+  kMaxValue = kEFI
 };
 
 bool StrToBiosType(std::string name, BiosType* bios_type);
