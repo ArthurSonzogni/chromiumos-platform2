@@ -5,6 +5,7 @@
 #ifndef SHILL_VIRTUAL_DEVICE_H_
 #define SHILL_VIRTUAL_DEVICE_H_
 
+#include <memory>
 #include <string>
 
 #include "shill/device.h"
@@ -36,7 +37,9 @@ class VirtualDevice : public Device {
   void Start(const EnabledStateChangedCallback& callback) override;
   void Stop(const EnabledStateChangedCallback& callback) override;
 
-  virtual void UpdateIPConfig(const IPConfig::Properties& properties);
+  virtual void UpdateIPConfig(
+      std::unique_ptr<IPConfig::Properties> ipv4_properties,
+      std::unique_ptr<IPConfig::Properties> ipv6_properties);
 
   // Expose protected device methods to manager of this device.
   // (E.g. Cellular, L2TPIPsecDriver, OpenVPNDriver.)

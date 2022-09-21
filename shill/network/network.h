@@ -138,6 +138,11 @@ class Network {
     link_protocol_ipv4_properties_ = std::move(props);
   }
 
+  void set_link_protocol_ipv6_properties(
+      std::unique_ptr<IPConfig::Properties> props) {
+    link_protocol_ipv6_properties_ = std::move(props);
+  }
+
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
 
@@ -339,6 +344,9 @@ class Network {
   // valid values to set up the connection (e.g., at least address and prefix
   // len).
   std::unique_ptr<IPConfig::Properties> link_protocol_ipv4_properties_;
+
+  // The technology-specific IPv6 config properties.
+  std::unique_ptr<IPConfig::Properties> link_protocol_ipv6_properties_;
 
   // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
   // from SLAAC and this separated |ipv6_static_properties_| for static

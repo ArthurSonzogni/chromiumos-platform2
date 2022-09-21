@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_VIRTUAL_DEVICE_H_
 #define SHILL_MOCK_VIRTUAL_DEVICE_H_
 
+#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -25,7 +26,11 @@ class MockVirtualDevice : public VirtualDevice {
   ~MockVirtualDevice() override;
 
   MOCK_METHOD(void, Stop, (const EnabledStateChangedCallback&), (override));
-  MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
+  MOCK_METHOD(void,
+              UpdateIPConfig,
+              (std::unique_ptr<IPConfig::Properties>,
+               std::unique_ptr<IPConfig::Properties>),
+              (override));
   MOCK_METHOD(void, DropConnection, (), (override));
   MOCK_METHOD(void, ResetConnection, (), (override));
   MOCK_METHOD(void, SelectService, (const ServiceRefPtr&), (override));

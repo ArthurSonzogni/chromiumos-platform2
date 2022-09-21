@@ -70,6 +70,12 @@ constexpr int kIPv6SLAACPrefix = 64;
 constexpr char kIPv6SLAACGateway[] = "fd00::1";
 constexpr char kIPv6SLAACNameserver[] = "fd00::3";
 
+// IPv6 properties from link protocol (e.g., VPN).
+constexpr char kIPv6LinkProtocolAddress[] = "fd00:1::2";
+constexpr int kIPv6LinkProtocolPrefix = 96;
+constexpr char kIPv6LinkProtocolGateway[] = "fd00:1::1";
+constexpr char kIPv6LinkProtocolNameserver[] = "fd00:1::3";
+
 NetworkConfig CreateIPv4NetworkConfig(
     const std::string& addr,
     int prefix_len,
@@ -227,7 +233,7 @@ TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
-TEST_F(NetworkTest, EnableIPv6Flags) {
+TEST_F(NetworkTest, EnableIPv6FlagsSLAAC) {
   // Not interested in IPv4 flags in this test.
   EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
       .WillRepeatedly(Return(true));
@@ -239,6 +245,22 @@ TEST_F(NetworkTest, EnableIPv6Flags) {
   EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
       .WillOnce(Return(true));
   network_->Start(Network::StartOptions{.accept_ra = true});
+}
+
+TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
+  // Not interested in IPv4 flags in this test.
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+      .WillOnce(Return(true));
+  network_->set_link_protocol_ipv6_properties(
+      std::make_unique<IPConfig::Properties>());
+  network_->Start(Network::StartOptions{});
 }
 
 TEST_F(NetworkTest, DHCPRenew) {
@@ -263,6 +285,7 @@ class NetworkStartTest : public NetworkTest {
     bool dhcp = false;
     bool static_ipv4 = false;
     bool link_protocol_ipv4 = false;
+    bool link_protocol_ipv6 = false;
     bool accept_ra = false;
   };
 
@@ -275,6 +298,7 @@ class NetworkStartTest : public NetworkTest {
     kIPv4DHCPWithStatic,
     kIPv4LinkProtocolWithStatic,
     kIPv6SLAAC,
+    kIPv6LinkProtocol,
   };
 
   NetworkStartTest() {
@@ -305,6 +329,13 @@ class NetworkStartTest : public NetworkTest {
     ipv6_slaac_props_.subnet_prefix = kIPv6SLAACPrefix;
     ipv6_slaac_props_.gateway = kIPv6SLAACGateway;
     ipv6_slaac_props_.dns_servers = {kIPv6SLAACNameserver};
+
+    ipv6_link_protocol_props_.address_family = IPAddress::kFamilyIPv6;
+    ipv6_link_protocol_props_.method = kTypeIPv6;
+    ipv6_link_protocol_props_.address = kIPv6LinkProtocolAddress;
+    ipv6_link_protocol_props_.subnet_prefix = kIPv6LinkProtocolPrefix;
+    ipv6_link_protocol_props_.gateway = kIPv6LinkProtocolGateway;
+    ipv6_link_protocol_props_.dns_servers = {kIPv6LinkProtocolNameserver};
   }
 
   void InvokeStart(const TestOptions& test_opts) {
@@ -314,6 +345,10 @@ class NetworkStartTest : public NetworkTest {
     if (test_opts.link_protocol_ipv4) {
       network_->set_link_protocol_ipv4_properties(
           std::make_unique<IPConfig::Properties>(ipv4_link_protocol_props_));
+    }
+    if (test_opts.link_protocol_ipv6) {
+      network_->set_link_protocol_ipv6_properties(
+          std::make_unique<IPConfig::Properties>(ipv6_link_protocol_props_));
     }
     Network::StartOptions start_opts{
         .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})
@@ -420,6 +455,8 @@ class NetworkStartTest : public NetworkTest {
         return ipv4_link_protocol_with_static_props_;
       case IPConfigType::kIPv6SLAAC:
         return ipv6_slaac_props_;
+      case IPConfigType::kIPv6LinkProtocol:
+        return ipv6_link_protocol_props_;
       default:
         NOTREACHED();
     }
@@ -438,6 +475,7 @@ class NetworkStartTest : public NetworkTest {
   IPConfig::Properties ipv4_dhcp_with_static_props_;
   IPConfig::Properties ipv4_link_protocol_with_static_props_;
   IPConfig::Properties ipv6_slaac_props_;
+  IPConfig::Properties ipv6_link_protocol_props_;
 };
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
@@ -600,7 +638,7 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithStaticIP) {
                   IPConfigType::kNone);
 }
 
-TEST_F(NetworkStartTest, IPv6Only) {
+TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
   const TestOptions test_opts = {.accept_ra = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped(_)).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure()).Times(0);
@@ -616,7 +654,7 @@ TEST_F(NetworkStartTest, IPv6Only) {
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);
 }
 
-TEST_F(NetworkStartTest, IPv6OnlyAddressChangeEvent) {
+TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   const TestOptions test_opts = {.accept_ra = true};
   InvokeStart(test_opts);
   ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
@@ -651,7 +689,7 @@ TEST_F(NetworkStartTest, IPv6OnlyAddressChangeEvent) {
   Mock::VerifyAndClearExpectations(&event_handler_);
 }
 
-TEST_F(NetworkStartTest, IPv6OnlyDNSServerChangeEvent) {
+TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   const TestOptions test_opts = {.accept_ra = true};
   InvokeStart(test_opts);
 
@@ -688,6 +726,16 @@ TEST_F(NetworkStartTest, IPv6OnlyDNSServerChangeEvent) {
   TriggerSLAACNameServersUpdate({dns_server}, 3600);
   EXPECT_EQ(network_->ip6config()->properties().dns_servers.size(), 1);
   Mock::VerifyAndClearExpectations(&event_handler_);
+}
+
+TEST_F(NetworkStartTest, IPv6OnlyLinkProtocol) {
+  const TestOptions test_opts = {.link_protocol_ipv6 = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_)).Times(0);
+
+  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6LinkProtocol);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6LinkProtocol);
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPRequestIPFailure) {
@@ -780,6 +828,30 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
+}
+
+// The dual-stack VPN case, Connection should be set up with IPv6 at first, and
+// then IPv4.
+TEST_F(NetworkStartTest, DualStackLinkProtocol) {
+  const TestOptions test_opts = {.link_protocol_ipv4 = true,
+                                 .link_protocol_ipv6 = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_)).Times(0);
+
+  // Need to set two expectations in the lambda so cannot use
+  // ExpectCreateConnectionWithIPConfig() directly.
+  EXPECT_CALL(*network_, CreateConnection()).WillOnce([this]() {
+    auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
+    connection_ = ret.get();
+    ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6LinkProtocol);
+    ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocol);
+    return ret;
+  });
+
+  InvokeStart(test_opts);
+
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kIPv4LinkProtocol,
+                  IPConfigType::kIPv6LinkProtocol);
 }
 
 // Verifies that the exposed IPConfig objects should be cleared on stopped.

@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
@@ -16,10 +17,6 @@
 #include <base/logging.h>
 
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kDevice;
-}  // namespace Logging
 
 namespace {
 const char kHardwareAddressEmpty[] = "";
@@ -60,10 +57,11 @@ void VirtualDevice::Stop(const EnabledStateChangedCallback& callback) {
   callback.Run(Error(Error::kSuccess));
 }
 
-void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
-  SLOG(2) << __func__ << " on " << link_name();
-  network()->set_link_protocol_ipv4_properties(
-      std::make_unique<IPConfig::Properties>(properties));
+void VirtualDevice::UpdateIPConfig(
+    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
+  network()->set_link_protocol_ipv4_properties(std::move(ipv4_properties));
+  network()->set_link_protocol_ipv6_properties(std::move(ipv6_properties));
   network()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,

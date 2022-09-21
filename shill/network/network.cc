@@ -76,6 +76,9 @@ Network::Network(int interface_index,
 Network::~Network() = default;
 
 void Network::Start(const Network::StartOptions& opts) {
+  // accept_ra and link_protocol_ipv6 should not be set at the same time.
+  DCHECK(!(opts.accept_ra && link_protocol_ipv6_properties_));
+
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
     LOG(INFO) << interface_name_
@@ -99,6 +102,16 @@ void Network::Start(const Network::StartOptions& opts) {
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&Network::ConfigureStaticIPv6Address, AsWeakPtr()));
+    ipv6_started = true;
+  }
+  if (link_protocol_ipv6_properties_) {
+    StartIPv6();
+    set_ip6config(
+        std::make_unique<IPConfig>(control_interface_, interface_name_));
+    ip6config_->set_properties(*link_protocol_ipv6_properties_);
+    dispatcher_->PostTask(FROM_HERE,
+                          base::BindOnce(&Network::SetupConnection, AsWeakPtr(),
+                                         ip6config_.get()));
     ipv6_started = true;
   }
 
@@ -189,6 +202,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   StopIPv6DNSServerTimer();
   if (ip6config()) {
     set_ip6config(nullptr);
+    link_protocol_ipv6_properties_ = {};
     ipconfig_changed = true;
   }
   // Emit updated IP configs if there are any changes.

@@ -1293,8 +1293,10 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device1, SetEnabled(true));
   EXPECT_CALL(*ppp_device1,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
-  EXPECT_CALL(*ppp_device1,
-              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config)));
+  EXPECT_CALL(
+      *ppp_device1,
+      UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config)),
+                     Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1307,8 +1309,10 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device1, SetEnabled(true));
   EXPECT_CALL(*ppp_device1,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
-  EXPECT_CALL(*ppp_device1,
-              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config)));
+  EXPECT_CALL(
+      *ppp_device1,
+      UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config)),
+                     Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1331,8 +1335,10 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
   EXPECT_CALL(*ppp_device2,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
-  EXPECT_CALL(*ppp_device2,
-              UpdateIPConfig(GetExpectedIPPropsFromPPPConfig(ppp_config2)));
+  EXPECT_CALL(
+      *ppp_device2,
+      UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config2)),
+                     Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device1);
@@ -1453,7 +1459,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device)));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(static_cast<ServiceRefPtr>(service)));
-  EXPECT_CALL(*ppp_device, UpdateIPConfig(_));
+  EXPECT_CALL(*ppp_device, UpdateIPConfig(_, _));
   EXPECT_CALL(*ppp_device, SetServiceFailure(Service::kFailureUnknown));
   ExpectDisconnectCapability3gpp();
   device_->Notify(kPPPReasonAuthenticating, ppp_config);

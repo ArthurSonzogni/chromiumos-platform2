@@ -372,7 +372,7 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
   EXPECT_CALL(*device, SetEnabled(true));
   EXPECT_CALL(*driver_, GetIPProperties())
       .WillOnce(Return(IPConfig::Properties()));
-  EXPECT_CALL(*device, UpdateIPConfig(_));
+  EXPECT_CALL(*device, UpdateIPConfig(_, _));
   service_->ConfigureDevice();
 
   EXPECT_CALL(*device, SetEnabled(false));
