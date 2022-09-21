@@ -33,15 +33,7 @@ void SensorClient::SensorClientDeleter(SensorClient* sensor_client) {
   delete sensor_client;
 }
 
-void SensorClient::BindClient(
-    mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(!client_.is_bound());
-
-  client_.Bind(std::move(client));
-  client_.set_disconnect_handler(base::BindOnce(
-      &SensorClient::OnClientDisconnect, weak_factory_.GetWeakPtr()));
-}
+SensorClient::~SensorClient() = default;
 
 void SensorClient::SetUpChannel(
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote) {
@@ -83,18 +75,10 @@ void SensorClient::SetUpChannelTimeout() {
 void SensorClient::Reset() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  client_.reset();
   sensor_service_remote_.reset();
 
   if (quit_callback_)
     std::move(quit_callback_).Run();
-}
-
-void SensorClient::OnClientDisconnect() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "SensorHalClient disconnected";
-  Reset();
 }
 
 void SensorClient::OnServiceDisconnect() {

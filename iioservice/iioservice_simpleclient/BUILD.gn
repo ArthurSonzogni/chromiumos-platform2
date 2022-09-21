@@ -9,14 +9,17 @@ group("all") {
     ":iioservice_event",
     ":iioservice_query",
     ":iioservice_simpleclient",
+    ":install_policy",
   ]
 }
 
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
+    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libmojo",
+    "mojo_service_manager",
   ]
 }
 
@@ -33,10 +36,6 @@ static_library("libiioservice_simpleclient") {
     "sensor_client.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
-  deps = [
-    "//iioservice/libiioservice_ipc:libiioservice_ipc",
-    "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
-  ]
 }
 
 executable("iioservice_simpleclient") {
@@ -58,4 +57,9 @@ executable("iioservice_query") {
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "sbin"
   deps = [ ":libiioservice_simpleclient" ]
+}
+
+install_config("install_policy") {
+  sources = [ "mojo_policy/iioservice_mojo_test.jsonc" ]
+  install_path = "/usr/local/etc/mojo/service_manager/policy"
 }

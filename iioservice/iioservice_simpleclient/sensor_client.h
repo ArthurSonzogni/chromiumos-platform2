@@ -13,25 +13,23 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "iioservice/mojo/cros_sensor_service.mojom.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 
-class SensorClient : public cros::mojom::SensorHalClient {
+class SensorClient {
  public:
   using QuitCallback = base::OnceCallback<void()>;
 
   static void SensorClientDeleter(SensorClient* observer);
 
+  virtual ~SensorClient();
+
   using ScopedSensorClient =
       std::unique_ptr<SensorClient, decltype(&SensorClientDeleter)>;
 
-  void BindClient(mojo::PendingReceiver<cros::mojom::SensorHalClient> client);
-
-  // cros::mojom::SensorHalClient overrides:
   void SetUpChannel(
-      mojo::PendingRemote<cros::mojom::SensorService> pending_remote) override;
+      mojo::PendingRemote<cros::mojom::SensorService> pending_remote);
 
  protected:
   SensorClient(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
@@ -42,13 +40,11 @@ class SensorClient : public cros::mojom::SensorHalClient {
   virtual void Start() = 0;
   virtual void Reset();
 
-  void OnClientDisconnect();
   void OnServiceDisconnect();
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   QuitCallback quit_callback_;
 
-  mojo::Receiver<cros::mojom::SensorHalClient> client_{this};
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote_;
 
   bool sensor_service_setup_ = false;
