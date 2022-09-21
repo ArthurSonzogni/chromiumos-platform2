@@ -41,6 +41,7 @@
 #include "installer/efi_boot_management.h"
 #include "installer/efivar.h"
 #include "installer/inst_util.h"
+#include "installer/metrics.h"
 
 namespace {
 // Default description of the managed boot entry.
@@ -54,6 +55,38 @@ const char kBootOrder[] = "BootOrder";
 
 // The base for our standard error message.
 const char kCantEnsureBoot[] = "Can't ensure successful boot: ";
+
+const char kUMAEfiManagementEventName[] =
+    "Installer.Postinstall.EfiManagementEvent";
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class EfiManagementEvent {
+  kRequiredEntryManagementFailed = 0,
+  kOptionalEntryManagementFailed = 1,
+  kMaxValue = kOptionalEntryManagementFailed,
+};
+
+// Used to watch for any upward trend in entry count, which could indicate
+// bugs related to entry creation or cleanup.
+const char kUMAEfiEntryCountName[] = "Installer.Postinstall.EfiBootEntryCount";
+const int kUMAEfiEntryCountMin = 1;
+const int kUMAEfiEntryCountMax = 30;
+const int kUMAEfiEntryCountBuckets = 15;
+
+// We don't expect loading entries to fail under normal circumstances, but we've
+// seen bugs result in these failures.
+const char kUMAEfiEntryFailedLoadName[] =
+    "Installer.Postinstall.EfiBootEntryFailedLoad";
+const int kUMAEfiEntryFailedLoadMin = 1;
+const int kUMAEfiEntryFailedLoadMax = 10;
+const int kUMAEfiEntryFailedLoadBuckets = 4;
+
+// There should only ever be zero or one managed entry. Even minor deviations
+// are noteworthy.
+const char kUMAManagedEfiEntryCountName[] =
+    "Installer.Postinstall.ManagedEfiBootEntryCount";
+const int kUMAManagedEfiEntryCountMax = 5;
 
 // Returns the description to use for managed EFI entries.
 // Uses chromeos-config to look for a board-specific override if present,
@@ -288,8 +321,10 @@ class EfiBootManager {
   using EntriesMap =
       std::map<EfiBootNumber, EfiBootEntryContents, EfiBootNumber::Comparator>;
 
-  EfiBootManager(EfiVarInterface& efivar, const std::string& description)
-      : efivar_(&efivar), entry_description_(description) {}
+  EfiBootManager(EfiVarInterface& efivar,
+                 MetricsInterface& metrics,
+                 const std::string& description)
+      : efivar_(&efivar), metrics_(&metrics), entry_description_(description) {}
 
   // Wrapper around libefivar's variable iteration to filter only Boot* entries.
   // Returns each Boot entry name in turn until all are read, nullopt after.
@@ -307,22 +342,28 @@ class EfiBootManager {
   }
 
   // Load all the Boot* entries into our map.
+  // Sends metrics to track number of entries and failures to read entries.
   // Returns false if any boot number doesn't meet our expectations or if any
   // entry fails to load, returning true when all entries are stored.
   bool LoadBootEntries() {
     std::optional<EfiBootNumber> entry_number;
+    uint16_t total = 0;
     while ((entry_number = GetNextBootNum())) {
+      ++total;
       std::optional<EfiBootEntryContents> entry_contents =
           LoadEntry(entry_number.value());
-      if (!entry_contents) {
-        // LoadEntry logs errors for us.
-        return false;
+      if (entry_contents) {
+        entries_.emplace(entry_number.value(), entry_contents.value());
       }
-
-      entries_.emplace(entry_number.value(), entry_contents.value());
     }
 
-    return true;
+    SendEntryCountMetric(total);
+
+    const uint16_t failures = total - entries_.size();
+    SendFailedLoadsMetric(failures);
+
+    // If any entry couldn't be loaded, we're not safe to continue.
+    return failures == 0;
   }
 
   // Loads the data for a single boot entry, returning it if correctly loaded.
@@ -508,6 +549,10 @@ class EfiBootManager {
       return false;
     }
 
+    // Send metric based on the loaded boot entries, only if we loaded all of
+    // them. If any failed to load we don't know if our count is valid.
+    SendManagedEntryCountMetric();
+
     boot_order_.Load(*efivar_);
 
     // Figure out what a "correct" boot entry would look like.
@@ -589,6 +634,43 @@ class EfiBootManager {
     return true;
   }
 
+  void SendEfiManagementEvent(EfiManagementEvent event) {
+    if (!metrics_->SendEnumMetric(
+            kUMAEfiManagementEventName, static_cast<int>(event),
+            static_cast<int>(EfiManagementEvent::kMaxValue))) {
+      LOG(WARNING) << "Couldn't send event metric";
+    }
+  }
+
+  void SendEntryCountMetric(uint16_t num) {
+    if (!metrics_->SendMetric(kUMAEfiEntryCountName, num, kUMAEfiEntryCountMin,
+                              kUMAEfiEntryCountMax, kUMAEfiEntryCountBuckets)) {
+      LOG(WARNING) << "Couldn't send entry count metric";
+    }
+  }
+
+  void SendFailedLoadsMetric(uint16_t num) {
+    if (!metrics_->SendMetric(
+            kUMAEfiEntryFailedLoadName, num, kUMAEfiEntryFailedLoadMin,
+            kUMAEfiEntryFailedLoadMax, kUMAEfiEntryFailedLoadBuckets)) {
+      LOG(WARNING) << "Couldn't send failed loads metric";
+    }
+  }
+
+  // Count entries matching our description and send an UMA metric.
+  void SendManagedEntryCountMetric() {
+    const int managed_entries = std::count_if(
+        entries_.begin(), entries_.end(),
+        [&desc = entry_description_](const EntriesMap::value_type& entry) {
+          return entry.second.Description() == desc;
+        });
+    if (!metrics_->SendLinearMetric(kUMAManagedEfiEntryCountName,
+                                    managed_entries,
+                                    kUMAManagedEfiEntryCountMax)) {
+      LOG(WARNING) << "Couldn't send managed entry count metric";
+    }
+  }
+
   // For testing.
   EntriesMap Entries() const { return entries_; }
   void SetEntries(const EntriesMap& entries) { entries_ = entries; }
@@ -600,6 +682,9 @@ class EfiBootManager {
   // An interface around libefivar, handles the actual writing/reading to
   // sysfs and other filesystem access.
   EfiVarInterface* efivar_;
+
+  // An interface around sending metrics.
+  MetricsInterface* metrics_;
 
   // Container for our entries, mapping boot numbers to entry contents.
   EntriesMap entries_;
@@ -632,7 +717,11 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
     return false;
   }
 
-  EfiBootManager efi_boot_manager(efivar, EfiDescription());
+  // A Metrics object to pass in. We'll pass a ref, but ownership stays here.
+  std::unique_ptr<MetricsInterface> metrics =
+      MetricsInterface::GetMetricsInstance();
+
+  EfiBootManager efi_boot_manager(efivar, *metrics, EfiDescription());
   if (!efi_boot_manager.UpdateEfiBootEntries(install_config,
                                              efi_size.value())) {
     // On install if we can't manage efi entries we can't be sure that we've
@@ -640,9 +729,13 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
     // location).
     const bool management_required = getenv(kEnvIsInstall);
     if (management_required) {
+      efi_boot_manager.SendEfiManagementEvent(
+          EfiManagementEvent::kRequiredEntryManagementFailed);
       LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";
       return false;
     } else {
+      efi_boot_manager.SendEfiManagementEvent(
+          EfiManagementEvent::kOptionalEntryManagementFailed);
       LOG(WARNING) << "Failed to manage EFI boot entries, "
                    << "safe because we're updating.";
     }

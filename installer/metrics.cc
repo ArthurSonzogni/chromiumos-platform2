@@ -15,6 +15,16 @@ class Metrics : public MetricsInterface {
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
 
+  bool SendMetric(const std::string& name,
+                  int sample,
+                  int min,
+                  int max,
+                  int num_buckets) override {
+    return metrics_library_.SendToUMA(name, sample, min, max, num_buckets);
+  }
+  bool SendLinearMetric(const std::string& name, int sample, int max) override {
+    return metrics_library_.SendLinearToUMA(name, sample, max);
+  }
   bool SendBooleanMetric(const std::string& name, bool sample) override {
     return metrics_library_.SendBoolToUMA(name, sample);
   }

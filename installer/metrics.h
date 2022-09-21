@@ -22,6 +22,17 @@ class MetricsInterface {
   virtual ~MetricsInterface() = default;
 
   // See metrics/metrics_library.h for a description of the arguments.
+  // See power_manager/common/metrics_sender.h for a very readable description
+  // of the constraints to follow if you don't want Chrome to silently discard
+  // your metric.
+  virtual bool SendMetric(const std::string& name,
+                          int sample,
+                          int min,
+                          int max,
+                          int num_buckets) = 0;
+  virtual bool SendLinearMetric(const std::string& name,
+                                int sample,
+                                int max) = 0;
   virtual bool SendBooleanMetric(const std::string& name, bool sample) = 0;
   virtual bool SendEnumMetric(const std::string& name, int sample, int max) = 0;
 };

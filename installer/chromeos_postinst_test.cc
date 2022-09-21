@@ -6,25 +6,14 @@
 
 #include <memory>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "installer/chromeos_install_config.h"
 #include "installer/metrics.h"
+#include "installer/mock_metrics.h"
 
 using ::testing::Expectation;
 
-class MockMetrics : public MetricsInterface {
- public:
-  MOCK_METHOD(bool,
-              SendBooleanMetric,
-              (const std::string& name, bool sample),
-              (override));
-  MOCK_METHOD(bool,
-              SendEnumMetric,
-              (const std::string& name, int sample, int max),
-              (override));
-};
 
 TEST(PostinstSuccessUMATest, Unknown) {
   MockMetrics metrics;

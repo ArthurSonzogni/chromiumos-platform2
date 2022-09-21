@@ -12,6 +12,7 @@
 
 #include "installer/efi_boot_management.cc"
 #include "installer/efivar.cc"
+#include "installer/mock_metrics.h"
 
 using testing::Contains;
 using testing::Key;
@@ -230,7 +231,7 @@ TEST(EfiBootEntryContentsTest, Equals) {
 
 class BootOrderTest : public ::testing::Test {
  protected:
-  BootOrderTest() : efivar_(), boot_order_() {}
+  BootOrderTest() {}
 
   EfiVarFake efivar_;
   BootOrder boot_order_;
@@ -326,9 +327,10 @@ TEST_F(BootOrderTest, Contains) {
 class EfiBootManagerTest : public ::testing::Test {
  protected:
   EfiBootManagerTest()
-      : efivar_(), efi_boot_manager_(efivar_, kCrosEfiDefaultDescription) {}
+      : efi_boot_manager_(efivar_, metrics_, kCrosEfiDefaultDescription) {}
 
   EfiVarFake efivar_;
+  MockMetrics metrics_;
   EfiBootManager efi_boot_manager_;
 };
 
@@ -691,6 +693,65 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
                   Pair("BootOrder", BootOrderData({})),
                   Pair("Boot0000",
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_EntryCountMetrics) {
+  efivar_.SetData({
+      {"BootOrder", BootOrderData({1, 0, 2})},
+      {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+      {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
+      {"Boot0003", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+      {"Boot0004", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
+      {"Boot0005", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+  });
+
+  const int total_boot_entries = 5;
+  const int failed_loads = 0;
+  const int managed_entries = 3;
+
+  InstallConfig install_config;
+
+  EXPECT_CALL(metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
+                                   kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
+                                   kUMAEfiEntryCountBuckets));
+  EXPECT_CALL(metrics_,
+              SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
+                         kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
+                         kUMAEfiEntryFailedLoadBuckets));
+  EXPECT_CALL(metrics_,
+              SendLinearMetric(kUMAManagedEfiEntryCountName, managed_entries,
+                               kUMAManagedEfiEntryCountMax));
+
+  efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
+  efivar_.SetData({
+      {"BootOrder", BootOrderData({1, 0, 2})},
+      {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+      {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
+      {"Boot0003", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+      {"Boot0004", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
+      {"Boot0005", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
+  });
+  // Simulate a filed load.
+  efivar_.variable_names_.push_back("Boot0BAD");
+
+  const int total_boot_entries = 6;
+  const int failed_loads = 1;
+
+  InstallConfig install_config;
+
+  EXPECT_CALL(metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
+                                   kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
+                                   kUMAEfiEntryCountBuckets));
+  EXPECT_CALL(metrics_,
+              SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
+                         kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
+                         kUMAEfiEntryFailedLoadBuckets));
+  EXPECT_CALL(metrics_, SendLinearMetric).Times(0);
+
+  efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
 }
 
 TEST(EfiVarTest, IsEfiGlobalGUID) {
