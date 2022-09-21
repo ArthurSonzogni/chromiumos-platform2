@@ -395,6 +395,13 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
+  // Process the completion of a verify-only authentication attempt. The
+  // |on_done| callback will be called after the results of the verification are
+  // processed. Designed to be used in conjunction with
+  // VerifyWithAuthFactorAsync as the VerifyCallback.
+  void CompleteVerifyOnlyAuthentication(StatusCallback on_done,
+                                        CryptohomeStatus error);
+
   // Add the new factor into the USS in-memory.
   CryptohomeStatus AddAuthFactorToUssInMemory(
       AuthFactor& auth_factor,

@@ -1017,10 +1017,25 @@ bool AuthSession::AuthenticateAuthFactor(
     if (auth_intent_ == AuthIntent::kVerifyOnly &&
         IsCredentialVerifierSupported(auth_factor_type.value()) &&
         AuthenticateViaCredentialVerifier(request.auth_input())) {
-      const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
-      SetAuthSessionAsAuthenticated(lightweight_intents);
-      std::move(on_done).Run(OkStatus<CryptohomeError>());
+      CompleteVerifyOnlyAuthentication(std::move(on_done),
+                                       OkStatus<CryptohomeError>());
       return true;
+    }
+    // We can also attempt lightweight authenticate via the auth block utility.
+    // TODO(b/247812443): Unify this with the credential verifier path.
+    if (auth_intent_ == AuthIntent::kVerifyOnly &&
+        auth_block_utility_->IsVerifyWithAuthFactorSupported(
+            *auth_factor_type)) {
+      if (CryptohomeStatusOr<AuthInput> auth_input =
+              CreateAuthInputForAuthentication(request.auth_input(), {});
+          auth_input.ok()) {
+        auto verify_callback =
+            base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
+                           weak_factory_.GetWeakPtr(), std::move(on_done));
+        auth_block_utility_->VerifyWithAuthFactorAsync(
+            *auth_factor_type, *auth_input, std::move(verify_callback));
+        return true;
+      }
     }
   }
 
@@ -2010,6 +2025,17 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
+                                                   CryptohomeStatus error) {
+  // If there was no error then the verify was a success.
+  if (error.ok()) {
+    const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
+    SetAuthSessionAsAuthenticated(lightweight_intents);
+  }
+  // Forward whatever the result was to on_done.
+  std::move(on_done).Run(std::move(error));
 }
 
 CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
