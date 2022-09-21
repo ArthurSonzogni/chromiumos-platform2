@@ -66,7 +66,8 @@ struct FuseMount {
 
 class FuseFrontend {
  public:
-  explicit FuseFrontend(FuseMount* fuse) : fuse_(fuse) {}
+  explicit FuseFrontend(FuseMount* fuse)
+      : fuse_(fuse), weak_ptr_factory_(this) {}
 
   FuseFrontend(const FuseFrontend&) = delete;
   FuseFrontend& operator=(const FuseFrontend&) = delete;
@@ -111,7 +112,7 @@ class FuseFrontend {
     read_buffer_.resize(fuse_chan_bufsize(chan));
 
     auto fuse_chan_readable = base::BindRepeating(
-        &FuseFrontend::OnFuseChannelReadable, base::Unretained(this));
+        &FuseFrontend::OnFuseChannelReadable, weak_ptr_factory_.GetWeakPtr());
     read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
         fuse_chan_fd(chan), std::move(fuse_chan_readable));
   }
@@ -165,6 +166,8 @@ class FuseFrontend {
 
   // Called if Kernel Fuse or the class owner stops the session.
   base::OnceClosure stop_callback_;
+
+  base::WeakPtrFactory<FuseFrontend> weak_ptr_factory_;
 };
 
 }  // namespace fusebox

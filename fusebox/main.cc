@@ -92,7 +92,7 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       return EX_SOFTWARE;
 
     dbus_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
-        &FuseBoxClient::ServiceOwnerChanged, base::Unretained(this)));
+        &FuseBoxClient::ServiceOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
     fuse_frontend_->StartFuseSession(std::move(stop_callback));
     return EX_OK;
   }
@@ -174,9 +174,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     auto path = GetInodeTable().GetDevicePath(node);
     writer.AppendString(path);
 
-    auto stat_response =
-        base::BindOnce(&FuseBoxClient::StatResponse, base::Unretained(this),
-                       std::move(request), node->ino);
+    auto stat_response = base::BindOnce(&FuseBoxClient::StatResponse,
+                                        weak_ptr_factory_.GetWeakPtr(),
+                                        std::move(request), node->ino);
     CallFuseBoxServerMethod(&method, std::move(stat_response));
   }
 
@@ -237,9 +237,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     std::string path = GetInodeTable().GetDevicePath(parent_node);
     writer.AppendString(path.append("/").append(name));
 
-    auto lookup_response =
-        base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
-                       std::move(request), parent, std::string(name));
+    auto lookup_response = base::BindOnce(
+        &FuseBoxClient::LookupResponse, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), parent, std::string(name));
     CallFuseBoxServerMethod(&method, std::move(lookup_response));
   }
 
@@ -264,9 +264,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     dbus::MessageWriter writer(&method);
     writer.AppendString(name);
 
-    auto stat_response =
-        base::BindOnce(&FuseBoxClient::RootLookupResponse,
-                       base::Unretained(this), std::move(request), name);
+    auto stat_response = base::BindOnce(&FuseBoxClient::RootLookupResponse,
+                                        weak_ptr_factory_.GetWeakPtr(),
+                                        std::move(request), name);
     CallFuseBoxServerMethod(&method, std::move(stat_response));
   }
 
@@ -385,9 +385,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     writer.AppendString(path);
     writer.AppendInt64(base::strict_cast<int64_t>(attr->st_size));
 
-    auto truncate_response =
-        base::BindOnce(&FuseBoxClient::TruncateResponse, base::Unretained(this),
-                       std::move(request), node->ino);
+    auto truncate_response = base::BindOnce(&FuseBoxClient::TruncateResponse,
+                                            weak_ptr_factory_.GetWeakPtr(),
+                                            std::move(request), node->ino);
     CallFuseBoxServerMethod(&method, std::move(truncate_response));
   }
 
@@ -491,8 +491,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     writer.AppendUint64(handle);
 
     auto readdir_started =
-        base::BindOnce(&FuseBoxClient::ReadDirStarted, base::Unretained(this),
-                       node->ino, handle);
+        base::BindOnce(&FuseBoxClient::ReadDirStarted,
+                       weak_ptr_factory_.GetWeakPtr(), node->ino, handle);
     CallFuseBoxServerMethod(&method, std::move(readdir_started));
   }
 
@@ -628,9 +628,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     auto path = GetInodeTable().GetDevicePath(node);
     writer.AppendString(path);
 
-    auto mkdir_response =
-        base::BindOnce(&FuseBoxClient::MkDirResponse, base::Unretained(this),
-                       std::move(request), node->ino);
+    auto mkdir_response = base::BindOnce(&FuseBoxClient::MkDirResponse,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         std::move(request), node->ino);
     CallFuseBoxServerMethod(&method, std::move(mkdir_response));
   }
 
@@ -718,9 +718,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
     writer.AppendInt32(request->flags());
 
-    auto open_response =
-        base::BindOnce(&FuseBoxClient::OpenResponse, base::Unretained(this),
-                       std::move(request), node->ino, path, type);
+    auto open_response = base::BindOnce(
+        &FuseBoxClient::OpenResponse, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), node->ino, path, type);
     CallFuseBoxServerMethod(&method, std::move(open_response));
   }
 
@@ -792,9 +792,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     writer.AppendInt64(base::strict_cast<int64_t>(off));
     writer.AppendInt32(base::saturated_cast<int32_t>(size));
 
-    auto read_response =
-        base::BindOnce(&FuseBoxClient::ReadResponse, base::Unretained(this),
-                       std::move(request), ino, size, off);
+    auto read_response = base::BindOnce(&FuseBoxClient::ReadResponse,
+                                        weak_ptr_factory_.GetWeakPtr(),
+                                        std::move(request), ino, size, off);
     CallFuseBoxServerMethod(&method, std::move(read_response));
   }
 
@@ -892,9 +892,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     writer.AppendInt64(base::strict_cast<int64_t>(off));
     writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(buf), size);
 
-    auto write_response =
-        base::BindOnce(&FuseBoxClient::WriteResponse, base::Unretained(this),
-                       std::move(request), ino, size, off);
+    auto write_response = base::BindOnce(&FuseBoxClient::WriteResponse,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         std::move(request), ino, size, off);
     CallFuseBoxServerMethod(&method, std::move(write_response));
   }
 
@@ -982,8 +982,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     writer.AppendString(data.path);
 
     auto release_response =
-        base::BindOnce(&FuseBoxClient::ReleaseResponse, base::Unretained(this),
-                       std::move(request), ino);
+        base::BindOnce(&FuseBoxClient::ReleaseResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
     CallFuseBoxServerMethod(&method, std::move(release_response));
   }
 
@@ -1051,9 +1051,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     VLOG(1) << "create flags " << OpenFlagsToString(request->flags());
     writer.AppendInt32(request->flags());
 
-    auto create_response =
-        base::BindOnce(&FuseBoxClient::CreateResponse, base::Unretained(this),
-                       std::move(request), node->ino);
+    auto create_response = base::BindOnce(&FuseBoxClient::CreateResponse,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          std::move(request), node->ino);
     CallFuseBoxServerMethod(&method, std::move(create_response));
   }
 
@@ -1159,7 +1159,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 class FuseBoxDaemon : public brillo::DBusServiceDaemon {
  public:
   explicit FuseBoxDaemon(FuseMount* fuse)
-      : DBusServiceDaemon(kFuseBoxReverseServiceName), fuse_(fuse) {}
+      : DBusServiceDaemon(kFuseBoxReverseServiceName),
+        fuse_(fuse),
+        weak_ptr_factory_(this) {}
   FuseBoxDaemon(const FuseBoxDaemon&) = delete;
   FuseBoxDaemon& operator=(const FuseBoxDaemon&) = delete;
   ~FuseBoxDaemon() = default;
@@ -1183,7 +1185,7 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
     if (ret != EX_OK)
       return ret;
 
-    auto quit = base::BindOnce(&Daemon::Quit, base::Unretained(this));
+    auto quit = base::BindOnce(&Daemon::Quit, weak_ptr_factory_.GetWeakPtr());
     return client_->StartFuseSession(std::move(quit));
   }
 
@@ -1200,6 +1202,8 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
 
   // Fuse user-space client.
   std::unique_ptr<FuseBoxClient> client_;
+
+  base::WeakPtrFactory<FuseBoxDaemon> weak_ptr_factory_;
 };
 
 int Run(char** mountpoint, fuse_chan* chan, int foreground) {
