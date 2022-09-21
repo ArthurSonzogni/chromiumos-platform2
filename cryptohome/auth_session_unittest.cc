@@ -147,53 +147,6 @@ class AuthSessionTest : public ::testing::Test {
   }
 
  protected:
-  user_data_auth::CryptohomeErrorCode AuthenticateAuthFactorVK(
-      const std::string& label,
-      const std::string& passkey,
-      AuthSession& auth_session) {
-    EXPECT_CALL(keyset_management_, GetVaultKeyset(_, label))
-        .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
-
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-        .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-        .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
-
-    EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
-        .WillRepeatedly(Return(false));
-
-    auto key_blobs = std::make_unique<KeyBlobs>();
-    EXPECT_CALL(auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
-        .WillRepeatedly(
-            [&key_blobs](AuthBlockType auth_block_type,
-                         const AuthInput& auth_input,
-                         const AuthBlockState& auth_state,
-                         AuthBlock::DeriveCallback derive_callback) {
-              std::move(derive_callback)
-                  .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-              return true;
-            });
-
-    user_data_auth::AuthenticateAuthFactorRequest request;
-    request.set_auth_session_id(auth_session.serialized_token());
-    request.set_auth_factor_label(label);
-    request.mutable_auth_input()->mutable_password_input()->set_secret(passkey);
-
-    TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(request,
-                                        authenticate_future.GetCallback());
-
-    if (authenticate_future.Get().ok()) {
-      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-    }
-    return authenticate_future.Get()->local_legacy_error().value();
-  }
-
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
@@ -1111,8 +1064,48 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
 
   // Test
   // Calling AuthenticateAuthFactor.
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  // Called within the converter_.PopulateKeyDataForVK()
+  KeyData key_data;
+  key_data.set_label(kFakeLabel);
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->SetKeyData(key_data);
+
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
+      .WillOnce(Return(false));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&key_blobs](AuthBlockType auth_block_type,
+                             const AuthInput& auth_input,
+                             const AuthBlockState& auth_state,
+                             AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        return true;
+      });
+
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request, authenticate_future.GetCallback()));
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
@@ -1901,83 +1894,6 @@ TEST_F(AuthSessionTest, ExtensionTest) {
   auth_session.timeout_timer_.FireNow();
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-}
-
-// Test that AuthFactor map is updated after successful RemoveAuthFactor and
-// not updated after unsuccessful RemoveAuthFactor.
-TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
-  // Setup.
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  // Setting the expectation that the user does not exist.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
-
-  // Prepare the AuthFactor.
-  AuthBlockState auth_block_state;
-  auth_block_state.state = TpmBoundToPcrAuthBlockState();
-
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map[kFakeLabel] =
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state);
-  auth_factor_map[kFakeOtherLabel] =
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeOtherLabel,
-                                   AuthFactorMetadata(), auth_block_state);
-
-  // Create AuthSession.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
-      .WillRepeatedly(Return(true));
-  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &platform_, &user_session_map_, &keyset_management_,
-                           &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_);
-
-  EXPECT_EQ(auth_session.GetStatus(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
-  EXPECT_TRUE(auth_session.user_exists());
-  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
-
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
-
-  // Test that RemoveAuthFactor success removes the factor from the map.
-  user_data_auth::RemoveAuthFactorRequest remove_request;
-  remove_request.set_auth_session_id(auth_session.serialized_token());
-  remove_request.set_auth_factor_label(kFakeOtherLabel);
-  // RemoveauthFactor loads the VK to remove.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  TestFuture<CryptohomeStatus> remove_future;
-  auth_session.RemoveAuthFactor(remove_request, remove_future.GetCallback());
-
-  // Verify that AuthFactor is removed and the Authentication doesn't succeed
-  // with the removed factor.
-  ASSERT_THAT(remove_future.Get(), IsOk());
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeOtherLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
-
-  // Test that RemoveAuthFactor failure doesn't remove the factor from the map.
-  user_data_auth::RemoveAuthFactorRequest remove_request2;
-  remove_request2.set_auth_session_id(auth_session.serialized_token());
-  remove_request2.set_auth_factor_label(kFakeLabel);
-
-  TestFuture<CryptohomeStatus> remove_future2;
-  auth_session.RemoveAuthFactor(remove_request2, remove_future2.GetCallback());
-
-  // Verify that AuthFactor is not removed and the Authentication doesn't
-  // succeed with the removed factor.
-  ASSERT_THAT(remove_future2.Get(), NotOk());
-  EXPECT_EQ(remove_future2.Get()->local_legacy_error().value(),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment
