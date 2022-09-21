@@ -43,10 +43,6 @@ template("generate_ebpf_skeletons") {
                          ])
   h_dir = "${root_gen_dir}/${bpf_skeleton_out_dir}"
 
-  # TODO(b/243425981): create a new clang wrapper for BPF targets.
-  # For now BUILD_CC must be used since CC will try to specify target
-  # a second time.
-  clang_compiler = getenv("BUILD_CC")
   arch = getenv("ARCH")
 
   action_foreach(target_name) {
@@ -58,7 +54,6 @@ template("generate_ebpf_skeletons") {
       "gen_skel",
       "--out_header=${out_header}",
       "--source={{source}}",
-      "--clang=${clang_compiler}",
       "--arch=${arch}",
       "--sysroot=${sysroot}",
       "--include",

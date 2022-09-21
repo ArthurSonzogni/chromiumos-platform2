@@ -47,7 +47,6 @@ def do_gen_bpf_skeleton(args):
     arch = args.arch
     includes = args.includes
     defines = args.defines or []
-    clang = args.clang
     sysroot = args.sysroot
 
     obj = "_".join(os.path.basename(source).split(".")[:-1]) + ".o"
@@ -73,12 +72,13 @@ def do_gen_bpf_skeleton(args):
         )
         return -1
 
+    # Calling bpf-clang is equivalent to "clang --target bpf".
     # It may seem odd that the application needs to be compiled with -g but
     # then llvm-strip is ran against the resulting object.
     # The -g is needed for the bpf application to compile properly but we
     # want to reduce the file size by stripping it.
-    call_clang = (
-        [clang, "-g", "-O2", "-target", "bpf", f"--sysroot={sysroot}"]
+    call_bpf_clang = (
+        ["/usr/bin/bpf-clang", "-g", "-O2", f"--sysroot={sysroot}"]
         + [f"-I{x}" for x in includes]
         + [f"-D{x}" for x in defines]
         + [f"-D{arch}", "-c", source, "-o", obj]
@@ -87,7 +87,7 @@ def do_gen_bpf_skeleton(args):
     strip_dwarf = ["llvm-strip", "-g", obj]
 
     # Compile the BPF C application.
-    _run_command(call_clang)
+    _run_command(call_bpf_clang)
     # Strip useless dwarf information.
     _run_command(strip_dwarf)
     # Use bpftools to generate skeletons from the BPF object files.
@@ -174,9 +174,6 @@ def main(argv: typing.List[str]) -> int:
     )
     gen_skel.add_argument(
         "--source", required=True, help="The bpf source code."
-    )
-    gen_skel.add_argument(
-        "--clang", required=True, help="The clang compiler to use."
     )
     gen_skel.add_argument(
         "--arch", required=True, help="The target architecture."
