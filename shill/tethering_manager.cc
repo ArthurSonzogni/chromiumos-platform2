@@ -5,12 +5,13 @@
 #include "shill/tethering_manager.h"
 
 #include <stdint.h>
-
 #include <math.h>
+
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <utility>
 
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -280,31 +281,30 @@ KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
   std::vector<std::string> upstream_technologies;
   std::vector<std::string> downstream_technologies;
 
-  if (manager_->GetProviderWithTechnology(Technology::kEthernet))
-    upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
+  // Ethernet is always supported as an upstream technology.
+  upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
 
   // TODO(b/244334719): add a check with the CellularProvider to see if
-  // tethering is enabled for the given SIM card and modem.
-  if (manager_->GetProviderWithTechnology(Technology::kCellular))
-    upstream_technologies.push_back(TechnologyName(Technology::kCellular));
+  // tethering is enabled for the given SIM card and modem. For now assume
+  // that Cellular is available as an upstream technology.
+  upstream_technologies.push_back(TechnologyName(Technology::kCellular));
 
-  if (manager_->GetProviderWithTechnology(Technology::kWiFi)) {
-    // TODO(b/244335143): This should be based on static SoC capability
-    // information. Need to revisit this when Shill has a SoC capability
-    // database.
-    const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
-    if (!wifi_devices.empty()) {
-      WiFi* wifi_device = static_cast<WiFi*>(wifi_devices.front().get());
-      if (wifi_device->SupportAP()) {
-        downstream_technologies.push_back(TechnologyName(Technology::kWiFi));
-        // Wi-Fi specific tethering capabilities.
-        std::vector<std::string> security = {kSecurityWpa2};
-        if (wifi_device->SupportsWPA3()) {
-          security.push_back(kSecurityWpa3);
-          security.push_back(kSecurityWpa2Wpa3);
-        }
-        caps.Set<Strings>(kTetheringCapSecurityProperty, security);
+  // TODO(b/244335143): This should be based on static SoC capability
+  // information. Need to revisit this when Shill has a SoC capability
+  // database. For now, use the presence of a WiFi device as a proxy for
+  // checking if AP mode is supported.
+  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+  if (!wifi_devices.empty()) {
+    WiFi* wifi_device = static_cast<WiFi*>(wifi_devices.front().get());
+    if (wifi_device->SupportAP()) {
+      downstream_technologies.push_back(TechnologyName(Technology::kWiFi));
+      // Wi-Fi specific tethering capabilities.
+      std::vector<std::string> security = {kSecurityWpa2};
+      if (wifi_device->SupportsWPA3()) {
+        security.push_back(kSecurityWpa3);
+        security.push_back(kSecurityWpa2Wpa3);
       }
+      caps.Set<Strings>(kTetheringCapSecurityProperty, security);
     }
   }
 

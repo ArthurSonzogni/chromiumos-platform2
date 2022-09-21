@@ -4,10 +4,10 @@
 
 #include "shill/tethering_manager.h"
 
-#include <set>
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -213,24 +213,48 @@ class TetheringManagerTest : public testing::Test {
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   scoped_refptr<MockWiFi> wifi = MakeWiFi("wlan0", "0a:0b:0c:0d:0e:0f");
   ON_CALL(*wifi, SupportAP()).WillByDefault(Return(true));
-  std::vector<DeviceRefPtr> wifi_devices = {wifi};
   manager_.RegisterDevice(wifi);
   SetAllowed(tethering_manager_, true);
 
   KeyValueStore caps = GetCapabilities(tethering_manager_);
-  std::vector<std::string> tech_v;
-  tech_v = caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
-  EXPECT_FALSE(tech_v.empty());
-  std::set<std::string> tech_s(tech_v.begin(), tech_v.end());
-  EXPECT_TRUE(tech_s.count(kTypeEthernet));
-  EXPECT_TRUE(tech_s.count(kTypeCellular));
 
-  tech_v = caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
-  EXPECT_FALSE(tech_v.empty());
-  EXPECT_EQ(tech_v.front(), kTypeWifi);
+  auto upstream_technologies =
+      caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
+  EXPECT_FALSE(upstream_technologies.empty());
+  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeEthernet));
+  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeCellular));
+  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeWifi));
+
+  auto downstream_technologies =
+      caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
+  EXPECT_FALSE(downstream_technologies.empty());
+  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeEthernet));
+  EXPECT_FALSE(base::Contains(downstream_technologies, kTypeCellular));
+  EXPECT_TRUE(base::Contains(downstream_technologies, kTypeWifi));
+
   std::vector<std::string> wifi_security =
       caps.Get<std::vector<std::string>>(kTetheringCapSecurityProperty);
   EXPECT_FALSE(wifi_security.empty());
+}
+
+TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
+  SetAllowed(tethering_manager_, true);
+
+  KeyValueStore caps = GetCapabilities(tethering_manager_);
+
+  auto upstream_technologies =
+      caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
+  EXPECT_FALSE(upstream_technologies.empty());
+  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeEthernet));
+  EXPECT_TRUE(base::Contains(upstream_technologies, kTypeCellular));
+  EXPECT_FALSE(base::Contains(upstream_technologies, kTypeWifi));
+
+  auto downstream_technologies =
+      caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
+  EXPECT_TRUE(downstream_technologies.empty());
+
+  EXPECT_FALSE(
+      caps.Contains<std::vector<std::string>>(kTetheringCapSecurityProperty));
 }
 
 TEST_F(TetheringManagerTest, TetheringConfig) {
