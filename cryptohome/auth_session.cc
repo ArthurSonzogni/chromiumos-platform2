@@ -220,23 +220,48 @@ AuthSession::AuthSession(
       std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
 
   // Decide on USS vs VaultKeyset based on what is on the disk for the user.
-  // If at least one VK exists, don't take USS path even if the experiment
-  // is enabled.
-  // TODO(b/223916443): We assume user has either VaultKeyset or USS until the
-  // USS migration is started. If for some reason both exists on the disk,
-  // unused one will be ignored.
+  // If at least one non-backup VK exists, don't take USS path even if the
+  // experiment is enabled.
+
   user_exists_ = keyset_management_->UserExists(obfuscated_username_);
   if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(obfuscated_username_,
                                                     &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
   }
+
+  // After USS is enabled there will be backup VKs in disk. They are used for
+  // authentication only if USS is disabled after once being enabled.
+  std::map<std::string, std::unique_ptr<AuthFactor>>
+      label_to_auth_factor_for_backup_vks;
+  if (converter_->VaultKeysetsToAuthFactors(
+          username_, label_to_auth_factor_,
+          label_to_auth_factor_for_backup_vks) !=
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(WARNING) << "Failed to list the available VaultKeyset factors.";
+  }
+  // Before IsUserSecretStashExperimentEnabled() there are no backup
+  // VaultKeysets in disk, hence label_to_auth_factor_for_backup_vks is empty.
+  // After IsUserSecretStashExperimentEnabled() is enabled UserSecretStash
+  // will be created only for new users (those who don't have VaultKeysets).
+  // Backup VaultKeysets will be generated together with UserSecretStash (USS).
+  // If for some reason UserSecretStashExperiment is disabled after being
+  // enabled USS users will have backup VaultKeysets in disk. Other users, for
+  // whom USS is never created will have regular non-backup VaultKeysets.
+  // Therefore we don't expect to have both regular and backup VaultKeysets in
+  // disk at the same time. This logic is going to change only after
+  // USSMigration is enabled.
+  if (enable_create_backup_vk_with_uss_ &&
+      !IsUserSecretStashExperimentEnabled() && label_to_auth_factor_.empty() &&
+      !label_to_auth_factor_for_backup_vks.empty()) {
+    user_has_configured_credential_ = true;
+    label_to_auth_factor_ = std::move(label_to_auth_factor_for_backup_vks);
+  }
+
   if (!user_has_configured_credential_) {
     label_to_auth_factor_ =
         LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
     user_has_configured_auth_factor_ = !label_to_auth_factor_.empty();
-  } else {
-    converter_->VaultKeysetsToAuthFactors(username_, label_to_auth_factor_);
   }
 
   RecordAuthSessionStart();

@@ -45,7 +45,9 @@ class AuthFactorVaultKeysetConverter {
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactors(
       const std::string& username,
       std::map<std::string, std::unique_ptr<AuthFactor>>&
-          out_label_to_auth_factor);
+          out_label_to_auth_factor,
+      std::map<std::string, std::unique_ptr<AuthFactor>>&
+          out_label_to_auth_factor_backup_vks);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.

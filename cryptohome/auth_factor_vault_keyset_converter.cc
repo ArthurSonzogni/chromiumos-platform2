@@ -155,8 +155,11 @@ user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     const std::string& username,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
-        out_label_to_auth_factor) {
-  out_label_to_auth_factor.clear();
+        out_label_to_auth_factor,
+    std::map<std::string, std::unique_ptr<AuthFactor>>&
+        out_label_to_auth_factor_backup_vks) {
+  DCHECK(out_label_to_auth_factor.empty());
+  DCHECK(out_label_to_auth_factor_backup_vks.empty());
 
   std::string obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
@@ -173,15 +176,24 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     if (!vk) {
       continue;
     }
+
     std::unique_ptr<AuthFactor> auth_factor = ConvertToAuthFactor(*vk.get());
-    if (auth_factor) {
+    if (!auth_factor) {
+      continue;
+    }
+
+    if (!vk->IsForBackup()) {
       out_label_to_auth_factor.emplace(vk->GetLabel(), std::move(auth_factor));
+    } else {
+      out_label_to_auth_factor_backup_vks.emplace(vk->GetLabel(),
+                                                  std::move(auth_factor));
     }
   }
 
   // Differentiate between no vault keyset case and vault keysets on the disk
   // but unable to be loaded case.
-  if (out_label_to_auth_factor.empty()) {
+  if (out_label_to_auth_factor.empty() &&
+      out_label_to_auth_factor_backup_vks.empty()) {
     return user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
   }
 

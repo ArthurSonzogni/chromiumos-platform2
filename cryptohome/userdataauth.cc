@@ -4986,7 +4986,24 @@ void UserDataAuth::ListAuthFactors(
   AuthFactorStorageType storage_type = AuthFactorStorageType::kVaultKeyset;
   AuthFactorVaultKeysetConverter converter(keyset_management_);
   std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  converter.VaultKeysetsToAuthFactors(username, auth_factor_map);
+  std::map<std::string, std::unique_ptr<AuthFactor>>
+      auth_factor_map_for_backup_vks;
+  // After USS is enabled there will be backup VKs in disk. They are used for
+  // authentication only if USS is disabled after once being enabled.
+  if (converter.VaultKeysetsToAuthFactors(username, auth_factor_map,
+                                          auth_factor_map_for_backup_vks) !=
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
+  }
+  if (kEnableCreateBackupVK && !IsUserSecretStashExperimentEnabled() &&
+      auth_factor_map.empty()) {
+    // Before IsUserSecretStashExperimentEnabled() there are no backup VKs in
+    // disk, hence label_to_auth_factor_for_backup_vks is empty. After
+    // IsUserSecretStashExperimentEnabled() is once enabled and disabled for
+    // some reason there are backup VKs, and they will be used for
+    // authentication.
+    auth_factor_map = std::move(auth_factor_map_for_backup_vks);
+  }
   for (const auto& [unused, auth_factor] : auth_factor_map) {
     auto auth_factor_proto = GetAuthFactorProto(
         auth_factor->metadata(), auth_factor->type(), auth_factor->label());

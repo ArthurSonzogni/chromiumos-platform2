@@ -293,6 +293,9 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     if (!vk) {
       continue;
     }
+    if (vk->IsForBackup()) {
+      continue;
+    }
     if (key_label_data->find(vk->GetLabel()) != key_label_data->end()) {
       // This is a confirmation check, we do not expect to hit this.
       LOG(INFO) << "Found a duplicate label, skipping it: " << vk->GetLabel();
