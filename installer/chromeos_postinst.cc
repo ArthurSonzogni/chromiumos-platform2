@@ -67,7 +67,7 @@ bool ConfigureInstall(const string& install_dev,
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.
-  if (bios_type == kBiosTypeUnknown && !DetectBiosType(&bios_type)) {
+  if (bios_type == BiosType::kUnknown && !DetectBiosType(&bios_type)) {
     return false;
   }
 
@@ -96,7 +96,7 @@ bool DetectBiosType(BiosType* bios_type) {
 
 bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
   if (kernel_config.find("cros_secure") != string::npos) {
-    *type = kBiosTypeSecure;
+    *type = BiosType::kSecure;
     return true;
   }
 
@@ -104,15 +104,15 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
 #ifdef __arm__
     // The Arm platform only uses U-Boot, but may set cros_legacy to mean
     // U-Boot without our secure boot modifications.
-    *type = kBiosTypeUBoot;
+    *type = BiosType::kUBoot;
 #else
-    *type = kBiosTypeLegacy;
+    *type = BiosType::kLegacy;
 #endif
     return true;
   }
 
   if (kernel_config.find("cros_efi") != string::npos) {
-    *type = kBiosTypeEFI;
+    *type = BiosType::kEFI;
     return true;
   }
 
@@ -571,7 +571,7 @@ bool RunPostInstall(const string& install_dev,
   }
 
   // If we are installing to a ChromeOS Bios, we are done.
-  if (install_config.bios_type == kBiosTypeSecure)
+  if (install_config.bios_type == BiosType::kSecure)
     return true;
 
   install_config.boot.set_mount("/tmp/boot_mnt");
@@ -594,13 +594,14 @@ bool RunPostInstall(const string& install_dev,
   bool success = true;
 
   switch (install_config.bios_type) {
-    case kBiosTypeUnknown:
-    case kBiosTypeSecure:
-      LOG(ERROR) << "Unexpected BiosType: " << install_config.bios_type;
+    case BiosType::kUnknown:
+    case BiosType::kSecure:
+      LOG(ERROR) << "Unexpected BiosType: "
+                 << static_cast<int>(install_config.bios_type);
       success = false;
       break;
 
-    case kBiosTypeUBoot:
+    case BiosType::kUBoot:
       // The Arm platform only uses U-Boot, but may set cros_legacy to mean
       // U-Boot without secure boot modifications. This may need handling.
       if (!RunLegacyUBootPostInstall(install_config)) {
@@ -609,7 +610,7 @@ bool RunPostInstall(const string& install_dev,
       }
       break;
 
-    case kBiosTypeLegacy:
+    case BiosType::kLegacy:
       if (!RunLegacyPostInstall(install_config)) {
         LOG(ERROR) << "Legacy PostInstall failed.";
         success = false;
@@ -629,7 +630,7 @@ bool RunPostInstall(const string& install_dev,
 
       break;
 
-    case kBiosTypeEFI:
+    case BiosType::kEFI:
       if (!RunEfiPostInstall(install_config)) {
         LOG(ERROR) << "EFI PostInstall failed.";
         success = false;

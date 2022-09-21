@@ -14,13 +14,13 @@ using std::string;
 
 bool StrToBiosType(string name, BiosType* bios_type) {
   if (name == "secure") {
-    *bios_type = kBiosTypeSecure;
+    *bios_type = BiosType::kSecure;
   } else if (name == "uboot") {
-    *bios_type = kBiosTypeUBoot;
+    *bios_type = BiosType::kUBoot;
   } else if (name == "legacy") {
-    *bios_type = kBiosTypeLegacy;
+    *bios_type = BiosType::kLegacy;
   } else if (name == "efi") {
-    *bios_type = kBiosTypeEFI;
+    *bios_type = BiosType::kEFI;
   } else {
     LOG(INFO) << "Bios type " << name
               << " is not one of secure, legacy, efi, or uboot.";

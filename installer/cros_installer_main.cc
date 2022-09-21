@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_type == "postinst") {
     // Unknown means we will attempt to autodetect later on.
-    BiosType bios_type = kBiosTypeUnknown;
+    BiosType bios_type = BiosType::kUnknown;
     if (!FLAGS_bios.empty() && !StrToBiosType(FLAGS_bios, &bios_type)) {
       LOG(ERROR) << "Invalid bios type: " << FLAGS_bios;
       return 1;

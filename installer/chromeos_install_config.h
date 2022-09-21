@@ -9,12 +9,12 @@
 
 #include "installer/inst_util.h"
 
-enum BiosType {
-  kBiosTypeUnknown,
-  kBiosTypeSecure,
-  kBiosTypeUBoot,
-  kBiosTypeLegacy,
-  kBiosTypeEFI,
+enum class BiosType {
+  kUnknown,
+  kSecure,
+  kUBoot,
+  kLegacy,
+  kEFI,
 };
 
 bool StrToBiosType(std::string name, BiosType* bios_type);

@@ -128,8 +128,8 @@ bool UpdateLegacyKernel(const InstallConfig& install_config) {
   // overlay's `profiles/base/make.defaults` as a `USE=` flag. Without this,
   // `src/scripts/build_library/base_image_util.sh` will move the Kernel during
   // `build_image`.
-  if (is_install && (install_config.bios_type == kBiosTypeLegacy ||
-                     install_config.bios_type == kBiosTypeEFI)) {
+  if (is_install && (install_config.bios_type == BiosType::kLegacy ||
+                     install_config.bios_type == BiosType::kEFI)) {
     // This is a non-fatal condition. The new Kernel is already present at the
     // destination. Log a warning and continue.
     if (!base::PathExists(kernel_from) && base::PathExists(kernel_to)) {
