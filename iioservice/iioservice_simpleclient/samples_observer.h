@@ -37,7 +37,6 @@ class SamplesObserver final : public Observer,
       double frequency,
       int timeout,
       int samples,
-      OnMojoDisconnectCallback on_mojo_disconnect_callback,
       QuitCallback quit_callback);
 
   // cros::mojom::SensorDeviceSamplesObserver overrides:
@@ -52,7 +51,6 @@ class SamplesObserver final : public Observer,
                   double frequency,
                   int timeout,
                   int samples,
-                  OnMojoDisconnectCallback on_mojo_disconnect_callback,
                   QuitCallback quit_callback);
 
   // SensorClient overrides:

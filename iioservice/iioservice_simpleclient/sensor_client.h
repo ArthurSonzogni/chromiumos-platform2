@@ -13,7 +13,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "iioservice/iioservice_simpleclient/common.h"
 #include "iioservice/mojo/cros_sensor_service.mojom.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -21,7 +20,6 @@ namespace iioservice {
 
 class SensorClient : public cros::mojom::SensorHalClient {
  public:
-  using OnMojoDisconnectCallback = base::RepeatingCallback<void(bool)>;
   using QuitCallback = base::OnceCallback<void()>;
 
   static void SensorClientDeleter(SensorClient* observer);
@@ -37,7 +35,6 @@ class SensorClient : public cros::mojom::SensorHalClient {
 
  protected:
   SensorClient(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-               OnMojoDisconnectCallback on_mojo_disconnect_callback,
                QuitCallback quit_callback);
 
   void SetUpChannelTimeout();
@@ -45,22 +42,16 @@ class SensorClient : public cros::mojom::SensorHalClient {
   virtual void Start() = 0;
   virtual void Reset();
 
-  void Quit();
-  void OnMojoDisconnect(bool mojo_broker);
-
   void OnClientDisconnect();
   void OnServiceDisconnect();
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
-  OnMojoDisconnectCallback on_mojo_disconnect_callback_;
   QuitCallback quit_callback_;
 
   mojo::Receiver<cros::mojom::SensorHalClient> client_{this};
   mojo::Remote<cros::mojom::SensorService> sensor_service_remote_;
 
   bool sensor_service_setup_ = false;
-
-  std::unique_ptr<TimeoutDelegate> timeout_delegate_;
 
   base::WeakPtrFactory<SensorClient> weak_factory_{this};
 };

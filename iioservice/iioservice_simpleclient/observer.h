@@ -18,7 +18,6 @@ namespace iioservice {
 class Observer : public SensorClient {
  protected:
   Observer(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-           OnMojoDisconnectCallback on_mojo_disconnect_callback,
            QuitCallback quit_callback,
            int device_id,
            cros::mojom::DeviceType device_type,

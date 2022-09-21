@@ -15,8 +15,6 @@ namespace iioservice {
 namespace {
 
 constexpr int kSetUpChannelTimeoutInMilliseconds = 3000;
-constexpr const char kSetUpChannelTimeoutLog[] =
-    "SensorService to iioservice is not received";
 
 }  // namespace
 
@@ -43,18 +41,12 @@ void SensorClient::BindClient(
   client_.Bind(std::move(client));
   client_.set_disconnect_handler(base::BindOnce(
       &SensorClient::OnClientDisconnect, weak_factory_.GetWeakPtr()));
-
-  timeout_delegate_.reset(new TimeoutDelegate(
-      kSetUpChannelTimeoutInMilliseconds, kSetUpChannelTimeoutLog,
-      base::BindOnce(&SensorClient::Reset, weak_factory_.GetWeakPtr())));
 }
 
 void SensorClient::SetUpChannel(
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(!sensor_service_remote_.is_bound());
-
-  timeout_delegate_.reset();
 
   sensor_service_setup_ = true;
 
@@ -67,11 +59,15 @@ void SensorClient::SetUpChannel(
 
 SensorClient::SensorClient(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-    OnMojoDisconnectCallback on_mojo_disconnect_callback,
     QuitCallback quit_callback)
     : ipc_task_runner_(std::move(ipc_task_runner)),
-      on_mojo_disconnect_callback_(std::move(on_mojo_disconnect_callback)),
-      quit_callback_(std::move(quit_callback)) {}
+      quit_callback_(std::move(quit_callback)) {
+  ipc_task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&SensorClient::SetUpChannelTimeout,
+                     weak_factory_.GetWeakPtr()),
+      base::Milliseconds(kSetUpChannelTimeoutInMilliseconds));
+}
 
 void SensorClient::SetUpChannelTimeout() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
@@ -87,35 +83,25 @@ void SensorClient::SetUpChannelTimeout() {
 void SensorClient::Reset() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
+  client_.reset();
   sensor_service_remote_.reset();
 
   if (quit_callback_)
     std::move(quit_callback_).Run();
 }
 
-void SensorClient::OnMojoDisconnect(bool mojo_broker) {
-  auto quit_callback = std::move(quit_callback_);
-  Reset();
-  quit_callback_ = std::move(quit_callback);
-
-  on_mojo_disconnect_callback_.Run(mojo_broker);
-}
-
 void SensorClient::OnClientDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorHalClient disconnected";
-
-  client_.reset();
-  OnMojoDisconnect(true);
+  Reset();
 }
 
 void SensorClient::OnServiceDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorService disconnected";
-
-  OnMojoDisconnect(false);
+  Reset();
 }
 
 }  // namespace iioservice

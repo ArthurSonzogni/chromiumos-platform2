@@ -34,7 +34,6 @@ class EventsObserver final : public Observer,
       cros::mojom::DeviceType device_type,
       std::vector<int> event_indices,
       int events,
-      OnMojoDisconnectCallback on_mojo_disconnect_callback,
       QuitCallback quit_callback);
 
   // cros::mojom::SensorDeviceEventsObserver overrides:
@@ -47,7 +46,6 @@ class EventsObserver final : public Observer,
                  cros::mojom::DeviceType device_type,
                  std::vector<int> event_indices,
                  int events,
-                 OnMojoDisconnectCallback on_mojo_disconnect_callback,
                  QuitCallback quit_callback);
 
   // SensorClient overrides:

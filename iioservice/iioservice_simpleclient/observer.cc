@@ -23,14 +23,11 @@ constexpr base::TimeDelta kMaximumBaseLatencyTolerance = base::Milliseconds(50);
 }  // namespace
 
 Observer::Observer(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-                   OnMojoDisconnectCallback on_mojo_disconnect_callback,
                    QuitCallback quit_callback,
                    int device_id,
                    cros::mojom::DeviceType device_type,
                    int num)
-    : SensorClient(std::move(ipc_task_runner),
-                   std::move(on_mojo_disconnect_callback),
-                   std::move(quit_callback)),
+    : SensorClient(std::move(ipc_task_runner), std::move(quit_callback)),
       device_id_(device_id),
       device_type_(device_type),
       num_(num) {}
@@ -46,16 +43,14 @@ void Observer::OnDeviceDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorDevice disconnected";
-
-  OnMojoDisconnect(false);
+  Reset();
 }
 
 void Observer::OnObserverDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "Observer diconnected";
-
-  OnMojoDisconnect(false);
+  Reset();
 }
 
 void Observer::GetDeviceIdsByType() {
