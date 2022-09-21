@@ -43,24 +43,21 @@
 
 namespace shill {
 
+class CellularServiceProvider;
 class ControlInterface;
-class DeviceClaimer;
 class DefaultProfile;
+class DeviceClaimer;
 class Error;
 class EthernetEapProvider;
 class EthernetProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
+class ModemInfo;
 class Resolver;
 class SupplicantManager;
 class Throttler;
 class VPNProvider;
 class WiFiProvider;
-
-#if !defined(DISABLE_CELLULAR)
-class CellularServiceProvider;
-class ModemInfo;
-#endif
 
 // Helper class for storing in memory the set of shill Manager DBUS R or RW
 // DBus properties.
@@ -373,12 +370,10 @@ class Manager {
   void RefreshConnectionState();
 
   virtual DeviceInfo* device_info() { return &device_info_; }
-#if !defined(DISABLE_CELLULAR)
   virtual ModemInfo* modem_info() { return modem_info_.get(); }
   virtual CellularServiceProvider* cellular_service_provider() {
     return cellular_service_provider_.get();
   }
-#endif  // DISABLE_CELLULAR
   PowerManager* power_manager() const { return power_manager_.get(); }
   virtual EthernetProvider* ethernet_provider() {
     return ethernet_provider_.get();
@@ -777,10 +772,8 @@ class Manager {
   base::FilePath user_profile_list_path_;  // Changed in tests.
   std::unique_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
-#if !defined(DISABLE_CELLULAR)
   std::unique_ptr<ModemInfo> modem_info_;
   std::unique_ptr<CellularServiceProvider> cellular_service_provider_;
-#endif  // DISABLE_CELLULAR
   std::unique_ptr<EthernetProvider> ethernet_provider_;
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
   std::unique_ptr<VPNProvider> vpn_provider_;

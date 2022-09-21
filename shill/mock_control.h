@@ -11,7 +11,16 @@
 #include <base/callback.h>
 #include <gmock/gmock.h>
 
+#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
+#include "shill/cellular/mm1_modem_location_proxy_interface.h"
+#include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
+#include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
+#include "shill/cellular/mm1_modem_proxy_interface.h"
+#include "shill/cellular/mm1_modem_signal_proxy_interface.h"
+#include "shill/cellular/mm1_modem_simple_proxy_interface.h"
+#include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/control_interface.h"
+#include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
@@ -21,18 +30,6 @@
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
-
-#if !defined(DISABLE_CELLULAR)
-#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
-#include "shill/cellular/mm1_modem_location_proxy_interface.h"
-#include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
-#include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
-#include "shill/cellular/mm1_modem_proxy_interface.h"
-#include "shill/cellular/mm1_modem_signal_proxy_interface.h"
-#include "shill/cellular/mm1_modem_simple_proxy_interface.h"
-#include "shill/cellular/mm1_sim_proxy_interface.h"
-#include "shill/dbus/dbus_properties_proxy.h"
-#endif  // DISABLE_CELLULAR
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
@@ -104,7 +101,6 @@ class MockControl : public ControlInterface {
               (),
               (override));
 
-#if !defined(DISABLE_CELLULAR)
   MOCK_METHOD(std::unique_ptr<DBusPropertiesProxy>,
               CreateDBusPropertiesProxy,
               (const RpcIdentifier&, const std::string&),
@@ -145,7 +141,6 @@ class MockControl : public ControlInterface {
               CreateMM1SimProxy,
               (const RpcIdentifier&, const std::string&),
               (override));
-#endif  // DISABLE_CELLULAR
 
  private:
   RpcIdentifier null_identifier_;

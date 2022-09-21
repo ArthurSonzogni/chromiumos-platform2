@@ -488,8 +488,6 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(kTransmitByteCount, tx_bytes);
 }
 
-#if !defined(DISABLE_CELLULAR)
-
 TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   IPAddress address = CreateInterfaceAddress();
 
@@ -503,8 +501,6 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kCellular));
 }
-
-#endif  // DISABLE_CELLULAR
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
   IPAddress address = CreateInterfaceAddress();
@@ -640,9 +636,7 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
 
 TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   // A cdc_ether / cdc_ncm device should be postponed to a task.
-#if !defined(DISABLE_CELLULAR)
   EXPECT_CALL(manager_, modem_info()).Times(0);
-#endif  // DISABLE_CELLULAR
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_TRUE(GetDelayedDevices().empty());

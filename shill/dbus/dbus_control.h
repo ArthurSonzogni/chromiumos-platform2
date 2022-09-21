@@ -73,7 +73,6 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
       const std::string& service) override;
 
-#if !defined(DISABLE_CELLULAR)
   std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
       const RpcIdentifier& path, const std::string& service) override;
 
@@ -106,7 +105,6 @@ class DBusControl : public ControlInterface {
 
   std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
       const RpcIdentifier& path, const std::string& service) override;
-#endif  // DISABLE_CELLULAR
 
  private:
   void OnDBusServiceRegistered(base::OnceCallback<void(bool)> completion_action,

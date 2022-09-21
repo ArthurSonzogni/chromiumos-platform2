@@ -72,11 +72,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   EXPECT_FALSE(tech_v.empty());
   std::set<std::string> tech_s(tech_v.begin(), tech_v.end());
   EXPECT_TRUE(tech_s.count(kTypeEthernet));
-#if defined(DISABLE_CELLULAR)
-  EXPECT_FALSE(tech_s.count(kTypeCellular));
-#else
   EXPECT_TRUE(tech_s.count(kTypeCellular));
-#endif  // DISABLE_CELLULAR
 
   tech_v = caps.Get<std::vector<std::string>>(kTetheringCapDownstreamProperty);
   EXPECT_FALSE(tech_v.empty());

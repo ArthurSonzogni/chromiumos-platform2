@@ -112,7 +112,6 @@ class ControlInterface {
   virtual std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
       const std::string& service) = 0;
 
-#if !defined(DISABLE_CELLULAR)
   virtual std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
       const RpcIdentifier& path, const std::string& service) = 0;
 
@@ -148,7 +147,6 @@ class ControlInterface {
 
   virtual std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
       const RpcIdentifier& path, const std::string& service) = 0;
-#endif  // DISABLE_CELLULAR
 };
 
 }  // namespace shill

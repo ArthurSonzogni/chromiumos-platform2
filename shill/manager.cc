@@ -37,6 +37,8 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/cellular/cellular_service_provider.h"
+#include "shill/cellular/modem_info.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_profile.h"
@@ -69,11 +71,6 @@
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
-
-#if !defined(DISABLE_CELLULAR)
-#include "shill/cellular/cellular_service_provider.h"
-#include "shill/cellular/modem_info.h"
-#endif  // DISABLE_CELLULAR
 
 namespace shill {
 
@@ -162,10 +159,8 @@ Manager::Manager(ControlInterface* control_interface,
       user_profile_list_path_(Profile::kUserProfileListPathname),
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(this),
-#if !defined(DISABLE_CELLULAR)
       modem_info_(new ModemInfo(control_interface, this)),
       cellular_service_provider_(new CellularServiceProvider(this)),
-#endif  // DISABLE_CELLULAR
       ethernet_provider_(new EthernetProvider(this)),
       ethernet_eap_provider_(new EthernetEapProvider(this)),
       vpn_provider_(new VPNProvider(this)),
@@ -330,9 +325,7 @@ void Manager::Start() {
   InitializeProfiles();
   running_ = true;
   device_info_.Start();
-#if !defined(DISABLE_CELLULAR)
   modem_info_->Start();
-#endif  // DISABLE_CELLULAR
   for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Start();
   }
@@ -375,9 +368,7 @@ void Manager::Stop() {
   for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Stop();
   }
-#if !defined(DISABLE_CELLULAR)
   modem_info_.reset();
-#endif  // DISABLE_CELLULAR
   device_info_.Stop();
   device_status_check_task_.Cancel();
   sort_services_task_.Cancel();
@@ -2783,9 +2774,7 @@ bool Manager::IsWifiIdle() {
 }
 
 void Manager::UpdateProviderMapping() {
-#if !defined(DISABLE_CELLULAR)
   providers_[Technology::kCellular] = cellular_service_provider_.get();
-#endif  // DISABLE_CELLULAR
   providers_[Technology::kEthernet] = ethernet_provider_.get();
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
   providers_[Technology::kVPN] = vpn_provider_.get();

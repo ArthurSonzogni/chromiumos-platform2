@@ -25,6 +25,7 @@ group("all") {
       ":set-apn-helper",
     ]
   }
+
   if (use.cellular || use.vpn) {
     deps += [ ":shill-pppd-plugin" ]
   }
@@ -71,9 +72,6 @@ pkg_config("target_defaults") {
     "RUNDIR=\"/run/shill\"",
     "SHIMDIR=\"${libdir}/shill/shims\"",
   ]
-  if (!use.cellular) {
-    defines += [ "DISABLE_CELLULAR" ]
-  }
 
   if (use.test || use.fuzzer) {
     # For the "mockable" keyword.
@@ -170,15 +168,10 @@ generate_dbus_adaptors("shill-chromeos-dbus-adaptors") {
 
 pkg_config("libshill_config") {
   pkg_deps = [
+    "ModemManager",
     "libcares",
     "libshill-client",
   ]
-}
-
-if (use.cellular) {
-  pkg_config("libshill_cellular_config") {
-    pkg_deps = [ "ModemManager" ]
-  }
 }
 
 generate_dbus_proxies("generate_cellular_proxies") {
@@ -224,12 +217,31 @@ generate_dbus_proxies("generate_supplicant_proxies") {
 
 static_library("libshill") {
   sources = [
+    "cellular/apn_list.cc",
+    "cellular/cellular.cc",
+    "cellular/cellular_bearer.cc",
+    "cellular/cellular_capability.cc",
+    "cellular/cellular_capability_3gpp.cc",
+    "cellular/cellular_error.cc",
+    "cellular/cellular_helpers.cc",
+    "cellular/cellular_pco.cc",
+    "cellular/cellular_service.cc",
+    "cellular/cellular_service_provider.cc",
+    "cellular/mobile_operator_info.cc",
+    "cellular/mobile_operator_info_impl.cc",
+    "cellular/modem.cc",
+    "cellular/modem_info.cc",
+    "cellular/pending_activation_store.cc",
+    "cellular/subscription_state.cc",
+    "cellular/verizon_subscription_state.cc",
     "certificate_file.cc",
     "connection.cc",
     "connection_diagnostics.cc",
     "daemon_task.cc",
     "dbus/dbus_adaptor.cc",
     "dbus/dbus_control.cc",
+    "dbus/dbus_objectmanager_proxy.cc",
+    "dbus/dbus_properties_proxy.cc",
     "dbus/dbus_service_watcher.cc",
     "dbus/dbus_service_watcher_factory.cc",
     "dbus/device_dbus_adaptor.cc",
@@ -237,6 +249,13 @@ static_library("libshill") {
     "dbus/dhcpcd_proxy.cc",
     "dbus/ipconfig_dbus_adaptor.cc",
     "dbus/manager_dbus_adaptor.cc",
+    "dbus/mm1_modem_location_proxy.cc",
+    "dbus/mm1_modem_modem3gpp_profile_manager_proxy.cc",
+    "dbus/mm1_modem_modem3gpp_proxy.cc",
+    "dbus/mm1_modem_proxy.cc",
+    "dbus/mm1_modem_signal_proxy.cc",
+    "dbus/mm1_modem_simple_proxy.cc",
+    "dbus/mm1_sim_proxy.cc",
     "dbus/power_manager_proxy.cc",
     "dbus/profile_dbus_adaptor.cc",
     "dbus/rpc_task_dbus_adaptor.cc",
@@ -286,8 +305,10 @@ static_library("libshill") {
     "network/network_config.cc",
     "portal_detector.cc",
     "power_manager.cc",
+    "ppp_daemon.cc",
     "process_manager.cc",
     "profile.cc",
+    "protobuf_lite_streams.cc",
     "resolver.cc",
     "result_aggregator.cc",
     "routing_policy_entry.cc",
@@ -348,6 +369,7 @@ static_library("libshill") {
     "libpower_manager-client",
   ]
   deps = [
+    ":generate_cellular_proxies",
     ":generate_dhcpcd_proxies",
     ":generate_supplicant_proxies",
     ":generate_upstart_proxies",
@@ -355,44 +377,6 @@ static_library("libshill") {
     ":shill-chromeos-dbus-adaptors",
     "//metrics/structured:libstructuredmetrics",
   ]
-
-  if (use.cellular) {
-    sources += [
-      "cellular/apn_list.cc",
-      "cellular/cellular.cc",
-      "cellular/cellular_bearer.cc",
-      "cellular/cellular_capability.cc",
-      "cellular/cellular_capability_3gpp.cc",
-      "cellular/cellular_error.cc",
-      "cellular/cellular_helpers.cc",
-      "cellular/cellular_pco.cc",
-      "cellular/cellular_service.cc",
-      "cellular/cellular_service_provider.cc",
-      "cellular/mobile_operator_info.cc",
-      "cellular/mobile_operator_info_impl.cc",
-      "cellular/modem.cc",
-      "cellular/modem_info.cc",
-      "cellular/pending_activation_store.cc",
-      "cellular/subscription_state.cc",
-      "cellular/verizon_subscription_state.cc",
-      "dbus/dbus_objectmanager_proxy.cc",
-      "dbus/dbus_properties_proxy.cc",
-      "dbus/mm1_modem_location_proxy.cc",
-      "dbus/mm1_modem_modem3gpp_profile_manager_proxy.cc",
-      "dbus/mm1_modem_modem3gpp_proxy.cc",
-      "dbus/mm1_modem_proxy.cc",
-      "dbus/mm1_modem_signal_proxy.cc",
-      "dbus/mm1_modem_simple_proxy.cc",
-      "dbus/mm1_sim_proxy.cc",
-      "protobuf_lite_streams.cc",
-    ]
-    configs += [ ":libshill_cellular_config" ]
-    deps += [ ":generate_cellular_proxies" ]
-  }
-
-  if (use.cellular || use.vpn) {
-    sources += [ "ppp_daemon.cc" ]
-  }
 
   if (use.vpn) {
     sources += [
@@ -604,19 +588,45 @@ if (use.test) {
       "libchrome-test",
       "libminijail",
     ]
-    if (use.cellular) {
-      pkg_deps += [ "ModemManager" ]
-    }
   }
 
   executable("shill_unittest") {
     sources = [
       "arp_client_test_helper.cc",
+      "cellular/apn_list_test.cc",
+      "cellular/cellular_bearer_test.cc",
+      "cellular/cellular_capability_3gpp_test.cc",
+      "cellular/cellular_error_test.cc",
+      "cellular/cellular_helpers_test.cc",
+      "cellular/cellular_pco_test.cc",
+      "cellular/cellular_service_provider_test.cc",
+      "cellular/cellular_service_test.cc",
+      "cellular/cellular_test.cc",
+      "cellular/mobile_operator_info_test.cc",
+      "cellular/mock_cellular.cc",
+      "cellular/mock_cellular_service.cc",
+      "cellular/mock_dbus_objectmanager_proxy.cc",
+      "cellular/mock_mm1_modem_location_proxy.cc",
+      "cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.cc",
+      "cellular/mock_mm1_modem_modem3gpp_proxy.cc",
+      "cellular/mock_mm1_modem_proxy.cc",
+      "cellular/mock_mm1_modem_signal_proxy.cc",
+      "cellular/mock_mm1_modem_simple_proxy.cc",
+      "cellular/mock_mm1_sim_proxy.cc",
+      "cellular/mock_mobile_operator_info.cc",
+      "cellular/mock_modem_info.cc",
+      "cellular/mock_pending_activation_store.cc",
+      "cellular/modem_info_test.cc",
+      "cellular/modem_test.cc",
+      "cellular/pending_activation_store_test.cc",
+      "cellular/verizon_subscription_state_test.cc",
       "certificate_file_test.cc",
       "connection_diagnostics_test.cc",
       "connection_test.cc",
       "daemon_task_test.cc",
       "dbus/dbus_adaptor_test.cc",
+      "dbus/dbus_properties_proxy_test.cc",
+      "dbus/fake_properties_proxy.cc",
       "dbus/manager_dbus_adaptor_test.cc",
       "default_profile_test.cc",
       "device_claimer_test.cc",
@@ -650,6 +660,7 @@ if (use.test) {
       "mac_address_test.cc",
       "manager_test.cc",
       "metrics_test.cc",
+      "mobile_operator_db/service_providers_test.cc",
       "mock_adaptors.cc",
       "mock_ares.cc",
       "mock_arp_client.cc",
@@ -689,6 +700,7 @@ if (use.test) {
       "network/network_test.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
+      "ppp_daemon_test.cc",
       "process_manager_test.cc",
       "profile_test.cc",
       "resolver_test.cc",
@@ -750,51 +762,10 @@ if (use.test) {
     ]
     deps = [
       ":libshill",
+      ":mobile_operator_db-db",
+      ":mobile_operator_db-test-db",
       "//metrics:metrics_test_support",
     ]
-
-    if (use.cellular) {
-      sources += [
-        "cellular/apn_list_test.cc",
-        "cellular/cellular_bearer_test.cc",
-        "cellular/cellular_capability_3gpp_test.cc",
-        "cellular/cellular_error_test.cc",
-        "cellular/cellular_helpers_test.cc",
-        "cellular/cellular_pco_test.cc",
-        "cellular/cellular_service_provider_test.cc",
-        "cellular/cellular_service_test.cc",
-        "cellular/cellular_test.cc",
-        "cellular/mobile_operator_info_test.cc",
-        "cellular/mock_cellular.cc",
-        "cellular/mock_cellular_service.cc",
-        "cellular/mock_dbus_objectmanager_proxy.cc",
-        "cellular/mock_mm1_modem_location_proxy.cc",
-        "cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.cc",
-        "cellular/mock_mm1_modem_modem3gpp_proxy.cc",
-        "cellular/mock_mm1_modem_proxy.cc",
-        "cellular/mock_mm1_modem_signal_proxy.cc",
-        "cellular/mock_mm1_modem_simple_proxy.cc",
-        "cellular/mock_mm1_sim_proxy.cc",
-        "cellular/mock_mobile_operator_info.cc",
-        "cellular/mock_modem_info.cc",
-        "cellular/mock_pending_activation_store.cc",
-        "cellular/modem_info_test.cc",
-        "cellular/modem_test.cc",
-        "cellular/pending_activation_store_test.cc",
-        "cellular/verizon_subscription_state_test.cc",
-        "dbus/dbus_properties_proxy_test.cc",
-        "dbus/fake_properties_proxy.cc",
-        "mobile_operator_db/service_providers_test.cc",
-      ]
-      deps += [
-        ":mobile_operator_db-db",
-        ":mobile_operator_db-test-db",
-      ]
-    }
-
-    if (use.cellular || use.vpn) {
-      sources += [ "ppp_daemon_test.cc" ]
-    }
 
     if (use.vpn) {
       sources += [

@@ -43,6 +43,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <re2/re2.h>
 
+#include "shill/cellular/modem_info.h"
 #include "shill/device.h"
 #include "shill/ethernet/ethernet.h"
 #include "shill/ethernet/virtio_ethernet.h"
@@ -63,10 +64,6 @@
 #include "shill/routing_table.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/wifi/wifi.h"
-
-#if !defined(DISABLE_CELLULAR)
-#include "shill/cellular/modem_info.h"
-#endif  // DISABLE_CELLULAR
 
 namespace shill {
 
@@ -616,23 +613,15 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
 
   switch (technology) {
     case Technology::kCellular:
-#if defined(DISABLE_CELLULAR)
-      LOG(WARNING) << "Cellular support is not implemented. "
-                   << "Ignore cellular device " << link_name << " at index "
-                   << interface_index << ".";
-      return nullptr;
-#else
       // Cellular devices are managed by ModemInfo.
       SLOG(2) << "Cellular link " << link_name << " at index "
               << interface_index << " -- notifying ModemInfo.";
-
       // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
       // Clear it here, and it will be fetched from the kernel in
       // GetMacAddress().
       infos_[interface_index].mac_address.Clear();
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
-#endif  // DISABLE_CELLULAR
     case Technology::kEthernet:
       device = new Ethernet(manager_, link_name, address, interface_index);
       device->network()->EnableIPv6Privacy();
@@ -1288,11 +1277,7 @@ bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
 VirtualDevice* DeviceInfo::CreatePPPDevice(Manager* manager,
                                            const std::string& ifname,
                                            int ifindex) {
-#if !defined(DISABLE_CELLULAR) || !defined(DISABLE_VPN)
   return new VirtualDevice(manager, ifname, ifindex, Technology::kPPP);
-#else
-  return nullptr;
-#endif
 }
 
 void DeviceInfo::OnCreateInterfaceResponse(const std::string& interface_name,

@@ -11,12 +11,21 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus/dbus_objectmanager_proxy.h"
+#include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/dbus_service_watcher.h"
 #include "shill/dbus/device_dbus_adaptor.h"
 #include "shill/dbus/dhcpcd_listener.h"
 #include "shill/dbus/dhcpcd_proxy.h"
 #include "shill/dbus/ipconfig_dbus_adaptor.h"
 #include "shill/dbus/manager_dbus_adaptor.h"
+#include "shill/dbus/mm1_modem_location_proxy.h"
+#include "shill/dbus/mm1_modem_modem3gpp_profile_manager_proxy.h"
+#include "shill/dbus/mm1_modem_modem3gpp_proxy.h"
+#include "shill/dbus/mm1_modem_proxy.h"
+#include "shill/dbus/mm1_modem_signal_proxy.h"
+#include "shill/dbus/mm1_modem_simple_proxy.h"
+#include "shill/dbus/mm1_sim_proxy.h"
 #include "shill/dbus/power_manager_proxy.h"
 #include "shill/dbus/profile_dbus_adaptor.h"
 #include "shill/dbus/rpc_task_dbus_adaptor.h"
@@ -27,18 +36,6 @@
 #include "shill/dbus/supplicant_process_proxy.h"
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
-
-#if !defined(DISABLE_CELLULAR)
-#include "shill/dbus/dbus_objectmanager_proxy.h"
-#include "shill/dbus/dbus_properties_proxy.h"
-#include "shill/dbus/mm1_modem_location_proxy.h"
-#include "shill/dbus/mm1_modem_modem3gpp_profile_manager_proxy.h"
-#include "shill/dbus/mm1_modem_modem3gpp_proxy.h"
-#include "shill/dbus/mm1_modem_proxy.h"
-#include "shill/dbus/mm1_modem_signal_proxy.h"
-#include "shill/dbus/mm1_modem_simple_proxy.h"
-#include "shill/dbus/mm1_sim_proxy.h"
-#endif  // DISABLE_CELLULAR
 
 #include "shill/manager.h"
 
@@ -195,7 +192,6 @@ std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {
   return std::make_unique<UpstartProxy>(proxy_bus_);
 }
 
-#if !defined(DISABLE_CELLULAR)
 std::unique_ptr<DBusPropertiesProxy> DBusControl::CreateDBusPropertiesProxy(
     const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<DBusPropertiesProxy>(proxy_bus_, path, service);
@@ -253,6 +249,5 @@ std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
     const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<mm1::SimProxy>(proxy_bus_, path, service);
 }
-#endif  // DISABLE_CELLULAR
 
 }  // namespace shill
