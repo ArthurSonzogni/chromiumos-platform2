@@ -194,7 +194,6 @@ class FakeSambaInterface : public SambaInterface {
 
     // Checks whether this entry is a file or an empty directory.
     bool IsFileOrEmptyDir() const;
-
   };
 
   struct FakeDirectory : FakeEntry {
@@ -231,7 +230,6 @@ class FakeSambaInterface : public SambaInterface {
 
     // Contains pointers to entries that can be found in this directory.
     Entries entries;
-
   };
 
   struct FakeFile : FakeEntry {
@@ -265,7 +263,6 @@ class FakeSambaInterface : public SambaInterface {
     // This only contains data if has_data is true.
     // Contains the data for the file.
     std::vector<uint8_t> data;
-
   };
 
   struct OpenInfo {
@@ -305,7 +302,6 @@ class FakeSambaInterface : public SambaInterface {
 
     // Returns true if |dir_path| is the same as full_path.
     bool IsForDir(const std::string& dir_path);
-
   };
 
   using OpenEntries = std::map<uint32_t, OpenInfo>;
