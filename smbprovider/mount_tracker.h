@@ -131,7 +131,6 @@ class MountTracker {
     SmbCredential credential;
     std::unique_ptr<SambaInterface> samba_interface;
     std::unique_ptr<MetadataCache> cache;
-
   };
 
   // Returns true if |mount_id| exists as a value in |samba_interface_map_|.

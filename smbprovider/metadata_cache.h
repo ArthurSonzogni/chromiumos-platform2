@@ -77,7 +77,6 @@ class MetadataCache {
 
     DirectoryEntry entry;
     base::TimeTicks expiration_time;
-
   };
 
   // Returns true if the expiration time of this entry has passed.
