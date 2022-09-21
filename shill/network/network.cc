@@ -469,7 +469,8 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config()->properties().dns_servers;
-  if (ipv6_static_properties_ && ipv6_static_properties_->dns_servers.empty()) {
+  if (ipv6_static_properties_ &&
+      !ipv6_static_properties_->dns_servers.empty()) {
     properties.dns_servers = ipv6_static_properties_->dns_servers;
   }
   ip6config()->set_properties(properties);
