@@ -206,7 +206,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   base::flat_set<std::string> seen_busdev;
 
   LOG(INFO) << "Finding IPP-USB devices";
-  std::vector<ScannerInfo> ippusb_devices = FindIppUsbDevices();
+  std::vector<ScannerInfo> ippusb_devices = FindIppUsbDevices(context);
   activity_callback_.Run(Daemon::kNormalShutdownTimeout);
   LOG(INFO) << "Found " << ippusb_devices.size() << " possible IPP-USB devices";
   for (const ScannerInfo& scanner : ippusb_devices) {

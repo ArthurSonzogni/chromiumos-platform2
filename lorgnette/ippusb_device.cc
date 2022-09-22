@@ -210,18 +210,9 @@ std::optional<std::string> BackendForDevice(const std::string& device_name) {
   return real_device;
 }
 
-std::vector<ScannerInfo> FindIppUsbDevices() {
-  libusb_context* ctx;
-  int status = libusb_init(&ctx);
-  if (status != 0) {
-    LOG(ERROR) << "Failed to initialize libusb: " << libusb_error_name(status);
-    return {};
-  }
-  auto context =
-      std::unique_ptr<libusb_context, decltype(&libusb_exit)>(ctx, libusb_exit);
-
+std::vector<ScannerInfo> FindIppUsbDevices(libusb_context* context) {
   libusb_device** dev_list;
-  ssize_t num_devices = libusb_get_device_list(context.get(), &dev_list);
+  ssize_t num_devices = libusb_get_device_list(context, &dev_list);
   if (num_devices < 0) {
     LOG(ERROR) << "Failed to enumerate USB devices: "
                << libusb_error_name(num_devices);

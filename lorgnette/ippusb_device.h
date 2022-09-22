@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <libusb.h>
+
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
@@ -25,7 +27,7 @@ std::optional<std::string> BackendForDevice(const std::string& device_name);
 // returned device will be a printer that claims to support IPP-USB, but they
 // are not probed for eSCL support.  The caller must double-check returned
 // devices before using them to scan.
-std::vector<ScannerInfo> FindIppUsbDevices();
+std::vector<ScannerInfo> FindIppUsbDevices(libusb_context* context);
 
 }  // namespace lorgnette
 
