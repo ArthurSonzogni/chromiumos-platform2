@@ -42,6 +42,7 @@ class TetheringManager {
   enum class SetEnabledResult {
     kSuccess,
     kFailure,
+    kUpstreamNetworkNotAvailable,
   };
 
   enum class WiFiBand : uint8_t {

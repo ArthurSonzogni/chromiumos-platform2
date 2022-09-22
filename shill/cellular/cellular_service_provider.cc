@@ -376,10 +376,29 @@ void CellularServiceProvider::OnTetheringNetworkReady(
   // caller's callback is triggered and no sooner. This avoid returning a
   // pointer that could be invalidated by the time the callback is triggered
   // (network disconnection).
-  // TODO(b/249151422) Return the Network of the main data connection for the
-  // current Service.
-  std::move(callback).Run(TetheringManager::SetEnabledResult::kFailure,
-                          nullptr);
+  // TODO(b/249151422) Do not rely on the Manager to obtain the Cellular Device
+  const auto cellular_devices =
+      manager_->FilterByTechnology(Technology::kCellular);
+  if (cellular_devices.empty()) {
+    std::move(callback).Run(
+        TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
+        nullptr);
+    return;
+  }
+
+  // TODO(b/249151422) Use the main active Service tracked by
+  // CellularServiceProvider itself instead of jumping through the Cellular
+  // device.
+  const auto network = cellular_devices[0]->network();
+  if (!network || !network->IsConnected()) {
+    std::move(callback).Run(
+        TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
+        nullptr);
+    return;
+  }
+
+  std::move(callback).Run(TetheringManager::SetEnabledResult::kSuccess,
+                          network);
 }
 
 void CellularServiceProvider::ReleaseTetheringNetwork(

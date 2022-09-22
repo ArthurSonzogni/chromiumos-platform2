@@ -366,6 +366,13 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
     return false;
   }
 
+  // TODO(b/235762746) If the upstream technology is Cellular, obtain the
+  // upstream Network with CellularServiceProvider::AcquireTetheringNetwork.
+
+  // TODO(b/235762746) Check if Internet access has been validated on the
+  // upstream network (pending integration of PortalDetection into the Network
+  // class).
+
   // TODO(b/235762439): Routine to enable/disable tethering session.
   return true;
 }

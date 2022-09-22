@@ -138,6 +138,10 @@ class MockManager : public Manager {
   MOCK_METHOD(void, ConnectToBestServices, (Error*), (override));
   MOCK_METHOD((const std::string&), dhcp_hostname, (), (const, override));
   MOCK_METHOD(const ManagerProperties&, GetProperties, (), (const, override));
+  MOCK_METHOD(std::vector<DeviceRefPtr>,
+              FilterByTechnology,
+              (Technology tech),
+              (const, override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

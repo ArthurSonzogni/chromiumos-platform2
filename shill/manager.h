@@ -167,7 +167,7 @@ class Manager {
   // Persists |to_update| into an appropriate profile.
   virtual void UpdateDevice(const DeviceRefPtr& to_update);
 
-  std::vector<DeviceRefPtr> FilterByTechnology(Technology tech) const;
+  virtual std::vector<DeviceRefPtr> FilterByTechnology(Technology tech) const;
 
   RpcIdentifiers EnumerateAvailableServices(Error* error);
 
