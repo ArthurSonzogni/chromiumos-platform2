@@ -18,9 +18,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
-static std::string ObjectID(const GenericNetlinkMessage* obj) {
-  return "(generic_netlink_message)";
-}
 }  // namespace Logging
 
 ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
@@ -95,7 +92,7 @@ std::string GenericNetlinkMessage::ToString() const {
 
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
-  SLOG(this, header_log_level) << ToString();
+  SLOG(header_log_level) << ToString();
   attributes_->Print(detail_log_level, 1);
 }
 

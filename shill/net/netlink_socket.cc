@@ -24,9 +24,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
-static std::string ObjectID(const NetlinkSocket* obj) {
-  return "(netlink_socket)";
-}
 }  // namespace Logging
 
 NetlinkSocket::NetlinkSocket()
@@ -50,7 +47,7 @@ bool NetlinkSocket::Init() {
   if (file_descriptor_ == Sockets::kInvalidFileDescriptor)
     return false;
 
-  SLOG(this, 2) << "Netlink socket started";
+  SLOG(2) << "Netlink socket started";
   return true;
 }
 

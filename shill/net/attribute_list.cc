@@ -19,9 +19,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
-static std::string ObjectID(const AttributeList* obj) {
-  return "(attribute_list)";
-}
 }  // namespace Logging
 
 AttributeList::AttributeList() = default;
@@ -31,7 +28,7 @@ AttributeList::~AttributeList() = default;
 bool AttributeList::CreateAttribute(int id,
                                     AttributeList::NewFromIdMethod factory) {
   if (base::Contains(attributes_, id)) {
-    SLOG(this, 7) << "Trying to re-add attribute " << id << ", not overwriting";
+    SLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
   attributes_[id] = factory.Run(id);

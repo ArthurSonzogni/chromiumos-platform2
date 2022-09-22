@@ -20,9 +20,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
-static std::string ObjectID(const NetlinkMessage* obj) {
-  return "(netlink_message)";
-}
 }  // namespace Logging
 
 const uint32_t NetlinkMessage::kBroadcastSequenceNumber = 0;
@@ -81,16 +78,16 @@ bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet,
 
 void NetlinkMessage::Print(int header_log_level,
                            int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
+  SLOG(header_log_level) << ToString();
 }
 
 // static
 void NetlinkMessage::PrintBytes(int log_level,
                                 const unsigned char* buf,
                                 size_t num_bytes) {
-  SLOG(nullptr, log_level) << "Netlink Message -- Examining Bytes";
+  SLOG(log_level) << "Netlink Message -- Examining Bytes";
   if (!buf) {
-    SLOG(nullptr, log_level) << "<NULL Buffer>";
+    SLOG(log_level) << "<NULL Buffer>";
     return;
   }
 
@@ -99,9 +96,9 @@ void NetlinkMessage::PrintBytes(int log_level,
     buf += sizeof(nlmsghdr);
     num_bytes -= sizeof(nlmsghdr);
   } else {
-    SLOG(nullptr, log_level)
-        << "Not enough bytes (" << num_bytes
-        << ") for a complete nlmsghdr (requires " << sizeof(nlmsghdr) << ").";
+    SLOG(log_level) << "Not enough bytes (" << num_bytes
+                    << ") for a complete nlmsghdr (requires "
+                    << sizeof(nlmsghdr) << ").";
   }
 
   PrintPayload(log_level, buf, num_bytes);
@@ -109,9 +106,9 @@ void NetlinkMessage::PrintBytes(int log_level,
 
 // static
 void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
-  SLOG(nullptr, log_level) << "Netlink Message -- Examining Packet";
+  SLOG(log_level) << "Netlink Message -- Examining Packet";
   if (!packet.IsValid()) {
-    SLOG(nullptr, log_level) << "<Invalid Buffer>";
+    SLOG(log_level) << "<Invalid Buffer>";
     return;
   }
 
@@ -123,11 +120,11 @@ void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
 // static
 void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
   const unsigned char* buf = reinterpret_cast<const unsigned char*>(header);
-  SLOG(nullptr, log_level) << base::StringPrintf(
+  SLOG(log_level) << base::StringPrintf(
       "len:          %02x %02x %02x %02x = %u bytes", buf[0], buf[1], buf[2],
       buf[3], header->nlmsg_len);
 
-  SLOG(nullptr, log_level) << base::StringPrintf(
+  SLOG(log_level) << base::StringPrintf(
       "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s", buf[4],
       buf[5], buf[6], buf[7], header->nlmsg_type,
       ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
@@ -136,10 +133,10 @@ void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
       ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
       ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
 
-  SLOG(nullptr, log_level) << base::StringPrintf(
+  SLOG(log_level) << base::StringPrintf(
       "sequence:     %02x %02x %02x %02x = %u", buf[8], buf[9], buf[10],
       buf[11], header->nlmsg_seq);
-  SLOG(nullptr, log_level) << base::StringPrintf(
+  SLOG(log_level) << base::StringPrintf(
       "pid:          %02x %02x %02x %02x = %u", buf[12], buf[13], buf[14],
       buf[15], header->nlmsg_pid);
 }
@@ -154,7 +151,7 @@ void NetlinkMessage::PrintPayload(int log_level,
     for (size_t i = 0; i < bytes_this_row; ++i) {
       base::StringAppendF(&output, " %02x", *buf++);
     }
-    SLOG(nullptr, log_level) << output;
+    SLOG(log_level) << output;
     num_bytes -= bytes_this_row;
   }
 }
@@ -251,7 +248,7 @@ std::string UnknownMessage::ToString() const {
 
 void UnknownMessage::Print(int header_log_level,
                            int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
+  SLOG(header_log_level) << ToString();
 }
 
 //

@@ -22,9 +22,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
-static std::string ObjectID(const NetlinkAttribute* obj) {
-  return "(netlink_attribute)";
-}
 }  // namespace Logging
 
 NetlinkAttribute::NetlinkAttribute(int id,
@@ -301,9 +298,9 @@ bool NetlinkAttribute::SetRawValue(const ByteString new_value) {
 
 void NetlinkAttribute::Print(int log_level, int indent) const {
   std::string attribute_value;
-  SLOG(this, log_level) << HeaderToPrint(indent) << " "
-                        << (ToString(&attribute_value) ? attribute_value
-                                                       : "<DOES NOT EXIST>");
+  SLOG(log_level) << HeaderToPrint(indent) << " "
+                  << (ToString(&attribute_value) ? attribute_value
+                                                 : "<DOES NOT EXIST>");
 }
 
 std::string NetlinkAttribute::RawToString() const {
@@ -371,8 +368,8 @@ bool NetlinkU8Attribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkU8Attribute::GetU8Value(uint8_t* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "U8 attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "U8 attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -425,8 +422,8 @@ bool NetlinkU16Attribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkU16Attribute::GetU16Value(uint16_t* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "U16 attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "U16 attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -479,8 +476,8 @@ bool NetlinkU32Attribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkU32Attribute::GetU32Value(uint32_t* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "U32 attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "U32 attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -532,8 +529,8 @@ bool NetlinkU64Attribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkU64Attribute::GetU64Value(uint64_t* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "U64 attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "U64 attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -633,7 +630,7 @@ bool NetlinkStringAttribute::InitFromValue(const ByteString& input) {
                    << " bytes early.";
       SetStringValue(string_ptr);
     } else {
-      SLOG(this, 1) << "String is unterminated.";
+      SLOG(1) << "String is unterminated.";
       SetStringValue(std::string(string_ptr, input.GetLength()));
     }
   }
@@ -643,8 +640,8 @@ bool NetlinkStringAttribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkStringAttribute::GetStringValue(std::string* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "String attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "String attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -738,7 +735,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
 }
 
 void NetlinkNestedAttribute::Print(int log_level, int indent) const {
-  SLOG(this, log_level) << HeaderToPrint(indent);
+  SLOG(log_level) << HeaderToPrint(indent);
   value_->Print(log_level, indent + 1);
 }
 
@@ -951,8 +948,8 @@ bool NetlinkRawAttribute::InitFromValue(const ByteString& input) {
 
 bool NetlinkRawAttribute::GetRawValue(ByteString* output) const {
   if (!has_a_value_) {
-    SLOG(this, 7) << "Raw attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "Raw attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -973,8 +970,8 @@ bool NetlinkRawAttribute::ToString(std::string* output) const {
     return false;
   }
   if (!has_a_value_) {
-    SLOG(this, 7) << "Raw attribute " << id_string()
-                  << " hasn't been set to any value.";
+    SLOG(7) << "Raw attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   int total_bytes = data_.GetLength();

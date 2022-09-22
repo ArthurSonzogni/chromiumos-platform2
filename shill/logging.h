@@ -30,7 +30,7 @@
 #if defined(SLOG_MEANS_VLOG)
 
 // For libshill-net, because library users do not implement SLOG.
-#define SLOG(object, verbose_level) VLOG(verbose_level)
+#define SLOG(verbose_level) VLOG(verbose_level)
 
 #else
 
