@@ -15,9 +15,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static std::string ObjectID(const MobileOperatorInfo* m) {
-  return "(mobile_operator_info)";
-}
 }  // namespace Logging
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -37,66 +34,65 @@ std::string MobileOperatorInfo::GetLogPrefix(const char* func) const {
 }
 
 void MobileOperatorInfo::ClearDatabasePaths() {
-  SLOG(this, 3) << GetLogPrefix(__func__);
+  SLOG(3) << GetLogPrefix(__func__);
   impl_->ClearDatabasePaths();
 }
 
 void MobileOperatorInfo::AddDatabasePath(const base::FilePath& absolute_path) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << absolute_path.value()
-                << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << absolute_path.value() << ")";
   impl_->AddDatabasePath(absolute_path);
 }
 
 bool MobileOperatorInfo::Init() {
   auto result = impl_->Init();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 void MobileOperatorInfo::AddObserver(MobileOperatorInfo::Observer* observer) {
-  SLOG(this, 3) << GetLogPrefix(__func__);
+  SLOG(3) << GetLogPrefix(__func__);
   impl_->AddObserver(observer);
 }
 
 void MobileOperatorInfo::RemoveObserver(
     MobileOperatorInfo::Observer* observer) {
-  SLOG(this, 3) << GetLogPrefix(__func__);
+  SLOG(3) << GetLogPrefix(__func__);
   impl_->RemoveObserver(observer);
 }
 
 bool MobileOperatorInfo::IsMobileNetworkOperatorKnown() const {
   auto result = impl_->IsMobileNetworkOperatorKnown();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 bool MobileOperatorInfo::IsMobileVirtualNetworkOperatorKnown() const {
   auto result = impl_->IsMobileVirtualNetworkOperatorKnown();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const std::string& MobileOperatorInfo::uuid() const {
   const auto& result = impl_->uuid();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const std::string& MobileOperatorInfo::operator_name() const {
   const auto& result = impl_->operator_name();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const std::string& MobileOperatorInfo::country() const {
   const auto& result = impl_->country();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const std::string& MobileOperatorInfo::mccmnc() const {
   const auto& result = impl_->mccmnc();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
@@ -107,8 +103,7 @@ const std::vector<std::string>& MobileOperatorInfo::mccmnc_list() const {
     for (const auto& mccmnc : result) {
       pp_result << mccmnc << " ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
-                  << "]";
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
   return result;
 }
@@ -122,8 +117,7 @@ MobileOperatorInfo::operator_name_list() const {
       pp_result << "(" << operator_name.name << ", " << operator_name.language
                 << ") ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
-                  << "]";
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
   return result;
 }
@@ -144,8 +138,7 @@ const std::vector<MobileOperatorInfo::MobileAPN>& MobileOperatorInfo::apn_list()
       }
       pp_result << "') ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
-                  << "]";
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
   return result;
 }
@@ -159,61 +152,60 @@ MobileOperatorInfo::olp_list() const {
       pp_result << "(url: " << olp.url << ", method: " << olp.method
                 << ", post_data: " << olp.post_data << ") ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
-                  << "]";
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
   return result;
 }
 
 bool MobileOperatorInfo::requires_roaming() const {
   auto result = impl_->requires_roaming();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 int32_t MobileOperatorInfo::mtu() const {
   auto result = impl_->mtu();
-  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 void MobileOperatorInfo::UpdateIMSI(const std::string& imsi) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << imsi << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << imsi << ")";
   impl_->UpdateIMSI(imsi);
 }
 
 void MobileOperatorInfo::UpdateICCID(const std::string& iccid) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << iccid << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << iccid << ")";
   impl_->UpdateICCID(iccid);
 }
 
 void MobileOperatorInfo::UpdateMCCMNC(const std::string& mccmnc) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
   impl_->UpdateMCCMNC(mccmnc);
 }
 
 void MobileOperatorInfo::UpdateOperatorName(const std::string& operator_name) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
   impl_->UpdateOperatorName(operator_name);
 }
 
 void MobileOperatorInfo::UpdateOnlinePortal(const std::string& url,
                                             const std::string& method,
                                             const std::string& post_data) {
-  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << url << ", " << method
-                << ", " << post_data << ")";
+  SLOG(3) << GetLogPrefix(__func__) << "(" << url << ", " << method << ", "
+          << post_data << ")";
   impl_->UpdateOnlinePortal(url, method, post_data);
 }
 
 void MobileOperatorInfo::UpdateRequiresRoaming(
     const MobileOperatorInfo* serving_operator_info) {
   impl_->UpdateRequiresRoaming(serving_operator_info);
-  SLOG(this, 3) << GetLogPrefix(__func__)
-                << "Updated requires_roaming: " << impl_->requires_roaming();
+  SLOG(3) << GetLogPrefix(__func__)
+          << "Updated requires_roaming: " << impl_->requires_roaming();
 }
 
 void MobileOperatorInfo::Reset() {
-  SLOG(this, 3) << GetLogPrefix(__func__);
+  SLOG(3) << GetLogPrefix(__func__);
   impl_->Reset();
 }
 

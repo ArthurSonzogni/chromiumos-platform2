@@ -19,9 +19,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static std::string ObjectID(const CellularBearer* c) {
-  return "(cellular_bearer)";
-}
 }  // namespace Logging
 
 namespace {
@@ -62,8 +59,8 @@ CellularBearer::CellularBearer(ControlInterface* control_interface,
 CellularBearer::~CellularBearer() = default;
 
 bool CellularBearer::Init() {
-  SLOG(this, 3) << __func__ << ": path='" << dbus_path_.value()
-                << "', service='" << dbus_service_ << "'";
+  SLOG(3) << __func__ << ": path='" << dbus_path_.value() << "', service='"
+          << dbus_service_ << "'";
 
   dbus_properties_proxy_ =
       control_interface_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_);
@@ -93,8 +90,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (properties.Contains<uint32_t>(kPropertyMethod)) {
     method = properties.Get<uint32_t>(kPropertyMethod);
   } else {
-    SLOG(this, 2) << "Bearer '" << dbus_path_.value()
-                  << "' does not specify an IP configuration method.";
+    SLOG(2) << "Bearer '" << dbus_path_.value()
+            << "' does not specify an IP configuration method.";
   }
 
   *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
@@ -105,9 +102,9 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   if (!properties.Contains<std::string>(kPropertyAddress) ||
       !properties.Contains<std::string>(kPropertyGateway)) {
-    SLOG(this, 2) << "Bearer '" << dbus_path_.value()
-                  << "' static IP configuration does not specify valid "
-                     "address/gateway information.";
+    SLOG(2) << "Bearer '" << dbus_path_.value()
+            << "' static IP configuration does not specify valid "
+               "address/gateway information.";
     *ipconfig_method = IPConfigMethod::kUnknown;
     return;
   }
@@ -179,8 +176,8 @@ void CellularBearer::UpdateProperties() {
 
 void CellularBearer::OnPropertiesChanged(
     const std::string& interface, const KeyValueStore& changed_properties) {
-  SLOG(this, 3) << __func__ << ": path=" << dbus_path_.value()
-                << ", interface=" << interface;
+  SLOG(3) << __func__ << ": path=" << dbus_path_.value()
+          << ", interface=" << interface;
 
   if (interface != MM_DBUS_INTERFACE_BEARER)
     return;

@@ -21,9 +21,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static std::string ObjectID(const CellularServiceProvider* e) {
-  return "(cellular_service_provider)";
-}
 }  // namespace Logging
 
 namespace {
@@ -111,7 +108,7 @@ CellularServiceProvider::~CellularServiceProvider() = default;
 
 void CellularServiceProvider::CreateServicesFromProfile(
     const ProfileRefPtr& profile) {
-  SLOG(this, 2) << __func__ << ": " << profile->GetFriendlyName();
+  SLOG(2) << __func__ << ": " << profile->GetFriendlyName();
   // A Cellular Device may not exist yet, so we do not load services here.
   // Cellular services associated with a Device are loaded in
   // LoadServicesForDevice when the Device is created. We store |profile| here
@@ -122,7 +119,7 @@ void CellularServiceProvider::CreateServicesFromProfile(
 
 ServiceRefPtr CellularServiceProvider::FindSimilarService(
     const KeyValueStore& args, Error* error) const {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   CHECK_EQ(kTypeCellular, args.Lookup<std::string>(kTypeProperty, ""))
       << "Service type must be Cellular!";
   // This is called from Manager::ConfigureServiceForProfile when the Manager
@@ -136,7 +133,7 @@ ServiceRefPtr CellularServiceProvider::FindSimilarService(
 
 ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
                                                   Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // This is called from Manager::GetService or Manager::ConfigureService when
   // the corresponding Manager dbus api call is made (e.g. from Chrome). When a
   // Cellular Service is configured (e.g. from policy), find any existing
@@ -159,7 +156,7 @@ ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
 
 ServiceRefPtr CellularServiceProvider::CreateTemporaryService(
     const KeyValueStore& args, Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   std::string imsi, iccid, eid;
   if (GetServiceParametersFromArgs(args, &imsi, &iccid, &eid, error)) {
     return new CellularService(manager_, imsi, iccid, eid);
@@ -169,7 +166,7 @@ ServiceRefPtr CellularServiceProvider::CreateTemporaryService(
 
 ServiceRefPtr CellularServiceProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
-  SLOG(this, 2) << __func__ << ": " << profile->GetFriendlyName();
+  SLOG(2) << __func__ << ": " << profile->GetFriendlyName();
   std::string imsi, iccid, eid;
   if (GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
                                       &imsi, &iccid, &eid, error)) {
@@ -179,17 +176,17 @@ ServiceRefPtr CellularServiceProvider::CreateTemporaryServiceFromProfile(
 }
 
 void CellularServiceProvider::Start() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 void CellularServiceProvider::Stop() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   RemoveServices();
 }
 
 CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
     Cellular* device) {
-  SLOG(this, 2) << __func__ << " Device ICCID: " << device->iccid();
+  SLOG(2) << __func__ << " Device ICCID: " << device->iccid();
 
   CellularServiceRefPtr active_service = LoadMatchingServicesFromProfile(
       device->eid(), device->iccid(), device->imsi(), device);
@@ -204,7 +201,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadServicesForDevice(
 }
 
 void CellularServiceProvider::RemoveNonDeviceServices(Cellular* device) {
-  SLOG(this, 2) << __func__ << " Device ICCID: " << device->iccid();
+  SLOG(2) << __func__ << " Device ICCID: " << device->iccid();
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
     if (!device->HasIccid(service->iccid()))
@@ -228,7 +225,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   args.Set<std::string>(kTypeProperty, kTypeCellular);
   args.Set<std::string>(CellularService::kStorageIccid, iccid);
   std::set<std::string> groups = storage->GetGroupsWithProperties(args);
-  SLOG(this, 2) << __func__ << ": " << iccid;
+  SLOG(2) << __func__ << ": " << iccid;
   LOG(INFO) << __func__ << ": Groups: " << groups.size();
   CellularServiceRefPtr active_service = nullptr;
   for (const std::string& group : groups) {
@@ -244,7 +241,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
     DCHECK_EQ(service_eid, eid);
     CellularServiceRefPtr service = FindService(service_iccid);
     if (!service) {
-      SLOG(this, 1) << "Creating Cellular service for ICCID: " << service_iccid;
+      SLOG(1) << "Creating Cellular service for ICCID: " << service_iccid;
       service = new CellularService(manager_, service_imsi, service_iccid,
                                     service_eid);
       // Device.AllowRoaming was used to store roaming preferences before M94.
@@ -263,7 +260,7 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
       service->SetDevice(device);
       AddService(service);
     } else {
-      SLOG(this, 2) << "Cellular service exists for ICCID: " << service_iccid;
+      SLOG(2) << "Cellular service exists for ICCID: " << service_iccid;
       service->SetDevice(device);
     }
     if (service_iccid == iccid)
@@ -276,14 +273,14 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   // If a Service was never saved, it may still exist in |services_|.
   active_service = FindService(iccid);
   if (active_service) {
-    SLOG(this, 2) << "Cellular service exists for ICCID: " << iccid
-                  << " (but not saved)";
+    SLOG(2) << "Cellular service exists for ICCID: " << iccid
+            << " (but not saved)";
     active_service->SetDevice(device);
     return active_service;
   }
 
   // Create a Service for the ICCID.
-  SLOG(this, 1) << "No existing Cellular service with ICCID: " << iccid;
+  SLOG(1) << "No existing Cellular service with ICCID: " << iccid;
   active_service = new CellularService(manager_, imsi, iccid, eid);
   active_service->SetDevice(device);
   AddService(active_service);
@@ -296,18 +293,18 @@ void CellularServiceProvider::LoadServicesForSecondarySim(
     const std::string& imsi,
     Cellular* device) {
   DCHECK(!iccid.empty());
-  SLOG(this, 1) << __func__ << " eid: " << eid << " iccid: " << iccid;
+  SLOG(1) << __func__ << " eid: " << eid << " iccid: " << iccid;
   LoadMatchingServicesFromProfile(eid, iccid, imsi, device);
 }
 
 void CellularServiceProvider::UpdateServices(Cellular* device) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (CellularServiceRefPtr& service : services_)
     service->SetDevice(device);
 }
 
 void CellularServiceProvider::RemoveServices() {
-  SLOG(this, 1) << __func__;
+  SLOG(1) << __func__;
   while (!services_.empty())
     RemoveService(services_.back());
 }
@@ -323,7 +320,7 @@ CellularServiceRefPtr CellularServiceProvider::FindService(
 }
 
 void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
-  SLOG(this, 1) << __func__ << " with ICCID: " << service->iccid();
+  SLOG(1) << __func__ << " with ICCID: " << service->iccid();
 
   // See comment in header for |profile_|.
   service->SetProfile(profile_);
@@ -334,7 +331,7 @@ void CellularServiceProvider::AddService(CellularServiceRefPtr service) {
 }
 
 void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
-  SLOG(this, 1) << __func__ << " with ICCID: " << service->iccid();
+  SLOG(1) << __func__ << " with ICCID: " << service->iccid();
   manager_->DeregisterService(service);
   auto iter = std::find(services_.begin(), services_.end(), service);
   if (iter == services_.end()) {
