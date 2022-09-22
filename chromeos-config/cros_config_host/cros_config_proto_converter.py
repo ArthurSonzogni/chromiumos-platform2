@@ -574,6 +574,7 @@ def _build_derived_power_prefs(config: Config) -> dict:
     ).count(present)
 
     result["has-keyboard-backlight"] = hw_features.keyboard.backlight == present
+    result["has-barreljack"] = hw_features.power_supply.barreljack == present
 
     if hw_features.keyboard.backlight_user_steps:
         _check_increasing_sequence(
