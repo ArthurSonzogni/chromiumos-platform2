@@ -7,9 +7,11 @@
 
 #include <stddef.h>
 
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "cryptohome/user_session/user_session.h"
 
@@ -19,12 +21,56 @@ namespace cryptohome {
 // Must be used on single thread and sequence only.
 class UserSessionMap final {
  private:
-  // Declared here in the beginning to allow referring to the storage's
-  // `iterator` in the public section.
+  // Declared here in the beginning to allow us to reference the underlying
+  // storage type when defining the iterator.
   using Storage = std::map<std::string, std::unique_ptr<UserSession>>;
 
+  // Iterator template that can act as both a regular and const iterator. This
+  // wraps the underlying map iterator but exposes the underlying UserSession as
+  // a UserSession& or const UserSession&, instead of as a reference to the
+  // underlying unique_ptr<UserSession>.
+  template <typename UserSessionType>
+  class iterator_base {
+   public:
+    using value_type = std::pair<const std::string&, UserSessionType&>;
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = Storage::difference_type;
+    using pointer = value_type*;
+    using reference = value_type&;
+
+    iterator_base(const iterator_base& other) = default;
+    iterator_base& operator=(const iterator_base& other) = default;
+
+    iterator_base operator++(int) {
+      iterator_base other(*this);
+      ++(*this);
+      return other;
+    }
+
+    iterator_base& operator++() {
+      ++iter_;
+      return *this;
+    }
+
+    value_type operator*() const {
+      return value_type(iter_->first, *iter_->second);
+    }
+
+    bool operator==(const iterator_base& rhs) const {
+      return iter_ == rhs.iter_;
+    }
+    bool operator!=(const iterator_base& rhs) const { return !(*this == rhs); }
+
+   private:
+    friend class UserSessionMap;
+    explicit iterator_base(Storage::const_iterator iter) : iter_(iter) {}
+
+    Storage::const_iterator iter_;
+  };
+
  public:
-  using iterator = Storage::iterator;
+  using iterator = iterator_base<UserSession>;
+  using const_iterator = iterator_base<const UserSession>;
 
   UserSessionMap() = default;
   UserSessionMap(const UserSessionMap&) = delete;
@@ -33,10 +79,10 @@ class UserSessionMap final {
   bool empty() const { return storage_.empty(); }
   size_t size() const { return storage_.size(); }
 
-  // TODO(b/243846478): Add const iterators after getting rid of ref-counting in
-  // `UserSession`.
-  iterator begin() { return storage_.begin(); }
-  iterator end() { return storage_.end(); }
+  iterator begin() { return iterator(storage_.begin()); }
+  const_iterator begin() const { return const_iterator(storage_.begin()); }
+  iterator end() { return iterator(storage_.end()); }
+  const_iterator end() const { return const_iterator(storage_.end()); }
 
   // Adds the session for the given user. Returns false if the user already has
   // a session.

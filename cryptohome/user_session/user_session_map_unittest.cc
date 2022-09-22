@@ -22,13 +22,11 @@ using testing::UnorderedElementsAre;
 constexpr char kUsername1[] = "foo1@bar.com";
 constexpr char kUsername2[] = "foo2@bar.com";
 
-// TODO(b/243846478): Receive `session` via a const-ref, after const
-// `begin()`/`end()` methods are added.
 std::vector<std::pair<std::string, const UserSession*>> GetSessionItems(
-    UserSessionMap& session_map) {
+    const UserSessionMap& session_map) {
   std::vector<std::pair<std::string, const UserSession*>> items;
   for (const auto& [account_id, session] : session_map) {
-    items.emplace_back(account_id, session.get());
+    items.emplace_back(account_id, &session);
   }
   return items;
 }

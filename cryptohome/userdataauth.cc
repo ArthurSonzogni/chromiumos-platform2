@@ -761,10 +761,10 @@ bool UserDataAuth::IsMounted(const std::string& username,
   if (username.empty()) {
     // No username is specified, so we consider "the cryptohome" to be mounted
     // if any existing cryptohome is mounted.
-    for (const auto& session_pair : *sessions_) {
-      if (session_pair.second->IsActive()) {
+    for (const auto& [unused, session] : *sessions_) {
+      if (session.IsActive()) {
         is_mounted = true;
-        is_ephemeral |= session_pair.second->IsEphemeral();
+        is_ephemeral |= session.IsEphemeral();
       }
     }
   } else {
@@ -790,7 +790,7 @@ bool UserDataAuth::RemoveAllMounts() {
   bool success = true;
   while (!sessions_->empty()) {
     const auto& [username, session] = *sessions_->begin();
-    if (session->IsActive() && !session->Unmount()) {
+    if (session.IsActive() && !session.Unmount()) {
       success = false;
     }
     if (!sessions_->Remove(username)) {
@@ -830,8 +830,8 @@ bool UserDataAuth::FilterActiveMounts(
     // Walk each set of sources as one group since multimaps are key ordered.
     for (; match != mounts->end() && match->first == curr->first; ++match) {
       // Ignore known mounts.
-      for (const auto& session_pair : *sessions_) {
-        if (session_pair.second->OwnsMountPoint(match->second)) {
+      for (const auto& [unused, session] : *sessions_) {
+        if (session.OwnsMountPoint(match->second)) {
           keep = true;
           // If !include_busy_mount, other mount points not owned scanned after
           // should be preserved as well.
@@ -1134,8 +1134,8 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   // Otherwise there's no point in initializing PKCS#11 for it. The reason for
   // this check is because it might be possible for Unmount() to be called after
   // mounting and before getting here.
-  for (const auto& session_pair : *sessions_) {
-    if (session_pair.second.get() == session && session->IsActive()) {
+  for (const auto& [unused, user_session] : *sessions_) {
+    if (&user_session == session && session->IsActive()) {
       still_mounted = true;
       break;
     }
@@ -1162,9 +1162,8 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
 void UserDataAuth::Pkcs11RestoreTpmTokens() {
   AssertOnMountThread();
 
-  for (auto& session_pair : *sessions_) {
-    UserSession* session = session_pair.second.get();
-    InitializePkcs11(session);
+  for (const auto& [unused, session] : *sessions_) {
+    InitializePkcs11(&session);
   }
 }
 
@@ -2826,8 +2825,7 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
   const std::string obfuscated_username = SanitizeUserName(account_id);
 
   std::optional<KeyData> found_session_key_data;
-  for (const auto& session_pair : *sessions_) {
-    const UserSession& session = *session_pair.second;
+  for (const auto& [unused, session] : *sessions_) {
     if (session.VerifyUser(obfuscated_username) &&
         KeyMatchesForLightweightChallengeResponseCheck(
             authorization.key().data(), session)) {
@@ -3510,9 +3508,8 @@ bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   AssertOnMountThread();
   // We touched the sessions_ object, so we need to be on mount thread.
 
-  for (const auto& session_pair : *sessions_) {
-    UserSession* session = session_pair.second.get();
-    if (!session->GetPkcs11Token() || !session->GetPkcs11Token()->IsReady()) {
+  for (const auto& [unused, session] : *sessions_) {
+    if (!session.GetPkcs11Token() || !session.GetPkcs11Token()->IsReady()) {
       return false;
     }
   }
@@ -3559,9 +3556,9 @@ void UserDataAuth::Pkcs11Terminate() {
   AssertOnMountThread();
   // We are touching the |sessions_| object so we need to be on mount thread.
 
-  for (const auto& session_pair : *sessions_) {
-    if (session_pair.second->GetPkcs11Token()) {
-      session_pair.second->GetPkcs11Token()->Remove();
+  for (const auto& [unused, session] : *sessions_) {
+    if (session.GetPkcs11Token()) {
+      session.GetPkcs11Token()->Remove();
     }
   }
 }
@@ -3873,10 +3870,8 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   // We are touching the sessions object, so we'll need to be on mount thread.
 
   bool success = true;
-  for (const auto& session_pair : *sessions_) {
-    const UserSession& session = *session_pair.second;
-    const std::string obfuscated_username =
-        SanitizeUserName(session_pair.first);
+  for (const auto& [username, session] : *sessions_) {
+    const std::string obfuscated_username = SanitizeUserName(username);
     // Inactive session is not current and ephemerals should not have ts since
     // they do not affect disk space use and do not participate in disk
     // cleaning.
@@ -3952,8 +3947,8 @@ std::string UserDataAuth::GetStatusString() {
   AssertOnMountThread();
 
   base::Value mounts(base::Value::Type::LIST);
-  for (const auto& session_pair : *sessions_) {
-    mounts.Append(session_pair.second->GetStatus());
+  for (const auto& [unused, session] : *sessions_) {
+    mounts.Append(session.GetStatus());
   }
 
   base::Value dv(base::Value::Type::DICTIONARY);
