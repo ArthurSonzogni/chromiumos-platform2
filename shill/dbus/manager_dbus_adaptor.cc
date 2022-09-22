@@ -20,6 +20,7 @@
 #include "shill/manager.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
+#include "shill/tethering_manager.h"
 
 namespace shill {
 
@@ -504,12 +505,14 @@ bool ManagerDBusAdaptor::SetTetheringEnabled(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool ManagerDBusAdaptor::CheckTetheringReadiness(brillo::ErrorPtr* error,
-                                                 std::string* status) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  *status = TetheringManager::EntitlementStatusName(
-      manager_->tethering_manager()->CheckReadiness(&e));
-  return !e.ToChromeosError(error);
+void ManagerDBusAdaptor::CheckTetheringReadiness(
+    DBusMethodResponsePtr<std::string> response) {
+  auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
+                         TetheringManager::EntitlementStatus status) {
+    std::move(response)->Return(
+        TetheringManager::EntitlementStatusName(status));
+  };
+  manager_->tethering_manager()->CheckReadiness(
+      base::BindOnce(on_result_fn, std::move(response)));
 }
 }  // namespace shill

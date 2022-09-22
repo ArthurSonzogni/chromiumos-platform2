@@ -948,8 +948,10 @@ const char kTetheringErrorUpstreamFailure[] = "upstream_failure";
 const char kTetheringErrorUpstreamNotReady[] = "upstream_not_ready";
 
 // kCheckTetheringReadinessFunction return status
-const char kTetheringReadinessReady[] = "ready";
 const char kTetheringReadinessNotAllowed[] = "not_allowed";
+const char kTetheringReadinessReady[] = "ready";
+const char kTetheringReadinessUpstreamNetworkNotAvailable[] =
+    "upstream_network_not_available";
 
 }  // namespace shill
 

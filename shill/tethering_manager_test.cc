@@ -10,23 +10,30 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/test/mock_callback.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/technology.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_service.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
+using testing::_;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -199,6 +206,8 @@ class TetheringManagerTest : public testing::Test {
     SetConfigUpstream(config, kTypeCellular);
     return config;
   }
+
+  void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
  protected:
   MockControl control_interface_;
@@ -435,6 +444,76 @@ TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
   SetAllowed(tethering_manager_, true);
   EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
   EXPECT_TRUE(SetEnabled(tethering_manager_, true));
+}
+
+TEST_F(TetheringManagerTest, CheckReadiness) {
+  StrictMock<base::MockOnceCallback<void(TetheringManager::EntitlementStatus)>>
+      cb;
+  KeyValueStore config =
+      GenerateFakeConfig("757365725F73736964", "user_password");
+
+  // Not allowed.
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kNotAllowed));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  SetAllowed(tethering_manager_, true);
+
+  // No ethernet Device.
+  SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
+  EXPECT_TRUE(FromProperties(tethering_manager_, config));
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Fake Devices: one Ethernet Device, one Cellular Device.
+  auto eth =
+      new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
+  auto cell =
+      new NiceMock<MockDevice>(&manager_, "wwan0", "a0:b0:c0:d0:e0:f0", 2);
+  ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*cell, technology()).WillByDefault(Return(Technology::kCellular));
+  manager_.RegisterDevice(eth);
+  manager_.RegisterDevice(cell);
+
+  // No Service connected on Ethernet.
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Ethernet Service is not connected.
+  auto service(new MockService(&manager_));
+  eth->set_selected_service_for_testing(service);
+  EXPECT_CALL(*service, IsConnected(_)).WillRepeatedly(Return(false));
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Service connected on Ethernet
+  EXPECT_CALL(*service, IsConnected(_)).WillRepeatedly(Return(true));
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Cellular upstream.
+  SetConfigUpstream(config, TechnologyName(Technology::kCellular));
+  EXPECT_TRUE(FromProperties(tethering_manager_, config));
+  cell->set_selected_service_for_testing(service);
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 }
 
 }  // namespace shill

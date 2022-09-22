@@ -480,7 +480,7 @@ Methods		dict GetProperties()
 			carrier, and check to see if there is a known tethering APN
 			that can be used.
 			Returns a status string indicating the readiness. Possible status:
-			"ready", "not_allowed"
+			"ready", "not_allowed", "upstream_network_not_available".
 
 Signals		PropertyChanged(string name, variant value)
 

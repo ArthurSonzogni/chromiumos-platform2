@@ -345,8 +345,6 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
 void CellularServiceProvider::TetheringEntitlementCheck(
     base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
   // TODO(b/249151422) Check if:
-  //   - a modem is present,
-  //   - a SIM card is active,
   //   - tethering is supported for the current carrier and modem,
   //   - a remote entitlement check is necessary, and send a request
   //   accordingly.

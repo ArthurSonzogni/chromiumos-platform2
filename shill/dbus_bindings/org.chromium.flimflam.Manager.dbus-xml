@@ -136,6 +136,7 @@
 		</method>
 		<method name="CheckTetheringReadiness">
 			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 	</interface>
 	<node name="device"/>

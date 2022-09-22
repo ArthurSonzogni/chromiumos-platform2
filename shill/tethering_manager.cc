@@ -4,8 +4,8 @@
 
 #include "shill/tethering_manager.h"
 
-#include <stdint.h>
 #include <math.h>
+#include <stdint.h>
 
 #include <set>
 #include <string>
@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
@@ -204,6 +205,7 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
   if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty)) {
     tech = TechnologyFromName(
         properties.Get<std::string>(kTetheringConfUpstreamTechProperty));
+    // TODO(b/235762746) Add support for WiFi as an upstream technology.
     if (tech != Technology::kUnknown && tech != Technology::kEthernet &&
         tech != Technology::kCellular) {
       LOG(ERROR) << "Invalid upstream technology provided in tethering config: "
@@ -377,18 +379,86 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
   return true;
 }
 
-TetheringManager::EntitlementStatus
-TetheringManager::TetheringManager::CheckReadiness(Error* error) {
+void TetheringManager::CheckReadiness(
+    base::OnceCallback<void(EntitlementStatus result)> callback) {
   if (!allowed_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
-                          "Tethering is not allowed");
-    return EntitlementStatus::kNotAllowed;
+    LOG(ERROR) << __func__ << ": not allowed";
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback), EntitlementStatus::kNotAllowed));
+    return;
   }
 
-  // TODO(b/235762746): Stub method handler always return "ready". Add more
-  // status code later.
-  // TODO(b/235762746): Migrate to asynchronous interface.
-  return EntitlementStatus::kReady;
+  // TODO(b/235762746) Add a selection mode for choosing the current default
+  // network as the upstream network.
+
+  Technology upstream_technology = upstream_technology_;
+  // Select Cellular for the upstream network by default if the upstream
+  // technology has not been specified.
+  if (upstream_technology == Technology::kUnknown) {
+    upstream_technology = Technology::kCellular;
+  }
+
+  // Validate the upstream technology.
+  switch (upstream_technology) {
+    // Valid upstream technologies
+    case Technology::kCellular:
+    case Technology::kEthernet:
+      break;
+    // Invalid upstream technology.
+    case Technology::kWiFi:
+      // TODO(b/235762746) Add support for WiFi as an upstream technology.
+    default:
+      LOG(ERROR) << __func__ << ": not supported for " << upstream_technology_
+                 << " technology";
+      manager_->dispatcher()->PostTask(
+          FROM_HERE,
+          base::BindOnce(std::move(callback), EntitlementStatus::kNotAllowed));
+      return;
+  }
+
+  // Check if there is an "online" network for the selected upstream technology.
+  // TODO(b/235762746) Avoid using shill Devices and instead inspects currently
+  // connected Services.
+  const auto devices = manager_->FilterByTechnology(upstream_technology_);
+  if (devices.empty()) {
+    LOG(ERROR) << __func__ << ": no Device for " << upstream_technology_;
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       EntitlementStatus::kUpstreamNetworkNotAvailable));
+    return;
+  }
+
+  // TODO(b/235762746) For WiFi -> WiFi and Ethernet -> Ethernet tethering
+  // scenarios, this check needs to take into account which interface is
+  // used for the downstream network and which interface provides the
+  // upstream network. For now always consider the selected service of the
+  // first available device.
+  const auto service = devices[0]->selected_service();
+  if (!service || !service->IsConnected()) {
+    LOG(ERROR) << __func__ << ": no connected Service for "
+               << upstream_technology_;
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       EntitlementStatus::kUpstreamNetworkNotAvailable));
+    return;
+  }
+
+  // TODO(b/235762746) Check if Internet access has been validated.
+
+  // When the upstream technology is Cellular, delegate to the Provider.
+  if (upstream_technology_ == Technology::kCellular) {
+    manager_->cellular_service_provider()->TetheringEntitlementCheck(
+        std::move(callback));
+    return;
+  }
+
+  // Otherwise for WiFi or Ethernet, there is no other entitlement check.
+  manager_->dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(std::move(callback), EntitlementStatus::kReady));
 }
 
 // static
@@ -398,6 +468,8 @@ const char* TetheringManager::EntitlementStatusName(EntitlementStatus status) {
       return kTetheringReadinessReady;
     case EntitlementStatus::kNotAllowed:
       return kTetheringReadinessNotAllowed;
+    case EntitlementStatus::kUpstreamNetworkNotAvailable:
+      return kTetheringReadinessUpstreamNetworkNotAvailable;
     default:
       return "unknown";
   }
