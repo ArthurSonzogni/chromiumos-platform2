@@ -941,6 +941,11 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     properties->Set<uint32_t>(
         kConnectIpType,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
+  } else {
+    // If no IP type is provided, default it to IPv4, otherwise ModemManager
+    // will choose a default, or will fail to accept |none| on qmi modems.
+    properties->Set<uint32_t>(kConnectIpType,
+                              IpTypeToMMBearerIpFamily(kApnIpTypeV4));
   }
 }
 
