@@ -72,6 +72,10 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               GetAuthBlockTypeFromState,
               (const AuthBlockState& auth_state),
               (const, override));
+  MOCK_METHOD(base::flat_set<AuthIntent>,
+              GetSupportedIntentsFromState,
+              (const AuthBlockState& auth_state),
+              (const, override));
   MOCK_METHOD(bool,
               GetAuthBlockStateFromVaultKeyset,
               (const std::string& label,

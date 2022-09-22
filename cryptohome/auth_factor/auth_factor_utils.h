@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/crypto.h"
 
 namespace cryptohome {
 
@@ -45,6 +46,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 // user using the provided factor manager.
 void LoadUserAuthFactorProtos(
     AuthFactorManager* manager,
+    const AuthBlockUtility& auth_block_utility,
     const std::string& obfuscated_username,
     google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
         out_auth_factors);

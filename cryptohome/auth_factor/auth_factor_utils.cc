@@ -16,6 +16,7 @@
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_session_proto_utils.h"
 
 namespace cryptohome {
 
@@ -246,6 +247,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 
 void LoadUserAuthFactorProtos(
     AuthFactorManager* manager,
+    const AuthBlockUtility& auth_block_utility,
     const std::string& obfuscated_username,
     google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
         out_auth_factors_status) {
@@ -268,6 +270,13 @@ void LoadUserAuthFactorProtos(
       user_data_auth::AuthFactorWithStatus auth_factor_with_status;
       *auth_factor_with_status.mutable_auth_factor() =
           std::move(*auth_factor_proto);
+      auto supported_intents = auth_block_utility.GetSupportedIntentsFromState(
+          auth_factor.auth_block_state());
+      for (const auto& auth_intent : supported_intents) {
+        auth_factor_with_status.add_available_for_intents(
+            AuthIntentToProto(auth_intent));
+      }
+
       *out_auth_factors_status->Add() = std::move(auth_factor_with_status);
     }
   }

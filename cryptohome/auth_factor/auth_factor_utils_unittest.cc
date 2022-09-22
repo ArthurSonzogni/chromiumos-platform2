@@ -9,14 +9,18 @@
 
 #include <absl/types/variant.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 
 #include "UserDataAuth.pb.h"
+#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
@@ -167,11 +171,13 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosNoFactors) {
   // Setup
   NiceMock<MockPlatform> platform;
   AuthFactorManager manager(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility_;
   google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
       protos;
 
   // Test
-  LoadUserAuthFactorProtos(&manager, kObfuscatedUsername, &protos);
+  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
+                           &protos);
 
   // Verify
   EXPECT_THAT(protos, IsEmpty());
@@ -182,6 +188,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithFactors) {
   // Setup
   NiceMock<MockPlatform> platform;
   AuthFactorManager manager(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility_;
+
   auto factor1 = CreatePasswordAuthFactor();
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
   auto factor2 = CreatePinAuthFactor();
@@ -190,7 +198,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithFactors) {
       protos;
 
   // Test
-  LoadUserAuthFactorProtos(&manager, kObfuscatedUsername, &protos);
+  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
+                           &protos);
 
   // Sort the protos by label. This is done to produce a consistent ordering
   // which makes it easier to verify the results.
@@ -213,6 +222,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithUnreadableFactors) {
   // Setup
   NiceMock<MockPlatform> platform;
   AuthFactorManager manager(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility_;
+
   auto factor1 = CreatePasswordAuthFactor();
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
   auto factor2 = CreatePinAuthFactor();
@@ -223,7 +234,8 @@ TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithUnreadableFactors) {
   EXPECT_CALL(platform, ReadFile(_, _)).WillRepeatedly(Return(false));
 
   // Test
-  LoadUserAuthFactorProtos(&manager, kObfuscatedUsername, &protos);
+  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
+                           &protos);
 
   // Verify
   EXPECT_THAT(protos, IsEmpty());

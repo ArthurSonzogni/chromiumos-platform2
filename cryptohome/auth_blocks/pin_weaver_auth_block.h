@@ -27,9 +27,9 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
                       const AuthBlockState& state,
                       KeyBlobs* key_blobs) override;
 
- private:
   bool IsLocked(uint64_t label);
 
+ private:
   // Handler for Low Entropy credentials.
   LECredentialManager* le_manager_;
 

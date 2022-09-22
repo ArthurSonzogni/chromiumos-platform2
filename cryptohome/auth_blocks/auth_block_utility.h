@@ -10,12 +10,14 @@
 #include <set>
 #include <string>
 
+#include <base/containers/flat_set.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
@@ -105,6 +107,11 @@ class AuthBlockUtility {
   // This function returns the AuthBlock type based on AutBlockState.
   virtual AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
+
+  // Returns the set of supported AuthIntents, determined from the PinWeaver
+  // AuthBlockState if it is available.
+  virtual base::flat_set<AuthIntent> GetSupportedIntentsFromState(
+      const AuthBlockState& auth_block_state) const = 0;
 
   // This populates an AuthBlockState allocated by the caller.
   virtual bool GetAuthBlockStateFromVaultKeyset(

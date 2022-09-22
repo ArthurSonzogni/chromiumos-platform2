@@ -92,6 +92,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
+  // Returns the set of supported AuthIntents, determined from the PinWeaver
+  // AuthBlockState if it is available.
+  base::flat_set<AuthIntent> GetSupportedIntentsFromState(
+      const AuthBlockState& auth_block_state) const override;
+
   bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
       const std::string& obfuscated_username,

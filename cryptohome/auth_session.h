@@ -27,6 +27,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -57,18 +58,6 @@ enum class AuthStatus {
   // and that file system keys are available should they be required.
   kAuthStatusAuthenticated
   // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
-};
-
-// An intent specifies the set of operations that can be performed after
-// successfully authenticating an Auth Session.
-enum class AuthIntent {
-  // Intent to decrypt the user's file system keys. Authorizing for this intent
-  // allows all privileged operations, e.g., preparing user's vault,
-  // adding/updating/removing factors.
-  kDecrypt,
-  // Intent to simply check whether the authentication succeeds. Authorizing for
-  // this intent doesn't allow any privileged operation.
-  kVerifyOnly,
 };
 
 // The list of all intents. Useful for places that want to set the "fully

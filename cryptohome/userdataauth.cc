@@ -4032,7 +4032,15 @@ void UserDataAuth::StartAuthSession(
     std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
         auth_factor->metadata(), auth_factor->type(), auth_factor->label());
     if (proto_factor.has_value()) {
-      *reply.add_auth_factors() = std::move(proto_factor.value());
+      auto supported_intents =
+          auth_block_utility_->GetSupportedIntentsFromState(
+              auth_factor->auth_block_state());
+      // Only populate reply with AuthFactors that support some form of
+      // authentication.
+      if (supported_intents.contains(AuthIntent::kDecrypt) ||
+          supported_intents.contains(AuthIntent::kVerifyOnly)) {
+        *reply.add_auth_factors() = std::move(proto_factor.value());
+      }
     }
   }
 
@@ -4951,6 +4959,14 @@ void UserDataAuth::ListAuthFactors(
       user_data_auth::AuthFactorWithStatus auth_factor_with_status;
       *auth_factor_with_status.mutable_auth_factor() =
           std::move(*auth_factor_proto);
+      auto supported_intents =
+          auth_block_utility_->GetSupportedIntentsFromState(
+              auth_factor->auth_block_state());
+      for (const auto& auth_intent : supported_intents) {
+        auth_factor_with_status.add_available_for_intents(
+            AuthIntentToProto(auth_intent));
+      }
+
       *reply.add_configured_auth_factors_with_status() =
           std::move(auth_factor_with_status);
     }
@@ -4958,7 +4974,7 @@ void UserDataAuth::ListAuthFactors(
   // If the auth factor map is empty then there were no VK keys, try USS.
   if (auth_factor_map.empty()) {
     LoadUserAuthFactorProtos(
-        auth_factor_manager_, obfuscated_username,
+        auth_factor_manager_, *auth_block_utility_, obfuscated_username,
         reply.mutable_configured_auth_factors_with_status());
     // We assume USS is available either if there are already auth factors in
     // USS, or if there are no auth factors but the experiment is enabled.
@@ -5010,6 +5026,10 @@ void UserDataAuth::ListAuthFactors(
           user_data_auth::AuthFactorWithStatus auth_factor_with_status;
           *auth_factor_with_status.mutable_auth_factor() =
               std::move(*proto_factor);
+          // All ephemeral users have light verification only enabled by
+          // default.
+          auth_factor_with_status.add_available_for_intents(
+              AuthIntentToProto(AuthIntent::kVerifyOnly));
           *reply.add_configured_auth_factors_with_status() =
               std::move(auth_factor_with_status);
         }

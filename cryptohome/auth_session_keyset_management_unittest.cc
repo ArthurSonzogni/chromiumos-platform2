@@ -133,6 +133,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_current_thread_id_for_test(
         UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_.set_auth_block_utility(auth_block_utility_.get());
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
     PrepareDirectoryStructure();
   }
