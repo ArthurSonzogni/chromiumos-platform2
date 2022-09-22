@@ -680,6 +680,14 @@ class TpmUtilityForwarder : public TpmUtility {
         cred_metadata_out, mac_out);
   }
 
+  TPM_RC PinWeaverBlockGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint32_t* result_code,
+      std::string* root_hash) override {
+    return target_->PinWeaverBlockGenerateBiometricsAuthPk(
+        protocol_version, result_code, root_hash);
+  }
+
   TPM_RC GetRsuDeviceId(std::string* device_id) override {
     return target_->GetRsuDeviceId(device_id);
   }

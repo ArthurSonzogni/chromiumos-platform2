@@ -339,6 +339,8 @@ class MockTpmUtility : public TpmUtility {
                std::string*,
                std::string*),
               (override));
+  MOCK_METHOD3(PinWeaverBlockGenerateBiometricsAuthPk,
+               TPM_RC(uint8_t, uint32_t*, std::string*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
   MOCK_METHOD(bool, IsCr50, (), (override));

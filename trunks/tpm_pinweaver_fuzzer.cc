@@ -45,6 +45,7 @@ typedef enum PinweaverFunc {
   kSerializePwSysInfo,
   kSerializePwGenerateBaPk,
   kSerializePwStartBioAuth,
+  kSerializePwBlockGenerateBaPk,
   kParsePwResponseHeader,
   kParsePwShortMessage,
   kParsePwPong,
@@ -220,6 +221,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                 data_provider.ConsumeRandomLengthString(kMaxPwSecretSize)),
             data_provider.ConsumeRandomLengthString(kMaxStringLength),
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &buf1);
+        if (retval == trunks::TPM_RC_SUCCESS)
+          CHECK(!buf1.empty());
+        break;
+      case kSerializePwBlockGenerateBaPk:
+        retval = trunks::Serialize_pw_block_generate_ba_pk_t(
+            data_provider.ConsumeIntegral<uint8_t>(), &buf1);
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;

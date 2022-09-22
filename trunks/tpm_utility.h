@@ -945,6 +945,21 @@ class TRUNKS_EXPORT TpmUtility {
       std::string* cred_metadata_out,
       std::string* mac_out) = 0;
 
+  // Blocks future PinWeaverGenerateBiometricsAuthPk commands at server side
+  // until the server restarts (normally a GSC reboot).
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to EC_SUCCESS (0).
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  // On error:
+  //   returns VENDOR_RC_SUCCESS
+  //   |result_code| is set to one of pw_error_codes_enum.
+  //   |root_hash| is set to the unchanged root hash of the tree.
+  virtual TPM_RC PinWeaverBlockGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint32_t* result_code,
+      std::string* root_hash) = 0;
+
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
 

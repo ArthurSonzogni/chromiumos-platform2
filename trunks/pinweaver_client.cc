@@ -88,6 +88,9 @@ void PrintUsage() {
   puts(
       "  generate_ba_pk <auth_channel> <public_key.x> <public_key.y> - sends "
       "a generate ba pk command.");
+  puts(
+      "  block_generate_ba_pk - blocks future generate_ba_pk commands until "
+      "GSC reboots.");
   puts("  selftest [--protocol=<version>] - runs a self test with the");
   puts("           following commands:");
   puts("  biometrics_selftest - runs a self test for the biometrics pinweaver");
@@ -660,6 +663,33 @@ int HandleGenerateBiometricsAuthPk(
         "y", base::HexEncode(server_pt.y, trunks::PinWeaverEccPointSize));
     outcome.Set("server_public_key", std::move(server_public_key));
   }
+  puts(GetOutcomeJson(outcome).c_str());
+  return 0;
+}
+
+int HandleBlockGenerateBiometricsAuthPk(
+    base::CommandLine::StringVector::const_iterator begin,
+    base::CommandLine::StringVector::const_iterator end,
+    TrunksFactoryImpl* factory) {
+  if (begin != end) {
+    puts("Invalid options!");
+    PrintUsage();
+    return EXIT_FAILURE;
+  }
+
+  uint32_t result_code = 0;
+  std::string root;
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory->GetTpmUtility();
+  trunks::TPM_RC result = tpm_utility->PinWeaverBlockGenerateBiometricsAuthPk(
+      protocol_version, &result_code, &root);
+
+  if (result) {
+    LOG(ERROR) << "PinWeaverBlockGenerateBiometricsAuthPk: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+
+  base::Value::Dict outcome = SetupBaseOutcome(result_code, root);
   puts(GetOutcomeJson(outcome).c_str());
   return 0;
 }
@@ -1667,6 +1697,7 @@ int main(int argc, char** argv) {
       {"getlog", HandleGetLog},
       {"replay", HandleReplay},
       {"generate_ba_pk", HandleGenerateBiometricsAuthPk},
+      {"block_generate_ba_pk", HandleBlockGenerateBiometricsAuthPk},
       {"selftest", HandleSelfTest},
       {"biometrics_selftest", HandleBiometricsSelfTest},
       // clang-format on

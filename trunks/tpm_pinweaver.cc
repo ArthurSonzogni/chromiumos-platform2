@@ -379,6 +379,19 @@ TPM_RC Serialize_pw_start_bio_auth_t(uint8_t protocol_version,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC Serialize_pw_block_generate_ba_pk_t(uint8_t protocol_version,
+                                           std::string* buffer) {
+  if (protocol_version <= 1) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  buffer->reserve(buffer->size() + sizeof(pw_request_header_t));
+
+  Serialize_pw_request_header_t(protocol_version, PW_BLOCK_GENERATE_BA_PK, 0,
+                                buffer);
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC Parse_pw_response_header_t(const std::string& buffer,
                                   uint32_t* result_code,
                                   std::string* root_hash,

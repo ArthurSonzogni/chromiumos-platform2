@@ -335,6 +335,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
       brillo::SecureBlob* iv,
       std::string* cred_metadata_out,
       std::string* mac_out) override;
+  TPM_RC PinWeaverBlockGenerateBiometricsAuthPk(
+      uint8_t protocol_version,
+      uint32_t* result_code,
+      std::string* root_hash) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 

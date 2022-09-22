@@ -95,6 +95,9 @@ Serialize_pw_start_bio_auth_t(uint8_t protocol_version,
                               const std::string& cred_metadata,
                               std::string* buffer);
 
+BRILLO_EXPORT TPM_RC Serialize_pw_block_generate_ba_pk_t(
+    uint8_t protocol_version, std::string* buffer);
+
 // If TPM_RC_SUCCESS is returned, |result_code| and |root_hash| will be valid.
 // The other fields generally will not be valid unless |result_code| is zero.
 // Try auth has an exception for PW_ERR_LOWENT_AUTH_FAILED and

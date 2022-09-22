@@ -3108,6 +3108,18 @@ TPM_RC TpmUtilityImpl::PinWeaverStartBiometricsAuth(
       });
 }
 
+TPM_RC TpmUtilityImpl::PinWeaverBlockGenerateBiometricsAuthPk(
+    uint8_t protocol_version, uint32_t* result_code, std::string* root_hash) {
+  return PinWeaverCommand(
+      __func__,
+      [protocol_version](std::string* in) -> TPM_RC {
+        return Serialize_pw_block_generate_ba_pk_t(protocol_version, in);
+      },
+      [result_code, root_hash](const std::string& out) -> TPM_RC {
+        return Parse_pw_short_message(out, result_code, root_hash);
+      });
+}
+
 void TpmUtilityImpl::CacheVendorId() {
   if (vendor_id_.has_value()) {
     return;
