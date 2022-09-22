@@ -1100,6 +1100,7 @@ void AuthSession::RemoveAuthFactor(
     return;
   }
 
+  auto remove_timer_start = base::TimeTicks::Now();
   auto auth_factor_label = request.auth_factor_label();
   auto label_to_auth_factor_iter =
       label_to_auth_factor_.find(auth_factor_label);
@@ -1138,12 +1139,14 @@ void AuthSession::RemoveAuthFactor(
     // Remove operation completed successfully, remove the AuthFactor from the
     // map.
     label_to_auth_factor_.erase(label_to_auth_factor_iter);
+    // Report time taken for a successful remove.
+    ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
+                        remove_timer_start, "" /*append_string*/);
     std::move(on_done).Run(OkStatus<CryptohomeError>());
     return;
   }
 
-  // UserSecretStash is not enabled, remove VaultKeyset backed factor
-
+  // UserSecretStash is not enabled, remove VaultKeyset backed factor.
   // Authenticated vault_keyset of the current session cannot be removed.
   if (vault_keyset_ && auth_factor_label == vault_keyset_->GetLabel()) {
     LOG(ERROR) << "AuthSession: Cannot remove the authenticated VaultKeyset.";
@@ -1168,6 +1171,9 @@ void AuthSession::RemoveAuthFactor(
   }
   // Remove the VaultKeyset from the map.
   label_to_auth_factor_.erase(label_to_auth_factor_iter);
+  // Report time taken for a successful remove.
+  ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer, remove_timer_start,
+                      "" /*append_string*/);
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
