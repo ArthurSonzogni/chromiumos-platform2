@@ -34,6 +34,7 @@
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/credential_verifier_factory.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -1340,10 +1341,18 @@ void AuthSession::UpdateAuthFactor(
 
   if (user_secret_stash_) {
     DCHECK(user_has_configured_auth_factor_);
+
+    // Report timer for how long UpdateAuthFactor operation takes.
+    auto auth_session_performance_timer =
+        std::make_unique<AuthSessionPerformanceTimer>(
+            kAuthSessionUpdateAuthFactorUSSTimer, auth_block_type);
+    auth_session_performance_timer->auth_block_type = auth_block_type;
+
     auto create_callback = base::BindOnce(
         &AuthSession::UpdateAuthFactorViaUserSecretStash,
         weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
-        auth_factor_metadata, auth_input_status.value(), std::move(on_done));
+        auth_factor_metadata, auth_input_status.value(),
+        std::move(auth_session_performance_timer), std::move(on_done));
     auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
         auth_block_type, auth_input_status.value(), std::move(create_callback));
     return;
@@ -1404,6 +1413,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -1534,6 +1544,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
             << " in USS.";
   label_to_auth_factor_[auth_factor->label()] = std::move(auth_factor);
+  ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 

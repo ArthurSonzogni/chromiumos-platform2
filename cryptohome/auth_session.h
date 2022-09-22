@@ -520,6 +520,8 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
       StatusCallback on_done,
       CryptoStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
