@@ -36,9 +36,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const OpenVPNDriver*) {
-  return "(openvpn_driver)";
-}
 }  // namespace Logging
 
 namespace {
@@ -161,7 +158,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 
 void OpenVPNDriver::FailService(Service::ConnectFailure failure,
                                 const std::string& error_details) {
-  SLOG(this, 2) << __func__ << "(" << error_details << ")";
+  SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
     event_handler_->OnDriverFailure(failure, error_details);
@@ -247,7 +244,7 @@ bool OpenVPNDriver::WriteConfigFile(
 }
 
 bool OpenVPNDriver::SpawnOpenVPN() {
-  SLOG(this, 2) << __func__ << "(" << interface_name_ << ")";
+  SLOG(2) << __func__ << "(" << interface_name_ << ")";
 
   std::vector<std::vector<std::string>> options;
   Error error;
@@ -296,7 +293,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 }
 
 void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
-  SLOG(nullptr, 2) << __func__ << "(" << pid_ << ", " << exit_status << ")";
+  SLOG(2) << __func__ << "(" << pid_ << ", " << exit_status << ")";
   pid_ = 0;
   FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
   // TODO(petkov): Figure if we need to restart the connection.
@@ -345,7 +342,7 @@ void OpenVPNDriver::ParseIPConfiguration(
   for (const auto& configuration_map : configuration) {
     const std::string& key = configuration_map.first;
     const std::string& value = configuration_map.second;
-    SLOG(this, 2) << "Processing: " << key << " -> " << value;
+    SLOG(2) << "Processing: " << key << " -> " << value;
     if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
     } else if (base::EqualsCaseInsensitiveASCII(key,
@@ -402,7 +399,7 @@ void OpenVPNDriver::ParseIPConfiguration(
       ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)), value,
                        &routes);
     } else {
-      SLOG(this, 2) << "Key ignored.";
+      SLOG(2) << "Key ignored.";
     }
   }
   ParseForeignOptions(foreign_options, properties);
@@ -454,7 +451,7 @@ void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
 void OpenVPNDriver::ParseForeignOption(const std::string& option,
                                        std::vector<std::string>* domain_search,
                                        std::vector<std::string>* dns_servers) {
-  SLOG(nullptr, 2) << __func__ << "(" << option << ")";
+  SLOG(2) << __func__ << "(" << option << ")";
   const auto tokens = base::SplitString(option, " ", base::TRIM_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
@@ -944,7 +941,7 @@ bool OpenVPNDriver::AppendFlag(const std::string& property,
 }
 
 void OpenVPNDriver::Disconnect() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   Cleanup();
   event_handler_ = nullptr;
 }
@@ -984,7 +981,7 @@ std::string OpenVPNDriver::GetProviderType() const {
 }
 
 KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.Set<bool>(
       kPassphraseRequiredProperty,
@@ -994,7 +991,7 @@ KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
 }
 
 std::vector<std::string> OpenVPNDriver::GetCommandLineArgs() {
-  SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
+  SLOG(2) << __func__ << "(" << lsb_release_file_.value() << ")";
   std::vector<std::string> args = {"--config", openvpn_config_file_.value()};
   std::string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {

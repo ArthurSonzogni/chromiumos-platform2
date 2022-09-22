@@ -40,9 +40,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const WireGuardDriver*) {
-  return "(wireguard_driver)";
-}
 }  // namespace Logging
 
 namespace {
@@ -211,7 +208,7 @@ WireGuardDriver::~WireGuardDriver() {
 }
 
 base::TimeDelta WireGuardDriver::ConnectAsync(EventHandler* event_handler) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   event_handler_ = event_handler;
   // To make sure the connect procedure is executed asynchronously.
   dispatcher()->PostTask(
@@ -222,7 +219,7 @@ base::TimeDelta WireGuardDriver::ConnectAsync(EventHandler* event_handler) {
 }
 
 void WireGuardDriver::Disconnect() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   Cleanup();
   event_handler_ = nullptr;
 }
@@ -438,7 +435,7 @@ void WireGuardDriver::StartUserspaceWireGuardTunnel() {
 }
 
 bool WireGuardDriver::SpawnWireGuard() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   // TODO(b/177876632): Change this part after we decide the userspace binary to
   // use. For wireguard-go, we need to change the way to invoke minijail; for
@@ -559,7 +556,7 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
 }
 
 void WireGuardDriver::OnConfigurationDone(int exit_code) {
-  SLOG(this, 2) << __func__ << ": exit_code=" << exit_code;
+  SLOG(2) << __func__ << ": exit_code=" << exit_code;
 
   // Closes the config file to remove it.
   config_fd_.reset();

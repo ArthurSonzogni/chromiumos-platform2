@@ -24,9 +24,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const VPNDriver* v) {
-  return "(vpn_driver)";
-}
 }  // namespace Logging
 
 // TODO(crbug.com/1084279) Migrate back to storing property names after crypto
@@ -57,7 +54,7 @@ VPNDriver::~VPNDriver() = default;
 
 bool VPNDriver::Load(const StoreInterface* storage,
                      const std::string& storage_id) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
       continue;
@@ -96,7 +93,7 @@ bool VPNDriver::Load(const StoreInterface* storage,
 
 void VPNDriver::MigrateDeprecatedStorage(StoreInterface* storage,
                                          const std::string& storage_id) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // Migrate from ROT47 to plaintext.
   // TODO(crbug.com/1084279) Migrate back to not using kCredentialPrefix once
   // ROT47 migration is complete.
@@ -121,7 +118,7 @@ void VPNDriver::MigrateDeprecatedStorage(StoreInterface* storage,
 bool VPNDriver::Save(StoreInterface* storage,
                      const std::string& storage_id,
                      bool save_credentials) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
       continue;
@@ -160,7 +157,7 @@ bool VPNDriver::Save(StoreInterface* storage,
 }
 
 void VPNDriver::UnloadCredentials() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags &
          (Property::kEphemeral | Property::kCredential))) {
@@ -174,7 +171,7 @@ void VPNDriver::UnloadCredentials() {
 }
 
 void VPNDriver::InitPropertyStore(PropertyStore* store) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if (properties_[i].flags & Property::kReadOnly) {
       continue;
@@ -273,7 +270,7 @@ bool VPNDriver::SetMappedStringsProperty(const size_t& index,
 }
 
 KeyValueStore VPNDriver::GetProvider(Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   const auto provider_prefix = std::string(kProviderProperty) + ".";
   KeyValueStore provider_properties;
 

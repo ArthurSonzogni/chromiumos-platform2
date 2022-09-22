@@ -25,9 +25,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const ArcVpnDriver* v) {
-  return "(arc_vpn_driver)";
-}
 }  // namespace Logging
 
 const VPNDriver::Property ArcVpnDriver::kProperties[] = {
@@ -40,7 +37,7 @@ ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
 }
 
 base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // Nothing to do here since ARC already finish connecting to VPN
   // before Chrome calls Service::OnConnect. Just return success.
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverArc);
@@ -63,7 +60,7 @@ void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
 }
 
 void ArcVpnDriver::Disconnect() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 void ArcVpnDriver::OnConnectTimeout() {
@@ -71,7 +68,7 @@ void ArcVpnDriver::OnConnectTimeout() {
 }
 
 IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // Currently L3 settings for ARC VPN are set from Chrome as
   // StaticIPProperty before connecting, so this will be mostly empty.
   IPConfig::Properties ip_properties;

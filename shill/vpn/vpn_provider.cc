@@ -32,9 +32,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const VPNProvider* v) {
-  return "(vpn_provider)";
-}
 }  // namespace Logging
 
 namespace {
@@ -48,7 +45,7 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
                                   std::string* name_ptr,
                                   std::string* host_ptr,
                                   Error* error) {
-  SLOG(nullptr, 2) << __func__;
+  SLOG(2) << __func__;
   const auto type = args.Lookup<std::string>(kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
@@ -124,7 +121,7 @@ void VPNProvider::Start() {}
 void VPNProvider::Stop() {}
 
 ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   std::string type;
   std::string name;
   std::string host;
@@ -148,7 +145,7 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
 
 ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
                                               Error* error) const {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   std::string type;
   std::string name;
   std::string host;
@@ -174,7 +171,7 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
 }
 
 void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   const StoreInterface* storage = profile->GetConstStorage();
   KeyValueStore args;
   args.Set<std::string>(kTypeProperty, kTypeVPN);
@@ -191,7 +188,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     if (service != nullptr) {
       // If the service already exists, it does not need to be configured,
       // since PushProfile would have already called ConfigureService on it.
-      SLOG(this, 2) << "Service already exists " << group;
+      SLOG(2) << "Service already exists " << group;
       continue;
     }
 
@@ -214,8 +211,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
                                                  const std::string& name,
                                                  const std::string& storage_id,
                                                  Error* error) {
-  SLOG(this, 2) << __func__ << " type " << type << " name " << name
-                << " storage id " << storage_id;
+  SLOG(2) << __func__ << " type " << type << " name " << name << " storage id "
+          << storage_id;
 #if defined(DISABLE_VPN)
 
   Error::PopulateAndLog(FROM_HERE, error, Error::kTechnologyNotAvailable,

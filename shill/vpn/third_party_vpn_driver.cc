@@ -36,12 +36,7 @@
 namespace shill {
 
 namespace Logging {
-
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const ThirdPartyVpnDriver* v) {
-  return "(third_party_vpn_driver)";
-}
-
 }  // namespace Logging
 
 namespace {
@@ -433,7 +428,7 @@ void ThirdPartyVpnDriver::OnInput(InputData* data) {
   // See from RFC 791 Section 3.1 that the high nibble of the first byte in an
   // IP header represents the IP version (4 in this case).
   if ((data->buf[0] & 0xf0) != 0x40) {
-    SLOG(this, 1) << "Dropping non-IPv4 packet";
+    SLOG(1) << "Dropping non-IPv4 packet";
     return;
   }
 
@@ -473,7 +468,7 @@ void ThirdPartyVpnDriver::Cleanup() {
 }
 
 base::TimeDelta ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   event_handler_ = handler;
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
           &ThirdPartyVpnDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
@@ -489,7 +484,7 @@ base::TimeDelta ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
 
 void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
                                       int interface_index) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   if (!event_handler_) {
     LOG(ERROR) << "event_handler_ is not set";
     return;
@@ -527,7 +522,7 @@ IPConfig::Properties ThirdPartyVpnDriver::GetIPProperties() const {
 
 void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
                                       const std::string& error_details) {
-  SLOG(this, 2) << __func__ << "(" << error_details << ")";
+  SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
     event_handler_->OnDriverFailure(failure, error_details);
@@ -536,7 +531,7 @@ void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
 }
 
 void ThirdPartyVpnDriver::Disconnect() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   CHECK(adaptor_interface_);
   if (active_client_ == this) {
     Cleanup();
@@ -605,7 +600,7 @@ void ThirdPartyVpnDriver::OnAfterResume() {
 }
 
 void ThirdPartyVpnDriver::OnConnectTimeout() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   if (!event_handler_) {
     LOG(DFATAL) << "event_handler_ is not set";
     return;
