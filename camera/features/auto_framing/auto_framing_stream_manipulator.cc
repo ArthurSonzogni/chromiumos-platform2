@@ -1128,9 +1128,10 @@ void AutoFramingStreamManipulator::UploadMetricsOnThread() {
   constexpr base::TimeDelta kRecordThreshold = base::Seconds(10);
   if (metrics_.accumulated_on_time + metrics_.accumulated_off_time >=
       kRecordThreshold) {
-    camera_metrics_->SendAutoFramingEnabledTimePercentage(
+    camera_metrics_->SendAutoFramingEnabledTimePercentage(static_cast<int>(
         metrics_.accumulated_on_time /
-        (metrics_.accumulated_on_time + metrics_.accumulated_off_time));
+        (metrics_.accumulated_on_time + metrics_.accumulated_off_time) *
+        100.0f));
   }
   camera_metrics_->SendAutoFramingEnabledCount(metrics_.enabled_count);
 
