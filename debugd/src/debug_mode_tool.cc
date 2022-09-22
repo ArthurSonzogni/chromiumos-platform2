@@ -69,9 +69,9 @@ constexpr char kMwifiexDisable[] = "0x7";
 
 // Intel wifi.
 constexpr char kIwlwifiDebugFlag[] = "/sys/module/iwlwifi/parameters/debug";
-// Full debugging: see below file for details on each bit:
+// Enable INFO, MAC80211 and HCMD logs: see below file for details on each bit:
 // drivers/net/wireless-$(WIFIVERSION)/iwl7000/iwlwifi/iwl-debug.h
-constexpr char kIwlwifiEnable[] = "0xFFFFFFFF";
+constexpr char kIwlwifiEnable[] = "0x7";
 // Default debugging: none
 constexpr char kIwlwifiDisable[] = "0x0";
 
