@@ -25,21 +25,10 @@ TEST(Frame, Constructor1) {
 }
 
 TEST(Frame, Constructor2) {
-  const Frame frame(Version::_2_1, Operation::Activate_Printer, 123, false);
+  const Frame frame(Operation::Activate_Printer, Version::_2_1, 123);
   EXPECT_EQ(frame.OperationId(), Operation::Activate_Printer);
   EXPECT_EQ(frame.RequestId(), 123);
   EXPECT_EQ(frame.VersionNumber(), Version::_2_1);
-  EXPECT_TRUE(frame.Data().empty());
-  for (GroupTag gt : kGroupTags) {
-    EXPECT_TRUE(frame.GetGroups(gt).empty());
-  }
-}
-
-TEST(Frame, Constructor3) {
-  Frame frame(Version::_1_0, Status::client_error_gone, 123, true);
-  EXPECT_EQ(frame.StatusCode(), Status::client_error_gone);
-  EXPECT_EQ(frame.RequestId(), 123);
-  EXPECT_EQ(frame.VersionNumber(), Version::_1_0);
   EXPECT_TRUE(frame.Data().empty());
   for (GroupTag gt : kGroupTags) {
     auto groups = frame.GetGroups(gt);
@@ -60,6 +49,57 @@ TEST(Frame, Constructor3) {
   }
 }
 
+TEST(Frame, Constructor2empty) {
+  const Frame frame(Operation::Activate_Printer, Version::_2_1, 123, false);
+  EXPECT_EQ(frame.OperationId(), Operation::Activate_Printer);
+  EXPECT_EQ(frame.RequestId(), 123);
+  EXPECT_EQ(frame.VersionNumber(), Version::_2_1);
+  EXPECT_TRUE(frame.Data().empty());
+  for (GroupTag gt : kGroupTags) {
+    EXPECT_TRUE(frame.GetGroups(gt).empty());
+  }
+}
+
+TEST(Frame, Constructor3) {
+  Frame frame(Status::client_error_gone, Version::_1_0, 123);
+  EXPECT_EQ(frame.StatusCode(), Status::client_error_gone);
+  EXPECT_EQ(frame.RequestId(), 123);
+  EXPECT_EQ(frame.VersionNumber(), Version::_1_0);
+  EXPECT_TRUE(frame.Data().empty());
+  for (GroupTag gt : kGroupTags) {
+    auto groups = frame.GetGroups(gt);
+    if (gt == GroupTag::operation_attributes) {
+      ASSERT_EQ(groups.size(), 1);
+      auto att = groups[0]->GetAttribute("attributes-charset");
+      ASSERT_NE(att, nullptr);
+      std::string value;
+      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(value, "utf-8");
+      att = groups[0]->GetAttribute("attributes-natural-language");
+      ASSERT_NE(att, nullptr);
+      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(value, "en-us");
+      att = groups[0]->GetAttribute("status-message");
+      ASSERT_NE(att, nullptr);
+      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(value, "client-error-gone");
+    } else {
+      EXPECT_TRUE(groups.empty());
+    }
+  }
+}
+
+TEST(Frame, Constructor3empty) {
+  const Frame frame(Status::client_error_gone, Version::_2_1, 123, false);
+  EXPECT_EQ(frame.StatusCode(), Status::client_error_gone);
+  EXPECT_EQ(frame.RequestId(), 123);
+  EXPECT_EQ(frame.VersionNumber(), Version::_2_1);
+  EXPECT_TRUE(frame.Data().empty());
+  for (GroupTag gt : kGroupTags) {
+    EXPECT_TRUE(frame.GetGroups(gt).empty());
+  }
+}
+
 TEST(Frame, Data) {
   Frame frame;
   std::vector<uint8_t> raw = {0x01, 0x02, 0x03, 0x04};
@@ -71,35 +111,35 @@ TEST(Frame, Data) {
 }
 
 TEST(Frame, GetGroups) {
-  Frame frame(Version::_2_0, Operation::Cancel_Job);
+  Frame frame(Operation::Cancel_Job);
   EXPECT_EQ(frame.GetGroups(GroupTag::operation_attributes).size(), 1);
   EXPECT_EQ(frame.GetGroups(static_cast<GroupTag>(0x00)).size(), 0);
   EXPECT_EQ(frame.GetGroups(static_cast<GroupTag>(0x0f)).size(), 0);
 }
 
 TEST(Frame, GetGroupsConst) {
-  const Frame frame(Version::_2_0, Operation::Cancel_Job);
+  const Frame frame(Operation::Cancel_Job);
   EXPECT_EQ(frame.GetGroups(GroupTag::operation_attributes).size(), 1);
   EXPECT_EQ(frame.GetGroups(static_cast<GroupTag>(0x00)).size(), 0);
   EXPECT_EQ(frame.GetGroups(static_cast<GroupTag>(0x0f)).size(), 0);
 }
 
 TEST(Frame, GetGroup) {
-  Frame frame(Version::_1_1, Operation::Print_Job);
+  Frame frame(Operation::Print_Job);
   EXPECT_NE(frame.GetGroup(GroupTag::operation_attributes, 0), nullptr);
   EXPECT_EQ(frame.GetGroup(static_cast<GroupTag>(0x03), 0), nullptr);
   EXPECT_EQ(frame.GetGroup(GroupTag::operation_attributes, 1), nullptr);
 }
 
 TEST(Frame, GetGroupConst) {
-  const Frame frame(Version::_1_1, Operation::Print_Job);
+  const Frame frame(Operation::Print_Job);
   EXPECT_NE(frame.GetGroup(GroupTag::operation_attributes, 0), nullptr);
   EXPECT_EQ(frame.GetGroup(static_cast<GroupTag>(0x03), 0), nullptr);
   EXPECT_EQ(frame.GetGroup(GroupTag::operation_attributes, 1), nullptr);
 }
 
 TEST(Frame, AddGroup) {
-  Frame frame(Version::_2_0, Operation::Cancel_Job);
+  Frame frame(Operation::Cancel_Job, Version::_2_0);
   Collection* grp1 = nullptr;
   Collection* grp2 = nullptr;
   Collection* grp3 = nullptr;
@@ -120,7 +160,7 @@ TEST(Frame, AddGroup) {
 
 TEST(Frame, AddGroupErrorCodes) {
   Collection* grp = nullptr;
-  Frame frame(Version::_2_0, Operation::Cancel_Job);
+  Frame frame(Operation::Cancel_Job, Version::_2_0);
   EXPECT_EQ(frame.AddGroup(GroupTag::document_attributes, &grp), Code::kOK);
   EXPECT_NE(grp, nullptr);
   grp = nullptr;

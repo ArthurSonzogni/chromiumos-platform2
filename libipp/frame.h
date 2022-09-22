@@ -59,29 +59,36 @@ class Attribute;
 // object and their lifetime does not exceed the lifetime of their owner.
 class IPP_EXPORT Frame {
  public:
-  // Constructor. Create an empty frame with basic parameters set to 0.
+  // Constructor. Create an empty frame with all basic parameters set to 0.
   Frame();
   // Constructor. Create a frame and set basic parameters for IPP request.
-  // If `set_charset` is true the Group Operation Attributes is added to the
-  // frame with two attributes:
+  // If `set_localization_en_us` is true (default) the Group Operation
+  // Attributes is added to the frame with two attributes:
   //   * "attributes-charset"="utf-8"
   //   * "attributes-natural-language"="en-us"
-  // If you set `set_charset` to false, you have to add the Group Operation
-  // Attributes with these two attributes by hand since they are required to
-  // be the first attributes in the frame (see section 4.1.4 from RFC 8011).
-  Frame(Version version_number,
-        Operation operation_id,
-        int32_t request_id = 1,
-        bool set_charset = true);
+  // If `set_localization_en_us` equals false, you have to add the Group
+  // Operation Attributes with these two attributes by hand since they are
+  // required to be the first attributes in the frame (see section 4.1.4 from
+  // RFC 8011).
+  explicit Frame(Operation operation_id,
+                 Version version_number = Version::_1_1,
+                 int32_t request_id = 1,
+                 bool set_localization_en_us = true);
   // Constructor. The same as the previous constructor but for IPP response.
   // There is no differences between frames created with this and the previous
   // constructor. IPP requests and IPP responses have the same structure.
   // Values of operation_id and status_code are saved in the same variable,
-  // they are just casted to different enums with static_cast<>().
-  Frame(Version version_number,
-        Status status_code,
-        int32_t request_id = 1,
-        bool set_charset = true);
+  // they are just casted to different enums with static_cast<>(). The parameter
+  // `set_localization_en_us_and_status_message` works in similar way as the
+  // parameter `set_localization_en_us` in the constructor above but also adds
+  // the attribute "status-message" to the Group Operation Attributes. The value
+  // of the attribute is set to a string representation of the `status_code`.
+  // The attribute "status-message" is defined in the section 4.1.6.2 from
+  // RFC 8011.
+  explicit Frame(Status status_code,
+                 Version version_number = Version::_1_1,
+                 int32_t request_id = 1,
+                 bool set_localization_en_us_and_status_message = true);
   // Constructor. Parse the frame of `size` bytes saved in `buffer`. If the
   // parameter `log` is not nullptr, it is overwritten with the list of errors
   // detected by the parser. The constructed object is always valid. In the
@@ -91,6 +98,16 @@ class IPP_EXPORT Frame {
   // may be omitted. You should examine the ParsingResults structure to make
   // sure that the whole input frame was parsed.
   Frame(const uint8_t* buffer, size_t size, ParsingResults* log = nullptr);
+  // These two constructors are deprecated. Use the constructors defined above.
+  // TODO(b/249157310): remove these from the codebase.
+  Frame(Version version_number,
+        Operation operation_id,
+        int32_t request_id = 1,
+        bool set_charset = true);
+  Frame(Version version_number,
+        Status status_code,
+        int32_t request_id = 1,
+        bool set_charset = true);
 
   // Not copyable.
   Frame(const Frame&) = delete;

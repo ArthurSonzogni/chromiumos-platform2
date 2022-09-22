@@ -59,27 +59,30 @@ Frame::Frame()
       operation_id_or_status_code_(0),
       request_id_(0) {}
 
-Frame::Frame(Version ver,
-             Operation operation_id,
+Frame::Frame(Operation operation_id,
+             Version version_number,
              int32_t request_id,
-             bool set_charset)
-    : version_(ver),
+             bool set_localization_en_us)
+    : version_(version_number),
       operation_id_or_status_code_(static_cast<uint16_t>(operation_id)),
       request_id_(request_id) {
-  if (set_charset) {
+  if (set_localization_en_us) {
     SetCharsetAndLanguageAttributes(this);
   }
 }
 
-Frame::Frame(Version ver,
-             Status status_code,
+Frame::Frame(Status status_code,
+             Version version_number,
              int32_t request_id,
-             bool set_charset)
-    : version_(ver),
+             bool set_localization_en_us_and_status_message)
+    : version_(version_number),
       operation_id_or_status_code_(static_cast<uint16_t>(status_code)),
       request_id_(request_id) {
-  if (set_charset) {
+  if (set_localization_en_us_and_status_message) {
     SetCharsetAndLanguageAttributes(this);
+    Collection* grp = this->GetGroup(GroupTag::operation_attributes);
+    grp->AddAttr("status-message", ValueTag::textWithoutLanguage,
+                 ToString(status_code));
   }
 }
 
@@ -109,6 +112,30 @@ Frame::Frame(const uint8_t* buffer, size_t size, ParsingResults* result) {
   version_ = static_cast<Version>(ver);
   operation_id_or_status_code_ = frame_data.operation_id_or_status_code_;
   request_id_ = frame_data.request_id_;
+}
+
+Frame::Frame(Version ver,
+             Operation operation_id,
+             int32_t request_id,
+             bool set_charset)
+    : version_(ver),
+      operation_id_or_status_code_(static_cast<uint16_t>(operation_id)),
+      request_id_(request_id) {
+  if (set_charset) {
+    SetCharsetAndLanguageAttributes(this);
+  }
+}
+
+Frame::Frame(Version ver,
+             Status status_code,
+             int32_t request_id,
+             bool set_charset)
+    : version_(ver),
+      operation_id_or_status_code_(static_cast<uint16_t>(status_code)),
+      request_id_(request_id) {
+  if (set_charset) {
+    SetCharsetAndLanguageAttributes(this);
+  }
 }
 
 size_t Frame::GetLength() const {
