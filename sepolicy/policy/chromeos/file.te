@@ -25,6 +25,7 @@ type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_syst
 type cros_agetty_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_adbd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_appfuse_provider_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_apply_per_board_config_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
