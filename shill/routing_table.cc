@@ -42,9 +42,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRoute;
-static std::string ObjectID(const RoutingTable* r) {
-  return "(routing_table)";
-}
 }  // namespace Logging
 
 namespace {
@@ -187,7 +184,7 @@ const uint32_t RoutingTable::kRulePriorityLocal = 0;
 const uint32_t RoutingTable::kRulePriorityMain = 32766;
 
 RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 RoutingTable::~RoutingTable() = default;
@@ -197,7 +194,7 @@ RoutingTable* RoutingTable::GetInstance() {
 }
 
 void RoutingTable::Start() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   route_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
@@ -212,7 +209,7 @@ void RoutingTable::Start() {
 }
 
 void RoutingTable::Stop() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   managed_interfaces_.clear();
   available_table_ids_.clear();
@@ -264,8 +261,8 @@ void RoutingTable::DeregisterDevice(int interface_index,
                   .Append(link_name)
                   .Append("accept_ra_rt_table");
   if (!base::PathExists(path)) {
-    SLOG(this, 2) << "Cannot write to " << path.MaybeAsASCII()
-                  << ", likely because the interface has already went down.";
+    SLOG(2) << "Cannot write to " << path.MaybeAsASCII()
+            << ", likely because the interface has already went down.";
   } else if (base::WriteFile(path, "0", 1) != 1) {
     // Note that there is a potential race condition in which the file exists in
     // the check above but is removed by the time we call WriteFile. In this
@@ -306,9 +303,9 @@ bool RoutingTable::RemoveRoute(int interface_index,
       return true;
     }
   }
-  SLOG(this, 1) << "Successfully removed routing entry but could not find the "
-                << "corresponding entry in shill's representation of the "
-                << "routing table.";
+  SLOG(1) << "Successfully removed routing entry but could not find the "
+          << "corresponding entry in shill's representation of the "
+          << "routing table.";
   return true;
 }
 
@@ -326,12 +323,12 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
                                            IPAddress::Family family,
                                            RoutingTableEntry** entry) {
-  SLOG(this, 2) << __func__ << " index " << interface_index << " family "
-                << IPAddress::GetAddressFamilyName(family);
+  SLOG(2) << __func__ << " index " << interface_index << " family "
+          << IPAddress::GetAddressFamilyName(family);
 
   RouteTables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
-    SLOG(this, 2) << __func__ << " no table";
+    SLOG(2) << __func__ << " no table";
     return false;
   }
 
@@ -349,23 +346,23 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   }
 
   if (lowest_metric == UINT_MAX) {
-    SLOG(this, 2) << __func__ << " no route";
+    SLOG(2) << __func__ << " no route";
     return false;
   } else {
-    SLOG(this, 2) << __func__ << ": found"
-                  << " gateway " << (*entry)->gateway.ToString() << " metric "
-                  << (*entry)->metric;
+    SLOG(2) << __func__ << ": found"
+            << " gateway " << (*entry)->gateway.ToString() << " metric "
+            << (*entry)->metric;
     return true;
   }
 }
 
 bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
                                              RoutingTableEntry* entry) {
-  SLOG(this, 2) << __func__ << " index " << interface_index;
+  SLOG(2) << __func__ << " index " << interface_index;
 
   RouteTables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
-    SLOG(this, 2) << __func__ << " no table";
+    SLOG(2) << __func__ << " no table";
     return false;
   }
 
@@ -382,7 +379,7 @@ bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPAddress& gateway_address,
                                    uint32_t table_id) {
-  SLOG(this, 2) << __func__ << " index " << interface_index;
+  SLOG(2) << __func__ << " index " << interface_index;
 
   RoutingTableEntry* old_entry;
 
@@ -411,7 +408,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 }
 
 void RoutingTable::FlushRoutes(int interface_index) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   auto table = tables_.find(interface_index);
   if (table == tables_.end()) {
@@ -425,7 +422,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
 }
 
 void RoutingTable::FlushRoutesWithTag(int tag) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
@@ -445,8 +442,8 @@ void RoutingTable::ResetTable(int interface_index) {
 
 bool RoutingTable::AddRouteToKernelTable(int interface_index,
                                          const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << ": "
-                << " index " << interface_index << " " << entry;
+  SLOG(2) << __func__ << ": "
+          << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
                     NLM_F_CREATE | NLM_F_EXCL);
@@ -454,8 +451,8 @@ bool RoutingTable::AddRouteToKernelTable(int interface_index,
 
 bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
                                               const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << ": "
-                << " index " << interface_index << " " << entry;
+  SLOG(2) << __func__ << ": "
+          << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
 }
@@ -473,9 +470,9 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   }
 
   if (!route_queries_.empty() && entry.protocol == RTPROT_UNSPEC) {
-    SLOG(this, 3) << __func__ << ": Message seq: " << message.seq() << " mode "
-                  << message.mode()
-                  << ", next query seq: " << route_queries_.front().sequence;
+    SLOG(3) << __func__ << ": Message seq: " << message.seq() << " mode "
+            << message.mode()
+            << ", next query seq: " << route_queries_.front().sequence;
 
     // Purge queries that have expired (sequence number of this message is
     // greater than that of the head of the route query sequence).  Do the
@@ -493,7 +490,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     const Query& query = route_queries_.front();
     if (query.sequence == message.seq()) {
       if (!query.callback.is_null()) {
-        SLOG(this, 2) << "Running query callback.";
+        SLOG(2) << "Running query callback.";
         query.callback.Run(interface_index, entry);
       }
       route_queries_.pop_front();
@@ -512,8 +509,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  SLOG(this, 2) << __func__ << " " << RTNLMessage::ModeToString(message.mode())
-                << " index: " << interface_index << " entry: " << entry;
+  SLOG(2) << __func__ << " " << RTNLMessage::ModeToString(message.mode())
+          << " index: " << interface_index << " entry: " << entry;
 
   bool entry_exists = false;
   bool is_managed = (managed_interfaces_.count(interface_index) != 0);
@@ -591,7 +588,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
       << "Attempted to apply route: " << entry;
 
-  SLOG(this, 2) << base::StringPrintf(
+  SLOG(2) << base::StringPrintf(
       "%s: dst %s/%d src %s/%d index %d mode %d flags 0x%x", __func__,
       entry.dst.ToString().c_str(), entry.dst.prefix(),
       entry.src.ToString().c_str(), entry.src.prefix(), interface_index, mode,
@@ -634,7 +631,7 @@ bool RoutingTable::FlushCache() {
                                        kIpv6RouteFlushPath};
   bool ret = true;
 
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   for (auto path : kPaths) {
     if (base::WriteFile(base::FilePath(path), "-1", 2) != 2) {
@@ -682,9 +679,9 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         IPAddress::Family family,
                                         uint32_t metric,
                                         uint32_t table_id) {
-  SLOG(this, 2) << base::StringPrintf(
-      "%s: family %s metric %d", __func__,
-      IPAddress::GetAddressFamilyName(family).c_str(), metric);
+  SLOG(2) << base::StringPrintf("%s: family %s metric %d", __func__,
+                                IPAddress::GetAddressFamilyName(family).c_str(),
+                                metric);
 
   auto entry = RoutingTableEntry::Create(family)
                    .SetMetric(metric)
@@ -709,9 +706,9 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
   IPAddress destination_address(remote_address);
   destination_address.set_prefix(
       IPAddress::GetMaxPrefixLength(remote_address.family()));
-  SLOG(this, 2) << "Creating link route to " << destination_address.ToString()
-                << " from " << local_address.ToString()
-                << " on interface index " << interface_index;
+  SLOG(2) << "Creating link route to " << destination_address.ToString()
+          << " from " << local_address.ToString() << " on interface index "
+          << interface_index;
   return AddRoute(interface_index,
                   RoutingTableEntry::Create(destination_address, local_address,
                                             default_address)
@@ -723,7 +720,7 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
                              const RoutingPolicyEntry& entry,
                              RTNLMessage::Mode mode,
                              unsigned int flags) {
-  SLOG(this, 2) << base::StringPrintf(
+  SLOG(2) << base::StringPrintf(
       "%s: index %d family %s prio %d", __func__, interface_index,
       IPAddress::GetAddressFamilyName(entry.family).c_str(), entry.priority);
 
@@ -896,7 +893,7 @@ bool RoutingTable::AddRule(int interface_index,
 }
 
 void RoutingTable::FlushRules(int interface_index) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   auto table = policy_tables_.find(interface_index);
   if (table == policy_tables_.end()) {

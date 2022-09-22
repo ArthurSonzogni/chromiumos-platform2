@@ -13,15 +13,12 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const DHCPCDProxy* d) {
-  return "(dhcpcd_proxy)";
-}
 }  // namespace Logging
 
 DHCPCDProxy::DHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
                          const std::string& service_name)
     : dhcpcd_proxy_(new org::chromium::dhcpcdProxy(bus, service_name)) {
-  SLOG(this, 2) << "DHCPCDProxy(service=" << service_name << ").";
+  SLOG(2) << "DHCPCDProxy(service=" << service_name << ").";
   // Do not register signal handlers, signals are processed by
   // DHCPCDListener.
 }
@@ -31,7 +28,7 @@ DHCPCDProxy::~DHCPCDProxy() {
 }
 
 void DHCPCDProxy::Rebind(const std::string& interface) {
-  SLOG(nullptr, 2) << __func__;
+  SLOG(2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Rebind(interface, &error)) {
     LogDBusError(error, __func__, interface);
@@ -39,7 +36,7 @@ void DHCPCDProxy::Rebind(const std::string& interface) {
 }
 
 void DHCPCDProxy::Release(const std::string& interface) {
-  SLOG(nullptr, 2) << __func__;
+  SLOG(2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Release(interface, &error)) {
     LogDBusError(error, __func__, interface);

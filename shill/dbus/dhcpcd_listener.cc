@@ -23,9 +23,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const DHCPCDListener* d) {
-  return "(dhcpcd_listener)";
-}
 }  // namespace Logging
 
 const char DHCPCDListener::kDBusInterfaceName[] = "org.chromium.dhcpcd";
@@ -138,9 +135,8 @@ void DHCPCDListener::EventSignal(
   auto* config = provider_->GetController(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
-      SLOG(nullptr, 3) << __func__
-                       << ": ignoring message from recently unbound PID "
-                       << pid;
+      SLOG(3) << __func__ << ": ignoring message from recently unbound PID "
+              << pid;
     } else {
       LOG(ERROR) << "Unknown DHCP client PID " << pid;
     }
@@ -158,9 +154,8 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
   auto* config = provider_->GetController(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
-      SLOG(nullptr, 3) << __func__
-                       << ": ignoring message from recently unbound PID "
-                       << pid;
+      SLOG(3) << __func__ << ": ignoring message from recently unbound PID "
+              << pid;
     } else {
       LOG(ERROR) << "Unknown DHCP client PID " << pid;
     }

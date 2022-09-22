@@ -19,9 +19,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static std::string ObjectID(const VirtualDevice* v) {
-  return "(virtual_device)";
-}
 }  // namespace Logging
 
 namespace {
@@ -72,7 +69,7 @@ void VirtualDevice::Stop(Error* error,
 }
 
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
-  SLOG(this, 2) << __func__ << " on " << link_name();
+  SLOG(2) << __func__ << " on " << link_name();
   network()->set_link_protocol_ipv4_properties(properties);
   network()->Start(Network::StartOptions{
       .dhcp = std::nullopt,

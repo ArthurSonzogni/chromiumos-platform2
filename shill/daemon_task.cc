@@ -31,9 +31,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static std::string ObjectID(const DaemonTask* d) {
-  return "(chromeos_daemon)";
-}
 }  // namespace Logging
 
 DaemonTask::DaemonTask(const Settings& settings, Config* config)
@@ -64,14 +61,14 @@ void DaemonTask::ApplySettings() {
 }
 
 bool DaemonTask::Quit(base::OnceClosure completion_callback) {
-  SLOG(this, 1) << "Starting termination actions.";
+  SLOG(1) << "Starting termination actions.";
   if (manager_->RunTerminationActionsAndNotifyMetrics(base::Bind(
           &DaemonTask::TerminationActionsCompleted, base::Unretained(this)))) {
-    SLOG(this, 1) << "Will wait for termination actions to complete";
+    SLOG(1) << "Will wait for termination actions to complete";
     termination_completed_callback_ = std::move(completion_callback);
     return false;  // Note to caller: don't exit yet!
   } else {
-    SLOG(this, 1) << "No termination actions were run";
+    SLOG(1) << "No termination actions were run";
     StopAndReturnToMain();
     return true;  // All done, ready to exit.
   }
@@ -97,7 +94,7 @@ void DaemonTask::Init() {
 }
 
 void DaemonTask::TerminationActionsCompleted(const Error& error) {
-  SLOG(this, 1) << "Finished termination actions.  Result: " << error;
+  SLOG(1) << "Finished termination actions.  Result: " << error;
   // Daemon::TerminationActionsCompleted() should not directly call
   // Daemon::Stop(). Otherwise, it could lead to the call sequence below. That
   // is not safe as the HookTable's start callback only holds a weak pointer to

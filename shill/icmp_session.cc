@@ -31,9 +31,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const IcmpSession* i) {
-  return "(icmp_session)";
-}
 }  // namespace Logging
 
 uint16_t IcmpSession::kNextUniqueEchoId = 0;
@@ -183,10 +180,9 @@ int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
   }
 
   if (received_icmp_header->un.echo.id != echo_id_) {
-    SLOG(this, 3) << "received message echo id ("
-                  << received_icmp_header->un.echo.id
-                  << ") does not match this ICMP session's echo id ("
-                  << echo_id_ << ")";
+    SLOG(3) << "received message echo id (" << received_icmp_header->un.echo.id
+            << ") does not match this ICMP session's echo id (" << echo_id_
+            << ")";
     return -1;
   }
 
@@ -218,10 +214,9 @@ int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
   }
 
   if (received_icmp_header->icmp6_id != echo_id_) {
-    SLOG(this, 3) << "received message echo id ("
-                  << received_icmp_header->icmp6_id
-                  << ") does not match this ICMPv6 session's echo id ("
-                  << echo_id_ << ")";
+    SLOG(3) << "received message echo id (" << received_icmp_header->icmp6_id
+            << ") does not match this ICMPv6 session's echo id (" << echo_id_
+            << ")";
     return -1;
   }
 

@@ -21,9 +21,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kResolver;
-static std::string ObjectID(const Resolver* r) {
-  return "(resolver)";
-}
 }  // namespace Logging
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
@@ -40,7 +37,7 @@ Resolver* Resolver::GetInstance() {
 bool Resolver::SetDNSFromLists(
     const std::vector<std::string>& name_servers,
     const std::vector<std::string>& domain_search_list) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   name_servers_ = name_servers;
   domain_search_list_ = domain_search_list;
@@ -57,7 +54,7 @@ bool Resolver::Emit() {
   const auto name_servers =
       !dns_proxy_addrs_.empty() ? dns_proxy_addrs_ : name_servers_;
   if (name_servers.empty() && domain_search_list_.empty()) {
-    SLOG(this, 2) << "DNS list is empty";
+    SLOG(2) << "DNS list is empty";
     return ClearDNS();
   }
 
@@ -108,7 +105,7 @@ bool Resolver::Emit() {
 
   const auto contents = base::JoinString(lines, "\n");
 
-  SLOG(this, 2) << "Writing DNS out to " << path_.value();
+  SLOG(2) << "Writing DNS out to " << path_.value();
   int count = base::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
@@ -116,14 +113,14 @@ bool Resolver::Emit() {
 
 bool Resolver::SetDNSProxyAddresses(
     const std::vector<std::string>& proxy_addrs) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   dns_proxy_addrs_ = proxy_addrs;
   return Emit();
 }
 
 bool Resolver::ClearDNS() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 
   if (path_.empty()) {
     LOG(DFATAL) << "No path set";

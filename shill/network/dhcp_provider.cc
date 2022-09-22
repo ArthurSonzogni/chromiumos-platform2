@@ -31,9 +31,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const DHCPProvider* d) {
-  return "(dhcp_provider)";
-}
 }  // namespace Logging
 
 namespace {
@@ -54,11 +51,11 @@ DHCPProvider::Options DHCPProvider::Options::Create(const Manager& manager) {
 
 DHCPProvider::DHCPProvider()
     : root_("/"), control_interface_(nullptr), dispatcher_(nullptr) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 DHCPProvider::~DHCPProvider() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 DHCPProvider* DHCPProvider::GetInstance() {
@@ -68,7 +65,7 @@ DHCPProvider* DHCPProvider::GetInstance() {
 void DHCPProvider::Init(ControlInterface* control_interface,
                         EventDispatcher* dispatcher,
                         Metrics* metrics) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   listener_ = control_interface->CreateDHCPCDListener(this);
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
@@ -89,14 +86,14 @@ std::unique_ptr<DHCPController> DHCPProvider::CreateController(
     const std::string& device_name,
     const Options& opts,
     Technology technology) {
-  SLOG(this, 2) << __func__ << " device: " << device_name;
+  SLOG(2) << __func__ << " device: " << device_name;
   return std::make_unique<DHCPController>(
       control_interface_, dispatcher_, this, device_name, opts.lease_name,
       opts.use_arp_gateway, opts.hostname, technology, metrics_);
 }
 
 DHCPController* DHCPProvider::GetController(int pid) {
-  SLOG(this, 2) << __func__ << " pid: " << pid;
+  SLOG(2) << __func__ << " pid: " << pid;
   const auto it = controllers_.find(pid);
   if (it == controllers_.end()) {
     return nullptr;
@@ -111,12 +108,12 @@ DHCPController* DHCPProvider::GetController(int pid) {
 }
 
 void DHCPProvider::BindPID(int pid, base::WeakPtr<DHCPController> controller) {
-  SLOG(this, 2) << __func__ << " pid: " << pid;
+  SLOG(2) << __func__ << " pid: " << pid;
   controllers_[pid] = std::move(controller);
 }
 
 void DHCPProvider::UnbindPID(int pid) {
-  SLOG(this, 2) << __func__ << " pid: " << pid;
+  SLOG(2) << __func__ << " pid: " << pid;
   controllers_.erase(pid);
   recently_unbound_pids_.insert(pid);
   dispatcher_->PostDelayedTask(FROM_HERE,
@@ -134,7 +131,7 @@ bool DHCPProvider::IsRecentlyUnbound(int pid) {
 }
 
 void DHCPProvider::DestroyLease(const std::string& name) {
-  SLOG(this, 2) << __func__ << " name: " << name;
+  SLOG(2) << __func__ << " name: " << name;
   base::DeleteFile(
       root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str())));
 }

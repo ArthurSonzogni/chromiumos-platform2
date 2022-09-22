@@ -29,9 +29,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPPP;
-static std::string ObjectID(const PPPDevice* p) {
-  return p->link_name();
-}
 }  // namespace Logging
 
 PPPDevice::PPPDevice(Manager* manager,
@@ -60,7 +57,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
   for (const auto& it : configuration) {
     const auto& key = it.first;
     const auto& value = it.second;
-    SLOG(nullptr, 2) << "Processing: " << key << " -> " << value;
+    SLOG(2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
       properties.address = value;
     } else if (key == kPPPExternalIP4Address) {
@@ -85,7 +82,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
       }
       properties.mtu = mru;
     } else {
-      SLOG(nullptr, 2) << "Key ignored.";
+      SLOG(2) << "Key ignored.";
     }
   }
   if (properties.gateway.empty()) {

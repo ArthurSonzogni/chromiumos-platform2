@@ -305,7 +305,7 @@ bool DHCPController::Restart() {
 void DHCPController::OnProcessExited(int exit_status) {
   CHECK(pid_);
   if (exit_status == EXIT_SUCCESS) {
-    SLOG(nullptr, 2) << "pid " << pid_ << " exit status " << exit_status;
+    SLOG(2) << "pid " << pid_ << " exit status " << exit_status;
   } else {
     LOG(WARNING) << "pid " << pid_ << " exit status " << exit_status;
   }

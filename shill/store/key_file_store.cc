@@ -37,9 +37,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kStorage;
-static std::string ObjectID(const KeyFileStore* k) {
-  return "(key_file_store)";
-}
 }  // namespace Logging
 
 namespace {
@@ -515,14 +512,14 @@ bool KeyFileStore::GetString(const std::string& group,
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   std::vector<std::string> temp;
   if (!Unescape(data.value(), std::nullopt, &temp)) {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
-                   << " string";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as"
+             << " string";
     return false;
   }
 
@@ -547,7 +544,7 @@ bool KeyFileStore::GetBool(const std::string& group,
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
@@ -557,8 +554,8 @@ bool KeyFileStore::GetBool(const std::string& group,
   } else if (data.value() == "false") {
     b = false;
   } else {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
-                   << " bool";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as"
+             << " bool";
     return false;
   }
 
@@ -582,14 +579,14 @@ bool KeyFileStore::GetInt(const std::string& group,
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   int i;
   if (!base::StringToInt(data.value(), &i)) {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
-                   << " int";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as"
+             << " int";
     return false;
   }
 
@@ -613,14 +610,14 @@ bool KeyFileStore::GetUint64(const std::string& group,
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   uint64_t i;
   if (!base::StringToUint64(data.value(), &i)) {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
-                   << " as uint64";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
+             << " as uint64";
     return false;
   }
 
@@ -644,14 +641,14 @@ bool KeyFileStore::GetStringList(const std::string& group,
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   std::vector<std::string> list;
   if (!Unescape(data.value(), kListSeparator, &list)) {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
-                   << " as string list";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
+             << " as string list";
     return false;
   }
 
@@ -736,14 +733,14 @@ bool KeyFileStore::GetUint64List(const std::string& group,
   CHECK(key_file_);
   const auto data = key_file_->Get(group, key);
   if (!data.has_value()) {
-    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   std::vector<std::string> strings;
   if (!Unescape(data.value(), kListSeparator, &strings)) {
-    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
-                   << " as uint64 list";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
+             << " as uint64 list";
     return false;
   }
 
@@ -751,8 +748,8 @@ bool KeyFileStore::GetUint64List(const std::string& group,
   for (const auto& a : strings) {
     uint64_t i;
     if (!base::StringToUint64(a, &i)) {
-      SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
-                     << " as uint64 list";
+      SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
+               << " as uint64 list";
       return false;
     }
     list.push_back(i);

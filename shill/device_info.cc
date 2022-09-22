@@ -72,9 +72,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static std::string ObjectID(const DeviceInfo* d) {
-  return "(device_info)";
-}
 }  // namespace Logging
 
 namespace {
@@ -312,8 +309,8 @@ std::vector<std::string> DeviceInfo::GetUninitializedTechnologies() const {
 }
 
 void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
-  SLOG(this, 1) << __func__ << "(" << device->link_name() << ", "
-                << device->interface_index() << ")";
+  SLOG(1) << __func__ << "(" << device->link_name() << ", "
+          << device->interface_index() << ")";
   device->Initialize();
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
@@ -378,11 +375,11 @@ Technology DeviceInfo::GetDeviceTechnology(
   int arp_type = GetDeviceArpType(iface_name);
 
   if (kind.has_value()) {
-    SLOG(this, 2) << iface_name << ": device is kind '" << kind.value() << "'";
+    SLOG(2) << iface_name << ": device is kind '" << kind.value() << "'";
   }
 
   if (IsGuestDevice(iface_name)) {
-    SLOG(this, 2) << iface_name << ": device is a guest device";
+    SLOG(2) << iface_name << ": device is a guest device";
     return Technology::kGuestInterface;
   }
 
@@ -390,8 +387,8 @@ Technology DeviceInfo::GetDeviceTechnology(
     // Ignore certain KINDs of devices.
     for (const char* ignoreKind : kIgnoredDeviceKinds) {
       if (ignoreKind == kind.value()) {
-        SLOG(this, 2) << __func__ << ": device " << iface_name
-                      << " ignored, kind \"" << ignoreKind << "\"";
+        SLOG(2) << __func__ << ": device " << iface_name << " ignored, kind \""
+                << ignoreKind << "\"";
         return Technology::kUnknown;
       }
     }
@@ -400,54 +397,53 @@ Technology DeviceInfo::GetDeviceTechnology(
   // Special case for devices which should be ignored.
   for (const char* prefix : kIgnoredDeviceNamePrefixes) {
     if (iface_name.find(prefix) == 0) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " should be ignored";
+      SLOG(2) << __func__ << ": device " << iface_name << " should be ignored";
       return Technology::kUnknown;
     }
   }
 
   if (kind.has_value() && kind.value() == kKindWireGuard) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " is a wireguard device. Treat it as a tunnel.";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " is a wireguard device. Treat it as a tunnel.";
     return Technology::kTunnel;
   }
 
   if (kind.has_value() && kind.value() == kKindXfrm) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " is a xfrm device. Treat it as a tunnel.";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " is a xfrm device. Treat it as a tunnel.";
     return Technology::kTunnel;
   }
 
   // Special case for pseudo modem veth pairs which are used for testing.
   if (iface_name.find(kModemPseudoDeviceNamePrefix) == 0) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " is a pseudo modem for testing";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " is a pseudo modem for testing";
     return Technology::kCellular;
   }
 
   // Special case for pseudo ethernet devices which are used for testing.
   if (iface_name.find(kEthernetPseudoDeviceNamePrefix) == 0) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " is a virtual ethernet device for testing";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " is a virtual ethernet device for testing";
     return Technology::kEthernet;
   }
 
   // No point delaying veth devices just because they don't have a device
   // symlink. Treat it as Ethernet directly.
   if (kind.has_value() && kind.value() == kKindVeth) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name << " is kind veth";
+    SLOG(2) << __func__ << ": device " << iface_name << " is kind veth";
     return Technology::kEthernet;
   }
 
   // 'rmnet' is Qualcomm's data-path cellular netdevice.
   if (kind.has_value() && kind.value() == kKindRmnet) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name << " is kind rmnet";
+    SLOG(2) << __func__ << ": device " << iface_name << " is kind rmnet";
     return Technology::kCellular;
   }
 
   if (arp_type == ARPHRD_IEEE80211_RADIOTAP) {
-    SLOG(this, 2) << __func__ << ": wifi device " << iface_name
-                  << " is in monitor mode";
+    SLOG(2) << __func__ << ": wifi device " << iface_name
+            << " is in monitor mode";
     return Technology::kWiFiMonitor;
   }
 
@@ -461,16 +457,16 @@ Technology DeviceInfo::GetDeviceTechnology(
   // start of the file or after a newline, we can safely assume this
   // is a wifi device.
   if (contents.find(kInterfaceUeventWifiSignature) != std::string::npos) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " has wifi signature in uevent file";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " has wifi signature in uevent file";
     return Technology::kWiFi;
   }
 
   // Similarly, if the uevent file contains "DEVTYPE=bridge\n" then we can
   // safely assume this is a bridge device and can be treated as ethernet.
   if (contents.find(kInterfaceUeventBridgeSignature) != std::string::npos) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " has bridge signature in uevent file";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " has bridge signature in uevent file";
     return Technology::kEthernet;
   }
 
@@ -478,23 +474,21 @@ Technology DeviceInfo::GetDeviceTechnology(
   if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path) &&
       !GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriverMtkt7xx,
                                  &driver_path)) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " has no device symlink";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " has no device symlink";
     if (arp_type == ARPHRD_LOOPBACK) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " is a loopback device";
+      SLOG(2) << __func__ << ": device " << iface_name
+              << " is a loopback device";
       return Technology::kLoopback;
     }
     if (arp_type == ARPHRD_PPP) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " is a ppp device";
+      SLOG(2) << __func__ << ": device " << iface_name << " is a ppp device";
       return Technology::kPPP;
     }
     // Devices like Qualcomm's IPA (IP Accelerator) should not be managed by
     // Shill.
     if (arp_type == ARPHRD_RAWIP) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " is a raw IP device";
+      SLOG(2) << __func__ << ": device " << iface_name << " is a raw IP device";
       return Technology::kUnknown;
     }
     std::string tun_flags_str;
@@ -503,8 +497,7 @@ Technology DeviceInfo::GetDeviceTechnology(
         base::TrimString(tun_flags_str, "\n", &tun_flags_str) &&
         base::HexStringToInt(tun_flags_str, &tun_flags) &&
         (tun_flags & IFF_TUN)) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " is tun device";
+      SLOG(2) << __func__ << ": device " << iface_name << " is tun device";
       return Technology::kTunnel;
     }
 
@@ -516,8 +509,8 @@ Technology DeviceInfo::GetDeviceTechnology(
   // See if driver for this interface is in a list of known modem driver names.
   for (auto modem_driver : kModemDrivers) {
     if (driver_name == modem_driver) {
-      SLOG(this, 2) << __func__ << ": device " << iface_name
-                    << " is matched with modem driver " << driver_name;
+      SLOG(2) << __func__ << ": device " << iface_name
+              << " is matched with modem driver " << driver_name;
       return Technology::kCellular;
     }
   }
@@ -530,21 +523,20 @@ Technology DeviceInfo::GetDeviceTechnology(
                 << driver_name << " modem device";
       return Technology::kCellular;
     }
-    SLOG(this, 2) << __func__ << ": device " << iface_name << " is a "
-                  << driver_name << " device";
+    SLOG(2) << __func__ << ": device " << iface_name << " is a " << driver_name
+            << " device";
     return Technology::kCDCEthernet;
   }
 
   // Special case for the virtio driver, used when run under KVM. See also
   // the comment in VirtioEthernet::Start.
   if (driver_name == kDriverVirtioNet) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " is virtio ethernet";
+    SLOG(2) << __func__ << ": device " << iface_name << " is virtio ethernet";
     return Technology::kVirtioEthernet;
   }
 
-  SLOG(this, 2) << __func__ << ": device " << iface_name << ", with driver "
-                << driver_name << ", is defaulted to type ethernet";
+  SLOG(2) << __func__ << ": device " << iface_name << ", with driver "
+          << driver_name << ", is defaulted to type ethernet";
   return Technology::kEthernet;
 }
 
@@ -578,8 +570,8 @@ bool DeviceInfo::IsCdcEthernetModemDevice(const std::string& iface_name) const {
   base::FilePath device_file = GetDeviceInfoPath(iface_name, kInterfaceDevice);
   base::FilePath device_path;
   if (!base::ReadSymbolicLink(device_file, &device_path)) {
-    SLOG(this, 2) << __func__ << ": device " << iface_name
-                  << " has no device symlink";
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " has no device symlink";
     return false;
   }
   if (!device_path.IsAbsolute()) {
@@ -613,8 +605,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
                                       const std::string& address,
                                       int interface_index,
                                       Technology technology) {
-  SLOG(this, 1) << __func__ << ": " << link_name << " Address: " << address
-                << " Index: " << interface_index;
+  SLOG(1) << __func__ << ": " << link_name << " Address: " << address
+          << " Index: " << interface_index;
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
@@ -629,8 +621,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       return nullptr;
 #else
       // Cellular devices are managed by ModemInfo.
-      SLOG(this, 2) << "Cellular link " << link_name << " at index "
-                    << interface_index << " -- notifying ModemInfo.";
+      SLOG(2) << "Cellular link " << link_name << " at index "
+              << interface_index << " -- notifying ModemInfo.";
 
       // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
       // Clear it here, and it will be fetched from the kernel in
@@ -666,23 +658,23 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       // interface index, this notification will only occur the first
       // time the device is seen.
       if (pending_links_.find(link_name) != pending_links_.end()) {
-        SLOG(this, 2) << "Tunnel / PPP link " << link_name << " at index "
-                      << interface_index << " -- triggering callback.";
+        SLOG(2) << "Tunnel / PPP link " << link_name << " at index "
+                << interface_index << " -- triggering callback.";
         std::move(pending_links_[link_name]).Run(link_name, interface_index);
         pending_links_.erase(link_name);
       } else if (technology == Technology::kTunnel) {
         // If no one claims this tunnel, it is probably
         // left over from a previous instance and should not exist.
-        SLOG(this, 2) << "Tunnel link " << link_name << " at index "
-                      << interface_index << " is unused. Deleting.";
+        SLOG(2) << "Tunnel link " << link_name << " at index "
+                << interface_index << " is unused. Deleting.";
         DeleteInterface(interface_index);
       }
       break;
     case Technology::kLoopback:
       // Loopback devices are largely ignored, but we should make sure the
       // link is enabled.
-      SLOG(this, 2) << "Bringing up loopback device " << link_name
-                    << " at index " << interface_index;
+      SLOG(2) << "Bringing up loopback device " << link_name << " at index "
+              << interface_index;
       rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
       return nullptr;
     case Technology::kCDCEthernet:
@@ -758,7 +750,7 @@ bool DeviceInfo::IsRenamedBlockedDevice(const RTNLMessage& msg) {
 }
 
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
-  SLOG(this, 2) << __func__ << " index: " << msg.interface_index();
+  SLOG(2) << __func__ << " index: " << msg.interface_index();
 
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
@@ -773,10 +765,10 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   }
 
   bool new_device = !infos_[dev_index].received_add_link;
-  SLOG(this, 2) << __func__
-                << base::StringPrintf(
-                       "(index=%d, flags=0x%x, change=0x%x), new_device=%d",
-                       dev_index, flags, change, new_device);
+  SLOG(2) << __func__
+          << base::StringPrintf(
+                 "(index=%d, flags=0x%x, change=0x%x), new_device=%d",
+                 dev_index, flags, change, new_device);
   infos_[dev_index].received_add_link = true;
   infos_[dev_index].flags = flags;
 
@@ -790,7 +782,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       LOG(ERROR) << "Add Link message does not contain a link name!";
       return;
     }
-    SLOG(this, 2) << "add link index " << dev_index << " name " << link_name;
+    SLOG(2) << "add link index " << dev_index << " name " << link_name;
     infos_[dev_index].name = link_name;
     indices_[link_name] = dev_index;
 
@@ -810,7 +802,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     if (msg.HasAttribute(IFLA_ADDRESS)) {
       infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
       address = infos_[dev_index].mac_address.HexEncode();
-      SLOG(this, 2) << "link index " << dev_index << " address " << address;
+      SLOG(2) << "link index " << dev_index << " address " << address;
     } else if (technology == Technology::kWiFi ||
                technology == Technology::kEthernet) {
       LOG(ERROR) << "Add link message does not have IFLA_ADDRESS, link: "
@@ -829,15 +821,14 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
 }
 
 void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
-  SLOG(this, 2) << __func__ << "(index=" << msg.interface_index() << ")";
+  SLOG(2) << __func__ << "(index=" << msg.interface_index() << ")";
 
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeDelete);
-  SLOG(this, 2) << __func__
-                << base::StringPrintf("(index=%d, flags=0x%x, change=0x%x)",
-                                      msg.interface_index(),
-                                      msg.link_status().flags,
-                                      msg.link_status().change);
+  SLOG(2) << __func__
+          << base::StringPrintf("(index=%d, flags=0x%x, change=0x%x)",
+                                msg.interface_index(), msg.link_status().flags,
+                                msg.link_status().change);
 
   std::string link_name;
   if (!GetLinkNameFromMessage(msg, &link_name)) {
@@ -979,8 +970,8 @@ std::vector<IPAddress> DeviceInfo::GetAddresses(int interface_index) const {
 
 void DeviceInfo::FlushAddresses(int interface_index,
                                 IPAddress::Family family) const {
-  SLOG(this, 2) << __func__ << ": if_index=" << interface_index
-                << ", family=" << family;
+  SLOG(2) << __func__ << ": if_index=" << interface_index
+          << ", family=" << family;
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return;
@@ -1005,7 +996,7 @@ void DeviceInfo::FlushAddresses(int interface_index,
 
 bool DeviceInfo::HasOtherAddress(int interface_index,
                                  const IPAddress& this_address) const {
-  SLOG(this, 3) << __func__ << "(" << interface_index << ")";
+  SLOG(3) << __func__ << "(" << interface_index << ")";
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
@@ -1122,7 +1113,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
                                     int* vendor_id,
                                     int* product_id,
                                     int* subsystem_id) const {
-  SLOG(this, 3) << __func__ << "(" << interface_index << ")";
+  SLOG(3) << __func__ << "(" << interface_index << ")";
   const Info* info = GetInfo(interface_index);
   if (!info) {
     LOG(ERROR) << "No DeviceInfo for interface index " << interface_index;
@@ -1133,7 +1124,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
                << info->technology << " not supported.";
     return false;
   }
-  SLOG(this, 2) << info->name << " detecting adapter information";
+  SLOG(2) << info->name << " detecting adapter information";
 
   if (!base::PathIsReadable(
           GetDeviceInfoPath(info->name, kInterfaceVendorId))) {
@@ -1336,11 +1327,11 @@ const DeviceInfo::Info* DeviceInfo::GetInfo(int interface_index) const {
 void DeviceInfo::DeregisterDevice(int interface_index) {
   auto iter = infos_.find(interface_index);
   if (iter == infos_.end()) {
-    SLOG(this, 2) << __func__ << ": Unknown device index: " << interface_index;
+    SLOG(2) << __func__ << ": Unknown device index: " << interface_index;
     return;
   }
 
-  SLOG(this, 1) << __func__ << " index: " << interface_index;
+  SLOG(1) << __func__ << " index: " << interface_index;
   // Deregister the device if not deregistered yet.
   if (iter->second.device.get()) {
     manager_->DeregisterDevice(iter->second.device);
@@ -1365,7 +1356,7 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage& msg) {
 }
 
 void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeAddress);
   const RTNLMessage::AddressStatus& status = msg.address_status();
   IPAddress address(msg.family(),
@@ -1423,11 +1414,11 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
 }
 
 void DeviceInfo::RdnssMsgHandler(const RTNLMessage& msg) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
   int interface_index = msg.interface_index();
   if (!base::Contains(infos_, interface_index)) {
-    SLOG(this, 2) << "Got RDNSS option for unknown index " << interface_index;
+    SLOG(2) << "Got RDNSS option for unknown index " << interface_index;
   }
 
   const RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
@@ -1473,14 +1464,14 @@ void DeviceInfo::DelayedDeviceCreationTask() {
       technology = Technology::kEthernet;
     } else if (technology == Technology::kNoDeviceSymlink) {
       if (manager_->ignore_unknown_ethernet()) {
-        SLOG(this, 2) << __func__ << ": device " << link_name
-                      << ", without driver name will be ignored";
+        SLOG(2) << __func__ << ": device " << link_name
+                << ", without driver name will be ignored";
         technology = Technology::kUnknown;
       } else {
         // Act the same as if there was a driver symlink, but we did not
         // recognize the driver name.
-        SLOG(this, 2) << __func__ << ": device " << link_name
-                      << ", without driver name is defaulted to type ethernet";
+        SLOG(2) << __func__ << ": device " << link_name
+                << ", without driver name is defaulted to type ethernet";
         technology = Technology::kEthernet;
       }
     } else if (technology != Technology::kCellular &&
@@ -1521,10 +1512,10 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
   }
 
   memcpy(&stats, stats_bytes.GetConstData(), sizeof(stats));
-  SLOG(this, 2) << "Link statistics for "
-                << " interface index " << interface_index << ": "
-                << "receive: " << stats.rx_bytes << "; "
-                << "transmit: " << stats.tx_bytes << ".";
+  SLOG(2) << "Link statistics for "
+          << " interface index " << interface_index << ": "
+          << "receive: " << stats.rx_bytes << "; "
+          << "transmit: " << stats.tx_bytes << ".";
   infos_[interface_index].rx_bytes = stats.rx_bytes;
   infos_[interface_index].tx_bytes = stats.tx_bytes;
 
@@ -1646,9 +1637,9 @@ void DeviceInfo::OnPatchpanelClientReady() {
 
 void DeviceInfo::OnNeighborReachabilityEvent(
     const patchpanel::NeighborReachabilityEventSignal& signal) {
-  SLOG(this, 2) << __func__ << ": interface index: " << signal.ifindex()
-                << ", ip address: " << signal.ip_addr()
-                << ", role: " << signal.role() << ", type: " << signal.type();
+  SLOG(2) << __func__ << ": interface index: " << signal.ifindex()
+          << ", ip address: " << signal.ip_addr() << ", role: " << signal.role()
+          << ", type: " << signal.type();
   using SignalProto = patchpanel::NeighborReachabilityEventSignal;
 
   auto device = GetDevice(signal.ifindex());

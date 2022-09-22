@@ -23,9 +23,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kProperty;
-static std::string ObjectID(const PropertyStore* p) {
-  return "(property_store)";
-}
 }  // namespace Logging
 
 namespace {
@@ -91,8 +88,8 @@ void PropertyStore::SetAnyProperty(const std::string& name,
   } else if (value.IsTypeCompatible<Stringmap>()) {
     SetStringmapProperty(name, value.Get<Stringmap>(), error);
   } else if (value.IsTypeCompatible<Stringmaps>()) {
-    SLOG(nullptr, 1) << " can't yet handle setting type "
-                     << value.GetUndecoratedTypeName();
+    SLOG(1) << " can't yet handle setting type "
+            << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
   } else if (value.IsTypeCompatible<Strings>()) {
     SetStringsProperty(name, value.Get<Strings>(), error);
@@ -373,7 +370,7 @@ void PropertyStore::SetRpcIdentifierProperty(const std::string& name,
 }
 
 bool PropertyStore::ClearProperty(const std::string& name, Error* error) {
-  SLOG(this, 2) << "Clearing " << name << ".";
+  SLOG(2) << "Clearing " << name << ".";
 
   if (base::Contains(bool_properties_, name)) {
     bool_properties_[name]->Clear(error);
@@ -742,7 +739,7 @@ bool PropertyStore::GetProperty(const std::string& name,
                                 Error* error,
                                 const AccessorMap<V>& collection,
                                 const std::string& value_type_english) const {
-  SLOG(this, 2) << "Getting " << name << " as " << value_type_english << ".";
+  SLOG(2) << "Getting " << name << " as " << value_type_english << ".";
   auto it = collection.find(name);
   if (it != collection.end()) {
     V val = it->second->Get(error);
@@ -769,7 +766,7 @@ bool PropertyStore::SetProperty(const std::string& name,
                                 AccessorMap<V>* collection,
                                 const std::string& value_type_english) {
   bool ret = false;
-  SLOG(this, 2) << "Setting " << name << " as " << value_type_english << ".";
+  SLOG(2) << "Setting " << name << " as " << value_type_english << ".";
   if (base::Contains(*collection, name)) {
     ret = (*collection)[name]->Set(value, error);
     if (ret) {

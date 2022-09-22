@@ -18,9 +18,6 @@ namespace shill {
 namespace Logging {
 
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const ThirdPartyVpnDBusAdaptor* v) {
-  return "(third_party_vpn_dbus_adaptor)";
-}
 
 }  // namespace Logging
 
@@ -61,12 +58,12 @@ ThirdPartyVpnDBusAdaptor::~ThirdPartyVpnDBusAdaptor() {
 
 void ThirdPartyVpnDBusAdaptor::EmitPacketReceived(
     const std::vector<uint8_t>& packet) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   SendOnPacketReceivedSignal(packet);
 }
 
 void ThirdPartyVpnDBusAdaptor::EmitPlatformMessage(uint32_t message) {
-  SLOG(this, 2) << __func__ << "(" << message << ")";
+  SLOG(2) << __func__ << "(" << message << ")";
   SendOnPlatformMessageSignal(message);
 }
 
@@ -74,7 +71,7 @@ bool ThirdPartyVpnDBusAdaptor::SetParameters(
     brillo::ErrorPtr* error,
     const std::map<std::string, std::string>& parameters,
     std::string* warning_message) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   std::string error_message;
   Error e;
   client_->SetParameters(parameters, &error_message, warning_message);
@@ -86,7 +83,7 @@ bool ThirdPartyVpnDBusAdaptor::SetParameters(
 
 bool ThirdPartyVpnDBusAdaptor::UpdateConnectionState(
     brillo::ErrorPtr* error, uint32_t connection_state) {
-  SLOG(this, 2) << __func__ << "(" << connection_state << ")";
+  SLOG(2) << __func__ << "(" << connection_state << ")";
   // Externally supported states are from Service::kStateConnected to
   // Service::kStateOnline.
   Service::ConnectState internal_state;
@@ -108,7 +105,7 @@ bool ThirdPartyVpnDBusAdaptor::UpdateConnectionState(
 
 bool ThirdPartyVpnDBusAdaptor::SendPacket(
     brillo::ErrorPtr* error, const std::vector<uint8_t>& ip_packet) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   std::string error_message;
   client_->SendPacket(ip_packet, &error_message);
   Error e;

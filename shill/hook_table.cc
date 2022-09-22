@@ -21,9 +21,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static std::string ObjectID(const HookTable* h) {
-  return "(hook_table)";
-}
 }  // namespace Logging
 
 HookTable::HookTable(EventDispatcher* event_dispatcher)
@@ -31,7 +28,7 @@ HookTable::HookTable(EventDispatcher* event_dispatcher)
 
 void HookTable::Add(const std::string& name,
                     const base::Closure& start_callback) {
-  SLOG(this, 2) << __func__ << ": " << name;
+  SLOG(2) << __func__ << ": " << name;
   Remove(name);
   auto iter = hook_table_.find(name);
   if (iter != hook_table_.end()) {
@@ -46,12 +43,12 @@ HookTable::~HookTable() {
 }
 
 void HookTable::Remove(const std::string& name) {
-  SLOG(this, 2) << __func__ << ": " << name;
+  SLOG(2) << __func__ << ": " << name;
   hook_table_.erase(name);
 }
 
 void HookTable::ActionComplete(const std::string& name) {
-  SLOG(this, 2) << __func__ << ": " << name;
+  SLOG(2) << __func__ << ": " << name;
   HookTableMap::iterator it = hook_table_.find(name);
   if (it != hook_table_.end()) {
     HookAction* action = &it->second;
@@ -67,7 +64,7 @@ void HookTable::ActionComplete(const std::string& name) {
 }
 
 void HookTable::Run(base::TimeDelta timeout, const ResultCallback& done) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   if (hook_table_.empty()) {
     done.Run(Error(Error::kSuccess));
     return;
@@ -101,7 +98,7 @@ void HookTable::Run(base::TimeDelta timeout, const ResultCallback& done) {
 }
 
 bool HookTable::AllActionsComplete() const {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   for (const auto& hook_entry : hook_table_) {
     const HookAction& action = hook_entry.second;
     if (action.started && !action.completed) {

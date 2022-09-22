@@ -20,9 +20,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kTC;
-static std::string ObjectID(const Throttler* t) {
-  return "throttler";
-}
 }  // namespace Logging
 
 const char Throttler::kTCPath[] = "/sbin/tc";
@@ -61,11 +58,11 @@ Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
       manager_(manager),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 Throttler::~Throttler() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 void Throttler::ClearTCState() {
@@ -114,9 +111,9 @@ void Throttler::Done(const ResultCallback& callback,
   }
   if (!callback.is_null()) {
     callback.Run(error);
-    SLOG(this, 4) << "ran callback";
+    SLOG(4) << "ran callback";
   } else {
-    SLOG(this, 4) << "null callback";
+    SLOG(4) << "null callback";
   }
   ClearTCState();
   return;
@@ -156,8 +153,8 @@ bool Throttler::Throttle(const ResultCallback& callback,
                          const std::string& interface_name,
                          uint32_t upload_rate_kbits,
                          uint32_t download_rate_kbits) {
-  SLOG(this, 4) << __func__ << " : " << interface_name << "("
-                << upload_rate_kbits << ", " << download_rate_kbits << ")";
+  SLOG(4) << __func__ << " : " << interface_name << "(" << upload_rate_kbits
+          << ", " << download_rate_kbits << ")";
 
   if (tc_pid_ || !tc_commands_.empty() || !tc_current_interface_.empty()) {
     Done(callback, Error::kWrongState, "Cannot run concurrent TC operations");
@@ -248,7 +245,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
       base::BindOnce(&Throttler::OnProcessExited, weak_factory_.GetWeakPtr()),
       std_fds);
 
-  SLOG(this, 1) << "Spawned tc with pid: " << tc_pid_;
+  SLOG(1) << "Spawned tc with pid: " << tc_pid_;
 
   if (file_io_->SetFdNonBlocking(tc_stdin_)) {
     Done(callback_, Error::kOperationFailed,
@@ -266,7 +263,7 @@ void Throttler::WriteTCCommands(int fd) {
   CHECK(tc_pid_);
 
   for (const auto& command : tc_commands_) {
-    SLOG(this, 2) << "Issuing tc command: " << command;
+    SLOG(2) << "Issuing tc command: " << command;
 
     ssize_t bytes_written =
         file_io_->Write(tc_stdin_, command.data(), command.size());
@@ -317,8 +314,8 @@ void Throttler::OnProcessExited(int exit_status) {
   if (next_interface.empty()) {
     Done(callback_, Error::kSuccess, "");
   } else {
-    SLOG(this, 2) << "Done with " << tc_current_interface_ << " now calling "
-                  << next_interface;
+    SLOG(2) << "Done with " << tc_current_interface_ << " now calling "
+            << next_interface;
     tc_pid_ = 0;
     tc_commands_.clear();
     tc_current_interface_.clear();

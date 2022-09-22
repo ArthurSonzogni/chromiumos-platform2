@@ -72,9 +72,6 @@ const char kStorageDeprecatedEapPassword[] = "EAP.Password";
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static std::string ObjectID(const EapCredentials* e) {
-  return "(eap_credentials)";
-}
 }  // namespace Logging
 
 const char EapCredentials::kStorageCredentialEapAnonymousIdentity[] =
@@ -277,22 +274,21 @@ bool EapCredentials::IsEapAuthenticationProperty(const std::string property) {
 bool EapCredentials::IsConnectable() const {
   // Identity is required.
   if (identity_.empty()) {
-    SLOG(this, 2) << "Not connectable: Identity is empty.";
+    SLOG(2) << "Not connectable: Identity is empty.";
     return false;
   }
 
   if (!cert_id_.empty()) {
     // If a client certificate is being used, we must have a private key.
     if (key_id_.empty()) {
-      SLOG(this, 2)
-          << "Not connectable: Client certificate but no private key.";
+      SLOG(2) << "Not connectable: Client certificate but no private key.";
       return false;
     }
   }
   if (!cert_id_.empty() || !key_id_.empty() || !ca_cert_id_.empty()) {
     // If PKCS#11 data is needed, a PIN is required.
     if (pin_.empty()) {
-      SLOG(this, 2) << "Not connectable: PKCS#11 data but no PIN.";
+      SLOG(2) << "Not connectable: PKCS#11 data but no PIN.";
       return false;
     }
   }
@@ -300,7 +296,7 @@ bool EapCredentials::IsConnectable() const {
   // For EAP-TLS, a client certificate is required.
   if (eap_.empty() || eap_ == kEapMethodTLS) {
     if (!cert_id_.empty() && !key_id_.empty()) {
-      SLOG(this, 2) << "Connectable: EAP-TLS with a client cert and key.";
+      SLOG(2) << "Connectable: EAP-TLS with a client cert and key.";
       return true;
     }
   }
@@ -309,12 +305,12 @@ bool EapCredentials::IsConnectable() const {
   // minimum requirement), at least an identity + password is required.
   if (eap_.empty() || eap_ != kEapMethodTLS) {
     if (!password_.empty()) {
-      SLOG(this, 2) << "Connectable. !EAP-TLS and has a password.";
+      SLOG(2) << "Connectable. !EAP-TLS and has a password.";
       return true;
     }
   }
 
-  SLOG(this, 2) << "Not connectable: No suitable EAP configuration was found.";
+  SLOG(2) << "Not connectable: No suitable EAP configuration was found.";
   return false;
 }
 

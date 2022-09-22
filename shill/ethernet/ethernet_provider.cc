@@ -20,9 +20,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static std::string ObjectID(const EthernetProvider* e) {
-  return "(ethernet_provider)";
-}
 }  // namespace Logging
 
 EthernetProvider::EthernetProvider(Manager* manager) : manager_(manager) {}
@@ -30,7 +27,7 @@ EthernetProvider::EthernetProvider(Manager* manager) : manager_(manager) {}
 EthernetProvider::~EthernetProvider() = default;
 
 void EthernetProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // Since the EthernetProvider's service is created during Start(),
   // there is no need to do anything in this method.
 }
@@ -48,26 +45,26 @@ ServiceRefPtr EthernetProvider::FindSimilarService(const KeyValueStore& args,
 
 ServiceRefPtr EthernetProvider::GetService(const KeyValueStore& args,
                                            Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   return FindSimilarService(args, error);
 }
 
 ServiceRefPtr EthernetProvider::CreateTemporaryService(
     const KeyValueStore& args, Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   return new EthernetTemporaryService(
       manager_, EthernetService::kDefaultEthernetDeviceIdentifier);
 }
 
 ServiceRefPtr EthernetProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   return new EthernetTemporaryService(manager_, entry_name);
 }
 
 EthernetServiceRefPtr EthernetProvider::CreateService(
     base::WeakPtr<Ethernet> ethernet) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   if (!service_->HasEthernet()) {
     service_->SetEthernet(ethernet);
     return service_;
@@ -76,7 +73,7 @@ EthernetServiceRefPtr EthernetProvider::CreateService(
 }
 
 void EthernetProvider::RegisterService(EthernetServiceRefPtr service) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   CHECK(service);
   // Add the service to the services_ list and register it with the Manager.
   // A service is registered with the Manager if and only if it is also
@@ -90,7 +87,7 @@ void EthernetProvider::RegisterService(EthernetServiceRefPtr service) {
 }
 
 void EthernetProvider::DeregisterService(EthernetServiceRefPtr service) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   CHECK(service);
   // Remove the service from the services_ list if it is not the only remaining
   // service. Otherwise, turn it into the ethernet_any service. A service is
@@ -118,7 +115,7 @@ EthernetServiceRefPtr EthernetProvider::FindEthernetServiceForService(
 }
 
 bool EthernetProvider::LoadGenericEthernetService() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   return manager_->ActiveProfile()->LoadService(service_);
 }
 
@@ -157,7 +154,7 @@ void EthernetProvider::RefreshGenericEthernetService() {
 }
 
 void EthernetProvider::Start() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   // Create a generic Ethernet service with storage ID "ethernet_any". This will
   // be used to store configurations if any are pushed down from Chrome before
   // any Ethernet devices are initialized. This will also be used to persist
@@ -171,7 +168,7 @@ void EthernetProvider::Start() {
 }
 
 void EthernetProvider::Stop() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   while (!services_.empty()) {
     EthernetServiceRefPtr service = services_.back();
     DeregisterService(service);

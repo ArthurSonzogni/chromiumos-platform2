@@ -16,12 +16,7 @@
 namespace shill {
 
 namespace Logging {
-
 static auto kModuleLogScope = ScopeLogger::kStorage;
-static std::string ObjectID(const FakeStore* j) {
-  return "(unknown)";
-}
-
 }  // namespace Logging
 
 namespace {
@@ -257,14 +252,14 @@ bool FakeStore::ReadSetting(const std::string& group,
                             T* out) const {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
-    SLOG(this, 10) << "Could not find group |" << group << "|.";
+    SLOG(10) << "Could not find group |" << group << "|.";
     return false;
   }
 
   const auto& group_settings = group_name_and_settings->second;
   const auto& property_name_and_value = group_settings.find(key);
   if (property_name_and_value == group_settings.end()) {
-    SLOG(this, 10) << "Could not find property |" << key << "|.";
+    SLOG(10) << "Could not find property |" << key << "|.";
     return false;
   }
 
@@ -305,10 +300,10 @@ bool FakeStore::WriteSetting(const std::string& group,
   }
 
   if (!property_name_and_value->second.IsTypeCompatible<T>()) {
-    SLOG(this, 10) << "New type |" << brillo::GetUndecoratedTypeName<T>()
-                   << "| differs from current type |"
-                   << property_name_and_value->second.GetUndecoratedTypeName()
-                   << "|.";
+    SLOG(10) << "New type |" << brillo::GetUndecoratedTypeName<T>()
+             << "| differs from current type |"
+             << property_name_and_value->second.GetUndecoratedTypeName()
+             << "|.";
     return false;
   } else {
     property_name_and_value->second = new_value;

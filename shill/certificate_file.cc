@@ -22,9 +22,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCrypto;
-static std::string ObjectID(const CertificateFile* c) {
-  return "(certificate_file)";
-}
 }  // namespace Logging
 
 const char CertificateFile::kDefaultRootDirectory[] =
@@ -33,11 +30,11 @@ const char CertificateFile::kPEMHeader[] = "-----BEGIN CERTIFICATE-----";
 const char CertificateFile::kPEMFooter[] = "-----END CERTIFICATE-----";
 
 CertificateFile::CertificateFile() : root_directory_(kDefaultRootDirectory) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
 }
 
 CertificateFile::~CertificateFile() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   if (!output_file_.empty()) {
     base::DeleteFile(output_file_);
   }

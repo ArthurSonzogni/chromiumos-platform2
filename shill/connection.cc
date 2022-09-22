@@ -484,8 +484,8 @@ void Connection::PushDNSConfig() {
 bool Connection::FixGatewayReachability(const IPAddress& local,
                                         IPAddress* peer,
                                         IPAddress* gateway) {
-  SLOG(nullptr, 2) << __func__ << " local " << local.ToString() << ", peer "
-                   << peer->ToString() << ", gateway " << gateway->ToString();
+  SLOG(2) << __func__ << " local " << local.ToString() << ", peer "
+          << peer->ToString() << ", gateway " << gateway->ToString();
 
   if (peer->IsValid()) {
     // For a PPP connection:

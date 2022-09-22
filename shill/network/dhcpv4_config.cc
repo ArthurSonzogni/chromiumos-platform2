@@ -27,9 +27,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const void* d) {
-  return "(dhcp_controller)";
-}
 }  // namespace Logging
 
 // static
@@ -86,8 +83,8 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     if (destination.prefix() == 0 && properties->gateway.empty()) {
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
-      SLOG(nullptr, 2) << "In " << __func__ << ": Setting default gateway to "
-                       << gateway_as_string;
+      SLOG(2) << "In " << __func__ << ": Setting default gateway to "
+              << gateway_as_string;
       CHECK(gateway.IntoString(&properties->gateway));
     } else {
       IPConfig::Route route;
@@ -95,8 +92,8 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       route.prefix = destination.prefix();
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
-      SLOG(nullptr, 2) << "In " << __func__ << ": Adding route to to "
-                       << destination_as_string << " via " << gateway_as_string;
+      SLOG(2) << "In " << __func__ << ": Adding route to to "
+              << destination_as_string << " via " << gateway_as_string;
     }
   }
 
@@ -108,7 +105,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
 // static
 bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
                                       IPConfig::Properties* properties) {
-  SLOG(nullptr, 2) << __func__;
+  SLOG(2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
   std::string classless_static_routes;
@@ -116,7 +113,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
   for (const auto& it : configuration.properties()) {
     const auto& key = it.first;
     const brillo::Any& value = it.second;
-    SLOG(nullptr, 2) << "Processing key: " << key;
+    SLOG(2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties->address = GetIPv4AddressString(value.Get<uint32_t>());
       if (properties->address.empty()) {
@@ -171,7 +168,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     } else if (key == kConfigurationKeyiSNSOptionData) {
       properties->isns_option_data = value.Get<ByteArray>();
     } else {
-      SLOG(nullptr, 2) << "Key ignored.";
+      SLOG(2) << "Key ignored.";
     }
   }
   ParseClasslessStaticRoutes(classless_static_routes, properties);

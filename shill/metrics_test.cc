@@ -656,8 +656,8 @@ TEST_F(MetricsTest, Logging) {
   const std::string kEnumName("fake-enum");
   const int kEnumValue = 1;
   const int kEnumMax = 12;
-  EXPECT_CALL(log, Log(kVerboseLevel5, _,
-                       "(metrics) Sending enum fake-enum with value 1."));
+  EXPECT_CALL(log,
+              Log(kVerboseLevel5, _, "Sending enum fake-enum with value 1."));
   EXPECT_CALL(library_, SendEnumToUMA(kEnumName, kEnumValue, kEnumMax));
   metrics_.SendEnumToUMA(kEnumName, kEnumValue, kEnumMax);
 
@@ -666,8 +666,8 @@ TEST_F(MetricsTest, Logging) {
   const int kHistogramMin = 0;
   const int kHistogramMax = 100;
   const int kHistogramBuckets = 10;
-  EXPECT_CALL(log, Log(kVerboseLevel5, _,
-                       "(metrics) Sending metric fake-metric with value 2."));
+  EXPECT_CALL(
+      log, Log(kVerboseLevel5, _, "Sending metric fake-metric with value 2."));
   EXPECT_CALL(library_, SendToUMA(kMetricName, kMetricValue, kHistogramMin,
                                   kHistogramMax, kHistogramBuckets));
   metrics_.SendToUMA(kMetricName, kMetricValue, kHistogramMin, kHistogramMax,
