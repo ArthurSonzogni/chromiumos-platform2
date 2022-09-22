@@ -564,8 +564,8 @@ Properties	string Address [readonly]
 
 		dict LinkStatistics [readonly]
 
-			(WiFi only) A dictionary providing current link
-			statitistics.  This can include the following
+			(WiFi only) A dictionary providing current nl80211
+			link statitistics. This can include the following
 			properties, depending on whether the system is
 			connected and the capabilities of the specific
 			WiFi device.
@@ -603,7 +603,7 @@ Properties	string Address [readonly]
 				uint32 PacketReceiveSuccesses
 
 				Reports the number of successfully received
-				packets.
+				packets (MSDUs and MMPDUs).
 
 				uint32 PacketTransmitFailures
 
@@ -613,7 +613,7 @@ Properties	string Address [readonly]
 				uint32 PacketTransmitSuccesses
 
 				Reports the number of successful packet
-				transmission attempts.
+				(MSDUs and MMPDUs) transmission attempts.
 
 				string TransmitBitrate
 

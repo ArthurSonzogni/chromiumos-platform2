@@ -14,34 +14,6 @@
 
 namespace shill {
 namespace {
-std::string NetworkEventToString(WiFi::NetworkEvent event) {
-  switch (event) {
-    case WiFi::NetworkEvent::kUnknown:
-      return "kUnknown";
-    case WiFi::NetworkEvent::kIPConfigurationStart:
-      return "kIPConfigurationStart";
-    case WiFi::NetworkEvent::kConnected:
-      return "kConnected";
-    case WiFi::NetworkEvent::kDHCPRenewOnRoam:
-      return "kDHCPRenewOnRoam";
-    case WiFi::NetworkEvent::kDHCPSuccess:
-      return "kDHCPSuccess";
-    case WiFi::NetworkEvent::kDHCPFailure:
-      return "kDHCPFailure";
-    case WiFi::NetworkEvent::kSlaacFinished:
-      return "kSlaacFinished";
-    case WiFi::NetworkEvent::kNetworkValidationStart:
-      return "kNetworkValidationStart";
-    case WiFi::NetworkEvent::kNetworkValidationSuccess:
-      return "kNetworkValidationSuccess";
-    case WiFi::NetworkEvent::kNetworkValidationFailure:
-      return "kNetworkValidationFailure";
-    default:
-      LOG(ERROR) << "Undefined NetworkEvent: " << (unsigned int)event;
-      return "Undefined NetworkEvent";
-  }
-}
-
 // Determine if the WiFi link statistics should be print to log.
 bool ShouldPrintWiFiLinkStatistics(WiFi::NetworkEvent event) {
   // It doesn't consider if the service is connected (Service::IsConnected() ==
@@ -63,12 +35,39 @@ bool ShouldPrintWiFiLinkStatistics(WiFi::NetworkEvent event) {
          event == WiFi::NetworkEvent::kNetworkValidationFailure;
 }
 
+bool IsEndNetworkEvent(WiFi::NetworkEvent network_event) {
+  return network_event == WiFi::NetworkEvent::kConnected ||
+         network_event == WiFi::NetworkEvent::kDHCPSuccess ||
+         network_event == WiFi::NetworkEvent::kDHCPFailure ||
+         network_event == WiFi::NetworkEvent::kSlaacFinished ||
+         network_event == WiFi::NetworkEvent::kNetworkValidationSuccess ||
+         network_event == WiFi::NetworkEvent::kNetworkValidationFailure;
+}
+
+bool DoesEndMatchStartEvent(WiFi::NetworkEvent start_event,
+                            WiFi::NetworkEvent end_event) {
+  // kIPConfigurationStart is used to represent IPv4 and IPv6 configuration
+  // start, so kConnected doesn't actually have a corresponding start event.
+  switch (end_event) {
+    case WiFi::NetworkEvent::kDHCPSuccess:
+    case WiFi::NetworkEvent::kDHCPFailure:
+      return start_event == WiFi::NetworkEvent::kIPConfigurationStart ||
+             start_event == WiFi::NetworkEvent::kDHCPRenewOnRoam;
+    case WiFi::NetworkEvent::kSlaacFinished:
+      return start_event == WiFi::NetworkEvent::kIPConfigurationStart;
+    case WiFi::NetworkEvent::kNetworkValidationSuccess:
+    case WiFi::NetworkEvent::kNetworkValidationFailure:
+      return start_event == WiFi::NetworkEvent::kNetworkValidationStart;
+    default:
+      return false;
+  }
+}
+
 // Calculate the difference between NL80211 link statistics old_stats and
 // new_stats
-WiFiLinkStatistics::Nl80211LinkStatistics Nl80211LinkStatisticsDiff(
-    const WiFiLinkStatistics::Nl80211LinkStatistics& old_stats,
-    const WiFiLinkStatistics::Nl80211LinkStatistics& new_stats) {
-  WiFiLinkStatistics::Nl80211LinkStatistics diff_stats;
+nl80211_sta_info Nl80211LinkStatisticsDiff(const nl80211_sta_info& old_stats,
+                                           const nl80211_sta_info& new_stats) {
+  nl80211_sta_info diff_stats;
   diff_stats.rx_packets_success =
       new_stats.rx_packets_success - old_stats.rx_packets_success;
   diff_stats.tx_packets_success =
@@ -118,8 +117,7 @@ std::string RtnlLinkStatisticsToString(
 }
 
 // Convert NL80211 link statistics to string
-std::string Nl80211LinkStatisticsToString(
-    const WiFiLinkStatistics::Nl80211LinkStatistics& diff_stats) {
+std::string Nl80211LinkStatisticsToString(const nl80211_sta_info& diff_stats) {
   return std::string(kPacketReceiveSuccessesProperty) + " " +
          std::to_string(diff_stats.rx_packets_success) + " " +
          kPacketTransmitSuccessesProperty + " " +
@@ -139,16 +137,9 @@ std::string Nl80211LinkStatisticsToString(
          kAverageReceiveSignalDbmProperty + " " +
          std::to_string(diff_stats.avg_rx_signal_dbm);
 }
-}  // namespace
 
-void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
-    WiFi::NetworkEvent current_network_event,
-    const KeyValueStore& link_statistics) {
-  // nl80211 station information for WiFi link diagnosis
-  if (current_network_event == WiFi::NetworkEvent::kUnknown) {
-    return;
-  }
-  Nl80211LinkStatistics stats;
+nl80211_sta_info ConvertNl80211StaInfo(const KeyValueStore& link_statistics) {
+  nl80211_sta_info stats;
   std::vector<std::pair<std::string, uint32_t*>>
       nl80211_sta_info_properties_u32 = {
           {kPacketReceiveSuccessesProperty, &stats.rx_packets_success},
@@ -184,21 +175,89 @@ void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
       *kv.second = link_statistics.Get<int32_t>(kv.first);
     }
   }
+  return stats;
+}
 
-  const auto current_time = base::Time::Now();
-  if (ShouldPrintWiFiLinkStatistics(current_network_event)) {
-    Nl80211LinkStatistics diff_stats =
-        Nl80211LinkStatisticsDiff(nl80211_link_statistics_, stats);
-    LOG(INFO) << "Network event related to NL80211 link statistics: "
-              << NetworkEventToString(nl80211_network_event_) << " -> "
-              << NetworkEventToString(current_network_event)
-              << "; the NL80211 link statistics delta for the last "
-              << std::to_string((current_time - nl80211_timestamp_).InSeconds())
-              << " seconds is " << Nl80211LinkStatisticsToString(diff_stats);
+}  // namespace
+
+// static
+std::string WiFiLinkStatistics::NetworkEventToString(WiFi::NetworkEvent event) {
+  switch (event) {
+    case WiFi::NetworkEvent::kUnknown:
+      return "kUnknown";
+    case WiFi::NetworkEvent::kIPConfigurationStart:
+      return "kIPConfigurationStart";
+    case WiFi::NetworkEvent::kConnected:
+      return "kConnected";
+    case WiFi::NetworkEvent::kDHCPRenewOnRoam:
+      return "kDHCPRenewOnRoam";
+    case WiFi::NetworkEvent::kDHCPSuccess:
+      return "kDHCPSuccess";
+    case WiFi::NetworkEvent::kDHCPFailure:
+      return "kDHCPFailure";
+    case WiFi::NetworkEvent::kSlaacFinished:
+      return "kSlaacFinished";
+    case WiFi::NetworkEvent::kNetworkValidationStart:
+      return "kNetworkValidationStart";
+    case WiFi::NetworkEvent::kNetworkValidationSuccess:
+      return "kNetworkValidationSuccess";
+    case WiFi::NetworkEvent::kNetworkValidationFailure:
+      return "kNetworkValidationFailure";
+    default:
+      LOG(ERROR) << "Undefined NetworkEvent: " << (unsigned int)event;
+      return "Undefined NetworkEvent";
   }
-  nl80211_link_statistics_ = stats;
-  nl80211_network_event_ = current_network_event;
-  nl80211_timestamp_ = current_time;
+}
+
+void WiFiLinkStatistics::Reset() {
+  nl80211_link_statistics_.clear();
+  rtnl_link_statistics_.clear();
+}
+
+void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
+    WiFi::NetworkEvent current_network_event,
+    const KeyValueStore& link_statistics) {
+  // nl80211 station information for WiFi link diagnosis
+  if (current_network_event == WiFi::NetworkEvent::kUnknown) {
+    return;
+  }
+
+  nl80211_sta_info stats = ConvertNl80211StaInfo(link_statistics);
+  // If the current network event is an end network event, erase the link
+  // statistics of its start network event and print the difference to the
+  // log if necessary
+  if (IsEndNetworkEvent(current_network_event)) {
+    for (auto it = nl80211_link_statistics_.begin();
+         it != nl80211_link_statistics_.end(); it++) {
+      if (!DoesEndMatchStartEvent(it->network_event, current_network_event)) {
+        continue;
+      }
+      if (ShouldPrintWiFiLinkStatistics(current_network_event)) {
+        auto diff_stats =
+            Nl80211LinkStatisticsDiff(it->nl80211_link_stats, stats);
+        LOG(INFO) << "Network event related to NL80211 link statistics: "
+                  << NetworkEventToString(it->network_event) << " -> "
+                  << NetworkEventToString(current_network_event)
+                  << "; the NL80211 link statistics delta for the last "
+                  << std::to_string(
+                         (base::Time::Now() - it->timestamp).InSeconds())
+                  << " seconds is "
+                  << Nl80211LinkStatisticsToString(diff_stats);
+      }
+      nl80211_link_statistics_.erase(it);
+      break;
+    }
+  } else {
+    // The current network event is a start network event, append this
+    // snapshot of link statistics.
+    nl80211_link_statistics_.emplace_back(current_network_event, stats);
+    // Add an extra nl80211 link statistics because kIPConfigurationStart
+    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
+    // and to the start of IPv6 SLAAC in the kernel.
+    if (current_network_event == WiFi::NetworkEvent::kIPConfigurationStart) {
+      nl80211_link_statistics_.emplace_back(current_network_event, stats);
+    }
+  }
 }
 
 void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
@@ -207,20 +266,39 @@ void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
   if (current_network_event == WiFi::NetworkEvent::kUnknown) {
     return;
   }
-  const auto current_time = base::Time::Now();
-  if (ShouldPrintWiFiLinkStatistics(current_network_event)) {
-    old_rtnl_link_stats64 diff_stats =
-        RtnlLinkStatisticsDiff(rtnl_link_statistics_, stats);
-    LOG(INFO) << "Network event related to RTNL link statistics: "
-              << NetworkEventToString(rtnl_network_event_) << " -> "
-              << NetworkEventToString(current_network_event)
-              << "; the RTNL link statistics delta for the last "
-              << std::to_string((current_time - rtnl_timestamp_).InSeconds())
-              << " seconds is " << RtnlLinkStatisticsToString(diff_stats);
+  // If the current network event is an end network event, erase the link
+  // statistics of its start network event and print the difference to the
+  // log if necessary
+  if (IsEndNetworkEvent(current_network_event)) {
+    for (auto it = rtnl_link_statistics_.begin();
+         it != rtnl_link_statistics_.end(); it++) {
+      if (!DoesEndMatchStartEvent(it->network_event, current_network_event)) {
+        continue;
+      }
+      if (ShouldPrintWiFiLinkStatistics(current_network_event)) {
+        auto diff_stats = RtnlLinkStatisticsDiff(it->rtnl_link_stats, stats);
+        LOG(INFO) << "Network event related to RTNL link statistics: "
+                  << NetworkEventToString(it->network_event) << " -> "
+                  << NetworkEventToString(current_network_event)
+                  << "; the RTNL link statistics delta for the last "
+                  << std::to_string(
+                         (base::Time::Now() - it->timestamp).InSeconds())
+                  << " seconds is " << RtnlLinkStatisticsToString(diff_stats);
+      }
+      rtnl_link_statistics_.erase(it);
+      break;
+    }
+  } else {
+    // The current network event is a start network event, append this
+    // snapshot of link statistics.
+    rtnl_link_statistics_.emplace_back(current_network_event, stats);
+    // Add an extra RTNL link statistics because kIPConfigurationStart
+    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
+    // and to the start of IPv6 SLAAC in the kernel.
+    if (current_network_event == WiFi::NetworkEvent::kIPConfigurationStart) {
+      rtnl_link_statistics_.emplace_back(current_network_event, stats);
+    }
   }
-  rtnl_link_statistics_ = stats;
-  rtnl_network_event_ = current_network_event;
-  rtnl_timestamp_ = current_time;
 }
 
 }  // namespace shill

@@ -690,6 +690,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     SetConnectionDebugging(true);
   }
 
+  wifi_link_statistics_->Reset();
   service->EmitConnectionAttemptEvent();
   if (current_service_) {
     // If we're already connected, |SelectNetwork| will make wpa_supplicant

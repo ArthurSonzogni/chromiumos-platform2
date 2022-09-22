@@ -5553,7 +5553,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
   station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, -20);
   new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
 
-  // Test DHCP failure
+  // IP configuration starts
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_CALL(
       *wifi_link_statistics_,
@@ -5591,6 +5591,29 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
 
+  // DHCP failure
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kDHCPFailure);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(WiFi::NetworkEvent::kDHCPFailure, _))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(WiFi::NetworkEvent::kDHCPFailure, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
+  // SLAAC success
+  RetrieveLinkStatistics(WiFi::NetworkEvent::kSlaacFinished);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateNl80211LinkStatistics(WiFi::NetworkEvent::kSlaacFinished, _))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(WiFi::NetworkEvent::kSlaacFinished, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
+
+  // Network validation failure
   RetrieveLinkStatistics(WiFi::NetworkEvent::kNetworkValidationFailure);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateNl80211LinkStatistics(
