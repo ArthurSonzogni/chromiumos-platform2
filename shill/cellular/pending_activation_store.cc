@@ -76,7 +76,7 @@ std::string PendingActivationStore::IdentifierTypeToGroupId(
     case kIdentifierMEID:
       return kMeidGroupId;
     default:
-      SLOG(Cellular, nullptr, 2) << "Incorrect identifier type: " << type;
+      SLOG(nullptr, 2) << "Incorrect identifier type: " << type;
       return "";
   }
 }

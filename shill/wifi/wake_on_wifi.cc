@@ -418,15 +418,15 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &unused_flag) &&
       !base::Contains(trigs, kWakeTriggerDisconnect)) {
-    SLOG(WiFi, nullptr, 3)
-        << __func__ << ": Wake on disconnect trigger not expected but found";
+    SLOG(nullptr, 3) << __func__
+                     << ": Wake on disconnect trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                             &unused_list) &&
       !base::Contains(trigs, kWakeTriggerSSID)) {
-    SLOG(WiFi, nullptr, 3) << __func__
-                           << ": Wake on SSID trigger not expected but found";
+    SLOG(nullptr, 3) << __func__
+                     << ": Wake on SSID trigger not expected but found";
     return false;
   }
   // Check that each expected trigger is present in |msg| with matching
@@ -442,8 +442,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (!wake_on_disconnect) {
-          SLOG(WiFi, nullptr, 3)
-              << __func__ << ": Wake on disconnect flag not set.";
+          SLOG(nullptr, 3) << __func__ << ": Wake on disconnect flag not set.";
           return false;
         }
         break;
@@ -468,8 +467,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (interval != net_detect_scan_period_seconds * 1000) {
-          SLOG(WiFi, nullptr, 3)
-              << __func__ << ": Net Detect scan period mismatch";
+          SLOG(nullptr, 3) << __func__ << ": Net Detect scan period mismatch";
           return false;
         }
         AttributeListConstRefPtr ssids;
@@ -511,7 +509,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           ssid_iter.Advance();
         }
         if (ssid_mismatch_found || ssid_num_mismatch) {
-          SLOG(WiFi, nullptr, 3) << __func__ << ": Net Detect SSID mismatch";
+          SLOG(nullptr, 3) << __func__ << ": Net Detect SSID mismatch";
           return false;
         }
         break;
@@ -1034,8 +1032,8 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
   WiFi::FreqSet freqs;
   AttributeIdIterator results_iter(*results_list);
   if (results_iter.AtEnd()) {
-    SLOG(WiFi, nullptr, 3) << __func__ << ": "
-                           << "Wake on SSID results not available";
+    SLOG(nullptr, 3) << __func__ << ": "
+                     << "Wake on SSID results not available";
     return freqs;
   }
   AttributeListConstRefPtr result;
@@ -1055,10 +1053,10 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
                  << "No SSID available for result #" << results_iter.GetId();
       continue;
     }
-    SLOG(WiFi, nullptr, 3) << "SSID " << ssid_num << ": "
-                           << std::string(ssid_bytestring.GetConstData(),
-                                          ssid_bytestring.GetConstData() +
-                                              ssid_bytestring.GetLength());
+    SLOG(nullptr, 3) << "SSID " << ssid_num << ": "
+                     << std::string(ssid_bytestring.GetConstData(),
+                                    ssid_bytestring.GetConstData() +
+                                        ssid_bytestring.GetLength());
     AttributeListConstRefPtr frequencies;
     uint32_t freq_value;
     if (result->ConstGetNestedAttributeList(NL80211_ATTR_SCAN_FREQUENCIES,
@@ -1067,13 +1065,13 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
       for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
         if (frequencies->GetU32AttributeValue(freq_iter.GetId(), &freq_value)) {
           freqs.insert(freq_value);
-          SLOG(WiFi, nullptr, 7) << "Frequency: " << freq_value;
+          SLOG(nullptr, 7) << "Frequency: " << freq_value;
         }
       }
     } else {
-      SLOG(WiFi, nullptr, 3)
-          << __func__ << ": "
-          << "No frequencies available for result #" << results_iter.GetId();
+      SLOG(nullptr, 3) << __func__ << ": "
+                       << "No frequencies available for result #"
+                       << results_iter.GetId();
     }
     ++ssid_num;
   }

@@ -233,8 +233,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
 std::string OpenVPNManagementServer::ParseSubstring(const std::string& message,
                                                     const std::string& start,
                                                     const std::string& end) {
-  SLOG(VPN, nullptr, 2) << __func__ << "(" << message << ", " << start << ", "
-                        << end << ")";
+  SLOG(nullptr, 2) << __func__ << "(" << message << ", " << start << ", " << end
+                   << ")";
   size_t start_pos = message.find(start);
   if (start_pos == std::string::npos) {
     return std::string();

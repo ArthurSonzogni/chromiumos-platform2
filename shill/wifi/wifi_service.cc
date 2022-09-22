@@ -783,7 +783,7 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 }
 
 void WiFiService::InitializeCustomMetrics() const {
-  SLOG(Metrics, this, 2) << __func__ << " for " << log_name();
+  SLOG(this, 2) << __func__ << " for " << log_name();
   auto histogram = metrics()->GetFullMetricName(
       Metrics::kMetricTimeToJoinMillisecondsSuffix, technology());
   metrics()->AddServiceStateTransitionTimer(

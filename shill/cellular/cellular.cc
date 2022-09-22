@@ -1664,7 +1664,7 @@ bool Cellular::IsQ6V5Modem() {
 }
 
 void Cellular::StartPPP(const std::string& serial_device) {
-  SLOG(PPP, this, 2) << __func__ << " on " << serial_device;
+  SLOG(this, 2) << __func__ << " on " << serial_device;
   // Detach any SelectedService from this device. It will be grafted onto
   // the PPPDevice after PPP is up (in Cellular::Notify).
   //
@@ -1705,7 +1705,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
 }
 
 void Cellular::StopPPP() {
-  SLOG(PPP, this, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!ppp_device_)
     return;
   DropConnection();
@@ -1715,7 +1715,7 @@ void Cellular::StopPPP() {
 
 // called by |ppp_task_|
 void Cellular::GetLogin(std::string* user, std::string* password) {
-  SLOG(PPP, this, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!service()) {
     LOG(ERROR) << __func__ << " with no service ";
     return;
@@ -1729,7 +1729,7 @@ void Cellular::GetLogin(std::string* user, std::string* password) {
 // Called by |ppp_task_|.
 void Cellular::Notify(const std::string& reason,
                       const std::map<std::string, std::string>& dict) {
-  SLOG(PPP, this, 2) << __func__ << " " << reason << " on " << link_name();
+  SLOG(this, 2) << __func__ << " " << reason << " on " << link_name();
 
   if (reason == kPPPReasonAuthenticating) {
     OnPPPAuthenticating();
@@ -1747,18 +1747,18 @@ void Cellular::Notify(const std::string& reason,
 }
 
 void Cellular::OnPPPAuthenticated() {
-  SLOG(PPP, this, 2) << __func__;
+  SLOG(this, 2) << __func__;
   is_ppp_authenticating_ = false;
 }
 
 void Cellular::OnPPPAuthenticating() {
-  SLOG(PPP, this, 2) << __func__;
+  SLOG(this, 2) << __func__;
   is_ppp_authenticating_ = true;
 }
 
 void Cellular::OnPPPConnected(
     const std::map<std::string, std::string>& params) {
-  SLOG(PPP, this, 2) << __func__;
+  SLOG(this, 2) << __func__;
   std::string interface_name = PPPDevice::GetInterfaceName(params);
   DeviceInfo* device_info = manager()->device_info();
   int interface_index = device_info->GetIndex(interface_name);

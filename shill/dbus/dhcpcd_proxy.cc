@@ -31,7 +31,7 @@ DHCPCDProxy::~DHCPCDProxy() {
 }
 
 void DHCPCDProxy::Rebind(const std::string& interface) {
-  SLOG(DBus, nullptr, 2) << __func__;
+  SLOG(nullptr, 2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Rebind(interface, &error)) {
     LogDBusError(error, __func__, interface);
@@ -39,7 +39,7 @@ void DHCPCDProxy::Rebind(const std::string& interface) {
 }
 
 void DHCPCDProxy::Release(const std::string& interface) {
-  SLOG(DBus, nullptr, 2) << __func__;
+  SLOG(nullptr, 2) << __func__;
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Release(interface, &error)) {
     LogDBusError(error, __func__, interface);
