@@ -39,12 +39,12 @@ typedef uint64_t time_ns_t;
 // The image_info struct contains the security metrics
 // of interest for an executable file.
 struct image_info {
-  char path_name[MAX_PATH_SIZE];
-  uint64_t mount_ns;
+  char pathname[MAX_PATH_SIZE];
+  uint64_t mnt_ns;
   uint32_t inode_device_id;
   uint32_t inode;
-  uint32_t canonical_uid;
-  uint32_t canonical_gid;
+  uint32_t uid;
+  uint32_t gid;
   uint16_t mode;
 };
 
@@ -61,12 +61,12 @@ struct namespace_info {
 
 // This is the process information collected when a process starts.
 struct process_start {
-  uint32_t pid;                  // The tgid.
-  uint32_t ppid;                 // The tgid of parent.
-  time_ns_t start_time;          // Nanoseconds since boot.
-  time_ns_t parent_start_time;   // Nanoseconds since boot.
-  char filename[MAX_PATH_SIZE];  // Defined in linux/limits.h.
-  char command_line[MAX_REDUCED_ARG_SIZE];
+  uint32_t pid;                 // The tgid.
+  uint32_t ppid;                // The tgid of parent.
+  time_ns_t start_time;         // Nanoseconds since boot.
+  time_ns_t parent_start_time;  // Nanoseconds since boot.
+  char commandline[MAX_REDUCED_ARG_SIZE];
+  unsigned int commandline_len;  // At most MAX_REDUCED_ARG_SIZE.
   unsigned int uid;
   unsigned int gid;
   struct image_info image_info;

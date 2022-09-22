@@ -2,27 +2,64 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <absl/status/status.h>
-#include <base/logging.h>
+#include <iterator>
 
+#include "absl/status/status.h"
+#include "base/logging.h"
+#include "base/strings/string_tokenizer.h"
+#include "base/strings/stringprintf.h"
 #include "secagentd/bpf/process.h"
 #include "secagentd/plugins.h"
 #include "secagentd/skeleton_factory.h"
+
+namespace {
+
+// Kernel arg and env lists use '\0' to delimit elements. Tokenize the string
+// and use single quotes (') to designate atomic elements.
+// bufsize is the total capacity of buf (used for bounds checking). payload_len
+// is the length of actual payload including the final '\0'.
+std::string SafeTransformArgvEnvp(const char* buf,
+                                  size_t bufsize,
+                                  size_t payload_len) {
+  std::string str;
+  if (payload_len <= 0 || payload_len > bufsize) {
+    return str;
+  }
+  base::CStringTokenizer t(buf, buf + payload_len, std::string("\0", 1));
+  while (t.GetNext()) {
+    str.append(base::StringPrintf("'%s' ", t.token().c_str()));
+  }
+  if (str.length() > 0) {
+    str.pop_back();
+  }
+  return str;
+}
+
+}  // namespace
 
 namespace secagentd {
 
 static void print_process_start(const bpf::process_start& process_start) {
   LOG(INFO) << "\n[process_start] ppid: " << process_start.ppid
-            << " pid:" << process_start.pid
-            << " fname:" << process_start.filename
-            << " cmdline:" << process_start.command_line
-            << "\n [ns]pid:" << process_start.spawn_namespace.pid_ns
+            << " pid:" << process_start.pid << " uid:" << process_start.uid
+            << " gid:" << process_start.gid << " cmdline:"
+            << SafeTransformArgvEnvp(process_start.commandline,
+                                     sizeof(process_start.commandline),
+                                     process_start.commandline_len)
+            << "\n[ns] pid:" << process_start.spawn_namespace.pid_ns
             << " mnt:" << process_start.spawn_namespace.mnt_ns
-            << " cgrp:" << process_start.spawn_namespace.cgroup_ns
+            << " cgroup:" << process_start.spawn_namespace.cgroup_ns
             << " usr:" << process_start.spawn_namespace.user_ns
             << " uts:" << process_start.spawn_namespace.uts_ns
             << " net:" << process_start.spawn_namespace.net_ns
-            << " ipc:" << process_start.spawn_namespace.ipc_ns;
+            << " ipc:" << process_start.spawn_namespace.ipc_ns
+            << "\n[image] pathname:" << process_start.image_info.pathname
+            << " mnt_ns:" << process_start.image_info.mnt_ns
+            << " inode_device_id:" << process_start.image_info.inode_device_id
+            << " inode:" << process_start.image_info.inode
+            << " uid:" << process_start.image_info.uid
+            << " gid:" << process_start.image_info.gid << " mode:" << std::oct
+            << process_start.image_info.mode;
 }
 
 static void print_process_change_ns(
