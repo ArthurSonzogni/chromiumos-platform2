@@ -7,6 +7,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":cups_proxy" ]
+  if (use.test) {
+    deps += [ ":cups_proxy_unittest" ]
+  }
 }
 
 generate_mojom_bindings("cups_proxy_mojo_bindings") {
@@ -37,4 +40,15 @@ static_library("cups_proxy_common") {
 executable("cups_proxy") {
   sources = [ "main.cc" ]
   deps = [ ":cups_proxy_common" ]
+}
+
+if (use.test) {
+  executable("cups_proxy_unittest") {
+    sources = [ "mhd_http_request_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    deps = [
+      ":cups_proxy_common",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
 }
