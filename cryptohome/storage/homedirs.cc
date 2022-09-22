@@ -259,10 +259,6 @@ std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
     if (!brillo::cryptohome::home::IsSanitizedUserName(dir.obfuscated))
       continue;
 
-    if (!platform_->DirectoryExists(
-            brillo::cryptohome::home::GetHashedUserPath(dir.obfuscated)))
-      continue;
-
     ret.push_back(dir);
   }
 

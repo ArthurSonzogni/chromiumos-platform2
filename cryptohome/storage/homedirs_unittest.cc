@@ -420,6 +420,28 @@ TEST_P(HomeDirsTest, GetHomedirsSomeMounted) {
   EXPECT_EQ(hashes, got_hashes);
 }
 
+// Test that deleting the /home/user/<hash> paths doesn't affect homedir
+// enumeration.
+TEST_P(HomeDirsTest, GetHomedirsSomeMountedUserPathDeleted) {
+  std::vector<bool> some_mounted(users_.size());
+  std::set<std::string> hashes, got_hashes;
+
+  for (int i = 0; i < users_.size(); i++) {
+    hashes.insert(users_[i].obfuscated);
+    some_mounted[i] = i % 2;
+    ASSERT_TRUE(platform_.DeletePathRecursively(users_[i].user_path));
+  }
+
+  EXPECT_CALL(platform_, AreDirectoriesMounted(_))
+      .WillOnce(Return(some_mounted));
+  auto dirs = homedirs_->GetHomeDirs();
+  for (int i = 0; i < users_.size(); i++) {
+    EXPECT_EQ(dirs[i].is_mounted, some_mounted[i]);
+    got_hashes.insert(dirs[i].obfuscated);
+  }
+  EXPECT_EQ(hashes, got_hashes);
+}
+
 class HomeDirsVaultTest : public ::testing::Test {
  public:
   HomeDirsVaultTest()
