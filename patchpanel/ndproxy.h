@@ -54,6 +54,8 @@ class NDProxy {
   // ND_OPT_PREFIX_INFORMATION was found.
   static const nd_opt_prefix_info* GetPrefixInfoOption(const uint8_t* icmp6,
                                                        size_t icmp6_len);
+  static nd_opt_prefix_info* GetPrefixInfoOption(uint8_t* icmp6,
+                                                 size_t icmp6_len);
 
   // Helper function to create a AF_PACKET socket suitable for frame read/write.
   static base::ScopedFD PreparePacketSocket();
@@ -81,12 +83,13 @@ class NDProxy {
   // Start proxying RS from |if_id_downstream| to |if_id_upstream|, and RA the
   // other way around. If |modify_router_address| is true we modify source
   // address when proxying RA so that downstream thinks ChromeOS host as the
-  // router. (b/187918638)
+  // router.
   void StartRSRAProxy(int if_id_upstream,
                       int if_id_downstream,
                       bool modify_router_address = false);
-  // Start proxying NS and NA between |if_id1| and |if_id2|.
-  void StartNSNAProxy(int if_id1, int if_id2);
+  // Start proxying NS from |if_id_ns_side| to |if_id_na_side| and NA the other
+  // way around.
+  void StartNSNAProxy(int if_id_na_side, int if_id_ns_side);
   // Stop all proxying between |if_id1| and |if_id2|.
   void StopProxy(int if_id1, int if_id2);
 
@@ -173,17 +176,12 @@ class NDProxy {
   // this packets should be proxied to.
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
-  interface_mapping if_map_ns_na_;
+  interface_mapping if_map_ns_;
+  interface_mapping if_map_na_;
 
-  // b/187918638: with cellular modems we are observing irregular RAs coming
-  // from a src IP that either cannot map to a hardware address in the neighbor
-  // table, or is mapped to the local MAC address on the cellular interface.
-  // Directly proxying these RAs will cause the guest OS to set up a default
-  // route to a next hop that is not reachable for them.
-  // For any interface in |irregular_router_ifs_|, a workaround is taken to
-  // overwrite the router IP with the host link local IP, so that the guest OS
-  // set up the default route with the host as next hop instead.
-  std::set<int> irregular_router_ifs_;
+  // The set of uplink interfaces from which the RA should be injected so that
+  // the downstream guests treat the host as the next hop router.
+  std::set<int> modify_ra_uplinks_;
 
   base::RepeatingCallback<void(int, const in6_addr&)> guest_discovery_handler_;
   base::RepeatingCallback<void(int, const in6_addr&, int)>

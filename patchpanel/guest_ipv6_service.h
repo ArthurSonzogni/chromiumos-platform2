@@ -26,7 +26,7 @@ class GuestIPv6Service {
     kMethodUnknown,
     kMethodNDProxy,
     kMethodRAServer,
-    kMethodNDProxyForCellular
+    kMethodNDProxyInjectingRA
   };
 
   GuestIPv6Service(SubprocessController* nd_proxy,

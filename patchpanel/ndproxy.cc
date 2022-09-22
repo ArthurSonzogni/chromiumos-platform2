@@ -33,7 +33,6 @@
 #include <base/strings/string_split.h>
 
 #include "patchpanel/ipc.h"
-#include "patchpanel/ipc.pb.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
@@ -286,6 +285,13 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
 
   if (new_src_ip != nullptr) {
     memcpy(&ip6->ip6_src, new_src_ip, sizeof(in6_addr));
+
+    // Turn off onlink flag if we are pretending to be the router.
+    nd_opt_prefix_info* prefix_info =
+        GetPrefixInfoOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len);
+    if (prefix_info) {
+      prefix_info->nd_opt_pi_flags_reserved &= ~ND_OPT_PI_FLAG_ONLINK;
+    }
   }
   if (new_dst_ip != nullptr) {
     memcpy(&ip6->ip6_dst, new_dst_ip, sizeof(in6_addr));
@@ -359,12 +365,20 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     if (!GetLocalMac(target_if, &local_mac))
       continue;
 
-    // b/187918638: Overwrite source IP address with host address to workaround
-    // irregular router address on Fibocom L850 cell modem, as described above.
+    // b/246444885: Overwrite source IP address with host address and set
+    // prefix offlink, to prevent internal traffic causing ICMP messaged being
+    // sent to upstream caused by internal traffic.
+    // b/187918638: On L850 only this is a must instead of an optimization.
+    // With those modems we are observing irregular RAs coming from a src IP
+    // that either cannot map to a hardware address in the neighbor table, or
+    // is mapped to the local MAC address on the cellular interface. Directly
+    // proxying these RAs will cause the guest OS to set up a default route to
+    // a next hop that is not reachable for them.
     const in6_addr* new_src_ip_p = nullptr;
     in6_addr new_src_ip;
-    if (irregular_router_ifs_.find(recv_ll_addr.sll_ifindex) !=
-        irregular_router_ifs_.end()) {
+    if (modify_ra_uplinks_.find(recv_ll_addr.sll_ifindex) !=
+            modify_ra_uplinks_.end() &&
+        icmp6->icmp6_type == ND_ROUTER_ADVERT) {
       if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
         LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
                         "proxy RA to interface "
@@ -465,13 +479,13 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 }
 
 // static
-const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
-                                                       size_t icmp6_len) {
-  const uint8_t* start = reinterpret_cast<const uint8_t*>(icmp6);
-  const uint8_t* end = start + icmp6_len;
-  const uint8_t* ptr = start + sizeof(nd_router_advert);
+nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(uint8_t* icmp6,
+                                                 size_t icmp6_len) {
+  uint8_t* start = reinterpret_cast<uint8_t*>(icmp6);
+  uint8_t* end = start + icmp6_len;
+  uint8_t* ptr = start + sizeof(nd_router_advert);
   while (ptr + offsetof(nd_opt_hdr, nd_opt_len) < end) {
-    const nd_opt_hdr* opt = reinterpret_cast<const nd_opt_hdr*>(ptr);
+    nd_opt_hdr* opt = reinterpret_cast<nd_opt_hdr*>(ptr);
     if (opt->nd_opt_len == 0)
       return nullptr;
     ptr += opt->nd_opt_len << 3;  // nd_opt_len is in 8 bytes
@@ -479,10 +493,16 @@ const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
       return nullptr;
     if (opt->nd_opt_type == ND_OPT_PREFIX_INFORMATION &&
         opt->nd_opt_len << 3 == sizeof(nd_opt_prefix_info)) {
-      return reinterpret_cast<const nd_opt_prefix_info*>(opt);
+      return reinterpret_cast<nd_opt_prefix_info*>(opt);
     }
   }
   return nullptr;
+}
+
+// static
+const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
+                                                       size_t icmp6_len) {
+  return NDProxy::GetPrefixInfoOption(const_cast<uint8_t*>(icmp6), icmp6_len);
 }
 
 void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
@@ -717,9 +737,9 @@ NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {
     case ND_ROUTER_ADVERT:
       return &if_map_ra_;
     case ND_NEIGHBOR_SOLICIT:
-      return &if_map_ns_na_;
+      return &if_map_ns_;
     case ND_NEIGHBOR_ADVERT:
-      return &if_map_ns_na_;
+      return &if_map_na_;
     default:
       LOG(DFATAL) << "Attempt to get interface map on illegal icmpv6 type "
                   << static_cast<int>(type);
@@ -735,49 +755,38 @@ void NDProxy::StartRSRAProxy(int if_id_upstream,
   if_map_ra_[if_id_upstream].insert(if_id_downstream);
   if_map_rs_[if_id_downstream].insert(if_id_upstream);
   if (modify_router_address) {
-    irregular_router_ifs_.insert(if_id_upstream);
+    modify_ra_uplinks_.insert(if_id_upstream);
   }
 }
 
-void NDProxy::StartNSNAProxy(int if_id1, int if_id2) {
-  VLOG(1) << "StartNSNAProxy(" << if_id1 << ", " << if_id2 << ")";
-  if_map_ns_na_[if_id1].insert(if_id2);
-  if_map_ns_na_[if_id2].insert(if_id1);
+void NDProxy::StartNSNAProxy(int if_id_na_side, int if_id_ns_side) {
+  VLOG(1) << "StartNSNAProxy(" << if_id_na_side << ", " << if_id_ns_side << ")";
+  if_map_na_[if_id_na_side].insert(if_id_ns_side);
+  if_map_ns_[if_id_ns_side].insert(if_id_na_side);
 }
 
 void NDProxy::StopProxy(int if_id1, int if_id2) {
   VLOG(1) << "StopProxy(" << if_id1 << ", " << if_id2 << ")";
 
-  if_map_ra_[if_id1].erase(if_id2);
-  if (if_map_ra_[if_id1].empty()) {
-    if_map_ra_.erase(if_id1);
-    irregular_router_ifs_.erase(if_id1);
+  auto remove_pair = [if_id1, if_id2](interface_mapping& mapping) {
+    mapping[if_id1].erase(if_id2);
+    if (mapping[if_id1].empty()) {
+      mapping.erase(if_id1);
+    }
+    mapping[if_id2].erase(if_id1);
+    if (mapping[if_id2].empty()) {
+      mapping.erase(if_id2);
+    }
+  };
+  remove_pair(if_map_ra_);
+  remove_pair(if_map_rs_);
+  remove_pair(if_map_na_);
+  remove_pair(if_map_ns_);
+  if (!IsRouterInterface(if_id1)) {
+    modify_ra_uplinks_.erase(if_id1);
   }
-
-  if_map_rs_[if_id1].erase(if_id2);
-  if (if_map_rs_[if_id1].empty()) {
-    if_map_rs_.erase(if_id1);
-  }
-
-  if_map_ns_na_[if_id1].erase(if_id2);
-  if (if_map_ns_na_[if_id1].empty()) {
-    if_map_rs_.erase(if_id1);
-  }
-
-  if_map_ra_[if_id2].erase(if_id1);
-  if (if_map_ra_[if_id2].empty()) {
-    if_map_ra_.erase(if_id2);
-    irregular_router_ifs_.erase(if_id2);
-  }
-
-  if_map_rs_[if_id2].erase(if_id1);
-  if (if_map_rs_[if_id2].empty()) {
-    if_map_rs_.erase(if_id2);
-  }
-
-  if_map_ns_na_[if_id2].erase(if_id1);
-  if (if_map_ns_na_[if_id2].empty()) {
-    if_map_ns_na_.erase(if_id2);
+  if (!IsRouterInterface(if_id2)) {
+    modify_ra_uplinks_.erase(if_id2);
   }
 }
 
@@ -859,15 +868,24 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
   switch (msg.type()) {
     case NDProxyControlMessage::START_NS_NA: {
       proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      proxy_.StartNSNAProxy(msg.if_id_secondary(), msg.if_id_primary());
       break;
     }
     case NDProxyControlMessage::START_NS_NA_RS_RA: {
       proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      proxy_.StartNSNAProxy(msg.if_id_secondary(), msg.if_id_primary());
       proxy_.StartRSRAProxy(msg.if_id_primary(), msg.if_id_secondary());
       break;
     }
     case NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS: {
+      // TODO(taoyl): therotically whe should be able to stop proxying NS from
+      // downlink to uplink and NA from uplink to downlink as we set prefix to
+      // be not ONLINK. However, Android ignores the ONLINK flag and always add
+      // a local subnet route when receiving a prefix [1]. Consider addressing
+      // this in Android so we can remove the first line below.
+      // [1] LinkProperties::ensureDirectlyConnectedRoutes()
       proxy_.StartNSNAProxy(msg.if_id_primary(), msg.if_id_secondary());
+      proxy_.StartNSNAProxy(msg.if_id_secondary(), msg.if_id_primary());
       proxy_.StartRSRAProxy(msg.if_id_primary(), msg.if_id_secondary(), true);
       break;
     }

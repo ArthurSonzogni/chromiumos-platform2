@@ -35,9 +35,9 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
       // b/187462665, b/187918638: If the physical interface is a cellular
       // modem, the network connection is expected to work as a point to point
       // link where neighbor discovery of the remote gateway is not possible.
-      // Therefore force guests are told to see the host as their next hop.
+      // Therefore inject RA to let guests treat the host as next hop router.
       // TODO(taoyl): Change to kMethodRAServer
-      return GuestIPv6Service::ForwardMethod::kMethodNDProxyForCellular;
+      return GuestIPv6Service::ForwardMethod::kMethodNDProxyInjectingRA;
     default:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
@@ -113,7 +113,7 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
       SendNDProxyControl(NDProxyControlMessage::START_NS_NA_RS_RA, if_id_uplink,
                          if_id_downlink);
       break;
-    case ForwardMethod::kMethodNDProxyForCellular:
+    case ForwardMethod::kMethodNDProxyInjectingRA:
       SendNDProxyControl(
           NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS,
           if_id_uplink, if_id_downlink);
