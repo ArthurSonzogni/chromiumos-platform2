@@ -42,9 +42,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const WiFiProvider* w) {
-  return "(wifi_provider)";
-}
 }  // namespace Logging
 
 namespace {
@@ -236,12 +233,11 @@ void WiFiProvider::Start() {
 }
 
 void WiFiProvider::Stop() {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   while (!services_.empty()) {
     WiFiServiceRefPtr service = services_.back();
     ForgetService(service);
-    SLOG(this, 3) << "WiFiProvider deregistering service "
-                  << service->log_name();
+    SLOG(3) << "WiFiProvider deregistering service " << service->log_name();
     manager_->DeregisterService(service);
   }
   service_by_endpoint_.clear();
@@ -430,7 +426,7 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   if (!service->HasEndpoints() && service->IsRemembered()) {
     LOG(INFO) << asgn_endpoint_log;
   } else {
-    SLOG(this, 1) << asgn_endpoint_log;
+    SLOG(1) << asgn_endpoint_log;
   }
 
   service->AddEndpoint(endpoint);
@@ -463,7 +459,7 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   if (!service->HasEndpoints() && service->IsRemembered()) {
     LOG(INFO) << rmv_endpoint_log;
   } else {
-    SLOG(this, 1) << rmv_endpoint_log;
+    SLOG(1) << rmv_endpoint_log;
   }
 
   if (service->HasEndpoints() || service->IsRemembered()) {
@@ -590,7 +586,7 @@ ByteArrays WiFiProvider::GetHiddenSSIDList() {
       hidden_ssids.push_back(service->ssid());
     }
   }
-  SLOG(this, 2) << "Found " << hidden_ssids.size() << " hidden services";
+  SLOG(2) << "Found " << hidden_ssids.size() << " hidden services";
   return hidden_ssids;
 }
 
@@ -736,8 +732,8 @@ void WiFiProvider::AddCredentials(
   // the type of the device is WiFi.
   WiFiRefPtr wifi(static_cast<WiFi*>(device.get()));
   if (!wifi->AddCred(credentials)) {
-    SLOG(this, 1) << "Failed to push credentials " << credentials->id()
-                  << " to device.";
+    SLOG(1) << "Failed to push credentials " << credentials->id()
+            << " to device.";
   }
 }
 
@@ -813,8 +809,8 @@ bool WiFiProvider::RemoveCredentials(
   // the type of the device is WiFi.
   WiFiRefPtr wifi(static_cast<WiFi*>(device.get()));
   if (!wifi->RemoveCred(credentials)) {
-    SLOG(this, 1) << "Failed to remove credentials " << credentials->id()
-                  << " from the device.";
+    SLOG(1) << "Failed to remove credentials " << credentials->id()
+            << " from the device.";
     return false;
   }
   return true;
@@ -839,14 +835,14 @@ PasspointCredentialsRefPtr WiFiProvider::FindCredentials(
 
 void WiFiProvider::OnPasspointCredentialsMatches(
     const std::vector<PasspointMatch>& matches) {
-  SLOG(this, 1) << __func__;
+  SLOG(1) << __func__;
 
   // Keep the best match for each service.
   std::map<WiFiService*, PasspointMatch> matches_by_service;
   for (const auto& m : matches) {
     WiFiServiceRefPtr service = FindServiceForEndpoint(m.endpoint);
     if (!service) {
-      SLOG(this, 1) << "No service for endpoint " << m.endpoint->bssid_string();
+      SLOG(1) << "No service for endpoint " << m.endpoint->bssid_string();
       continue;
     }
 

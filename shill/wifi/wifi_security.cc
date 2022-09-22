@@ -14,9 +14,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const WiFiSecurity* w) {
-  return "(wifi_security)";
-}
 }  // namespace Logging
 
 static const std::pair<const char*, WiFiSecurity::Mode> modes_map[] = {
@@ -43,7 +40,7 @@ WiFiSecurity::WiFiSecurity(const std::string& security) {
   auto it = std::find_if(std::begin(modes_map), std::end(modes_map),
                          [&security](auto& p) { return p.first == security; });
   if (it == std::end(modes_map)) {
-    SLOG(this, 2) << __func__ << ": Invalid security name: " << security;
+    SLOG(2) << __func__ << ": Invalid security name: " << security;
     mode_ = kNone;
     is_valid_ = false;
   } else {

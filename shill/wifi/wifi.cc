@@ -981,13 +981,13 @@ std::string WiFi::AppendBgscan(WiFiService* service,
     // with pre-set parameters. Otherwise, use extended scan intervals.
     method = kDefaultBgscanMethod;
     if (service->GetEndpointCount() <= 1) {
-      SLOG(nullptr, 3) << "Background scan intervals extended -- single "
-                       << "Endpoint for Service.";
+      SLOG(3) << "Background scan intervals extended -- single "
+              << "Endpoint for Service.";
       short_interval = kSingleEndpointBgscanShortIntervalSeconds;
       scan_interval = kSingleEndpointBgscanIntervalSeconds;
     }
   } else if (method == WPASupplicant::kNetworkBgscanMethodNone) {
-    SLOG(nullptr, 3) << "Background scan disabled -- chose None method.";
+    SLOG(3) << "Background scan disabled -- chose None method.";
   } else {
     // If the background scan method was explicitly specified, honor the
     // configured background scan interval.
@@ -999,7 +999,7 @@ std::string WiFi::AppendBgscan(WiFiService* service,
         base::StringPrintf("%s:%d:%d:%d", method.c_str(), short_interval,
                            signal_threshold, scan_interval);
   }
-  SLOG(nullptr, 4) << "Background scan: '" << config_string << "'";
+  SLOG(4) << "Background scan: '" << config_string << "'";
   service_params->Set<std::string>(WPASupplicant::kNetworkPropertyBgscan,
                                    config_string);
   return config_string;

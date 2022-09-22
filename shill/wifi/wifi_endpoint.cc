@@ -27,9 +27,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const WiFiEndpoint* w) {
-  return "(wifi_endpoint)";
-}
 }  // namespace Logging
 
 namespace {
@@ -133,7 +130,7 @@ void WiFiEndpoint::Start() {
 }
 
 void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   bool should_notify = false;
   if (properties.Contains<int16_t>(WPASupplicant::kBSSPropertySignal)) {
     signal_strength_ =
@@ -153,8 +150,8 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
         ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
     if (!new_mode.empty() && new_mode != network_mode_) {
       network_mode_ = new_mode;
-      SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
-                    << network_mode_;
+      SLOG(2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
+              << network_mode_;
       should_notify = true;
     }
   }
@@ -167,8 +164,8 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
         metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
       }
       if (device_->GetCurrentEndpoint().get() == this) {
-        SLOG(this, 2) << "Current WiFiEndpoint " << bssid_string_
-                      << " frequency " << frequency_ << " -> " << new_frequency;
+        SLOG(2) << "Current WiFiEndpoint " << bssid_string_ << " frequency "
+                << frequency_ << " -> " << new_frequency;
       }
       frequency_ = new_frequency;
       should_notify = true;
@@ -179,8 +176,8 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
       ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
     security_mode_ = new_security_mode;
-    SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
-                  << security_mode();
+    SLOG(2) << "WiFiEndpoint " << bssid_string_ << " security is now "
+            << security_mode();
     should_notify = true;
   }
 
@@ -194,8 +191,8 @@ void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
     return;
   }
 
-  SLOG(this, 2) << __func__ << ": signal strength " << signal_strength_
-                << " -> " << strength;
+  SLOG(2) << __func__ << ": signal strength " << signal_strength_ << " -> "
+          << strength;
   signal_strength_ = strength;
   device_->NotifyEndpointChanged(this);
 }
@@ -374,7 +371,7 @@ std::string WiFiEndpoint::ParseMode(const std::string& mode_string) {
              mode_string == WPASupplicant::kNetworkModeAccessPoint ||
              mode_string == WPASupplicant::kNetworkModeP2P ||
              mode_string == WPASupplicant::kNetworkModeMesh) {
-    SLOG(nullptr, 2) << "Shill does not support mode: " << mode_string;
+    SLOG(2) << "Shill does not support mode: " << mode_string;
     return "";
   } else {
     LOG(ERROR) << "Unknown WiFi endpoint mode: " << mode_string;
@@ -503,7 +500,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                             SupportedFeatures* supported_features) {
   if (!properties.Contains<std::vector<uint8_t>>(
           WPASupplicant::kBSSPropertyIEs)) {
-    SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
+    SLOG(2) << __func__ << ": No IE property in BSS.";
     return false;
   }
   auto ies =
@@ -598,16 +595,16 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
               found_he = true;
               break;
             default:
-              SLOG(nullptr, 5) << __func__ << ": Element ID Extension "
-                               << *(it + 2) << " not supported.";
+              SLOG(5) << __func__ << ": Element ID Extension " << *(it + 2)
+                      << " not supported.";
               break;
           }
         }
 
         break;
       default:
-        SLOG(nullptr, 5) << __func__ << ": parsing of " << *it
-                         << " type IE not supported.";
+        SLOG(5) << __func__ << ": parsing of " << *it
+                << " type IE not supported.";
     }
   }
   supported_features->krv_support.neighbor_list_supported =

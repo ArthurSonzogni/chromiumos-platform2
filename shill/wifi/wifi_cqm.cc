@@ -22,9 +22,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const WiFiCQM* w) {
-  return "(wifi_cqm)";
-}
 }  // namespace Logging
 
 namespace {
@@ -73,7 +70,7 @@ WiFiCQM::WiFiCQM(Metrics* metrics, WiFi* wifi)
   CHECK(metrics_) << "Passed metrics object was found null.";
   SetUpFwDumpPath(&fw_dump_path_);
   if (fw_dump_path_.empty()) {
-    SLOG(this, 3) << "Firmware dump not supported.";
+    SLOG(3) << "Firmware dump not supported.";
   }
 }
 
@@ -81,7 +78,7 @@ WiFiCQM::~WiFiCQM() = default;
 
 void WiFiCQM::TriggerFwDump() {
   if (fw_dump_path_.empty()) {
-    SLOG(this, 3) << "FW dump is not supported, cannot trigger FW dump.";
+    SLOG(3) << "FW dump is not supported, cannot trigger FW dump.";
     return;
   }
 
@@ -90,18 +87,18 @@ void WiFiCQM::TriggerFwDump() {
   if (current < (previous_fw_dump_time_ + kFwDumpCoolDownPeriod) &&
       fw_dump_count_) {
     auto time_left = previous_fw_dump_time_ + kFwDumpCoolDownPeriod - current;
-    SLOG(this, 3) << "In FW dump cool down period, no FW dump triggered, "
-                  << "Time left (in sec): " << time_left.InSecondsF() << " "
-                  << "Cool down period (in sec): "
-                  << kFwDumpCoolDownPeriod.InSecondsF();
+    SLOG(3) << "In FW dump cool down period, no FW dump triggered, "
+            << "Time left (in sec): " << time_left.InSecondsF() << " "
+            << "Cool down period (in sec): "
+            << kFwDumpCoolDownPeriod.InSecondsF();
     return;
   }
 
   fw_dump_count_++;
 
-  SLOG(this, 3) << "Triggering FW dump.";
+  SLOG(3) << "Triggering FW dump.";
   if (WriteToFwDumpSysPath(fw_dump_path_)) {
-    SLOG(this, 3) << "FW dump trigger succeeded.";
+    SLOG(3) << "FW dump trigger succeeded.";
   }
 
   previous_fw_dump_time_ = current;
@@ -126,7 +123,7 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
   uint32_t trigger_state;
   if (cqm_attrs->GetU32AttributeValue(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
                                       &trigger_state)) {
-    SLOG(this, 3) << "CQM NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT event found.";
+    SLOG(3) << "CQM NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT event found.";
     return;
   }
 
@@ -137,16 +134,16 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
   // TODO(b/197597374) : Feature to configure CQM thresholds.
   if (wifi_ &&
       wifi_->GetSignalLevelForActiveService() < kTriggerFwDumpThresholdDbm) {
-    SLOG(this, 3) << "CQM notification for signal strength less than "
-                  << kTriggerFwDumpThresholdDbm << " dBm, Ignore.";
+    SLOG(3) << "CQM notification for signal strength less than "
+            << kTriggerFwDumpThresholdDbm << " dBm, Ignore.";
     return;
   }
 
   uint32_t packet_loss;
   if (cqm_attrs->GetU32AttributeValue(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
                                       &packet_loss)) {
-    SLOG(this, 3) << "CQM Packet loss event received, total packet losses: "
-                  << packet_loss;
+    SLOG(3) << "CQM Packet loss event received, total packet losses: "
+            << packet_loss;
     metrics_->SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                             Metrics::kWiFiCQMPacketLoss, Metrics::kWiFiCQMMax);
     TriggerFwDump();
@@ -156,7 +153,7 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
   bool beacon_flag;
   if (cqm_attrs->GetFlagAttributeValue(NL80211_ATTR_CQM_BEACON_LOSS_EVENT,
                                        &beacon_flag)) {
-    SLOG(this, 3) << "CQM notification for Beacon loss observed.";
+    SLOG(3) << "CQM notification for Beacon loss observed.";
     metrics_->SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                             Metrics::kWiFiCQMBeaconLoss, Metrics::kWiFiCQMMax);
     TriggerFwDump();
