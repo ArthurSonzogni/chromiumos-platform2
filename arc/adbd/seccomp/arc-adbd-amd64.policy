@@ -72,3 +72,4 @@ socket: arg0 == AF_UNIX
 connect: 1
 sched_yield: 1
 pread64: 1
+set_tid_address: 1
