@@ -32,6 +32,13 @@ class StoreInterface;
 // tethering network.
 class TetheringManager {
  public:
+  enum class EntitlementStatus {
+    kReady,
+    kNotAllowed,
+  };
+
+  static const char* EntitlementStatusName(EntitlementStatus status);
+
   enum class WiFiBand : uint8_t {
     kLowBand,
     kHighBand,
@@ -58,7 +65,7 @@ class TetheringManager {
   // Enable or disable a tethering session with existing tethering config.
   bool SetEnabled(bool enabled, Error* error);
   // Check if upstream network is ready for tethering.
-  std::string CheckReadiness(Error* error);
+  EntitlementStatus CheckReadiness(Error* error);
   // Load the tethering config available in |profile| if there was any tethering
   // config saved for this |profile|.
   virtual void LoadConfigFromProfile(const ProfileRefPtr& profile);

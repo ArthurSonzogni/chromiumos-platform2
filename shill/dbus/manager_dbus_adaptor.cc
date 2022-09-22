@@ -508,7 +508,8 @@ bool ManagerDBusAdaptor::CheckTetheringReadiness(brillo::ErrorPtr* error,
                                                  std::string* status) {
   SLOG(this, 2) << __func__;
   Error e;
-  *status = manager_->tethering_manager()->CheckReadiness(&e);
+  *status = TetheringManager::EntitlementStatusName(
+      manager_->tethering_manager()->CheckReadiness(&e));
   return !e.ToChromeosError(error);
 }
 }  // namespace shill

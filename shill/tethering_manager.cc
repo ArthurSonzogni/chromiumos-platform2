@@ -370,16 +370,30 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
   return true;
 }
 
-std::string TetheringManager::TetheringManager::CheckReadiness(Error* error) {
+TetheringManager::EntitlementStatus
+TetheringManager::TetheringManager::CheckReadiness(Error* error) {
   if (!allowed_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
                           "Tethering is not allowed");
-    return kTetheringReadinessNotAllowed;
+    return EntitlementStatus::kNotAllowed;
   }
 
   // TODO(b/235762746): Stub method handler always return "ready". Add more
   // status code later.
-  return kTetheringReadinessReady;
+  // TODO(b/235762746): Migrate to asynchronous interface.
+  return EntitlementStatus::kReady;
+}
+
+// static
+const char* TetheringManager::EntitlementStatusName(EntitlementStatus status) {
+  switch (status) {
+    case EntitlementStatus::kReady:
+      return kTetheringReadinessReady;
+    case EntitlementStatus::kNotAllowed:
+      return kTetheringReadinessNotAllowed;
+    default:
+      return "unknown";
+  }
 }
 
 void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
