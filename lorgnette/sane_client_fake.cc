@@ -49,9 +49,12 @@ void SaneClientFake::AddDevice(const std::string& name,
 }
 
 void SaneClientFake::RemoveDevice(const std::string& name) {
-  for (auto it = scanners_.begin(); it != scanners_.end(); it++) {
+  auto it = scanners_.begin();
+  while (it != scanners_.end()) {
     if (it->name() == name) {
-      scanners_.erase(it);
+      it = scanners_.erase(it);
+    } else {
+      ++it;
     }
   }
 }

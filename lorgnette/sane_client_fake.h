@@ -24,7 +24,8 @@ class SaneClientFake : public SaneClient {
  public:
   std::optional<std::vector<ScannerInfo>> ListDevices(
       brillo::ErrorPtr* error) override {
-    return scanners_;
+    return (list_devices_result_ ? std::make_optional(scanners_)
+                                 : std::nullopt);
   }
 
   void SetListDevicesResult(bool value);

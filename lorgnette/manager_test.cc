@@ -241,6 +241,39 @@ class ManagerTest : public testing::Test {
   base::ScopedFD scan_fd_;
 };
 
+TEST_F(ManagerTest, ListScannerSuccess) {
+  brillo::ErrorPtr error;
+  sane_client_->AddDevice("TestName", "TestMaker", "TestModel", "TestType");
+  sane_client_->SetListDevicesResult(true);
+  std::optional<std::vector<ScannerInfo>> result =
+      sane_client_->ListDevices(&error);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_NE(result, std::nullopt);
+  EXPECT_EQ(result.value().size(), 1);
+  sane_client_->RemoveDevice("TestName");
+  result = sane_client_->ListDevices(&error);
+  EXPECT_NE(result, std::nullopt);
+  EXPECT_EQ(result.value().size(), 0);
+  EXPECT_EQ(error, nullptr);
+}
+
+TEST_F(ManagerTest, ListScannersFailure) {
+  brillo::ErrorPtr error;
+  sane_client_->SetListDevicesResult(false);
+  std::optional<std::vector<ScannerInfo>> result =
+      sane_client_->ListDevices(&error);
+  EXPECT_EQ(result, std::nullopt);
+}
+
+TEST_F(ManagerTest, GetColorModeFromDevice) {
+  brillo::ErrorPtr error;
+  std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
+  device->SetColorMode(&error, MODE_COLOR);
+  std::optional<ColorMode> color_mode = device->GetColorMode(&error);
+  EXPECT_NE(color_mode, std::nullopt);
+  EXPECT_EQ(color_mode.value(), MODE_COLOR);
+}
+
 TEST_F(ManagerTest, GetScannerCapabilitiesInvalidIppUsbFailure) {
   std::vector<uint8_t> serialized;
   brillo::ErrorPtr error;
