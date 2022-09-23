@@ -46,12 +46,14 @@ sendto: 1
 gettid:1
 futex:1
 mknodat: 1
+mremap: 1
 
 # For modprobe(8)
 clone: 1
 execve: 1
 wait4: 1
 set_robust_list: 1
+dup: 1
 dup2: 1
 ugetrlimit: 1
 prctl: arg0 == 0x26
