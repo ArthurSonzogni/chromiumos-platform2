@@ -692,6 +692,28 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
   };
 }
 
+Status PinWeaverTpm2::BlockGeneratePk() {
+  ASSIGN_OR_RETURN(uint8_t version, GetVersion());
+  if (version <= 1) {
+    return MakeStatus<TPMError>(
+        "PinWeaver Version 0/1 doesn't support biometrics operations",
+        TPMRetryAction::kNoRetry);
+  }
+
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
+
+  uint32_t pinweaver_status = 0;
+  std::string root;
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(
+          context.tpm_utility->PinWeaverBlockGenerateBiometricsAuthPk(
+              version, &pinweaver_status, &root)))
+      .WithStatus<TPMError>("Failed to try auth in pinweaver");
+
+  return OkStatus();
+}
+
 StatusOr<PinWeaverTpm2::PinWeaverTimestamp>
 PinWeaverTpm2::GetLastAccessTimestamp(const brillo::Blob& cred_metadata) {
   // The assumption is that leaf_public_data_t structure will have the existing

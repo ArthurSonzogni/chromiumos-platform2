@@ -123,4 +123,8 @@ PinWeaverTpm1::StartBiometricsAuth(uint8_t auth_channel,
                                    const brillo::SecureBlob& client_nonce) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
+
+Status PinWeaverTpm1::BlockGeneratePk() {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
 }  // namespace hwsec

@@ -109,6 +109,7 @@ class MockPinWeaver : public PinWeaver {
                const brillo::Blob& orig_cred_metadata,
                const brillo::SecureBlob& client_nonce),
               (override));
+  MOCK_METHOD(Status, BlockGeneratePk, (), (override));
 };
 
 }  // namespace hwsec

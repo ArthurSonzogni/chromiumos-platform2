@@ -1352,4 +1352,34 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthInvalidAuthChannel) {
   EXPECT_FALSE(result.ok());
 }
 
+TEST_F(BackendPinweaverTpm2Test, BlockGeneratePk) {
+  constexpr uint32_t kVersion = 2;
+  const std::string kFakeRoot = "fake_root";
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              PinWeaverBlockGenerateBiometricsAuthPk(kVersion, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::PinWeaver::BlockGeneratePk>();
+
+  EXPECT_TRUE(result.ok());
+}
+
+TEST_F(BackendPinweaverTpm2Test, BlockGeneratePkV1NotSupported) {
+  constexpr uint32_t kVersion = 1;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::PinWeaver::BlockGeneratePk>();
+
+  EXPECT_FALSE(result.ok());
+}
+
 }  // namespace hwsec

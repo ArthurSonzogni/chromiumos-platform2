@@ -82,6 +82,7 @@ class PinWeaverTpm2 : public Backend::PinWeaver,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
       const brillo::SecureBlob& client_nonce) override;
+  Status BlockGeneratePk() override;
 
  private:
   StatusOr<PinWeaverTimestamp> GetLastAccessTimestamp(

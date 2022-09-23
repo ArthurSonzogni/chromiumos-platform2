@@ -83,6 +83,7 @@ class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
       const brillo::SecureBlob& client_nonce) override;
+  Status BlockGeneratePk() override;
 };
 
 }  // namespace hwsec

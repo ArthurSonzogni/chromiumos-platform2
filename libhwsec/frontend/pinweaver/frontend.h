@@ -223,6 +223,12 @@ class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
       const brillo::SecureBlob& client_nonce) = 0;
+
+  // Blocks future establishments of the pairing secrets until the server
+  // restarts.
+  //
+  // If successful, future secret establishments are blocked.
+  virtual Status BlockGeneratePk() = 0;
 };
 
 }  // namespace hwsec

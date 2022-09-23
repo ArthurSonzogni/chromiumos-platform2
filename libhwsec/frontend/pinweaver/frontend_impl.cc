@@ -144,4 +144,8 @@ StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::StartBiometricsAuth(
       auth_channel, label, h_aux, orig_cred_metadata, client_nonce);
 }
 
+Status PinWeaverFrontendImpl::BlockGeneratePk() {
+  return middleware_.CallSync<&Backend::PinWeaver::BlockGeneratePk>();
+}
+
 }  // namespace hwsec
