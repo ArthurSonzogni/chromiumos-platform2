@@ -57,16 +57,19 @@ class MockKeysetManagement : public KeysetManagement {
               (const, override));
   MOCK_METHOD(CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
               AddInitialKeyset,
-              (const Credentials&, const FileSystemKeyset&),
+              (const VaultKeysetIntent& vk_intent,
+               const Credentials&,
+               const FileSystemKeyset&),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               AddWrappedResetSeedIfMissing,
               (VaultKeyset * vault_keyset, const Credentials& credentials),
               (override));
-  MOCK_METHOD(CryptohomeErrorCode,
-              AddKeyset,
-              (const Credentials&, const VaultKeyset&, bool),
-              (override));
+  MOCK_METHOD(
+      CryptohomeErrorCode,
+      AddKeyset,
+      (const VaultKeysetIntent&, const Credentials&, const VaultKeyset&, bool),
+      (override));
   MOCK_METHOD(CryptohomeErrorCode,
               UpdateKeyset,
               (const Credentials&, const VaultKeyset&),
@@ -116,7 +119,8 @@ class MockKeysetManagement : public KeysetManagement {
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               AddKeysetWithKeyBlobs,
-              (const std::string&,
+              (const VaultKeysetIntent&,
+               const std::string&,
                const KeyData&,
                const VaultKeyset&,
                KeyBlobs,
@@ -126,7 +130,8 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(
       CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
       AddInitialKeysetWithKeyBlobs,
-      (const std::string&,
+      (const VaultKeysetIntent& vk_intent,
+       const std::string&,
        const KeyData&,
        const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&,
        const FileSystemKeyset&,

@@ -87,6 +87,13 @@ VaultKeyset::~VaultKeyset() {}
 void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
   platform_ = platform;
   crypto_ = crypto;
+  backup_vk_ = false;
+}
+
+void VaultKeyset::InitializeAsBackup(Platform* platform, Crypto* crypto) {
+  platform_ = platform;
+  crypto_ = crypto;
+  backup_vk_ = true;
 }
 
 void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {

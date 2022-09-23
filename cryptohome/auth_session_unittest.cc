@@ -458,7 +458,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce([](const std::string&, const std::string&) {
@@ -526,7 +526,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillRepeatedly([](const std::string&, const std::string& label) {
@@ -562,7 +562,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   other_authorization_request->mutable_key()->mutable_data()->set_label(
       kFakeOtherLabel);
 
-  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _))
+  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   // Test.
@@ -941,7 +941,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .Times(0);
 
   // Test.
@@ -1481,7 +1481,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce([](const std::string&, const std::string&) {
@@ -1552,7 +1552,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
         return true;
       });
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillRepeatedly([](const std::string&, const std::string& label) {
@@ -1578,7 +1578,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   request2.mutable_auth_input()->mutable_password_input()->set_secret(
       kFakeOtherPass);
 
-  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _))
+  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   // Test.

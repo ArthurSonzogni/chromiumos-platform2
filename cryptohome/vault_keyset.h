@@ -44,6 +44,11 @@ class VaultKeyset {
   // them must outlive this object.
   virtual void Initialize(Platform* platform, Crypto* crypto);
 
+  // This function initializes the VaultKeyset as a backup keyset by setting the
+  // |backup_vk_| field to true. Does not take ownership of platform and crypto.
+  // The objects pointed to by them must outlive this object.
+  void InitializeAsBackup(Platform* platform, Crypto* crypto);
+
   // Populates the fields from a SerializedVaultKeyset.
   void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
 

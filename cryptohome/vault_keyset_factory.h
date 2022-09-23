@@ -19,6 +19,7 @@ class VaultKeysetFactory {
 
   virtual ~VaultKeysetFactory();
   virtual VaultKeyset* New(Platform* platform, Crypto* crypto);
+  virtual VaultKeyset* NewBackup(Platform* platform, Crypto* crypto);
 };
 
 }  // namespace cryptohome

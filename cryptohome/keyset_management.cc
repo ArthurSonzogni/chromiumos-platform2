@@ -307,6 +307,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
 
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetWithKeyBlobs(
+    const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username,
     const KeyData& key_data,
     const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
@@ -315,14 +316,15 @@ KeysetManagement::AddInitialKeysetWithKeyBlobs(
     KeyBlobs key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   return AddInitialKeysetImpl(
-      obfuscated_username, key_data, challenge_credentials_keyset_info,
-      file_system_keyset,
+      vk_intent, obfuscated_username, key_data,
+      challenge_credentials_keyset_info, file_system_keyset,
       base::BindOnce(&EncryptExWrapper, std::move(key_blobs),
                      std::move(auth_state)));
 }
 
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::AddInitialKeyset(const Credentials& credentials,
+KeysetManagement::AddInitialKeyset(const VaultKeysetIntent& vk_intent,
+                                   const Credentials& credentials,
                                    const FileSystemKeyset& file_system_keyset) {
   std::string obfuscated_username = credentials.GetObfuscatedUsername();
   std::optional<SerializedVaultKeyset_SignatureChallengeInfo>
@@ -332,7 +334,7 @@ KeysetManagement::AddInitialKeyset(const Credentials& credentials,
         credentials.challenge_credentials_keyset_info();
   }
   return AddInitialKeysetImpl(
-      obfuscated_username, credentials.key_data(),
+      vk_intent, obfuscated_username, credentials.key_data(),
       challenge_credentials_keyset_info, file_system_keyset,
       base::BindOnce(&EncryptWrapper, credentials.passkey(),
                      obfuscated_username));
@@ -340,6 +342,7 @@ KeysetManagement::AddInitialKeyset(const Credentials& credentials,
 
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetImpl(
+    const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username,
     const KeyData& key_data,
     const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
@@ -348,6 +351,9 @@ KeysetManagement::AddInitialKeysetImpl(
     EncryptVkCallback encrypt_vk_callback) {
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory_->New(platform_, crypto_));
+  if (vk_intent.backup) {
+    vk.reset(vault_keyset_factory_->NewBackup(platform_, crypto_));
+  }
   vk->Initialize(platform_, crypto_);
   vk->SetLegacyIndex(kInitialKeysetIndex);
   vk->SetKeyData(key_data);
@@ -543,18 +549,20 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetIfNeeded(
 }
 
 CryptohomeErrorCode KeysetManagement::AddKeyset(
+    const VaultKeysetIntent& vk_intent,
     const Credentials& new_credentials,
     const VaultKeyset& vault_keyset,
     bool clobber) {
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
   return AddKeysetImpl(
-      obfuscated_username, new_credentials.key_data(), vault_keyset,
+      vk_intent, obfuscated_username, new_credentials.key_data(), vault_keyset,
       base::BindOnce(&EncryptWrapper, new_credentials.passkey(),
                      obfuscated_username),
       clobber);
 }
 
 CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
+    const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username_new,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset_old,
@@ -562,13 +570,14 @@ CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
     std::unique_ptr<AuthBlockState> auth_state_new,
     bool clobber) {
   return AddKeysetImpl(
-      obfuscated_username_new, key_data_new, vault_keyset_old,
+      vk_intent, obfuscated_username_new, key_data_new, vault_keyset_old,
       base::BindOnce(&EncryptExWrapper, std::move(key_blobs_new),
                      std::move(auth_state_new)),
       clobber);
 }
 
 CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
+    const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username_new,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset_old,
@@ -609,6 +618,9 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
 
   std::unique_ptr<VaultKeyset> keyset_to_add(
       vault_keyset_factory_->New(platform_, crypto_));
+  if (vk_intent.backup) {
+    keyset_to_add.reset(vault_keyset_factory_->NewBackup(platform_, crypto_));
+  }
   keyset_to_add->InitializeToAdd(vault_keyset_old);
   keyset_to_add->SetKeyData(key_data_new);
 
@@ -649,8 +661,8 @@ CryptohomeErrorCode KeysetManagement::UpdateKeyset(
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
-  return AddKeyset(new_credentials, vault_keyset,
-                   true /* we are updating existing keyset */);
+  return AddKeyset(VaultKeysetIntent{.backup = false}, new_credentials,
+                   vault_keyset, true /* we are updating existing keyset */);
 }
 
 CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
@@ -669,8 +681,9 @@ CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
 
   // We set clobber to be true as we are sure that there is an existing keyset.
   return AddKeysetWithKeyBlobs(
-      obfuscated_username_new, key_data_new, vault_keyset, std::move(key_blobs),
-      std::move(auth_state), true /* we are updating existing keyset */);
+      VaultKeysetIntent{.backup = false}, obfuscated_username_new, key_data_new,
+      vault_keyset, std::move(key_blobs), std::move(auth_state),
+      true /* we are updating existing keyset */);
 }
 
 CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(

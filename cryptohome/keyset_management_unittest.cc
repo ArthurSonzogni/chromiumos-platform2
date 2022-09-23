@@ -402,7 +402,8 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
   // TEST
 
   EXPECT_TRUE(keyset_management_
-                  ->AddInitialKeyset(users_[0].credentials, file_system_keyset_)
+                  ->AddInitialKeyset(VaultKeysetIntent{.backup = false},
+                                     users_[0].credentials, file_system_keyset_)
                   .ok());
 
   // VERIFY
@@ -433,7 +434,8 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   // TEST
 
   CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> status_or =
-      keyset_management_->AddInitialKeyset(users_[0].credentials,
+      keyset_management_->AddInitialKeyset(VaultKeysetIntent{.backup = false},
+                                           users_[0].credentials,
                                            file_system_keyset_);
 
   // VERIFY
@@ -460,7 +462,8 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // VERIFY
@@ -624,7 +627,8 @@ TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   // VERIFY
@@ -656,7 +660,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // VERIFY
@@ -687,7 +692,8 @@ TEST_F(KeysetManagementTest, GetValidKeysetWithEmptyLabelSucceeds) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // TEST
@@ -763,7 +769,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // VERIFY
@@ -814,7 +821,8 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   // TEST
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
@@ -870,7 +878,8 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   // TEST
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
@@ -902,7 +911,8 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // TEST
@@ -1022,7 +1032,8 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabels) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
 
   // TEST
@@ -1063,7 +1074,8 @@ TEST_F(KeysetManagementTest, GetNonLEVaultKeysetLabels) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   // TEST
@@ -1127,10 +1139,12 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials2,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials2,
                                           *vk_status.value().get(), false));
 
   // TEST
@@ -1247,7 +1261,8 @@ TEST_F(KeysetManagementTest, MoveKeysetFail) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), false));
   vk_status = keyset_management_->GetValidKeyset(new_credentials);
   int index = vk_status.value()->GetLegacyIndex();
@@ -1505,7 +1520,8 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   // When adding new keyset with an new label we expect it to have another
@@ -1583,7 +1599,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   ASSERT_TRUE(vk_status.ok());
   // Add Pin Keyset to keyset_mangement_.
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> le_vk_status =
@@ -1641,7 +1658,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   ASSERT_TRUE(vk_status.ok());
   // Add Pin Keyset.
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> le_vk_status =
@@ -1696,7 +1714,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   ASSERT_TRUE(vk_status.ok());
   // Add Pin Keyset.
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> le_vk_status =
@@ -1756,7 +1775,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWithPreValidatedKeyset) {
   ASSERT_TRUE(vk_status.ok());
   // Add Pin Keyset.
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> le_vk_status =
@@ -1814,7 +1834,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
   ASSERT_TRUE(vk_status.ok());
   // Add Pin Keyset.
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(new_credentials,
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          new_credentials,
                                           *vk_status.value().get(), true));
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> le_vk_status =
@@ -1943,7 +1964,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoFile) {
 
   // Test
   // VaultKeysetPath returns no valid paths.
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+  EXPECT_EQ(keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true),
             CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
 }
 
@@ -1955,7 +1977,8 @@ TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
   vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   // Test
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+  EXPECT_EQ(keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true),
             CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -1972,7 +1995,8 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
   // AddKeyset creates a file at index 1, but deletes the file
   // after KeysetManagement finds a duplicate label at index 0.
   // The original label is overwritten when adding the new keyset.
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+  EXPECT_EQ(keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true),
             CRYPTOHOME_ERROR_NOT_SET);
 
   // Verify
@@ -2006,7 +2030,8 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
 
   // Test
   EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true));
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
@@ -2038,7 +2063,8 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
   // Test
   // The file path created by AddKeyset is deleted after save fails.
   EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true));
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
@@ -2062,11 +2088,11 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
       .WillOnce(ReturnError<CryptohomeError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-
   // Test
   // The file path created by AddKeyset is deleted after encyrption fails.
   EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeyset(users_[0].credentials, vk, true));
+            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                          users_[0].credentials, vk, true));
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
@@ -2133,8 +2159,9 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsSuccess) {
 
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             keyset_management_->AddKeysetWithKeyBlobs(
-                users_[0].obfuscated, new_data, *vk_status.value().get(),
-                std::move(new_key_blobs), std::move(auth_state), false));
+                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                new_data, *vk_status.value().get(), std::move(new_key_blobs),
+                std::move(auth_state), false));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2179,8 +2206,9 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsClobberSuccess) {
   EXPECT_EQ(
       CRYPTOHOME_ERROR_NOT_SET,
       keyset_management_->AddKeysetWithKeyBlobs(
-          users_[0].obfuscated, new_key_data, *vk_status.value().get(),
-          std::move(new_key_blobs), std::move(auth_state), true /*clobber*/));
+          VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+          new_key_data, *vk_status.value().get(), std::move(new_key_blobs),
+          std::move(auth_state), true /*clobber*/));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2220,8 +2248,9 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoClobber) {
   EXPECT_EQ(
       CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
       keyset_management_->AddKeysetWithKeyBlobs(
-          users_[0].obfuscated, new_key_data, *vk_status.value().get(),
-          std::move(new_key_blobs), std::move(auth_state), false /*clobber*/));
+          VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+          new_key_data, *vk_status.value().get(), std::move(new_key_blobs),
+          std::move(auth_state), false /*clobber*/));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2296,11 +2325,11 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoFreeIndices) {
       keyset_management_->GetValidKeysetWithKeyBlobs(
           users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel);
   ASSERT_TRUE(vk_status.ok());
-  EXPECT_EQ(
-      CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
-      keyset_management_->AddKeysetWithKeyBlobs(
-          users_[0].obfuscated, new_data, *vk_status.value().get(),
-          std::move(new_key_blobs), std::move(auth_state_), false /*clobber*/));
+  EXPECT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
+            keyset_management_->AddKeysetWithKeyBlobs(
+                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                new_data, *vk_status.value().get(), std::move(new_key_blobs),
+                std::move(auth_state_), false /*clobber*/));
 
   // VERIFY
   // Nothing should change if we were not able to add keyset due to a lack of
@@ -2337,11 +2366,11 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsEncryptFail) {
   ASSERT_TRUE(vk_status.ok());
 
   // TEST
-  ASSERT_EQ(
-      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-      keyset_management_->AddKeysetWithKeyBlobs(
-          users_[0].obfuscated, new_data, *vk_status.value().get(),
-          std::move(new_key_blobs), std::move(auth_state_), false /*clobber*/));
+  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_->AddKeysetWithKeyBlobs(
+                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                new_data, *vk_status.value().get(), std::move(new_key_blobs),
+                std::move(auth_state_), false /*clobber*/));
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old
@@ -2372,7 +2401,8 @@ TEST_F(KeysetManagementTest, AddInitialKeysetWithKeyBlobs) {
   // TEST
   EXPECT_TRUE(keyset_management_
                   ->AddInitialKeysetWithKeyBlobs(
-                      users_[0].obfuscated, users_[0].credentials.key_data(),
+                      VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                      users_[0].credentials.key_data(),
                       users_[0].credentials.challenge_credentials_keyset_info(),
                       file_system_keyset_, std::move(key_blobs_),
                       std::move(auth_state_))

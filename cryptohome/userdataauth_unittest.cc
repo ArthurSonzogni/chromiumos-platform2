@@ -3016,7 +3016,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
       .WillOnce(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::move(vk))));
 
   std::vector<std::string> key_labels;
@@ -3298,7 +3298,7 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
@@ -3320,7 +3320,7 @@ TEST_F(UserDataAuthExTest, AddKeyResetSeedGeneration) {
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, AddWrappedResetSeedIfMissing(_, _));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),

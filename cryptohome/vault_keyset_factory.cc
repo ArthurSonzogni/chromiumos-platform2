@@ -17,4 +17,10 @@ VaultKeyset* VaultKeysetFactory::New(Platform* platform, Crypto* crypto) {
   return v;
 }
 
+VaultKeyset* VaultKeysetFactory::NewBackup(Platform* platform, Crypto* crypto) {
+  VaultKeyset* v = new VaultKeyset();
+  v->InitializeAsBackup(platform, crypto);
+  return v;
+}
+
 }  // namespace cryptohome

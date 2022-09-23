@@ -225,9 +225,9 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
 void MockInitialKeysetAdding(const std::string& obfuscated_username,
                              const SerializedVaultKeyset& serialized_vk,
                              MockKeysetManagement& keyset_management) {
-  EXPECT_CALL(keyset_management,
-              AddInitialKeysetWithKeyBlobs(obfuscated_username, _, _, _, _, _))
-      .WillOnce([=](const std::string&, const KeyData&,
+  EXPECT_CALL(keyset_management, AddInitialKeysetWithKeyBlobs(
+                                     _, obfuscated_username, _, _, _, _, _))
+      .WillOnce([=](VaultKeysetIntent, const std::string&, const KeyData&,
                     const std::optional<
                         SerializedVaultKeyset_SignatureChallengeInfo>&,
                     const FileSystemKeyset& file_system_keyset, KeyBlobs,
@@ -997,7 +997,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
   base::MockCallback<AddCredentialCallback> on_done;
   EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
   EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   AddCredentials(request, on_done.Get());

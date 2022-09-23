@@ -2277,7 +2277,8 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> UserDataAuth::LoadVaultKeyset(
         std::make_unique<AuthBlockState>(out_state);
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->AddInitialKeysetWithKeyBlobs(
-            obfuscated_username, credentials.key_data(),
+            VaultKeysetIntent{.backup = false}, obfuscated_username,
+            credentials.key_data(),
             credentials.challenge_credentials_keyset_info(),
             FileSystemKeyset::CreateRandom(), std::move(key_blobs),
             std::move(auth_state));
@@ -2562,7 +2563,8 @@ CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
   // Add the new key data to the user vault_keyset.
   if (crypto_error == CRYPTOHOME_ERROR_NOT_SET) {
     crypto_error =
-        keyset_management_->AddKeyset(new_credentials, *vault_keyset, clobber);
+        keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
+                                      new_credentials, *vault_keyset, clobber);
   }
   return crypto_error;
 }

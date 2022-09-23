@@ -449,6 +449,10 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     std::unique_ptr<AuthBlockState> auth_state) {
   DCHECK(key_blobs);
   DCHECK(auth_state);
+  VaultKeysetIntent vk_backup_intent = {
+      .backup = enable_create_backup_vk_with_uss_ &&
+                IsUserSecretStashExperimentEnabled() &&
+                !user_has_configured_credential_};
   if (initial_keyset) {
     if (!file_system_keyset_.has_value()) {
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
@@ -458,11 +462,11 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
               {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
-    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
+    // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->AddInitialKeysetWithKeyBlobs(
-            obfuscated_username_, key_data,
-            /*challenge_credentials_keyset_info=*/std::nullopt,
+            vk_backup_intent, obfuscated_username_, key_data,
+            /*challenge_credentials_keyset_info*/ std::nullopt,
             file_system_keyset_.value(), std::move(*key_blobs.get()),
             std::move(auth_state));
     if (!vk_status.ok()) {
@@ -481,9 +485,9 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     user_data_auth::CryptohomeErrorCode error =
         static_cast<user_data_auth::CryptohomeErrorCode>(
             keyset_management_->AddKeysetWithKeyBlobs(
-                obfuscated_username_, key_data, *vault_keyset_.get(),
-                std::move(*key_blobs.get()), std::move(auth_state),
-                true /*clobber*/));
+                vk_backup_intent, obfuscated_username_, key_data,
+                *vault_keyset_.get(), std::move(*key_blobs.get()),
+                std::move(auth_state), true /*clobber*/));
     if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
