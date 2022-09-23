@@ -24,3 +24,4 @@ stat: 1
 write: 1
 getpid: 1
 gettimeofday: 1
+pipe2: 1
