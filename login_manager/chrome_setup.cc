@@ -610,9 +610,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("enable_dsp_hotword"))
     builder->AddFeatureEnableOverride("EnableDspHotword");
 
-  if (builder->UseFlagIsSet("assistant-dlc"))
-    builder->AddFeatureEnableOverride("LibAssistantDlc");
-
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
   SetUpHelpContentSwitch(builder, cros_config);
