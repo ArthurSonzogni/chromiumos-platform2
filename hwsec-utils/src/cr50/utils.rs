@@ -24,7 +24,7 @@ use crate::tpm2::nv_read;
 use crate::tpm2::BoardID;
 use crate::tpm2::ERASED_BOARD_ID;
 
-fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output, HwsecError> {
+pub fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output, HwsecError> {
     #[cfg(feature = "ti50_onboard")]
     let dflag: Vec<&str> = vec!["-D"];
     #[cfg(not(feature = "ti50_onboard"))]
@@ -35,13 +35,32 @@ fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output,
         .map_err(|_| HwsecError::CommandRunnerError)
 }
 
+pub fn get_gsctool_output(
+    ctx: &mut impl Context,
+    options: Vec<&str>,
+) -> Result<String, HwsecError> {
+    let gsctool_raw_output = run_gsctool_cmd(ctx, options)?;
+    Ok(String::from_utf8_lossy(&gsctool_raw_output.stdout).to_string())
+}
+
+pub fn get_gsctool_full_output(
+    ctx: &mut impl Context,
+    options: Vec<&str>,
+) -> Result<String, HwsecError> {
+    let gsctool_raw_output = run_gsctool_cmd(ctx, options)?;
+    Ok(
+        String::from_utf8_lossy(&[gsctool_raw_output.stdout, gsctool_raw_output.stderr].concat())
+            .to_string(),
+    )
+}
+
 fn run_metrics_client(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output, HwsecError> {
     ctx.cmd_runner()
         .run("metrics_client", options)
         .map_err(|_| HwsecError::CommandRunnerError)
 }
 
-fn gsctool_cmd_successful(ctx: &mut impl Context, options: Vec<&str>) -> bool {
+pub fn gsctool_cmd_successful(ctx: &mut impl Context, options: Vec<&str>) -> bool {
     let output = run_gsctool_cmd(ctx, options);
     output.is_ok() && output.unwrap().status.success()
 }

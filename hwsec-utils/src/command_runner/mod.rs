@@ -14,4 +14,6 @@ pub use mock::*;
 
 pub trait CommandRunner {
     fn run(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<Output, std::io::Error>;
+    fn output(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<String, std::io::Error>;
+    fn full_output(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<String, std::io::Error>;
 }
