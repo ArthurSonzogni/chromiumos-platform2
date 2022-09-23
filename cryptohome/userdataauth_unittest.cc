@@ -155,6 +155,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(pinweaver_, GetVersion()).WillByDefault(ReturnValue(2));
+    ON_CALL(pinweaver_, BlockGeneratePk()).WillByDefault(ReturnOk<TPMError>());
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually

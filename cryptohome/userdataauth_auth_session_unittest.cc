@@ -72,6 +72,7 @@ using brillo::cryptohome::home::SanitizeUserName;
 using error::CryptohomeCryptoError;
 using error::CryptohomeError;
 using error::CryptohomeMountError;
+using hwsec::TPMError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
@@ -298,6 +299,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         task_environment.GetMainThreadTaskRunner());
     userdataauth_.set_current_thread_id_for_test(
         UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_.set_pinweaver(&pinweaver_);
   }
 
   void SetUpHWSecExpectations() {
@@ -312,6 +314,10 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         .WillRepeatedly(ReturnValue(brillo::Blob()));
     EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
+    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(pinweaver_, GetVersion()).WillRepeatedly(ReturnValue(2));
+    EXPECT_CALL(pinweaver_, BlockGeneratePk())
+        .WillRepeatedly(ReturnOk<TPMError>());
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {

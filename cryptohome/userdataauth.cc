@@ -1313,6 +1313,33 @@ void UserDataAuth::EnsureBootLockboxFinalized() {
   }
 }
 
+void UserDataAuth::BlockPkEstablishment() {
+  AssertOnMountThread();
+
+  if (pk_establishment_blocked_) {
+    return;
+  }
+
+  hwsec::StatusOr<bool> enabled = pinweaver_->IsEnabled();
+  if (!enabled.ok() || !*enabled) {
+    return;
+  }
+
+  // Pk related mechanisms are only added in PW version 2.
+  hwsec::StatusOr<uint8_t> version = pinweaver_->GetVersion();
+  if (!version.ok() || *version <= 1) {
+    return;
+  }
+
+  hwsec::Status status = pinweaver_->BlockGeneratePk();
+  if (!status.ok()) {
+    LOG(WARNING) << "Block biometrics Pk establishment failed: "
+                 << status.status();
+  } else {
+    pk_establishment_blocked_ = true;
+  }
+}
+
 UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
   // This method touches the |sessions_| object so it needs to run on
   // |mount_thread_|
@@ -1321,6 +1348,9 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
   if (!session) {
     // We don't have a mount associated with |username|, let's create one.
     EnsureBootLockboxFinalized();
+    // Block biometrics Pk establishment afterwards as we considered the device
+    // becoming more vulnerable to attackers.
+    BlockPkEstablishment();
     std::unique_ptr<UserSession> owned_session = user_session_factory_->New(
         username, legacy_mount_, bind_mount_downloads_);
     session = owned_session.get();

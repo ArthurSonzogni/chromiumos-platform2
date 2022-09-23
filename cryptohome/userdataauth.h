@@ -1172,6 +1172,18 @@ class UserDataAuth {
   // network is ready.
   void CreateUssExperimentConfigFetcher();
 
+  // =============== PinWeaver Related Methods ===============
+
+  // Called on Mount thread. Pairing secret (Pk) is established once per
+  // powerwash cycle after the device first boots. An ECDH protocol is used
+  // between biometrics AuthStacks and GSC to establish Pk. This function blocks
+  // future Pk establishment attempts made by biometrics AuthStacks, as we
+  // considered device state becoming more vulnerable after entering user
+  // session. For example, an attacker can try to send EC commands to FPMCU and
+  // send vendor commands to GSC to complete a person-in-the-middle attack on
+  // the ECDH protocol used for Pk establishment.
+  void BlockPkEstablishment();
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -1468,6 +1480,10 @@ class UserDataAuth {
   // The actual USS experiment config fetcher object. Usually set to
   // default_uss_experiment_config_fetcher_, but can be overridden for testing.
   UssExperimentConfigFetcher* uss_experiment_config_fetcher_;
+
+  // Flag to cache the status of whether Pk establishment is blocked
+  // successfully, so we don't have to do this multiple times.
+  bool pk_establishment_blocked_;
 
   friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionTestWithKeysetManagement,
