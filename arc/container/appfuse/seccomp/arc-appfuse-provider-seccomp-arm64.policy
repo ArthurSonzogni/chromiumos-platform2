@@ -65,3 +65,4 @@ faccessat2: 1
 sched_getattr: 1
 sched_setattr: 1
 fstatfs: 1
+rt_sigaction: 1
