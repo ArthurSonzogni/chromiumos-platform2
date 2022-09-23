@@ -59,7 +59,6 @@ struct FuseMount {
   char** mountpoint;
   fuse_chan* chan;
   std::string opts;
-  std::string name;
   bool debug = false;
   bool fake = false;
 };

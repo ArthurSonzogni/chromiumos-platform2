@@ -17,6 +17,7 @@
 #include <base/no_destructor.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_piece.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -81,6 +82,22 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
         base::BindRepeating(&FuseBoxClient::OnStorageDetached,
                             weak_ptr_factory_.GetWeakPtr()),
         base::BindOnce(&HandleDBusSignalConnected));
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kListStoragesMethod);
+    CallFuseBoxServerMethod(&method,
+                            base::BindOnce(&FuseBoxClient::ListStoragesResponse,
+                                           weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  void ListStoragesResponse(dbus::Response* response) {
+    dbus::MessageReader reader(response);
+    ListStoragesResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      return;
+    }
+    for (const auto& subdir : response_proto.storages()) {
+      DoAttachStorage(subdir, 0);
+    }
   }
 
   int StartFuseSession(base::OnceClosure stop_callback) {
@@ -135,10 +152,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
 
     CHECK_EQ(0, DoAttachStorage("built_in", INO_BUILT_IN));
     BuiltInEnsureNodes(GetInodeTable());
-    CHECK_EQ(0, DoAttachStorage(kMonikerAttachStorageArg, 0));
-
-    if (!fuse_->name.empty())
-      CHECK_EQ(0, DoAttachStorage(fuse_->name, 0));
 
     CHECK(userdata) << "FileSystem (userdata) is required";
   }
@@ -1213,7 +1226,6 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
 
   auto* commandline_options = base::CommandLine::ForCurrentProcess();
   fuse.opts = commandline_options->GetSwitchValueASCII("ll");
-  fuse.name = commandline_options->GetSwitchValueASCII("storage");
   fuse.debug = commandline_options->HasSwitch("debug");
   fuse.fake = commandline_options->HasSwitch("fake");
 
