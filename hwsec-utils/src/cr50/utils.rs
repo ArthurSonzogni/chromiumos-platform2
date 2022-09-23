@@ -9,6 +9,7 @@ use std::process::Output;
 use std::thread;
 use std::time::SystemTime;
 
+use log::error;
 use log::info;
 use regex::Regex;
 
@@ -251,8 +252,10 @@ pub fn cr50_flash_log(
 
     if !Path::new(&TIMESTAMP_FILE).exists() {
         info!("{} not found, creating.", TIMESTAMP_FILE);
-        fs::write(TIMESTAMP_FILE, b"0")
-            .map_err(|_| HwsecError::FileError(format!("Failed to create {}", TIMESTAMP_FILE)))?;
+        fs::write(TIMESTAMP_FILE, b"0").map_err(|_| {
+            error!("Failed to create {}", TIMESTAMP_FILE);
+            HwsecError::FileError
+        })?;
     }
 
     // Set Cr50 flash logger time base
@@ -271,8 +274,10 @@ pub fn cr50_flash_log(
 
     info!("Set Cr50 flash log base time to {}", epoch_secs);
 
-    let file = fs::read_to_string(TIMESTAMP_FILE)
-        .map_err(|_| HwsecError::FileError(format!("Failed to read {}", TIMESTAMP_FILE)))?;
+    let file = fs::read_to_string(TIMESTAMP_FILE).map_err(|_| {
+        error!("Failed to read {}", TIMESTAMP_FILE);
+        HwsecError::FileError
+    })?;
     let stamps: Vec<u64> = file.lines().map(|x| x.parse::<u64>().unwrap()).collect();
     if stamps.len() != 1 {
         return Err(HwsecError::InternalError);
@@ -288,7 +293,8 @@ pub fn cr50_flash_log(
 
     for entry in output.lines() {
         let new_stamp = entry.parse::<u64>().map_err(|_| {
-            HwsecError::FileError(format!("Unexpected content in {}", TIMESTAMP_FILE))
+            error!("Unexpected content in {}", TIMESTAMP_FILE);
+            HwsecError::FileError
         })?;
 
         if event_id == FE_LOG_NVMEM {
@@ -309,7 +315,8 @@ pub fn cr50_flash_log(
 
         if exit_code == 0 {
             fs::write(TIMESTAMP_FILE, new_stamp.to_string().as_str()).map_err(|_| {
-                HwsecError::FileError(format!("Failed to create {}", TIMESTAMP_FILE))
+                error!("Failed to create {}", TIMESTAMP_FILE);
+                HwsecError::FileError
             })?;
         } else {
             return Err(HwsecError::MetricsClientFailureError(format!(

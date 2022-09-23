@@ -15,7 +15,7 @@ pub enum HwsecError {
     MetricsClientFailureError(String),
     CommandRunnerError,
     SyslogError,
-    FileError(String),
+    FileError,
     SystemTimeError,
     InternalError,
 }
@@ -35,7 +35,7 @@ impl Display for HwsecError {
             }
             HwsecError::CommandRunnerError => write!(f, "CommandRunnerError"),
             HwsecError::SyslogError => write!(f, "SyslogError"),
-            HwsecError::FileError(err_msg) => write!(f, "FileError: {}", err_msg),
+            HwsecError::FileError => write!(f, "FileError"),
             HwsecError::SystemTimeError => write!(f, "SystemTimeError"),
             HwsecError::InternalError => write!(f, "InternalError"),
         }
