@@ -379,6 +379,7 @@ if (use.test) {
       "src/helpers/typec_connector_class_helper_utils.cc",
       "src/log_tool_doc_test.cc",
       "src/log_tool_test.cc",
+      "src/metrics_test.cc",
       "src/perf_tool_test.cc",
       "src/probe_tool_test.cc",
       "src/process_with_id_test.cc",

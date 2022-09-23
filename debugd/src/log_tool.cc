@@ -951,7 +951,7 @@ std::optional<string> LogTool::GetLog(const string& name) {
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {
-  Stopwatch sw("Perf.GetAllLogs", perf_logging_, /*report_to_uma=*/true);
+  Stopwatch sw("Perf.GetAllLogs", perf_logging_, /*report_lap_to_uma=*/false);
   CreateConnectivityReport(false);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -963,7 +963,8 @@ LogTool::LogMap LogTool::GetAllLogs() {
 }
 
 LogTool::LogMap LogTool::GetAllDebugLogs() {
-  Stopwatch sw("Perf.GetAllDebugLogs", perf_logging_, /*report_to_uma=*/true);
+  Stopwatch sw("Perf.GetAllDebugLogs", perf_logging_,
+               /*report_lap_to_uma=*/false);
   CreateConnectivityReport(true);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -992,6 +993,10 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
   return result;
 }
 
+// If subtasks are added, please also update the corresponding metrics that
+// track the duration of each subtasks. Location:
+// tools/metrics/histograms/metadata/chromeos/histograms.xml.
+// name="ChromeOS.Debugd.Perf.GetBigFeedbackLogs.{SubTaskName}".
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username,
                                  PerfTool* perf_tool) {
@@ -1038,7 +1043,7 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
 
   // Create and start the stopwatch used for measuring performance.
   Stopwatch sw("Perf.GetBigFeedbackLogs", perf_logging_,
-               /*report_to_uma=*/true);
+               /*report_lap_to_uma=*/true);
 
   // Execute each subtask in the |subtasks| map and lap the time.
   for (auto& kv : subtasks) {
