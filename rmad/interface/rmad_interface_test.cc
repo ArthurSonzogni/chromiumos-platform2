@@ -21,8 +21,6 @@
 #include <gtest/gtest.h>
 
 #include "rmad/daemon/daemon_callback.h"
-#include "rmad/executor/udev/mock_udev_device.h"
-#include "rmad/executor/udev/mock_udev_utils.h"
 #include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/state_handler/mock_state_handler.h"
 #include "rmad/state_handler/state_handler_manager.h"
@@ -30,6 +28,8 @@
 #include "rmad/system/mock_runtime_probe_client.h"
 #include "rmad/system/mock_shill_client.h"
 #include "rmad/system/mock_tpm_manager_client.h"
+#include "rmad/udev/mock_udev_device.h"
+#include "rmad/udev/mock_udev_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
 

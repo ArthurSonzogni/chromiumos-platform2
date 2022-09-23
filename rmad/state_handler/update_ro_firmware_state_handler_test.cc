@@ -11,12 +11,12 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
-#include "rmad/executor/udev/mock_udev_device.h"
-#include "rmad/executor/udev/mock_udev_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/udev/mock_udev_device.h"
+#include "rmad/udev/mock_udev_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"

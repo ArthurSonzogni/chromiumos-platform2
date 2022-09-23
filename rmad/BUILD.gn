@@ -84,6 +84,7 @@ if (use.test) {
       "metrics:libmetrics_test",
       "state_handler:libstate_handler_test",
       "system:libsystem_test",
+      "udev:libudev_test",
       "utils:libutils_test",
       "//common-mk/testrunner",
     ]

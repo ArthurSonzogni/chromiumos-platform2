@@ -21,7 +21,7 @@ source_set("libexecutor") {
   configs += [ ":target_defaults" ]
   deps = [
     "mojom:executor_mojo_bindings",
-    "udev:libudev",
+    "//rmad/udev:libudev",
   ]
 }
 
@@ -32,9 +32,6 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    deps = [
-      ":libexecutor",
-      "udev:libudev_test",
-    ]
+    deps = [ ":libexecutor" ]
   }
 }

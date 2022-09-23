@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/executor/udev/udev_utils.h"
+#include "rmad/udev/udev_utils.h"
 
 #include <utility>
 
@@ -10,7 +10,7 @@
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
 
-#include "rmad/executor/udev/udev_device.h"
+#include "rmad/udev/udev_device.h"
 
 namespace rmad {
 

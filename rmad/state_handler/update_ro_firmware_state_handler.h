@@ -17,9 +17,9 @@
 #include <base/task/task_runner.h>
 #include <base/timer/timer.h>
 
-#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/power_manager_client.h"
+#include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/flashrom_utils.h"

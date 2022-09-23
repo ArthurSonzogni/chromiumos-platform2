@@ -20,13 +20,13 @@
 
 #include "rmad/constants.h"
 #include "rmad/daemon/daemon_callback.h"
-#include "rmad/executor/udev/udev_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/system/runtime_probe_client.h"
 #include "rmad/system/shill_client.h"
 #include "rmad/system/tpm_manager_client.h"
+#include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/json_store.h"
 

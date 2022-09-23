@@ -15,12 +15,12 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
-#include "rmad/executor/udev/mock_udev_utils.h"
-#include "rmad/executor/udev/udev_device.h"
 #include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/udev/mock_udev_utils.h"
+#include "rmad/udev/udev_device.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_sys_utils.h"
 

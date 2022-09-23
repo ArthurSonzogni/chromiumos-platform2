@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_EXECUTOR_UDEV_MOCK_UDEV_DEVICE_H_
-#define RMAD_EXECUTOR_UDEV_MOCK_UDEV_DEVICE_H_
+#ifndef RMAD_UDEV_MOCK_UDEV_DEVICE_H_
+#define RMAD_UDEV_MOCK_UDEV_DEVICE_H_
 
-#include "rmad/executor/udev/udev_device.h"
+#include "rmad/udev/udev_device.h"
 
 #include <memory>
 #include <string>
@@ -28,4 +28,4 @@ class MockUdevDevice : public UdevDevice {
 
 }  // namespace rmad
 
-#endif  // RMAD_EXECUTOR_UDEV_MOCK_UDEV_DEVICE_H_
+#endif  // RMAD_UDEV_MOCK_UDEV_DEVICE_H_

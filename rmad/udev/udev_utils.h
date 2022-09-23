@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_EXECUTOR_UDEV_UDEV_UTILS_H_
-#define RMAD_EXECUTOR_UDEV_UDEV_UTILS_H_
+#ifndef RMAD_UDEV_UDEV_UTILS_H_
+#define RMAD_UDEV_UDEV_UTILS_H_
 
 #include <memory>
 #include <string>
@@ -44,4 +44,4 @@ class UdevUtilsImpl : public UdevUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_EXECUTOR_UDEV_UDEV_UTILS_H_
+#endif  // RMAD_UDEV_UDEV_UTILS_H_

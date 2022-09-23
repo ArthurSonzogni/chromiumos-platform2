@@ -22,8 +22,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/executor/udev/mock_udev_device.h"
-#include "rmad/executor/udev/mock_udev_utils.h"
+#include "rmad/udev/mock_udev_device.h"
+#include "rmad/udev/mock_udev_utils.h"
 
 using testing::_;
 using testing::NiceMock;

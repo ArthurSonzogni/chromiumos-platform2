@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/executor/udev/udev_utils.h"
+#include "rmad/udev/udev_utils.h"
 
 #include <memory>
 #include <utility>
@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/executor/udev/udev_device.h"
+#include "rmad/udev/udev_device.h"
 
 using testing::_;
 using testing::ByMove;
