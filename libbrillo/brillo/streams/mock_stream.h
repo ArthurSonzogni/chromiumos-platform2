@@ -35,15 +35,14 @@ class MockStream : public Stream {
               ReadAsync,
               (void*,
                size_t,
-               const base::Callback<void(size_t)>&,
-               const ErrorCallback&,
+               base::OnceCallback<void(size_t)>,
+               ErrorOnceCallback,
                ErrorPtr*),
               (override));
-  MOCK_METHOD(
-      bool,
-      ReadAllAsync,
-      (void*, size_t, const base::Closure&, const ErrorCallback&, ErrorPtr*),
-      (override));
+  MOCK_METHOD(bool,
+              ReadAllAsync,
+              (void*, size_t, base::OnceClosure, ErrorOnceCallback, ErrorPtr*),
+              (override));
   MOCK_METHOD(bool,
               ReadNonBlocking,
               (void*, size_t, size_t*, bool*, ErrorPtr*),
@@ -58,18 +57,15 @@ class MockStream : public Stream {
               WriteAsync,
               (const void*,
                size_t,
-               const base::Callback<void(size_t)>&,
-               const ErrorCallback&,
+               base::OnceCallback<void(size_t)>,
+               ErrorOnceCallback,
                ErrorPtr*),
               (override));
-  MOCK_METHOD(bool,
-              WriteAllAsync,
-              (const void*,
-               size_t,
-               const base::Closure&,
-               const ErrorCallback&,
-               ErrorPtr*),
-              (override));
+  MOCK_METHOD(
+      bool,
+      WriteAllAsync,
+      (const void*, size_t, base::OnceClosure, ErrorOnceCallback, ErrorPtr*),
+      (override));
   MOCK_METHOD(bool,
               WriteNonBlocking,
               (const void*, size_t, size_t*, ErrorPtr*),

@@ -287,8 +287,8 @@ TEST_F(FakeStreamTest, ReadAsync) {
   };
 
   EXPECT_TRUE(stream_->ReadAllAsync(
-      buffer.data(), buffer.size(), base::Bind(on_success, &success_count),
-      base::Bind(on_failure, &error_count), nullptr));
+      buffer.data(), buffer.size(), base::BindOnce(on_success, &success_count),
+      base::BindOnce(on_failure, &error_count), nullptr));
   mock_loop_.Run();
   EXPECT_EQ(1, success_count);
   EXPECT_EQ(0, error_count);
@@ -436,8 +436,8 @@ TEST_F(FakeStreamTest, WriteAsync) {
   };
 
   EXPECT_TRUE(stream_->WriteAllAsync(output_data.data(), output_data.size(),
-                                     base::Bind(on_success, &success_count),
-                                     base::Bind(on_failure, &error_count),
+                                     base::BindOnce(on_success, &success_count),
+                                     base::BindOnce(on_failure, &error_count),
                                      nullptr));
   mock_loop_.Run();
   EXPECT_EQ(1, success_count);

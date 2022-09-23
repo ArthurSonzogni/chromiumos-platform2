@@ -126,13 +126,10 @@ TEST(Stream, ReadAsync) {
   size_t read_size = 0;
   bool succeeded = false;
   bool failed = false;
-  auto success_callback = base::Bind(
-      [](size_t* read_size, bool* succeeded, size_t size) {
-        *read_size = size;
-        *succeeded = true;
-      },
-      &read_size, &succeeded);
-  auto error_callback = base::Bind(&SetToTrue, &failed);
+  auto success_callback = [](size_t* read_size, bool* succeeded, size_t size) {
+    *read_size = size;
+    *succeeded = true;
+  };
 
   MockStreamImpl stream_mock;
   base::OnceClosure data_callback;
@@ -148,8 +145,10 @@ TEST(Stream, ReadAsync) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_mock.ReadAsync(buf, sizeof(buf), success_callback,
-                                    error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.ReadAsync(
+      buf, sizeof(buf),
+      base::BindOnce(success_callback, &read_size, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   EXPECT_EQ(0u, read_size);
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
@@ -157,8 +156,10 @@ TEST(Stream, ReadAsync) {
   // Since the previous call is waiting for the data to be available, we can't
   // schedule another read.
   ErrorPtr error;
-  EXPECT_FALSE(stream_mock.ReadAsync(buf, sizeof(buf), success_callback,
-                                     error_callback, &error));
+  EXPECT_FALSE(stream_mock.ReadAsync(
+      buf, sizeof(buf),
+      base::BindOnce(success_callback, &read_size, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), &error));
   EXPECT_EQ(errors::stream::kDomain, error->GetDomain());
   EXPECT_EQ(errors::stream::kOperationNotSupported, error->GetCode());
   EXPECT_EQ("Another asynchronous operation is still pending",
@@ -177,10 +178,9 @@ TEST(Stream, ReadAsync) {
 TEST(Stream, ReadAsync_DontWaitForData) {
   bool succeeded = false;
   bool failed = false;
-  auto success_callback =
-      base::Bind([](bool* succeeded, size_t /* size */) { *succeeded = true; },
-                 &succeeded);
-  auto error_callback = base::Bind(&SetToTrue, &failed);
+  auto success_callback = [](bool* succeeded, size_t /* size */) {
+    *succeeded = true;
+  };
 
   MockStreamImpl stream_mock;
   char buf[10];
@@ -191,8 +191,9 @@ TEST(Stream, ReadAsync_DontWaitForData) {
       .WillOnce(
           DoAll(SetArgPointee<2>(5), SetArgPointee<3>(false), Return(true)));
   EXPECT_CALL(stream_mock, WaitForDataRead(_, _)).Times(0);
-  EXPECT_TRUE(stream_mock.ReadAsync(buf, sizeof(buf), success_callback,
-                                    error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.ReadAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   // Even if ReadNonBlocking() returned some data without waiting, the
   // |success_callback| should not run yet.
   EXPECT_TRUE(fake_loop_.PendingTasks());
@@ -202,8 +203,9 @@ TEST(Stream, ReadAsync_DontWaitForData) {
   // Since the previous callback is still waiting in the main loop, we can't
   // schedule another read yet.
   ErrorPtr error;
-  EXPECT_FALSE(stream_mock.ReadAsync(buf, sizeof(buf), success_callback,
-                                     error_callback, &error));
+  EXPECT_FALSE(stream_mock.ReadAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), &error));
   EXPECT_EQ(errors::stream::kDomain, error->GetDomain());
   EXPECT_EQ(errors::stream::kOperationNotSupported, error->GetCode());
   EXPECT_EQ("Another asynchronous operation is still pending",
@@ -217,9 +219,7 @@ TEST(Stream, ReadAsync_DontWaitForData) {
 TEST(Stream, ReadAllAsync) {
   bool succeeded = false;
   bool failed = false;
-  auto success_callback =
-      base::Bind([](bool* succeeded) { *succeeded = true; }, &succeeded);
-  auto error_callback = base::Bind(&SetToTrue, &failed);
+  auto success_callback = [](bool* succeeded) { *succeeded = true; };
 
   MockStreamImpl stream_mock;
   base::OnceClosure data_callback;
@@ -235,8 +235,9 @@ TEST(Stream, ReadAllAsync) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_mock.ReadAllAsync(buf, sizeof(buf), success_callback,
-                                       error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.ReadAllAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
   testing::Mock::VerifyAndClearExpectations(&stream_mock);
@@ -270,15 +271,12 @@ TEST(Stream, ReadAllAsync) {
 TEST(Stream, ReadAllAsync_EOS) {
   bool succeeded = false;
   bool failed = false;
-  auto success_callback =
-      base::Bind([](bool* succeeded) { *succeeded = true; }, &succeeded);
-  auto error_callback = base::Bind(
-      [](bool* failed, const Error* error) {
-        ASSERT_EQ(errors::stream::kDomain, error->GetDomain());
-        ASSERT_EQ(errors::stream::kPartialData, error->GetCode());
-        *failed = true;
-      },
-      &failed);
+  auto success_callback = [](bool* succeeded) { *succeeded = true; };
+  auto error_callback = [](bool* failed, const Error* error) {
+    ASSERT_EQ(errors::stream::kDomain, error->GetDomain());
+    ASSERT_EQ(errors::stream::kPartialData, error->GetCode());
+    *failed = true;
+  };
 
   MockStreamImpl stream_mock;
   base::OnceClosure data_callback;
@@ -292,8 +290,9 @@ TEST(Stream, ReadAllAsync_EOS) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_mock.ReadAllAsync(buf, sizeof(buf), success_callback,
-                                       error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.ReadAllAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &succeeded),
+      base::BindOnce(error_callback, &failed), nullptr));
 
   // ReadAsyncAll() should finish and fail once ReadNonBlocking() returns an
   // end-of-stream condition.
@@ -382,9 +381,9 @@ TEST(Stream, ReadAllBlocking) {
 TEST(Stream, WriteAsync) {
   size_t write_size = 0;
   bool failed = false;
-  auto success_callback = base::Bind(
-      [](size_t* write_size, size_t size) { *write_size = size; }, &write_size);
-  auto error_callback = base::Bind(&SetToTrue, &failed);
+  auto success_callback = [](size_t* write_size, size_t size) {
+    *write_size = size;
+  };
 
   MockStreamImpl stream_mock;
   InSequence s;
@@ -400,14 +399,16 @@ TEST(Stream, WriteAsync) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_mock.WriteAsync(buf, sizeof(buf), success_callback,
-                                     error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.WriteAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &write_size),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   EXPECT_EQ(0u, write_size);
   EXPECT_FALSE(failed);
 
   ErrorPtr error;
-  EXPECT_FALSE(stream_mock.WriteAsync(buf, sizeof(buf), success_callback,
-                                      error_callback, &error));
+  EXPECT_FALSE(stream_mock.WriteAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &write_size),
+      base::BindOnce(&SetToTrue, &failed), &error));
   EXPECT_EQ(errors::stream::kDomain, error->GetDomain());
   EXPECT_EQ(errors::stream::kOperationNotSupported, error->GetCode());
   EXPECT_EQ("Another asynchronous operation is still pending",
@@ -423,9 +424,7 @@ TEST(Stream, WriteAsync) {
 TEST(Stream, WriteAllAsync) {
   bool succeeded = false;
   bool failed = false;
-  auto success_callback =
-      base::Bind([](bool* succeeded) { *succeeded = true; }, &succeeded);
-  auto error_callback = base::Bind(&SetToTrue, &failed);
+  auto success_callback = [](bool* succeeded) { *succeeded = true; };
 
   MockStreamImpl stream_mock;
   base::OnceClosure data_callback;
@@ -438,8 +437,9 @@ TEST(Stream, WriteAllAsync) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_mock.WriteAllAsync(buf, sizeof(buf), success_callback,
-                                        error_callback, nullptr));
+  EXPECT_TRUE(stream_mock.WriteAllAsync(
+      buf, sizeof(buf), base::BindOnce(success_callback, &succeeded),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   testing::Mock::VerifyAndClearExpectations(&stream_mock);
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);

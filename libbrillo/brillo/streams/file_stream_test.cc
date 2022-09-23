@@ -397,8 +397,8 @@ TEST_F(FileStreamTest, ReadAsync) {
         return true;
       }));
   EXPECT_TRUE(stream_->ReadAsync(test_read_buffer_, 100,
-                                 base::Bind(&SetSizeT, &read_size),
-                                 base::Bind(&SetToTrue, &failed), nullptr));
+                                 base::BindOnce(&SetSizeT, &read_size),
+                                 base::BindOnce(&SetToTrue, &failed), nullptr));
   EXPECT_EQ(0u, read_size);
   EXPECT_FALSE(failed);
 
@@ -531,9 +531,9 @@ TEST_F(FileStreamTest, WriteAsync) {
         data_callback = std::move(cb);
         return true;
       }));
-  EXPECT_TRUE(stream_->WriteAsync(test_write_buffer_, 100,
-                                  base::Bind(&SetSizeT, &write_size),
-                                  base::Bind(&SetToTrue, &failed), nullptr));
+  EXPECT_TRUE(stream_->WriteAsync(
+      test_write_buffer_, 100, base::BindOnce(&SetSizeT, &write_size),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
   EXPECT_EQ(0u, write_size);
   EXPECT_FALSE(failed);
 
@@ -1043,18 +1043,18 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
 
   // Write to the pipe with a bit of delay.
   brillo_loop.PostDelayedTask(FROM_HERE,
-                              base::Bind(write_data_callback, fds[1]),
+                              base::BindOnce(write_data_callback, fds[1]),
                               base::Milliseconds(10));
 
   EXPECT_TRUE(stream->ReadAsync(
-      buffer, 100, base::Bind(success_callback, &succeeded, buffer),
-      base::Bind(&SetToTrue, &failed), nullptr));
+      buffer, 100, base::BindOnce(success_callback, &succeeded, buffer),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
 
   auto end_condition = [](bool* failed, bool* succeeded) {
     return *failed || *succeeded;
   };
   MessageLoopRunUntil(&brillo_loop, base::Seconds(1),
-                      base::Bind(end_condition, &failed, &succeeded));
+                      base::BindRepeating(end_condition, &failed, &succeeded));
 
   EXPECT_TRUE(succeeded);
   EXPECT_FALSE(failed);
@@ -1084,16 +1084,16 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
 
   StreamPtr stream = FileStream::FromFileDescriptor(fds[1], true, nullptr);
 
-  EXPECT_TRUE(
-      stream->WriteAsync(data.data(), data.size(),
-                         base::Bind(success_callback, &succeeded, data, fds[0]),
-                         base::Bind(&SetToTrue, &failed), nullptr));
+  EXPECT_TRUE(stream->WriteAsync(
+      data.data(), data.size(),
+      base::BindOnce(success_callback, &succeeded, data, fds[0]),
+      base::BindOnce(&SetToTrue, &failed), nullptr));
 
   auto end_condition = [](bool* failed, bool* succeeded) {
     return *failed || *succeeded;
   };
   MessageLoopRunUntil(&brillo_loop, base::Seconds(1),
-                      base::Bind(end_condition, &failed, &succeeded));
+                      base::BindRepeating(end_condition, &failed, &succeeded));
 
   EXPECT_TRUE(succeeded);
   EXPECT_FALSE(failed);
