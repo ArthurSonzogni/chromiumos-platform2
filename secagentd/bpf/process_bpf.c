@@ -23,7 +23,7 @@ struct {
   __uint(max_entries, MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
-static inline __attribute__((always_inline)) void fill_ns_info(
+static inline __attribute__((always_inline)) void fill_ns_info_core(
     struct namespace_info* ns_info, const struct task_struct* t) {
   ns_info->pid_ns = BPF_CORE_READ(t, nsproxy, pid_ns_for_children, ns.inum);
   ns_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
@@ -34,17 +34,17 @@ static inline __attribute__((always_inline)) void fill_ns_info(
   ns_info->uts_ns = BPF_CORE_READ(t, nsproxy, uts_ns, ns.inum);
 }
 
-static inline __attribute__((always_inline)) void fill_image_info(
+static inline __attribute__((always_inline)) void fill_image_info_direct(
     struct image_info* image_info,
     const struct linux_binprm* bprm,
     const struct task_struct* t) {
   // Fill in information from bprm's file inode.
-  image_info->inode = BPF_CORE_READ(bprm, file, f_inode, i_ino);
-  image_info->uid = BPF_CORE_READ(bprm, file, f_inode, i_uid.val);
-  image_info->gid = BPF_CORE_READ(bprm, file, f_inode, i_gid.val);
-  image_info->mode = BPF_CORE_READ(bprm, file, f_inode, i_mode);
+  image_info->inode = bprm->file->f_inode->i_ino;
+  image_info->uid = bprm->file->f_inode->i_uid.val;
+  image_info->gid = bprm->file->f_inode->i_gid.val;
+  image_info->mode = bprm->file->f_inode->i_mode;
   // Mimic new_encode_dev() to get stat-like dev_id.
-  dev_t dev = BPF_CORE_READ(bprm, file, f_inode, i_sb, s_dev);
+  dev_t dev = bprm->file->f_inode->i_sb->s_dev;
   unsigned major = dev >> 20;
   unsigned minor = dev & ((1 << 20) - 1);
   image_info->inode_device_id =
@@ -52,20 +52,19 @@ static inline __attribute__((always_inline)) void fill_image_info(
 
   // Fill in pathname from bprm. Interp is the actual binary that executed post
   // symlink and interpreter resolution.
-  const char* interp_start = BPF_CORE_READ(bprm, interp);
   bpf_probe_read_str(image_info->pathname, sizeof(image_info->pathname),
-                     interp_start);
+                     bprm->interp);
 
   // Fill in mnt_ns from the parent context.
-  image_info->mnt_ns = BPF_CORE_READ(t, real_parent, nsproxy, mnt_ns, ns.inum);
+  image_info->mnt_ns = t->real_parent->nsproxy->mnt_ns->ns.inum;
 }
 
 // trace_sched_process_exec is called by exec_binprm shortly after exec. It has
-// the distinct advantage (over arguably more stable and security focussed
+// the distinct advantage (over arguably more stable and security focused
 // interfaces like bprm_committed_creds) of running in the context of the newly
 // created Task. This makes it much easier for us to grab information about this
 // new Task.
-SEC("raw_tp/sched_process_exec")
+SEC("tp_btf/sched_process_exec")
 int BPF_PROG(handle_sched_process_exec,
              struct task_struct* current,
              pid_t old_pid,
@@ -81,11 +80,11 @@ int BPF_PROG(handle_sched_process_exec,
   struct process_start* p = &(event->data.process_event.data.process_start);
 
   // Read various fields from the task_struct in a relocatable way.
-  fill_ns_info(&p->spawn_namespace, current);
-  fill_image_info(&p->image_info, bprm, current);
-  p->ppid = BPF_CORE_READ(current, real_parent, tgid);
-  p->start_time = BPF_CORE_READ(current, start_boottime);
-  p->parent_start_time = BPF_CORE_READ(current, real_parent, start_boottime);
+  fill_ns_info_core(&p->spawn_namespace, current);
+  fill_image_info_direct(&p->image_info, bprm, current);
+  p->ppid = current->real_parent->tgid;
+  p->start_time = current->start_boottime;
+  p->parent_start_time = current->real_parent->start_boottime;
 
   // In this case pid == tgid since this is process creation.
   p->pid = bpf_get_current_pid_tgid() >> 32;
@@ -97,8 +96,8 @@ int BPF_PROG(handle_sched_process_exec,
   p->uid = uid_gid & 0xFFFFFFFF;
 
   // Read argv from user memory.
-  uint64_t arg_start = BPF_CORE_READ(current, mm, arg_start);
-  uint64_t arg_end = BPF_CORE_READ(current, mm, arg_end);
+  uint64_t arg_start = current->mm->arg_start;
+  uint64_t arg_end = current->mm->arg_end;
   p->commandline_len = MIN((arg_end - arg_start), sizeof(p->commandline));
   bpf_probe_read_user(p->commandline, p->commandline_len, arg_start);
   if (p->commandline_len == sizeof(p->commandline)) {
@@ -134,7 +133,7 @@ int BPF_PROG(handle_exit, unsigned long unshare_flags, int rv) {
   event->data.process_event.type = process_change_namespace_type;
   p = &(event->data.process_event.data.process_change_namespace);
 
-  fill_ns_info(&p->new_ns, task);
+  fill_ns_info_core(&p->new_ns, task);
 
   p->start_time = BPF_CORE_READ(task, start_boottime);
   p->pid = bpf_get_current_pid_tgid() >> 32;
