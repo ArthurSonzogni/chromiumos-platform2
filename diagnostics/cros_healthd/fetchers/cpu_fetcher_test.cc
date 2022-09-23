@@ -332,7 +332,7 @@ class CpuFetcherTest : public testing::Test {
     return mock_context_.fake_system_utils();
   }
 
-  mojo_ipc::CpuResultPtr FetchCpuInfo() {
+  mojo_ipc::CpuResultPtr FetchCpuInfoSync() {
     base::RunLoop run_loop;
     mojo_ipc::CpuResultPtr result;
     cpu_fetcher_.Fetch(
@@ -471,8 +471,8 @@ class CpuFetcherTest : public testing::Test {
 };
 
 // Test that CPU info can be read when it exists.
-TEST_F(CpuFetcherTest, TestFetchCpuInfo) {
-  auto cpu_result = FetchCpuInfo();
+TEST_F(CpuFetcherTest, TestFetchCpu) {
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -487,7 +487,7 @@ TEST_F(CpuFetcherTest, NoPhysicalIdCpuinfoFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            kNoPhysicalIdCpuinfoContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -527,7 +527,7 @@ TEST_F(CpuFetcherTest, NoPhysicalIdCpuinfoFile) {
 TEST_F(CpuFetcherTest, MissingCpuinfoFile) {
   ASSERT_TRUE(base::DeleteFile(GetProcCpuInfoPath(root_dir())));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -540,7 +540,7 @@ TEST_F(CpuFetcherTest, HardwareDescriptionCpuinfoFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            cpu_info_contents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -555,7 +555,7 @@ TEST_F(CpuFetcherTest, NoModelNameCpuinfoFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            kNoModelNameCpuinfoContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -569,7 +569,7 @@ TEST_F(CpuFetcherTest, NoCpuFlagsCpuinfoFile) {
       GetProcCpuInfoPath(root_dir()),
       "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\n\n"));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -584,7 +584,7 @@ TEST_F(CpuFetcherTest, ValidX86CpuFlagsCpuinfoFile) {
 
   std::vector<std::string> expected{"f1", "f2", "f3"};
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -600,7 +600,7 @@ TEST_F(CpuFetcherTest, ValidArmCpuFlagsCpuinfoFile) {
 
   std::vector<std::string> expected{"f1", "f2", "f3"};
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -615,7 +615,7 @@ TEST_F(CpuFetcherTest, ModelNameFromSoCID) {
       root_dir().Append(kRelativeSoCDevicesDir).Append("soc0").Append("soc_id"),
       kSoCIDContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -637,7 +637,7 @@ TEST_F(CpuFetcherTest, ModelNameFromCompatibleString) {
                               'e', 'k', ',', '8',  '1', '9', '2', '\0'};
   EXPECT_TRUE(base::WriteFile(compatible_file, data));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -651,7 +651,7 @@ TEST_F(CpuFetcherTest, ModelNameFromCompatibleString) {
 TEST_F(CpuFetcherTest, MissingStatFile) {
   ASSERT_TRUE(base::DeleteFile(GetProcStatPath(root_dir())));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -662,7 +662,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedStatFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(root_dir()),
                                            kBadStatContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -674,7 +674,7 @@ TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(root_dir()),
                                            kMissingLogicalCpuStatContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -685,7 +685,7 @@ TEST_F(CpuFetcherTest, MissingPresentFile) {
   ASSERT_TRUE(base::DeleteFile(
       root_dir().Append(kRelativeCpuDir).Append(kPresentFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -697,7 +697,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
       root_dir().Append(kRelativeCpuDir).Append(kPresentFileName),
       kBadPresentContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -709,7 +709,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kCpuinfoMaxFreqFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -722,7 +722,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
           .Append(kCpuinfoMaxFreqFileName),
       kNonIntegralFileContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -734,7 +734,7 @@ TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kScalingMaxFreqFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -747,7 +747,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
           .Append(kScalingMaxFreqFileName),
       kNonIntegralFileContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -759,7 +759,7 @@ TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kScalingCurFreqFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -772,7 +772,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
           .Append(kScalingCurFreqFileName),
       kNonIntegralFileContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -785,7 +785,7 @@ TEST_F(CpuFetcherTest, MissingCStateNameFile) {
                            .Append(kFirstCStateDir)
                            .Append(kCStateNameFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -798,7 +798,7 @@ TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
                            .Append(kFirstCStateDir)
                            .Append(kCStateTimeFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -812,7 +812,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
           .Append(kCStateTimeFileName),
       kNonIntegralFileContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -822,7 +822,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
 TEST_F(CpuFetcherTest, MissingCryptoFile) {
   ASSERT_TRUE(base::DeleteFile(GetProcCryptoPath(root_dir())));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -835,7 +835,7 @@ TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
                            .AppendASCII(kFirstFakeCpuTemperatureDir)
                            .AppendASCII(kFirstFakeCpuTemperatureLabelFile)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -867,7 +867,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
           .AppendASCII(kFirstFakeCpuTemperatureInputFile),
       kNonIntegralFileContents));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -890,7 +890,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
 TEST_F(CpuFetcherTest, UnameFailure) {
   fake_system_utils()->SetUnameResponse(-1, std::nullopt);
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   EXPECT_EQ(cpu_result->get_cpu_info()->architecture,
@@ -911,7 +911,7 @@ TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
       mojo_ipc::VulnerabilityInfo::Status::kMitigation,
       "Mitigation: Fake Mitigation Effect");
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   ASSERT_TRUE(cpu_info->vulnerabilities.has_value());
@@ -947,7 +947,7 @@ TEST_F(CpuFetcherTest, ParseVulnerabilityMessageForStatus) {
 
 // Test that we handle missing kvm file.
 TEST_F(CpuFetcherTest, MissingKvmFile) {
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -959,7 +959,7 @@ TEST_F(CpuFetcherTest, ExistingKvmFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       root_dir().Append(kRelativeKvmFilePath), ""));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -973,7 +973,7 @@ TEST_F(CpuFetcherTest, MissingSmtActiveFile) {
                                    .Append(kSmtDirName)
                                    .Append(kSmtActiveFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -986,7 +986,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTActiveFile) {
                                                .Append(kSmtDirName)
                                                .Append(kSmtActiveFileName),
                                            "1000"));
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -1000,7 +1000,7 @@ TEST_F(CpuFetcherTest, ActiveSMTActiveFile) {
                                                .Append(kSmtActiveFileName),
                                            "1"));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -1015,7 +1015,7 @@ TEST_F(CpuFetcherTest, InactiveSMTActiveFile) {
                                                .Append(kSmtActiveFileName),
                                            "0"));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
@@ -1029,7 +1029,7 @@ TEST_F(CpuFetcherTest, MissingSmtControlFile) {
                                    .Append(kSmtDirName)
                                    .Append(kSmtControlFileName)));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
@@ -1043,7 +1043,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTControlFile) {
                                                .Append(kSmtControlFileName),
                                            "WRONG"));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
@@ -1078,7 +1078,7 @@ TEST_P(ParseSmtControlTest, ParseSmtControl) {
                                                .Append(kSmtControlFileName),
                                            params().smt_control_content));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   EXPECT_EQ(cpu_result->get_cpu_info()->virtualization->smt_control,
@@ -1123,7 +1123,7 @@ class ParseCpuArchitectureTest
 TEST_P(ParseCpuArchitectureTest, ParseUnameResponse) {
   fake_system_utils()->SetUnameResponse(0, params().uname_machine);
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   EXPECT_EQ(cpu_result->get_cpu_info()->architecture,
@@ -1149,7 +1149,7 @@ TEST_F(CpuFetcherTest, NoVirtualizationEnabled) {
       GetProcCpuInfoPath(root_dir()),
       "processor\t: 0\nmodel name\t: model\nflags\t: \n\n"));
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
@@ -1179,7 +1179,7 @@ TEST_F(CpuFetcherTest, TestVmxVirtualizationFlags) {
     // uses logical ID instead of physical ID.
     SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 12, std::get<0>(msr_test));
 
-    auto cpu_result = FetchCpuInfo();
+    auto cpu_result = FetchCpuInfoSync();
 
     ASSERT_TRUE(cpu_result->is_cpu_info());
     ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
@@ -1217,7 +1217,7 @@ TEST_F(CpuFetcherTest, TestSvmVirtualizationFlags) {
     // uses logical ID instead of physical ID.
     SetReadMsrResponse(cpu_msr::kVmCr, 12, std::get<0>(msr_test));
 
-    auto cpu_result = FetchCpuInfo();
+    auto cpu_result = FetchCpuInfoSync();
 
     ASSERT_TRUE(cpu_result->is_cpu_info());
     ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
@@ -1247,7 +1247,7 @@ TEST_F(CpuFetcherTest, TestMultipleCpuVirtualization) {
   SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 0, 0);
   SetReadMsrResponse(cpu_msr::kVmCr, 12, 0);
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
@@ -1267,7 +1267,7 @@ TEST_F(CpuFetcherTest, TestParseCpuFlags) {
   // Set the mock executor response for ReadMsr calls.
   SetReadMsrResponse(cpu_msr::kIA32FeatureControl, 0, 0);
 
-  auto cpu_result = FetchCpuInfo();
+  auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags,
