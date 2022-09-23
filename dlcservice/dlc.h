@@ -22,7 +22,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/ref_count.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
@@ -98,13 +97,8 @@ class DlcBase {
                              brillo::ErrorPtr* err);
 
   // Uninstalls the DLC.
-  bool Uninstall(brillo::ErrorPtr* err);
-
   // Deletes all files associated with the DLC.
-  bool Purge(brillo::ErrorPtr* err);
-
-  // Returns true if the DLC has to be removed/purged.
-  bool ShouldPurge();
+  bool Uninstall(brillo::ErrorPtr* err);
 
   // Is called when the DLC image is finally installed on the disk and is
   // verified.
@@ -218,10 +212,6 @@ class DlcBase {
   base::FilePath prefs_package_path_;
   base::FilePath preloaded_image_path_;
   base::FilePath factory_install_image_path_;
-
-  // The object that keeps track of ref counts. NOTE: Do NOT access this object
-  // directly. Use |GetRefCount()| instead.
-  std::unique_ptr<RefCountInterface> ref_count_;
 };
 
 }  // namespace dlcservice

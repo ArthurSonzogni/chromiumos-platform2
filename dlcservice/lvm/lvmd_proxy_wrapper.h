@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/ref_counted.h>
 #include <lvmd/proto_bindings/lvmd.pb.h>
 #include <lvmd/dbus-proxies.h>
 

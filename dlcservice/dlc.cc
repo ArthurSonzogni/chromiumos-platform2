@@ -64,7 +64,6 @@ bool DlcBase::Initialize() {
                                     package_, kDlcImageFileName);
   factory_install_image_path_ = JoinPaths(system_state->factory_install_dir(),
                                           id_, package_, kDlcImageFileName);
-  ref_count_ = RefCountInterface::Create(prefs_path_, manifest_);
 
   state_.set_state(DlcState::NOT_INSTALLED);
   state_.set_id(id_);
@@ -573,9 +572,6 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
       return false;
   }
 
-  // Increase the ref count.
-  ref_count_->InstalledDlc();
-
   // Now that we are sure the image is installed, we can go ahead and set it as
   // active. Failure to set the metadata flags should not fail the install.
   SetActiveValue(true);
@@ -701,6 +697,18 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
 }
 
 bool DlcBase::Uninstall(ErrorPtr* err) {
+  // If the DLC is not verified, its not being updated, so there is no danger
+  // purging it.
+  auto ue_operation =
+      SystemState::Get()->update_engine_status().current_operation();
+  bool ue_is_busy = ue_operation != update_engine::IDLE &&
+                    ue_operation != update_engine::UPDATED_NEED_REBOOT;
+  if (IsVerified() && ue_is_busy) {
+    *err = Error::Create(FROM_HERE, kErrorBusy,
+                         "Install or update is in progress.");
+    return false;
+  }
+
   // Whatever state the DLC was in, disable the reserve.
   SetReserve(false);
   switch (state_.state()) {
@@ -710,8 +718,8 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       LOG(WARNING) << "Trying to uninstall not installed DLC=" << id_;
       [[fallthrough]];
     case DlcState::INSTALLED: {
-      ref_count_->UninstalledDlc();
       ErrorPtr tmp_err;
+      // Even if unmount fails continue in trying to delete the images.
       Unmount(&tmp_err);
       ChangeState(DlcState::NOT_INSTALLED);
       break;
@@ -730,33 +738,8 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       return false;
   }
 
-  return true;
-}
-
-bool DlcBase::Purge(ErrorPtr* err) {
-  // If the DLC is not verified, its not being updated, so there is no danger
-  // purging it.
-  auto ue_operation =
-      SystemState::Get()->update_engine_status().current_operation();
-  bool ue_is_busy = ue_operation != update_engine::IDLE &&
-                    ue_operation != update_engine::UPDATED_NEED_REBOOT;
-  if (IsVerified() && ue_is_busy) {
-    *err = Error::Create(FROM_HERE, kErrorBusy,
-                         "Install or update is in progress.");
-    return false;
-  }
-
-  if (!Uninstall(err))
-    return false;
-
   SetActiveValue(false);
   return DeleteInternal(err);
-}
-
-bool DlcBase::ShouldPurge() {
-  // We can only automatically purge a DLC that is not installed.
-  return state_.state() == DlcState::NOT_INSTALLED &&
-         ref_count_->ShouldPurgeDlc();
 }
 
 void DlcBase::SetActiveValue(bool active) {

@@ -73,10 +73,6 @@ BaseTest::BaseTest() {
       std::make_unique<StrictMock<UpdateEngineProxyMock>>();
   mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
 
-  mock_session_manager_proxy_ =
-      std::make_unique<StrictMock<SessionManagerProxyMock>>();
-  mock_session_manager_proxy_ptr_ = mock_session_manager_proxy_.get();
-
   mock_boot_slot_ = std::make_unique<MockBootSlot>();
   mock_boot_slot_ptr_ = mock_boot_slot_.get();
 }
@@ -98,11 +94,10 @@ void BaseTest::SetUp() {
       std::move(mock_lvmd_proxy_wrapper_),
 #endif  // USE_LVM_STATEFUL_PARTITION
       std::move(mock_image_loader_proxy_), std::move(mock_update_engine_proxy_),
-      std::move(mock_session_manager_proxy_), &mock_state_change_reporter_,
-      std::move(mock_boot_slot_), std::move(mock_metrics),
-      std::move(mock_system_properties), manifest_path_,
-      preloaded_content_path_, factory_install_path_, content_path_,
-      prefs_path_, users_path_, verification_file_path_, &clock_,
+      &mock_state_change_reporter_, std::move(mock_boot_slot_),
+      std::move(mock_metrics), std::move(mock_system_properties),
+      manifest_path_, preloaded_content_path_, factory_install_path_,
+      content_path_, prefs_path_, users_path_, verification_file_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 }

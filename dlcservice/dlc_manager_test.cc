@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include "dlcservice/proto_utils.h"
-#include "dlcservice/ref_count.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
 
@@ -164,46 +163,6 @@ TEST_F(DlcManagerTest, UnsupportedPreloadedDlcRemovalCheck) {
   EXPECT_TRUE(base::PathExists(JoinPaths(preloaded_content_path_, id)));
   dlc_manager_->Initialize();
   EXPECT_FALSE(base::PathExists(JoinPaths(preloaded_content_path_, id)));
-}
-
-TEST_F(DlcManagerTest, CleanupDanglingDlcs) {
-  // The the clock to the system time so it doesn't start with 0;
-  clock_.SetNow(base::Time::Now());
-
-  dlc_manager_->Initialize();
-  Install(kFirstDlc);
-
-  // Make sure the ref count is not deleted.
-  auto ref_count_path = JoinPaths(SystemState::Get()->dlc_prefs_dir(),
-                                  kFirstDlc, kRefCountFileName);
-  EXPECT_TRUE(base::PathExists(ref_count_path));
-  Uninstall(kFirstDlc);
-  EXPECT_TRUE(base::PathExists(ref_count_path));
-
-  // Advance the time so the |kFirstDlc| becomes dangling.
-  clock_.Advance(base::Days(6));
-
-  // Reinitialize the |dlc_manager_| so it initializes the |kFirstDlc| again.
-  dlc_manager_->Initialize();
-  // Install another DLC to make sure cleanup dangling doesn't remove them.
-  Install(kSecondDlc);
-
-  // These should happen when the |kFirstDlc| is purged.
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
-
-  // Advance by 31 minutes so it kicks in the cleanup method.
-  clock_.Advance(base::Days(31));
-  loop_.RunOnce(false);
-
-  // |kFirstDLC| should be gone by now.
-  EXPECT_FALSE(base::PathExists(ref_count_path));
-  // |kSecondDlc| should still be around.
-  CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
 
 }  // namespace dlcservice

@@ -62,10 +62,6 @@ class DlcServiceTest : public BaseTest {
                 DoWaitForServiceToBeAvailable(_))
         .Times(1);
 
-    EXPECT_CALL(*mock_session_manager_proxy_ptr_,
-                DoRegisterSessionStateChangedSignalHandler(_, _))
-        .Times(1);
-
     dlc_service_ = std::make_unique<DlcService>();
     dlc_service_->Initialize();
   }
@@ -160,15 +156,16 @@ TEST_F(DlcServiceTest, GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
   EXPECT_THAT(dlcs_after, ElementsAre(kFirstDlc));
 }
 
+// TODO(kimjae): Deprecate DLC used by indicators.
 TEST_F(DlcServiceTest, UninstallTestForUserDlc) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  // Uninstall should not set the DLC inactive.
+  // Uninstall should set the DLC inactive.
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValue(false, kFirstDlc, _, _))
-      .Times(0);
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
@@ -177,34 +174,18 @@ TEST_F(DlcServiceTest, UninstallTestForUserDlc) {
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, &err_));
   EXPECT_TRUE(err_.get() == nullptr);
-  // Uninstall should not delete the DLC right away.
-  EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
-  EXPECT_TRUE(base::PathExists(dlc_prefs_path));
-  CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
-  // Uninstall should not change the verified status.
-  EXPECT_TRUE(dlc_service_->GetDlc(kFirstDlc, &err_)->IsVerified());
-}
-
-TEST_F(DlcServiceTest, PurgeTest) {
-  Install(kFirstDlc);
-
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
-
-  auto dlc_prefs_path = prefs_path_.Append("dlc").Append(kFirstDlc);
-  EXPECT_TRUE(base::PathExists(dlc_prefs_path));
-
-  EXPECT_TRUE(dlc_service_->Purge(kFirstDlc, &err_));
+  // Uninstall should delete the DLC right away.
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
   EXPECT_FALSE(base::PathExists(dlc_prefs_path));
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
+  // Uninstall should change the verified status.
+  EXPECT_FALSE(dlc_service_->GetDlc(kFirstDlc, &err_)->IsVerified());
 }
 
 TEST_F(DlcServiceTest, UninstallNotInstalledIsValid) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(false, kSecondDlc, _, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -215,19 +196,7 @@ TEST_F(DlcServiceTest, UninstallNotInstalledIsValid) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED);
 }
 
-TEST_F(DlcServiceTest, PurgeNotInstalledIsValid) {
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kSecondDlc, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
-
-  EXPECT_TRUE(dlc_service_->Purge(kSecondDlc, &err_));
-  CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED);
-}
-
-TEST_F(DlcServiceTest, PurgeFailToSetDlcActiveValueFalse) {
+TEST_F(DlcServiceTest, UninstallFailToSetDlcActiveValueFalse) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
@@ -236,8 +205,9 @@ TEST_F(DlcServiceTest, PurgeFailToSetDlcActiveValueFalse) {
               SetDlcActiveValue(false, kFirstDlc, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
+  EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
-  EXPECT_TRUE(dlc_service_->Purge(kFirstDlc, &err_));
+  EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, &err_));
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
 }
@@ -251,16 +221,13 @@ TEST_F(DlcServiceTest, UninstallInvalidDlcTest) {
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
 }
 
-TEST_F(DlcServiceTest, PurgeInvalidDlcTest) {
-  const auto& id = "invalid-dlc-id";
-  EXPECT_FALSE(dlc_service_->Purge(id, &err_));
-  EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
-}
-
 TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
   Install(kFirstDlc);
 
   // |ImageLoader| not available.
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(false, kFirstDlc, _, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -268,22 +235,23 @@ TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
 
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, &err_));
   EXPECT_TRUE(err_.get() == nullptr);
-  EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, PurgeUpdateEngineBusyFailureTest) {
+TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
   Install(kFirstDlc);
 
   StatusResult status_result;
   status_result.set_current_operation(Operation::CHECKING_FOR_UPDATE);
   SystemState::Get()->set_update_engine_status(status_result);
+  EXPECT_CALL(*mock_metrics_,
+              SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
 
-  EXPECT_FALSE(dlc_service_->Purge(kFirstDlc, &err_));
+  EXPECT_FALSE(dlc_service_->Uninstall(kFirstDlc, &err_));
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
-// Same behavior should be for purge.
 TEST_F(DlcServiceTest, UninstallInstallingFails) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _, _))
       .WillOnce(Return(true));
@@ -295,18 +263,6 @@ TEST_F(DlcServiceTest, UninstallInstallingFails) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   EXPECT_FALSE(dlc_service_->Uninstall(kSecondDlc, &err_));
-  EXPECT_EQ(err_->GetCode(), kErrorBusy);
-}
-
-TEST_F(DlcServiceTest, PurgeInstallingFails) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
-
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
-  CheckDlcState(kSecondDlc, DlcState::INSTALLING);
-
-  EXPECT_FALSE(dlc_service_->Purge(kSecondDlc, &err_));
   EXPECT_EQ(err_->GetCode(), kErrorBusy);
 }
 
@@ -325,6 +281,9 @@ TEST_F(DlcServiceTest, UninstallInstallingButInstalledFails) {
 
   // |kFirstDlc| was installed, so there should be no problem uninstalling it
   // |even if |kSecondDlc| is installing.
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(false, kFirstDlc, _, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, &err_));
   EXPECT_TRUE(err_.get() == nullptr);
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);

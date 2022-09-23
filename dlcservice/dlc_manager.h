@@ -37,7 +37,6 @@ class DlcManagerInterface {
                              const brillo::ErrorPtr& err_in,
                              brillo::ErrorPtr* err) = 0;
   virtual bool Uninstall(const DlcId& id, brillo::ErrorPtr* err) = 0;
-  virtual bool Purge(const DlcId& id, brillo::ErrorPtr* err) = 0;
   virtual void ChangeProgress(double progress) = 0;
 };
 
@@ -128,7 +127,6 @@ class DlcManager : public DlcManagerInterface {
   //   successfully uninstalled, however uninstalling a DLC that's not supported
   //   is a failure. Uninstalling a DLC that is installing is also a failure.
   bool Uninstall(const DlcId& id, brillo::ErrorPtr* err) override;
-  bool Purge(const DlcId& id, brillo::ErrorPtr* err) override;
 
   // Changes the progress on all DLCs being installed to |progress|.
   void ChangeProgress(double progress) override;

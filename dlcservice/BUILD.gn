@@ -14,7 +14,6 @@ group("all") {
     ":dlcverify",
     ":libdlcservice",
     ":libdlcservice_utils",
-    ":ref_count-proto",
   ]
   if (use.test) {
     deps += [ ":dlcservice_tests" ]
@@ -36,7 +35,6 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libimageloader-client",
     "libmetrics",
-    "libsession_manager-client",
     "libimageloader-manifest",
     "libupdate_engine-client",
 
@@ -69,13 +67,6 @@ generate_dbus_adaptors("dlcservice_adaptors") {
   sources = [ "dbus_adaptors/org.chromium.DlcServiceInterface.xml" ]
 }
 
-# Protobufs.
-proto_library("ref_count-proto") {
-  proto_in_dir = "."
-  proto_out_dir = "include/dlcservice"
-  sources = [ "ref_count.proto" ]
-}
-
 # DLC utils related files.
 static_library("libdlcservice_utils") {
   sources = [
@@ -85,7 +76,6 @@ static_library("libdlcservice_utils") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":ref_count-proto" ]
 }
 
 # DLC verify related files.
@@ -105,7 +95,6 @@ static_library("libdlcservice") {
     "error.cc",
     "metrics.cc",
     "prefs.cc",
-    "ref_count.cc",
     "system_properties.cc",
     "system_state.cc",
   ]
@@ -114,7 +103,6 @@ static_library("libdlcservice") {
   deps = [
     ":dlcservice_adaptors",
     ":libdlcservice_utils",
-    ":ref_count-proto",
   ]
   if (use.lvm_stateful_partition) {
     sources += [
@@ -156,7 +144,6 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libimageloader-client-test",
-      "libsession_manager-client-test",
       "libupdate_engine-client-test",
     ]
     if (use.lvm_stateful_partition) {
@@ -175,7 +162,6 @@ if (use.test) {
       "error_test.cc",
       "metrics_test.cc",
       "prefs_test.cc",
-      "ref_count_test.cc",
       "system_state_test.cc",
       "test_utils.cc",
       "unique_queue_test.cc",

@@ -52,10 +52,6 @@ class MockDlcManager : public DlcManager {
               Uninstall,
               (const DlcId& id, brillo::ErrorPtr* err),
               (override));
-  MOCK_METHOD(bool,
-              Purge,
-              (const DlcId& id, brillo::ErrorPtr* err),
-              (override));
   MOCK_METHOD(void, ChangeProgress, (double progress), (override));
 };
 

@@ -785,30 +785,6 @@ TEST_F(DlcBaseTest, ChangeProgress) {
   dlc.ChangeProgress(0.5);
 }
 
-TEST_F(DlcBaseTest, InstallIncreasesRefCount) {
-  DlcBase dlc(kFirstDlc);
-  dlc.Initialize();
-
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(_, kFirstDlc, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
-  EXPECT_CALL(*mock_metrics_,
-              SendInstallResult(InstallResult::kSuccessNewInstall));
-
-  EXPECT_TRUE(dlc.Install(&err_));
-  InstallWithUpdateEngine({kFirstDlc});
-  dlc.InstallCompleted(&err_);
-  dlc.FinishInstall(/*installed_by_ue=*/true, &err_);
-
-  EXPECT_TRUE(dlc.IsInstalled());
-  auto ref_count_file = JoinPaths(SystemState::Get()->dlc_prefs_dir(),
-                                  kFirstDlc, kRefCountFileName);
-  EXPECT_TRUE(base::PathExists(ref_count_file));
-}
-
 TEST_F(DlcBaseTest, MountFileCreated) {
   // |kFirstDlc| has 'mount-file-required' as true in the manifest.
   DlcBase dlc(kFirstDlc);
@@ -875,33 +851,6 @@ TEST_F(DlcBaseTest, MountFileRequiredDeletionOnUninstall) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_TRUE(dlc.Uninstall(&err_));
-  EXPECT_FALSE(
-      Prefs(JoinPaths(SystemState::Get()->dlc_prefs_dir(), kFirstDlc, kPackage))
-          .Exists(kDlcRootMount));
-}
-
-TEST_F(DlcBaseTest, MountFileRequiredDeletionOnPurge) {
-  DlcBase dlc(kFirstDlc);
-  SetUpDlcWithSlots(kFirstDlc);
-  InstallWithUpdateEngine({kFirstDlc});
-  dlc.Initialize();
-
-  // Process |Install()|.
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(_, kFirstDlc, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
-  EXPECT_CALL(*mock_metrics_,
-              SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
-  EXPECT_TRUE(dlc.Install(&err_));
-
-  // Process |Purge()| + check.
-  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_TRUE(dlc.Purge(&err_));
   EXPECT_FALSE(
       Prefs(JoinPaths(SystemState::Get()->dlc_prefs_dir(), kFirstDlc, kPackage))
           .Exists(kDlcRootMount));
@@ -976,19 +925,19 @@ TEST_F(DlcBaseTest, UnReservedInstall) {
       dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
 }
 
-TEST_F(DlcBaseTest, ReserveValueClearsAfterPurge) {
+TEST_F(DlcBaseTest, ReserveValueClearsAfterUninstall) {
   DlcBase dlc(kFirstDlc);
   dlc.Initialize();
   dlc.SetReserve(true);
 
-  // Purge the DLC.
+  // Uninstall the DLC.
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValue(_, kFirstDlc, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_TRUE(dlc.Purge(&err_));
+  EXPECT_TRUE(dlc.Uninstall(&err_));
 
   EXPECT_FALSE(dlc.SetReserve(std::nullopt));
 }

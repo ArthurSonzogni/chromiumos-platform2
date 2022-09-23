@@ -67,11 +67,6 @@ void DlcManager::Initialize() {
   }
 
   CleanupUnsupportedDlcs();
-
-  // Post cleaning up dangling Dlcs for after the user has worked on the device
-  // for a bit in case they install one of the dangling DLCs.
-  constexpr base::TimeDelta kTimeout = base::Minutes(30);
-  PostCleanupDanglingDlcs(kTimeout);
 }
 
 void DlcManager::CleanupUnsupportedDlcs() {
@@ -107,33 +102,6 @@ void DlcManager::CleanupUnsupportedDlcs() {
       LOG(INFO) << "Deleted path=" << path
                 << " for unsupported/preload not allowed DLC=" << id;
   }
-}
-
-void DlcManager::CleanupDanglingDlcs() {
-  LOG(INFO) << "Going to clean up dangling DLCs.";
-  for (auto& pair : supported_) {
-    auto& dlc = pair.second;
-    if (dlc->ShouldPurge()) {
-      LOG(INFO) << "DLC=" << dlc->GetId() << " should be removed because it is "
-                << "dangling.";
-      brillo::ErrorPtr error;
-      if (!dlc->Purge(&error)) {
-        LOG(ERROR) << "Failed to delete dangling DLC=" << dlc->GetId();
-      }
-    }
-  }
-
-  // Post another one to happen in a day in case they never shutdown their
-  // devices.
-  constexpr base::TimeDelta kTimeout = base::Days(1);
-  PostCleanupDanglingDlcs(kTimeout);
-}
-
-void DlcManager::PostCleanupDanglingDlcs(const base::TimeDelta& timeout) {
-  cleanup_dangling_task_id_ = MessageLoop::current()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&DlcManager::CleanupDanglingDlcs, base::Unretained(this)),
-      timeout);
 }
 
 DlcBase* DlcManager::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
@@ -244,15 +212,6 @@ bool DlcManager::Uninstall(const DlcId& id, ErrorPtr* err) {
     return false;
   }
   return dlc->Uninstall(err);
-}
-
-bool DlcManager::Purge(const DlcId& id, ErrorPtr* err) {
-  DCHECK(err);
-  auto* dlc = GetDlc(id, err);
-  if (dlc == nullptr) {
-    return false;
-  }
-  return dlc->Purge(err);
 }
 
 bool DlcManager::FinishInstall(const DlcId& id, ErrorPtr* err) {

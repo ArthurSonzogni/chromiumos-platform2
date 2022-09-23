@@ -23,7 +23,6 @@
 // NOLINTNEXTLINE(build/include_alpha)
 #include <lvmd/dbus-proxy-mocks.h>
 #endif  // USE_LVM_STATEFUL_PARTITION
-#include <session_manager/dbus-proxy-mocks.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 // NOLINTNEXTLINE(build/include_alpha)
 #include <update_engine/dbus-proxy-mocks.h>
@@ -115,11 +114,6 @@ class BaseTest : public testing::Test {
   using UpdateEngineProxyMock = org::chromium::UpdateEngineInterfaceProxyMock;
   std::unique_ptr<UpdateEngineProxyMock> mock_update_engine_proxy_;
   UpdateEngineProxyMock* mock_update_engine_proxy_ptr_;
-
-  using SessionManagerProxyMock =
-      org::chromium::SessionManagerInterfaceProxyMock;
-  std::unique_ptr<SessionManagerProxyMock> mock_session_manager_proxy_;
-  SessionManagerProxyMock* mock_session_manager_proxy_ptr_;
 
   std::unique_ptr<MockBootSlot> mock_boot_slot_;
   MockBootSlot* mock_boot_slot_ptr_;

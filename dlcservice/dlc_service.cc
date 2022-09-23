@@ -21,7 +21,6 @@
 
 #include "dlcservice/dlc.h"
 #include "dlcservice/error.h"
-#include "dlcservice/ref_count.h"
 #include "dlcservice/utils.h"
 
 using base::Callback;
@@ -71,12 +70,6 @@ void DlcService::Initialize() {
   // In the meantime, early installation requests will fail.
   update_engine->GetObjectProxy()->WaitForServiceToBeAvailable(
       base::BindOnce(&DlcService::OnWaitForUpdateEngineServiceToBeAvailable,
-                     weak_ptr_factory_.GetWeakPtr()));
-
-  system_state->session_manager()->RegisterSessionStateChangedSignalHandler(
-      base::BindRepeating(&DlcService::OnSessionStateChangedSignal,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DlcService::OnSessionStateChangedSignalConnected,
                      weak_ptr_factory_.GetWeakPtr()));
 
   dlc_manager_->Initialize();
@@ -190,10 +183,6 @@ bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
     Error::ConvertToDbusError(err);
 
   return result;
-}
-
-bool DlcService::Purge(const string& id, brillo::ErrorPtr* err) {
-  return dlc_manager_->Purge(id, err);
 }
 
 const DlcBase* DlcService::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
@@ -360,18 +349,6 @@ void DlcService::OnStatusUpdateAdvancedSignalConnected(
   if (!success) {
     LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";
   }
-}
-
-void DlcService::OnSessionStateChangedSignalConnected(
-    const string& interface_name, const string& signal_name, bool success) {
-  if (!success) {
-    LOG(ERROR) << "Failed to connect to session_manager's SessionStateChanged "
-               << "signal.";
-  }
-}
-
-void DlcService::OnSessionStateChangedSignal(const std::string& state) {
-  UserRefCount::SessionChanged(state);
 }
 
 }  // namespace dlcservice

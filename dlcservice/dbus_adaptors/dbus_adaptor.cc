@@ -49,8 +49,9 @@ bool DBusService::Uninstall(brillo::ErrorPtr* err, const string& id_in) {
   return dlc_service_->Uninstall(id_in, err);
 }
 
+// Purge is the same as Uninstall.
 bool DBusService::Purge(brillo::ErrorPtr* err, const string& id_in) {
-  return dlc_service_->Purge(id_in, err);
+  return dlc_service_->Uninstall(id_in, err);
 }
 
 bool DBusService::GetInstalled(brillo::ErrorPtr* err, vector<string>* ids_out) {

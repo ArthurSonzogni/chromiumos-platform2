@@ -37,7 +37,6 @@ class DlcServiceInterface {
   virtual bool Install(const InstallRequest& install_request,
                        brillo::ErrorPtr* err) = 0;
   virtual bool Uninstall(const std::string& id, brillo::ErrorPtr* err) = 0;
-  virtual bool Purge(const std::string& id, brillo::ErrorPtr* err) = 0;
   virtual const DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
   virtual DlcIdList GetInstalled() = 0;
   virtual DlcIdList GetExistingDlcs() = 0;
@@ -61,7 +60,6 @@ class DlcService : public DlcServiceInterface {
   bool Install(const InstallRequest& install_request,
                brillo::ErrorPtr* err) override;
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
-  bool Purge(const std::string& id, brillo::ErrorPtr* err) override;
   DlcIdList GetInstalled() override;
   DlcIdList GetExistingDlcs() override;
   const DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
@@ -136,15 +134,6 @@ class DlcService : public DlcServiceInterface {
 
   // Called on when update_engine service becomes available.
   void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
-
-  // Called when we are connected to the session_manager's |SessionStateChanged|
-  // signal.
-  void OnSessionStateChangedSignalConnected(const std::string& interface_name,
-                                            const std::string& signal_name,
-                                            bool success);
-
-  // Called when the session state changes (user logs in or logs out).
-  void OnSessionStateChangedSignal(const std::string& state);
 
   // Holds the DLC that is being installed by update_engine.
   std::optional<DlcId> installing_dlc_id_;
