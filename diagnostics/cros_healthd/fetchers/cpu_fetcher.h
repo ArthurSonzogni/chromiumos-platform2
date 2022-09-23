@@ -78,17 +78,21 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 chromeos::cros_healthd::mojom::VulnerabilityInfo::Status
 GetVulnerabilityStatusFromMessage(const std::string& message);
 
+using FetchCpuInfoCallback =
+    base::OnceCallback<void(chromeos::cros_healthd::mojom::CpuResultPtr)>;
+
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.
-class CpuFetcher final
-    : public AsyncFetcherInterface<chromeos::cros_healthd::mojom::CpuResult> {
+class CpuFetcher {
  public:
-  using AsyncFetcherInterface::AsyncFetcherInterface;
+  explicit CpuFetcher(Context* context);
+  CpuFetcher(const CpuFetcher&) = delete;
+  CpuFetcher& operator=(const CpuFetcher&) = delete;
+  ~CpuFetcher();
+
+  static void Fetch(Context* context, FetchCpuInfoCallback callback);
 
  private:
-  // AsyncFetcherInterface override
-  void FetchImpl(ResultCallback callback) override;
-
   // Read and parse physical cpus and store into |physical_cpus|. Returns true
   // on success and false otherwise.
   bool FetchPhysicalCpus();
@@ -120,7 +124,8 @@ class CpuFetcher final
 
   // Calls |callback_| and passes the result. If |all_callback_called| or
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
-  void HandleCallbackComplete(bool all_callback_called);
+  void HandleCallbackComplete(FetchCpuInfoCallback callback,
+                              bool is_all_callback_called);
 
   // Callback function to handle ReadMsr() call reading vmx registers.
   void HandleVmxReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
@@ -136,8 +141,8 @@ class CpuFetcher final
   void LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
                       const std::string& message);
 
-  // Stores the callback received from FetchImpl.
-  ResultCallback callback_;
+  // Stores the context received from Fetch.
+  Context* const context_;
   // Stores the error that will be returned. HandleCallbackComplete will report
   // error if this is set.
   chromeos::cros_healthd::mojom::ProbeErrorPtr error_;
@@ -150,6 +155,11 @@ class CpuFetcher final
   // Must be the last member of the class.
   base::WeakPtrFactory<CpuFetcher> weak_factory_{this};
 };
+
+// Fetches cpu info and pass the result to the callback. Returns either a
+// structure with the cpu information or the error that occurred fetching the
+// information.
+void FetchCpuInfo(Context* context, FetchCpuInfoCallback callback);
 
 }  // namespace diagnostics
 

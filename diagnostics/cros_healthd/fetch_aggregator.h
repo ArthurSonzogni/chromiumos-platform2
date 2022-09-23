@@ -53,7 +53,6 @@ class FetchAggregator final {
   BatteryFetcher battery_fetcher_;
   BluetoothFetcher bluetooth_fetcher_;
   BootPerformanceFetcher boot_performance_fetcher_;
-  AsyncFetcher<CpuFetcher> cpu_fetcher_;
   DiskFetcher disk_fetcher_;
   DisplayFetcher display_fetcher_;
   FanFetcher fan_fetcher_;

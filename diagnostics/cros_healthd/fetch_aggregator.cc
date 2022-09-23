@@ -44,7 +44,6 @@ FetchAggregator::FetchAggregator(Context* context)
       battery_fetcher_(context),
       bluetooth_fetcher_(context),
       boot_performance_fetcher_(context),
-      cpu_fetcher_(context),
       disk_fetcher_(context),
       display_fetcher_(context),
       fan_fetcher_(context),
@@ -88,7 +87,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kCpu: {
-        cpu_fetcher_.Fetch(CreateFetchCallback(&barrier, &info->cpu_result));
+        FetchCpuInfo(context_,
+                     CreateFetchCallback(&barrier, &info->cpu_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices: {

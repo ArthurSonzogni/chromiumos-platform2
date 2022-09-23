@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -384,6 +385,11 @@ void GetArmSoCModelName(const base::FilePath& root_dir,
   ParseCompatibleString(root_dir, model_name);
 }
 }  // namespace
+
+CpuFetcher::CpuFetcher(Context* context)
+    : context_(context), cpu_info_(mojo_ipc::CpuInfo::New()) {}
+
+CpuFetcher::~CpuFetcher() = default;
 
 bool CpuFetcher::FetchNumTotalThreads() {
   base::FilePath root_dir = context_->root_dir();
@@ -829,18 +835,16 @@ void CpuFetcher::HandleVmxReadMsr(uint32_t physical_id,
       val->value & kIA32FeatureLocked;
 }
 
-void CpuFetcher::HandleCallbackComplete(bool all_callback_called) {
-  if (!all_callback_called) {
+void CpuFetcher::HandleCallbackComplete(FetchCpuInfoCallback callback,
+                                        bool is_all_callback_called) {
+  if (!is_all_callback_called) {
     LogAndSetError(mojo_ipc::ErrorType::kServiceUnavailable,
                    "Not all Fetch Cpu Virtualization Callbacks "
                    "have been sucessfully called");
   }
-  if (!error_.is_null()) {
-    std::move(callback_).Run(mojo_ipc::CpuResult::NewError(std::move(error_)));
-    return;
-  }
-  std::move(callback_).Run(
-      mojo_ipc::CpuResult::NewCpuInfo(std::move(cpu_info_)));
+  std::move(callback).Run(
+      error_ ? mojo_ipc::CpuResult::NewError(std::move(error_))
+             : mojo_ipc::CpuResult::NewCpuInfo(std::move(cpu_info_)));
 }
 
 void CpuFetcher::LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
@@ -850,28 +854,31 @@ void CpuFetcher::LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
     error_ = chromeos::cros_healthd::mojom::ProbeError::New(type, message);
 }
 
-void CpuFetcher::FetchImpl(ResultCallback callback) {
-  callback_ = std::move(callback);
+void CpuFetcher::Fetch(Context* context, FetchCpuInfoCallback callback) {
+  auto cpu_fetcher = std::make_unique<CpuFetcher>(context);
+  CpuFetcher* cpu_fetcher_ptr = cpu_fetcher.get();
 
   CallbackBarrier barrier{base::BindOnce(&CpuFetcher::HandleCallbackComplete,
-                                         weak_factory_.GetWeakPtr(),
-                                         /*all_callback_called=*/true),
-                          base::BindOnce(&CpuFetcher::HandleCallbackComplete,
-                                         weak_factory_.GetWeakPtr(),
-                                         /*all_callback_called=*/false)};
+                                         std::move(cpu_fetcher),
+                                         std::move(callback))};
 
-  cpu_info_ = chromeos::cros_healthd::mojom::CpuInfo::New();
-
-  if (!FetchNumTotalThreads() || !FetchArchitecture() ||
-      !FetchKeylockerInfo() || !FetchCpuTemperatures() ||
-      !FetchVirtualization() || !FetchVulnerabilities() ||
-      !FetchPhysicalCpus()) {
-    DCHECK(!error_.is_null());
+  if (!cpu_fetcher_ptr->FetchNumTotalThreads() ||
+      !cpu_fetcher_ptr->FetchArchitecture() ||
+      !cpu_fetcher_ptr->FetchKeylockerInfo() ||
+      !cpu_fetcher_ptr->FetchCpuTemperatures() ||
+      !cpu_fetcher_ptr->FetchVirtualization() ||
+      !cpu_fetcher_ptr->FetchVulnerabilities() ||
+      !cpu_fetcher_ptr->FetchPhysicalCpus()) {
+    DCHECK(!cpu_fetcher_ptr->error_.is_null());
     return;
   }
 
-  FetchPhysicalCpusVirtualizationInfo(barrier);
+  cpu_fetcher_ptr->FetchPhysicalCpusVirtualizationInfo(barrier);
   return;
+}
+
+void FetchCpuInfo(Context* context, FetchCpuInfoCallback callback) {
+  CpuFetcher::Fetch(context, std::move(callback));
 }
 
 }  // namespace diagnostics

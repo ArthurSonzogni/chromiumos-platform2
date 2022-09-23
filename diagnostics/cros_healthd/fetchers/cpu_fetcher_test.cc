@@ -335,11 +335,11 @@ class CpuFetcherTest : public testing::Test {
   mojo_ipc::CpuResultPtr FetchCpuInfoSync() {
     base::RunLoop run_loop;
     mojo_ipc::CpuResultPtr result;
-    cpu_fetcher_.Fetch(
-        base::BindLambdaForTesting([&](mojo_ipc::CpuResultPtr response) {
-          result = std::move(response);
-          run_loop.Quit();
-        }));
+    FetchCpuInfo(&mock_context_, base::BindLambdaForTesting(
+                                     [&](mojo_ipc::CpuResultPtr response) {
+                                       result = std::move(response);
+                                       run_loop.Quit();
+                                     }));
     run_loop.Run();
     return result;
   }
@@ -456,7 +456,6 @@ class CpuFetcherTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  AsyncFetcher<CpuFetcher> cpu_fetcher_{&mock_context_};
   // Records the next C-state file to be written.
   std::map<int, int> c_states_written = {
       {kFirstLogicalId, 0}, {kSecondLogicalId, 0}, {kThirdLogicalId, 0}};
