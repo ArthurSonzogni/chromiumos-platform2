@@ -5,6 +5,7 @@ authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 [dependencies]
+ascii = "1.0.0"
 chunked_transfer = "1"
 getopts = "0.2.18"
 httparse = "1.3.4"
