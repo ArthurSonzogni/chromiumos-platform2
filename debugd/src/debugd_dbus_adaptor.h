@@ -118,6 +118,9 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::map<std::string, std::string> GetAllLogs() override;
   void GetBigFeedbackLogs(const base::ScopedFD& fd,
                           const std::string& username) override;
+  void GetFeedbackLogsV2(const base::ScopedFD& fd,
+                         const std::string& username,
+                         const std::vector<int32_t>& requested_logs) override;
 
   void BackupArcBugReport(const std::string& username) override;
   void DeleteArcBugReportBackup(const std::string& username) override;

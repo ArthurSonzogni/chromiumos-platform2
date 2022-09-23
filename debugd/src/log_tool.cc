@@ -23,6 +23,7 @@
 #include <base/base64.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -106,6 +107,17 @@ class ArcBugReportLog : public LogTool::Log {
   virtual ~ArcBugReportLog() = default;
 };
 
+// LogSource stores the information about each log source that
+// can be added to |FuncMap| to create tasks to collect logs.
+struct LogSource {
+  // The type of the log.
+  FeedbackLogType log_type;
+  // The name of the function that collects the logs.
+  std::string func_name;
+  // The callback that collects the logs.
+  base::OnceCallback<void()> func_callback;
+};
+
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
 // * add a row to http://go/cros-feedback-audit and fill it out
 // * email cros-feedback-app@
@@ -148,29 +160,15 @@ const std::array kCommandLogs {
     "/opt/google/touch/scripts/atmel_tools.sh ts d", kRoot, kRoot},
   Log{kCommand, "atmel_ts_refs",
     "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
-  Log{kFile, "atrus_logs", "/var/log/atrus.log"},
   Log{kCommand, "audit_log", "/usr/libexec/debugd/helpers/audit_log_filter",
     kRoot, kDebugfsGroup},
-  Log{kFile, "authpolicy", "/var/log/authpolicy.log"},
-  Log{kFile, "bio_crypto_init.LATEST",
-    "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
-  Log{kFile, "bio_crypto_init.PREVIOUS",
-    "/var/log/bio_crypto_init/bio_crypto_init.PREVIOUS"},
-  Log{kFile, "bio_fw_updater.LATEST", "/var/log/biod/bio_fw_updater.LATEST"},
-  Log{kFile, "bio_fw_updater.PREVIOUS",
-    "/var/log/biod/bio_fw_updater.PREVIOUS"},
-  Log{kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
-  Log{kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
-  Log{kFile, "bios_info", "/var/log/bios_info.txt"},
   Log{kCommand, "bios_log", "cat /sys/firmware/log "
     "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"},
   Log{kCommand, "bios_stacked_times", "cbmem -S", kRoot, kRoot},
-  Log{kFile, "bios_times", "/var/log/bios_times.txt"},
   // Slow or non-responsive block devices could cause this command to stall. Use
   // a timeout to prevent this command from blocking log fetching. This command
   // is expected to take O(100ms) in the normal case.
   Log{kCommand, "blkid", "timeout -s KILL 5s /sbin/blkid", kRoot, kRoot},
-  Log{kFile, "bluetooth.log", "/var/log/bluetooth.log"},
   Log{kCommand, "bootstat_summary", "/usr/bin/bootstat_summary",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
@@ -181,12 +179,7 @@ const std::array kCommandLogs {
   Log{kFile, "buddyinfo", "/proc/buddyinfo"},
   Log{kCommand, "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot,
     kRoot},
-  Log{kFile, "cheets_log", "/var/log/arc.log"},
-  Log{kFile, "chrome_system_log", "/var/log/chrome/chrome"},
-  Log{kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"},
   Log{kCommand, "chromeos-pgmem", "/usr/bin/chromeos-pgmem", kRoot, kRoot},
-  Log{kFile, "clobber-state.log", "/var/log/clobber-state.log"},
-  Log{kFile, "clobber.log", "/var/log/clobber.log"},
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
@@ -194,12 +187,6 @@ const std::array kCommandLogs {
     SandboxedProcess::kDefaultUser, kPstoreAccessGroup },
   Log{kFile, "cpuinfo", "/proc/cpuinfo"},
   Log{kFile, "cr50_version", "/var/cache/cr50-version"},
-  Log{kFile, "cros_ec.log", "/var/log/cros_ec.log",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  Log{kFile, "cros_ec.previous", "/var/log/cros_ec.previous",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   Log{kFile, "cros_ec_panicinfo", "/sys/kernel/debug/cros_ec/panicinfo",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kBase64},
@@ -209,26 +196,8 @@ const std::array kCommandLogs {
       // stderr output just tells us it failed
       "ectool usbpd \"${port}\" 2>/dev/null || break; "
     "done", kRoot, kRoot},
-  Log{kFile, "cros_fp.log", "/var/log/cros_fp.log",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  Log{kFile, "cros_fp.previous", "/var/log/cros_fp.previous",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   Log{kCommand, "cros_fp_panicinfo", "ectool --name=cros_fp panicinfo",
     kRoot, kRoot},
-  Log{kFile, "cros_ish.log", "/var/log/cros_ish.log",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  Log{kFile, "cros_ish.previous", "/var/log/cros_ish.previous",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  Log{kFile, "cros_scp.log", "/var/log/cros_scp.log",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    64 * 1024, LogTool::Encoding::kUtf8},
-  Log{kFile, "cros_scp.previous", "/var/log/cros_scp.previous",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    64 * 1024, LogTool::Encoding::kUtf8},
   Log{kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
     kRoot, kRoot},
   Log{kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
@@ -243,9 +212,6 @@ const std::array kCommandLogs {
   Log{kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log.1"
     " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log'", kRoot, kRoot},
-  Log{kGlob, "display-debug", "/var/log/display_debug/*",
-    kRoot, kRoot,
-    4 * 1024 * 1024, LogTool::Encoding::kUtf8},
   // dmesg: add full timestamps to dmesg to match other logs.
   // 'dmesg' needs CAP_SYSLOG.
   Log{kCommand, "dmesg", "TZ=UTC /bin/dmesg --raw --time-format iso",
@@ -263,14 +229,12 @@ const std::array kCommandLogs {
   Log{kFile, "drm_trace_legacy", "/sys/kernel/debug/dri/trace",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kUtf8},
-  Log{kFile, "ec_info", "/var/log/ec_info.txt"},
   Log{kCommand, "edid-decode",
     "for f in /sys/class/drm/card?-*/edid; do "
       "echo \"----------- ${f}\"; "
       // edid-decode's stderr output is redundant, so silence it.
       "edid-decode --skip-hex-dump \"${f}\" 2>/dev/null; "
     "done"},
-  Log{kFile, "eventlog", "/var/log/eventlog.txt"},
   Log{kCommand, "folder_size_dump",
     "/usr/libexec/debugd/helpers/folder_size_dump --system",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
@@ -280,12 +244,10 @@ const std::array kCommandLogs {
   Log{kCommand, "fwupd_state",
     "/usr/bin/fwupdmgr get-devices --json | sed '/\"Serial\" :/d'",
     kRoot, kRoot},
-  Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
   Log{kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
   Log{kCommand, "hostname", "/bin/hostname"},
-  Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
   Log{kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
@@ -318,8 +280,6 @@ const std::array kCommandLogs {
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB */, LogTool::Encoding::kUtf8, true},
   Log{kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  Log{kGlob, "memd clips", "/var/log/memd/memd.clip*"},
-  Log{kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
   Log{kFile, "meminfo", "/proc/meminfo"},
   Log{kCommand, "memory_spd_info",
     // mosys may use 'i2c-dev', which may not be loaded yet.
@@ -329,12 +289,7 @@ const std::array kCommandLogs {
     "(modetest; modetest -M evdi; modetest -M udl) | "
     "/usr/libexec/debugd/helpers/modetest_helper",
     kRoot, kRoot},
-  Log{kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
   Log{kFile, "mountinfo", "/proc/1/mountinfo"},
-  Log{kCommand, "netlog",
-    "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   Log{kFile, "nvmap_iovmm", "/sys/kernel/debug/nvmap/iovmm/allocations",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot},
@@ -352,10 +307,6 @@ const std::array kCommandLogs {
     "/run/chromeos-config/v1/identity/whitelabel-tag"},
   Log{kCommand, "power_supply_info", "/usr/bin/power_supply_info"},
   Log{kCommand, "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data"},
-  Log{kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"},
-  Log{kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
-  Log{kFile, "powerd.out", "/var/log/powerd.out"},
-  Log{kFile, "powerwash_count", "/var/log/powerwash_count"},
   Log{kCommand, "ps", "/bin/ps auxZ"},
   Log{kCommand, "pvs", "pvs --all --readonly --reportformat json -o pv_all",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
@@ -366,18 +317,14 @@ const std::array kCommandLogs {
   Log{kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
   Log{kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
   Log{kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
-  Log{kFile, "storage_info", "/var/log/storage_info.txt"},
   Log{kCommand, "swap_info", "/usr/share/cros/init/swap.sh status 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  Log{kCommand, "syslog",
-    "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"},
   Log{kCommand, "system_log_stats",
     "echo 'BLOCK_SIZE=1024'; "
     "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
     kRoot, kRoot},
   Log{kCommand, "threads",
     "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"},
-  Log{kFile, "tlsdate", "/var/log/tlsdate.log"},
   Log{kCommand, "top memory",
     "/usr/bin/top -o \"+%MEM\" -w128 -bcn 1 | head -n 57"},
   Log{kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
@@ -386,32 +333,20 @@ const std::array kCommandLogs {
     " -e 'synaptics: Touchpad model'"
     " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
     " /var/log/messages | tail -n 20"},
-  Log{kCommand, "tpm-firmware-updater",
-    "/usr/share/userfeedback/scripts/getmsgs "
-    "/var/log/tpm-firmware-updater.log"},
   Log{kCommand, "tpm_version", "/usr/bin/tpm_manager_client get_version_info"},
   // Type-C data from the type-c connector class, VID/PIDs are obfuscated.
   Log{kCommand, "typec_connector_class",
     "/usr/libexec/debugd/helpers/typec_connector_class_helper"},
   // typecd logs average around 56K. VID/PIDs are obfuscated from the printed
   // PD identity information.
-  Log{kFile, "typecd", "/var/log/typecd.log"},
-  Log{kFile, "ui_log", "/var/log/ui/ui.LATEST"},
   Log{kCommand, "uname", "/bin/uname -a"},
   Log{kCommand, "update_engine.log",
     "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
     " s.^./var/log/update_engine/.)"},
-  Log{kFile, "upstart", "/var/log/upstart.log"},
   Log{kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"},
   Log{kCommand, "usb4 devices",
     "/usr/libexec/debugd/helpers/usb4_devinfo_helper", kRoot, kDebugfsGroup},
-  Log{kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
-  Log{kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
-  Log{kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"},
-  Log{kFile, "vmlog.LATEST", "/var/log/vmlog/vmlog.LATEST"},
-  Log{kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
   Log{kFile, "vmstat", "/proc/vmstat"},
-  Log{kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
   Log{kFile, "wakeup_sources", "/sys/kernel/debug/wakeup_sources",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kUtf8},
@@ -492,7 +427,6 @@ const std::array kExtraLogs {
 // (Eventually we'll have a better process, but for now please do this.)
 // clang-format off
 const std::array kFeedbackLogs {
-  Log{kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
   Log{kFile, "amd_pmc_idlemask", "/sys/kernel/debug/amd_pmc/amd_pmc_idlemask",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "amd_s0ix_stats", "/sys/kernel/debug/amd_pmc/s0ix_stats",
@@ -547,6 +481,98 @@ const std::array kFeedbackLogs {
     " --priority=err --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
   Log{kCommand, "wifi_status",
       "/usr/bin/network_diag --wifi-internal --no-log --anonymize"},
+};
+// clang-format on
+
+// The log files reside under /var/log/. Logs will be obtained by reading the
+// complete files in this list without extracting specific information. Other
+// lists (e.g. |kCommandLogs|) may still read /var/log files to search for
+// specific information.
+//
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-feedback-app@
+// (Eventually we'll have a better process, but for now please do this.)
+// clang-format off
+const std::array kVarLogFileLogs {
+  Log{kFile, "atrus_logs", "/var/log/atrus.log"},
+  Log{kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
+  Log{kFile, "authpolicy", "/var/log/authpolicy.log"},
+  Log{kFile, "bio_crypto_init.LATEST",
+    "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
+  Log{kFile, "bio_crypto_init.PREVIOUS",
+    "/var/log/bio_crypto_init/bio_crypto_init.PREVIOUS"},
+  Log{kFile, "bio_fw_updater.LATEST", "/var/log/biod/bio_fw_updater.LATEST"},
+  Log{kFile, "bio_fw_updater.PREVIOUS",
+    "/var/log/biod/bio_fw_updater.PREVIOUS"},
+  Log{kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
+  Log{kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
+  Log{kFile, "bios_info", "/var/log/bios_info.txt"},
+  Log{kFile, "bios_times", "/var/log/bios_times.txt"},
+  Log{kFile, "bluetooth.log", "/var/log/bluetooth.log"},
+  Log{kFile, "cheets_log", "/var/log/arc.log"},
+  Log{kFile, "chrome_system_log", "/var/log/chrome/chrome"},
+  Log{kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"},
+  Log{kFile, "clobber-state.log", "/var/log/clobber-state.log"},
+  Log{kFile, "clobber.log", "/var/log/clobber.log"},
+  Log{kFile, "cros_ec.log", "/var/log/cros_ec.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_ec.previous", "/var/log/cros_ec.previous",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_fp.log", "/var/log/cros_fp.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_fp.previous", "/var/log/cros_fp.previous",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_ish.log", "/var/log/cros_ish.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_ish.previous", "/var/log/cros_ish.previous",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_scp.log", "/var/log/cros_scp.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    64 * 1024, LogTool::Encoding::kUtf8},
+  Log{kFile, "cros_scp.previous", "/var/log/cros_scp.previous",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    64 * 1024, LogTool::Encoding::kUtf8},
+  Log{kGlob, "display-debug", "/var/log/display_debug/*",
+    kRoot, kRoot,
+    4 * 1024 * 1024, LogTool::Encoding::kUtf8},
+  Log{kFile, "ec_info", "/var/log/ec_info.txt"},
+  Log{kFile, "eventlog", "/var/log/eventlog.txt"},
+  Log{kFile, "hammerd", "/var/log/hammerd.log"},
+  Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
+  Log{kGlob, "memd clips", "/var/log/memd/memd.clip*"},
+  Log{kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
+  Log{kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
+  Log{kCommand, "netlog",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  Log{kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"},
+  Log{kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
+  Log{kFile, "powerd.out", "/var/log/powerd.out"},
+  Log{kFile, "powerwash_count", "/var/log/powerwash_count"},
+  Log{kFile, "storage_info", "/var/log/storage_info.txt"},
+  Log{kCommand, "syslog",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"},
+  Log{kFile, "tlsdate", "/var/log/tlsdate.log"},
+  Log{kCommand, "tpm-firmware-updater",
+    "/usr/share/userfeedback/scripts/getmsgs "
+    "/var/log/tpm-firmware-updater.log"},
+  Log{kFile, "typecd", "/var/log/typecd.log"},
+  Log{kFile, "ui_log", "/var/log/ui/ui.LATEST"},
+  Log{kFile, "upstart", "/var/log/upstart.log"},
+  Log{kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
+  Log{kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
+  Log{kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"},
+  Log{kFile, "vmlog.LATEST", "/var/log/vmlog/vmlog.LATEST"},
+  Log{kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
+  Log{kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
 };
 // clang-format on
 
@@ -941,6 +967,7 @@ void LogTool::CreateConnectivityReport(bool wait_for_results) {
 std::optional<string> LogTool::GetLog(const string& name) {
   string result;
   if (GetNamedLogFrom(name, kCommandLogs, &result) ||
+      GetNamedLogFrom(name, kVarLogFileLogs, &result) ||
       GetNamedLogFrom(name, kCommandLogsShort, &result) ||
       GetNamedLogFrom(name, kExtraLogs, &result) ||
       GetNamedLogFrom(name, kFeedbackLogs, &result) ||
@@ -956,6 +983,7 @@ LogTool::LogMap LogTool::GetAllLogs() {
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
   GetLogsFrom(kCommandLogs, &result);
+  GetLogsFrom(kVarLogFileLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
   GetLsbReleaseInfo(&result);
   GetOsReleaseInfo(&result);
@@ -969,6 +997,7 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
   GetLogsFrom(kCommandLogs, &result);
+  GetLogsFrom(kVarLogFileLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
   result[arc_bug_report_log_->GetName()] = GetArcBugReport("", nullptr);
   GetLsbReleaseInfo(&result);
@@ -989,6 +1018,7 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
   std::vector<std::vector<std::string>> result;
   result.push_back(GetTitlesFrom(kCommandLogsShort));
   result.push_back(GetTitlesFrom(kCommandLogs));
+  result.push_back(GetTitlesFrom(kVarLogFileLogs));
   result.push_back(GetTitlesFrom(kExtraLogs));
   return result;
 }
@@ -999,47 +1029,61 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
 // name="ChromeOS.Debugd.Perf.GetBigFeedbackLogs.{SubTaskName}".
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username,
-                                 PerfTool* perf_tool) {
+                                 PerfTool* perf_tool,
+                                 const std::vector<int32_t>& requested_logs) {
   LogMap results;
   base::Value::Dict dictionary;
   // Maps each subtask to a callable, which performs that task when invoked.
   // Should not contain ordered tasks, as the invocation order is not preserved.
   FuncMap subtasks;
-  subtasks.emplace(std::make_pair(
-      "GetArcBugReport",
-      base::BindOnce(&LogTool::GetArcBugReportInDictionary,
-                     base::Unretained(this), username, &dictionary)));
-  subtasks.emplace(
-      std::make_pair("CreateConnectivityReport",
-                     base::BindOnce(&LogTool::CreateConnectivityReport,
-                                    base::Unretained(this), true)));
-  subtasks.emplace(std::make_pair("kCommandLogsVerbose",
-                                  base::BindOnce(
-                                      [](base::Value::Dict* dictionary) {
-                                        GetLogsInDictionary(kCommandLogsVerbose,
-                                                            dictionary);
-                                      },
-                                      &dictionary)));
-  subtasks.emplace(std::make_pair(
-      "kCommandLogs", base::BindOnce(
-                          [](base::Value::Dict* dictionary) {
-                            GetLogsInDictionary(kCommandLogs, dictionary);
-                          },
-                          &dictionary)));
-  subtasks.emplace(std::make_pair(
-      "kFeedbackLogs", base::BindOnce(
-                           [](base::Value::Dict* dictionary) {
-                             GetLogsInDictionary(kFeedbackLogs, dictionary);
-                           },
-                           &dictionary)));
-  subtasks.emplace(
-      std::make_pair("GetBluetoothBqr", base::BindOnce(&GetBluetoothBqr)));
-  subtasks.emplace(std::make_pair(
-      "GetLsbReleaseInfo", base::BindOnce(&GetLsbReleaseInfo, &results)));
-  subtasks.emplace(std::make_pair(
-      "GetPerfData", base::BindOnce(&GetPerfData, &results, perf_tool)));
-  subtasks.emplace(std::make_pair("GetOsReleaseInfo",
-                                  base::BindOnce(&GetOsReleaseInfo, &results)));
+
+  // TODO(vapier): Once we adopt C++20, we can switch to std::to_array.
+  std::array log_sources = {
+      LogSource{FeedbackLogType::ARC_BUG_REPORT, "GetArcBugReport",
+                base::BindOnce(&LogTool::GetArcBugReportInDictionary,
+                               base::Unretained(this), username, &dictionary)},
+      LogSource{FeedbackLogType::CONNECTIVITY_REPORT,
+                "CreateConnectivityReport",
+                base::BindOnce(&LogTool::CreateConnectivityReport,
+                               base::Unretained(this), true)},
+      LogSource{FeedbackLogType::VERBOSE_COMMAND_LOGS, "kCommandLogsVerbose",
+                base::BindOnce(
+                    [](base::Value::Dict* dictionary) {
+                      GetLogsInDictionary(kCommandLogsVerbose, dictionary);
+                    },
+                    &dictionary)},
+      LogSource{FeedbackLogType::COMMAND_LOGS, "kCommandLogs",
+                base::BindOnce(
+                    [](base::Value::Dict* dictionary) {
+                      GetLogsInDictionary(kCommandLogs, dictionary);
+                    },
+                    &dictionary)},
+      LogSource{FeedbackLogType::FEEDBACK_LOGS, "kFeedbackLogs",
+                base::BindOnce(
+                    [](base::Value::Dict* dictionary) {
+                      GetLogsInDictionary(kFeedbackLogs, dictionary);
+                    },
+                    &dictionary)},
+      LogSource{FeedbackLogType::BLUETOOTH_BQR, "GetBluetoothBqr",
+                base::BindOnce(&GetBluetoothBqr)},
+      LogSource{FeedbackLogType::LSB_RELEASE_INFO, "GetLsbReleaseInfo",
+                base::BindOnce(&GetLsbReleaseInfo, &results)},
+      LogSource{FeedbackLogType::PERF_DATA, "GetPerfData",
+                base::BindOnce(&GetPerfData, &results, perf_tool)},
+      LogSource{FeedbackLogType::OS_RELEASE_INFO, "GetOsReleaseInfo",
+                base::BindOnce(&GetOsReleaseInfo, &results)},
+      LogSource{FeedbackLogType::VAR_LOG_FILES, "kVarLogFileLogs",
+                base::BindOnce(
+                    [](base::Value::Dict* dictionary) {
+                      GetLogsInDictionary(kVarLogFileLogs, dictionary);
+                    },
+                    &dictionary)},
+  };
+
+  for (auto& [log_type, func_name, func_callback] : log_sources) {
+    if (requested_logs.empty() || base::Contains(requested_logs, log_type))
+      subtasks.emplace(std::make_pair(func_name, std::move(func_callback)));
+  }
 
   // Create and start the stopwatch used for measuring performance.
   Stopwatch sw("Perf.GetBigFeedbackLogs", perf_logging_,

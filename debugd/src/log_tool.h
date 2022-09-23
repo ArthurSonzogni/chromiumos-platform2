@@ -110,7 +110,8 @@ class LogTool : public debugd::LogProvider {
   LogMap GetAllDebugLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd,
                           const std::string& username,
-                          PerfTool* perf_tool);
+                          PerfTool* perf_tool,
+                          const std::vector<int32_t>& requested_logs);
   void BackupArcBugReport(const std::string& username);
   void DeleteArcBugReportBackup(const std::string& username);
 
