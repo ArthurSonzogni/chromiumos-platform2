@@ -120,3 +120,5 @@ sched_getattr: 1
 fstatfs64: 1
 fstatfs: 1
 sched_getaffinity: 1
+sched_getparam: 1
+sched_yield: 1
