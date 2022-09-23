@@ -168,6 +168,7 @@ rt_sigreturn: 1
 sched_getaffinity: 1
 sched_getattr: 1
 sched_setaffinity: 1
+sched_setattr: 1
 sched_setscheduler: 1
 sched_yield: 1
 select: 1
@@ -183,6 +184,7 @@ shmat: 1
 shmctl: 1
 shmdt: 1
 shmget: 1
+shutdown: 1
 signalfd4: 1
 # Use hex value 0xF to substitute the constant: NETLINK_KOBJECT_UEVENT
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK && arg2 == 0xF
