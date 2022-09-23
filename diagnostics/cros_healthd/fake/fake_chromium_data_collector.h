@@ -42,6 +42,8 @@ class FakeChromiumDataCollector
   // `ash::cros_healthd::internal::mojom::ChromiumDataCollector` overrides.
   void GetTouchscreenDevices(GetTouchscreenDevicesCallback callback) override;
   void GetTouchpadLibraryName(GetTouchpadLibraryNameCallback callback) override;
+  void SetPrivacyScreenState(bool state,
+                             SetPrivacyScreenStateCallback callback) override;
 
   // Mojo receiver for binding pipe.
   mojo::Receiver<ash::cros_healthd::internal::mojom::ChromiumDataCollector>

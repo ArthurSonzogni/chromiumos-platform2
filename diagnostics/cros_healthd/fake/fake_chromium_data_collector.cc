@@ -29,4 +29,10 @@ void FakeChromiumDataCollector::GetTouchpadLibraryName(
   std::move(callback).Run(touchpad_library_name_);
 }
 
+void FakeChromiumDataCollector::SetPrivacyScreenState(
+    bool state, SetPrivacyScreenStateCallback callback) {
+  // Assumed browser accepts the request.
+  std::move(callback).Run(true);
+}
+
 }  // namespace diagnostics
