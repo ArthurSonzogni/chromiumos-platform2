@@ -16,6 +16,7 @@
 
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/technology.h"
 
@@ -54,23 +55,44 @@ std::ostream& operator<<(std::ostream& stream,
   return stream << BandToString(band);
 }
 
+bool StoreToConfigBool(const StoreInterface* storage,
+                       const std::string& storage_id,
+                       KeyValueStore* config,
+                       const std::string& name) {
+  bool bool_val;
+  if (!storage->GetBool(storage_id, name, &bool_val))
+    return false;
+
+  config->Set<bool>(name, bool_val);
+  return true;
+}
+bool StoreToConfigString(const StoreInterface* storage,
+                         const std::string& storage_id,
+                         KeyValueStore* config,
+                         const std::string& name) {
+  std::string string_val;
+  if (!storage->GetString(storage_id, name, &string_val))
+    return false;
+
+  config->Set<std::string>(name, string_val);
+  return true;
+}
+
 }  // namespace
 
 TetheringManager::TetheringManager(Manager* manager)
     : manager_(manager),
       allowed_(false),
-      state_(TetheringState::kTetheringIdle),
-      auto_disable_(true),
-      mar_(true),
-      band_(WiFiBand::kAllBands),
-      upstream_technology_(Technology::kUnknown) {
-  GenerateRandomWiFiProfile();
-  security_ = WiFiSecurity(WiFiSecurity::kWpa2Wpa3);
+      state_(TetheringState::kTetheringIdle) {
+  ResetConfiguration();
 }
 
 TetheringManager::~TetheringManager() = default;
 
-void TetheringManager::GenerateRandomWiFiProfile() {
+void TetheringManager::ResetConfiguration() {
+  auto_disable_ = true;
+  upstream_technology_ = Technology::kUnknown;
+
   uint64_t rand = base::RandInt(pow(10, kSSIDSuffixLength), INT_MAX);
   std::string suffix = std::to_string(rand);
   std::string ssid =
@@ -80,6 +102,9 @@ void TetheringManager::GenerateRandomWiFiProfile() {
   std::string passphrase =
       base::RandBytesAsString(kMinWiFiPassphraseLength >> 1);
   passphrase_ = base::HexEncode(passphrase.data(), passphrase.size());
+  security_ = WiFiSecurity(WiFiSecurity::kWpa2);
+  mar_ = true;
+  band_ = WiFiBand::kAllBands;
 }
 
 void TetheringManager::InitPropertyStore(PropertyStore* store) {
@@ -87,7 +112,8 @@ void TetheringManager::InitPropertyStore(PropertyStore* store) {
   store->RegisterDerivedKeyValueStore(
       kTetheringConfigProperty,
       KeyValueStoreAccessor(new CustomAccessor<TetheringManager, KeyValueStore>(
-          this, &TetheringManager::GetConfig, &TetheringManager::SetConfig)));
+          this, &TetheringManager::GetConfig,
+          &TetheringManager::SetAndPersistConfig)));
   store->RegisterDerivedKeyValueStore(
       kTetheringCapabilitiesProperty,
       KeyValueStoreAccessor(new CustomAccessor<TetheringManager, KeyValueStore>(
@@ -126,24 +152,19 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
 }
 
 bool TetheringManager::FromProperties(const KeyValueStore& properties) {
-  if (properties.Contains<bool>(kTetheringConfAutoDisableProperty))
-    auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
-
-  if (properties.Contains<bool>(kTetheringConfMARProperty))
-    mar_ = properties.Get<bool>(kTetheringConfMARProperty);
-
+  // sanity check.
+  std::string ssid;
   if (properties.Contains<std::string>(kTetheringConfSSIDProperty)) {
-    auto ssid = properties.Get<std::string>(kTetheringConfSSIDProperty);
+    ssid = properties.Get<std::string>(kTetheringConfSSIDProperty);
     if (ssid.empty() || !std::all_of(ssid.begin(), ssid.end(), ::isxdigit)) {
       LOG(ERROR) << "Invalid SSID provided in tethering config: " << ssid;
       return false;
     }
-    hex_ssid_ = ssid;
   }
 
+  std::string passphrase;
   if (properties.Contains<std::string>(kTetheringConfPassphraseProperty)) {
-    auto passphrase =
-        properties.Get<std::string>(kTetheringConfPassphraseProperty);
+    passphrase = properties.Get<std::string>(kTetheringConfPassphraseProperty);
     if (passphrase.length() < kMinWiFiPassphraseLength ||
         passphrase.length() > kMaxWiFiPassphraseLength) {
       LOG(ERROR)
@@ -151,11 +172,11 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
           << passphrase;
       return false;
     }
-    passphrase_ = passphrase;
   }
 
+  auto sec = WiFiSecurity(WiFiSecurity::kNone);
   if (properties.Contains<std::string>(kTetheringConfSecurityProperty)) {
-    auto sec = WiFiSecurity(
+    sec = WiFiSecurity(
         properties.Get<std::string>(kTetheringConfSecurityProperty));
     if (!sec.IsValid() || !(sec == WiFiSecurity(WiFiSecurity::kWpa2) ||
                             sec == WiFiSecurity(WiFiSecurity::kWpa3) ||
@@ -164,29 +185,51 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
                  << sec;
       return false;
     }
-    security_ = sec;
   }
 
+  auto band = WiFiBand::kInvalidBand;
   if (properties.Contains<std::string>(kTetheringConfBandProperty)) {
-    auto band =
+    band =
         StringToBand(properties.Get<std::string>(kTetheringConfBandProperty));
     if (band == WiFiBand::kInvalidBand) {
       LOG(ERROR) << "Invalid WiFi band: " << band;
       return false;
     }
-    band_ = band;
   }
 
+  auto tech = Technology::kUnknown;
   if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty)) {
-    auto tech = TechnologyFromName(
+    tech = TechnologyFromName(
         properties.Get<std::string>(kTetheringConfUpstreamTechProperty));
-    if (tech != Technology::kEthernet && tech != Technology::kCellular) {
+    if (tech != Technology::kUnknown && tech != Technology::kEthernet &&
+        tech != Technology::kCellular) {
       LOG(ERROR) << "Invalid upstream technology provided in tethering config: "
                  << tech;
       return false;
     }
-    upstream_technology_ = tech;
   }
+
+  // update tethering config in this.
+  if (properties.Contains<bool>(kTetheringConfAutoDisableProperty))
+    auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
+
+  if (properties.Contains<bool>(kTetheringConfMARProperty))
+    mar_ = properties.Get<bool>(kTetheringConfMARProperty);
+
+  if (properties.Contains<std::string>(kTetheringConfSSIDProperty))
+    hex_ssid_ = ssid;
+
+  if (properties.Contains<std::string>(kTetheringConfPassphraseProperty))
+    passphrase_ = passphrase;
+
+  if (properties.Contains<std::string>(kTetheringConfSecurityProperty))
+    security_ = sec;
+
+  if (properties.Contains<std::string>(kTetheringConfBandProperty))
+    band_ = band;
+
+  if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty))
+    upstream_technology_ = tech;
 
   return true;
 }
@@ -200,16 +243,29 @@ KeyValueStore TetheringManager::GetConfig(Error* error) {
   return config;
 }
 
-bool TetheringManager::SetConfig(const KeyValueStore& config, Error* error) {
+bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
+                                           Error* error) {
   if (!allowed_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
                           "Tethering is not allowed");
     return false;
   }
 
+  if (manager_->ActiveProfile()->GetUser().empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
+                          "Tethering is not allowed without user profile");
+    return false;
+  }
+
   if (!FromProperties(config)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid tethering configuration");
+    return false;
+  }
+
+  if (!Save()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to save config to user profile");
     return false;
   }
   return true;
@@ -293,6 +349,19 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
     return false;
   }
 
+  if (manager_->ActiveProfile()->GetUser().empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
+                          "Tethering is not allowed without user profile");
+    return false;
+  }
+
+  if (!Save()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to save config to user profile");
+    return false;
+  }
+
+  // TODO(b/235762439): Routine to enable/disable tethering session.
   return true;
 }
 
@@ -306,6 +375,73 @@ std::string TetheringManager::TetheringManager::CheckReadiness(Error* error) {
   // TODO(b/235762746): Stub method handler always return "ready". Add more
   // status code later.
   return kTetheringReadinessReady;
+}
+
+void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
+  if (profile->GetUser().empty()) {
+    return;
+  }
+
+  const StoreInterface* storage = profile->GetConstStorage();
+  if (!storage->ContainsGroup(kStorageId)) {
+    LOG(INFO) << "Tethering config is not available in the persistent "
+                 "store, use default config";
+    return;
+  }
+
+  KeyValueStore config;
+  bool valid;
+  valid = StoreToConfigBool(storage, kStorageId, &config,
+                            kTetheringConfAutoDisableProperty);
+  valid = valid && StoreToConfigBool(storage, kStorageId, &config,
+                                     kTetheringConfMARProperty);
+  valid = valid && StoreToConfigString(storage, kStorageId, &config,
+                                       kTetheringConfSSIDProperty);
+  valid = valid && StoreToConfigString(storage, kStorageId, &config,
+                                       kTetheringConfPassphraseProperty);
+  valid = valid && StoreToConfigString(storage, kStorageId, &config,
+                                       kTetheringConfSecurityProperty);
+  valid = valid && StoreToConfigString(storage, kStorageId, &config,
+                                       kTetheringConfBandProperty);
+  valid = valid && StoreToConfigString(storage, kStorageId, &config,
+                                       kTetheringConfUpstreamTechProperty);
+
+  if (valid && !FromProperties(config)) {
+    valid = false;
+  }
+
+  if (!valid) {
+    LOG(ERROR) << "Tethering config is corrupted in the persistent store, use "
+                  "default config";
+    // overwrite the corrupted config in profile with the default one.
+    if (!Save()) {
+      LOG(ERROR) << "Failed to save config to user profile";
+    }
+  }
+}
+
+void TetheringManager::UnloadConfigFromProfile(const ProfileRefPtr& profile) {
+  if (profile->GetUser().empty()) {
+    return;
+  }
+
+  ResetConfiguration();
+}
+
+bool TetheringManager::Save() {
+  StoreInterface* storage = manager_->ActiveProfile()->GetStorage();
+  storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
+                   auto_disable_);
+  storage->SetBool(kStorageId, kTetheringConfMARProperty, mar_);
+  storage->SetString(kStorageId, kTetheringConfSSIDProperty, hex_ssid_);
+  storage->SetString(kStorageId, kTetheringConfPassphraseProperty, passphrase_);
+  storage->SetString(kStorageId, kTetheringConfSecurityProperty,
+                     security_.ToString());
+  storage->SetString(kStorageId, kTetheringConfBandProperty,
+                     BandToString(band_));
+  storage->SetString(kStorageId, kTetheringConfUpstreamTechProperty,
+                     TechnologyName(upstream_technology_));
+  return storage->Flush();
 }
 
 }  // namespace shill

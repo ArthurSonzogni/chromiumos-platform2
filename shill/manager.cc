@@ -525,6 +525,7 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
 
   profiles_.push_back(profile);
   wifi_provider_->LoadCredentialsFromProfile(profile);
+  tethering_manager_->LoadConfigFromProfile(profile);
 
   for (ServiceRefPtr& service : services_) {
     service->ClearExplicitlyDisconnected();
@@ -629,6 +630,7 @@ void Manager::PopProfileInternal() {
     // Service was totally unloaded. No advance of iterator in this
     // case, as UnloadService has updated the iterator for us.
   }
+  tethering_manager_->UnloadConfigFromProfile(active_profile);
   // Remove Passpoint credentials attached to this profile.
   wifi_provider_->UnloadCredentialsFromProfile(active_profile);
 

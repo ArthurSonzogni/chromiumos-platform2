@@ -15,8 +15,15 @@ namespace shill {
 class Manager;
 
 // TetheringManager handles tethering related logics. It is created by the
-// Manager class. It reuses the Profile class to persist the tethering
-// parameters for each user. It interacts with HotspotDevice,
+// Manager class.
+//
+// It reuses the Profile class to persist the tethering parameters for each
+// user. Without user's input, it uses the default tethering configuration with
+// a random SSID and a random passphrase. It saves the current tethering
+// configuration to user profile when the user sets tethering config, or user
+// enables tethering.
+//
+// It interacts with HotspotDevice,
 // CellularServiceProvider and EthernetProvider classes to prepare upstream and
 // downstream technologies. It interacts with patchpanel via dbus to set up the
 // tethering network.
@@ -46,11 +53,20 @@ class TetheringManager {
   bool SetEnabled(bool enabled, Error* error);
   // Check if upstream network is ready for tethering.
   std::string CheckReadiness(Error* error);
+  // Load the tethering config available in |profile| if there was any tethering
+  // config saved for this |profile|.
+  void LoadConfigFromProfile(const ProfileRefPtr& profile);
+  // Unload the tethering config related to |profile|.
+  void UnloadConfigFromProfile(const ProfileRefPtr& profile);
 
  private:
   friend class TetheringManagerTest;
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
   FRIEND_TEST(TetheringManagerTest, TetheringConfig);
+  FRIEND_TEST(TetheringManagerTest, SetTetheringEnabled);
+
+  // Storage group for tethering configs.
+  static constexpr char kStorageId[] = "tethering";
 
   enum class TetheringState {
     kTetheringIdle,
@@ -62,7 +78,7 @@ class TetheringManager {
 
   KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetConfig(Error* error);
-  bool SetConfig(const KeyValueStore& config, Error* error);
+  bool SetAndPersistConfig(const KeyValueStore& config, Error* error);
   KeyValueStore GetStatus(Error* error);
   static const char* TetheringStateToString(const TetheringState& state);
   // Populate the shill D-Bus parameter map |properties| with the
@@ -70,8 +86,11 @@ class TetheringManager {
   bool ToProperties(KeyValueStore* properties) const;
   // Populate tethering config from a dictionary.
   bool FromProperties(const KeyValueStore& properties);
-  // Generate random WiFi SSID and passphrase.
-  void GenerateRandomWiFiProfile();
+  // Reset tethering config with default value and a random WiFi SSID and
+  // a random passphrase.
+  void ResetConfiguration();
+  // Save the current tethering config to user's profile.
+  bool Save();
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;

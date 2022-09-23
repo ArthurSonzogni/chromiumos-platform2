@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -32,6 +34,26 @@ class TetheringManagerTest : public PropertyStoreTest {
       : device_(new NiceMock<MockWiFi>(
             manager(), "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())) {}
   ~TetheringManagerTest() override = default;
+
+  Error::Type TestCreateProfile(Manager* manager, const std::string& name) {
+    Error error;
+    std::string path;
+    manager->CreateProfile(name, &path, &error);
+    return error.type();
+  }
+
+  Error::Type TestPushProfile(Manager* manager, const std::string& name) {
+    Error error;
+    std::string path;
+    manager->PushProfile(name, &path, &error);
+    return error.type();
+  }
+
+  Error::Type TestPopProfile(Manager* manager, const std::string& name) {
+    Error error;
+    manager->PopProfile(name, &error);
+    return error.type();
+  }
 
  protected:
   scoped_refptr<MockWiFi> device_;
@@ -65,15 +87,28 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
 }
 
 TEST_F(TetheringManagerTest, TetheringConfig) {
+  const char kDefaultProfile[] = "default";
+  const char kUserProfile[] = "~user/profile";
+
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
+
   ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
-  manager()->RegisterDevice(device_);
-  manager()->tethering_manager()->allowed_ = true;
+  manager.RegisterDevice(device_);
+  manager.tethering_manager()->allowed_ = true;
+
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile));
 
   // Check default TetheringConfig.
   KeyValueStore caps;
-  Error error;
-  caps = manager()->tethering_manager()->GetConfig(&error);
-  EXPECT_TRUE(error.IsSuccess());
+  {
+    Error error;
+    caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
   EXPECT_TRUE(caps.Get<bool>(kTetheringConfMARProperty));
   EXPECT_TRUE(caps.Get<bool>(kTetheringConfAutoDisableProperty));
   std::string ssid = caps.Get<std::string>(kTetheringConfSSIDProperty);
@@ -84,7 +119,7 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   EXPECT_FALSE(passphrase.empty());
   EXPECT_TRUE(std::all_of(passphrase.begin(), passphrase.end(), ::isxdigit));
   std::string security = caps.Get<std::string>(kTetheringConfSecurityProperty);
-  EXPECT_EQ(security, kSecurityWpa2Wpa3);
+  EXPECT_EQ(security, kSecurityWpa2);
   EXPECT_FALSE(caps.Contains<std::string>(kTetheringConfBandProperty));
   EXPECT_FALSE(caps.Contains<std::string>(kTetheringConfUpstreamTechProperty));
 
@@ -99,12 +134,30 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   args.Set<std::string>(kTetheringConfSecurityProperty, kSecurityWpa3);
   args.Set<std::string>(kTetheringConfBandProperty, kBand2GHz);
   args.Set<std::string>(kTetheringConfUpstreamTechProperty, kTypeCellular);
-  EXPECT_TRUE(manager()->tethering_manager()->SetConfig(args, &error));
-  EXPECT_TRUE(error.IsSuccess());
+
+  // Block SetConfig when no user has logged in.
+  {
+    Error error;
+    EXPECT_FALSE(
+        manager.tethering_manager()->SetAndPersistConfig(args, &error));
+    EXPECT_FALSE(error.IsSuccess());
+  }
+
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
+  {
+    Error error;
+    EXPECT_TRUE(manager.tethering_manager()->SetAndPersistConfig(args, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
 
   // Read and check if match.
-  caps = manager()->tethering_manager()->GetConfig(&error);
-  EXPECT_TRUE(error.IsSuccess());
+  {
+    Error error;
+    caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
   EXPECT_FALSE(caps.Get<bool>(kTetheringConfMARProperty));
   EXPECT_FALSE(caps.Get<bool>(kTetheringConfAutoDisableProperty));
   EXPECT_EQ(caps.Get<std::string>(kTetheringConfSSIDProperty), ssid);
@@ -115,6 +168,100 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   EXPECT_EQ(caps.Get<std::string>(kTetheringConfBandProperty), kBand2GHz);
   EXPECT_EQ(caps.Get<std::string>(kTetheringConfUpstreamTechProperty),
             kTypeCellular);
+
+  // Log out user and check user's tethering config is not present.
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kUserProfile));
+  {
+    Error error;
+    caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_NE(caps.Get<std::string>(kTetheringConfSSIDProperty), ssid);
+  EXPECT_NE(caps.Get<std::string>(kTetheringConfPassphraseProperty),
+            passphrase);
+
+  // Log in user and check tethering config again.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
+  {
+    Error error;
+    caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_FALSE(caps.Get<bool>(kTetheringConfMARProperty));
+  EXPECT_FALSE(caps.Get<bool>(kTetheringConfAutoDisableProperty));
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfSSIDProperty), ssid);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfPassphraseProperty),
+            passphrase);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfSecurityProperty),
+            kSecurityWpa3);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfBandProperty), kBand2GHz);
+  EXPECT_EQ(caps.Get<std::string>(kTetheringConfUpstreamTechProperty),
+            kTypeCellular);
+}
+
+TEST_F(TetheringManagerTest, SetTetheringEnabled) {
+  const char kDefaultProfile[] = "default";
+  const char kUserProfile[] = "~user/profile";
+
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
+
+  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
+  manager.RegisterDevice(device_);
+  manager.tethering_manager()->allowed_ = true;
+
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile));
+
+  {
+    Error error;
+    EXPECT_FALSE(manager.tethering_manager()->SetEnabled(true, &error));
+    EXPECT_FALSE(error.IsSuccess());
+  }
+
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
+
+  KeyValueStore caps;
+  {
+    Error error;
+    caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  {
+    Error error;
+    EXPECT_TRUE(manager.tethering_manager()->SetEnabled(true, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // Log out user and check a new SSID and passphrase is generated.
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kUserProfile));
+  KeyValueStore new_caps;
+  {
+    Error error;
+    new_caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_NE(new_caps.Get<std::string>(kTetheringConfSSIDProperty),
+            caps.Get<std::string>(kTetheringConfSSIDProperty));
+  EXPECT_NE(new_caps.Get<std::string>(kTetheringConfPassphraseProperty),
+            caps.Get<std::string>(kTetheringConfPassphraseProperty));
+
+  // Log in user and check tethering config again.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
+  {
+    Error error;
+    new_caps = manager.tethering_manager()->GetConfig(&error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_EQ(new_caps.Get<std::string>(kTetheringConfSSIDProperty),
+            caps.Get<std::string>(kTetheringConfSSIDProperty));
+  EXPECT_EQ(new_caps.Get<std::string>(kTetheringConfPassphraseProperty),
+            caps.Get<std::string>(kTetheringConfPassphraseProperty));
 }
 
 }  // namespace shill
