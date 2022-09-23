@@ -125,6 +125,25 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
   return true;
 }
 
+hwsec::GenerateDhSharedSecretRequest CloneDhSharedSecretRequest(
+    const hwsec::GenerateDhSharedSecretRequest& original) {
+  crypto::ScopedEC_POINT others_pub_key(
+      EC_POINT_dup(original.others_pub_point.get(), original.ec.GetGroup()));
+  EXPECT_TRUE(others_pub_key);
+
+  hwsec::GenerateDhSharedSecretRequest clone{
+      .ec = original.ec,
+      .encrypted_own_priv_key = original.encrypted_own_priv_key,
+      .extended_pcr_bound_own_priv_key =
+          original.extended_pcr_bound_own_priv_key,
+      .auth_value = original.auth_value,
+      .current_user = original.current_user,
+      .others_pub_point = std::move(others_pub_key),
+  };
+
+  return clone;
+}
+
 }  // namespace
 
 TpmLiveTest::TpmLiveTest()
@@ -877,6 +896,7 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
 }
 
 bool TpmLiveTest::RecoveryTpmBackendTest() {
+  constexpr char kObfuscatedUsername[] = "obfuscated_username";
   LOG(INFO) << "RecoveryTpmBackendTest started";
 
   hwsec_foundation::ScopedBN_CTX context_ =
@@ -904,7 +924,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
       .ec = ec_256.value(),
       .own_key_pair = std::move(destination_share_key_pair),
       .auth_value = key_auth_value.value(),
-      .current_user = "obfuscated_username",
+      .current_user = kObfuscatedUsername,
   };
   hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
       encrypt_response_destination_share =
@@ -934,7 +954,7 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
     return false;
   }
 
-  // Call key loading/unsealing
+  // Create standard decrypt request.
   hwsec::GenerateDhSharedSecretRequest decrypt_request_destination_share{
       .ec = ec_256.value(),
       .encrypted_own_priv_key =
@@ -942,9 +962,96 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
       .extended_pcr_bound_own_priv_key =
           encrypt_response_destination_share->extended_pcr_bound_own_priv_key,
       .auth_value = key_auth_value.value(),
-      .current_user = "obfuscated_username",
+      .current_user = kObfuscatedUsername,
       .others_pub_point = std::move(others_pub_key),
   };
+
+  // Call key loading/unsealing with the wrong EC curve.
+  std::optional<hwsec_foundation::EllipticCurve> ec_521 =
+      hwsec_foundation::EllipticCurve::Create(
+          hwsec_foundation::EllipticCurve::CurveType::kPrime521,
+          context_.get());
+  hwsec::GenerateDhSharedSecretRequest
+      decrypt_request_destination_share_wrong_ec{
+          .ec = ec_521.value(),
+          .encrypted_own_priv_key =
+              decrypt_request_destination_share.encrypted_own_priv_key,
+          .extended_pcr_bound_own_priv_key =
+              decrypt_request_destination_share.extended_pcr_bound_own_priv_key,
+          .auth_value = decrypt_request_destination_share.auth_value,
+          .current_user = decrypt_request_destination_share.current_user,
+      };
+  if (!EC_POINT_copy(
+          decrypt_request_destination_share_wrong_ec.others_pub_point.get(),
+          decrypt_request_destination_share.others_pub_point.get())) {
+    LOG(ERROR) << "Failed to copy the other's public point.";
+    return false;
+  }
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_ec =
+      recovery_crypto_->GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share_wrong_ec));
+  if (point_dh_wrong_ec.ok()) {
+    LOG(ERROR) << "Generated DH shared secret successfully without the correct "
+                  "EC curve.";
+    return false;
+  }
+
+  // Call key loading/unsealing with the wrong private key.
+  hwsec::GenerateDhSharedSecretRequest
+      decrypt_request_destination_share_wrong_priv_key =
+          CloneDhSharedSecretRequest(decrypt_request_destination_share);
+  decrypt_request_destination_share_wrong_priv_key.encrypted_own_priv_key =
+      brillo::BlobFromString("wrong_private_key");
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_priv_key =
+      recovery_crypto_->GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share_wrong_priv_key));
+  if (point_dh_wrong_priv_key.ok()) {
+    LOG(ERROR) << "Generated DH shared secret successfully without the correct "
+                  "private key.";
+    return false;
+  }
+
+  // Test case that are only applicable for TPM 1.2.
+  hwsec::StatusOr<uint32_t> family = hwsec_->GetFamily();
+  if (!family.ok()) {
+    LOG(ERROR) << "Failed to get the TPM family: " << family.status();
+    return false;
+  }
+  if (family.value() == kTpm12Family) {
+    // Call key loading/unsealing with the wrong auth value.
+    hwsec::GenerateDhSharedSecretRequest
+        decrypt_request_destination_share_wrong_auth_value =
+            CloneDhSharedSecretRequest(decrypt_request_destination_share);
+    decrypt_request_destination_share_wrong_auth_value.auth_value =
+        brillo::SecureBlob("wrong_auth_value");
+    hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_auth_value =
+        recovery_crypto_->GenerateDiffieHellmanSharedSecret(
+            std::move(decrypt_request_destination_share_wrong_auth_value));
+    if (point_dh_wrong_auth_value.ok()) {
+      LOG(ERROR)
+          << "Generated DH shared secret successfully without the correct "
+             "auth value.";
+      return false;
+    }
+
+    // Call key loading/unsealing with the wrong obfuscated username.
+    hwsec::GenerateDhSharedSecretRequest
+        decrypt_request_destination_share_wrong_username =
+            CloneDhSharedSecretRequest(decrypt_request_destination_share);
+    decrypt_request_destination_share_wrong_username.current_user =
+        "wrong_obfuscated_username";
+    hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_username =
+        recovery_crypto_->GenerateDiffieHellmanSharedSecret(
+            std::move(decrypt_request_destination_share_wrong_username));
+    if (point_dh_wrong_username.ok()) {
+      LOG(ERROR)
+          << "Generated DH shared secret successfully without the correct "
+             "obfuscated username.";
+      return false;
+    }
+  }
+
+  // Call key loading/unsealing.
   hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh =
       recovery_crypto_->GenerateDiffieHellmanSharedSecret(
           std::move(decrypt_request_destination_share));
@@ -954,8 +1061,6 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
                << point_dh.status();
     return false;
   }
-
-  LOG(INFO) << "RecoveryTpmBackendTest ended successfully.";
 
   if (hwsec::Status status = hwsec_->SetCurrentUser("another_user");
       !status.ok()) {
