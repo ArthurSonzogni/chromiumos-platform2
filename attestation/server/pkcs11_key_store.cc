@@ -249,6 +249,9 @@ bool Pkcs11KeyStore::Register(const std::string& username,
   // both private and public key objects need them.
   std::string modulus;
   std::string ecc_params, ecc_point;
+  // The value of the key's CKA_ID attribute as NSS would compute it using
+  // PK11_MakeIDFromPubKey.
+  std::string cka_id;
   const unsigned char* asn1_ptr =
       reinterpret_cast<const unsigned char*>(public_key_der.data());
   if (key_type == KEY_TYPE_RSA) {
@@ -268,6 +271,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
       return false;
     }
     modulus.resize(length);
+    cka_id = Sha1(modulus);
   } else if (key_type == KEY_TYPE_ECC) {
     crypto::ScopedEC_KEY public_key(
         d2i_EC_PUBKEY(nullptr, &asn1_ptr, public_key_der.size()));
@@ -320,6 +324,9 @@ bool Pkcs11KeyStore::Register(const std::string& username,
       LOG(ERROR) << "Pkcs11KeyStore: Failed to call ASN1_OCTET_STRING_set.";
       return false;
     }
+    //  CKA_ID for ECC key is Sha1(04 X Y)
+    cka_id = Sha1(std::string(asn1_oct_string->data,
+                              asn1_oct_string->data + asn1_oct_string->length));
     output_size = i2d_ASN1_OCTET_STRING(asn1_oct_string.get(), nullptr);
     if (output_size <= 0) {
       LOG(ERROR) << "Pkcs11KeyStore: Failed to call i2d_ASN1_OCTET_STRING to "
@@ -343,7 +350,6 @@ bool Pkcs11KeyStore::Register(const std::string& username,
   CK_BBOOL false_value = CK_FALSE;
   CK_KEY_TYPE p11_key_type = ToPkcs11KeyType(key_type);
   CK_OBJECT_CLASS public_key_class = CKO_PUBLIC_KEY;
-  std::string id = Sha1(modulus);
   std::string mutable_label(label);
   CK_ULONG modulus_bits = modulus.size() * 8;
   CK_BBOOL sign_usage = (key_usage == KEY_USAGE_SIGN);
@@ -358,7 +364,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
       {CKA_VERIFY_RECOVER, &false_value, sizeof(false_value)},
       {CKA_ENCRYPT, &decrypt_usage, sizeof(decrypt_usage)},
       {CKA_KEY_TYPE, &p11_key_type, sizeof(p11_key_type)},
-      {CKA_ID, std::data(id), id.size()},
+      {CKA_ID, std::data(cka_id), cka_id.size()},
       {CKA_LABEL, std::data(mutable_label), mutable_label.size()},
   };
   if (key_type == KEY_TYPE_RSA) {
@@ -406,7 +412,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
       {CKA_SIGN_RECOVER, &false_value, sizeof(false_value)},
       {CKA_DECRYPT, &decrypt_usage, sizeof(decrypt_usage)},
       {CKA_KEY_TYPE, &p11_key_type, sizeof(p11_key_type)},
-      {CKA_ID, std::data(id), id.size()},
+      {CKA_ID, std::data(cka_id), cka_id.size()},
       {CKA_LABEL, std::data(mutable_label), mutable_label.size()},
       {kKeyBlobAttribute, std::data(mutable_private_key_blob),
        mutable_private_key_blob.size()},
@@ -453,7 +459,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
         {CKA_CLASS, &certificate_class, sizeof(certificate_class)},
         {CKA_TOKEN, &true_value, sizeof(true_value)},
         {CKA_PRIVATE, &false_value, sizeof(false_value)},
-        {CKA_ID, std::data(id), id.size()},
+        {CKA_ID, std::data(cka_id), cka_id.size()},
         {CKA_LABEL, std::data(mutable_label), mutable_label.size()},
         {CKA_CERTIFICATE_TYPE, &certificate_type, sizeof(certificate_type)},
         {CKA_SUBJECT, std::data(subject), subject.size()},

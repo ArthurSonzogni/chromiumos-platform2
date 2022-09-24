@@ -4,20 +4,28 @@
 
 #include "attestation/server/pkcs11_key_store.h"
 
+#include <cstring>
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
+#include "nss/pkcs11t.h"
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/data_encoding.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <chaps/token_manager_client_mock.h>
 #include <brillo/cryptohome.h>
 #include <brillo/map_utils.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
+#include <google/protobuf/stubs/port.h>
+#include <google/protobuf/stubs/strutil.h>
 #include <gtest/gtest.h>
+#include <openssl/sha.h>
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -25,6 +33,7 @@ using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::Truly;
 
 namespace {
 
@@ -112,6 +121,13 @@ std::string HexDecode(const std::string hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
   return std::string(reinterpret_cast<char*>(output.data()), output.size());
+}
+
+std::string Sha1(const std::string& input) {
+  unsigned char output[SHA_DIGEST_LENGTH];
+  SHA1(reinterpret_cast<const unsigned char*>(input.data()), input.size(),
+       output);
+  return std::string(reinterpret_cast<char*>(output), SHA_DIGEST_LENGTH);
 }
 
 class ScopedFakeSalt {
@@ -287,6 +303,39 @@ class KeyStoreTest : public testing::Test {
     return CKR_OK;
   }
 
+  static std::function<bool(const std::vector<uint8_t>&)> CheckCkaId(
+      uint64_t expected_key_type) {
+    return [expected_key_type](const std::vector<uint8_t> attrs) {
+      auto klass_str = GetValue(attrs, CKA_CLASS);
+      EXPECT_EQ(klass_str.length(), sizeof(CKO_PRIVATE_KEY));
+      unsigned long klass = 0;  // NOLINT (size is platform dependent)
+      std::memcpy(&klass, klass_str.c_str(), sizeof(CKO_PRIVATE_KEY));
+
+      //  CKA_KEY_TYPE and {CKA_MODULUS, CKA_EC_POINT} not specified for
+      //  CKO_CERTIFICATE
+      if (klass != CKO_PUBLIC_KEY && klass != CKO_PRIVATE_KEY) {
+        return true;
+      }
+
+      auto cka_id = GetValue(attrs, CKA_ID);
+      auto cka_key_type = GetValue(attrs, CKA_KEY_TYPE);
+      EXPECT_EQ(cka_key_type.length(), sizeof(CKK_RSA));
+      unsigned long key_type = 0;  // NOLINT (size is platform dependent)
+      std::memcpy(&key_type, cka_key_type.c_str(), sizeof(CKK_RSA));
+      EXPECT_EQ(expected_key_type, key_type);
+      if (key_type == CKK_EC) {
+        auto ecc_point = GetValue(attrs, CKA_EC_POINT);
+        //  remove ASN.1 tag + len
+        EXPECT_EQ(Sha1(ecc_point.substr(2)), cka_id);
+      }
+      if (key_type == CKK_RSA) {
+        auto modulus = GetValue(attrs, CKA_MODULUS);
+        EXPECT_EQ(Sha1(modulus), cka_id);
+      }
+      return true;
+    };
+  }
+
  protected:
   NiceMock<Pkcs11Mock> pkcs11_;
   NiceMock<chaps::TokenManagerClientMock> token_manager_;
@@ -294,8 +343,8 @@ class KeyStoreTest : public testing::Test {
  private:
   // A helper to pull the value for a given attribute out of a serialized
   // template.
-  std::string GetValue(const std::vector<uint8_t>& attributes,
-                       CK_ATTRIBUTE_TYPE type) {
+  static std::string GetValue(const std::vector<uint8_t>& attributes,
+                              CK_ATTRIBUTE_TYPE type) {
     chaps::Attributes parsed;
     parsed.Parse(attributes);
     CK_ATTRIBUTE_PTR array = parsed.attributes();
@@ -480,7 +529,7 @@ TEST_F(KeyStoreTest, RegisterKeyWithoutCertificate) {
                                   "bad_pubkey", ""));
   // Try with a well-formed public key.
   std::string public_key_der = HexDecode(kValidRsaPublicKeyHex);
-  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, Truly(CheckCkaId(CKK_RSA)), _))
       .Times(2)  // Public, private (no certificate).
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
@@ -489,7 +538,7 @@ TEST_F(KeyStoreTest, RegisterKeyWithoutCertificate) {
 }
 
 TEST_F(KeyStoreTest, RegisterKeyWithCertificate) {
-  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, Truly(CheckCkaId(CKK_RSA)), _))
       .Times(3)  // Public, private, and certificate.
       .WillRepeatedly(Return(CKR_OK));
   Pkcs11KeyStore key_store(&token_manager_);
@@ -515,7 +564,7 @@ TEST_F(KeyStoreTest, RegisterEccKeyWithoutCertificate) {
                                   "bad_pubkey", ""));
   // Try with a well-formed public key.
   std::string public_key_der = HexDecode(kValidEccPublicKeyHex);
-  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, Truly(CheckCkaId(CKK_EC)), _))
       .Times(2)  // Public, private (no certificate).
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_ECC,
@@ -524,7 +573,7 @@ TEST_F(KeyStoreTest, RegisterEccKeyWithoutCertificate) {
 }
 
 TEST_F(KeyStoreTest, RegisterEccKeyWithCertificate) {
-  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, Truly(CheckCkaId(CKK_EC)), _))
       .Times(3)  // Public, private, and certificate.
       .WillRepeatedly(Return(CKR_OK));
   Pkcs11KeyStore key_store(&token_manager_);
