@@ -4,14 +4,20 @@
 
 #include "cryptohome/auth_blocks/revocation.h"
 
-#include <gtest/gtest.h>
+#include <string>
 
 #include <brillo/secure_blob.h>
+#include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_le_credential_manager.h"
 
+using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::DoAll;
@@ -35,7 +41,7 @@ TEST(RevocationTest, Create) {
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
-  EXPECT_EQ(CryptoError::CE_NONE, Create(&le_cred_manager, &state, &key_blobs));
+  ASSERT_THAT(Create(&le_cred_manager, &state, &key_blobs), IsOk());
 }
 
 TEST(RevocationTest, Derive) {
@@ -47,7 +53,7 @@ TEST(RevocationTest, Derive) {
   EXPECT_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(he_secret),
                       ReturnError<CryptohomeLECredError>()));
-  EXPECT_EQ(CryptoError::CE_NONE, Derive(&le_cred_manager, state, &key_blobs));
+  ASSERT_THAT(Derive(&le_cred_manager, state, &key_blobs), IsOk());
 }
 
 TEST(RevocationTest, DeriveFailsWithoutLabel) {
@@ -55,8 +61,9 @@ TEST(RevocationTest, DeriveFailsWithoutLabel) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   RevocationState state;
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            Derive(&le_cred_manager, state, &key_blobs));
+  auto status = Derive(&le_cred_manager, state, &key_blobs);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST(RevocationTest, Revoke) {
@@ -66,17 +73,103 @@ TEST(RevocationTest, Revoke) {
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
       .WillOnce(
           DoAll(SaveArg<0>(&label), ReturnError<CryptohomeLECredError>()));
-  EXPECT_EQ(CryptoError::CE_NONE, Revoke(AuthBlockType::kCryptohomeRecovery,
-                                         &le_cred_manager, state));
+  ASSERT_THAT(
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
+      IsOk());
   EXPECT_EQ(label, state.le_label.value());
 }
 
 TEST(RevocationTest, RevokeFailsWithoutLabel) {
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state;
-  EXPECT_EQ(
-      CryptoError::CE_OTHER_CRYPTO,
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state));
+  auto status =
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+}
+
+TEST(RevocationTest, RevokeSucceedsWithLeCredErrorInvalidLabel) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  RevocationState state = {.le_label = 0};
+  uint64_t label;
+  EXPECT_CALL(le_cred_manager, RemoveCredential(_))
+      .WillOnce(DoAll(
+          SaveArg<0>(&label),
+          ReturnError<CryptohomeLECredError>(
+              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+              LE_CRED_ERROR_INVALID_LABEL)));
+  // Revoke succeeds after LE_CRED_ERROR_INVALID_LABEL.
+  ASSERT_THAT(
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
+      IsOk());
+  EXPECT_EQ(label, state.le_label.value());
+}
+
+TEST(RevocationTest, RevokeSucceedsWithLeCredErrorHashTree) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  RevocationState state = {.le_label = 0};
+  uint64_t label;
+  EXPECT_CALL(le_cred_manager, RemoveCredential(_))
+      .WillOnce(DoAll(
+          SaveArg<0>(&label),
+          ReturnError<CryptohomeLECredError>(
+              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+              LE_CRED_ERROR_HASH_TREE)));
+  // Revoke succeeds after LE_CRED_ERROR_HASH_TREE.
+  ASSERT_THAT(
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
+      IsOk());
+  EXPECT_EQ(label, state.le_label.value());
+}
+
+TEST(RevocationTest, RevokeFailsWithLeCredErrorUnclassified) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  RevocationState state = {.le_label = 0};
+  uint64_t label;
+  EXPECT_CALL(le_cred_manager, RemoveCredential(_))
+      .WillOnce(DoAll(
+          SaveArg<0>(&label),
+          ReturnError<CryptohomeLECredError>(
+              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+              LE_CRED_ERROR_UNCLASSIFIED)));
+  // Revoke fails after LE_CRED_ERROR_UNCLASSIFIED.
+  auto status =
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+}
+
+TEST(RevocationTest, RevokeFailsWithLeCredErrorInvalidLeSecret) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  RevocationState state = {.le_label = 0};
+  uint64_t label;
+  EXPECT_CALL(le_cred_manager, RemoveCredential(_))
+      .WillOnce(DoAll(
+          SaveArg<0>(&label),
+          ReturnError<CryptohomeLECredError>(
+              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+              LE_CRED_ERROR_INVALID_LE_SECRET)));
+  // Revoke fails after LE_CRED_ERROR_INVALID_LE_SECRET.
+  auto status =
+      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 }  // namespace revocation

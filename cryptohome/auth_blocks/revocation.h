@@ -9,6 +9,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
@@ -21,21 +22,21 @@ bool IsRevocationSupported(hwsec::CryptohomeFrontend* hwsec);
 // Derives a new key from `in_out_key_blobs.vkk_key` and saves it back to
 // `in_out_key_blobs.vkk_key`. Saves information that is required for key
 // derivation to `in_out_revocation_state`.
-CryptoError Create(LECredentialManager* le_manager,
-                   RevocationState* in_out_revocation_state,
-                   KeyBlobs* in_out_key_blobs);
+CryptoStatus Create(LECredentialManager* le_manager,
+                    RevocationState* in_out_revocation_state,
+                    KeyBlobs* in_out_key_blobs);
 
 // Derives a new key from `in_out_key_blobs.vkk_key` using information from
 // `revocation_state` and saves it back to `in_out_key_blobs.vkk_key`.
-CryptoError Derive(LECredentialManager* le_manager,
-                   const RevocationState& revocation_state,
-                   KeyBlobs* in_out_key_blobs);
+CryptoStatus Derive(LECredentialManager* le_manager,
+                    const RevocationState& revocation_state,
+                    KeyBlobs* in_out_key_blobs);
 
 // Removes data required to derive a key from provided `revocation_state`.
 // `auth_block_type` is used for metrics.
-CryptoError Revoke(AuthBlockType auth_block_type,
-                   LECredentialManager* le_manager,
-                   const RevocationState& revocation_state);
+CryptoStatus Revoke(AuthBlockType auth_block_type,
+                    LECredentialManager* le_manager,
+                    const RevocationState& revocation_state);
 
 }  // namespace revocation
 }  // namespace cryptohome

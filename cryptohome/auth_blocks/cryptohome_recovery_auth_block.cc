@@ -77,7 +77,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocCryptohomeRecoveryAuthBlockNoUsernameInCreate),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoUsernameInCreate),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
@@ -90,8 +90,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
       RecoveryCryptoImpl::Create(recovery_hwsec_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInCreate),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockCantCreateRecoveryInCreate),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                         ErrorAction::kReboot, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -109,7 +108,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
                                     &generate_hsm_payload_response)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
+            kLocRecoveryAuthBlockGenerateHSMPayloadFailedInCreate),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                         ErrorAction::kReboot, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -125,8 +124,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   if (!SerializeHsmPayloadToCbor(generate_hsm_payload_response.hsm_payload,
                                  &hsm_payload_cbor)) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockCborConvFailedInCreate),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockCborConvFailedInCreate),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                         ErrorAction::kReboot, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_FATAL);
@@ -147,15 +145,13 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   if (revocation::IsRevocationSupported(hwsec_)) {
     DCHECK(le_manager_);
     RevocationState revocation_state;
-    CryptoError err =
+    CryptoStatus result =
         revocation::Create(le_manager_, &revocation_state, key_blobs);
-    if (err != CryptoError::CE_NONE) {
+    if (!result.ok()) {
       return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocCryptohomeRecoveryAuthBlockRevocationCreateFailedInCreate),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-          err);
+                 CRYPTOHOME_ERR_LOC(
+                     kLocRecoveryAuthBlockRevocationCreateFailedInCreate))
+          .Wrap(std::move(result));
     }
     auth_block_state->revocation_state = revocation_state;
   }
@@ -172,8 +168,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
             std::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockInvalidBlockStateInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -182,7 +177,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocCryptohomeRecoveryAuthBlockNoUsernameInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoUsernameInDerive),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
@@ -206,8 +201,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   if (!epoch_response.ParseFromString(serialized_epoch_response.to_string())) {
     LOG(ERROR) << "Failed to parse CryptoRecoveryEpochResponse";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockCantParseEpochResponseInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockCantParseEpochResponseInDerive),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
@@ -215,8 +209,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   if (!response_proto.ParseFromString(serialized_response_proto.to_string())) {
     LOG(ERROR) << "Failed to parse CryptoRecoveryRpcResponse";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockCantParseResponseInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockCantParseResponseInDerive),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
@@ -225,8 +218,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
       RecoveryCryptoImpl::Create(recovery_hwsec_, platform_);
   if (!recovery) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockCantCreateRecoveryInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockCantCreateRecoveryInDerive),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                         ErrorAction::kReboot, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -241,10 +233,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                .obfuscated_username = obfuscated_username}),
           &response_plain_text)) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockDecryptFailedInDerive),
-        ErrorActionSet({ErrorAction::kIncorrectAuth, ErrorAction::kReboot,
-                        ErrorAction::kAuth}),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockDecryptFailedInDerive),
+        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -262,8 +252,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                .obfuscated_username = obfuscated_username}),
           &recovery_key)) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockRecoveryFailedInDerive),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockRecoveryFailedInDerive),
         ErrorActionSet({ErrorAction::kIncorrectAuth, ErrorAction::kReboot,
                         ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -275,15 +264,13 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   if (state.revocation_state.has_value()) {
     DCHECK(revocation::IsRevocationSupported(hwsec_));
     DCHECK(le_manager_);
-    CryptoError crypto_err = revocation::Derive(
+    CryptoStatus result = revocation::Derive(
         le_manager_, state.revocation_state.value(), key_blobs);
-    if (crypto_err != CryptoError::CE_NONE) {
+    if (!result.ok()) {
       return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocCryptohomeRecoveryAuthBlockRevocationDeriveFailedInDerive),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-          crypto_err);
+                 CRYPTOHOME_ERR_LOC(
+                     kLocRecoveryAuthBlockRevocationDeriveFailedInDerive))
+          .Wrap(std::move(result));
     }
   }
 
@@ -314,7 +301,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
     NOTREACHED() << "Invalid AuthBlockState";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockInvalidStateInPrepareForRemoval),
+            kLocRecoveryAuthBlockInvalidStateInPrepareForRemoval),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -332,7 +319,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
         << "Revocation is not supported during recovery auth block removal";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockNoRevocationInPrepareForRemoval),
+            kLocRecoveryAuthBlockNoRevocationInPrepareForRemoval),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -341,23 +328,20 @@ CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
   if (!le_manager_) {
     LOG(ERROR) << "No LE manager during recovery auth block removal";
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockNoLEManagerInPrepareForRemoval),
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoLEManagerInPrepareForRemoval),
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  CryptoError crypto_err =
+  CryptoStatus result =
       revocation::Revoke(AuthBlockType::kCryptohomeRecovery, le_manager_,
                          state.revocation_state.value());
-  if (crypto_err != CryptoError::CE_NONE) {
+  if (!result.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocCryptohomeRecoveryAuthBlockRevocationFailedInPrepareForRemoval),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        crypto_err);
+               CRYPTOHOME_ERR_LOC(
+                   kLocRecoveryAuthBlockRevocationFailedInPrepareForRemoval))
+        .Wrap(std::move(result));
   }
   return OkStatus<CryptohomeCryptoError>();
 }
