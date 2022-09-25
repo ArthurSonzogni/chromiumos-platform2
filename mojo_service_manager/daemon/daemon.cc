@@ -121,9 +121,11 @@ Daemon::Daemon(Delegate* delegate,
                const base::FilePath& socket_path,
                const std::vector<base::FilePath>& policy_dir_paths,
                Configuration configuration)
-    : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
-                   mojo::core::ScopedIPCSupport::ShutdownPolicy::
-                       CLEAN /* blocking shutdown */),
+    : ipc_support_(std::make_unique<mojo::core::ScopedIPCSupport>(
+          base::ThreadTaskRunnerHandle::Get(),
+          // Don't block shutdown. All mojo pipes are not expected to work after
+          // the broker shutdown, so we don't need to wait them.
+          mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST)),
       delegate_(delegate),
       socket_path_(socket_path),
       policy_dir_paths_(std::move(policy_dir_paths)),
@@ -163,6 +165,15 @@ int Daemon::OnInit() {
 void Daemon::OnShutdown(int* exit_code) {
   LOG(INFO) << "mojo_service_manager is shutdowning with exit code: "
             << *exit_code;
+
+  // Manually reset these objects to prevent them posting tasks to the message
+  // loop during shutdowning.
+  socket_watcher_.reset();
+  service_manager_.reset();
+  socket_fd_.reset();
+  // This need to be reset manually to trigger the shutdown of mojo. Otherwise,
+  // the mojo broker tasks could block the message queue during shutdowning.
+  ipc_support_.reset();
 }
 
 void Daemon::SendMojoInvitationAndBindReceiver() {

@@ -71,7 +71,7 @@ class Daemon : public brillo::Daemon {
       const base::ScopedFD& peer) const;
 
   // The |ScopedIPCSupport| instance for mojo.
-  mojo::core::ScopedIPCSupport ipc_support_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   // Accesses Delegate.
   Delegate* const delegate_;
   // The path to the unix socket of the daemon.
