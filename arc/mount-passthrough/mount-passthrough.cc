@@ -307,9 +307,9 @@ int passthrough_readdir(const char*,
   // TODO(b/202085840): This implementation returns all files at once and thus
   // inefficient. Make use of offset and be better to memory.
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
-  // Call seekdir with offset 0 so that all entries are added by filler every
-  // time this function is called.
-  seekdir(dirp, 0);
+  // Call rewinddir so that all entries are added by filler every time this
+  // function is called.
+  rewinddir(dirp);
   errno = 0;
   for (;;) {
     struct dirent* entry = readdir(dirp);
