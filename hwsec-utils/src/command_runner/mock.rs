@@ -3,12 +3,16 @@
 // found in the LICENSE file.
 
 use std::collections::VecDeque;
+use std::fmt::Write;
 use std::os::unix::prelude::ExitStatusExt;
 use std::process::ExitStatus;
 use std::process::Output;
 
 use crate::command_runner::CommandRunner;
+use crate::cr50::RmaSnBits;
 use crate::cr50::GSCTOOL_CMD_NAME;
+use crate::tpm2::tests::split_into_hex_strtok;
+use crate::tpm2::BoardID;
 
 // For any member variable x in MockCommandInput:
 // x = Some(_) means that we would check the correspondence;
@@ -20,7 +24,7 @@ pub struct MockCommandInput {
 }
 
 impl MockCommandInput {
-    fn new(cmd_name: &str, args: Vec<&str>) -> Self {
+    pub fn new(cmd_name: &str, args: Vec<&str>) -> Self {
         Self {
             cmd_name: Some(cmd_name.to_owned()),
             args: Some(args.iter().map(|&s| s.into()).collect()),
@@ -33,7 +37,7 @@ pub struct MockCommandOutput {
 }
 
 impl MockCommandOutput {
-    fn new(exit_status: i32, out: &str, err: &str) -> Self {
+    pub fn new(exit_status: i32, out: &str, err: &str) -> Self {
         Self {
             result: Ok(Output {
                 status: ExitStatus::from_raw(exit_status),
@@ -52,6 +56,14 @@ impl Default for MockCommandRunner {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn u8_slice_to_upper_hex_string(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        write!(&mut s, "{:02X}", b).unwrap();
+    }
+    s
 }
 
 impl MockCommandRunner {
@@ -102,6 +114,123 @@ impl MockCommandRunner {
             MockCommandInput::new(GSCTOOL_CMD_NAME, flag),
             MockCommandOutput::new(exit_status, out, err),
         );
+    }
+    pub fn add_successful_generic_read_board_id_interaction(&mut self, board_id: BoardID) {
+        self.add_tpm_interaction(
+            "trunks_send",
+            vec!["--raw"],
+            split_into_hex_strtok(
+                "80 02 00 00 00 23 00 00 \
+                01 4e 01 3f ff 00 01 3f \
+                ff 00 00 00 00 09 40 00 \
+                00 09 00 00 00 00 00 00 \
+                0c 00 00",
+            ),
+            0,
+            &format!(
+                "800200000021000000000000000E000C{:08X}{:08X}{:08X}0000010000",
+                board_id.part_1.swap_bytes(),
+                board_id.part_2.swap_bytes(),
+                board_id.flag.swap_bytes(),
+            ),
+            "",
+        );
+    }
+    pub fn add_successful_generic_read_board_id_arbitary_interaction(&mut self) {
+        // Use this when not in want of specifying board id.
+        // Reading board id with mock context
+        // after calling this function with would return
+        // BoardID {
+        //     part_1: 0x4d524646,
+        //     part_2: 0xb2adb9b9,
+        //     flag: 0x00007f7f
+        // }
+        self.add_successful_generic_read_board_id_interaction(BoardID {
+            part_1: 0x4d524646,
+            part_2: 0xb2adb9b9,
+            flag: 0x00007f7f,
+        });
+    }
+    pub fn add_successful_gsctool_read_board_id_interaction(&mut self, board_id: BoardID) {
+        self.add_gsctool_interaction(
+            #[cfg(not(feature = "ti50_onboard"))]
+            vec!["-a", "-i"],
+            #[cfg(feature = "ti50_onboard")]
+            vec!["-D", "-a", "-i"],
+            0,
+            &format!(
+                "finding_device 18d1:5014\n\
+                Found device.\n\
+                found interface 3 endpoint 4, chunk_len 64\n\
+                READY\n\
+                -------\n\
+                Board ID space: {:08x}:{:08x}:{:08x}\n",
+                board_id.part_1, board_id.part_2, board_id.flag
+            ),
+            "",
+        );
+    }
+    pub fn add_successful_gsctool_read_board_id_arbitary_interaction(&mut self) {
+        // Use this when not in want of specifying a board id.
+        // Reading board id with mock context
+        // after calling this function with would return
+        // BoardID {
+        //     part_1: 0x43425559,
+        //     part_2: 0xbcbdaaa6,
+        //     flag: 0x00007f80
+        // }
+        self.add_successful_gsctool_read_board_id_interaction(BoardID {
+            part_1: 0x43425559,
+            part_2: 0xbcbdaaa6,
+            flag: 0x00007f80,
+        });
+    }
+    pub fn add_successful_cr50_get_name_arbitary_interaction(&mut self) {
+        self.add_successful_gsctool_read_board_id_arbitary_interaction();
+    }
+    pub fn add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(
+        &mut self,
+        rma_sn_bits: RmaSnBits,
+    ) {
+        self.set_trunksd_running(true);
+        self.add_tpm_interaction(
+            "trunks_send",
+            vec!["--raw"],
+            split_into_hex_strtok(
+                "80 02 00 00 00 23 00 00 \
+                01 4e 01 3f ff 01 01 3f \
+                ff 01 00 00 00 09 40 00 \
+                00 09 00 00 00 00 00 00 \
+                10 00 00",
+            ),
+            0,
+            &format!(
+                "80020000002500000000000000120010{}{:02X}{}0000010000",
+                u8_slice_to_upper_hex_string(&rma_sn_bits.sn_data_version),
+                rma_sn_bits.rma_status,
+                u8_slice_to_upper_hex_string(&rma_sn_bits.sn_bits),
+            ),
+            "",
+        );
+    }
+    pub fn add_successful_cr50_read_rma_sn_bits_arbitary_interaction(&mut self) {
+        // Use this when feature != generic_tpm2 && not in want of specifying rma sn bits.
+        // Reading rma sn bits with mock context
+        // after calling this function with would return
+        // RmaSnBits {
+        //     sn_data_version: [0x0f, 0xff, 0xff],
+        //     rma_status: 0xff,
+        //     sn_bits: [0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54],
+        //     standalone_rma_sn_bits: None
+        // }
+        self.add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            sn_data_version: [0x0f, 0xff, 0xff],
+            rma_status: 0xff,
+            sn_bits: [
+                0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54,
+            ],
+            standalone_rma_sn_bits: None,
+        });
     }
 }
 
