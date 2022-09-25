@@ -9,7 +9,7 @@ use crate::error::HwsecError;
 // Reference:
 // https://trustedcomputinggroup.org/wp-content/uploads/TCG_TPM2_r1p59_Part2_Structures_pub.pdf#page=61
 #[allow(non_camel_case_types)]
-pub(crate) enum TpmiStCommandTag {
+pub enum TpmiStCommandTag {
     TPM_ST_SESSIONS(SessionOption),
 }
 
@@ -26,7 +26,7 @@ impl TpmiStCommandTag {
 // https://trustedcomputinggroup.org/wp-content/uploads/TCG_TPM2_r1p59_Part2_Structures_pub.pdf#page=48
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
-pub(crate) enum CommandArg {
+pub enum CommandArg {
     TPM_CC_NV_Write(Vec<u8>),
     TPM_CC_NV_WriteLock,
     TPM_CC_NV_Read(u16),
@@ -46,7 +46,7 @@ impl CommandArg {
 // https://source.corp.google.com/chromeos_internal/
 // src/platform/ti50/common/applications/system_test/
 // src/commands.rs;rcl=c37b4a7e7d9d69bba23712318e03749b2b325d16;l=675
-pub(crate) enum SessionOption {
+pub enum SessionOption {
     EmptyPassword,
 }
 
@@ -84,7 +84,7 @@ fn hex_decode(s: &str) -> Result<Vec<u8>, ParseIntError> {
         .collect()
 }
 
-pub(crate) struct TpmCmdArg {
+pub struct TpmCmdArg {
     pub bytes: Vec<u8>,
 }
 
@@ -100,7 +100,7 @@ impl TpmCmdArg {
         tokens
     }
 }
-pub(crate) struct TpmCmdResponse {
+pub struct TpmCmdResponse {
     return_code: u32,
     body: Vec<u8>,
 }
