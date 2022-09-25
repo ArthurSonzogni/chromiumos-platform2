@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fmt::Write;
 use std::process::Output;
 
 use regex::Regex;
@@ -57,6 +58,14 @@ pub fn gsctool_cmd_successful(ctx: &mut impl Context, options: Vec<&str>) -> boo
     output.is_ok() && output.unwrap().status.success()
 }
 
+pub fn u8_slice_to_hex_string(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        write!(&mut s, "{:02x}", b).unwrap();
+    }
+    s
+}
+
 /// This function finds the first occurrence of a board id representation
 /// after the occurrence of the substring "Board ID".
 ///
@@ -81,6 +90,13 @@ pub fn extract_board_id_from_gsctool_response(raw_response: &str) -> Result<Boar
     } else {
         Err(HwsecError::GsctoolResponseBadFormatError)
     }
+}
+
+pub fn get_board_id_with_gsctool(ctx: &mut impl Context) -> Result<BoardID, HwsecError> {
+    let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "-i"])?;
+    let board_id_output = std::str::from_utf8(&gsctool_raw_response.stdout)
+        .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?;
+    extract_board_id_from_gsctool_response(board_id_output)
 }
 
 /// This function finds the first occurrence of a version representation (e.g. 1.3.14)

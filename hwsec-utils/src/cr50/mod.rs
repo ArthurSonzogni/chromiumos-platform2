@@ -25,3 +25,6 @@ pub use update::*;
 
 pub mod set_board_id;
 pub use set_board_id::*;
+
+pub mod set_sn_bits;
+pub use set_sn_bits::*;

@@ -13,6 +13,7 @@ overflow-checks = true
 libchromeos = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/libchromeos-0.1.0" } # provided by ebuild
 log = "0.4"
 regex = "1"
+hmac-sha256 = "0.1.6"
 
 [features]
 ti50_onboard = [] # feature has no explicit dependencies

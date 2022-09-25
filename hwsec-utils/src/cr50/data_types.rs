@@ -5,11 +5,13 @@
 use std::fmt;
 use std::fmt::Display;
 
+pub type SnBits = [u8; 12];
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct RmaSnBits {
     pub sn_data_version: [u8; 3],
     pub rma_status: u8,
-    pub sn_bits: [u8; 12],
+    pub sn_bits: SnBits,
     pub standalone_rma_sn_bits: Option<[u8; 4]>,
 }
 
