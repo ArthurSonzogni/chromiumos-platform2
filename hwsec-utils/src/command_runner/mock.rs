@@ -231,6 +231,32 @@ impl MockCommandRunner {
             standalone_rma_sn_bits: None,
         });
     }
+    pub fn add_successful_get_gbb_flags_interaction(&mut self, gbb_flag: u32) {
+        self.add_expectation(
+            MockCommandInput::new("/usr/share/vboot/bin/get_gbb_flags.sh", Vec::<&str>::new()),
+            MockCommandOutput::new(
+                0,
+                &format!(
+                    include_str!("expected_message/successfully_get_gbb_flags_response.txt"),
+                    gbb_flag
+                ),
+                "",
+            ),
+        );
+    }
+    pub fn add_successful_set_gbb_flags_interaction(&mut self, gbb_flag: u32) {
+        self.add_expectation(
+            MockCommandInput::new(
+                "/usr/share/vboot/bin/set_gbb_flags.sh",
+                vec![&format!("0x{:08x}", gbb_flag)],
+            ),
+            MockCommandOutput::new(
+                0,
+                include_str!("expected_message/successfully_set_gbb_flags_response.txt"),
+                "",
+            ),
+        );
+    }
 }
 
 impl CommandRunner for MockCommandRunner {

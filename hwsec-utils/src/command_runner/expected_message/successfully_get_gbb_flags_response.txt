@@ -1,0 +1,19 @@
+flashrom aa670e2f on Linux 5.4.203-19121-g518bb8785bd7 (x86_64)
+flashrom is free software, get the source code at https://flashrom.org
+
+Using clock_gettime for delay loops (clk_id: 1, resolution: 1ns).
+coreboot table found at 0x76b21000.
+Found chipset "Intel Tigerlake".
+Enabling flash write... SPI Configuration is locked down.
+FREG0: Flash Descriptor region (0x00000000-0x00000fff) is read-only.
+FREG1: BIOS region (0x00500000-0x01ffffff) is read-write.
+FREG2: Management Engine region (0x00001000-0x004fffff) is read-only.
+Not all flash regions are freely accessible by flashrom. This is most likely
+due to an active ME. Please see https://flashrom.org/ME for details.
+OK.
+Found Winbond flash chip "W25Q256JV_M" (32768 kB, Programmer-specific) \
+mapped at physical address 0x0000000000000000.
+Using regions: "FMAP", "GBB".
+Reading flash... done.
+SUCCESS
+Chrome OS GBB set flags: 0x{:08X}

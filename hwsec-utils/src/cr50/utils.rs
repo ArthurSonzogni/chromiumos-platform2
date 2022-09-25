@@ -135,3 +135,50 @@ pub fn extract_rw_fw_version_from_gsctool_response(
         Err(HwsecError::GsctoolResponseBadFormatError)
     }
 }
+
+pub fn clear_terminal() {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+}
+
+pub fn get_gbb_flags(ctx: &mut impl Context) -> Result<u32, HwsecError> {
+    let raw_response = ctx
+        .cmd_runner()
+        .output("/usr/share/vboot/bin/get_gbb_flags.sh", vec![])
+        .map_err(|_| HwsecError::CommandRunnerError)?;
+    let re: regex::Regex = Regex::new(r"0x[0-9a-fA-F]{8}").unwrap();
+    if let Some(keyword_pos) = raw_response.find("Chrome OS GBB set flags:") {
+        let key_str = re
+            .find(&raw_response[keyword_pos..])
+            .ok_or(HwsecError::VbootScriptResponseBadFormatError)?
+            .as_str();
+        Ok(u32::from_str_radix(&key_str[2..], 16)
+            .map_err(|_| HwsecError::VbootScriptResponseBadFormatError)?)
+    } else {
+        Err(HwsecError::VbootScriptResponseBadFormatError)
+    }
+}
+
+pub fn set_gbb_flags(ctx: &mut impl Context, new_flags: u32) -> Result<(), HwsecError> {
+    ctx.cmd_runner()
+        .run(
+            "/usr/share/vboot/bin/set_gbb_flags.sh",
+            vec![&format!("0x{:08x}", new_flags)],
+        )
+        .map_err(|_| HwsecError::CommandRunnerError)
+        .map(|_| ())
+}
+
+pub fn get_hwid(ctx: &mut impl Context) -> Result<String, HwsecError> {
+    Ok(ctx
+        .cmd_runner()
+        .output("crossystem", vec!["hwid"])
+        .map_err(|_| HwsecError::CommandRunnerError)?
+        .replace(' ', "/"))
+}
+
+pub fn get_challenge_string(ctx: &mut impl Context) -> Result<String, HwsecError> {
+    // containing whitespace and newline characters
+    Ok(get_gsctool_output(ctx, vec!["-t", "-r"])
+        .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?
+        .replace("Challange:", ""))
+}

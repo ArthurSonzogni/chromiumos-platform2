@@ -28,3 +28,6 @@ pub use set_board_id::*;
 
 pub mod set_sn_bits;
 pub use set_sn_bits::*;
+
+pub mod reset;
+pub use reset::*;

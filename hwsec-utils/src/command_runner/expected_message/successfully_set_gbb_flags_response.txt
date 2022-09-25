@@ -1,0 +1,62 @@
+flashrom aa670e2f on Linux 5.4.203-19121-g518bb8785bd7 (x86_64)
+flashrom is free software, get the source code at https://flashrom.org
+
+Using clock_gettime for delay loops (clk_id: 1, resolution: 1ns).
+coreboot table found at 0x76b21000.
+Found chipset "Intel Tigerlake".
+Enabling flash write... Warning: Setting BIOS Control at 0xdc from 0x8b to 0x89 failed.
+New value is 0x8b.
+SPI Configuration is locked down.
+FREG0: Flash Descriptor region (0x00000000-0x00000fff) is read-only.
+FREG1: BIOS region (0x00500000-0x01ffffff) is read-write.
+FREG2: Management Engine region (0x00001000-0x004fffff) is read-only.
+Not all flash regions are freely accessible by flashrom. This is most likely
+due to an active ME. Please see https://flashrom.org/ME for details.
+GPR0: Warning: 0x00001000-0x00197fff is read-only.
+At least some flash regions are write protected. For write operations,
+you should use a flash layout and include only writable regions. See
+manpage for more details.
+OK.
+Found Winbond flash chip "W25Q256JV_M" (32768 kB, Programmer-specific) \
+mapped at physical address 0x0000000000000000.
+Error accessing W25Q256JV_M, 0x2000000 bytes at 0x00000000fe000000
+/dev/mem mmap failed: Resource temporarily unavailable
+Could not map flash chip W25Q256JV_M at 0x00000000fe000000.
+Using regions: "FMAP", "GBB".
+Error accessing W25Q256JV_M, 0x2000000 bytes at 0x00000000fe000000
+/dev/mem mmap failed: Resource temporarily unavailable
+Could not map flash chip W25Q256JV_M at 0x00000000fe000000.
+Reading flash... done.
+SUCCESS
+Setting GBB flags from flags: 0x00000000 to 0x87878787..successfully \
+saved new image to: /tmp/tmp.VVmV31Ncs3
+flashrom aa670e2f on Linux 5.4.203-19121-g518bb8785bd7 (x86_64)
+flashrom is free software, get the source code at https://flashrom.org
+
+Using clock_gettime for delay loops (clk_id: 1, resolution: 1ns).
+coreboot table found at 0x76b21000.
+Found chipset "Intel Tigerlake".
+Enabling flash write... Warning: Setting \
+BIOS Control at 0xdc from 0x8b to 0x89 failed.
+New value is 0x8b.
+SPI Configuration is locked down.
+FREG0: Flash Descriptor region (0x00000000-0x00000fff) is read-only.
+FREG1: BIOS region (0x00500000-0x01ffffff) is read-write.
+FREG2: Management Engine region (0x00001000-0x004fffff) is read-only.
+Not all flash regions are freely accessible by flashrom. This is most likely
+due to an active ME. Please see https://flashrom.org/ME for details.
+GPR0: Warning: 0x00001000-0x00197fff is read-only.
+At least some flash regions are write protected. For write operations,
+you should use a flash layout and include only writable regions. See
+manpage for more details.
+OK.
+Found Winbond flash chip "W25Q256JV_M" (32768 kB, Programmer-specific) \
+mapped at physical address 0x0000000000000000.
+Using region: "GBB".
+Error accessing W25Q256JV_M, 0x2000000 bytes at 0x00000000fe000000
+/dev/mem mmap failed: Resource temporarily unavailable
+Could not map flash chip W25Q256JV_M at 0x00000000fe000000.
+Reading old flash chip contents... done.
+Erasing and writing flash chip... SUCCESS.
+Verifying flash... VERIFIED.
+SUCCESS
