@@ -44,13 +44,23 @@ executable("foomatic_shell") {
 if (use.test) {
   executable("foomatic_shell_test") {
     sources = [
+      "grammar.cc",
       "grammar.h",
       "parser.cc",
       "parser.h",
       "parser_test.cc",
+      "process_launcher.cc",
+      "process_launcher.h",
+      "process_launcher_test.cc",
       "scanner.cc",
       "scanner.h",
       "scanner_test.cc",
+      "shell.cc",
+      "shell.h",
+      "shell_test.cc",
+      "verifier.cc",
+      "verifier.h",
+      "verifier_test.cc",
     ]
     configs += [
       "//common-mk:test",

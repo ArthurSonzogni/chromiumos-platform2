@@ -137,7 +137,11 @@ pid_t ProcessLauncher::StartSubshell(const Script& script,
     // Close all unused file descriptors.
     for (int fd = 3; fd < file_desc_limit.rlim_cur; ++fd) {
       if (fd != input_fd && fd != output_fd) {
-        if (close(fd) != 0)
+        // Since this code calls close() on every integer that could
+        // possibly be a file descriptor, we expect most of the calls
+        // to fail with EBADF, which indicates that the parameter to
+        // close() wasn't an open file descriptor to begin with.
+        if (close(fd) != 0 && errno != EBADF)
           perror("close(fd) failed");
       }
     }
