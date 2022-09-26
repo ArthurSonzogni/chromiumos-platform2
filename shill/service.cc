@@ -1329,11 +1329,13 @@ void Service::NoteFailureEvent() {
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
   if (IsConnectedState(state)) {
-    LOG(INFO) << "Noting an unexpected connection drop.";
+    LOG(INFO) << "Noting an unexpected connection drop for " << log_name()
+              << ".";
     period = kDisconnectsMonitorSeconds;
     events = &disconnects_;
   } else if (IsConnectingState(state)) {
-    LOG(INFO) << "Noting an unexpected failure to connect.";
+    LOG(INFO) << "Noting an unexpected failure to connect for " << log_name()
+              << ".";
     period = kMisconnectsMonitorSeconds;
     events = &misconnects_;
   } else {
