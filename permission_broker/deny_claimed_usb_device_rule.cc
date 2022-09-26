@@ -203,9 +203,14 @@ bool IsDeviceAllowedSerial(udev_device* device) {
 
       {0x0525, 0xa4a7},  // Linux-USB Serial Gadget (CDC ACM mode)
 
+      {0x067b, 0x2323},  // Prolific Technology USB-Serial Controller
+
       {0x093c, 0x1101},  // Intrepid Control Systems ValueCAN 4
 
       {0x0d28, 0x0204},  // BBC micro:bit
+
+      {0x1a86, 0x55d3},  // QinHeng Electronics USB Single Serial
+      {0x1a86, 0x55d4},  // QinHeng Electronics USB Single Serial
 
       {0x2341, 0},  // Arduino
       {0x1b4f, 0},  // Sparkfun
@@ -217,6 +222,7 @@ bool IsDeviceAllowedSerial(udev_device* device) {
 
       {0x2e8a, 0},  // Raspberry Pi
 
+      {0x18d1, 0x4f00},  // Google Pixel ROM recovery
       {0x18d1, 0x5002},  // Google Servo V2
       {0x18d1, 0x5003},  // Google Servo V2
       {0x18d1, 0x500a},  // Google twinkie
