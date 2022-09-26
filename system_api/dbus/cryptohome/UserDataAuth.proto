@@ -1677,8 +1677,8 @@ enum FingerprintScanResult {
   FINGERPRINT_SCAN_RESULT_FATAL_ERROR = 3;
 }
 
-// The message included in signal AsyncAuthScanResultSignal.
-message AsyncAuthScanResult {
+// The message included in signal AuthScanResultSignal.
+message AuthScanResult {
   // The result of the scan
   oneof scan_result {
     FingerprintScanResult fingerprint_result = 1;
@@ -1690,10 +1690,10 @@ message FingerprintEnrollmentProgress {
   int32 percent_complete = 1;
 }
 
-// The message included in signal AsyncAuthEnrollmentProgressSignal
-message AsyncAuthEnrollmentProgress {
+// The message included in signal AuthEnrollmentProgressSignal
+message AuthEnrollmentProgress {
   // The result of the latest scan
-  AsyncAuthScanResult scan_result = 1;
+  AuthScanResult scan_result = 1;
   bool done = 2;
   // The biometrics-type specific progress
   oneof progress {

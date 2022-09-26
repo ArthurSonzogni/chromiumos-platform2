@@ -110,9 +110,9 @@ inline constexpr char kCheckHealth[] = "CheckHealth";
 inline constexpr char kDircryptoMigrationProgress[] =
     "DircryptoMigrationProgress";
 inline constexpr char kLowDiskSpace[] = "LowDiskSpace";
-inline constexpr char kAsyncAuthScanResultSignal[] = "AsyncAuthScanResult";
-inline constexpr char kAsyncAuthEnrollmentProgressSignal[] =
-    "AsyncAuthEnrollmentProgress";
+inline constexpr char kAuthScanResultSignal[] = "AuthScanResult";
+inline constexpr char kAuthEnrollmentProgressSignal[] =
+    "AuthEnrollmentProgress";
 
 }  // namespace user_data_auth
 
