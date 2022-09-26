@@ -874,7 +874,9 @@ void Device::SetEnabledChecked(bool enable,
       enabled_persistent_ = enable;
       manager_->UpdateDevice(this);
     }
-    callback.Run(Error(Error::kSuccess));
+
+    if (!callback.is_null())
+      callback.Run(Error(Error::kSuccess));
     return;
   }
 
