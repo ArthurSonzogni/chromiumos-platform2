@@ -1701,8 +1701,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr uint16_t kWiFiFrequency5955 = 5955;
   static constexpr uint16_t kWiFiFrequency7115 = 7115;
 
-  static constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
-
   void InitializeCommonServiceMetrics(const Service& service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics* service_metrics,
                                            Service::ConnectState new_state);
@@ -1738,8 +1736,6 @@ class Metrics : public DefaultServiceObserver {
     DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_connect_timer.reset(timer);  // Passes ownership
   }
-
-  static std::string GetBootId();
 
   // Return a pseudonymized string (salted+hashed) version of the session tag.
   std::string PseudonymizeTag(uint64_t tag);

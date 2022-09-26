@@ -4,11 +4,89 @@
 
 #include "shill/wifi/wifi_metrics_utils.h"
 
+#include <string>
+
 #include <base/containers/contains.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/strings/string_util.h>
+
+#include "shill/metrics.h"
 
 namespace shill::WiFiMetricsUtils {
 
 namespace {
+
+constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
+
+// List of WiFi adapters that have been added to AVL.
+// TODO(b/229020553): Instead of hardcoding the list here and in other places
+// (e.g. Tast), use a single source of truth.
+constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
+    {0x02df, 0x912d,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Marvell88w8897SDIO,
+    {0x1b4b, 0x2b42,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Marvell88w8997PCIE,
+    {0x168c, 0x003e,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174,
+    {0x105b, 0xe09d,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174,
+    {0x0271, 0x050a,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174SDIO,
+    {0x17cb, 0x1103,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommWCN6855,
+    {0x8086, 0x08b1, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7260,
+    {0x8086, 0x08b2, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7260,
+    {0x8086, 0x095a, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7265,
+    {0x8086, 0x095b, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7265,
+    // Note that Intel 9000 is also Intel 9560 aka Jefferson Peak 2
+    {0x8086, 0x9df0, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9000,
+    {0x8086, 0x31dc, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9000,
+    {0x8086, 0x2526, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9260,
+    {0x8086, 0x2723, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel22260,
+    // For integrated wifi chips, use device_id and subsystem_id together
+    // as an identifier.
+    // 0x02f0 is for Quasar on CML; 0x4070, 0x0074, 0x6074 are for HrP2.
+    {0x8086, 0x02f0, 0x0034},  // Intel9000,
+    {0x8086, 0x02f0, 0x4070},  // Intel22560,
+    {0x8086, 0x02f0, 0x0074},  // Intel22560,
+    {0x8086, 0x02f0, 0x6074},  // Intel22560,
+    {0x8086, 0x4df0, 0x0070},  // Intel22560,
+    {0x8086, 0x4df0, 0x4070},  // Intel22560,
+    {0x8086, 0x4df0, 0x0074},  // Intel22560,
+    {0x8086, 0x4df0, 0x6074},  // Intel22560,
+    {0x8086, 0xa0f0, 0x4070},  // Intel22560,
+    {0x8086, 0xa0f0, 0x0074},  // Intel22560,
+    {0x8086, 0xa0f0, 0x6074},  // Intel22560,
+    {0x8086, 0x51f0, 0x0090},  // IntelAX211,
+    {0x8086, 0x51f1, 0x0090},  // IntelAX211,
+    {0x8086, 0x51f0, 0x0094},  // IntelAX211,
+    {0x8086, 0x51f0, 0x4094},  // IntelAX211,
+    {0x8086, 0x54f0, 0x0090},  // IntelAX211,
+    {0x8086, 0x54f0, 0x0094},  // IntelAX211,
+    {0x02d0, 0x4354,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4354SDIO,
+    {0x14e4, 0x43ec,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4356PCIE,
+    {0x14e4, 0x440d,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4371PCIE,
+    {0x10ec, 0xc822,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8822CPCIE,
+    {0x10ec, 0x8852,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852APCIE,
+    {0x10ec, 0xc852,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852CPCIE,
+    {0x14c3, 0x7961,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921PCIE,
+    {0x037a, 0x7901,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921SDIO,
+    {Metrics::kWiFiIntegratedAdapterVendorId, 3990,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // Qualcomm WCN3990 integrated
+                                                  // chipset,
+    {Metrics::kWiFiIntegratedAdapterVendorId, 6750,
+     Metrics::kWiFiStructuredMetricsErrorValue}  // Qualcomm WCN6750 integrated
+                                                 // chipset,
+};
 
 // List of OUIs of popular APs, per go/cros-wifi-popular-ap-oui.
 constexpr int OUIAllowList[] = {
@@ -51,6 +129,27 @@ int AllowlistedOUIForTesting() {
 
 bool CanReportOUI(int oui) {
   return base::Contains(OUIAllowList, oui);
+}
+
+bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {
+  for (const auto& item : AVLWiFiAdapters) {
+    if (item.vendor_id == info.vendor_id &&
+        item.product_id == info.product_id &&
+        (item.subsystem_id == info.subsystem_id ||
+         item.subsystem_id == Metrics::kWiFiStructuredMetricsErrorValue))
+      return true;
+  }
+  return false;
+}
+
+std::string GetBootId() {
+  std::string boot_id;
+  if (!base::ReadFileToString(base::FilePath(kBootIdProcPath), &boot_id)) {
+    LOG(ERROR) << "Failed to read boot_id";
+    return std::string();
+  }
+  base::RemoveChars(boot_id, "-\r\n", &boot_id);
+  return boot_id;
 }
 
 }  // namespace shill::WiFiMetricsUtils

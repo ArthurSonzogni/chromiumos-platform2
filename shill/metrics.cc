@@ -88,85 +88,6 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
   }
 }
 
-// List of WiFi adapters that have been added to AVL.
-// TODO(b/229020553): Instead of hardcoding the list here and in other places
-// (e.g. Tast), use a single source of truth.
-static constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
-    {0x02df, 0x912d,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Marvell88w8897SDIO,
-    {0x1b4b, 0x2b42,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Marvell88w8997PCIE,
-    {0x168c, 0x003e,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174,
-    {0x105b, 0xe09d,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174,
-    {0x0271, 0x050a,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommAtherosQCA6174SDIO,
-    {0x17cb, 0x1103,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // QualcommWCN6855,
-    {0x8086, 0x08b1, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7260,
-    {0x8086, 0x08b2, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7260,
-    {0x8086, 0x095a, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7265,
-    {0x8086, 0x095b, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel7265,
-    // Note that Intel 9000 is also Intel 9560 aka Jefferson Peak 2
-    {0x8086, 0x9df0, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9000,
-    {0x8086, 0x31dc, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9000,
-    {0x8086, 0x2526, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel9260,
-    {0x8086, 0x2723, Metrics::kWiFiStructuredMetricsErrorValue},  // Intel22260,
-    // For integrated wifi chips, use device_id and subsystem_id together
-    // as an identifier.
-    // 0x02f0 is for Quasar on CML; 0x4070, 0x0074, 0x6074 are for HrP2.
-    {0x8086, 0x02f0, 0x0034},  // Intel9000,
-    {0x8086, 0x02f0, 0x4070},  // Intel22560,
-    {0x8086, 0x02f0, 0x0074},  // Intel22560,
-    {0x8086, 0x02f0, 0x6074},  // Intel22560,
-    {0x8086, 0x4df0, 0x0070},  // Intel22560,
-    {0x8086, 0x4df0, 0x4070},  // Intel22560,
-    {0x8086, 0x4df0, 0x0074},  // Intel22560,
-    {0x8086, 0x4df0, 0x6074},  // Intel22560,
-    {0x8086, 0xa0f0, 0x4070},  // Intel22560,
-    {0x8086, 0xa0f0, 0x0074},  // Intel22560,
-    {0x8086, 0xa0f0, 0x6074},  // Intel22560,
-    {0x8086, 0x51f0, 0x0090},  // IntelAX211,
-    {0x8086, 0x51f1, 0x0090},  // IntelAX211,
-    {0x8086, 0x51f0, 0x0094},  // IntelAX211,
-    {0x8086, 0x51f0, 0x4094},  // IntelAX211,
-    {0x8086, 0x54f0, 0x0090},  // IntelAX211,
-    {0x8086, 0x54f0, 0x0094},  // IntelAX211,
-    {0x02d0, 0x4354,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4354SDIO,
-    {0x14e4, 0x43ec,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4356PCIE,
-    {0x14e4, 0x440d,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4371PCIE,
-    {0x10ec, 0xc822,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8822CPCIE,
-    {0x10ec, 0x8852,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852APCIE,
-    {0x10ec, 0xc852,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Realtek8852CPCIE,
-    {0x14c3, 0x7961,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921PCIE,
-    {0x037a, 0x7901,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921SDIO,
-    {Metrics::kWiFiIntegratedAdapterVendorId, 3990,
-     Metrics::kWiFiStructuredMetricsErrorValue},  // Qualcomm WCN3990 integrated
-                                                  // chipset,
-    {Metrics::kWiFiIntegratedAdapterVendorId, 6750,
-     Metrics::kWiFiStructuredMetricsErrorValue}  // Qualcomm WCN6750 integrated
-                                                 // chipset,
-};
-
-bool CanReportAdapterInfo(const Metrics::WiFiAdapterInfo& info) {
-  for (const auto& item : AVLWiFiAdapters) {
-    if (item.vendor_id == info.vendor_id &&
-        item.product_id == info.product_id &&
-        (item.subsystem_id == info.subsystem_id ||
-         item.subsystem_id == Metrics::kWiFiStructuredMetricsErrorValue))
-      return true;
-  }
-  return false;
-}
 }  // namespace
 
 Metrics::Metrics()
@@ -1271,7 +1192,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
       .SetSubsystemId(info.subsystem_id)
       .Record();
 
-  bool adapter_supported = CanReportAdapterInfo(info);
+  bool adapter_supported = WiFiMetricsUtils::CanReportAdapterInfo(info);
   if (enabled) {
     // Monitor through UMA how often adapters are not in the allowlist.
     WiFiAdapterInAllowlist allowed =
@@ -1286,7 +1207,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
   int s_id = adapter_supported ? info.subsystem_id
                                : Metrics::kWiFiStructuredMetricsErrorValue;
   metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
-      .SetBootId(GetBootId())
+      .SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAdapterState(enabled)
@@ -1339,7 +1260,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
-      .SetBootId(GetBootId())
+      .SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
@@ -1385,7 +1306,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(NetworkServiceError result_code,
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   SLOG(2) << __func__ << ": ResultCode " << result_code;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
-      .SetBootId(GetBootId())
+      .SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
@@ -1407,7 +1328,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   SLOG(2) << __func__ << ": Type " << type << " Reason " << reason;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
-      .SetBootId(GetBootId())
+      .SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
@@ -1525,18 +1446,6 @@ std::string Metrics::PseudonymizeTag(uint64_t tag) {
       base::StrCat({pseudo_tag_salt_, base::NumberToString(tag)});
   crypto::SHA256HashString(salted_tag, hash, std::size(hash));
   return base::HexEncode(base::span<uint8_t>(hash, std::size(hash)));
-}
-
-// static
-std::string Metrics::GetBootId() {
-  std::string boot_id;
-  if (!base::ReadFileToString(base::FilePath(Metrics::kBootIdProcPath),
-                              &boot_id)) {
-    LOG(ERROR) << "Failed to read boot_id";
-    return std::string();
-  }
-  base::RemoveChars(boot_id, "-\r\n", &boot_id);
-  return boot_id;
 }
 
 void Metrics::SetLibraryForTesting(MetricsLibraryInterface* library) {
