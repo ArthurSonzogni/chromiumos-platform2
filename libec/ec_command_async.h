@@ -74,7 +74,7 @@ class EcCommandAsync : public EcCommand<O, I> {
     }
 
     LOG(ERROR) << "Timed out polling for command 0x" << std::hex
-               << BaseCmd::data_.cmd.command;
+               << BaseCmd::Command();
     return false;
   }
 

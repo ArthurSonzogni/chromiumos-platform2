@@ -143,9 +143,10 @@ class EcCommand : public EcCommandInterface {
 
   unsigned int kUsbXferTimeoutMs = 1000;
 
+  Data data_;
+
  protected:
   bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
-  Data data_;
 };
 
 /**
