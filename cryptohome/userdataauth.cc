@@ -5050,6 +5050,15 @@ void UserDataAuth::ListAuthFactors(
     }
   }
 
+  // TODO(b/247122507): Remove this with configured_auth_factor field once tast
+  // test cleanup is done.
+  for (auto configured_auth_factors_with_status :
+       reply.configured_auth_factors_with_status()) {
+    user_data_auth::AuthFactor auth_factor;
+    auth_factor.CopyFrom(configured_auth_factors_with_status.auth_factor());
+    *reply.add_configured_auth_factors() = std::move(auth_factor);
+  }
+
   // Successfully completed, send the response with OK.
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
