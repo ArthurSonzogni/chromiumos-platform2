@@ -77,7 +77,8 @@ template <typename Params, typename Response>
 class EcCommand : public EcCommandInterface {
  public:
   explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const Params& req = {})
-      : data_({
+      : request_(req),
+        data_({
             .cmd = {.version = ver,
                     .command = cmd,
                     // "outsize" is the number of bytes of data going "out"
@@ -87,7 +88,6 @@ class EcCommand : public EcCommandInterface {
                     // "incoming" data from the EC.
                     .insize = realsizeof<Response>(),
                     .result = kEcCommandUninitializedResult},
-            .req = req,
         }) {}
   EcCommand(const EcCommand&) = delete;
   EcCommand& operator=(const EcCommand&) = delete;
@@ -96,7 +96,7 @@ class EcCommand : public EcCommandInterface {
 
   void SetRespSize(uint32_t insize) { data_.cmd.insize = insize; }
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
-  void SetReq(const Params& req) { data_.req = req; }
+  void SetReq(const Params& req) { request_ = req; }
 
   /**
    * Run an EC command.
@@ -113,11 +113,11 @@ class EcCommand : public EcCommandInterface {
 
   bool RunWithMultipleAttempts(int fd, int num_attempts) override;
 
-  virtual Response* Resp() { return &data_.resp; }
-  virtual const Response* Resp() const { return &data_.resp; }
+  virtual Response* Resp() { return &response_; }
+  virtual const Response* Resp() const { return &response_; }
   uint32_t RespSize() const { return data_.cmd.insize; }
-  Params* Req() { return &data_.req; }
-  const Params* Req() const { return &data_.req; }
+  Params* Req() { return &request_; }
+  const Params* Req() const { return &request_; }
   virtual uint32_t Result() const { return data_.cmd.result; }
 
   uint32_t Version() const override { return data_.cmd.version; }
@@ -146,6 +146,8 @@ class EcCommand : public EcCommandInterface {
 
   unsigned int kUsbXferTimeoutMs = 1000;
 
+  Params request_{};
+  Response response_{};
   Data data_;
 };
 
@@ -164,8 +166,8 @@ template <typename Params, typename Response>
 bool EcCommand<Params, Response>::Run(int ec_fd) {
   data_.cmd.result = kEcCommandUninitializedResult;
 
-  // We rely on the ioctl preserving data_.req when the command fails.
-  // This is important for subsequent retries using the same data_.req.
+  data_.req = request_;
+
   int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
   if (ret < 0) {
     // If the ioctl fails for some reason let's make sure that the driver
@@ -175,6 +177,8 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
                 << std::dec << " failed";
     return false;
   }
+
+  response_ = data_.resp;
 
   // Check size in addition to result code to guard against bugs in the
   // command implementation. See ec_command_test.cc for details and example test
@@ -263,7 +267,7 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
   req->reserved = 0;
   req->data_len = data_.cmd.outsize;
   if (data_.cmd.outsize)
-    memcpy(req_data, data_.cmd.data, data_.cmd.outsize);
+    memcpy(req_data, &request_, data_.cmd.outsize);
   req->checksum = (uint8_t)(-sum_bytes(req, req_len));
 
   size_t res_len = sizeof(struct ec_host_response) + data_.cmd.insize;
@@ -284,8 +288,9 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
                << " over USB failed";
   } else {
     data_.cmd.result = res->result;
-    if (data_.cmd.insize)
-      memcpy(&data_.resp, res_data, data_.cmd.insize);
+    if (data_.cmd.insize) {
+      memcpy(&response_, res_data, data_.cmd.insize);
+    }
   }
 
   free(req);

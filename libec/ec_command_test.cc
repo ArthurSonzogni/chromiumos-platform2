@@ -242,5 +242,28 @@ TEST(EcCommand, RunWithMultipleAttempts_AccessDenied) {
   EXPECT_FALSE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
 }
 
+TEST(EcCommand, RequestDoesNotChangeAfterRun) {
+  MockFpModeCommand mock;
+  EXPECT_EQ(mock.Req()->mode, 1);
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        // b/248622515: Set a new value in the response, so that we can make
+        // sure that the request is not affected.
+        data->resp.mode = 2;
+        return data->cmd.insize;
+      });
+  EXPECT_TRUE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.Req()->mode, 1);
+}
+
+TEST(EcCommand, RequestDoesNotAffectResponse) {
+  MockFpModeCommand mock;
+  // b/248622515: Modifying the request should not change the response.
+  EXPECT_EQ(mock.Resp()->mode, 0);
+  mock.SetReq({.mode = 1});
+  EXPECT_EQ(mock.Resp()->mode, 0);
+}
+
 }  // namespace
 }  // namespace ec
