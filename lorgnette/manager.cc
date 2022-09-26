@@ -868,8 +868,9 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   uint32_t last_progress_value = 0;
   size_t rows_written = 0;
   const size_t kMaxBuffer = 1024 * 1024;
-  const size_t buffer_length = std::max(
-      base::bits::AlignUp(params->bytes_per_line, 4 * 1024), kMaxBuffer);
+  const size_t buffer_length = std::max(static_cast<size_t>(base::bits::AlignUp(
+                                            params->bytes_per_line, 4 * 1024)),
+                                        kMaxBuffer);
   std::vector<uint8_t> image_buffer(buffer_length, '\0');
   // The offset within image_buffer to read to. This will be used within the
   // loop for when we've read a partial image line and need to track data that
