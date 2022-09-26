@@ -4,13 +4,12 @@
 
 use std::collections::VecDeque;
 use std::fmt::Write;
-use std::os::unix::prelude::ExitStatusExt;
-use std::process::ExitStatus;
-use std::process::Output;
 
 use crate::command_runner::CommandRunner;
 use crate::cr50::RmaSnBits;
 use crate::cr50::GSCTOOL_CMD_NAME;
+use crate::output::HwsecOutput;
+use crate::output::HwsecStatus;
 use crate::tpm2::tests::split_into_hex_strtok;
 use crate::tpm2::BoardID;
 
@@ -33,14 +32,14 @@ impl MockCommandInput {
 }
 
 pub struct MockCommandOutput {
-    pub result: Result<Output, std::io::Error>,
+    pub result: Result<HwsecOutput, std::io::Error>,
 }
 
 impl MockCommandOutput {
     pub fn new(exit_status: i32, out: &str, err: &str) -> Self {
         Self {
-            result: Ok(Output {
-                status: ExitStatus::from_raw(exit_status),
+            result: Ok(HwsecOutput {
+                status: HwsecStatus::from_raw(exit_status),
                 stdout: out.to_owned().as_bytes().to_vec(),
                 stderr: err.to_owned().as_bytes().to_vec(),
             }),
@@ -235,7 +234,7 @@ impl MockCommandRunner {
 }
 
 impl CommandRunner for MockCommandRunner {
-    fn run(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<Output, std::io::Error> {
+    fn run(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<HwsecOutput, std::io::Error> {
         assert!(
             !self.expectations.is_empty(),
             "Failed to pop front from queue -- it's empty!"

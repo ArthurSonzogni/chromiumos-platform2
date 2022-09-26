@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::fmt::Write;
-use std::process::Output;
 
 use regex::Regex;
 
@@ -12,9 +11,13 @@ use super::GSCTOOL_CMD_NAME;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
 use crate::error::HwsecError;
+use crate::output::HwsecOutput;
 use crate::tpm2::BoardID;
 
-pub fn run_gsctool_cmd(ctx: &mut impl Context, options: Vec<&str>) -> Result<Output, HwsecError> {
+pub fn run_gsctool_cmd(
+    ctx: &mut impl Context,
+    options: Vec<&str>,
+) -> Result<HwsecOutput, HwsecError> {
     #[cfg(feature = "ti50_onboard")]
     let dflag: Vec<&str> = vec!["-D"];
     #[cfg(not(feature = "ti50_onboard"))]
@@ -47,7 +50,7 @@ pub fn get_gsctool_full_output(
 pub fn run_metrics_client(
     ctx: &mut impl Context,
     options: Vec<&str>,
-) -> Result<Output, HwsecError> {
+) -> Result<HwsecOutput, HwsecError> {
     ctx.cmd_runner()
         .run("metrics_client", options)
         .map_err(|_| HwsecError::CommandRunnerError)

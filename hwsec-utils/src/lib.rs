@@ -6,4 +6,5 @@ pub mod command_runner;
 pub mod context;
 pub mod cr50;
 pub mod error;
+pub mod output;
 pub mod tpm2;

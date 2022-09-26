@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::process::Output;
-
 mod real;
 pub use real::*;
 
@@ -12,8 +10,10 @@ mod mock;
 #[cfg(test)]
 pub use mock::*;
 
+use crate::output::HwsecOutput;
+
 pub trait CommandRunner {
-    fn run(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<Output, std::io::Error>;
+    fn run(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<HwsecOutput, std::io::Error>;
     fn output(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<String, std::io::Error>;
     fn full_output(&mut self, cmd_name: &str, args: Vec<&str>) -> Result<String, std::io::Error>;
 }
