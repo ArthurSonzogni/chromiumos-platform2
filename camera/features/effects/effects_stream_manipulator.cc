@@ -84,6 +84,10 @@ EffectsStreamManipulator::EffectsStreamManipulator(
     LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
     options_.enable = false;
   }
+  pipeline_ = EffectsPipeline::Create();
+  pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
+      base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
+                          base::Unretained(this))));
   config_.SetCallback(base::BindRepeating(
       &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   CHECK(thread_.Start());
@@ -143,11 +147,6 @@ bool EffectsStreamManipulator::ConfigureStreamsOnThread(
     return false;
   }
   yuv_stream_->usage |= kBufferUsage;
-
-  pipeline_ = EffectsPipeline::Create();
-  pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
-      base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
-                          base::Unretained(this))));
 
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
