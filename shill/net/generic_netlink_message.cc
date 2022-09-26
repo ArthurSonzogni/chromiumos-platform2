@@ -10,15 +10,10 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kRTNL;
-}  // namespace Logging
 
 ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   // Build nlmsghdr.
@@ -92,7 +87,7 @@ std::string GenericNetlinkMessage::ToString() const {
 
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
-  SLOG(header_log_level) << ToString();
+  VLOG(header_log_level) << ToString();
   attributes_->Print(detail_log_level, 1);
 }
 

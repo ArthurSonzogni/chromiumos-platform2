@@ -12,14 +12,9 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 
-#include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kRTNL;
-}  // namespace Logging
 
 AttributeList::AttributeList() = default;
 
@@ -28,7 +23,7 @@ AttributeList::~AttributeList() = default;
 bool AttributeList::CreateAttribute(int id,
                                     AttributeList::NewFromIdMethod factory) {
   if (base::Contains(attributes_, id)) {
-    SLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
+    VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
   attributes_[id] = factory.Run(id);

@@ -14,7 +14,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
-#include "shill/logging.h"
 #include "shill/net/attribute_list.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/netlink_packet.h"
@@ -22,10 +21,6 @@
 #include "shill/net/sockets.h"
 
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kRTNL;
-}  // namespace Logging
 
 namespace {
 base::LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =
@@ -202,7 +197,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
     return;
   }
 
-  SLOG(3) << "Socket family '" << family_name << "' has id=" << family_id;
+  VLOG(3) << "Socket family '" << family_name << "' has id=" << family_id;
 
   // Extract the available multicast groups from the message.
   AttributeListConstRefPtr multicast_groups;
@@ -225,7 +220,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
         LOG(WARNING) << "Expected CTRL_ATTR_MCAST_GRP_ID, found none";
         continue;
       }
-      SLOG(3) << "  Adding group '" << group_name << "' = " << group_id;
+      VLOG(3) << "  Adding group '" << group_name << "' = " << group_id;
       message_types_[family_name].groups[group_name] = group_id;
     }
   }
@@ -272,7 +267,7 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
       return;
 
     case kDone:
-      SLOG(1) << __func__ << ": received kDone: " << GetRawMessage(raw_message);
+      VLOG(1) << __func__ << ": received kDone: " << GetRawMessage(raw_message);
       return;
   }
 
@@ -406,7 +401,7 @@ bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler& handler) {
     return false;
   }
   // And add the handler to the list.
-  SLOG(3) << "NetlinkManager::" << __func__ << " - adding handler";
+  VLOG(3) << "NetlinkManager::" << __func__ << " - adding handler";
   broadcast_handlers_.push_back(handler);
   return true;
 }
@@ -476,7 +471,7 @@ bool NetlinkManager::SendOrPostMessage(
 
   // TODO(samueltan): print this debug message above the actual call to
   // NetlinkSocket::SendMessage in NetlinkManager::SendMessageInternal.
-  SLOG(5) << "NL Message " << pending_message.sequence_number << " to send ("
+  VLOG(5) << "NL Message " << pending_message.sequence_number << " to send ("
           << pending_message.message_string.GetLength() << " bytes) ===>";
   message->Print(6, 7);
   NetlinkMessage::PrintBytes(8, pending_message.message_string.GetConstData(),
@@ -485,7 +480,7 @@ bool NetlinkManager::SendOrPostMessage(
   if (is_dump_msg) {
     pending_messages_.push(pending_message);
     if (IsDumpPending()) {
-      SLOG(5) << "Dump pending -- will send message after dump is complete";
+      VLOG(5) << "Dump pending -- will send message after dump is complete";
       return true;
     }
   }
@@ -504,7 +499,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
   while (handler_it != message_handlers_.end()) {
     if (timercmp(&now, &handler_it->second->delete_after(), >)) {
       // A timeout isn't always unexpected so this is not a warning.
-      SLOG(3) << "Removing timed-out handler for sequence number "
+      VLOG(3) << "Removing timed-out handler for sequence number "
               << handler_it->first;
       handler_it->second->HandleError(kTimeoutWaitingForResponse, nullptr);
       handler_it = message_handlers_.erase(handler_it);
@@ -515,7 +510,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
 
   // Register handlers for replies to this message.
   if (!pending_message.handler) {
-    SLOG(3) << "Handler for message was null.";
+    VLOG(3) << "Handler for message was null.";
   } else if (base::Contains(message_handlers_,
                             pending_message.sequence_number)) {
     LOG(ERROR) << "A handler already existed for sequence: "
@@ -536,14 +531,14 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
 
 bool NetlinkManager::SendMessageInternal(
     const NetlinkPendingMessage& pending_message) {
-  SLOG(5) << "Sending NL message " << pending_message.sequence_number;
+  VLOG(5) << "Sending NL message " << pending_message.sequence_number;
 
   if (!sock_->SendMessage(pending_message.message_string)) {
     LOG(ERROR) << "Failed to send Netlink message.";
     return false;
   }
   if (pending_message.is_dump_request) {
-    SLOG(5) << "Waiting for replies to NL dump message "
+    VLOG(5) << "Waiting for replies to NL dump message "
             << pending_message.sequence_number;
     dump_pending_ = true;
     pending_dump_timeout_callback_.Reset(base::Bind(
@@ -575,10 +570,10 @@ NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
 }
 
 void NetlinkManager::OnPendingDumpTimeout() {
-  SLOG(3) << "Timed out waiting for replies to NL dump message "
+  VLOG(3) << "Timed out waiting for replies to NL dump message "
           << PendingDumpSequenceNumber();
   if (IsDumpPending() && pending_messages_.front().retries_left > 0) {
-    SLOG(3) << "Resending NL dump message";
+    VLOG(3) << "Resending NL dump message";
     ResendPendingDumpMessage();
     return;
   }
@@ -588,13 +583,13 @@ void NetlinkManager::OnPendingDumpTimeout() {
 }
 
 void NetlinkManager::OnPendingDumpComplete() {
-  SLOG(3) << __func__;
+  VLOG(3) << __func__;
   dump_pending_ = false;
   pending_dump_timeout_callback_.Cancel();
   resend_dump_message_callback_.Cancel();
   pending_messages_.pop();
   if (!pending_messages_.empty()) {
-    SLOG(3) << "Sending next pending message";
+    VLOG(3) << "Sending next pending message";
     NetlinkPendingMessage to_send = pending_messages_.front();
     RegisterHandlersAndSendMessage(to_send);
   }
@@ -672,11 +667,11 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
   std::unique_ptr<NetlinkMessage> message(
       message_factory_.CreateMessage(packet, InferMessageContext(*packet)));
   if (message == nullptr) {
-    SLOG(3) << "NL Message " << sequence_number << " <===";
-    SLOG(3) << __func__ << "(msg:NULL)";
+    VLOG(3) << "NL Message " << sequence_number << " <===";
+    VLOG(3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
   }
-  SLOG(5) << "NL Message " << sequence_number << " Received ("
+  VLOG(5) << "NL Message " << sequence_number << " Received ("
           << packet->GetLength() << " bytes) <===";
   message->Print(6, 7);
   NetlinkMessage::PrintPacket(8, *packet);
@@ -703,7 +698,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     // of the pending dump request, and we are not in the middle of receiving a
     // multi-part reply.
     if (is_error_ack_message && (error_code == static_cast<uint32_t>(-EBUSY))) {
-      SLOG(3) << "EBUSY reply received for NL dump message "
+      VLOG(3) << "EBUSY reply received for NL dump message "
               << PendingDumpSequenceNumber();
       if (pending_messages_.front().retries_left) {
         pending_messages_.front().last_received_error = error_code;
@@ -712,31 +707,31 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
         // Since we will resend the message, do not invoke error handler.
         return;
       } else {
-        SLOG(3) << "No more resend attempts left for NL dump message "
+        VLOG(3) << "No more resend attempts left for NL dump message "
                 << PendingDumpSequenceNumber()
                 << " -- stop waiting "
                    "for replies";
         OnPendingDumpComplete();
       }
     } else {
-      SLOG(3) << "Reply received for NL dump message "
+      VLOG(3) << "Reply received for NL dump message "
               << PendingDumpSequenceNumber() << " -- stop waiting for replies";
       OnPendingDumpComplete();
     }
   }
 
   if (is_error_ack_message) {
-    SLOG(3) << "Error/ACK response to message " << sequence_number;
+    VLOG(3) << "Error/ACK response to message " << sequence_number;
     if (error_code) {
       CallErrorHandler(sequence_number, kErrorFromKernel, message.get());
     } else {
       if (base::Contains(message_handlers_, sequence_number)) {
-        SLOG(6) << "Found message-specific ACK handler";
+        VLOG(6) << "Found message-specific ACK handler";
         if (message_handlers_[sequence_number]->HandleAck()) {
-          SLOG(6) << "ACK handler invoked -- removing callback";
+          VLOG(6) << "ACK handler invoked -- removing callback";
           message_handlers_.erase(sequence_number);
         } else {
-          SLOG(6) << "ACK handler invoked -- not removing callback";
+          VLOG(6) << "ACK handler invoked -- not removing callback";
         }
       }
     }
@@ -744,7 +739,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
   }
 
   if (base::Contains(message_handlers_, sequence_number)) {
-    SLOG(6) << "Found message-specific handler";
+    VLOG(6) << "Found message-specific handler";
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() == NLMSG_DONE)) {
       message_handlers_[sequence_number]->HandleError(kDone, message.get());
@@ -757,16 +752,16 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     }
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {
-      SLOG(6) << "Multi-part message -- not removing callback";
+      VLOG(6) << "Multi-part message -- not removing callback";
     } else {
-      SLOG(6) << "Removing callbacks";
+      VLOG(6) << "Removing callbacks";
       message_handlers_.erase(sequence_number);
     }
     return;
   }
 
   for (const auto& handler : broadcast_handlers_) {
-    SLOG(6) << "Calling broadcast handler";
+    VLOG(6) << "Calling broadcast handler";
     if (!handler.is_null()) {
       handler.Run(*message);
     }
@@ -775,20 +770,20 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
 
 void NetlinkManager::ResendPendingDumpMessage() {
   if (!IsDumpPending()) {
-    SLOG(3) << "No pending dump, so do not resend dump message";
+    VLOG(3) << "No pending dump, so do not resend dump message";
     return;
   }
   --pending_messages_.front().retries_left;
   if (SendMessageInternal(pending_messages_.front())) {
-    SLOG(3) << "NL message " << PendingDumpSequenceNumber()
+    VLOG(3) << "NL message " << PendingDumpSequenceNumber()
             << " sent again successfully";
     return;
   }
-  SLOG(3) << "Failed to resend NL message " << PendingDumpSequenceNumber();
+  VLOG(3) << "Failed to resend NL message " << PendingDumpSequenceNumber();
   if (pending_messages_.front().retries_left) {
     ResendPendingDumpMessageAfterDelay();
   } else {
-    SLOG(3) << "No more resend attempts left for NL dump message "
+    VLOG(3) << "No more resend attempts left for NL dump message "
             << PendingDumpSequenceNumber()
             << " -- stop waiting "
                "for replies";
@@ -803,7 +798,7 @@ void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
                                       AuxilliaryMessageType type,
                                       const NetlinkMessage* netlink_message) {
   if (base::Contains(message_handlers_, sequence_number)) {
-    SLOG(6) << "Found message-specific error handler";
+    VLOG(6) << "Found message-specific error handler";
     message_handlers_[sequence_number]->HandleError(type, netlink_message);
     message_handlers_.erase(sequence_number);
   }
@@ -818,7 +813,7 @@ void NetlinkManager::OnReadError(const std::string& error_msg) {
 }
 
 void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
-  SLOG(3) << "Resending NL dump message " << PendingDumpSequenceNumber()
+  VLOG(3) << "Resending NL dump message " << PendingDumpSequenceNumber()
           << " after " << kNlMessageRetryDelay.InMilliseconds() << " ms";
   resend_dump_message_callback_.Reset(
       base::Bind(&NetlinkManager::ResendPendingDumpMessage,

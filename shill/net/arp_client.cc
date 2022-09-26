@@ -15,7 +15,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "shill/logging.h"
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/sockets.h"

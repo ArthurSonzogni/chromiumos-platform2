@@ -75,12 +75,6 @@ net_sources = [
 shared_library("libshill-net") {
   sources = net_sources
   configs += [ ":target_defaults" ]
-  defines = [ "SLOG_MEANS_VLOG=1" ]
-  cflags_cc = [
-    # for shill::Logging declarations
-    "-Wno-unused-variable",
-    "-Wno-unused-function",
-  ]
   deps = [ ":${target_name}_deps" ]
 }
 
