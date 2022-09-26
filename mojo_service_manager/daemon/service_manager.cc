@@ -15,13 +15,6 @@
 
 namespace chromeos {
 namespace mojo_service_manager {
-namespace {
-
-// The security context to identify the browser process. This is a workaround
-// for b/235922792.
-constexpr char kBrowserSecurityContext[] = "u:r:cros_browser:s0";
-
-}  // namespace
 
 ServiceManager::ServiceState::ServiceState(const std::string& service_name,
                                            ServicePolicy policy)
@@ -30,10 +23,8 @@ ServiceManager::ServiceState::ServiceState(const std::string& service_name,
 ServiceManager::ServiceState::~ServiceState() = default;
 
 ServiceManager::ServiceManager(Configuration configuration,
-                               ServicePolicyMap policy_map,
-                               base::OnceClosure quit_closure)
-    : configuration_(std::move(configuration)),
-      quit_closure_(std::move(quit_closure)) {
+                               ServicePolicyMap policy_map)
+    : configuration_(std::move(configuration)) {
   for (auto& item : policy_map) {
     auto& [service_name, policy] = item;
     // The elements of ServiceState is not moveable. Use |try_emplace| to
@@ -231,15 +222,6 @@ void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
 }
 
 void ServiceManager::HandleDisconnect() {
-  if (receiver_set_.current_context()->security_context ==
-      kBrowserSecurityContext) {
-    // TODO(b/235922792): Remove this restart logic after we have migrated
-    // services which don't restart themselvies. Refer to the
-    // //daemon/launcher.cc for details.
-    LOG(INFO) << "Disconnected from browser, quit and wait for respawn.";
-    std::move(quit_closure_).Run();
-    return;
-  }
   LOG(INFO) << "Disconnected from "
             << receiver_set_.current_context()->security_context;
 }

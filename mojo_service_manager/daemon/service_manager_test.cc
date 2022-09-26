@@ -25,8 +25,7 @@ class ServiceManagerTestBase : public ::testing::Test {
       : service_manager_(std::move(config),
                          CreateServicePolicyMapForTest({
                              {"FooService", {"owner", {"requester"}}},
-                         }),
-                         base::DoNothing()) {}
+                         })) {}
 
  protected:
   mojo::Remote<mojom::ServiceManager> ConnectServiceManagerAs(

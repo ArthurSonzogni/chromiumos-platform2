@@ -14,15 +14,12 @@ chmod: 1
 clock_getres: 1
 clock_gettime: 1
 clock_nanosleep: 1
-clone: 1
 close: 1
 connect: 1
-dup2: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
 eventfd2: 1
-execve: 1
 exit: 1
 exit_group: 1
 fallocate: 1
@@ -76,6 +73,5 @@ socketpair: 1
 time: 1
 uname: 1
 unlink: 1
-wait4: 1
 write: 1
 writev: 1
