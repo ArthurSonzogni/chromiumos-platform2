@@ -501,6 +501,9 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
       }
       close(b.release_fence);
     }
+    if (b.stream == &client_blob_stream_) {
+      still_capture_result_received_.Signal();
+    }
   }
 
   if (has_blob) {

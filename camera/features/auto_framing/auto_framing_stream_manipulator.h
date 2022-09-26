@@ -91,8 +91,9 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   struct CaptureContext;
 
   enum class State {
-    // The state when auto-framing is turned off. Settles the crop window to the
-    // full image.
+    // Auto-framing is disabled completely. In this state this SM is no-op.
+    kDisabled,
+    // Auto-framing is turned off. Settles the crop window to the full image.
     kOff,
     // The intermediate state before transitioning to |kOn| state.
     kTransitionToOn,
@@ -169,7 +170,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   int partial_result_count_ = 0;
 
   // Per-stream-config contexts.
-  State state_ = State::kOff;
+  State state_ = State::kDisabled;
   base::ElapsedTimer state_transition_timer_;
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};

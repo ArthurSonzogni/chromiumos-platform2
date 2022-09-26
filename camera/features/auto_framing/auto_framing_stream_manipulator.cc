@@ -23,6 +23,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <sys/types.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "features/auto_framing/tracing.h"
 #include "gpu/egl/egl_fence.h"
@@ -238,6 +239,11 @@ int CalculateMedian(const base::flat_map<int, int>& histogram) {
   return 0;
 }
 
+bool IsFullCrop(const Rect<float>& rect) {
+  constexpr float kThreshold = 1e-3f;
+  return rect.width >= 1.0 - kThreshold || rect.height >= 1.0 - kThreshold;
+}
+
 }  // namespace
 
 //
@@ -245,6 +251,7 @@ int CalculateMedian(const base::flat_map<int, int>& histogram) {
 //
 
 struct AutoFramingStreamManipulator::CaptureContext {
+  std::pair<State, State> state_transition;
   uint32_t num_pending_buffers = 0;
   bool metadata_received = false;
   bool has_pending_blob = false;
@@ -253,7 +260,6 @@ struct AutoFramingStreamManipulator::CaptureContext {
   std::optional<CameraBufferPool::Buffer> still_yuv_buffer;
   std::optional<CameraBufferPool::Buffer> cropped_still_yuv_buffer;
   std::optional<int64_t> timestamp;
-  std::optional<std::pair<State, State>> state_transition;
   std::optional<Rect<float>> crop_region;
 };
 
@@ -428,16 +434,14 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
-  std::vector<camera3_stream_t*> hal_streams;
+  std::vector<camera3_stream_t*> hal_streams(client_streams_);
   Size target_size;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
-      hal_streams.push_back(s);
       continue;
     }
     if (s->format == HAL_PIXEL_FORMAT_BLOB) {
       // Process the BLOB stream inplace.
-      hal_streams.push_back(s);
       still_capture_processor_->Initialize(
           s, base::BindPostTask(
                  gpu_resources_->gpu_task_runner(),
@@ -477,6 +481,10 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
       GetAspectRatio(target_size);
   VLOGF(1) << "Target output aspect ratio: " << target_aspect_ratio_x << ":"
            << target_aspect_ratio_y;
+  active_crop_region_ = NormalizeRect(
+      GetCenteringFullCrop(active_array_dimension_, target_aspect_ratio_x,
+                           target_aspect_ratio_y),
+      active_array_dimension_);
 
   // Create a stream to run auto-framing on.
   full_frame_stream_ = camera3_stream_t{
@@ -504,8 +512,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Config streams to HAL:";
     for (auto* s : stream_config->GetStreams()) {
-      VLOGF(1) << "  " << GetDebugString(s)
-               << (s == &full_frame_stream_ ? " (framing input)" : "");
+      VLOGF(1) << "  " << GetDebugString(s);
     }
   }
 
@@ -571,11 +578,10 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
         });
   }
 
-  // Configure client streams that are not passed down.
+  // Configure client streams that can be processed by us.
   for (auto* s : client_streams_) {
     if (!IsStreamBypassed(s) && s->format != HAL_PIXEL_FORMAT_BLOB) {
       s->usage |= kClientYuvBufferUsage;
-      s->max_buffers = full_frame_stream_.max_buffers;
     }
   }
 
@@ -619,8 +625,11 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
 
   ++metrics_.num_captures;
 
-  // Ignore reprocessing requests.
-  if (request->GetInputBuffer()) {
+  const std::pair<State, State> state_transition = StateTransitionOnThread();
+
+  // Bypass reprocessing requests and all requests when in |kDisabled| state.
+  if (request->GetInputBuffer() ||
+      state_transition.second == State::kDisabled) {
     return true;
   }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
@@ -628,6 +637,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     ++metrics_.errors[AutoFramingError::kProcessRequestError];
     return false;
   }
+  ctx->state_transition = state_transition;
 
   // Separate buffers into |hal_buffers| that will be requested to the HAL, and
   // |ctx->client_buffers| that will be done by us.
@@ -714,6 +724,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
   CaptureContext* ctx = GetCaptureContext(result->frame_number());
   if (!ctx) {
+    // This capture is bypassed.
     return true;
   }
   CHECK_GE(ctx->num_pending_buffers, result->num_output_buffers());
@@ -726,11 +737,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     ctx_deleter.ReplaceClosure(
         base::BindOnce(&AutoFramingStreamManipulator::RemoveCaptureContext,
                        base::Unretained(this), result->frame_number()));
-  }
-
-  // Update state when the first result is received for each frame number.
-  if (!ctx->state_transition) {
-    ctx->state_transition = StateTransitionOnThread();
   }
 
   // Update face metadata using the last framing information.
@@ -833,19 +839,19 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     full_frame_buffer->release_fence = -1;
   }
 
-  if (ctx->state_transition->first != State::kOff &&
-      ctx->state_transition->second == State::kOff) {
+  if (ctx->state_transition.first != State::kOff &&
+      ctx->state_transition.second == State::kOff) {
     if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
       LOGF(ERROR) << "Failed to reset crop window at result " << frame_number;
       return false;
     }
   }
-  if (ctx->state_transition->first != State::kOn &&
-      ctx->state_transition->second == State::kOn) {
+  if (ctx->state_transition.first != State::kOn &&
+      ctx->state_transition.second == State::kOn) {
     auto_framing_client_.ResetDetectionTimer();
   }
   if (!auto_framing_client_.ProcessFrame(
-          *ctx->timestamp, ctx->state_transition->second == State::kOn
+          *ctx->timestamp, ctx->state_transition.second == State::kOn
                                ? *full_frame_buffer->buffer
                                : nullptr)) {
     LOGF(ERROR) << "Failed to process frame " << frame_number;
@@ -1087,7 +1093,7 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   auto_framing_client_.TearDown();
   still_capture_processor_->Reset();
 
-  state_ = State::kOff;
+  state_ = State::kDisabled;
   client_streams_.clear();
   full_frame_stream_ = {};
   blob_stream_ = nullptr;
@@ -1231,9 +1237,30 @@ std::pair<AutoFramingStreamManipulator::State,
 AutoFramingStreamManipulator::StateTransitionOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
+  // State transition graph:
+  //
+  //     d--> kDisabled --a    b-----------------------|
+  //     |                v    |                       v
+  //   kOff --a--> kTransitionToOn --c--> kOn --b--> kTransitionToOff
+  //     ^                     ^                       |  |
+  //     |                     |-----------------------a  |
+  //     |------------------------------------------------c
+  //
+  //   a. Runtime switch changed to ON
+  //   b. Runtime switch changed to OFF
+  //   c. Enabling/Disabling delay time reached
+  //   d. Crop window stays at full region
+  //
+  // Note that crop window can be moving in |kOff| state, but needs to be fixed
+  // at full region in |kDisabled| state. For d, we check whether
+  // |active_crop_region_| is full, which is used in the last capture result. If
+  // it is, we assume it stays full up to the time this state change is applied
+  // in the future capture result.
+
   const State prev_state = state_;
   if (GetEnabled()) {
-    if (state_ == State::kOff || state_ == State::kTransitionToOff) {
+    if (state_ == State::kDisabled || state_ == State::kOff ||
+        state_ == State::kTransitionToOff) {
       state_ = State::kTransitionToOn;
     } else if (state_ == State::kTransitionToOn &&
                state_transition_timer_.Elapsed() >= options_.enable_delay) {
@@ -1245,6 +1272,8 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
     } else if (state_ == State::kTransitionToOff &&
                state_transition_timer_.Elapsed() >= options_.disable_delay) {
       state_ = State::kOff;
+    } else if (state_ == State::kOff && IsFullCrop(active_crop_region_)) {
+      state_ = State::kDisabled;
     }
   }
   if (prev_state != state_) {
@@ -1252,7 +1281,7 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
                << static_cast<int>(state_);
     if (prev_state == State::kOn) {
       metrics_.accumulated_on_time += state_transition_timer_.Elapsed();
-    } else if (prev_state == State::kOff) {
+    } else if (prev_state == State::kDisabled || prev_state == State::kOff) {
       metrics_.accumulated_off_time += state_transition_timer_.Elapsed();
     }
     if (state_ == State::kOn) {
@@ -1278,12 +1307,7 @@ AutoFramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
 AutoFramingStreamManipulator::CaptureContext*
 AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
   auto it = capture_contexts_.find(frame_number);
-  if (it == capture_contexts_.end()) {
-    LOGF(ERROR) << "Cannot find capture context with frame number "
-                << frame_number;
-    return nullptr;
-  }
-  return it->second.get();
+  return it != capture_contexts_.end() ? it->second.get() : nullptr;
 }
 
 void AutoFramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
