@@ -7,7 +7,12 @@
 
 namespace shill::WiFiMetricsUtils {
 
+// Given a specific AP OUI, can the client add it to the reported metrics?
 bool CanReportOUI(int oui);
+
+// This is only used by tests. It returns an AP OUI that is in the allowlist of
+// OUIs that can be reported. go/totw/135.
+int AllowlistedOUIForTesting();
 
 }  // namespace shill::WiFiMetricsUtils
 

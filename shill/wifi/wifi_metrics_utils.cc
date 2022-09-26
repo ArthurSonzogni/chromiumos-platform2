@@ -45,6 +45,10 @@ constexpr int OUIAllowList[] = {
 
 }  // namespace
 
+int AllowlistedOUIForTesting() {
+  return OUIAllowList[0];
+}
+
 bool CanReportOUI(int oui) {
   return base::Contains(OUIAllowList, oui);
 }

@@ -736,6 +736,7 @@ if (use.test) {
       "wifi/wake_on_wifi_test.cc",
       "wifi/wifi_cqm_test.cc",
       "wifi/wifi_endpoint_test.cc",
+      "wifi/wifi_metrics_utils_test.cc",
       "wifi/wifi_phy_test.cc",
       "wifi/wifi_provider_test.cc",
       "wifi/wifi_security_test.cc",
