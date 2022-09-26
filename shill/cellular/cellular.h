@@ -98,10 +98,11 @@ class Cellular : public Device,
     std::string operator_id;
     std::string spn;
     std::string imsi;
+    std::string gid1;
     bool operator==(const SimProperties& other) const {
       return slot == other.slot && iccid == other.iccid && eid == other.eid &&
              operator_id == other.operator_id && spn == other.spn &&
-             imsi == other.imsi;
+             imsi == other.imsi && gid1 == other.gid1;
     }
   };
 

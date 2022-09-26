@@ -2203,6 +2203,10 @@ void CellularCapability3gpp::OnGetSimProperties(
   if (properties.Contains<std::string>(MM_SIM_PROPERTY_IMSI)) {
     sim_properties.imsi = properties.Get<std::string>(MM_SIM_PROPERTY_IMSI);
   }
+  if (properties.Contains<std::vector<uint8_t>>(MM_SIM_PROPERTY_GID1)) {
+    auto bin_gid1 = properties.Get<std::vector<uint8_t>>(MM_SIM_PROPERTY_GID1);
+    sim_properties.gid1 = base::HexEncode(bin_gid1.data(), bin_gid1.size());
+  }
 
   MMSimType sim_type = MM_SIM_TYPE_UNKNOWN;
   if (properties.Contains<uint32_t>(MM_SIM_PROPERTY_SIMTYPE)) {

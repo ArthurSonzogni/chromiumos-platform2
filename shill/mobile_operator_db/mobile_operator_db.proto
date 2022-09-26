@@ -21,6 +21,7 @@ message Filter {
     SID = 3;
     OPERATOR_NAME = 4;
     MCCMNC = 5;
+    GID1 = 6;
   };
   required Type type = 1;
   // A regular expression specifying the values that are *accepted* by this

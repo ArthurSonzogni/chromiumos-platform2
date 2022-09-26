@@ -2232,7 +2232,8 @@ void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
                 << " ICCID= " << sim_properties.iccid
                 << " IMSI= " << sim_properties.imsi
                 << " OperatorId= " << sim_properties.operator_id
-                << " ServiceProviderName= " << sim_properties.spn;
+                << " ServiceProviderName= " << sim_properties.spn
+                << " GID1= " << sim_properties.gid1;
 
   eid_ = sim_properties.eid;
   iccid_ = sim_properties.iccid;
@@ -2248,6 +2249,11 @@ void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
     // We do not obtain IMSI OTA right now. Provide the value to serving
     // operator as well, to aid in MVNO identification.
     serving_operator_info()->UpdateIMSI(imsi_);
+  }
+  if (!sim_properties.gid1.empty()) {
+    home_provider_info()->UpdateGID1(sim_properties.gid1);
+    // Provide GID1 to serving operator as well, to aid in MVNO identification.
+    serving_operator_info()->UpdateGID1(sim_properties.gid1);
   }
 
   adaptor()->EmitStringChanged(kEidProperty, eid_);

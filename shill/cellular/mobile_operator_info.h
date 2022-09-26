@@ -204,6 +204,7 @@ class MobileOperatorInfo {
   virtual void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
   virtual void UpdateOperatorName(const std::string& operator_name);
+  void UpdateGID1(const std::string& gid1);
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);

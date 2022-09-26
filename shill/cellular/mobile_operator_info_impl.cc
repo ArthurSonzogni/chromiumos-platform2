@@ -342,6 +342,25 @@ void MobileOperatorInfoImpl::UpdateOperatorName(
   }
 }
 
+void MobileOperatorInfoImpl::UpdateGID1(const std::string& gid1) {
+  if (user_gid1_ == gid1) {
+    return;
+  }
+
+  SLOG(1) << __func__ << ": " << gid1;
+  user_gid1_ = gid1;
+  if (raw_apn_filters_types_.count(
+          mobile_operator_db::Filter_Type::Filter_Type_GID1)) {
+    HandleAPNListUpdate();
+  }
+
+  // No special notification should be sent for this property, since the object
+  // does not expose |gid1| as a property at all.
+  if (UpdateMVNO()) {
+    PostNotifyOperatorChanged();
+  }
+}
+
 void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
                                                 const std::string& method,
                                                 const std::string& post_data) {
@@ -604,6 +623,9 @@ bool MobileOperatorInfoImpl::FilterMatches(
         break;
       case mobile_operator_db::Filter_Type_MCCMNC:
         to_match = user_mccmnc_;
+        break;
+      case mobile_operator_db::Filter_Type_GID1:
+        to_match = user_gid1_;
         break;
       default:
         SLOG(1) << "Unknown filter type [" << filter.type() << "]";

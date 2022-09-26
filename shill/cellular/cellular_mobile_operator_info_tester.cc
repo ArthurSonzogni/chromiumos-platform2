@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(imsi, "", "Home IMSI.");
   DEFINE_string(iccid, "", "Home ICCID.");
   DEFINE_string(name, "", "Home Operator Name.");
+  DEFINE_string(gid1, "", "Home GID1");
   DEFINE_string(serving_mccmnc, "", "Serving MCCMNC.");
 
   brillo::FlagHelper::Init(argc, argv, "cellular_mobile_operator_info_tester");
@@ -77,6 +78,11 @@ int main(int argc, char* argv[]) {
 
   if (!FLAGS_imsi.empty())
     home_operator_info->UpdateIMSI(FLAGS_imsi);
+
+  home_operator_info->IsMobileNetworkOperatorKnown();
+
+  if (!FLAGS_gid1.empty())
+    home_operator_info->UpdateGID1(FLAGS_gid1);
 
   home_operator_info->IsMobileNetworkOperatorKnown();
 

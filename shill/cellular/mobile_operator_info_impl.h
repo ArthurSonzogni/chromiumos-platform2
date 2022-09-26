@@ -60,6 +60,7 @@ class MobileOperatorInfoImpl {
   void UpdateICCID(const std::string& iccid);
   void UpdateMCCMNC(const std::string& mccmnc);
   void UpdateOperatorName(const std::string& operator_name);
+  void UpdateGID1(const std::string& gid1);
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);
@@ -209,6 +210,7 @@ class MobileOperatorInfoImpl {
   std::string user_iccid_;
   std::string user_mccmnc_;
   std::string user_operator_name_;
+  std::string user_gid1_;
   bool user_olp_empty_;
   MobileOperatorInfo::OnlinePortal user_olp_;
 

@@ -189,6 +189,11 @@ void MobileOperatorInfo::UpdateOperatorName(const std::string& operator_name) {
   impl_->UpdateOperatorName(operator_name);
 }
 
+void MobileOperatorInfo::UpdateGID1(const std::string& gid1) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << gid1 << ")";
+  impl_->UpdateGID1(gid1);
+}
+
 void MobileOperatorInfo::UpdateOnlinePortal(const std::string& url,
                                             const std::string& method,
                                             const std::string& post_data) {
