@@ -102,6 +102,7 @@ struct Hiberlog {
     out: HiberlogOut,
     pid: u32,
     syslogger: BasicLogger,
+    is_empty: bool,
 }
 
 impl Hiberlog {
@@ -124,12 +125,14 @@ impl Hiberlog {
             out: HiberlogOut::Syslog,
             pid: std::process::id() as u32,
             syslogger,
+            is_empty: true,
         })
     }
 
     /// Log a record.
     fn log_record(&mut self, record: &Record) {
         let mut buf = [0u8; 1024];
+        self.is_empty = false;
 
         // If sending to the syslog, just forward there and exit.
         if matches!(self.out, HiberlogOut::Syslog) {
@@ -247,6 +250,7 @@ impl Hiberlog {
         //    perfectly lines up with a page. This is used on read to know
         //    when to stop.
         self.flush_one_page();
+        self.is_empty = true;
     }
 
     /// Push any pending lines to the syslog.
@@ -278,6 +282,7 @@ impl Hiberlog {
         self.pending_size = 0;
         self.pending = vec![];
         self.partial = None;
+        self.is_empty = true;
     }
 }
 
@@ -294,7 +299,11 @@ pub fn redirect_log(out: HiberlogOut) {
     match state.out {
         HiberlogOut::BufferInMemory => {}
         HiberlogOut::Syslog => state.flush_to_syslog(),
-        HiberlogOut::File(_) => state.flush(),
+        HiberlogOut::File(_) => {
+            if !state.is_empty {
+                state.flush()
+            }
+        }
     }
 
     match out {
