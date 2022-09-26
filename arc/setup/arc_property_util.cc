@@ -28,9 +28,9 @@
 #include <dbus/message.h>
 #include <re2/re2.h>
 
-constexpr char kCdmManufacturerProp[] = "ro.product.cdm.manufacturer";
-constexpr char kCdmDeviceProp[] = "ro.product.cdm.device";
-constexpr char kCdmModelProp[] = "ro.product.cdm.model";
+constexpr char kCdmManufacturerProp[] = "ro.vendor.cdm.manufacturer";
+constexpr char kCdmDeviceProp[] = "ro.vendor.cdm.device";
+constexpr char kCdmModelProp[] = "ro.vendor.cdm.model";
 
 namespace arc {
 namespace {

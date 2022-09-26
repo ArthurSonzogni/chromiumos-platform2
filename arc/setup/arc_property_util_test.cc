@@ -524,9 +524,9 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
-                kProductBuildProp + "ro.product.cdm.manufacturer=" +
-                kManufacturer + "\nro.product.cdm.model=" + kModel +
-                "\nro.product.cdm.device=" + kMake + "\n",
+                kProductBuildProp + "ro.vendor.cdm.manufacturer=" +
+                kManufacturer + "\nro.vendor.cdm.model=" + kModel +
+                "\nro.vendor.cdm.device=" + kMake + "\n",
             content);
 }
 
