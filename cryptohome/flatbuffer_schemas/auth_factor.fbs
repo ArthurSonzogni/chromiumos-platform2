@@ -6,6 +6,19 @@ include "auth_block_state.fbs";
 
 namespace cryptohome;
 
+// Metadata common to all auth factors.
+table SerializedCommonMetadata {
+  // ChromeOS version.
+  // Contains CHROMEOS_RELEASE_VERSION from /etc/lsb-release.
+  // See: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/os_config.md
+  // Captured whenever the serialized factor is created or updated.
+  chromeos_version_last_updated:string (id:0);
+  // Chrome version.
+  // The format is defined by and the value supplied by the client.
+  // Captured whenever the serialized factor is created or updated.
+  chrome_version_last_updated:string (id:1);
+}
+
 // Metadata for a `PASSWORD` auth factor.
 table SerializedPasswordMetadata {}
 
@@ -37,6 +50,7 @@ union SerializedAuthFactorMetadata {
 table SerializedAuthFactor {
   auth_block_state:_serialized_.AuthBlockState (id: 0);
   metadata:SerializedAuthFactorMetadata (id: 2);
+  common_metadata:SerializedCommonMetadata (id: 3);
 }
 
 root_type SerializedAuthFactor;
