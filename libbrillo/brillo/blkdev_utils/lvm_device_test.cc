@@ -13,8 +13,8 @@ namespace brillo {
 
 namespace {
 constexpr const char kSampleReport[] =
-    "{\"report\": [ { \"%s\": [ {\"%s\":\"%s\", \"%s\":\"%s\", \"%s\":\"%s\" } "
-    "] } ] }";
+    "0 227737600 thin-pool 3 5048/226304 155436/1779200 - rw discard_passdown "
+    "queue_if_no_space - 1024";
 }  // namespace
 
 TEST(PhysicalVolumeTest, InvalidPhysicalVolumeTest) {
@@ -84,9 +84,7 @@ TEST(ThinpoolTest, ThinpoolSpaceTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
   Thinpool thinpool("foo", "bar", lvm);
 
-  std::string report =
-      base::StringPrintf(kSampleReport, "lv", "lv_name", "thinpool", "lv_size",
-                         "1000000B", "data_percent", "2.5");
+  std::string report = kSampleReport;
 
   EXPECT_CALL(*lvm, RunProcess(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
@@ -94,8 +92,8 @@ TEST(ThinpoolTest, ThinpoolSpaceTest) {
   int64_t total_space, free_space;
   EXPECT_TRUE(thinpool.GetTotalSpace(&total_space));
   EXPECT_TRUE(thinpool.GetFreeSpace(&free_space));
-  EXPECT_EQ(total_space, 1000000LL);
-  EXPECT_EQ(free_space, 975000LL);
+  EXPECT_EQ(total_space, 116601651200LL);
+  EXPECT_EQ(free_space, 106410666885LL);
 }
 
 TEST(LogicalVolumeTest, InvalidLogicalVolumeTest) {

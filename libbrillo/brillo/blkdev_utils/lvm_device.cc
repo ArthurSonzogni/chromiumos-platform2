@@ -23,11 +23,19 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
 
 namespace brillo {
 namespace {
+
+const int64_t kLbaSize = 512;
+const int64_t kCentiFactor = 10000;
+const ssize_t kLbaCountValIdx = 1;
+const ssize_t kDataAllocStatIdx = 5;
+const ssize_t kDataUsedBlocksStatIdx = 0;
+const ssize_t kDataTotalBlocksStatIdx = 1;
 
 void LogLvmError(int rc, const std::string& cmd) {
   switch (rc) {
@@ -46,38 +54,6 @@ void LogLvmError(int rc, const std::string& cmd) {
       LOG(ERROR) << "Failed to run lvm2 command: invalid return code " << cmd;
       break;
   }
-}
-
-// Fetch and validate size from report.
-bool GetThinpoolSizeFromReportContents(const base::Value& report_contents,
-                                       int64_t* size) {
-  // Get thinpool size.
-  const std::string* thinpool_size = report_contents.FindStringKey("lv_size");
-  if (!thinpool_size) {
-    LOG(ERROR) << "Failed to get thinpool size.";
-    return false;
-  }
-
-  if (thinpool_size->empty()) {
-    LOG(ERROR) << "Empty thinpool size string.";
-    return false;
-  }
-
-  // Last character for size is always "B".
-  if (thinpool_size->back() != 'B') {
-    LOG(ERROR) << "Last character of thinpool size string should always be B.";
-    return false;
-  }
-
-  // Use base::StringToInt64 to validate the returned size.
-  if (!base::StringToInt64(
-          base::StringPiece(thinpool_size->data(), thinpool_size->length() - 1),
-          size)) {
-    LOG(ERROR) << "Failed to convert thinpool size to a numeric value";
-    return false;
-  }
-
-  return true;
 }
 }  // namespace
 
@@ -234,24 +210,32 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
     return false;
 
   std::string output;
-
-  if (!lvm_->RunProcess(
-          {"/sbin/lvdisplay", "-S", "pool_lv=\"\"", "-C", "--reportformat",
-           "json", "--units", "b", volume_group_name_ + "/" + thinpool_name_},
-          &output)) {
-    LOG(ERROR) << "Failed to get output from lvdisplay.";
+  const std::string target =
+      volume_group_name_ + "-" + thinpool_name_ + "-tpool";
+  if (!lvm_->RunProcess({"/sbin/dmsetup", "status", "--noflush", target},
+                        &output)) {
+    LOG(ERROR) << "Failed to get output from dmsetup status for " << target;
     return false;
   }
 
-  std::optional<base::Value> report_contents =
-      lvm_->UnwrapReportContents(output, "lv");
+  const std::vector<base::StringPiece> dmstatus_strs = base::SplitStringPiece(
+      output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (!report_contents || !report_contents->is_dict()) {
-    LOG(ERROR) << "Failed to get report contents.";
+  if (dmstatus_strs.size() < kLbaCountValIdx + 1) {
+    LOG(ERROR) << "malformed dmsetup status, str:  " << output;
     return false;
   }
 
-  return GetThinpoolSizeFromReportContents(*report_contents, size);
+  int64_t total_lba;
+  if (!base::StringToInt64(dmstatus_strs[kLbaCountValIdx], &total_lba)) {
+    LOG(ERROR) << "Failed to parse total lba count, str:  "
+               << dmstatus_strs[kLbaCountValIdx];
+    return false;
+  }
+
+  *size = total_lba * kLbaSize;
+
+  return true;
 }
 
 bool Thinpool::GetFreeSpace(int64_t* size) {
@@ -259,45 +243,62 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
     return false;
 
   std::string output;
-
-  if (!lvm_->RunProcess(
-          {"/sbin/lvdisplay", "-S", "pool_lv=\"\"", "-C", "--reportformat",
-           "json", "--units", "b", volume_group_name_ + "/" + thinpool_name_},
-          &output)) {
-    LOG(ERROR) << "Failed to get output from lvdisplay.";
+  const std::string target =
+      volume_group_name_ + "-" + thinpool_name_ + "-tpool";
+  if (!lvm_->RunProcess({"/sbin/dmsetup", "status", "--noflush", target},
+                        &output)) {
+    LOG(ERROR) << "Failed to get output from dmsetup status for " << target;
     return false;
   }
 
-  std::optional<base::Value> report_contents =
-      lvm_->UnwrapReportContents(output, "lv");
+  const std::vector<base::StringPiece> dmstatus_strs = base::SplitStringPiece(
+      output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (!report_contents || !report_contents->is_dict()) {
-    LOG(ERROR) << "Failed to get report contents.";
+  if (dmstatus_strs.size() < kDataAllocStatIdx + 1) {
+    LOG(ERROR) << "malformed dmsetup status, str:  " << output;
     return false;
   }
 
-  // Get the percentage of used data from the thinpool. The value is stored as a
-  // string in the json.
-  std::string* data_used_percent =
-      report_contents->FindStringKey("data_percent");
-  if (!data_used_percent) {
-    LOG(ERROR) << "Failed to get percentage size of thinpool used.";
+  const std::vector<base::StringPiece> data_alloc_strs =
+      base::SplitStringPiece(dmstatus_strs[kDataAllocStatIdx], "/",
+                             base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  if (data_alloc_strs.size() < kDataTotalBlocksStatIdx + 1) {
+    LOG(ERROR) << "malformed data allocation value, str:  "
+               << dmstatus_strs[kDataAllocStatIdx];
     return false;
   }
 
-  double used_percent;
-  if (!base::StringToDouble(*data_used_percent, &used_percent)) {
-    LOG(ERROR) << "Failed to convert used percentage string to double.";
+  int64_t total_lba;
+  int64_t used_blocks_nr;
+  int64_t total_blocks_nr;
+
+  if (!base::StringToInt64(dmstatus_strs[kLbaCountValIdx], &total_lba)) {
+    LOG(ERROR) << "Failed to parse total lba count, str:  "
+               << dmstatus_strs[kLbaCountValIdx];
     return false;
   }
 
-  int64_t total_size;
-  if (!GetThinpoolSizeFromReportContents(*report_contents, &total_size)) {
-    LOG(ERROR) << "Failed to get total thinpool size.";
+  if (!base::StringToInt64(data_alloc_strs[kDataUsedBlocksStatIdx],
+                           &used_blocks_nr)) {
+    LOG(ERROR) << "Failed to parse used data block count, str:  "
+               << data_alloc_strs[kDataUsedBlocksStatIdx];
     return false;
   }
 
-  *size = static_cast<int64_t>((100.0 - used_percent) / 100.0 * total_size);
+  if (!base::StringToInt64(data_alloc_strs[kDataTotalBlocksStatIdx],
+                           &total_blocks_nr)) {
+    LOG(ERROR) << "Failed to parse total data blockcount, str:  "
+               << data_alloc_strs[kDataTotalBlocksStatIdx];
+    return false;
+  }
+
+  // To avoid floating point operations, carry operations with fractions
+  // multiplied by a large factor.
+  int64_t total_size = total_lba * kLbaSize;
+  int64_t free_blocks_nr = total_blocks_nr - used_blocks_nr;
+  int64_t free_centi_percent = free_blocks_nr * kCentiFactor / total_blocks_nr;
+  *size = total_size * free_centi_percent / kCentiFactor;
 
   return true;
 }

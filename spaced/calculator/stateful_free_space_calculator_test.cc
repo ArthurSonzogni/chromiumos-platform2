@@ -26,10 +26,10 @@ using testing::SetArgPointee;
 
 namespace spaced {
 namespace {
+// ~80% of blocks are allocated.
 constexpr const char kSampleReport[] =
-    "{\"report\": [ { \"lv\": [ {\"lv_name\":\"thinpool\", "
-    "\"vg_name\":\"STATEFUL\", \"lv_size\":\"%ldB\", "
-    "\"data_percent\":\"%f\"} ] } ] }";
+    "0 32768 thin-pool 3 20/24 200/256 - rw discard_passdown "
+    "queue_if_no_space - 1024";
 
 class StatefulFreeSpaceCalculatorMock : public StatefulFreeSpaceCalculator {
  public:
@@ -107,12 +107,10 @@ TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
   auto lvm_command_runner = std::make_shared<brillo::MockLvmCommandRunner>();
   brillo::Thinpool thinpool("thinpool", "STATEFUL", lvm_command_runner);
 
-  std::vector<std::string> cmd = {
-      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
-      "--reportformat",   "json", "--units",      "b",
-      "STATEFUL/thinpool"};
+  std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
+                                  "STATEFUL-thinpool-tpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 80.0);
+  std::string report = kSampleReport;
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
@@ -120,7 +118,7 @@ TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
                                              thinpool, GetEmptyCallback());
 
   calculator.UpdateSize();
-  EXPECT_EQ(calculator.GetSize(), 3355443);
+  EXPECT_EQ(calculator.GetSize(), 3669177);
 }
 
 TEST_F(StatefulFreeSpaceCalculatorTest, SignalStatefulDiskSpaceUpdate) {
@@ -141,20 +139,18 @@ TEST_F(StatefulFreeSpaceCalculatorTest, SignalStatefulDiskSpaceUpdate) {
   auto lvm_command_runner = std::make_shared<brillo::MockLvmCommandRunner>();
   brillo::Thinpool thinpool("thinpool", "STATEFUL", lvm_command_runner);
 
-  std::vector<std::string> cmd = {
-      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
-      "--reportformat",   "json", "--units",      "b",
-      "STATEFUL/thinpool"};
+  std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
+                                  "STATEFUL-thinpool-tpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 80.0);
+  std::string report = kSampleReport;
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
                                              thinpool, callback);
   calculator.UpdateSizeAndSignal();
-  EXPECT_EQ(calculator.GetSize(), 3355443);
-  EXPECT_EQ(free_disk_space, 3355443);
+  EXPECT_EQ(calculator.GetSize(), 3669177);
+  EXPECT_EQ(free_disk_space, 3669177);
   EXPECT_EQ(status, StatefulDiskSpaceState::CRITICAL);
 }
 

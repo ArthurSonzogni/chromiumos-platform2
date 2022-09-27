@@ -23,10 +23,10 @@ using testing::SetArgPointee;
 
 namespace spaced {
 namespace {
+// ~3% of blocks are allocated.
 constexpr const char kSampleReport[] =
-    "{\"report\": [ { \"lv\": [ {\"lv_name\":\"thinpool\", "
-    "\"vg_name\":\"STATEFUL\", \"lv_size\":\"%ldB\", "
-    "\"data_percent\":\"%f\"} ] } ] }";
+    "0 32768 thin-pool 3 1/24 8/256 - rw discard_passdown "
+    "queue_if_no_space - 1024";
 }  // namespace
 
 class DiskUsageUtilMock : public DiskUsageUtilImpl {
@@ -81,12 +81,10 @@ TEST(DiskUsageUtilTest, ThinProvisionedVolume) {
   DiskUsageUtilMock disk_usage_mock(st, thinpool);
   base::FilePath path("/foo/bar");
 
-  std::vector<std::string> cmd = {
-      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
-      "--reportformat",   "json", "--units",      "b",
-      "STATEFUL/thinpool"};
+  std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
+                                  "STATEFUL-thinpool-tpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 3.0);
+  std::string report = kSampleReport;
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
@@ -109,12 +107,10 @@ TEST(DiskUsageUtilTest, ThinProvisionedVolumeLowDiskSpace) {
   DiskUsageUtilMock disk_usage_mock(st, thinpool);
   base::FilePath path("/foo/bar");
 
-  std::vector<std::string> cmd = {
-      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
-      "--reportformat",   "json", "--units",      "b",
-      "STATEFUL/thinpool"};
+  std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
+                                  "STATEFUL-thinpool-tpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 3.0);
+  std::string report = kSampleReport;
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
@@ -135,12 +131,10 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
   DiskUsageUtilMock disk_usage_mock(st, thinpool);
   base::FilePath path("/foo/bar");
 
-  std::vector<std::string> cmd = {
-      "/sbin/lvdisplay",  "-S",   "pool_lv=\"\"", "-C",
-      "--reportformat",   "json", "--units",      "b",
-      "STATEFUL/thinpool"};
+  std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
+                                  "STATEFUL-thinpool-tpool"};
 
-  std::string report = base::StringPrintf(kSampleReport, 16777216L, 3.0);
+  std::string report = kSampleReport;
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
