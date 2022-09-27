@@ -385,4 +385,9 @@ std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeFingerprintAliveRoutine() {
   return std::move(next_routine_);
 }
+
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakePrivacyScreenRoutine(bool target_state) {
+  return std::move(next_routine_);
+}
 }  // namespace diagnostics

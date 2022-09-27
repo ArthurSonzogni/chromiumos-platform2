@@ -39,6 +39,7 @@
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/prime_search/prime_search.h"
+#include "diagnostics/cros_healthd/routines/privacy_screen/privacy_screen.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/signal_strength/signal_strength.h"
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
@@ -275,4 +276,8 @@ CrosHealthdRoutineFactoryImpl::MakeFingerprintAliveRoutine() {
   return std::make_unique<FingerprintAliveRoutine>(context_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakePrivacyScreenRoutine(bool target_state) {
+  return std::make_unique<PrivacyScreenRoutine>(context_, target_state);
+}
 }  // namespace diagnostics
