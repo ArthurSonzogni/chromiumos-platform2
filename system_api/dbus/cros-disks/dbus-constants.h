@@ -95,9 +95,10 @@ enum FormatErrorType {
   FORMAT_ERROR_INVALID_CHARACTER = 11,
 };
 
-// TODO(benchan): After both Chrome and cros-disks use these enum values,
-// make these error values contiguous so that they can be directly reported
-// via UMA.
+// TODO(crbug.com/1368408): After both Chrome and cros-disks use these enum
+// values, make these error values contiguous so that they can be directly
+// reported via UMA. See
+// https://source.chromium.org/chromium/chromium/src/+/main:chromeos/ash/components/dbus/cros_disks/cros_disks_client.h?q=MountError.
 enum MountErrorType {
   MOUNT_ERROR_NONE = 0,
   MOUNT_ERROR_UNKNOWN = 1,
@@ -126,6 +127,9 @@ enum MountErrorType {
 
   // The FUSE mounter was cancelled (killed) while it was launching.
   MOUNT_ERROR_CANCELLED = 15,
+
+  // The device is busy.
+  MOUNT_ERROR_BUSY = 20,
 
   MOUNT_ERROR_INVALID_DEVICE_PATH = 100,
   MOUNT_ERROR_UNKNOWN_FILESYSTEM = 101,

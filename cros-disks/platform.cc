@@ -288,7 +288,7 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path,
     case EPERM:
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     case EBUSY:  // This should not happen since we force-unmount
-      return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
+      return MOUNT_ERROR_BUSY;
     default:
       return MOUNT_ERROR_UNKNOWN;
   }
@@ -323,6 +323,8 @@ MountErrorType Platform::Mount(const std::string& source_path,
       return MOUNT_ERROR_INVALID_PATH;
     case EPERM:
       return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    case EBUSY:
+      return MOUNT_ERROR_BUSY;
     default:
       return MOUNT_ERROR_UNKNOWN;
   }
