@@ -114,12 +114,14 @@ AuthSession that it should be valid for.
 Here are the APIs that are used to work with AuthFactors .
 1. **AddAuthFactor** - This call adds an AuthFactor for a user. The call goes
 through an authenticated AuthSession.
-    - *Input*: - auth_session_id - AuthSession used to identify users.
+    - *Input*:
+      - auth_session_id - AuthSession used to identify users.
     The AuthSession needs to be authenticated for this call to be a success.
       - auth_factor - AuthFactor information about the new factor to be added.
       - auth_input - This is set if any input is required for the AuthFactor,
       such as text for a Password AuthFactor.
-    - *Reply*: CryptohomeErrorCode - Returns if there is any error
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error
 2. **AuthenticateAuthFactor** - This will Authenticate an existing AuthFactor.
 This call will authenticate an AuthSession.
     - *Input*:
@@ -129,7 +131,8 @@ This call will authenticate an AuthSession.
       AuthFactor to authenticate.
       - auth_input - This is set if any input is required for the AuthFactor,
       such as text for a PasswordAuthFactor.
-   - *Reply*: CryptohomeErrorCode - Returns if there is any error
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error
 3. **UpdateAuthFactor** - This call will be used in the case of a user wanting
 to update an AuthFactor. (E.g. Changing pin or password).
     - *Input*:
@@ -141,7 +144,8 @@ to update an AuthFactor. (E.g. Changing pin or password).
       replace the existing.
       - auth_input - This is set if any input is required for the AuthFactor,
       such as text for a Password AuthFactor.
-    - *Reply* - CryptohomeErrorCode - Returns if there is any error
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error
 4. **RemoveAuthFactor** - This is called when a user wants to remove an
 AuthFactor.
     - *Input*:
@@ -149,7 +153,8 @@ AuthFactor.
       needs to be authenticated for this call to be a success.
       - auth_factor_label - The label that will be used to identify an
       AuthFactor to remove.
-    - *Reply* - CryptohomeErrorCode - Returns if there is any error
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error
 5. **ListAuthFactor** - This call will list all of the configured AuthFactors
 for a given user as well as the supported types of auth factors.
     - *Input*:
@@ -179,6 +184,23 @@ for a given user as well as the supported types of auth factors.
         will be unavailable.
         - Conversely, if the user has at least one non-Kiosk factor configured
         then a Kiosk factor will not be reported as a supported option.
+6. **PrepareAuthFactor** - This call is required for specific types of
+non-knowledge-based auth factors before AuthenticateAuthFactor or AddAuthFactor
+is called with those auth factors.
+    - *Input*:
+      - auth_session_id - AuthSession used to identify users.
+      - auth_factor_type - The type of AuthFactor that is being prepared.
+      - purpose - A enum to identify the following action after this
+      PrepareAuthFactor completes.
+    - *Reply*
+      - CryptohomeErrorCode - Returns if there is any error.
+    - *Usage*:
+      - Set the purpose to PURPOSE_ADD_AUTH_FACTOR, when we intend
+      to have a follow up AddAuthFactor. The auth session should be
+      already authenticated.
+      - Set the purpose to PURPOSE_AUTHENTICATE_AUTH_FACTOR, when we intend
+      to have a follow up AuthenticateAuthFactor. The auth session may not be
+      already authenticated.
 
 ## Order of Operations
 
@@ -256,3 +278,18 @@ any persistent users present.
 4.  `StartMigrateToDircrypto`
     -   Ensure that this is called with the ```auth_session_id``` field set.
 5.  `InvalidateAuthSession`
+
+### Chrome wants to do fingerprint screen unlock
+
+1.  `StartAuthSession` - Chrome initiates an AuthSession with AuthIntent
+    Verify.
+2.  `PrepareAuthFactor`
+    - An fingerprint sensor session is started to collect a fingerprint press.
+    - The fingerprint session is ended after a fingerprint image is captured.
+3.  `AuthenticateAuthFactor`
+    - It is a success, the fingerprint is matched.
+    - It is a failure and indicating another auth retry is possible, Chrome
+    should repeat from Step 2 PrepareAuthFactor for another attempt.
+    - It is a failure and indicating fingerprint retry limit has been reached,
+    Chrome should abort the AuthSession.
+4.  `InvalidateAuthSession`
