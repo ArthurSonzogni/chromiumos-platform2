@@ -386,24 +386,6 @@ class ManagerTest : public PropertyStoreTest {
     Manager* manager_;
   };
 
-  class DestinationVerificationTest
-      : public base::SupportsWeakPtr<DestinationVerificationTest> {
-   public:
-    DestinationVerificationTest() = default;
-    DestinationVerificationTest(const DestinationVerificationTest&) = delete;
-    DestinationVerificationTest& operator=(const DestinationVerificationTest&) =
-        delete;
-
-    virtual ~DestinationVerificationTest() = default;
-
-    MOCK_METHOD(void, ResultBoolCallbackStub, (const Error&, bool));
-    MOCK_METHOD(void,
-                ResultStringCallbackStub,
-                (const Error&, const std::string&));
-
-   private:
-  };
-
   class DisableTechnologyReplyHandler
       : public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
    public:
@@ -418,24 +400,6 @@ class ManagerTest : public PropertyStoreTest {
     MOCK_METHOD(void, ReportResult, (const Error&));
 
    private:
-  };
-
-  class ResultCallbackObserver {
-   public:
-    ResultCallbackObserver()
-        : result_callback_(base::Bind(&ResultCallbackObserver::OnResultCallback,
-                                      base::Unretained(this))) {}
-    ResultCallbackObserver(const ResultCallbackObserver&) = delete;
-    ResultCallbackObserver& operator=(const ResultCallbackObserver&) = delete;
-
-    virtual ~ResultCallbackObserver() = default;
-
-    MOCK_METHOD(void, OnResultCallback, (const Error&));
-
-    const ResultCallback& result_callback() const { return result_callback_; }
-
-   private:
-    ResultCallback result_callback_;
   };
 
   void SetSuspending(bool suspending) {
