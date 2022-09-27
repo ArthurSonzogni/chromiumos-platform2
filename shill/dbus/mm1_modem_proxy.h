@@ -30,38 +30,36 @@ class ModemProxy : public ModemProxyInterface {
   ~ModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  void Enable(bool enable,
-              const ResultCallback& callback,
-              int timeout) override;
+  void Enable(bool enable, ResultOnceCallback callback, int timeout) override;
   void CreateBearer(const KeyValueStore& properties,
                     RpcIdentifierCallback callback,
                     int timeout) override;
   void DeleteBearer(const RpcIdentifier& bearer,
-                    const ResultCallback& callback,
+                    ResultOnceCallback callback,
                     int timeout) override;
-  void Reset(const ResultCallback& callback, int timeout) override;
+  void Reset(ResultOnceCallback callback, int timeout) override;
   void FactoryReset(const std::string& code,
-                    const ResultCallback& callback,
+                    ResultOnceCallback callback,
                     int timeout) override;
   void SetCurrentCapabilities(uint32_t capabilities,
-                              const ResultCallback& callback,
+                              ResultOnceCallback callback,
                               int timeout) override;
   void SetCurrentModes(uint32_t allowed_modes,
                        uint32_t preferred_mode,
-                       const ResultCallback& callback,
+                       ResultOnceCallback callback,
                        int timeout) override;
   void SetCurrentBands(const std::vector<uint32_t>& bands,
-                       const ResultCallback& callback,
+                       ResultOnceCallback callback,
                        int timeout) override;
   void SetPrimarySimSlot(uint32_t slot,
-                         const ResultCallback& callback,
+                         ResultOnceCallback callback,
                          int timeout) override;
   void Command(const std::string& cmd,
                uint32_t user_timeout,
-               const StringCallback& callback,
+               StringCallback callback,
                int timeout) override;
   void SetPowerState(uint32_t power_state,
-                     const ResultCallback& callback,
+                     ResultOnceCallback callback,
                      int timeout) override;
 
   void set_state_changed_callback(
@@ -80,15 +78,13 @@ class ModemProxy : public ModemProxyInterface {
                              brillo::Error* dbus_error);
 
   // Callbacks for Command async call.
-  void OnCommandSuccess(const StringCallback& callback,
-                        const std::string& response);
-  void OnCommandFailure(const StringCallback& callback,
-                        brillo::Error* dbus_error);
+  void OnCommandSuccess(StringCallback callback, const std::string& response);
+  void OnCommandFailure(StringCallback callback, brillo::Error* dbus_error);
 
   // Callbacks for various async calls that uses ResultCallback.
-  void OnOperationSuccess(const ResultCallback& callback,
+  void OnOperationSuccess(ResultOnceCallback callback,
                           const std::string& operation);
-  void OnOperationFailure(const ResultCallback& callback,
+  void OnOperationFailure(ResultOnceCallback callback,
                           const std::string& operation,
                           brillo::Error* dbus_error);
 

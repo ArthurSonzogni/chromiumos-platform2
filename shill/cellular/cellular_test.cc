@@ -259,15 +259,13 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->set_serving_operator_info_for_testing(mock_serving_operator_info_);
   }
 
-  void InvokeEnable(bool enable,
-                    const ResultCallback& callback,
-                    int timeout) {
-    callback.Run(Error(Error::kSuccess));
+  void InvokeEnable(bool enable, ResultOnceCallback callback, int timeout) {
+    std::move(callback).Run(Error(Error::kSuccess));
   }
   void InvokeEnableReturningWrongState(bool enable,
-                                       const ResultCallback& callback,
+                                       ResultOnceCallback callback,
                                        int timeout) {
-    callback.Run(Error(Error::kWrongState));
+    std::move(callback).Run(Error(Error::kWrongState));
   }
   void InvokeGetModemStatus(Error* error,
                             KeyValueStoreCallback callback,
@@ -305,9 +303,9 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,
-                           const ResultCallback& callback,
+                           ResultOnceCallback callback,
                            int timeout) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
   }
 
   void ExpectDisconnectCapability3gpp() {
@@ -1779,8 +1777,8 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 
-  auto return_success = [](const ResultCallback& callback) {
-    callback.Run(Error(Error::kSuccess));
+  auto return_success = [](ResultOnceCallback callback) {
+    std::move(callback).Run(Error(Error::kSuccess));
   };
 
   // Start disable.
@@ -1792,7 +1790,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _))
       .WillOnce(WithArg<1>(Invoke(return_success)));
   EXPECT_CALL(*mm1_modem_proxy, SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _))
-      .WillOnce(WithArg<1>(Invoke([](const ResultCallback& callback) {
+      .WillOnce(WithArg<1>(Invoke([](ResultOnceCallback callback) {
         LOG(INFO) << "Dropping callback during suspend";
       })));
   device_->SetEnabled(false);
@@ -1842,9 +1840,12 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
 
   // Resume.
-  ResultCallback modem_proxy_enable_callback;
+  ResultOnceCallback modem_proxy_enable_callback;
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _))
-      .WillOnce(SaveArg<1>(&modem_proxy_enable_callback));
+      .WillOnce(
+          WithArg<1>([&modem_proxy_enable_callback](ResultOnceCallback cb) {
+            modem_proxy_enable_callback = std::move(cb);
+          }));
   device_->OnAfterResume();
 
   // Complete enable.
@@ -1852,7 +1853,7 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
       .WillOnce(Invoke(this, &CellularTest::InvokeList));
   Error error;
   ASSERT_TRUE(error.IsSuccess());
-  modem_proxy_enable_callback.Run(error);
+  std::move(modem_proxy_enable_callback).Run(error);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());

@@ -36,7 +36,8 @@ using KeyValueStoresOnceCallback =
     base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using RpcIdentifierCallback =
     base::OnceCallback<void(const RpcIdentifier&, const Error&)>;
-using StringCallback = base::Callback<void(const std::string&, const Error&)>;
+using StringCallback =
+    base::OnceCallback<void(const std::string&, const Error&)>;
 using ActivationStateSignalCallback =
     base::RepeatingCallback<void(uint32_t, uint32_t, const KeyValueStore&)>;
 using ResultStringmapsCallback =

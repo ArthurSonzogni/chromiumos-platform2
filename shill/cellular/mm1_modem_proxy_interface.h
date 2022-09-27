@@ -16,7 +16,7 @@ class Error;
 namespace mm1 {
 
 using ModemStateChangedSignalCallback =
-    base::Callback<void(int32_t, int32_t, uint32_t)>;
+    base::RepeatingCallback<void(int32_t, int32_t, uint32_t)>;
 
 // These are the methods that a org.freedesktop.ModemManager1.Modem
 // proxy must support. The interface is provided so that it can be
@@ -27,37 +27,37 @@ class ModemProxyInterface {
   virtual ~ModemProxyInterface() = default;
 
   virtual void Enable(bool enable,
-                      const ResultCallback& callback,
+                      ResultOnceCallback callback,
                       int timeout) = 0;
   virtual void CreateBearer(const KeyValueStore& properties,
                             RpcIdentifierCallback callback,
                             int timeout) = 0;
   virtual void DeleteBearer(const RpcIdentifier& bearer,
-                            const ResultCallback& callback,
+                            ResultOnceCallback callback,
                             int timeout) = 0;
-  virtual void Reset(const ResultCallback& callback, int timeout) = 0;
+  virtual void Reset(ResultOnceCallback callback, int timeout) = 0;
   virtual void FactoryReset(const std::string& code,
-                            const ResultCallback& callback,
+                            ResultOnceCallback callback,
                             int timeout) = 0;
   virtual void SetCurrentCapabilities(uint32_t capabilities,
-                                      const ResultCallback& callback,
+                                      ResultOnceCallback callback,
                                       int timeout) = 0;
   virtual void SetCurrentModes(uint32_t allowed_modes,
                                uint32_t preferred_mode,
-                               const ResultCallback& callback,
+                               ResultOnceCallback callback,
                                int timeout) = 0;
   virtual void SetCurrentBands(const std::vector<uint32_t>& bands,
-                               const ResultCallback& callback,
+                               ResultOnceCallback callback,
                                int timeout) = 0;
   virtual void SetPrimarySimSlot(uint32_t slot,
-                                 const ResultCallback& callback,
+                                 ResultOnceCallback callback,
                                  int timeout) = 0;
   virtual void Command(const std::string& cmd,
                        uint32_t user_timeout,
-                       const StringCallback& callback,
+                       StringCallback callback,
                        int timeout) = 0;
   virtual void SetPowerState(uint32_t power_state,
-                             const ResultCallback& callback,
+                             ResultOnceCallback callback,
                              int timeout) = 0;
 
   virtual void set_state_changed_callback(

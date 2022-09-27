@@ -808,9 +808,8 @@ void Cellular::PollLocationTask() {
 void Cellular::PollLocation() {
   if (!capability_)
     return;
-  StringCallback cb = base::Bind(&Cellular::GetLocationCallback,
-                                 weak_ptr_factory_.GetWeakPtr());
-  capability_->GetLocation(cb);
+  capability_->GetLocation(base::BindOnce(&Cellular::GetLocationCallback,
+                                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::HandleNewSignalQuality(uint32_t strength) {

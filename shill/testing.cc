@@ -32,8 +32,8 @@ void SetEnabledSync(Device* device, bool enable, bool persist, Error* error) {
 }
 
 template <>
-void ReturnOperationFailed<ResultCallback>(const ResultCallback& callback) {
-  callback.Run(Error(Error::kOperationFailed));
+void ReturnOperationFailed<ResultOnceCallback>(ResultOnceCallback callback) {
+  std::move(callback).Run(Error(Error::kOperationFailed));
 }
 
 template <>
@@ -43,8 +43,8 @@ void ReturnOperationFailed<RpcIdentifierCallback>(
 }
 
 template <>
-void ReturnOperationFailed<StringCallback>(const StringCallback& callback) {
-  callback.Run("", Error(Error::kOperationFailed));
+void ReturnOperationFailed<StringCallback>(StringCallback callback) {
+  std::move(callback).Run("", Error(Error::kOperationFailed));
 }
 
 }  // namespace shill

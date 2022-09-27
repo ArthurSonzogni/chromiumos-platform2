@@ -16,31 +16,31 @@ namespace mm1 {
 MockModemProxy::MockModemProxy() {
   ON_CALL(*this, Enable(_, _, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, CreateBearer(_, _, _))
       .WillByDefault(
           WithArgs<1>(Invoke(ReturnOperationFailed<RpcIdentifierCallback>)));
   ON_CALL(*this, DeleteBearer(_, _, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, Reset(_, _))
       .WillByDefault(
-          WithArgs<0>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<0>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, FactoryReset(_, _, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, SetCurrentCapabilities(_, _, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, SetCurrentModes(_, _, _, _))
       .WillByDefault(
-          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, Command(_, _, _, _))
       .WillByDefault(
           WithArgs<2>(Invoke(ReturnOperationFailed<StringCallback>)));
   ON_CALL(*this, SetPowerState(_, _, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
 }
 
 MockModemProxy::~MockModemProxy() = default;

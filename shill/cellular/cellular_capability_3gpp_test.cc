@@ -320,28 +320,24 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
                                                 modem_signal_property_lte);
   }
 
-  void InvokeEnable(bool enable,
-                    const ResultCallback& callback,
-                    int timeout) {
-    callback.Run(Error(Error::kSuccess));
+  void InvokeEnable(bool enable, ResultOnceCallback callback, int timeout) {
+    std::move(callback).Run(Error(Error::kSuccess));
   }
-  void InvokeEnableFail(bool enable,
-                        const ResultCallback& callback,
-                        int timeout) {
-    callback.Run(Error(Error::kOperationFailed));
+  void InvokeEnableFail(bool enable, ResultOnceCallback callback, int timeout) {
+    std::move(callback).Run(Error(Error::kOperationFailed));
   }
   void InvokeEnableInWrongState(bool enable,
-                                const ResultCallback& callback,
+                                ResultOnceCallback callback,
                                 int timeout) {
-    callback.Run(Error(Error::kWrongState));
+    std::move(callback).Run(Error(Error::kWrongState));
   }
   void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,
-                           const ResultCallback& callback,
+                           ResultOnceCallback callback,
                            int timeout) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
   }
 
   void SetSignalProxy() {
@@ -628,8 +624,8 @@ TEST_F(CellularCapability3gppTest, StopModem) {
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   InitProxies();
 
-  auto return_success = [](const ResultCallback& callback) {
-    callback.Run(Error(Error::kSuccess));
+  auto return_success = [](ResultOnceCallback callback) {
+    std::move(callback).Run(Error(Error::kSuccess));
   };
 
   EXPECT_CALL(*modem_proxy,
@@ -655,8 +651,8 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
 
   EXPECT_CALL(*modem_proxy,
               Enable(false, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(WithArg<1>(Invoke([](const ResultCallback& callback) {
-        callback.Run(Error(Error::kSuccess));
+      .WillOnce(WithArg<1>(Invoke([](ResultOnceCallback callback) {
+        std::move(callback).Run(Error(Error::kSuccess));
       })));
 
   // Even if this returns false, we should still succeed in stopping the
@@ -665,7 +661,7 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
       *modem_proxy,
       SetPowerState(MM_MODEM_POWER_STATE_LOW, _,
                     CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
-      .WillOnce(WithArg<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+      .WillOnce(WithArg<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
 
   Error error;
   StopModem(&error);
@@ -1325,13 +1321,13 @@ TEST_F(CellularCapability3gppTest, Reset) {
   // This allows us to peek at the value of |resetting_| while the operation
   // is in progress.
   EXPECT_CALL(*modem_proxy, Reset(_, _))
-      .WillOnce(WithArg<0>(Invoke([this](const ResultCallback& callback) {
+      .WillOnce(WithArg<0>(Invoke([this](ResultOnceCallback callback) {
         // Error is not movable or copyable, making this weird.
-        auto return_success = [](const ResultCallback& callback) {
-          callback.Run(Error(Error::kSuccess));
+        auto return_success = [](ResultOnceCallback callback) {
+          std::move(callback).Run(Error(Error::kSuccess));
         };
-        dispatcher_.PostTask(FROM_HERE,
-                             base::BindOnce(return_success, callback));
+        dispatcher_.PostTask(
+            FROM_HERE, base::BindOnce(return_success, std::move(callback)));
       })));
 
   base::RunLoop run_loop;

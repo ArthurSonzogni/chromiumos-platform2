@@ -166,7 +166,7 @@ class CellularCapability {
                              bool signal_location,
                              const ResultCallback& callback) = 0;
 
-  virtual void GetLocation(const StringCallback& callback) = 0;
+  virtual void GetLocation(StringCallback callback) = 0;
 
   virtual void SetupSignal(uint32_t rate, const ResultCallback& callback) = 0;
 

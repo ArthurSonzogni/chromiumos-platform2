@@ -38,16 +38,15 @@ ModemProxy::ModemProxy(const scoped_refptr<dbus::Bus>& bus,
 
 ModemProxy::~ModemProxy() = default;
 
-void ModemProxy::Enable(bool enable,
-                        const ResultCallback& callback,
-                        int timeout) {
+void ModemProxy::Enable(bool enable, ResultOnceCallback callback, int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->EnableAsync(
       enable,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
@@ -57,131 +56,140 @@ void ModemProxy::CreateBearer(const KeyValueStore& properties,
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
-  auto split_callback = base::SplitOnceCallback(std::move(callback));
-  proxy_->CreateBearerAsync(properties_dict,
-                            base::BindOnce(&ModemProxy::OnCreateBearerSuccess,
-                                           weak_factory_.GetWeakPtr(),
-                                           std::move(split_callback.first)),
-                            base::BindOnce(&ModemProxy::OnCreateBearerFailure,
-                                           weak_factory_.GetWeakPtr(),
-                                           std::move(split_callback.second)),
-                            timeout);
-}
-
-void ModemProxy::DeleteBearer(const RpcIdentifier& bearer,
-                              const ResultCallback& callback,
-                              int timeout) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
-  proxy_->DeleteBearerAsync(
-      bearer,
-      base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
-      base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  proxy_->CreateBearerAsync(
+      properties_dict,
+      base::BindOnce(&ModemProxy::OnCreateBearerSuccess,
+                     weak_factory_.GetWeakPtr(), std::move(cb1)),
+      base::BindOnce(&ModemProxy::OnCreateBearerFailure,
+                     weak_factory_.GetWeakPtr(), std::move(cb2)),
       timeout);
 }
 
-void ModemProxy::Reset(const ResultCallback& callback, int timeout) {
+void ModemProxy::DeleteBearer(const RpcIdentifier& bearer,
+                              ResultOnceCallback callback,
+                              int timeout) {
+  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  proxy_->DeleteBearerAsync(
+      bearer,
+      base::BindOnce(&ModemProxy::OnOperationSuccess,
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
+      base::BindOnce(&ModemProxy::OnOperationFailure,
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
+      timeout);
+}
+
+void ModemProxy::Reset(ResultOnceCallback callback, int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->ResetAsync(
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::FactoryReset(const std::string& code,
-                              const ResultCallback& callback,
+                              ResultOnceCallback callback,
                               int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->FactoryResetAsync(
       code,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::SetCurrentCapabilities(uint32_t capabilities,
-                                        const ResultCallback& callback,
+                                        ResultOnceCallback callback,
                                         int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << capabilities;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->SetCurrentCapabilitiesAsync(
       capabilities,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::SetCurrentModes(uint32_t allowed_modes,
                                  uint32_t preferred_mode,
-                                 const ResultCallback& callback,
+                                 ResultOnceCallback callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << ": " << allowed_modes << " " << preferred_mode;
   std::tuple<uint32_t, uint32_t> modes{allowed_modes, preferred_mode};
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->SetCurrentModesAsync(
       modes,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
-                                 const ResultCallback& callback,
+                                 ResultOnceCallback callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->SetCurrentBandsAsync(
       bands,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::SetPrimarySimSlot(uint32_t slot,
-                                   const ResultCallback& callback,
+                                   ResultOnceCallback callback,
                                    int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << slot;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->SetPrimarySimSlotAsync(
       slot,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
 void ModemProxy::Command(const std::string& cmd,
                          uint32_t user_timeout,
-                         const StringCallback& callback,
+                         StringCallback callback,
                          int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << cmd;
-  proxy_->CommandAsync(cmd, user_timeout,
-                       base::BindOnce(&ModemProxy::OnCommandSuccess,
-                                      weak_factory_.GetWeakPtr(), callback),
-                       base::BindOnce(&ModemProxy::OnCommandFailure,
-                                      weak_factory_.GetWeakPtr(), callback),
-                       timeout);
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  proxy_->CommandAsync(
+      cmd, user_timeout,
+      base::BindOnce(&ModemProxy::OnCommandSuccess, weak_factory_.GetWeakPtr(),
+                     std::move(cb1)),
+      base::BindOnce(&ModemProxy::OnCommandFailure, weak_factory_.GetWeakPtr(),
+                     std::move(cb2)),
+      timeout);
 }
 
 void ModemProxy::SetPowerState(uint32_t power_state,
-                               const ResultCallback& callback,
+                               ResultOnceCallback callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << power_state;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   proxy_->SetPowerStateAsync(
       power_state,
       base::BindOnce(&ModemProxy::OnOperationSuccess,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb1), __func__),
       base::BindOnce(&ModemProxy::OnOperationFailure,
-                     weak_factory_.GetWeakPtr(), callback, __func__),
+                     weak_factory_.GetWeakPtr(), std::move(cb2), __func__),
       timeout);
 }
 
@@ -207,33 +215,33 @@ void ModemProxy::OnCreateBearerFailure(RpcIdentifierCallback callback,
   std::move(callback).Run(RpcIdentifier(""), error);
 }
 
-void ModemProxy::OnCommandSuccess(const StringCallback& callback,
+void ModemProxy::OnCommandSuccess(StringCallback callback,
                                   const std::string& response) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << response;
-  callback.Run(response, Error());
+  std::move(callback).Run(response, Error());
 }
 
-void ModemProxy::OnCommandFailure(const StringCallback& callback,
+void ModemProxy::OnCommandFailure(StringCallback callback,
                                   brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run("", error);
+  std::move(callback).Run("", error);
 }
 
-void ModemProxy::OnOperationSuccess(const ResultCallback& callback,
+void ModemProxy::OnOperationSuccess(ResultOnceCallback callback,
                                     const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
-  callback.Run(Error());
+  std::move(callback).Run(Error());
 }
 
-void ModemProxy::OnOperationFailure(const ResultCallback& callback,
+void ModemProxy::OnOperationFailure(ResultOnceCallback callback,
                                     const std::string& operation,
                                     brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 void ModemProxy::OnSignalConnected(const std::string& interface_name,

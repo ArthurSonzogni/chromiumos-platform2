@@ -133,7 +133,7 @@ class CellularCapability3gpp : public CellularCapability {
                      bool signal_location,
                      const ResultCallback& callback) override;
 
-  void GetLocation(const StringCallback& callback) override;
+  void GetLocation(StringCallback callback) override;
 
   void SetupSignal(uint32_t rate, const ResultCallback& callback) override;
 
@@ -360,7 +360,7 @@ class CellularCapability3gpp : public CellularCapability {
                    const ScanResults& results,
                    const Error& error);
   void OnSetupLocationReply(const Error& error);
-  void OnGetLocationReply(const StringCallback& callback,
+  void OnGetLocationReply(StringCallback callback,
                           const std::map<uint32_t, brillo::Any>& results,
                           const Error& error);
   void OnSetupSignalReply(const Error& error);

@@ -344,8 +344,8 @@ void CellularCapability3gpp::InitProxies() {
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_->set_state_changed_callback(
-      base::Bind(&CellularCapability3gpp::OnModemStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&CellularCapability3gpp::OnModemStateChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   modem_signal_proxy_ = control_interface()->CreateMM1ModemSignalProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
@@ -1339,17 +1339,17 @@ void CellularCapability3gpp::OnSetupSignalReply(const Error& error) {
   }
 }
 
-void CellularCapability3gpp::GetLocation(const StringCallback& callback) {
+void CellularCapability3gpp::GetLocation(StringCallback callback) {
   BrilloAnyCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnGetLocationReply,
-                     weak_ptr_factory_.GetWeakPtr(), callback);
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
   modem_location_proxy_->GetLocation(&error, std::move(cb),
                                      kTimeoutGetLocation);
 }
 
 void CellularCapability3gpp::OnGetLocationReply(
-    const StringCallback& callback,
+    StringCallback callback,
     const std::map<uint32_t, brillo::Any>& results,
     const Error& error) {
   SLOG(this, 3) << __func__;
@@ -1362,9 +1362,9 @@ void CellularCapability3gpp::OnGetLocationReply(
   if (it != results.end()) {
     brillo::Any gpp_value = it->second;
     const std::string& location_string = gpp_value.Get<const std::string>();
-    callback.Run(location_string, Error());
+    std::move(callback).Run(location_string, Error());
   } else {
-    callback.Run(std::string(), Error());
+    std::move(callback).Run(std::string(), Error());
   }
 }
 
