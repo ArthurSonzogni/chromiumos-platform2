@@ -97,7 +97,8 @@ class HttpRequest {
   std::vector<std::string> dns_list_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
-  base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
+  base::RepeatingCallback<void(const Error&, const IPAddress&)>
+      dns_client_callback_;
   base::OnceCallback<void(Result)> request_error_callback_;
   base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;

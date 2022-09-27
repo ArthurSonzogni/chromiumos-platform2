@@ -31,7 +31,8 @@ struct DnsClientState;
 // Implements a DNS resolution client that can run asynchronously.
 class DnsClient {
  public:
-  using ClientCallback = base::Callback<void(const Error&, const IPAddress&)>;
+  using ClientCallback =
+      base::RepeatingCallback<void(const Error&, const IPAddress&)>;
 
   static const char kErrorNoData[];
   static const char kErrorFormErr[];

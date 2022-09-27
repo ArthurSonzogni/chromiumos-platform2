@@ -193,8 +193,8 @@ class DnsClientTest : public Test {
   class DnsCallbackTarget {
    public:
     DnsCallbackTarget()
-        : callback_(base::Bind(&DnsCallbackTarget::CallTarget,
-                               base::Unretained(this))) {}
+        : callback_(base::BindRepeating(&DnsCallbackTarget::CallTarget,
+                                        base::Unretained(this))) {}
 
     MOCK_METHOD(void, CallTarget, (const Error&, const IPAddress&));
 

@@ -140,11 +140,11 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       result_callback_(result_callback),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
       weak_ptr_factory_(this) {
-  dns_client_.reset(
-      new DnsClient(ip_address.family(), iface_name,
-                    DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
-                    Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                         weak_ptr_factory_.GetWeakPtr())));
+  dns_client_.reset(new DnsClient(
+      ip_address.family(), iface_name, DnsClient::kDnsTimeoutMilliseconds,
+      dispatcher_,
+      base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
+                          weak_ptr_factory_.GetWeakPtr())));
   for (size_t i = 0; i < dns_list_.size(); i++) {
     id_to_pending_dns_server_icmp_session_[i] =
         std::make_unique<IcmpSession>(dispatcher_);
