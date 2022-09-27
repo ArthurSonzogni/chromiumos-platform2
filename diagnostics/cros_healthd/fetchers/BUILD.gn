@@ -82,7 +82,6 @@ if (use.test) {
 
   source_set("libcros_healthd_fetchers_test") {
     sources = [
-      "async_fetcher_test.cc",
       "audio_fetcher_test.cc",
       "audio_hardware_fetcher_test.cc",
       "backlight_fetcher_test.cc",
