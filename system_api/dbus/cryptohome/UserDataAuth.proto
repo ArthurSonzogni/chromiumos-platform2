@@ -1649,7 +1649,7 @@ message GetRecoveryRequestReply {
   bytes recovery_request = 3;
 }
 
-message PrepareAsyncAuthFactorRequest {
+message PrepareAuthFactorRequest {
   // The id of a running AuthSession.
   // Async AuthFactor preparation must be associated with an ongoing
   // AuthSession.
@@ -1661,7 +1661,7 @@ message PrepareAsyncAuthFactorRequest {
   AuthFactorPreparePurpose purpose = 3;
 }
 
-message PrepareAsyncAuthFactorReply {
+message PrepareAuthFactorReply {
   CryptohomeErrorCode error = 1;
   // Indicate an error if this field exists.
   // This field is replacing the |error| field above, for more information on
