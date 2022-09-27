@@ -10,6 +10,7 @@
 #include <utility>
 #include <variant>
 
+#include <base/system/sys_info.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -154,12 +155,29 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
   }
 }
 
-// GetAuthFactorMetadata sets the metadata inferred from the proto. This
-// includes the metadata struct and type.
+void PopulateAuthFactorProtoWithSysinfo(
+    user_data_auth::AuthFactor& auth_factor) {
+  // Populate the ChromeOS version. Note that reading GetLsbReleaseValue can
+  // fail but in that case we still populate the metadata with an empty string.
+  std::string chromeos_version;
+  base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION",
+                                    &chromeos_version);
+  auth_factor.mutable_common_metadata()->set_chromeos_version_last_updated(
+      std::move(chromeos_version));
+}
+
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
                            AuthFactorMetadata& out_auth_factor_metadata,
                            AuthFactorType& out_auth_factor_type,
                            std::string& out_auth_factor_label) {
+  // Extract the common metadata.
+  out_auth_factor_metadata.common.chromeos_version_last_updated =
+      auth_factor.common_metadata().chromeos_version_last_updated();
+  out_auth_factor_metadata.common.chrome_version_last_updated =
+      auth_factor.common_metadata().chrome_version_last_updated();
+
+  // Extract the factor type and use it to try and extract the factor-specific
+  // metadata. Returns false if this fails.
   switch (auth_factor.type()) {
     case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
       DCHECK(auth_factor.has_password_metadata());
@@ -191,6 +209,7 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       return false;
   }
 
+  // Extract the label. Returns false if it isn't formatted correctly.
   out_auth_factor_label = auth_factor.label();
   if (!IsValidAuthFactorLabel(out_auth_factor_label)) {
     LOG(ERROR) << "Invalid auth factor label";
@@ -205,6 +224,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     const AuthFactorType& auth_factor_type,
     const std::string& auth_factor_label) {
   std::optional<user_data_auth::AuthFactor> proto;
+  // Try to populate the factor-specific data into the proto.
   switch (auth_factor_type) {
     case AuthFactorType::kPassword: {
       auto* password_metadata = std::get_if<PasswordAuthFactorMetadata>(
@@ -254,7 +274,14 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     LOG(ERROR) << "Failed to convert auth factor to proto";
     return std::nullopt;
   }
-  proto.value().set_label(auth_factor_label);
+  // If we get here we were able to populate a proto with all the
+  // factor-specific data. Now fill in the common metadata and the label.
+  // This step cannot fail.
+  proto->set_label(auth_factor_label);
+  proto->mutable_common_metadata()->set_chromeos_version_last_updated(
+      auth_factor_metadata.common.chromeos_version_last_updated);
+  proto->mutable_common_metadata()->set_chrome_version_last_updated(
+      auth_factor_metadata.common.chrome_version_last_updated);
   return proto;
 }
 

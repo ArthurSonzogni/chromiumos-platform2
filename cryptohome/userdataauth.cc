@@ -4803,7 +4803,6 @@ void UserDataAuth::AddAuthFactor(
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  // TODO(b/3319388): Implement AddAuthFactor.
   user_data_auth::AddAuthFactorReply reply;
   CryptohomeStatusOr<AuthSession*> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
@@ -4815,6 +4814,9 @@ void UserDataAuth::AddAuthFactor(
             .Wrap(std::move(auth_session_status).status()));
     return;
   }
+
+  // Populate the request auth factor with accurate sysinfo.
+  PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
   // UserDataAuth handles and initializes ChallengeCredentialsHelper and
   // KeyChallengeService. AuthInput supplies UserDataAuth with the
@@ -4912,6 +4914,9 @@ void UserDataAuth::UpdateAuthFactor(
             .Wrap(std::move(auth_session_status).status()));
     return;
   }
+
+  // Populate the request auth factor with accurate sysinfo.
+  PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
   StatusCallback on_update_auth_factor_finished = base::BindOnce(
       &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),

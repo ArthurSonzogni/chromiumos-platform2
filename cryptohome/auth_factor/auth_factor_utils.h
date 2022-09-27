@@ -29,6 +29,12 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
 std::optional<AuthFactorType> AuthFactorTypeFromProto(
     user_data_auth::AuthFactorType type);
 
+// Populates any relevant fields in an AuthFactor proto with the relevant system
+// information (e.g. OS version). Will overwrite any info already populating the
+// system information fields, but will not touch any other fields.
+void PopulateAuthFactorProtoWithSysinfo(
+    user_data_auth::AuthFactor& auth_factor);
+
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
 // includes the metadata struct, type and label.
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
