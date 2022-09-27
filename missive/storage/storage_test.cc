@@ -1033,8 +1033,11 @@ constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
 TEST_P(StorageTest, WriteAndReadPipelineId) {
-  ResetTestStorage();
   CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
+  // fail
+  WriteStringOrDie(FAST_BATCH, kData[0]);
 
   constexpr char kTestPipelineId[] = "test_pipeline_id";
   Status status = storage_->StorePipelineId(kTestPipelineId);
@@ -1046,8 +1049,11 @@ TEST_P(StorageTest, WriteAndReadPipelineId) {
 }
 
 TEST_P(StorageTest, PipelineIdMultipleSuccessiveReadsOk) {
-  ResetTestStorage();
   CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
+  // fail
+  WriteStringOrDie(FAST_BATCH, kData[0]);
 
   constexpr char kTestPipelineId[] = "test_pipeline_id";
   Status status = storage_->StorePipelineId(kTestPipelineId);
@@ -1063,8 +1069,11 @@ TEST_P(StorageTest, PipelineIdMultipleSuccessiveReadsOk) {
 }
 
 TEST_P(StorageTest, OverwritingPipelineIdReturnsMostRecentWrite) {
-  ResetTestStorage();
   CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
+  // fail
+  WriteStringOrDie(FAST_BATCH, kData[0]);
 
   constexpr char kTestPipelineId[] = "test_pipeline_id";
   Status status = storage_->StorePipelineId(kTestPipelineId);
@@ -1080,8 +1089,11 @@ TEST_P(StorageTest, OverwritingPipelineIdReturnsMostRecentWrite) {
 }
 
 TEST_P(StorageTest, PipelineIdReadReturnsErrorIfNothingStored) {
-  ResetTestStorage();
   CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
+  // fail
+  WriteStringOrDie(FAST_BATCH, kData[0]);
 
   StatusOr<std::string> pipeline_id_result = storage_->GetPipelineId();
   EXPECT_THAT(pipeline_id_result.status(), Ne(Status::StatusOK()));
