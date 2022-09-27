@@ -53,7 +53,7 @@ class ErrorReportingTpm1Test : public ::testing::Test {
           std::string("Testing1"));
 };
 
-constexpr TSS_RESULT kTestingTpmError1 = TSS_E_INVALID_HANDLE;
+constexpr TSS_RESULT kTestingTpmError1 = TSS_E_INVALID_HANDLE | TSS_LAYER_TSP;
 
 TEST_F(ErrorReportingTpm1Test, SimpleTPM1Error) {
   // Setup the expected result.
@@ -70,7 +70,7 @@ TEST_F(ErrorReportingTpm1Test, SimpleTPM1Error) {
   // HashedStack value is precomputed.
   EXPECT_CALL(
       metrics_,
-      SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), -177848392))
+      SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), 356369525))
       .WillOnce(Return(true));
 
   // Generate the mixed TPM error.
