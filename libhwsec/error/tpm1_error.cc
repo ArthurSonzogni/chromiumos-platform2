@@ -37,6 +37,7 @@ TPMRetryAction TPM1Error::ToTPMRetryAction() const {
       break;
     // Invalid handle to the TPM.
     case ERROR_CODE(TSS_E_INVALID_HANDLE):
+    case ERROR_CODE(TPM_E_INVALID_AUTHHANDLE):
       status = TPMRetryAction::kLater;
       break;
     // Key load failed; problem with parent key authorization.
