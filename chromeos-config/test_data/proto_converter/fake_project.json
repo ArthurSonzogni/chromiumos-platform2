@@ -101,6 +101,9 @@
           "routines": {
             "battery-health": {
               "percent-battery-wear-allowed": 50
+            },
+            "nvme-wear-level": {
+              "wear-level-threshold": 50
             }
           }
         },

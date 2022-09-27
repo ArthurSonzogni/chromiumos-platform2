@@ -1110,6 +1110,15 @@ def _build_health_routines(health_config):
             "percent-battery-wear-allowed",
         )
         _upsert(battery_health_result, result, "battery-health")
+    if routines.HasField("nvme_wear_level"):
+        nvme_wear_level_result = {}
+        _upsert(
+            routines.nvme_wear_level.wear_level_threshold,
+            nvme_wear_level_result,
+            "wear-level-threshold",
+        )
+        _upsert(nvme_wear_level_result, result, "nvme-wear-level")
+
     return result
 
 

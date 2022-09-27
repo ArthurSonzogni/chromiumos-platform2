@@ -1358,6 +1358,17 @@ properties:
                         - max-pixel-dev
                         - pixel-median
                         - detect-zones
+                    nvme-wear-level:
+                      type: object
+                      properties:
+                        wear-level-threshold:
+                          type: integer
+                          description: |
+                            Threshold number in percentage which NVMe wear level
+                            routine (only available to wilco devices) in
+                            cros_healthd examines wear level status against.
+                          minimum: 0
+                          maximum: 99
                       additionalProperties: false
                   additionalProperties: false
               additionalProperties: false

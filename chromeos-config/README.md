@@ -573,6 +573,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | battery-health | [battery-health](#battery_health) |  | False |  | False |  |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False |  |
+| nvme-wear-level | [nvme-wear-level](#nvme_wear_level) |  | False |  | False |  |
 
 ### battery-health
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -609,6 +610,11 @@ In the tables below,
 | icb-type1-upper | integer |  | True |  | False | Inverted checkerboard type1 upper bound.  |
 | icb-type2-lower | integer |  | True |  | False | Inverted checkerboard type2 lower bound.  |
 | icb-type2-upper | integer |  | True |  | False | Inverted checkerboard type2 upper bound.  |
+
+### nvme-wear-level
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| wear-level-threshold | integer |  | False |  | False | Threshold number in percentage which NVMe wear level routine (only available to wilco devices) in cros_healthd examines wear level status against.  Minimum value: 0x0. Maximum value: 0x63. |
 
 ### cross-device
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
