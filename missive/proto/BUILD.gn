@@ -44,10 +44,10 @@ proto_library("test_proto") {
   standalone = true
 }
 
-proto_library("pipeline_id_proto") {
-  sources = [ "pipeline_id.proto" ]
+proto_library("libmissiveprotopipelineid") {
+  sources = [ "synced/pipeline_id.proto" ]
 
-  proto_in_dir = "//missive/proto"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }

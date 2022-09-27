@@ -1,5 +1,5 @@
 # Copyright 2021 The ChromiumOS Authors
-# Use of this source code is governed by a BSD - style license that can be
+# Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
@@ -100,9 +100,9 @@ static_library("storage") {
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
+    "//missive/proto:libmissiveprotopipelineid",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/proto:pipeline_id_proto",
     "//missive/util:file",
     "//missive/util:status",
     "//missive/util:status_macros",
