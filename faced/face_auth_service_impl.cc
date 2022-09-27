@@ -11,6 +11,7 @@
 
 #include "faced/authentication_session.h"
 #include "faced/enrollment_session.h"
+#include "faced/util/task.h"
 
 namespace faced {
 
@@ -37,8 +38,7 @@ FaceAuthServiceImpl::FaceAuthServiceImpl(
 void FaceAuthServiceImpl::HandleDisconnect(base::OnceClosure callback) {
   ClearSession();
   receiver_.reset();
-  base::SequencedTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                   std::move(callback));
+  PostToCurrentSequence(std::move(callback));
 }
 
 void FaceAuthServiceImpl::CreateEnrollmentSession(
@@ -48,10 +48,9 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
     CreateEnrollmentSessionCallback callback) {
   // If a session is already active, return an error.
   if (session_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  CreateSessionResult::NewError(
-                                      SessionCreationError::ALREADY_EXISTS)));
+    PostToCurrentSequence(base::BindOnce(
+        std::move(callback),
+        CreateSessionResult::NewError(SessionCreationError::ALREADY_EXISTS)));
     return;
   }
 
@@ -69,8 +68,7 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
   // Return session information to the caller.
   CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
       SessionInfo::New(session_->session_id())));
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), std::move(result)));
+  PostToCurrentSequence(base::BindOnce(std::move(callback), std::move(result)));
 }
 
 void FaceAuthServiceImpl::CreateAuthenticationSession(
@@ -80,10 +78,9 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
     CreateAuthenticationSessionCallback callback) {
   // If a session is already active, return an error.
   if (session_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  CreateSessionResult::NewError(
-                                      SessionCreationError::ALREADY_EXISTS)));
+    PostToCurrentSequence(base::BindOnce(
+        std::move(callback),
+        CreateSessionResult::NewError(SessionCreationError::ALREADY_EXISTS)));
     return;
   }
 
@@ -101,8 +98,7 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
   // Return session information to the caller.
   CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
       SessionInfo::New(session_->session_id())));
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), std::move(result)));
+  PostToCurrentSequence(base::BindOnce(std::move(callback), std::move(result)));
 }
 
 }  // namespace faced

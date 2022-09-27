@@ -15,6 +15,7 @@
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/util/task.h"
 
 namespace faced {
 
@@ -81,8 +82,7 @@ void AuthenticationSession::NotifyComplete(FaceOperationStatus status) {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
@@ -93,8 +93,7 @@ void AuthenticationSession::NotifyCancelled() {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
@@ -107,28 +106,26 @@ void AuthenticationSession::NotifyError(absl::Status error) {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
 void AuthenticationSession::OnSessionDisconnect() {
   receiver_.reset();
 
-  // TODO(bkersten): cancel authentication session operation
+  // TODO(b/249184053): cancel authentication session operation
 
   NotifyCancelled();
 }
 
 void AuthenticationSession::OnDelegateDisconnect() {
-  // TODO(bkersten): cancel authentication session operation
-
   receiver_.reset();
   delegate_.reset();
 
+  // TODO(b/249184053): cancel authentication session operation
+
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 

@@ -15,6 +15,7 @@
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/util/task.h"
 
 namespace faced {
 
@@ -76,8 +77,7 @@ void EnrollmentSession::NotifyComplete(FaceOperationStatus status) {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
@@ -88,10 +88,10 @@ void EnrollmentSession::NotifyCancelled() {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
+
 void EnrollmentSession::NotifyError(absl::Status error) {
   // TODO(bkersten): map absl::Status to SessionError
   SessionError session_error = SessionError::UNKNOWN;
@@ -101,28 +101,26 @@ void EnrollmentSession::NotifyError(absl::Status error) {
   delegate_.reset();
 
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
 void EnrollmentSession::OnSessionDisconnect() {
   receiver_.reset();
 
-  // TODO(bkersten): cancel enrollment session operation
+  // TODO(b/249184051): cancel enrollment session operation
 
   NotifyCancelled();
 }
 
 void EnrollmentSession::OnDelegateDisconnect() {
-  // TODO(bkersten): cancel enrollment session operation
-
   receiver_.reset();
   delegate_.reset();
 
+  // TODO(b/249184051): cancel enrollment session operation
+
   if (disconnect_callback_) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, std::move(disconnect_callback_));
+    PostToCurrentSequence(std::move(disconnect_callback_));
   }
 }
 
