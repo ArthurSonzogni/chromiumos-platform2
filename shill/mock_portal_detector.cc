@@ -7,8 +7,7 @@
 namespace shill {
 
 MockPortalDetector::MockPortalDetector()
-    : PortalDetector(nullptr,
-                     base::Callback<void(const PortalDetector::Result&)>()) {}
+    : PortalDetector(nullptr, base::DoNothing()) {}
 
 MockPortalDetector::~MockPortalDetector() = default;
 

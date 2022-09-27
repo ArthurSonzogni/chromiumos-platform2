@@ -107,17 +107,19 @@ class PortalDetectorTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(base::Bind(&CallbackTarget::ResultCallback,
-                                      base::Unretained(this))) {}
+        : result_callback_(base::BindRepeating(&CallbackTarget::ResultCallback,
+                                               base::Unretained(this))) {}
 
     MOCK_METHOD(void, ResultCallback, (const PortalDetector::Result&));
 
-    base::Callback<void(const PortalDetector::Result&)>& result_callback() {
+    base::RepeatingCallback<void(const PortalDetector::Result&)>&
+    result_callback() {
       return result_callback_;
     }
 
    private:
-    base::Callback<void(const PortalDetector::Result&)> result_callback_;
+    base::RepeatingCallback<void(const PortalDetector::Result&)>
+        result_callback_;
   };
 
   void AssignHttpRequest() {

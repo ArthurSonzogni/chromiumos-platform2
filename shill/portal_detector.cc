@@ -112,8 +112,8 @@ bool PortalDetector::Start(const ManagerProperties& props,
   bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
   https_request_ = std::make_unique<HttpRequest>(
       dispatcher_, ifname, src_address, dns_list, allow_non_google_https);
-  trial_.Reset(base::Bind(&PortalDetector::StartTrialTask,
-                          weak_ptr_factory_.GetWeakPtr()));
+  trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
+                              weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
   // |last_attempt_start_time_| is calculated based on the current time and
   // |delay|.  This is used to determine when to schedule the next portal
@@ -125,16 +125,12 @@ bool PortalDetector::Start(const ManagerProperties& props,
 
 void PortalDetector::StartTrialTask() {
   LOG(INFO) << LoggingTag() << ": Starting trial";
-  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
-      http_request_success_callback(
-          base::Bind(&PortalDetector::HttpRequestSuccessCallback,
-                     weak_ptr_factory_.GetWeakPtr()));
-  base::Callback<void(HttpRequest::Result)> http_request_error_callback(
-      base::Bind(&PortalDetector::HttpRequestErrorCallback,
-                 weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result http_result = http_request_->Start(
       LoggingTag() + " HTTP probe", http_url_string_, kHeaders,
-      http_request_success_callback, http_request_error_callback);
+      base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&PortalDetector::HttpRequestErrorCallback,
+                     weak_ptr_factory_.GetWeakPtr()));
   if (http_result != HttpRequest::kResultInProgress) {
     // If the http probe fails to start, complete the trial with a failure
     // Result for https.
@@ -151,16 +147,12 @@ void PortalDetector::StartTrialTask() {
 
   result_ = std::make_unique<Result>();
 
-  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
-      https_request_success_callback(
-          base::Bind(&PortalDetector::HttpsRequestSuccessCallback,
-                     weak_ptr_factory_.GetWeakPtr()));
-  base::Callback<void(HttpRequest::Result)> https_request_error_callback(
-      base::Bind(&PortalDetector::HttpsRequestErrorCallback,
-                 weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result https_result = https_request_->Start(
       LoggingTag() + " HTTPS probe", https_url_string_, kHeaders,
-      https_request_success_callback, https_request_error_callback);
+      base::BindOnce(&PortalDetector::HttpsRequestSuccessCallback,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
+                     weak_ptr_factory_.GetWeakPtr()));
   if (https_result != HttpRequest::kResultInProgress) {
     result_->https_phase = GetPortalPhaseForRequestResult(https_result);
     result_->https_status = GetPortalStatusForRequestResult(https_result);

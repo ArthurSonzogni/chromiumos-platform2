@@ -259,7 +259,7 @@ class PortalDetector {
 
   std::string http_url_string_;
   std::string https_url_string_;
-  base::CancelableClosure trial_;
+  base::CancelableOnceClosure trial_;
   bool is_active_;
 };
 
