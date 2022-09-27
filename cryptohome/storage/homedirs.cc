@@ -211,14 +211,7 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
         continue;  // Remove them all if enterprise owned.
       }
     }
-    if (platform_->IsDirectoryMounted(
-            brillo::cryptohome::home::GetUserPathPrefix().Append(
-                dir.obfuscated)) ||
-        platform_->IsDirectoryMounted(
-            brillo::cryptohome::home::GetRootPathPrefix().Append(
-                dir.obfuscated))) {
-      continue;  // Don't use LE credentials if user cryptohome is mounted.
-    } else if (!HomeDirs::Remove(dir.obfuscated)) {
+    if (!HomeDirs::Remove(dir.obfuscated)) {
       LOG(WARNING) << "Failed to remove all non-owner home directories.";
     }
   }
