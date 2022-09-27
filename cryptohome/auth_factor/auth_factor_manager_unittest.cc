@@ -35,8 +35,10 @@ namespace cryptohome {
 
 namespace {
 
-const char kObfuscatedUsername[] = "obfuscated1";
-const char kSomeIdpLabel[] = "some-idp";
+constexpr char kObfuscatedUsername[] = "obfuscated1";
+constexpr char kSomeIdpLabel[] = "some-idp";
+constexpr char kChromeosVersion[] = "a.b.c_1_2_3";
+constexpr char kChromeVersion[] = "a.b.c.d";
 
 AuthBlockState CreatePasswordAuthBlockState(const std::string& suffix = "") {
   TpmBoundToPcrAuthBlockState tpm_bound_to_pcr_auth_block_state = {
@@ -52,7 +54,13 @@ AuthBlockState CreatePasswordAuthBlockState(const std::string& suffix = "") {
 }
 
 std::unique_ptr<AuthFactor> CreatePasswordAuthFactor() {
-  AuthFactorMetadata metadata = {.metadata = PasswordAuthFactorMetadata()};
+  AuthFactorMetadata metadata = {
+      .common =
+          CommonAuthFactorMetadata{
+              .chromeos_version_last_updated = kChromeosVersion,
+              .chrome_version_last_updated = kChromeVersion,
+          },
+      .metadata = PasswordAuthFactorMetadata()};
   return std::make_unique<AuthFactor>(AuthFactorType::kPassword, kSomeIdpLabel,
                                       metadata, CreatePasswordAuthBlockState());
 }
@@ -79,17 +87,22 @@ TEST_F(AuthFactorManagerTest, Save) {
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
 
   // Load the auth factor and verify it's the same.
-  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor_status =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
-  ASSERT_TRUE(loaded_auth_factor.ok());
-  ASSERT_TRUE(loaded_auth_factor.value());
-  EXPECT_EQ(loaded_auth_factor.value()->type(), AuthFactorType::kPassword);
-  EXPECT_EQ(loaded_auth_factor.value()->label(), kSomeIdpLabel);
+  ASSERT_TRUE(loaded_auth_factor_status.ok());
+  ASSERT_TRUE(loaded_auth_factor_status.value());
+  AuthFactor& loaded_auth_factor = **loaded_auth_factor_status;
+  EXPECT_EQ(loaded_auth_factor.type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_auth_factor.label(), kSomeIdpLabel);
+  EXPECT_EQ(loaded_auth_factor.metadata().common.chromeos_version_last_updated,
+            kChromeosVersion);
+  EXPECT_EQ(loaded_auth_factor.metadata().common.chrome_version_last_updated,
+            kChromeVersion);
   EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
-      loaded_auth_factor.value()->metadata().metadata));
+      loaded_auth_factor.metadata().metadata));
   EXPECT_EQ(auth_factor->auth_block_state(),
-            loaded_auth_factor.value()->auth_block_state());
+            loaded_auth_factor.auth_block_state());
   // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 

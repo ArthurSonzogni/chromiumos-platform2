@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
+#include <libhwsec-foundation/flatbuffers/basic_objects.h>
 #include <libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -117,8 +118,22 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
                                          auth_factor_label);
 }
 
-// Serializes the password metadata into the given flatbuffer builder. Returns
-// the flatbuffer offset, to be used for building the outer table.
+// Serializes the factor-specific metadata into the given flatbuffer builder.
+// Returns the flatbuffer offset, to be used for building the outer table.
+flatbuffers::Offset<SerializedCommonMetadata> SerializeCommonMetadataToOffset(
+    const CommonAuthFactorMetadata& common_metadata,
+    flatbuffers::FlatBufferBuilder& builder) {
+  auto chromeos_offset = hwsec_foundation::ToFlatBuffer<std::string>()(
+      &builder, common_metadata.chromeos_version_last_updated);
+  auto chrome_offset = hwsec_foundation::ToFlatBuffer<std::string>()(
+      &builder, common_metadata.chrome_version_last_updated);
+
+  SerializedCommonMetadataBuilder cm_builder(builder);
+  cm_builder.add_chromeos_version_last_updated(chromeos_offset);
+  cm_builder.add_chrome_version_last_updated(chrome_offset);
+  return cm_builder.Finish();
+}
+
 flatbuffers::Offset<SerializedPasswordMetadata> SerializeMetadataToOffset(
     const PasswordAuthFactorMetadata& password_metadata,
     flatbuffers::FlatBufferBuilder* builder) {
@@ -126,8 +141,6 @@ flatbuffers::Offset<SerializedPasswordMetadata> SerializeMetadataToOffset(
   return metadata_builder.Finish();
 }
 
-// Serializes the pin metadata into the given flatbuffer builder. Returns
-// the flatbuffer offset, to be used for building the outer table.
 flatbuffers::Offset<SerializedPinMetadata> SerializeMetadataToOffset(
     const PinAuthFactorMetadata& password_metadata,
     flatbuffers::FlatBufferBuilder* builder) {
@@ -153,8 +166,11 @@ flatbuffers::Offset<SerializedSmartCardMetadata> SerializeMetadataToOffset(
   return metadata_builder.Finish();
 }
 
-// Serializes the password metadata into the given flatbuffer builder. Returns
-// the flatbuffer offset, to be used for building the outer table.
+// Serializes the factor-specific metadata into the given flatbuffer builder.
+// Returns the flatbuffer offset, to be used for building the outer table.
+//
+// Implemented by selecting the appropriate specific overload based on the
+// factor type and delegating to it.
 flatbuffers::Offset<void> SerializeMetadataToOffset(
     const AuthFactorMetadata& metadata,
     flatbuffers::FlatBufferBuilder* builder,
@@ -206,15 +222,32 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
     return std::nullopt;
   }
 
+  auto common_metadata_offset =
+      SerializeCommonMetadataToOffset(auth_factor.metadata().common, builder);
+
   SerializedAuthFactorBuilder auth_factor_builder(builder);
   auth_factor_builder.add_auth_block_state(auth_block_state_offset);
   auth_factor_builder.add_metadata(metadata_offset);
   auth_factor_builder.add_metadata_type(metadata_type);
+  auth_factor_builder.add_common_metadata(common_metadata_offset);
   auto auth_factor_offset = auth_factor_builder.Finish();
 
   builder.Finish(auth_factor_offset);
   return Blob(builder.GetBufferPointer(),
               builder.GetBufferPointer() + builder.GetSize());
+}
+
+void ConvertCommonMetadataFromFlatbuffer(
+    const SerializedCommonMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  metadata->common = CommonAuthFactorMetadata{
+      .chromeos_version_last_updated =
+          hwsec_foundation::FromFlatBuffer<std::string>()(
+              flatbuffer_table.chromeos_version_last_updated()),
+      .chrome_version_last_updated =
+          hwsec_foundation::FromFlatBuffer<std::string>()(
+              flatbuffer_table.chrome_version_last_updated()),
+  };
 }
 
 bool ConvertPasswordMetadataFromFlatbuffer(
@@ -262,6 +295,7 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
 
   auto auth_factor_table = GetSerializedAuthFactor(flatbuffer.data());
 
+  // Extract the auth block state from the serialized data.
   if (!auth_factor_table->auth_block_state()) {
     LOG(ERROR) << "SerializedAuthFactor has no auth block state";
     return false;
@@ -269,6 +303,16 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
   *auth_block_state = hwsec_foundation::FromFlatBuffer<AuthBlockState>()(
       auth_factor_table->auth_block_state());
 
+  // Extract the common metadata from the serialized data.
+  if (!auth_factor_table->common_metadata()) {
+    // This is not an error, old auth factors have no common metadata.
+    LOG(WARNING) << "SerializedAuthFactor has no common metadata";
+  } else {
+    ConvertCommonMetadataFromFlatbuffer(*auth_factor_table->common_metadata(),
+                                        metadata);
+  }
+
+  // Extract the factor-specific metadata from the serialized data.
   if (!auth_factor_table->metadata()) {
     LOG(ERROR) << "SerializedAuthFactor has no metadata";
     return false;
