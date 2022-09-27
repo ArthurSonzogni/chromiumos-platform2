@@ -362,7 +362,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
                          "capture=true,backend=cras,client_type=arcvm,"
                          "socket_type=unified,num_input_devices=3,"
-                         "num_output_devices=3")
+                         "num_output_devices=4")
       // Second Virtio sound device for the aaudio path.
       // Remove this device once audioHAL switch all streams to the first
       // device.
