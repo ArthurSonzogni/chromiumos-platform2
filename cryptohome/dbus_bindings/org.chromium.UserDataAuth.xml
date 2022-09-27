@@ -556,16 +556,16 @@ do.
     </method>
 
     <!-- Prepare specific asynchronous auth factor for an auth session. -->
-    <method name="PrepareAsyncAuthFactor">
+    <method name="PrepareAuthFactor">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareAsyncAuthFactorRequest"/>
+                    value="user_data_auth::PrepareAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareAsyncAuthFactorReply"/>
+                    value="user_data_auth::PrepareAuthFactorReply"/>
       </arg>
     </method>
 

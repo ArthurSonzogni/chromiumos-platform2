@@ -548,30 +548,29 @@ void UserDataAuthAdaptor::DoListAuthFactors(
           std::move(response)));
 }
 
-void UserDataAuthAdaptor::PrepareAsyncAuthFactor(
+void UserDataAuthAdaptor::PrepareAuthFactor(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::PrepareAsyncAuthFactorReply>> response,
-    const user_data_auth::PrepareAsyncAuthFactorRequest& in_request) {
+        user_data_auth::PrepareAuthFactorReply>> response,
+    const user_data_auth::PrepareAuthFactorRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE,
-      base::BindOnce(&UserDataAuthAdaptor::DoPrepareAsyncAuthFactor,
-                     base::Unretained(this),
-                     ThreadSafeDBusMethodResponse<
-                         user_data_auth::PrepareAsyncAuthFactorReply>::
-                         MakeThreadSafe(std::move(response)),
-                     in_request));
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoPrepareAuthFactor, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::PrepareAuthFactorReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
 }
 
-void UserDataAuthAdaptor::DoPrepareAsyncAuthFactor(
+void UserDataAuthAdaptor::DoPrepareAuthFactor(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::PrepareAsyncAuthFactorReply>> response,
-    const user_data_auth::PrepareAsyncAuthFactorRequest& in_request) {
-  service_->PrepareAsyncAuthFactor(
+        user_data_auth::PrepareAuthFactorReply>> response,
+    const user_data_auth::PrepareAuthFactorRequest& in_request) {
+  service_->PrepareAuthFactor(
       in_request,
       base::BindOnce(
           [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                 user_data_auth::PrepareAsyncAuthFactorReply>> local_response,
-             const user_data_auth::PrepareAsyncAuthFactorReply& reply) {
+                 user_data_auth::PrepareAuthFactorReply>> local_response,
+             const user_data_auth::PrepareAuthFactorReply& reply) {
             local_response->Return(reply);
           },
           std::move(response)));

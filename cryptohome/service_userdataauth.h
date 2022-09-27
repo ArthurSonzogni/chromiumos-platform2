@@ -352,15 +352,15 @@ class UserDataAuthAdaptor
           user_data_auth::ListAuthFactorsReply>> response,
       const user_data_auth::ListAuthFactorsRequest& in_request);
 
-  void PrepareAsyncAuthFactor(
+  void PrepareAuthFactor(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::PrepareAsyncAuthFactorReply>> response,
-      const user_data_auth::PrepareAsyncAuthFactorRequest& in_request) override;
+          user_data_auth::PrepareAuthFactorReply>> response,
+      const user_data_auth::PrepareAuthFactorRequest& in_request) override;
 
-  void DoPrepareAsyncAuthFactor(
+  void DoPrepareAuthFactor(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::PrepareAsyncAuthFactorReply>> response,
-      const user_data_auth::PrepareAsyncAuthFactorRequest& in_request);
+          user_data_auth::PrepareAuthFactorReply>> response,
+      const user_data_auth::PrepareAuthFactorRequest& in_request);
 
   void AuthenticateAuthFactor(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

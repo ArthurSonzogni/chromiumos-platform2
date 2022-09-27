@@ -5063,13 +5063,13 @@ void UserDataAuth::ListAuthFactors(
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
-void UserDataAuth::PrepareAsyncAuthFactor(
-    user_data_auth::PrepareAsyncAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::PrepareAsyncAuthFactorReply&)>
+void UserDataAuth::PrepareAuthFactor(
+    user_data_auth::PrepareAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::PrepareAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::PrepareAsyncAuthFactorReply reply;
-  // TODO(b/244237788): Implement PrepareAsyncAuthFactor.
+  user_data_auth::PrepareAuthFactorReply reply;
+  // TODO(b/244237788): Implement PrepareAuthFactor.
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
   std::move(on_done).Run(reply);
 }
