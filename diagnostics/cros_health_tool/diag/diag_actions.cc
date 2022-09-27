@@ -299,6 +299,11 @@ bool DiagActions::ActionRunFingerprintAliveRoutine() {
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunPrivacyScreenRoutine(bool target_state) {
+  auto response = adapter_->RunPrivacyScreenRoutine(target_state);
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

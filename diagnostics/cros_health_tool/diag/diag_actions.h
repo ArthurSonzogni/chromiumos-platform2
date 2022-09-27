@@ -91,6 +91,7 @@ class DiagActions final {
   bool ActionRunSensitiveSensorRoutine();
   bool ActionRunFingerprintRoutine();
   bool ActionRunFingerprintAliveRoutine();
+  bool ActionRunPrivacyScreenRoutine(bool target_state);
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

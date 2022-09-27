@@ -92,6 +92,10 @@ int diag_main(int argc, char** argv) {
                 "Optional custom STUN server hostname for the video "
                 "conferencing routine.");
 
+  // Flag for the privacy screen routine.
+  DEFINE_bool(turn_privacy_screen_on, true,
+              "Whether or not the privacy screen should be enabled.");
+
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   logging::InitLogging(logging::LoggingSettings());
@@ -268,6 +272,10 @@ int diag_main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive:
         routine_result = actions.ActionRunFingerprintAliveRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen:
+        routine_result =
+            actions.ActionRunPrivacyScreenRoutine(FLAGS_turn_privacy_screen_on);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
