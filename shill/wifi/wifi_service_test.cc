@@ -598,11 +598,11 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassPsk);
 #if !defined(DISABLE_WPA3_SAE)
-    std::string ft_key_mgmt = "WPA-PSK SAE FT-PSK FT-SAE";
-    std::string noft_key_mgmt = "WPA-PSK SAE";
+    std::string ft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 SAE FT-PSK FT-SAE";
+    std::string noft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 SAE";
 #else
-    std::string ft_key_mgmt = "WPA-PSK FT-PSK";
-    std::string noft_key_mgmt = "WPA-PSK";
+    std::string ft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 FT-PSK";
+    std::string noft_key_mgmt = "WPA-PSK WPA-PSK-SHA256";
 #endif  // DISABLE_WPA3_SAE
 
     wifi_service->Connect(nullptr, "in test");

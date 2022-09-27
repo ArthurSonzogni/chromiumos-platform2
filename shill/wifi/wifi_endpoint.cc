@@ -448,9 +448,9 @@ void WiFiEndpoint::ParseKeyManagementMethods(
                                 WPASupplicant::kKeyManagementMethodPrefixEAP) &&
                (base::Contains(method,
                                WPASupplicant::kKeyManagementMethodSuiteB) ||
-                base::EndsWith(method,
-                               WPASupplicant::kKeyManagementMethodSuffixSha256,
-                               base::CompareCase::SENSITIVE))) {
+                base::EndsWith(
+                    method, WPASupplicant::kKeyManagementMethodSuffixEAPSHA256,
+                    base::CompareCase::SENSITIVE))) {
       key_management_methods->insert(kKeyManagement802_1x_Wpa3);
     } else if (base::StartsWith(method,
                                 WPASupplicant::kKeyManagementMethodPrefixEAP) ||
@@ -460,7 +460,10 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       key_management_methods->insert(kKeyManagement802_1x);
     } else if (base::EndsWith(method,
                               WPASupplicant::kKeyManagementMethodSuffixPSK,
-                              base::CompareCase::SENSITIVE)) {
+                              base::CompareCase::SENSITIVE) ||
+               base::EndsWith(
+                   method, WPASupplicant::kKeyManagementMethodSuffixPSKSHA256,
+                   base::CompareCase::SENSITIVE)) {
       key_management_methods->insert(kKeyManagementPSK);
     }
   }

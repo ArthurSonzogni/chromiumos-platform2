@@ -211,7 +211,22 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
   std::set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
+      MakeKeyManagementArgs({"something-psk", "something-psk-sha256"}),
+      &parsed_methods);
+  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_FALSE(
+      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+
+  parsed_methods.clear();
+  WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-psk"}), &parsed_methods);
+  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+  EXPECT_FALSE(
+      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+
+  parsed_methods.clear();
+  WiFiEndpoint::ParseKeyManagementMethods(
+      MakeKeyManagementArgs({"something-psk-sha256"}), &parsed_methods);
   EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
   EXPECT_FALSE(
       base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
@@ -220,7 +235,24 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
   std::set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
+      MakeKeyManagementArgs(
+          {"something-eap", "something-psk", "something-psk-sha256"}),
+      &parsed_methods);
+  EXPECT_TRUE(
+      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+
+  parsed_methods.clear();
+  WiFiEndpoint::ParseKeyManagementMethods(
       MakeKeyManagementArgs({"something-eap", "something-psk"}),
+      &parsed_methods);
+  EXPECT_TRUE(
+      base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
+  EXPECT_TRUE(base::Contains(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
+
+  parsed_methods.clear();
+  WiFiEndpoint::ParseKeyManagementMethods(
+      MakeKeyManagementArgs({"something-eap", "something-psk-sha256"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::Contains(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
@@ -251,12 +283,22 @@ TEST_F(WiFiEndpointTest, ParseSecurityRSNSAE) {
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
   EXPECT_EQ(WiFiSecurity::kWpa2,
+            ParseSecurity(
+                MakeSecurityArgs("RSN", "something-psk something-psk-sha256")));
+  EXPECT_EQ(WiFiSecurity::kWpa2,
             ParseSecurity(MakeSecurityArgs("RSN", "something-psk")));
+  EXPECT_EQ(WiFiSecurity::kWpa2,
+            ParseSecurity(MakeSecurityArgs("RSN", "something-psk-sha256")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
   EXPECT_EQ(WiFiSecurity::kWpa,
+            ParseSecurity(
+                MakeSecurityArgs("WPA", "something-psk something-psk-sha256")));
+  EXPECT_EQ(WiFiSecurity::kWpa,
             ParseSecurity(MakeSecurityArgs("WPA", "something-psk")));
+  EXPECT_EQ(WiFiSecurity::kWpa,
+            ParseSecurity(MakeSecurityArgs("WPA", "something-psk-sha256")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityMixedModes) {

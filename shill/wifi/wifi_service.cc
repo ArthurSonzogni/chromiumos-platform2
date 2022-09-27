@@ -324,12 +324,15 @@ void WiFiService::SetSecurityProperties() {
   } else if (security_class() == kSecurityClassPsk) {
 #if !defined(DISABLE_WPA3_SAE)
     // WPA/WPA2-PSK or WPA3-SAE.
-    SetEAPKeyManagement(base::StringPrintf("%s %s",
-                                           WPASupplicant::kKeyManagementWPAPSK,
-                                           WPASupplicant::kKeyManagementSAE));
+    SetEAPKeyManagement(
+        base::StringPrintf("%s %s %s", WPASupplicant::kKeyManagementWPAPSK,
+                           WPASupplicant::kKeyManagementWPAPSKSHA256,
+                           WPASupplicant::kKeyManagementSAE));
 #else
     // WPA/WPA2-PSK.
-    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
+    SetEAPKeyManagement(
+        base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
+                           WPASupplicant::kKeyManagementWPAPSKSHA256));
 #endif  // DISABLE_WPA3_SAE
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
@@ -1144,12 +1147,18 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   if (manager()->GetFTEnabled(nullptr)) {
     // Append the FT analog for each non-FT key management method.
     bool ft_eap = false;
+    bool ft_psk = false;
     for (const auto& mgmt :
          base::SplitString(key_mgmt, base::kWhitespaceASCII,
                            base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
       std::string ft_mgmt;
-      if (mgmt == WPASupplicant::kKeyManagementWPAPSK) {
+      if (mgmt == WPASupplicant::kKeyManagementWPAPSK ||
+          mgmt == WPASupplicant::kKeyManagementWPAPSKSHA256) {
+        // FT is already SHA256, so it matches both PSK and PSK-SHA256.
+        if (ft_psk)
+          continue;  // Already added this once.
         ft_mgmt = WPASupplicant::kKeyManagementFTPSK;
+        ft_psk = true;
       } else if (mgmt == WPASupplicant::kKeyManagementWPAEAP ||
                  mgmt == WPASupplicant::kKeyManagementWPAEAPSHA256) {
         // FT is already SHA256, so it matches both EAP and EAP-SHA256.
