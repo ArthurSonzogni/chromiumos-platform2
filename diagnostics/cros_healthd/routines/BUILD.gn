@@ -54,7 +54,11 @@ executable("prime-search") {
 }
 
 pkg_config("libdiag_routine_pkg_deps") {
-  pkg_deps = [ "re2" ]
+  pkg_deps = [
+    "iioservice_ipc",
+    "libmojo",
+    "re2",
+  ]
 }
 
 source_set("libdiag_routine") {
@@ -111,8 +115,10 @@ source_set("libdiag_routine") {
 if (use.test) {
   pkg_config("libroutine_test_pkg_deps") {
     pkg_deps = [
+      "iioservice_ipc",
       "libdebugd-client",
       "libdebugd-client-test",
+      "mojo_service_manager",
     ]
   }
 
@@ -149,6 +155,7 @@ if (use.test) {
       "nvme_wear_level/nvme_wear_level_test.cc",
       "prime_search/prime_number_search.cc",
       "prime_search/prime_number_search_test.cc",
+      "sensor/sensitive_sensor_test.cc",
       "signal_strength/signal_strength_test.cc",
       "simple_routine_test.cc",
       "smartctl_check/smartctl_check_utils.cc",

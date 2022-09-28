@@ -11,20 +11,30 @@
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 namespace diagnostics {
 
 // Fake implementation of SensorDevice.
 class FakeSensorDevice : public cros::mojom::SensorDevice {
  public:
-  explicit FakeSensorDevice(const std::optional<std::string>& name,
-                            const std::optional<std::string>& location);
+  explicit FakeSensorDevice(
+      const std::optional<std::string>& name,
+      const std::optional<std::string>& location,
+      const std::vector<std::string>& channels = {},
+      const std::vector<int32_t>& failed_channel_indices = {},
+      base::OnceClosure on_start_reading = base::DoNothing());
   FakeSensorDevice(const FakeSensorDevice&) = delete;
   FakeSensorDevice& operator=(const FakeSensorDevice&) = delete;
   ~FakeSensorDevice() override = default;
 
-  // Getter for the mojo receiver.
+  // Getter for the mojo receiver of SensorDevice, bound in FakeSensorService.
   mojo::Receiver<cros::mojom::SensorDevice>& receiver() { return receiver_; }
+  // Getter for the observer remote, bound when |StartReadingSamples| is called
+  // and used for sending fake samples and observer errors.
+  mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>& observer() {
+    return observer_;
+  }
 
  private:
   // cros::mojom::SensorDevice overrides.
@@ -64,6 +74,14 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   // Sensor attributes.
   std::optional<std::string> sensor_name_;
   std::optional<std::string> sensor_location_;
+  // Sensor channel names.
+  std::vector<std::string> sensor_channels_;
+  // Channels indices that can not be enabled.
+  std::vector<int32_t> failed_channel_indices_;
+  // Observer remote.
+  mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> observer_;
+  // Start reading callback, triggered when |observer_| is bound.
+  base::OnceClosure on_start_reading_;
 };
 
 }  // namespace diagnostics

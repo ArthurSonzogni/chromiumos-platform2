@@ -8,6 +8,7 @@ import("//common-mk/pkg_config.gni")
 pkg_config("libcros_healthd_pkg_deps") {
   pkg_deps = [
     "dbus-1",
+    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libmojo",

@@ -8,9 +8,17 @@
 
 namespace diagnostics {
 
-FakeSensorDevice::FakeSensorDevice(const std::optional<std::string>& name,
-                                   const std::optional<std::string>& location)
-    : sensor_name_(name), sensor_location_(location) {}
+FakeSensorDevice::FakeSensorDevice(
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& location,
+    const std::vector<std::string>& channels,
+    const std::vector<int32_t>& failed_channel_indices,
+    base::OnceClosure on_start_reading)
+    : sensor_name_(name),
+      sensor_location_(location),
+      sensor_channels_(channels),
+      failed_channel_indices_(failed_channel_indices),
+      on_start_reading_(std::move(on_start_reading)) {}
 
 void FakeSensorDevice::SetTimeout(uint32_t timeout) {
   NOTIMPLEMENTED();
@@ -27,27 +35,30 @@ void FakeSensorDevice::FakeSensorDevice::GetAttributes(
 
 void FakeSensorDevice::SetFrequency(double frequency,
                                     SetFrequencyCallback callback) {
-  NOTIMPLEMENTED();
+  std::move(callback).Run(frequency);
 }
 
 void FakeSensorDevice::StartReadingSamples(
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
-  NOTIMPLEMENTED();
+  observer_.reset();
+  observer_.Bind(std::move(observer));
+  if (on_start_reading_)
+    std::move(on_start_reading_).Run();
 }
 
 void FakeSensorDevice::StopReadingSamples() {
-  NOTIMPLEMENTED();
+  observer_.reset();
 }
 
 void FakeSensorDevice::GetAllChannelIds(GetAllChannelIdsCallback callback) {
-  NOTIMPLEMENTED();
+  std::move(callback).Run(sensor_channels_);
 }
 
 void FakeSensorDevice::SetChannelsEnabled(
     const std::vector<int32_t>& iio_chn_indices,
     bool en,
     SetChannelsEnabledCallback callback) {
-  NOTIMPLEMENTED();
+  std::move(callback).Run(failed_channel_indices_);
 }
 
 void FakeSensorDevice::GetChannelsEnabled(
