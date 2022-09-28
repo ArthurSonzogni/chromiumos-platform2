@@ -3087,6 +3087,11 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   pid = fork();
   errno_assert(pid >= 0);
   if (pid == 0) {
+    // Set WAYLAND_DISPLAY to a value that is guaranteed to not point to a
+    // valid wayland compositor socket name. Unsetting WAYLAND_DISPLAY is
+    // insufficient as some clients may attempt to connect to wayland-0 as a
+    // default fallback.
+    setenv("WAYLAND_DISPLAY", ".", 1);
     sl_execvp(ctx->runprog[0], ctx->runprog, -1);
     _exit(EXIT_FAILURE);
   }
@@ -3757,14 +3762,6 @@ int real_main(int argc, char** argv) {
     free(str);
   }
 
-  if (ctx.runprog || ctx.xwayland) {
-    // Wayland connection from client.
-    int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
-    errno_assert(!rv);
-
-    client_fd = sv[0];
-  }
-
   // The success of this depends on xkb-data being installed.
   ctx.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
   if (!ctx.xkb_context) {
@@ -3800,6 +3797,13 @@ int real_main(int argc, char** argv) {
   wl_registry_add_listener(wl_display_get_registry(ctx.display),
                            &sl_registry_listener, &ctx);
 
+  if (ctx.runprog || ctx.xwayland) {
+    // Wayland connection from client.
+    int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
+    errno_assert(!rv);
+    client_fd = sv[0];
+  }
+
   ctx.client = wl_client_create(ctx.host_display, client_fd);
 
   // Replace the core display implementation. This is needed in order to
@@ -3810,15 +3814,6 @@ int real_main(int argc, char** argv) {
     ctx.sigchld_event_source.reset(
         wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx));
 
-    // Unset DISPLAY to prevent X clients from connecting to an existing X
-    // server when X forwarding is not enabled.
-    unsetenv("DISPLAY");
-    // Set WAYLAND_DISPLAY to value that is guaranteed to not point to a
-    // valid wayland compositor socket name. Resetting WAYLAND_DISPLAY is
-    // insufficient as clients will attempt to connect to wayland-0 if
-    // it's not set.
-    setenv("WAYLAND_DISPLAY", ".", 1);
-
     if (ctx.xwayland) {
       sl_spawn_xwayland(&ctx, event_loop, sv[1], xwayland_cmd_prefix,
                         xwayland_path, xdisplay, xauth_path, xfont_path,
@@ -3827,6 +3822,9 @@ int real_main(int argc, char** argv) {
       pid = fork();
       errno_assert(pid != -1);
       if (pid == 0) {
+        // Unset DISPLAY to prevent X clients from connecting to an existing X
+        // server when X forwarding is not enabled.
+        unsetenv("DISPLAY");
         sl_execvp(ctx.runprog[0], ctx.runprog, sv[1]);
         _exit(EXIT_FAILURE);
       }
