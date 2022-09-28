@@ -235,19 +235,3 @@ pub fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<(
 
     Ok(())
 }
-
-// To check system load, libc::getloadvg() is being used but we can add more logic later.
-// libc::getloadavg() is identical as /proc/loadavg returning load average of last 1,5 & 15 minutes.
-// Below function returns load average of the last 1 minute.
-pub fn check_system_load() -> Result<f64> {
-    let mut system_load_1min: libc::c_double = 0.0;
-    let sample_num = 1;
-
-    unsafe {
-        if libc::getloadavg(&mut system_load_1min, sample_num) == sample_num {
-            return Ok(system_load_1min);
-        }
-    }
-
-    bail!("Failed to check system load!")
-}

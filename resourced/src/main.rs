@@ -2,17 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod cgroup;
 mod common;
 mod config;
 mod dbus;
-mod feature;
 mod gpu_freq_scaling;
 mod memory;
 mod power;
-
-#[cfg(target_arch = "x86_64")]
-mod power_x86_64;
 
 #[cfg(test)]
 mod test;
@@ -41,8 +36,6 @@ fn main() -> Result<()> {
         power_source_provider: power::DirectoryPowerSourceProvider {
             root: root.to_path_buf(),
         },
-        feature_provider: feature::CrOSFeatureProvider::new()?,
-        cpuset_manager: cgroup::CgroupCpusetManager::new(root.to_path_buf())?,
     };
 
     dbus::service_main(power_preferences_manager)

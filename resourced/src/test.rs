@@ -11,17 +11,13 @@ use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
 
-use crate::cgroup::{CgroupCpusetManager, CGROUP_CPUSET_SYSFS, CGROUP_CPUSET_SYSFS_NUM};
 use crate::common;
 use crate::common::{parse_file_to_u64, FullscreenVideo, RTCAudioActive};
 use crate::config;
 use crate::config::ConfigProvider;
-use crate::feature;
-use crate::feature::{CrOSFeature, FeatureProvider};
 use crate::power;
 use crate::power::PowerPreferencesManager;
 use crate::power::PowerSourceProvider;
-use featured::{Feature, PlatformFeatures};
 
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
@@ -31,9 +27,6 @@ use crate::memory::{
 use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
 use crate::gpu_freq_scaling::{evaluate_gpu_frequency, init_gpu_params, init_gpu_scaling_thread};
 use tempfile::{tempdir, TempDir};
-
-#[cfg(target_arch = "x86_64")]
-use {crate::power_x86_64, std::arch::x86_64::__cpuid, std::path::PathBuf};
 
 #[test]
 fn test_parse_file_to_u64() {
@@ -743,17 +736,10 @@ fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -785,17 +771,10 @@ fn test_power_update_power_preferences_none() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -838,17 +817,10 @@ fn test_power_update_power_preferences_default_ac() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -891,17 +863,10 @@ fn test_power_update_power_preferences_default_dc() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -943,17 +908,10 @@ fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -994,17 +952,10 @@ fn test_power_update_power_preferences_rtc_active() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -1041,17 +992,10 @@ fn test_power_update_power_preferences_epp() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     let tests = [
@@ -1099,17 +1043,10 @@ fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -1150,17 +1087,10 @@ fn test_power_update_power_preferences_gaming_active() -> Result<()> {
         ..Default::default()
     };
 
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
     let manager = power::DirectoryPowerPreferencesManager {
         root: root.path().to_path_buf(),
         config_provider,
         power_source_provider,
-        feature_provider,
-        cpuset_manager,
     };
 
     manager.update_power_preferences(
@@ -1210,324 +1140,6 @@ fn test_set_gt_boost_freq_mhz() -> Result<()> {
     common::set_gt_boost_freq_mhz_impl(root_path, common::RTCAudioActive::Inactive)?;
 
     assert_eq!(common::read_file_to_u64(&gt_boost_freq_mhz_path)?, 1100);
-
-    Ok(())
-}
-
-pub struct FakeCrOSFeatureProvider<'a> {
-    pub fake_feature_list: Vec<CrOSFeature<'a>>,
-    platform_features: PlatformFeatures,
-}
-
-impl FakeCrOSFeatureProvider<'_> {
-    pub fn new() -> Result<Self> {
-        let mut fake_feature_list = Vec::new();
-
-        let feature = Feature::new("CrOSLateBootKnownFeature1", false).unwrap();
-        fake_feature_list.push(CrOSFeature {
-            name: "CrOSLateBootKnownFeature1",
-            enabled_by_default: false,
-            feature: Some(feature),
-        });
-
-        let feature = Feature::new("CrOSLateBootMediaDynamicCgroup", false).unwrap();
-        fake_feature_list.push(CrOSFeature {
-            name: "CrOSLateBootMediaDynamicCgroup",
-            enabled_by_default: false,
-            feature: Some(feature),
-        });
-
-        Ok(FakeCrOSFeatureProvider {
-            fake_feature_list,
-            platform_features: PlatformFeatures::new()?,
-        })
-    }
-}
-
-impl feature::FeatureProvider for FakeCrOSFeatureProvider<'_> {
-    fn feature_enabled(&self, name: &str) -> Result<bool> {
-        match self
-            .fake_feature_list
-            .iter()
-            .find(|&feature| feature.name == name)
-        {
-            Some(feature_item) => feature_item.feature_enabled(&self.platform_features),
-            None => bail!("Not able to find Feature! {}", &name),
-        }
-    }
-}
-
-#[test]
-fn test_feature_provider() -> Result<()> {
-    let feature_provider = FakeCrOSFeatureProvider::new()?;
-
-    // Below function must return Error since it's unknown feature to resourced.
-    assert!(feature_provider
-        .feature_enabled("CrOSLateBootUnknownFeature1")
-        .is_err());
-
-    // Below function must return SUCCESS since it's in the fake_feature_list.
-    assert!(feature_provider
-        .feature_enabled("CrOSLateBootMediaDynamicCgroup")
-        .is_ok());
-    Ok(())
-}
-
-#[cfg(test)]
-static FAKE_CROS_FEATURE_EXISTS: AtomicBool = AtomicBool::new(false);
-
-pub struct FakeCrOSFeatureProviderSingleton<'a> {
-    pub fake_feature_list: Vec<CrOSFeature<'a>>,
-    platform_features: PlatformFeatures,
-}
-
-impl FakeCrOSFeatureProviderSingleton<'_> {
-    pub fn new() -> Result<Self> {
-        // Check this is the first time get called.
-        match FAKE_CROS_FEATURE_EXISTS.compare_exchange(
-            false,
-            true,
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-        ) {
-            // Populate fake_feature_list if this is the very first instance.
-            Ok(_) => {
-                let mut fake_feature_list = Vec::new();
-
-                let feature = Feature::new("CrOSLateBootKnownFeature1", false).unwrap();
-                fake_feature_list.push(CrOSFeature {
-                    name: "CrOSLateBootKnownFeature1",
-                    enabled_by_default: false,
-                    feature: Some(feature),
-                });
-
-                let feature = Feature::new("CrOSLateBootMediaDynamicCgroup", false).unwrap();
-                fake_feature_list.push(CrOSFeature {
-                    name: "CrOSLateBootMediaDynamicCgroup",
-                    enabled_by_default: false,
-                    feature: Some(feature),
-                });
-                Ok(FakeCrOSFeatureProviderSingleton {
-                    fake_feature_list,
-                    platform_features: PlatformFeatures::new()?,
-                })
-            }
-            // Create empty feature_list if this is not the first time.
-            // This is to ensure that feature_list is being created only once.
-            Err(_) => bail!("Failed to create CrOSFeatureProvider since it already exitis!"),
-        }
-    }
-}
-
-impl Drop for FakeCrOSFeatureProviderSingleton<'_> {
-    fn drop(&mut self) {
-        FAKE_CROS_FEATURE_EXISTS.store(false, Ordering::Relaxed)
-    }
-}
-
-impl feature::FeatureProvider for FakeCrOSFeatureProviderSingleton<'_> {
-    fn feature_enabled(&self, name: &str) -> Result<bool> {
-        match self
-            .fake_feature_list
-            .iter()
-            .find(|&feature| feature.name == name)
-        {
-            Some(feature_item) => feature_item.feature_enabled(&self.platform_features),
-            None => bail!("Not able to find Feature! {}", &name),
-        }
-    }
-}
-
-#[test]
-fn test_feature_provider_singleton() -> Result<()> {
-    let feature_provider1 = FakeCrOSFeatureProviderSingleton::new()?;
-
-    // Below function must return SUCCESS since it's in the fake_feature_list.
-    assert!(feature_provider1
-        .feature_enabled("CrOSLateBootKnownFeature1")
-        .is_ok());
-
-    // Below function must return SUCCESS since it's in the fake_feature_list.
-    assert!(feature_provider1
-        .feature_enabled("CrOSLateBootMediaDynamicCgroup")
-        .is_ok());
-
-    // Below function must fail since it's NOT in the fake_feature_list.
-    assert!(feature_provider1
-        .feature_enabled("CrOSLateBootUnKnownFeature1")
-        .is_err());
-
-    // Below function must fail since this is the 2nd instance of feature_provider.
-    let feature_provider2 = FakeCrOSFeatureProviderSingleton::new();
-    assert!(feature_provider2.is_err());
-
-    Ok(())
-}
-
-const FAKE_CPUSETS: [(&str, &str); CGROUP_CPUSET_SYSFS_NUM] = [
-    ("sys/fs/cgroup/cpuset/chrome/urgent/", "0-3"),
-    ("sys/fs/cgroup/cpuset/chrome/non-urgent/", "4-11"),
-    ("sys/fs/cgroup/cpuset/chrome/", "0-11"),
-    ("sys/fs/cgroup/cpuset/media/", "4-11"),
-];
-
-fn create_fake_cgroup_cpuset_sysfs(root: &Path) -> Result<()> {
-    // Create fake platform cgroup/cpuset sysfs.
-    for entry in FAKE_CPUSETS.iter() {
-        let mut cgroup_sysfs = root.to_owned();
-
-        // Create fake cgroup/cpuset directory.
-        cgroup_sysfs.push(entry.0);
-        std::fs::create_dir_all(&cgroup_sysfs).unwrap();
-
-        // Create fake sysfs cgroup/cpuset/../cpus and set the default cpus.
-        std::fs::write(cgroup_sysfs.join("cpus"), &entry.1)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn test_cgroup_cpuset_manager() -> Result<()> {
-    // Create temp directory.
-    let root = tempdir()?;
-
-    // Create fake cgroup/cpuset sysfs.
-    create_fake_cgroup_cpuset_sysfs(root.path())?;
-
-    // Create CgroupCpusetManger.
-    let cpuset_manager = CgroupCpusetManager::new(root.path().to_path_buf())?;
-
-    // Write all fake cgroup/cpuset/../cpus sysfs with "4-7".
-    cpuset_manager.write_all("4-7")?;
-
-    // Read fake cgroup/cpuset/../cpus sysfs and check all cpus is "4-7".
-    for entry in CGROUP_CPUSET_SYSFS.iter() {
-        let sysfs = root.path().to_owned().join(entry);
-        assert_eq!(std::fs::read_to_string(&sysfs).unwrap(), "4-7");
-    }
-
-    // Write back platform's defalut cpus to fake cgroup/cpuset/../cpus sysfs.
-    cpuset_manager.restore_all()?;
-
-    // Read fake cgroup/cpuset/../cpus sysfs and check all cpus has default/initial cpus.
-    for (index, entry) in CGROUP_CPUSET_SYSFS.iter().enumerate() {
-        let sysfs = root.path().to_owned().join(entry);
-        assert_eq!(
-            std::fs::read_to_string(&sysfs).unwrap(),
-            FAKE_CPUSETS[index].1
-        );
-    }
-
-    Ok(())
-}
-
-#[test]
-#[cfg(target_arch = "x86_64")]
-fn test_power_is_intel_hybrid_system() -> Result<()> {
-    // cpuid with EAX=0: Highest Function Parameter and Manufacturer ID.
-    // This returns the CPU's manufacturer ID string.
-    // The largest value that EAX can be set to before calling CPUID is returned in EAX.
-    // https://en.wikipedia.org/wiki/CPUID.
-    const CPUID_EAX_FOR_HFP_MID: u32 = 0;
-
-    // Intel processor manufacture ID is "GenuineIntel".
-    const CPUID_GENUINE_INTEL_EBX: u32 = 0x756e6547;
-    const CPUID_GENUINE_INTEL_ECX: u32 = 0x6c65746e;
-    const CPUID_GENUINE_INTEL_EDX: u32 = 0x49656e69;
-    const CPUID_EAX_EXT_FEATURE: u32 = 7;
-
-    let mut intel_platform = false;
-    let mut highest_feature = 0;
-
-    // Read highest function parameter and manufacturer ID.
-    let processor_info = unsafe { __cpuid(CPUID_EAX_FOR_HFP_MID) };
-
-    // Check system has Intel platform i.e "GenuineIntel".
-    if processor_info.ebx == CPUID_GENUINE_INTEL_EBX
-        && processor_info.ecx == CPUID_GENUINE_INTEL_ECX
-        && processor_info.edx == CPUID_GENUINE_INTEL_EDX
-    {
-        intel_platform = true;
-        highest_feature = processor_info.eax;
-        println!("Intel platform with highest function {}", highest_feature);
-    }
-
-    let intel_hybrid_platform = power_x86_64::is_intel_hybrid_platform()?;
-
-    //If system is not Intel platform, hybrid should be false.
-    if !intel_platform {
-        assert!(!intel_hybrid_platform);
-    }
-
-    //If system is Intel platform but if the highest function is less than 7
-    //hybrid should be false.
-    if intel_platform && highest_feature < CPUID_EAX_EXT_FEATURE {
-        assert!(!intel_hybrid_platform);
-    }
-
-    println!(
-        "Does platform support Intel hybrid feature? {}",
-        intel_hybrid_platform
-    );
-
-    Ok(())
-}
-
-#[test]
-#[cfg(target_arch = "x86_64")]
-fn test_power_platform_feature_media_dynamic_cgroup_enabled() -> Result<()> {
-    let platform_media_dynamic_cgroup =
-        power_x86_64::platform_feature_media_dynamic_cgroup_enabled(&PathBuf::from("/"));
-
-    assert!(platform_media_dynamic_cgroup.is_ok());
-
-    println!(
-        "Does platform support media dynamic cgroup? {}",
-        platform_media_dynamic_cgroup.unwrap()
-    );
-
-    Ok(())
-}
-
-#[test]
-#[cfg(target_arch = "x86_64")]
-fn test_power_get_intel_hybrid_core_num() -> Result<()> {
-    let dir = TempDir::new().unwrap();
-
-    // Create fake sysfs ../cpufreq/policy*/cpuinfo_max_freq.
-    // Start with platform with 4 ISO cores.
-    for cpu in 0..4 {
-        let mut cpu_freq_info = dir.path().to_owned();
-
-        // Create fake sysfs ../cpufreq/policy*/ directory.
-        cpu_freq_info
-            .push(String::from("sys/devices/system/cpu/cpufreq/policy") + &cpu.to_string() + "/");
-        std::fs::create_dir_all(&cpu_freq_info).unwrap();
-
-        // Create fake sysfs ../cpufreq/policy*/cpufino_max_freq.
-        std::fs::write(cpu_freq_info.join("cpuinfo_max_freq"), "6000")?;
-    }
-
-    // Check (total_core_num, total_ecore_num).
-    let core_num = power_x86_64::get_intel_hybrid_core_num(dir.path()).unwrap();
-    assert_eq!(core_num, (4, 0));
-
-    // Add fake 8 e-cores sysfs.
-    for cpu in 4..12 {
-        let mut cpu_freq_info = dir.path().to_owned();
-
-        // Create fake sysfs ../cpufreq/policy*/ directory.
-        cpu_freq_info
-            .push(String::from("sys/devices/system/cpu/cpufreq/policy") + &cpu.to_string() + "/");
-        std::fs::create_dir_all(&cpu_freq_info).unwrap();
-
-        // Create fake sysfs ../cpufreq/policy*/cpufino_max_freq.
-        std::fs::write(cpu_freq_info.join("cpuinfo_max_freq"), "4000")?;
-    }
-
-    // Check (total_core_num, total_ecore_num).
-    let core_num = power_x86_64::get_intel_hybrid_core_num(dir.path()).unwrap();
-    assert_eq!(core_num, (12, 8));
 
     Ok(())
 }

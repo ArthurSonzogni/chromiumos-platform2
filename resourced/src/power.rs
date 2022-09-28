@@ -10,16 +10,9 @@ use anyhow::{Context, Result};
 use glob::glob;
 use sys_util::info;
 
-use crate::cgroup;
 use crate::common;
 use crate::common::{FullscreenVideo, GameMode, RTCAudioActive};
 use crate::config;
-use crate::feature;
-
-#[cfg(target_arch = "x86_64")]
-use crate::power_x86_64::{
-    media_dynamic_cgroup, platform_feature_media_dynamic_cgroup_enabled, MediaDynamicCgroupAction,
-};
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -163,21 +156,13 @@ pub trait PowerPreferencesManager {
 ///
 /// This struct is using generics for the [ConfigProvider](config::ConfigProvider) and
 /// [PowerSourceProvider] to make unit testing easier.
-pub struct DirectoryPowerPreferencesManager<
-    C: config::ConfigProvider,
-    P: PowerSourceProvider,
-    F: feature::FeatureProvider,
-> {
+pub struct DirectoryPowerPreferencesManager<C: config::ConfigProvider, P: PowerSourceProvider> {
     pub root: PathBuf,
     pub config_provider: C,
     pub power_source_provider: P,
-    pub feature_provider: F,
-    pub cpuset_manager: cgroup::CgroupCpusetManager,
 }
 
-impl<C: config::ConfigProvider, P: PowerSourceProvider, F: feature::FeatureProvider>
-    DirectoryPowerPreferencesManager<C, P, F>
-{
+impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
     fn set_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
         let path = self.root.join(ONDEMAND_PATH).join(attr);
 
@@ -240,8 +225,8 @@ pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-impl<C: config::ConfigProvider, P: PowerSourceProvider, F: feature::FeatureProvider>
-    PowerPreferencesManager for DirectoryPowerPreferencesManager<C, P, F>
+impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
+    for DirectoryPowerPreferencesManager<C, P>
 {
     fn update_power_preferences(
         &self,
@@ -292,34 +277,6 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider, F: feature::FeatureProvi
             }
         } else {
             info!("Converting root path failed: {}", self.root.display());
-        }
-
-        #[cfg(target_arch = "x86_64")]
-        {
-            // Check whether CrOS supports media dynamic cgroup for power saving.
-            let feature_enabled = self
-                .feature_provider
-                .feature_enabled(feature::CROS_FEATURE_MEDIA_DYNAMIC_CGROUP)?;
-
-            // Check whether platform supports media dynamic cgroup.
-            if feature_enabled {
-                let platform_enabled = platform_feature_media_dynamic_cgroup_enabled(&self.root)?;
-
-                if platform_enabled {
-                    match fullscreen {
-                        FullscreenVideo::Active => media_dynamic_cgroup(
-                            &self.cpuset_manager,
-                            MediaDynamicCgroupAction::Start,
-                            &self.root,
-                        )?,
-                        FullscreenVideo::Inactive => media_dynamic_cgroup(
-                            &self.cpuset_manager,
-                            MediaDynamicCgroupAction::Stop,
-                            &self.root,
-                        )?,
-                    }
-                }
-            }
         }
 
         Ok(())
