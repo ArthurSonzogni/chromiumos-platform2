@@ -126,6 +126,8 @@ class CrosFpDevice : public ec::CrosFpDeviceInterface {
   // Get block id from rollback info.
   std::optional<int32_t> GetRollBackInfoId();
   std::optional<brillo::SecureVector> FpReadMatchSecret(uint16_t index);
+  std::optional<GetSecretReply> FpReadMatchSecretWithPubkey(
+      int index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y);
   std::optional<int> GetIndexOfLastTemplate();
   // Run a sequence of EC commands to update the entropy in the
   // MCU. If |reset| is set to true, it will additionally erase the existing

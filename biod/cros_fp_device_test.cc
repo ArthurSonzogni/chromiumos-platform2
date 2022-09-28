@@ -18,9 +18,12 @@
 
 using ec::EcCommandFactoryInterface;
 using ec::EcCommandInterface;
+using ec::FpGetNonceCommand;
 using ec::FpInfoCommand;
 using ec::FpMode;
+using ec::FpReadMatchSecretWithPubkeyCommand;
 using ec::FpSensorErrors;
+using ec::FpSetNonceContextCommand;
 using ec::FpTemplateCommand;
 using testing::An;
 using testing::NiceMock;
@@ -485,6 +488,271 @@ TEST_F(CrosFpDevice_HwErrors, Errors_InitializationFailureOrBadHardwareID) {
   EXPECT_EQ(
       mock_cros_fp_device_->GetHwErrors(),
       FpSensorErrors::kInitializationFailure | FpSensorErrors::kBadHardwareID);
+}
+
+class CrosFpDevice_GetNonce : public testing::Test {
+ public:
+  CrosFpDevice_GetNonce() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpGetNonceCommand : public FpGetNonceCommand {
+   public:
+    MockFpGetNonceCommand() { ON_CALL(*this, Run).WillByDefault(Return(true)); }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(brillo::Blob, Nonce, (), (override, const));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_GetNonce, Success) {
+  const brillo::Blob kNonce(32, 1);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpGetNonceCommand).WillOnce([&]() {
+    auto cmd = std::make_unique<NiceMock<MockFpGetNonceCommand>>();
+    EXPECT_CALL(*cmd, Nonce).WillRepeatedly(Return(kNonce));
+    return cmd;
+  });
+
+  std::optional<brillo::Blob> nonce = mock_cros_fp_device_->GetNonce();
+  ASSERT_TRUE(nonce.has_value());
+  EXPECT_EQ(nonce, kNonce);
+}
+
+TEST_F(CrosFpDevice_GetNonce, RunFailure) {
+  EXPECT_CALL(*mock_ec_command_factory_, FpGetNonceCommand).WillOnce([]() {
+    auto cmd = std::make_unique<NiceMock<MockFpGetNonceCommand>>();
+    EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+    return cmd;
+  });
+
+  std::optional<brillo::Blob> nonce = mock_cros_fp_device_->GetNonce();
+  EXPECT_FALSE(nonce.has_value());
+}
+
+class CrosFpDevice_SetNonceContext : public testing::Test {
+ public:
+  CrosFpDevice_SetNonceContext() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpSetNonceContextCommand : public FpSetNonceContextCommand {
+   public:
+    using FpSetNonceContextCommand::FpSetNonceContextCommand;
+    MOCK_METHOD(bool, Run, (int fd), (override));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_SetNonceContext, Success) {
+  const brillo::Blob kNonce(32, 1);
+  const brillo::Blob kUserId(32, 2);
+  const brillo::Blob kIv(16, 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpSetNonceContextCommand)
+      .WillOnce([](const brillo::Blob& nonce,
+                   const brillo::Blob& encrypted_user_id,
+                   const brillo::Blob& iv)
+                    -> std::unique_ptr<FpSetNonceContextCommand> {
+        auto cmd =
+            FpSetNonceContextCommand::Create<MockFpSetNonceContextCommand>(
+                nonce, encrypted_user_id, iv);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(true));
+        }
+        return cmd;
+      });
+
+  EXPECT_TRUE(mock_cros_fp_device_->SetNonceContext(kNonce, kUserId, kIv));
+}
+
+TEST_F(CrosFpDevice_SetNonceContext, InvalidParams) {
+  // Incorrect size.
+  const brillo::Blob kNonce(33, 1);
+  const brillo::Blob kUserId(32, 2);
+  const brillo::Blob kIv(16, 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpSetNonceContextCommand)
+      .WillOnce([](const brillo::Blob& nonce,
+                   const brillo::Blob& encrypted_user_id,
+                   const brillo::Blob& iv)
+                    -> std::unique_ptr<FpSetNonceContextCommand> {
+        auto cmd =
+            FpSetNonceContextCommand::Create<MockFpSetNonceContextCommand>(
+                nonce, encrypted_user_id, iv);
+        EXPECT_EQ(cmd, nullptr);
+        return cmd;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->SetNonceContext(kNonce, kUserId, kIv));
+}
+
+TEST_F(CrosFpDevice_SetNonceContext, RunFailure) {
+  const brillo::Blob kNonce(32, 1);
+  const brillo::Blob kUserId(32, 2);
+  const brillo::Blob kIv(16, 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpSetNonceContextCommand)
+      .WillOnce([](const brillo::Blob& nonce,
+                   const brillo::Blob& encrypted_user_id,
+                   const brillo::Blob& iv)
+                    -> std::unique_ptr<FpSetNonceContextCommand> {
+        auto cmd =
+            FpSetNonceContextCommand::Create<MockFpSetNonceContextCommand>(
+                nonce, encrypted_user_id, iv);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        }
+        return cmd;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->SetNonceContext(kNonce, kUserId, kIv));
+}
+
+class CrosFpDevice_GetPositiveMatchSecretWithPubkey : public testing::Test {
+ public:
+  CrosFpDevice_GetPositiveMatchSecretWithPubkey() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpReadMatchSecretWithPubkeyCommand
+      : public FpReadMatchSecretWithPubkeyCommand {
+   public:
+    using FpReadMatchSecretWithPubkeyCommand::
+        FpReadMatchSecretWithPubkeyCommand;
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(brillo::Blob, EncryptedSecret, (), (override, const));
+    MOCK_METHOD(brillo::Blob, Iv, (), (override, const));
+    MOCK_METHOD(brillo::Blob, PkOutX, (), (override, const));
+    MOCK_METHOD(brillo::Blob, PkOutY, (), (override, const));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, Success) {
+  const uint16_t kIndex = 0;
+  const brillo::Blob kPkInX(32, 1);
+  const brillo::Blob kPkInY(32, 2);
+  const brillo::Blob kEncryptedSecret(32, 3);
+  const brillo::Blob kIv(16, 4);
+  const brillo::Blob kPkOutX(32, 5);
+  const brillo::Blob kPkOutY(32, 6);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpReadMatchSecretWithPubkeyCommand)
+      .WillOnce([&](uint16_t index, const brillo::Blob& pk_in_x,
+                    const brillo::Blob& pk_in_y)
+                    -> std::unique_ptr<FpReadMatchSecretWithPubkeyCommand> {
+        auto cmd = FpReadMatchSecretWithPubkeyCommand::Create<
+            MockFpReadMatchSecretWithPubkeyCommand>(index, pk_in_x, pk_in_y);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(true));
+          EXPECT_CALL(*cmd, EncryptedSecret)
+              .WillRepeatedly(Return(kEncryptedSecret));
+          EXPECT_CALL(*cmd, Iv).WillRepeatedly(Return(kIv));
+          EXPECT_CALL(*cmd, PkOutX).WillRepeatedly(Return(kPkOutX));
+          EXPECT_CALL(*cmd, PkOutY).WillRepeatedly(Return(kPkOutY));
+        }
+        return cmd;
+      });
+
+  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+      mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
+                                                             kPkInY);
+  ASSERT_TRUE(reply.has_value());
+  EXPECT_EQ(reply->encrypted_secret, kEncryptedSecret);
+  EXPECT_EQ(reply->iv, kIv);
+  EXPECT_EQ(reply->pk_out_x, kPkOutX);
+  EXPECT_EQ(reply->pk_out_y, kPkOutY);
+}
+
+TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, InvalidParams) {
+  const uint16_t kIndex = 0;
+  // Incorrect size.
+  const brillo::Blob kPkInX(33, 1);
+  const brillo::Blob kPkInY(32, 2);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpReadMatchSecretWithPubkeyCommand)
+      .WillOnce([&](uint16_t index, const brillo::Blob& pk_in_x,
+                    const brillo::Blob& pk_in_y)
+                    -> std::unique_ptr<FpReadMatchSecretWithPubkeyCommand> {
+        auto cmd = FpReadMatchSecretWithPubkeyCommand::Create<
+            MockFpReadMatchSecretWithPubkeyCommand>(index, pk_in_x, pk_in_y);
+        EXPECT_EQ(cmd, nullptr);
+        return cmd;
+      });
+
+  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+      mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
+                                                             kPkInY);
+  EXPECT_FALSE(reply.has_value());
+}
+
+TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, RunFailure) {
+  const uint16_t kIndex = 0;
+  const brillo::Blob kPkInX(32, 1);
+  const brillo::Blob kPkInY(32, 2);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpReadMatchSecretWithPubkeyCommand)
+      .WillOnce([&](uint16_t index, const brillo::Blob& pk_in_x,
+                    const brillo::Blob& pk_in_y)
+                    -> std::unique_ptr<FpReadMatchSecretWithPubkeyCommand> {
+        auto cmd = FpReadMatchSecretWithPubkeyCommand::Create<
+            MockFpReadMatchSecretWithPubkeyCommand>(index, pk_in_x, pk_in_y);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        }
+        return cmd;
+      });
+
+  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
+      mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
+                                                             kPkInY);
+  EXPECT_FALSE(reply.has_value());
 }
 
 }  // namespace

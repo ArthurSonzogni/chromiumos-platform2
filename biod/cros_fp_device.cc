@@ -247,6 +247,31 @@ std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
   return secret;
 }
 
+std::optional<ec::CrosFpDeviceInterface::GetSecretReply>
+CrosFpDevice::FpReadMatchSecretWithPubkey(int index,
+                                          const brillo::Blob& pk_in_x,
+                                          const brillo::Blob& pk_in_y) {
+  auto read_secret_cmd =
+      ec_command_factory_->FpReadMatchSecretWithPubkeyCommand(index, pk_in_x,
+                                                              pk_in_y);
+  if (!read_secret_cmd) {
+    LOG(ERROR) << "Invalid read secret params.";
+    return std::nullopt;
+  }
+  if (!read_secret_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to read secret, result: "
+               << read_secret_cmd->Result();
+    return std::nullopt;
+  }
+
+  return ec::CrosFpDeviceInterface::GetSecretReply{
+      .encrypted_secret = read_secret_cmd->EncryptedSecret(),
+      .iv = read_secret_cmd->Iv(),
+      .pk_out_x = read_secret_cmd->PkOutX(),
+      .pk_out_y = read_secret_cmd->PkOutY(),
+  };
+}
+
 bool CrosFpDevice::UpdateFpInfo() {
   info_ = ec_command_factory_->FpInfoCommand();
 
@@ -537,8 +562,15 @@ std::optional<ec::CrosFpDeviceInterface::GetSecretReply>
 CrosFpDevice::GetPositiveMatchSecretWithPubkey(int index,
                                                const brillo::Blob& pk_in_x,
                                                const brillo::Blob& pk_in_y) {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return std::nullopt;
+  auto opt_index = std::make_optional<int>(index);
+  if (index == kLastTemplate) {
+    opt_index = GetIndexOfLastTemplate();
+    if (!opt_index.has_value()) {
+      return std::nullopt;
+    }
+  }
+  return FpReadMatchSecretWithPubkey(static_cast<uint16_t>(*opt_index), pk_in_x,
+                                     pk_in_y);
 }
 
 std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
@@ -658,13 +690,31 @@ bool CrosFpDevice::SetContext(std::string user_hex) {
 bool CrosFpDevice::SetNonceContext(const brillo::Blob& nonce,
                                    const brillo::Blob& encrypted_user_id,
                                    const brillo::Blob& iv) {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return false;
+  auto set_nonce_context_cmd = ec_command_factory_->FpSetNonceContextCommand(
+      nonce, encrypted_user_id, iv);
+  if (!set_nonce_context_cmd) {
+    LOG(ERROR) << "Invalid set nonce context params.";
+    return false;
+  }
+  if (!set_nonce_context_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to set nonce context, result: "
+               << set_nonce_context_cmd->Result();
+    return false;
+  }
+  return true;
 }
 
 std::optional<brillo::Blob> CrosFpDevice::GetNonce() {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return std::nullopt;
+  auto get_nonce_cmd = ec_command_factory_->FpGetNonceCommand();
+  if (!get_nonce_cmd) {
+    LOG(ERROR) << "Invalid get nonce params.";
+    return std::nullopt;
+  }
+  if (!get_nonce_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to get nonce, result: " << get_nonce_cmd->Result();
+    return std::nullopt;
+  }
+  return get_nonce_cmd->Nonce();
 }
 
 bool CrosFpDevice::ResetContext() {
