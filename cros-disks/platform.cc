@@ -239,15 +239,17 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   return true;
 }
 
-MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
+MountErrorType Platform::Unmount(const base::FilePath& mount_path,
+                                 const std::string& filesystem_type) const {
   // We take a 2-step approach to unmounting FUSE filesystems. First, we try a
   // normal unmount. This lets the VFS flush any pending data and lets the
   // filesystem shut down cleanly.
   //
   // However, if the filesystem is currently busy, this fails with an EBUSY
   // error.
+  VLOG(2) << "Unmounting " << filesystem_type << " " << quote(mount_path);
   if (umount(mount_path.value().c_str()) == 0) {
-    VLOG(1) << "Unmounted " << quote(mount_path);
+    VLOG(1) << "Unmounted " << filesystem_type << " " << quote(mount_path);
     return MOUNT_ERROR_NONE;
   }
 
@@ -266,15 +268,18 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path) const {
     //
     // On a non-FUSE filesystem, MNT_FORCE doesn't have any effect. Only
     // MNT_DETACH matters in this case, but it's OK to pass MNT_FORCE too.
-    VLOG(1) << "Force-unmounting " << quote(mount_path);
+    VLOG(1) << "Force-unmounting " << filesystem_type << " "
+            << quote(mount_path);
     if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
-      LOG(WARNING) << "Force-unmounted " << redact(mount_path);
+      LOG(WARNING) << "Force-unmounted " << filesystem_type << " "
+                   << redact(mount_path);
       return MOUNT_ERROR_NONE;
     }
   }
 
   const error_t error = errno;
-  PLOG(ERROR) << "Cannot unmount " << redact(mount_path);
+  PLOG(ERROR) << "Cannot unmount " << filesystem_type << " "
+              << redact(mount_path);
 
   switch (error) {
     case EINVAL:  // |mount_path| is not a mount point
@@ -348,8 +353,13 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
       continue;
 
     const base::FilePath subdir = base::FilePath(dir).Append(name);
-    Platform::Unmount(subdir);
-    Platform::RemoveEmptyDirectory(subdir.value());
+    LOG(WARNING) << "Found stale mount point " << redact(subdir);
+
+    if (Platform::Unmount(subdir, "stale") == MOUNT_ERROR_NONE)
+      LOG(WARNING) << "Unmounted stale mount point " << redact(subdir);
+
+    if (Platform::RemoveEmptyDirectory(subdir.value()))
+      LOG(WARNING) << "Removed stale mount point " << redact(subdir);
   }
 
   if (errno) {

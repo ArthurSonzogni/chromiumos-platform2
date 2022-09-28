@@ -48,7 +48,7 @@ MountErrorType MountPoint::Unmount() {
   MountErrorType error = MOUNT_ERROR_PATH_NOT_MOUNTED;
 
   if (is_mounted_) {
-    error = platform_->Unmount(data_.mount_path);
+    error = platform_->Unmount(data_.mount_path, data_.filesystem_type);
     if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
       is_mounted_ = false;
 

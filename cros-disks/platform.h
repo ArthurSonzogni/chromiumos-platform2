@@ -5,6 +5,9 @@
 #ifndef CROS_DISKS_PLATFORM_H_
 #define CROS_DISKS_PLATFORM_H_
 
+#include <string>
+#include <unordered_set>
+
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -15,9 +18,6 @@
 // Added locally in kernel 5.4, upstream TBD.
 #define MS_NOSYMFOLLOW 256
 #endif
-
-#include <string>
-#include <unordered_set>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -132,8 +132,10 @@ class Platform {
   // Sets the permissions of |path| to |mode|. Returns true on success.
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;
 
-  // Forcefully unmounts |mount_path|.
-  virtual MountErrorType Unmount(const base::FilePath& mount_path) const;
+  // Forcefully unmounts |mount_path|. The given |filesystem_type| is only used
+  // in logs.
+  virtual MountErrorType Unmount(const base::FilePath& mount_path,
+                                 const std::string& filesystem_type) const;
 
   // Mounts the |source| filesystem of type |filesystem_type| at mount point
   // |target| with |flags| and |options|.

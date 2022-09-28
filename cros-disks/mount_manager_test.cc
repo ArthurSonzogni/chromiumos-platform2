@@ -29,6 +29,9 @@
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 
+namespace cros_disks {
+namespace {
+
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
@@ -37,9 +40,6 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::SizeIs;
 using testing::StrictMock;
-
-namespace cros_disks {
-namespace {
 
 const char kMountRootDirectory[] = "/media/removable";
 const char kSourcePath[] = "source";
@@ -354,7 +354,7 @@ TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
                       Return(ByMove(std::move(ptr)))));
   EXPECT_CALL(manager_, ShouldReserveMountPathOnError(MOUNT_ERROR_INVALID_PATH))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true))
@@ -402,7 +402,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
     EXPECT_FALSE(mount_point->is_read_only());
   }
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -445,7 +445,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
     EXPECT_TRUE(mount_point->is_read_only());
   }
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -483,7 +483,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
     EXPECT_TRUE(mount_point->is_read_only());
   }
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -514,7 +514,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -552,7 +552,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   EXPECT_FALSE(read_only_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(final_mount_path)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(final_mount_path), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(final_mount_path))
       .WillOnce(Return(true));
@@ -602,7 +602,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   // Unmount
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -804,7 +804,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -837,7 +837,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -870,7 +870,7 @@ TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), ""))
       .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
@@ -1113,7 +1113,7 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
   }
 
   // Should be unmounted correctly even after remount.
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), ""))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));

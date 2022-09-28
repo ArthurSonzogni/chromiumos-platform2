@@ -217,7 +217,8 @@ void MountManager::MountNewSource(const std::string& source,
         FROM_HERE, process->pid(),
         base::BindOnce(&MountManager::OnSandboxedProcessExit,
                        base::Unretained(this), process->GetProgramName(),
-                       mount_path, mount_point->GetWeakPtr()));
+                       mount_path, mount_point->fstype(),
+                       mount_point->GetWeakPtr()));
 
     DCHECK(mount_callback);
     mount_point->SetLauncherExitCallback(base::BindOnce(
@@ -310,29 +311,33 @@ bool MountManager::RemoveMount(const MountPoint* const mount_point) {
 void MountManager::OnSandboxedProcessExit(
     const std::string& program_name,
     const base::FilePath& mount_path,
+    const std::string& filesystem_type,
     const base::WeakPtr<MountPoint> mount_point,
     const siginfo_t& info) {
   DCHECK_EQ(SIGCHLD, info.si_signo);
   if (info.si_code != CLD_EXITED) {
     LOG(ERROR) << "Sandbox of FUSE program " << quote(program_name) << " for "
-               << redact(mount_path) << " was killed by signal "
-               << info.si_status << ": " << strsignal(info.si_status);
+               << filesystem_type << " " << redact(mount_path)
+               << " was killed by signal " << info.si_status << ": "
+               << strsignal(info.si_status);
   } else if (mount_point) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
-               << redact(mount_path) << " finished unexpectedly with "
+               << filesystem_type << " " << redact(mount_path)
+               << " finished unexpectedly with "
                << Process::ExitCode(info.si_status);
   } else if (info.si_status) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
-               << redact(mount_path) << " finished with "
-               << Process::ExitCode(info.si_status);
+               << filesystem_type << " " << redact(mount_path)
+               << " finished with " << Process::ExitCode(info.si_status);
   } else {
     LOG(INFO) << "FUSE program " << quote(program_name) << " for "
-              << redact(mount_path) << " finished with "
-              << Process::ExitCode(info.si_status);
+              << filesystem_type << " " << redact(mount_path)
+              << " finished with " << Process::ExitCode(info.si_status);
   }
 
   if (!mount_point) {
-    VLOG(1) << "Mount point " << redact(mount_path) << " was already removed";
+    VLOG(1) << "Mount point " << filesystem_type << " " << redact(mount_path)
+            << " was already removed";
     return;
   }
 

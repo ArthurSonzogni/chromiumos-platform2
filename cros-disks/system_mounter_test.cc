@@ -16,11 +16,10 @@
 #include "cros-disks/platform.h"
 
 namespace cros_disks {
+namespace {
 
 using testing::_;
 using testing::Return;
-
-namespace {
 
 constexpr uint64_t kDefaultMountFlags =
     MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_DIRSYNC | MS_NOSYMFOLLOW;
@@ -107,7 +106,7 @@ TEST(SystemMounterTest, MountFilesystem) {
   ASSERT_TRUE(mountpoint);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
-  EXPECT_CALL(platform, Unmount(base::FilePath("/mnt/dir")))
+  EXPECT_CALL(platform, Unmount(base::FilePath("/mnt/dir"), "fstype"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   mountpoint.reset();
 }
@@ -137,7 +136,7 @@ TEST(SystemMounterTest, UnmountFailedNoRetry) {
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
 
-  EXPECT_CALL(platform, Unmount(base::FilePath("/mnt/dir")))
+  EXPECT_CALL(platform, Unmount(base::FilePath("/mnt/dir"), "fstype"))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARGUMENT))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARGUMENT, mountpoint->Unmount());

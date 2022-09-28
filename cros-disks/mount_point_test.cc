@@ -15,20 +15,19 @@
 #include "cros-disks/platform.h"
 
 namespace cros_disks {
-
 namespace {
 
+using testing::_;
 using testing::ElementsAre;
 using testing::Return;
 using testing::StrictMock;
 
-constexpr char kMountPath[] = "/mount/path";
-constexpr char kSource[] = "source";
-constexpr char kFSType[] = "fstype";
-constexpr char kOptions[] = "foo=bar";
-
 class MountPointTest : public testing::Test {
  protected:
+  const std::string kMountPath = "/mount/path";
+  const std::string kSource = "source";
+  const std::string kFSType = "fstype";
+  const std::string kOptions = "foo=bar";
   StrictMock<MockPlatform> platform_;
   const MountPointData data_ = {.mount_path = base::FilePath(kMountPath),
                                 .source = kSource,
@@ -42,11 +41,11 @@ class MountPointTest : public testing::Test {
 TEST_F(MountPointTest, Unmount) {
   auto mount_point = std::make_unique<MountPoint>(data_, &platform_);
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount_point->Unmount());
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -60,7 +59,8 @@ TEST_F(MountPointTest, UnmountOnDestroy) {
       std::make_unique<MountPoint>(data_, &platform_);
   EXPECT_TRUE(mount_point->is_mounted());
 
-  EXPECT_CALL(platform_, Unmount).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(false));
 }
@@ -70,7 +70,7 @@ TEST_F(MountPointTest, UnmountError) {
       std::make_unique<MountPoint>(data_, &platform_);
   EXPECT_TRUE(mount_point->is_mounted());
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
       .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -98,7 +98,7 @@ TEST_F(MountPointTest, Remount) {
   EXPECT_EQ(MOUNT_ERROR_INTERNAL, mount_point->Remount(false));
   EXPECT_TRUE(mount_point->is_read_only());
 
-  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath)))
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
@@ -142,7 +142,8 @@ TEST_F(MountPointTest, MountSucceeds) {
   EXPECT_EQ(data_.filesystem_type, mount_point->fstype());
   EXPECT_EQ(data_.flags, mount_point->flags());
 
-  EXPECT_CALL(platform_, Unmount).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
 }

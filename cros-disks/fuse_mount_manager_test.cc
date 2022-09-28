@@ -80,7 +80,7 @@ class FUSEMountManagerTest : public ::testing::Test {
         foo_(new MockMounter()),
         bar_(new MockMounter()),
         baz_(new MockMounter()) {
-    ON_CALL(platform_, Unmount(_))
+    ON_CALL(platform_, Unmount(_, _))
         .WillByDefault(Return(MOUNT_ERROR_INVALID_ARGUMENT));
     ON_CALL(platform_, DirectoryExists(_)).WillByDefault(Return(true));
   }

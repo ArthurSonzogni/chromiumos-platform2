@@ -202,6 +202,7 @@ class MountManager {
   // Called when the sandbox holding a FUSE process finishes.
   void OnSandboxedProcessExit(const std::string& program_name,
                               const base::FilePath& mount_path,
+                              const std::string& filesystem_type,
                               const base::WeakPtr<MountPoint> mount_point,
                               const siginfo_t& info);
 

@@ -24,7 +24,8 @@ class MockPlatform : public Platform {
               (const, override));
   MOCK_METHOD(MountErrorType,
               Unmount,
-              (const base::FilePath& mount_path),
+              (const base::FilePath& mount_path,
+               const std::string& filesystem_type),
               (const, override));
   MOCK_METHOD(bool,
               GetUserAndGroupId,
