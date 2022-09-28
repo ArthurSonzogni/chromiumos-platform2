@@ -14,6 +14,8 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/run_loop.h>
@@ -282,6 +284,11 @@ bool DiagActions::ActionRunArcDnsResolutionRoutine() {
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunSensitiveSensorRoutine() {
+  auto response = adapter_->RunSensitiveSensorRoutine();
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;
@@ -369,15 +376,22 @@ bool DiagActions::PollRoutineAndProcessResult() {
     auto shm_mapping =
         diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
             std::move(response->output));
-    if (shm_mapping.IsValid()) {
-      std::cout << "Output: "
-                << std::string(shm_mapping.GetMemoryAs<const char>(),
-                               shm_mapping.mapped_size())
-                << std::endl;
-    } else {
+    if (!shm_mapping.IsValid()) {
       LOG(ERROR) << "Failed to read output.";
       return false;
     }
+
+    auto output = base::JSONReader::Read(std::string(
+        shm_mapping.GetMemoryAs<const char>(), shm_mapping.mapped_size()));
+    if (!output.has_value()) {
+      LOG(ERROR) << "Failed to parse output.";
+      return false;
+    }
+
+    std::string json;
+    base::JSONWriter::WriteWithOptions(
+        output.value(), base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+    std::cout << "Output: " << json << std::endl;
   }
 
   return ProcessNonInteractiveResultAndEnd(

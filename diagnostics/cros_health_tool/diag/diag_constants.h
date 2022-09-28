@@ -65,7 +65,9 @@ constexpr struct {
     {"arc_http", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcHttp},
     {"arc_ping", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcPing},
     {"arc_dns_resolution",
-     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcDnsResolution}};
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcDnsResolution},
+    {"sensitive_sensor",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSensitiveSensor}};
 
 }  // namespace diagnostics
 

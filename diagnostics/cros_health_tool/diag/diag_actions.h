@@ -88,6 +88,7 @@ class DiagActions final {
   bool ActionRunArcHttpRoutine();
   bool ActionRunArcPingRoutine();
   bool ActionRunArcDnsResolutionRoutine();
+  bool ActionRunSensitiveSensorRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

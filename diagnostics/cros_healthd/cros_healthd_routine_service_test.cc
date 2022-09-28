@@ -73,7 +73,8 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing,
       mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
       mojo_ipc::DiagnosticRoutineEnum::kArcPing,
-      mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution};
+      mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
+      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor};
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {
