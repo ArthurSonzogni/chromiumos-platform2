@@ -199,11 +199,9 @@ CellularService::CellularService(Manager* manager,
   store->RegisterConstString(kUsageURLProperty, &usage_url_);
   store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
-  mutable_store()->RegisterDerivedBool(
-      kCellularAllowRoamingProperty,
-      BoolAccessor(new CustomAccessor<CellularService, bool>(
-          this, &CellularService::GetAllowRoaming,
-          &CellularService::SetAllowRoaming)));
+  HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
+                          &CellularService::GetAllowRoaming,
+                          &CellularService::SetAllowRoaming);
   storage_identifier_ = GetDefaultStorageIdentifier();
   SLOG(this, 1) << "CellularService Created: " << log_name();
 }
