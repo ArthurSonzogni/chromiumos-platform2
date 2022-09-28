@@ -53,6 +53,7 @@ const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
 const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 const char CellularService::kStorageSimCardId[] = "Cellular.SimCardId";
 const char CellularService::kStorageAllowRoaming[] = "Cellular.AllowRoaming";
+const char CellularService::kStorageUserApnList[] = "Cellular.UserAPNList";
 
 namespace {
 
@@ -185,6 +186,9 @@ CellularService::CellularService(Manager* manager,
   store->RegisterConstString(kActivationStateProperty, &activation_state_);
   HelpRegisterDerivedStringmap(kCellularApnProperty, &CellularService::GetApn,
                                &CellularService::SetApn);
+  HelpRegisterDerivedStringmaps(kCellularUserApnListProperty,
+                                &CellularService::GetUserApnList,
+                                &CellularService::SetUserApnList);
   store->RegisterConstString(kIccidProperty, &iccid_);
   store->RegisterConstString(kImsiProperty, &imsi_);
   store->RegisterConstString(kEidProperty, &eid_);
@@ -343,6 +347,9 @@ bool CellularService::Load(const StoreInterface* storage) {
           &last_connected_default_apn_info_);
   LoadApn(storage, id, kStorageLastConnectedAttachAPN, apn_list,
           &last_connected_attach_apn_info_);
+  Stringmaps user_apn_list;
+  if (storage->GetStringmaps(id, kStorageUserApnList, &user_apn_list))
+    user_apn_list_ = std::move(user_apn_list);
 
   const std::string old_username = ppp_username_;
   const std::string old_password = ppp_password_;
@@ -375,6 +382,9 @@ bool CellularService::Save(StoreInterface* storage) {
           kStorageLastConnectedDefaultAPN);
   SaveApn(storage, id, GetLastConnectedAttachApn(),
           kStorageLastConnectedAttachAPN);
+
+  if (user_apn_list_.has_value())
+    storage->SetStringmaps(id, kStorageUserApnList, user_apn_list_.value());
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
 
@@ -737,6 +747,15 @@ void CellularService::HelpRegisterDerivedStringmap(
                 this, get, set)));
 }
 
+void CellularService::HelpRegisterDerivedStringmaps(
+    const std::string& name,
+    Stringmaps (CellularService::*get)(Error* error),
+    bool (CellularService::*set)(const Stringmaps& value, Error* error)) {
+  mutable_store()->RegisterDerivedStringmaps(
+      name, StringmapsAccessor(new CustomAccessor<CellularService, Stringmaps>(
+                this, get, set)));
+}
+
 void CellularService::HelpRegisterDerivedBool(
     const std::string& name,
     bool (CellularService::*get)(Error* error),
@@ -828,6 +847,20 @@ Stringmap* CellularService::GetLastConnectedAttachApn() {
   if (it == last_connected_attach_apn_info_.end() || it->second.empty())
     return nullptr;
   return &last_connected_attach_apn_info_;
+}
+
+Stringmaps CellularService::GetUserApnList(Error* /*error*/) {
+  SLOG(this, 2) << __func__;
+  return user_apn_list_.value_or(Stringmaps());
+}
+
+bool CellularService::SetUserApnList(const Stringmaps& value, Error* error) {
+  SLOG(this, 2) << __func__;
+  // TODO(b/245598183): Finish implementation
+  user_apn_list_.emplace(value);
+  adaptor()->EmitStringmapsChanged(kCellularUserApnListProperty,
+                                   user_apn_list_.value());
+  return true;
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {

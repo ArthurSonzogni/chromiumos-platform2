@@ -123,6 +123,7 @@ class CellularService : public Service {
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
   static const char kStorageSimCardId[];
+  static const char kStorageUserApnList[];
   static const char kStorageAllowRoaming[];
 
   // Used to copy the value of Device.AllowRoaming by service_provider for
@@ -190,6 +191,10 @@ class CellularService : public Service {
       const std::string& name,
       Stringmap (CellularService::*get)(Error* error),
       bool (CellularService::*set)(const Stringmap& value, Error* error));
+  void HelpRegisterDerivedStringmaps(
+      const std::string& name,
+      Stringmaps (CellularService::*get)(Error* error),
+      bool (CellularService::*set)(const Stringmaps& value, Error* error));
   void HelpRegisterDerivedBool(const std::string& name,
                                bool (CellularService::*get)(Error* error),
                                bool (CellularService::*set)(const bool&,
@@ -208,6 +213,8 @@ class CellularService : public Service {
   bool IsOutOfCredits(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);
   bool GetAllowRoaming(Error* /*error*/);
+  Stringmaps GetUserApnList(Error* error);
+  bool SetUserApnList(const Stringmaps& value, Error* error);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
@@ -230,6 +237,7 @@ class CellularService : public Service {
   Stringmap olp_;
   std::string usage_url_;
   Stringmap apn_info_;
+  std::optional<Stringmaps> user_apn_list_;
   Stringmap last_good_apn_info_;
   // Stores the attach APN used for the initial EPS settings
   Stringmap last_attach_apn_info_;

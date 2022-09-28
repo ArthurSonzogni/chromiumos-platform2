@@ -226,6 +226,10 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
               EmitStringmapChanged,
               (const std::string&, const Stringmap&),
               (override));
+  MOCK_METHOD(void,
+              EmitStringmapsChanged,
+              (const std::string&, const Stringmaps&),
+              (override));
 
  private:
   const RpcIdentifier rpc_id_;

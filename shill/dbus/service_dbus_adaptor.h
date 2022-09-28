@@ -51,6 +51,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
                          const std::string& value) override;
   void EmitStringmapChanged(const std::string& name,
                             const Stringmap& value) override;
+  void EmitStringmapsChanged(const std::string& name,
+                             const Stringmaps& value) override;
 
   // Implementation of ServiceAdaptor
   bool GetProperties(brillo::ErrorPtr* error,

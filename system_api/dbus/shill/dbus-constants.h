@@ -178,6 +178,7 @@ const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
 const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
+const char kCellularUserApnListProperty[] = "Cellular.UserAPNList";
 const char kNetworkTechnologyProperty[] = "Cellular.NetworkTechnology";
 const char kOutOfCreditsProperty[] = "Cellular.OutOfCredits";
 const char kPaymentPortalProperty[] = "Cellular.Olp";
@@ -530,6 +531,7 @@ const char kApnLanguageProperty[] = "language";
 const char kApnAuthenticationProperty[] = "authentication";
 const char kApnAttachProperty[] = "attach";
 const char kApnIpTypeProperty[] = "ip_type";
+const char kApnTypesProperty[] = "apn_types";
 
 // APN authentication property values (as expected by ModemManager).
 const char kApnAuthenticationPap[] = "pap";
@@ -539,6 +541,11 @@ const char kApnAuthenticationChap[] = "chap";
 const char kApnIpTypeV4[] = "ipv4";
 const char kApnIpTypeV6[] = "ipv6";
 const char kApnIpTypeV4V6[] = "ipv4v6";
+
+// APN type property values.
+const char kApnTypeDefault[] = "DEFAULT";
+const char kApnTypeIA[] = "IA";
+const char kApnTypeDun[] = "DUN";
 
 // Payment Portal property names.
 const char kPaymentPortalURL[] = "url";

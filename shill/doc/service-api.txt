@@ -429,6 +429,48 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			use, the remembered last-good-APN is cleared. The
 			remembered last-good-APN is persistent across reboots.
 
+		array{dict} Cellular.UserAPNList [readwrite]
+
+			(Cellular only) The APN list to be used with a 4G/5G carrier to
+			register to the network(Attach APN) and for making data
+			connections(DEFAULT, DUN, etc.). The property is an array of
+			dictionaries, with each (string, string) entry from the following
+			properties:
+
+			When an apn_type is not present in the UserAPNList, shill will try
+			each modem and modb APN in a round robin fashion. When the list
+			contains at least 1 APN, shill will run all APN logic in manual
+			mode. This means that the round robin will only include APNs from
+			the UserAPNList, and will ignore any modem or modb APNs.
+
+			There are 3 mandatory properties.
+			"apn" string The APN to use for making connections
+			"apn_types" array{string} The type of the APN. Multiple values are
+					allowed.
+					IA for Attach, DEFAULT for default data connection, DUN for
+					tethering.
+			"apn_source" string The source of the APN("ui", "admin")
+					Shill will use the "apn_source" tag to report metrics as
+					part of the existing structured metrics.
+					The "admin" value will be used to indicate APNs pushed by
+					the Admin Console.
+
+			The following are optional properties.
+			"username" string
+			"password" string
+			"authentication" string Options are: empty, "pap" or "chap".
+					If a username or password is entered, and no authentication
+					is selected, the "authentication" will default to "chap".
+			"ip_type" string IP type of the connection: Options are: empty,
+					"ipv4", "ipv6", or "ipv4v6". If ip_type is empty, shill
+					will default to ipv4.
+			"id" string An identifier of the APN. It's main purpose is as a way
+					for the client to identify each APN when they are copied
+					into other properties.
+
+			The UserAPNList settings are persistent across reboots.
+
+
 		dict Cellular.LastGoodAPN [readonly] [GSM only]
 
 			(Cellular only) The APN information used in the
