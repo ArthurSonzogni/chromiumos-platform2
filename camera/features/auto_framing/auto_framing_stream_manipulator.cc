@@ -600,7 +600,7 @@ bool AutoFramingStreamManipulator::GetEnabled() {
   // TODO(pihsun): Handle multi people mode.
   // TODO(pihsun): ReloadableConfigFile merges new config to old config, so
   // this won't be "unset" after set, which will be confusing for developers.
-  return options_.enable.value_or(runtime_options_->auto_framing_state !=
+  return options_.enable.value_or(runtime_options_->auto_framing_state() !=
                                   mojom::CameraAutoFramingState::OFF);
 }
 

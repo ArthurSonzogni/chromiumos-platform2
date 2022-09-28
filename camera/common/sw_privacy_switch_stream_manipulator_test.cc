@@ -94,8 +94,7 @@ class SWPrivacySwitchTestEnvironment : public ::testing::Environment {
 class SWPrivacySwitchTest : public ::testing::Test {
  protected:
   SWPrivacySwitchTest()
-      : runtime_options_(StreamManipulator::RuntimeOptions{
-            .sw_privacy_switch_state = mojom::CameraPrivacySwitchState::OFF}),
+      : runtime_options_(StreamManipulator::RuntimeOptions()),
         stream_manipulator_(&runtime_options_,
                             g_env->mojo_manager_token_.get()) {}
 
@@ -143,8 +142,7 @@ TEST_F(SWPrivacySwitchTest, NV12Output) {
   }
 
   // When |sw_privacy_switch_state| is ON.
-  runtime_options_.sw_privacy_switch_state =
-      mojom::CameraPrivacySwitchState::ON;
+  runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
   result = WrapWithCamera3CaptureDescriptorResult(handle.get());
   ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
@@ -197,8 +195,7 @@ TEST_F(SWPrivacySwitchTest, JpegOutput) {
   // SWPrivacySwitchStreamManipulator::ProcessCaptureResult, the JPEG frame
   // should be valid, libyuv::MJPGToNV12 should succeed, and the resulting NV12
   // frame should be black.
-  runtime_options_.sw_privacy_switch_state =
-      mojom::CameraPrivacySwitchState::ON;
+  runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
   result = WrapWithCamera3CaptureDescriptorResult(jpeg_handle.get());
   ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"

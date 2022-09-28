@@ -14,11 +14,15 @@
 #include <string>
 #include <vector>
 
+#include <base/synchronization/lock.h>
+#include <base/thread_annotations.h>
+
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
+#include "ml_core/effects_pipeline.h"
 #include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
@@ -39,20 +43,34 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     bool enable_cros_zsl;
   };
 
-  struct RuntimeOptions {
+  class RuntimeOptions {
+   public:
+    void SetAutoFramingState(mojom::CameraAutoFramingState state);
+    void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+    void SetEffectsConfig(mojom::EffectsConfigPtr config);
+    bool IsEffectEnabled(mojom::CameraEffect effect);
+    EffectsConfig GetEffectsConfig();
+
+    mojom::CameraAutoFramingState auto_framing_state();
+    mojom::CameraPrivacySwitchState sw_privacy_switch_state();
+
+   private:
+    base::Lock lock_;
+
     // The state of auto framing. Can be either off, single person mode or
     // multi people mode.
-    mojom::CameraAutoFramingState auto_framing_state;
+    mojom::CameraAutoFramingState auto_framing_state_ GUARDED_BY(lock_) =
+        mojom::CameraAutoFramingState::OFF;
 
     // The state of camera software privacy switch state. When a user session
     // starts, it will be OFF until it is set by the Mojo API
     // SetCameraSWPrivacySwitchState.
-    mojom::CameraPrivacySwitchState sw_privacy_switch_state =
+    mojom::CameraPrivacySwitchState sw_privacy_switch_state_ GUARDED_BY(lock_) =
         mojom::CameraPrivacySwitchState::OFF;
 
     // The state of camera effects. Which is enabled/disabled and the
-    // configuration parameters to tune it
-    mojom::EffectsConfigPtr effects_config;
+    // configuration parameters to tune it.
+    mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_);
   };
 
   // Callback for the StreamManipulator to return capture results to the client

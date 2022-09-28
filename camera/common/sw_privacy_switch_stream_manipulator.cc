@@ -79,7 +79,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureRequest(
 
 bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
-  if (runtime_options_->sw_privacy_switch_state !=
+  if (runtime_options_->sw_privacy_switch_state() !=
       mojom::CameraPrivacySwitchState::ON) {
     return true;
   }

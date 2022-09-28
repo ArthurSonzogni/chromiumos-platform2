@@ -10,15 +10,15 @@
 
 #include <base/files/file_util.h>
 
+#include "common/still_capture_processor_impl.h"
 #include "common/sw_privacy_switch_stream_manipulator.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
+#include "cros-camera/jpeg_compressor.h"
 #include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
 
 #if USE_CAMERA_FEATURE_HDRNET
-#include "common/still_capture_processor_impl.h"
-#include "cros-camera/camera_mojo_channel_manager.h"
-#include "cros-camera/jpeg_compressor.h"
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 #endif
@@ -115,6 +115,53 @@ void MaybeEnableAutoFramingStreamManipulator(
 }
 
 }  // namespace
+
+void StreamManipulator::RuntimeOptions::SetAutoFramingState(
+    mojom::CameraAutoFramingState state) {
+  base::AutoLock lock(lock_);
+  auto_framing_state_ = state;
+}
+
+void StreamManipulator::RuntimeOptions::SetSWPrivacySwitchState(
+    mojom::CameraPrivacySwitchState state) {
+  base::AutoLock lock(lock_);
+  sw_privacy_switch_state_ = state;
+}
+
+void StreamManipulator::RuntimeOptions::SetEffectsConfig(
+    mojom::EffectsConfigPtr config) {
+  base::AutoLock lock(lock_);
+  effects_config_ = std::move(config);
+}
+
+bool StreamManipulator::RuntimeOptions::IsEffectEnabled(
+    mojom::CameraEffect effect) {
+  base::AutoLock lock(lock_);
+  return effects_config_->effect == effect;
+}
+
+EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
+  base::AutoLock lock(lock_);
+  return EffectsConfig{
+      .effect = effects_config_->effect,
+      .blur_scale = effects_config_->blur_scale,
+      .blur_samples = effects_config_->blur_samples,
+      .segmentation_gpu_api = effects_config_->segmentation_gpu_api,
+      .graph_max_frames_in_flight = effects_config_->graph_max_frames_in_flight,
+  };
+}
+
+mojom::CameraAutoFramingState
+StreamManipulator::RuntimeOptions::auto_framing_state() {
+  base::AutoLock lock(lock_);
+  return auto_framing_state_;
+}
+
+mojom::CameraPrivacySwitchState
+StreamManipulator::RuntimeOptions::sw_privacy_switch_state() {
+  base::AutoLock lock(lock_);
+  return sw_privacy_switch_state_;
+}
 
 // static
 std::vector<std::unique_ptr<StreamManipulator>>

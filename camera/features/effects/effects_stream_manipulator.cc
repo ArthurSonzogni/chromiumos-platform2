@@ -75,7 +75,7 @@ class RenderedImageObserver : public ProcessedFrameObserver {
 }  // namespace
 
 EffectsStreamManipulator::EffectsStreamManipulator(
-    base::FilePath config_file_path, const RuntimeOptions* runtime_options)
+    base::FilePath config_file_path, RuntimeOptions* runtime_options)
     : config_(ReloadableConfigFile::Options{
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
       runtime_options_(runtime_options),
@@ -247,7 +247,7 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
   ScopedMapping scoped_mapping = ScopedMapping(gpu_image_.buffer());
   buffer_ptr_ = scoped_mapping.plane(0).addr;
 
-  auto new_config = GetRuntimeOptionsEffectsConfig();
+  auto new_config = runtime_options_->GetEffectsConfig();
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     SetEffect(new_config);
@@ -318,18 +318,6 @@ void EffectsStreamManipulator::OnOptionsUpdated(
 
     pipeline_->SetEffect(&new_config, nullptr);
   }
-}
-
-EffectsConfig EffectsStreamManipulator::GetRuntimeOptionsEffectsConfig() {
-  EffectsConfig new_config;
-  new_config.effect = runtime_options_->effects_config->effect;
-  new_config.blur_scale = runtime_options_->effects_config->blur_scale;
-  new_config.blur_samples = runtime_options_->effects_config->blur_samples;
-  new_config.segmentation_gpu_api =
-      runtime_options_->effects_config->segmentation_gpu_api;
-  new_config.graph_max_frames_in_flight =
-      runtime_options_->effects_config->graph_max_frames_in_flight;
-  return new_config;
 }
 
 void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {

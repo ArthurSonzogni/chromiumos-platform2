@@ -225,9 +225,6 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
 
-  runtime_options_ = StreamManipulator::RuntimeOptions{
-      .auto_framing_state = mojom::CameraAutoFramingState::OFF,
-  };
   auto_framing_stream_manipulator_ =
       std::make_unique<AutoFramingStreamManipulator>(
           &runtime_options_, &gpu_resources_, base::FilePath(),
@@ -348,9 +345,9 @@ bool AutoFramingTestFixture::ProcessFrame(int64_t sensor_timestamp,
                                           bool has_yuv,
                                           bool has_blob,
                                           FramingResult* framing_result) {
-  runtime_options_.auto_framing_state =
+  runtime_options_.SetAutoFramingState(
       is_enabled ? mojom::CameraAutoFramingState::ON_SINGLE
-                 : mojom::CameraAutoFramingState::OFF;
+                 : mojom::CameraAutoFramingState::OFF);
   ++frame_number_;
   std::vector<camera3_stream_t*> requested_streams;
   if (!ProcessCaptureRequest(has_yuv, has_blob, &requested_streams)) {

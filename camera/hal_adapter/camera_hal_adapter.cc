@@ -281,27 +281,27 @@ int32_t CameraHalAdapter::OpenDevice(
 
 void CameraHalAdapter::SetAutoFramingState(
     mojom::CameraAutoFramingState state) {
-  stream_manipulator_runtime_options_.auto_framing_state = state;
+  stream_manipulator_runtime_options_.SetAutoFramingState(state);
 }
 
 mojom::CameraPrivacySwitchState
 CameraHalAdapter::GetCameraSWPrivacySwitchState() {
-  return stream_manipulator_runtime_options_.sw_privacy_switch_state;
+  return stream_manipulator_runtime_options_.sw_privacy_switch_state();
 }
 
 void CameraHalAdapter::SetCameraSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
-  stream_manipulator_runtime_options_.sw_privacy_switch_state = state;
+  stream_manipulator_runtime_options_.SetSWPrivacySwitchState(state);
 }
 
 mojom::SwitchEffectSuccess CameraHalAdapter::SetCameraEffect(
     mojom::EffectsConfigPtr config) {
-  stream_manipulator_runtime_options_.effects_config = std::move(config);
+  stream_manipulator_runtime_options_.SetEffectsConfig(std::move(config));
   return mojom::SwitchEffectSuccess::OK;
 }
 
 bool CameraHalAdapter::IsCameraEffectEnabled(mojom::CameraEffect effect) {
-  return stream_manipulator_runtime_options_.effects_config->effect == effect;
+  return stream_manipulator_runtime_options_.IsEffectEnabled(effect);
 }
 
 bool CameraHalAdapter::IsCameraEffectSupported(mojom::CameraEffect effect) {
