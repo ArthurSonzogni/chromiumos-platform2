@@ -271,11 +271,13 @@ TEST_F(AuthBlockUtilityImplTest, VerifyPasswordFailure) {
 TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
   MakeAuthBlockUtilityImpl();
 
-  // Signal a successful auth scan.
-  EXPECT_CALL(fp_manager_, SetAuthScanDoneCallback(_))
-      .WillOnce([](FingerprintManager::ResultCallback callback) {
-        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
-      });
+  // TODO(b/246576446): Set up the success state via
+  // AuthBlockUtility functions that expose fp_service auth factor
+  // preparation.
+  auth_block_utility_impl_->fp_service_->user_ = "dummy";
+  auth_block_utility_impl_->fp_service_->attempts_left_ = 1;
+  auth_block_utility_impl_->fp_service_->scan_result_ =
+      FingerprintScanStatus::SUCCESS;
 
   // Run the Verify and check the result.
   TestFuture<CryptohomeStatus> on_done_result;
@@ -287,12 +289,14 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
 TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
   MakeAuthBlockUtilityImpl();
 
-  // Signal a successful auth scan.
-  EXPECT_CALL(fp_manager_, SetAuthScanDoneCallback(_))
-      .WillOnce([](FingerprintManager::ResultCallback callback) {
-        std::move(callback).Run(
-            FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
-      });
+  // Set up a lock-out state.
+  // TODO(b/246576446): Set up the success state via
+  // AuthBlockUtility functions that expose fp_service auth factor
+  // preparation.
+  auth_block_utility_impl_->fp_service_->user_ = "dummy";
+  auth_block_utility_impl_->fp_service_->attempts_left_ = 0;
+  auth_block_utility_impl_->fp_service_->scan_result_ =
+      FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
 
   // Run the Verify and check the result.
   TestFuture<CryptohomeStatus> on_done_result;

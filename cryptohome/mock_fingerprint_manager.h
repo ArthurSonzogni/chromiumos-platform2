@@ -31,6 +31,8 @@ class MockFingerprintManager : public FingerprintManager {
               HasAuthSessionForUser,
               (const std::string& user),
               (override));
+
+  MOCK_METHOD(void, EndAuthSession, (), (override));
 };
 
 }  // namespace cryptohome

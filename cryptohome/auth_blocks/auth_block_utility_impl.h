@@ -177,6 +177,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   friend class AuthBlockUtilityImplTest;
   FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType);
   FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail);
+
+  // TODO(b/246576446): remove the following two lines once AuthBlockUtility
+  // has the functions to set up fingerprint service state.
+  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintSuccess);
+  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintFailure);
 };
 
 }  // namespace cryptohome

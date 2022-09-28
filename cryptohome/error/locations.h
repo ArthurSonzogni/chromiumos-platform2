@@ -1247,6 +1247,20 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPrepareWebAuthnSecretNoFileSystemKeyset = 710,
   /* ./auth_session.cc */
   kLocAuthSessionPrepareWebAuthnSecretNoUserSession = 711,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceStartSessionFailure = 712,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceCheckResultNoAuthSession = 713,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceStartScanCouldNotGetFpManager = 714,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceStartScanNoStart = 715,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceStartScanLockedOut = 716,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceStartConcurrentSession = 717,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceScanCouldNotGetFpManager = 718,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
