@@ -21,6 +21,7 @@ class MockPort : public Port {
 
   MOCK_METHOD(DataRole, GetDataRole, (), (override));
   MOCK_METHOD(PowerRole, GetPowerRole, (), (override));
+  MOCK_METHOD(Panel, GetPanel, (), (override));
   MOCK_METHOD(bool,
               CanEnterDPAltMode,
               (bool* invalid_dpalt_cable_ptr),

@@ -35,8 +35,10 @@ Port::Port(const base::FilePath& syspath, int port_num)
       metrics_reported_(false),
       supports_usb4_(true),
       data_role_(DataRole::kNone),
-      power_role_(PowerRole::kNone) {
+      power_role_(PowerRole::kNone),
+      panel_(Panel::kUnknown) {
   PortChanged();
+  ParsePhysicalLocation();
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
 
@@ -143,6 +145,10 @@ DataRole Port::GetDataRole() {
 
 PowerRole Port::GetPowerRole() {
   return power_role_;
+}
+
+Panel Port::GetPanel() {
+  return panel_;
 }
 
 bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
@@ -427,6 +433,35 @@ void Port::ParsePowerRole() {
 
 end:
   power_role_ = role;
+}
+
+void Port::ParsePhysicalLocation() {
+  Panel panel = Panel::kUnknown;
+  std::string panel_str;
+  auto path = syspath_.Append("physical_location/panel");
+
+  if (!base::ReadFileToString(path, &panel_str)) {
+    // No error logged since kernel v5.4 or older does not expose
+    // physical_location to sysfs.
+    goto end;
+  }
+
+  base::TrimWhitespaceASCII(panel_str, base::TRIM_ALL, &panel_str);
+  if (panel_str == "top")
+    panel = Panel::kTop;
+  else if (panel_str == "bottom")
+    panel = Panel::kBottom;
+  else if (panel_str == "left")
+    panel = Panel::kLeft;
+  else if (panel_str == "right")
+    panel = Panel::kRight;
+  else if (panel_str == "front")
+    panel = Panel::kFront;
+  else if (panel_str == "back")
+    panel = Panel::kBack;
+
+end:
+  panel_ = panel;
 }
 
 bool Port::CableLimitingUSBSpeed() {

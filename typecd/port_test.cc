@@ -24,6 +24,9 @@ constexpr char kValidDataRole3[] = "host [device]";
 constexpr char kValidPowerRole1[] = "[source] sink";
 constexpr char kValidPowerRole2[] = "source [sink]";
 constexpr char kInvalidPowerRole1[] = "asdf#//%sxdfa";
+
+constexpr char kValidPanel[] = "left";
+constexpr char kInvalidPanel[] = "asdf";
 }  // namespace
 
 namespace typecd {
@@ -543,6 +546,59 @@ TEST_F(PortTest, CableLimitingSpeedOWCDockAppleTBT3ProCable) {
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
   EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
+// Check GetPanel() for valid panel value.
+TEST_F(PortTest, GetPanelValid) {
+  // Set up fake sysfs directory for the ports.
+  auto port_path = temp_dir_.Append("port0");
+  ASSERT_TRUE(base::CreateDirectory(port_path));
+
+  auto port_physical_location_path = port_path.Append("physical_location");
+  ASSERT_TRUE(base::CreateDirectory(port_physical_location_path));
+
+  auto port_panel_path = port_physical_location_path.Append("panel");
+  ASSERT_TRUE(
+      base::WriteFile(port_panel_path, kValidPanel, strlen(kValidPanel)));
+
+  // Create ports.
+  auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
+  ASSERT_NE(nullptr, port);
+
+  EXPECT_EQ(Panel::kLeft, port->GetPanel());
+}
+
+// Check GetPanel() for invalid panel value.
+TEST_F(PortTest, GetPanelInvalid) {
+  // Set up fake sysfs directory for the ports.
+  auto port_path = temp_dir_.Append("port0");
+  ASSERT_TRUE(base::CreateDirectory(port_path));
+
+  auto port_physical_location_path = port_path.Append("physical_location");
+  ASSERT_TRUE(base::CreateDirectory(port_physical_location_path));
+
+  auto port_panel_path = port_physical_location_path.Append("panel");
+  ASSERT_TRUE(
+      base::WriteFile(port_panel_path, kInvalidPanel, strlen(kInvalidPanel)));
+
+  // Create ports.
+  auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
+  ASSERT_NE(nullptr, port);
+
+  EXPECT_EQ(Panel::kUnknown, port->GetPanel());
+}
+
+// Check GetPanel() with no physical_location exposed in sysfs.
+TEST_F(PortTest, GetPanelNoValue) {
+  // Set up fake sysfs directory for the ports.
+  auto port_path = temp_dir_.Append("port0");
+  ASSERT_TRUE(base::CreateDirectory(port_path));
+
+  // Create ports.
+  auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
+  ASSERT_NE(nullptr, port);
+
+  EXPECT_EQ(Panel::kUnknown, port->GetPanel());
 }
 
 }  // namespace typecd

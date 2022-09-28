@@ -44,6 +44,19 @@ enum class PowerRole {
   kMaxValue = kSource,
 };
 
+// Panel surface of the system's physical housing the port resides on.
+// The enum order is based on Section 6.1.8 (_PLD) of ACPI Spec v6.3.
+enum class Panel {
+  kTop = 0,
+  kBottom = 1,
+  kLeft = 2,
+  kRight = 3,
+  kFront = 4,
+  kBack = 5,
+  kUnknown = 6,
+  kMaxValue = kUnknown,
+};
+
 // This class is used to represent a Type C Port. It can be used to access PD
 // state associated with the port, and will also contain handles to the object
 // representing a peripheral (i.e "Partner") if one is connected to the port.
@@ -83,6 +96,9 @@ class Port {
 
   // Returns the current power role for the port.
   virtual PowerRole GetPowerRole();
+
+  // Returns the panel that the port is located at.
+  virtual Panel GetPanel();
 
   // Configure whether the port supports USB4 (and by extension, TBT Compat)
   // mode.
@@ -198,6 +214,10 @@ class Port {
   // |power_role_|.
   void ParsePowerRole();
 
+  // Reads port physical location from sysfs and stores its fields. Currently
+  // only stores |panel_|.
+  void ParsePhysicalLocation();
+
   // Calls the |partner_|'s metrics reporting function, if a |partner_| is
   // registered.
   void ReportPartnerMetrics(Metrics* metrics);
@@ -228,6 +248,8 @@ class Port {
   bool supports_usb4_;
   DataRole data_role_;
   PowerRole power_role_;
+  // Physical location of the port.
+  Panel panel_;
 
   // Cancelable callback for metrics reporting.
   base::CancelableOnceClosure report_metrics_callback_;
