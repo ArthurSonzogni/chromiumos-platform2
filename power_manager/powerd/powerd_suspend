@@ -364,7 +364,7 @@ else
     /sbin/hwclock -V > /dev/null
   fi
 
-  if ! invoke_hiberman_helper_process; then
+  if invoke_hiberman_helper_process; then
     # On resume:
     result="${RESULT_SUCCESS}"
 
