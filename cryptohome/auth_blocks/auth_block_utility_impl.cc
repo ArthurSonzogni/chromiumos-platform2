@@ -201,9 +201,6 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
         .Wrap(std::move(error));
   }
 
-  ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
-                                  CryptohomePhase::kCreated);
-
   return OkStatus<CryptohomeCryptoError>();
 }
 
@@ -224,11 +221,6 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     return false;
   }
   ReportCreateAuthBlock(auth_block_type);
-
-  // TODO(b/225001347): Move this report to the caller. Here this is always
-  // reported independent of the error status.
-  ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
-                                  CryptohomePhase::kCreated);
 
   // This lambda functions to keep the auth_block reference valid until
   // the results are returned through create_callback.
@@ -271,8 +263,6 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   CryptoStatus error =
       auth_block.value()->Derive(auth_input, auth_state, &out_key_blobs);
   if (error.ok()) {
-    ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
-                                    CryptohomePhase::kMounted);
     return OkStatus<CryptohomeCryptoError>();
   }
   LOG(ERROR) << "Failed to derive per credential secret: " << error;

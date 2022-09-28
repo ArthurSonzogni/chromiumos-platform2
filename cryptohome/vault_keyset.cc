@@ -382,8 +382,6 @@ CryptoStatus VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,
 
   CryptoStatus status = UnwrapVaultKeyset(serialized, vkk_data);
   if (status.ok()) {
-    ReportWrappingKeyDerivationType(auth_block->derivation_type(),
-                                    CryptohomePhase::kMounted);
     return OkStatus<CryptohomeCryptoError>();
   } else {
     return MakeStatus<CryptohomeCryptoError>(
@@ -1154,12 +1152,6 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
               CRYPTOHOME_ERR_LOC(kLocVaultKeysetWrapAESDFailedInEncryptVK))
               .Wrap(std::move(status));
     }
-  }
-
-  // Report wrapping key type to UMA
-  if (return_status.ok()) {
-    ReportWrappingKeyDerivationType(auth_block->derivation_type(),
-                                    CryptohomePhase::kCreated);
   }
 
   return return_status;

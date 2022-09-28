@@ -22,10 +22,6 @@ struct TimerHistogramParams {
   int num_buckets;
 };
 
-constexpr char kWrappingKeyDerivationCreateHistogram[] =
-    "Cryptohome.WrappingKeyDerivation.Create";
-constexpr char kWrappingKeyDerivationMountHistogram[] =
-    "Cryptohome.WrappingKeyDerivation.Mount";
 constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCredentialRevocationResultHistogram[] =
@@ -296,21 +292,6 @@ void ClearMetricsLibraryForTesting() {
 
 void DisableErrorMetricsReporting() {
   g_disable_error_metrics = true;
-}
-
-void ReportWrappingKeyDerivationType(DerivationType derivation_type,
-                                     CryptohomePhase crypto_phase) {
-  if (!g_metrics) {
-    return;
-  }
-
-  if (crypto_phase == kCreated) {
-    g_metrics->SendEnumToUMA(kWrappingKeyDerivationCreateHistogram,
-                             derivation_type, kDerivationTypeNumBuckets);
-  } else if (crypto_phase == kMounted) {
-    g_metrics->SendEnumToUMA(kWrappingKeyDerivationMountHistogram,
-                             derivation_type, kDerivationTypeNumBuckets);
-  }
 }
 
 void ReportCryptohomeError(CryptohomeErrorMetric error) {
