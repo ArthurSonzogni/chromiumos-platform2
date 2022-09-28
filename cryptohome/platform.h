@@ -34,13 +34,6 @@ extern "C" {
 #include <keyutils.h>
 }
 
-// TODO(b/235960683): Drop this after CrOS upgrades to glibc >= 2.34
-// because MS_NOSYMFOLLOW will be defined in sys/mount.h
-#ifndef MS_NOSYMFOLLOW
-// Added locally in kernels 4.x+.
-#define MS_NOSYMFOLLOW 256
-#endif
-
 #include "cryptohome/dircrypto_util.h"
 
 namespace base {
