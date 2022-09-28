@@ -8,6 +8,8 @@
 
 namespace shill::WiFiMetricsUtils {
 
+namespace {
+
 // List of OUIs of popular APs, per go/cros-wifi-popular-ap-oui.
 constexpr int OUIAllowList[] = {
     0xD88466, 0x348584, 0x1C28AF, 0xD0D3E0, 0xDCB808, 0x00D01D, 0xF4EAB5,
@@ -40,6 +42,8 @@ constexpr int OUIAllowList[] = {
     0x0081C4, 0x484BD4, 0x3C7A8A, 0x04AB18, 0x38700C, 0x441E98, 0x1C9D72,
     0x40E1E4, 0x184B0D, 0xFC5C45, 0x784558,
 };
+
+}  // namespace
 
 bool CanReportOUI(int oui) {
   return base::Contains(OUIAllowList, oui);
