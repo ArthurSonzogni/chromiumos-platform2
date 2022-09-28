@@ -30,6 +30,7 @@
       <tp:member name="SourcePath" type="s" />
       <tp:member name="SourceType" type="u" />
       <tp:member name="MountPath" type="s" />
+      <tp:member name="ReadOnly" type="b" />
     </tp:struct>
     <method name="Mount">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
@@ -52,7 +53,7 @@
     </method>
     <method name="EnumerateMountEntries">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="mount_entries" type="a(usus)" direction="out"
+      <arg name="mount_entries" type="a(ususb)" direction="out"
            tp:type="MountEntries" />
     </method>
     <method name="GetDeviceProperties">

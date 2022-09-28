@@ -97,8 +97,9 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   std::vector<std::string> EnumerateDevices() override;
 
   // Returns a list of mount entries (<error type, source path, source type,
-  // mount path>) that are currently managed by cros-disks.
-  using MountEntry = std::tuple<uint32_t, std::string, uint32_t, std::string>;
+  // mount path, read only>) that are currently managed by cros-disks.
+  using MountEntry =
+      std::tuple<uint32_t, std::string, uint32_t, std::string, bool>;
   using MountEntries = std::vector<MountEntry>;
   MountEntries EnumerateMountEntries() override;
 

@@ -237,7 +237,8 @@ CrosDisksServer::MountEntries CrosDisksServer::EnumerateMountEntries() {
 
       entries.emplace_back(mount_point->error(), mount_point->source(),
                            mount_point->source_type(),
-                           mount_point->path().value());
+                           mount_point->path().value(),
+                           mount_point->is_read_only());
     }
   }
 
