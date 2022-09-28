@@ -23,6 +23,13 @@ message DirEntryListProto {
   repeated DirEntryProto entries = 1;
 }
 
+message ListStoragesRequestProto {}
+
+message ListStoragesResponseProto {
+  optional int32 posix_error_code = 1;
+  repeated string storages = 2;
+}
+
 // ReadDir2 lists the directory's children. The results will be sent back in
 // the responses of one or more request-response RPC pairs. The first request
 // and last response have a zero cookie value. The remaining RPCs will have the
