@@ -78,9 +78,10 @@ constexpr char kIwlwifiDisable[] = "0x0";
 // Qualcomm/Atheros wifi.
 constexpr char kAth10kDebugFlag[] =
     "/sys/module/ath10k_core/parameters/debug_mask";
-// Full debugging: see below file for details on each bit:
+// Enable all debug logs except PCI_PS, SDIO_DUMP, TESTMODE, PCI_DUMP, HTT_DUMP:
+// see below file for details on each bit:
 // drivers/net/wireless/ath/ath10k/debug.h
-constexpr char kAth10kEnable[] = "0xFFFFFFFF";
+constexpr char kAth10kEnable[] = "0xFFFDAF3F";
 // Default debugging: none
 constexpr char kAth10kDisable[] = "0x0";
 
