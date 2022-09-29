@@ -84,7 +84,8 @@ class SystemUtilsTest : public BaseFileTest {
     os_version = mojom::OsVersion::New();
     os_version->release_milestone = "87";
     os_version->build_number = "13544";
-    os_version->patch_number = "59.0";
+    os_version->branch_number = "59";
+    os_version->patch_number = "0";
     os_version->release_channel = "stable-channel";
 
     SetSystemInfo(expected_system_info_);
@@ -146,9 +147,11 @@ class SystemUtilsTest : public BaseFileTest {
     PopulateLsbRelease(base::StringPrintf(
         "CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
         "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
+        "CHROMEOS_RELEASE_BRANCH_NUMBER=%s\n"
         "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
         "CHROMEOS_RELEASE_TRACK=%s\n",
         os_version->release_milestone.c_str(), os_version->build_number.c_str(),
+        os_version->branch_number.value().c_str(),
         os_version->patch_number.c_str(), os_version->release_channel.c_str()));
   }
 

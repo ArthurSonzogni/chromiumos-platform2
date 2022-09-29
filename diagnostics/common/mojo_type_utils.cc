@@ -183,6 +183,7 @@ std::string GetDiffString<mojo_ipc::OsVersion>(const mojo_ipc::OsVersion& a,
   return CompareHelper(a, b)
       .FIELD(release_milestone)
       .FIELD(build_number)
+      .FIELD(branch_number)
       .FIELD(patch_number)
       .FIELD(release_channel)
       .GetResult();

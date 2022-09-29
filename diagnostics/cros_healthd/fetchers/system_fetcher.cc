@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -40,7 +41,8 @@ class State {
 
   bool FetchDmiInfo();
 
-  bool GetLsbReleaseValue(const std::string& field, std::string& out_str);
+  template <typename StringType>
+  bool GetLsbReleaseValue(const std::string& field, StringType& out_str);
 
   bool FetchOsVersion(mojom::OsVersionPtr& os_version);
 
@@ -145,9 +147,13 @@ bool State::FetchCachedVpdInfo() {
   return true;
 }
 
-bool State::GetLsbReleaseValue(const std::string& field, std::string& out_str) {
-  if (base::SysInfo::GetLsbReleaseValue(field, &out_str))
+template <typename StringType>
+bool State::GetLsbReleaseValue(const std::string& field, StringType& out_str) {
+  std::string out_raw;
+  if (base::SysInfo::GetLsbReleaseValue(field, &out_raw)) {
+    out_str = out_raw;
     return true;
+  }
 
   SetError(mojom::ErrorType::kFileReadError,
            base::StringPrintf("Unable to read %s from /etc/lsb-release",
@@ -163,6 +169,10 @@ bool State::FetchOsVersion(mojom::OsVersionPtr& os_version) {
   }
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
                           os_version->build_number)) {
+    return false;
+  }
+  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BRANCH_NUMBER",
+                          os_version->branch_number)) {
     return false;
   }
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
