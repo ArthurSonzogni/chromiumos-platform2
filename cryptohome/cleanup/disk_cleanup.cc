@@ -308,6 +308,28 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     return false;
   }
 
+  bool cleaned_over_minimum = false;
+
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      LOG(WARNING) << "Spece freed up unexpectedly";
+      return false;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      cleaned_over_minimum = true;
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
+      // continue cleanup
+      break;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // continue cleanup
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return false;
+  }
+
   bool early_stop = false;
 
   // Purge Dmcrypt cache vaults.
@@ -346,8 +368,10 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      ReportDiskCleanupProgress(
-          DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
+      if (!cleaned_over_minimum) {
+        ReportDiskCleanupProgress(
+            DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
+      }
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
