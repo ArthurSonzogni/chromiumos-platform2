@@ -19,6 +19,7 @@ static_library("faced_cli") {
     "faced_client.cc",
   ]
   pkg_deps = [ "libchrome" ]
+  deps = [ "//faced:face_auth_mojo_bindings" ]
 }
 
 source_set("unit_tests") {
