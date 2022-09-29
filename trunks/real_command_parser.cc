@@ -169,7 +169,7 @@ TPM_RC RealCommandParser::ParseCommandNvReadPublic(std::string* command,
 
   if (cc != TPM_CC_NV_ReadPublic) {
     LOG(DFATAL) << __func__
-                << ": Expecting command code: " << TPM_CC_GetCapability
+                << ": Expecting command code: " << TPM_CC_NV_ReadPublic
                 << "; got " << cc;
     return TPM_RC_COMMAND_CODE;
   }
