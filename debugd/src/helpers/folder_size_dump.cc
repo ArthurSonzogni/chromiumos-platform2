@@ -108,27 +108,27 @@ bool FilterNone(const std::string&) {
 }
 
 bool DumpDirectory(const DirAdder& entry, bool one_filesystem) {
-  std::vector<std::string> duArgv{"du", "--human-readable", "--total",
-                                  "--summarize"};
+  std::vector<std::string> du_argv{"du", "--human-readable", "--total",
+                                   "--summarize"};
 
   if (one_filesystem)
-    duArgv.push_back("--one-file-system");
+    du_argv.push_back("--one-file-system");
 
-  auto argCount = duArgv.size();
+  auto arg_count = du_argv.size();
 
-  if (!entry.AppendDirEntries(&duArgv)) {
+  if (!entry.AppendDirEntries(&du_argv)) {
     DLOG(ERROR) << "Failed to generate directory list for: " << entry.GetPath();
     return false;
   }
 
   // Sort directory entries.
-  std::sort(duArgv.begin() + argCount, duArgv.end());
+  std::sort(du_argv.begin() + arg_count, du_argv.end());
 
-  entry.AppendSelf(&duArgv);
+  entry.AppendSelf(&du_argv);
 
   // Get the output of du.
   std::string output;
-  if (!base::GetAppOutputAndError(base::CommandLine(duArgv), &output)) {
+  if (!base::GetAppOutputAndError(base::CommandLine(du_argv), &output)) {
     DLOG(ERROR) << "Failed to generate directory dump for: " << entry.GetPath();
     return false;
   }
@@ -159,7 +159,7 @@ bool DumpDaemonStore() {
     return false;
   }
 
-  std::vector<std::string> deamonPaths;
+  std::vector<std::string> daemon_paths;
   while (dir_reader.Next()) {
     std::string name(dir_reader.name());
 
@@ -173,7 +173,7 @@ bool DumpDaemonStore() {
     }
 
     auto entry = std::string(kShadowPath) + name + kDaemonSubPath;
-    deamonPaths.push_back(entry);
+    daemon_paths.push_back(entry);
   }
 
   bool result = true;
@@ -181,7 +181,7 @@ bool DumpDaemonStore() {
     return false;
   }
 
-  for (const auto& entry : deamonPaths) {
+  for (const auto& entry : daemon_paths) {
     // Ignore errors for unmounted users.
     DumpDirectory(DirAdder(entry.c_str(), FilterNone, true),
                   /* one_filesystem=*/false);
@@ -214,10 +214,10 @@ uint64_t ObfuscateSize(uint64_t size) {
 // For individual user directories only the 2 most significant bits of the
 // value are kept. We are only interested in the distribution of data.
 bool DumpUserFolders(bool aggregate_only) {
-  const DirAdder shadowAdder(kShadowPath, FilterNonUserDirs, true);
+  const DirAdder shadow_adder(kShadowPath, FilterNonUserDirs, true);
 
   std::vector<std::string> paths;
-  if (!shadowAdder.AppendDirEntries(&paths)) {
+  if (!shadow_adder.AppendDirEntries(&paths)) {
     return false;
   }
 
@@ -275,7 +275,7 @@ bool DumpSystemDirectories() {
     result = false;
   }
 
-  std::cout << "--- Other users (aggregate) ---" << std::endl;
+  std::cout << "--- All users(aggregate) ---" << std::endl;
   if (!DumpUserFolders(/* aggregate_only=*/true)) {
     result = false;
   }
