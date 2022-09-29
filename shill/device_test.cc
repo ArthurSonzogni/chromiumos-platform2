@@ -303,65 +303,6 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
-TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), "randomname"));
-  auto dhcp_provider = std::make_unique<MockDHCPProvider>();
-  SetDHCPProvider(dhcp_provider.get());
-
-  const std::string dhcp_hostname = "chromeos";
-  const std::string dhcp_lease_name = "leasename";
-  constexpr bool use_arp_gateway = true;
-
-  Network::StartOptions opts;
-  opts.dhcp = DHCPProvider::Options{
-      .use_arp_gateway = use_arp_gateway,
-      .lease_name = dhcp_lease_name,
-      .hostname = dhcp_hostname,
-  };
-  opts.accept_ra = true;
-
-  scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
-  SelectService(service);
-
-  EXPECT_CALL(
-      *dhcp_provider,
-      CreateController(_,
-                       IsDHCPProviderOptions(use_arp_gateway, dhcp_lease_name,
-                                             dhcp_hostname),
-                       _))
-      .WillOnce(InvokeWithoutArgs([this]() {
-        auto controller = CreateDHCPController();
-        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
-        return controller;
-      }));
-  device_->network()->Start(opts);
-  ASSERT_NE(nullptr, device_->ipconfig());
-  EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
-  SetDHCPProvider(nullptr);
-}
-
-TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), "randomname"));
-  auto dhcp_provider = std::make_unique<MockDHCPProvider>();
-  SetDHCPProvider(dhcp_provider.get());
-
-  Network::StartOptions opts;
-  opts.dhcp = DHCPProvider::Options{};
-  opts.accept_ra = true;
-  EXPECT_CALL(*dhcp_provider, CreateController(_, _, _))
-      .WillOnce(InvokeWithoutArgs([this]() {
-        auto controller = CreateDHCPController();
-        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
-        return controller;
-      }));
-  device_->network()->Start(opts);
-  ASSERT_NE(nullptr, device_->ipconfig());
-  EXPECT_EQ(kDeviceName, device_->ipconfig()->device_name());
-  SetDHCPProvider(nullptr);
-}
-
 TEST_F(DeviceTest, StartIPv6) {
   auto network = std::make_unique<MockNetwork>(
       device_->interface_index(), device_->link_name(), device_->technology());
