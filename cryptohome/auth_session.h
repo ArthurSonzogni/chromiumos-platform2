@@ -302,9 +302,9 @@ class AuthSession final {
       const cryptohome::AuthorizationRequest& authorization);
 
   // This function sets the credential_verifier_ based on the passkey parameter.
-  void SetCredentialVerifier(std::optional<AuthFactorType> auth_factor_type,
+  void SetCredentialVerifier(AuthFactorType auth_factor_type,
                              const std::string& auth_factor_label,
-                             const brillo::SecureBlob& passkey);
+                             const AuthInput& auth_input);
 
   // Set the timeout timer to now + delay
   void SetTimeoutTimer(const base::TimeDelta& delay);
@@ -486,6 +486,7 @@ class AuthSession final {
   // KeysetManagement::GetValidKeysetWithKeyBlobs(). This function is needed for
   // processing callback results in an asynchronous manner through the |on_done|
   // callback.
+  // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
   void LoadVaultKeysetAndFsKeys(
       std::optional<AuthFactorType> request_auth_factor_type,
       const std::optional<brillo::SecureBlob> passkey,

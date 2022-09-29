@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -32,6 +33,14 @@ std::optional<AuthInput> CreateAuthInput(
 // Returns `nullopt` un unexpected inputs.
 std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
     const user_data_auth::AuthInput& auth_input_proto);
+
+// Create an AuthInput specifically for representing a password input with a
+// passkey. Intended for allowing legacy code to interface with newer
+// AuthInput+AuthFactor code.
+AuthInput CreatePasswordAuthInputForLegacyCode(
+    const std::string& obfuscated_username,
+    bool locked_to_single_user,
+    const brillo::SecureBlob& passkey);
 
 }  // namespace cryptohome
 

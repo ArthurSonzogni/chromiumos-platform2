@@ -426,7 +426,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   std::unique_ptr<AuthFactor> added_auth_factor =
       converter_->VaultKeysetToAuthFactor(username_, key_data.label());
-  std::optional<AuthFactorType> auth_factor_type;
+  AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
     auth_factor_type = added_auth_factor->type();
     label_to_auth_factor_.emplace(key_data.label(),
@@ -437,12 +437,8 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   // Flip the flag, so that our future invocations go through AddKeyset() and
   // not AddInitialKeyset(). Create a verifier if applicable.
-  if (!user_has_configured_credential_ && auth_input.user_input.has_value()) {
-    // TODO(emaxx): This is overly permissive by creating the verifier even when
-    // AuthFactor conversion failed and the actual factor type is unknown; we
-    // should eventually forbid proceeding with a `nullopt` type here.
-    SetCredentialVerifier(auth_factor_type, key_data.label(),
-                          auth_input.user_input.value());
+  if (!user_has_configured_credential_) {
+    SetCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
   }
   user_has_configured_credential_ = true;
 
@@ -471,7 +467,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->AddInitialKeysetWithKeyBlobs(
             obfuscated_username_, key_data,
-            /*challenge_credentials_keyset_info*/ std::nullopt,
+            /*challenge_credentials_keyset_info=*/std::nullopt,
             file_system_keyset_.value(), std::move(*key_blobs.get()),
             std::move(auth_state));
     if (!vk_status.ok()) {
@@ -723,9 +719,8 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
 
   AuthBlock::CreateCallback create_callback = base::BindOnce(
       &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
-      /*request_auth_factor_type=*/std::nullopt, credentials.key_data(),
-      auth_input, std::move(auth_session_performance_timer),
-      std::move(on_done));
+      /*auth_factor_type=*/std::nullopt, credentials.key_data(), auth_input,
+      std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
 }
@@ -773,11 +768,13 @@ void AuthSession::UpdateVaultKeyset(
   // Add the new secret to the AuthSession's credential verifier. On successful
   // completion of the UpdateAuthFactor this will be passed to UserSession's
   // credential verifier to cache the secret for future lightweight
-  // verifications.
-  if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, key_data.label(),
-                          auth_input.user_input.value());
+  // verifications. If we don't know what the factor type is then assume we have
+  // a password verifier as that's the only type that works with the old APIs.
+  AuthFactorType verifier_type = AuthFactorType::kPassword;
+  if (auth_factor_type) {
+    verifier_type = *auth_factor_type;
   }
+  SetCredentialVerifier(verifier_type, key_data.label(), auth_input);
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
@@ -922,10 +919,18 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // Flip the status on the successful authentication.
   SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
-  // Set the credential verifier for this credential.
+  // Set the credential verifier for this credential. If we don't know what the
+  // factor type is then assume we have a password verifier as that's the only
+  // type that works with the old APIs.
   if (passkey.has_value()) {
-    SetCredentialVerifier(request_auth_factor_type, key_data_.label(),
-                          passkey.value());
+    AuthFactorType verifier_type = AuthFactorType::kPassword;
+    if (request_auth_factor_type) {
+      verifier_type = *request_auth_factor_type;
+    }
+    AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
+        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
+        *passkey);
+    SetCredentialVerifier(verifier_type, key_data_.label(), auth_input);
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -982,11 +987,15 @@ void AuthSession::Authenticate(
           kAuthSessionAuthenticateTimer);
 
   if (is_ephemeral_user_) {  // Ephemeral mount.
-    // For ephemeral session, just authenticate the session,
-    // no need to derive KeyBlobs.
-    // Set the credential verifier for this credential.
-    SetCredentialVerifier(/*auth_factor_type=*/std::nullopt, key_data_.label(),
-                          credentials->passkey());
+    // For ephemeral session, just authenticate the session, no need to derive
+    // KeyBlobs. Set the credential verifier for this credential. We use a
+    // password verifier as that's the only type of verifier that will work with
+    // the credential passkey.
+    AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
+        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
+        credentials->passkey());
+    SetCredentialVerifier(AuthFactorType::kPassword, key_data_.label(),
+                          auth_input);
 
     // SetAuthSessionAsAuthenticated() should already have been called
     // in the constructor by this point.
@@ -1603,8 +1612,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor->label(),
-                          auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
@@ -1833,14 +1841,13 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   return std::move(auth_input.value());
 }
 
-void AuthSession::SetCredentialVerifier(
-    std::optional<AuthFactorType> auth_factor_type,
-    const std::string& auth_factor_label,
-    const brillo::SecureBlob& passkey) {
+void AuthSession::SetCredentialVerifier(AuthFactorType auth_factor_type,
+                                        const std::string& auth_factor_label,
+                                        const AuthInput& auth_input) {
   // Note that we always overwrite the old verifier, even when the creation of
   // the new one failed - to avoid any risk of accepting old credentials.
   credential_verifier_ =
-      CreateCredentialVerifier(auth_factor_type, auth_factor_label, passkey);
+      CreateCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 }
 
 // static
@@ -2058,8 +2065,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor->label(),
-                          auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
@@ -2291,8 +2297,7 @@ void AuthSession::AddAuthFactorForEphemeral(
     return;
   }
 
-  SetCredentialVerifier(auth_factor_type, auth_factor_label,
-                        auth_input.user_input.value());
+  SetCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   // Check whether the verifier creation failed.
   if (!credential_verifier_) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2464,8 +2469,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor_label,
-                          auth_input.user_input.value());
+    SetCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());

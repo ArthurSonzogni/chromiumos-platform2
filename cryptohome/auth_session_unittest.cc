@@ -23,6 +23,7 @@
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -71,6 +72,7 @@ using ::testing::Field;
 using ::testing::IsEmpty;
 using ::testing::Matcher;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
@@ -641,8 +643,9 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
-      brillo::SecureBlob(kFakePass)));
+  auto verifier = auth_session.TakeCredentialVerifier();
+  ASSERT_THAT(verifier, NotNull());
+  EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePass)));
 
   // Cleanup.
   auth_session.timeout_timer_.FireNow();

@@ -13,6 +13,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
@@ -20,11 +21,10 @@ namespace cryptohome {
 bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type);
 
 // Creates a credential verifier for the given credential.
-// TODO(b/204482221): Make `auth_factor_type` mandatory.
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-    std::optional<AuthFactorType> auth_factor_type,
+    AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
-    const brillo::SecureBlob& passkey);
+    const AuthInput& auth_input);
 
 }  // namespace cryptohome
 

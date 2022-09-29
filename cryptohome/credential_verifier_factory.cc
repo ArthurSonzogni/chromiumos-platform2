@@ -14,6 +14,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/scrypt_verifier.h"
 
 namespace cryptohome {
@@ -33,19 +34,22 @@ bool IsCredentialVerifierSupported(AuthFactorType auth_factor_type) {
 }
 
 std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-    std::optional<AuthFactorType> auth_factor_type,
+    AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
-    const brillo::SecureBlob& passkey) {
-  if (auth_factor_type.has_value() &&
-      !IsCredentialVerifierSupported(auth_factor_type.value())) {
+    const AuthInput& auth_input) {
+  if (!IsCredentialVerifierSupported(auth_factor_type)) {
     return nullptr;
   }
 
   std::unique_ptr<CredentialVerifier> verifier;
-  switch (auth_factor_type.value_or(AuthFactorType::kPassword)) {
+  switch (auth_factor_type) {
     case AuthFactorType::kPassword: {
+      if (!auth_input.user_input.has_value()) {
+        LOG(ERROR) << "Cannot construct a password verifier without a password";
+        return nullptr;
+      }
       verifier = std::make_unique<ScryptVerifier>(auth_factor_label);
-      if (!verifier->Set(passkey)) {
+      if (!verifier->Set(*auth_input.user_input)) {
         LOG(ERROR) << "Credential verifier initialization failed.";
         return nullptr;
       }
@@ -62,9 +66,7 @@ std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
   }
 
   DCHECK_EQ(verifier->auth_factor_label(), auth_factor_label);
-  if (auth_factor_type.has_value()) {
-    DCHECK_EQ(auth_factor_type.value(), verifier->auth_factor_type());
-  }
+  DCHECK_EQ(verifier->auth_factor_type(), auth_factor_type);
   return verifier;
 }
 

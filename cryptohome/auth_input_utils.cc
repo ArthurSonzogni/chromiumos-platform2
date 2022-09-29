@@ -187,4 +187,15 @@ std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
   }
 }
 
+AuthInput CreatePasswordAuthInputForLegacyCode(
+    const std::string& obfuscated_username,
+    bool locked_to_single_user,
+    const brillo::SecureBlob& passkey) {
+  return {
+      .user_input = passkey,
+      .locked_to_single_user = locked_to_single_user,
+      .obfuscated_username = obfuscated_username,
+  };
+}
+
 }  // namespace cryptohome
