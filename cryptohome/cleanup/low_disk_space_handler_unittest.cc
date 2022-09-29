@@ -180,8 +180,12 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
   task_runner_->RunUntilIdle();
 
   auto delta = kAutoCleanupPeriod + base::Milliseconds(1);
+  int samples = 50;
+  EXPECT_CALL(disk_cleanup_, CheckNumUserHomeDirectories())
+      .Times(samples * delta /
+             handler_.update_user_activity_timestamp_period());
 
-  for (int i = 0; i < 50; i++) {
+  for (int i = 0; i < samples; i++) {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
     current_time_ += delta;
     task_runner_->FastForwardBy(delta);
@@ -190,6 +194,10 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
 }
 
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
+  // Only when enrolled IsFreeableDiskSpaceAvailable() return true.
+  // It will force the thread to call FreeDiskSpace() every minute.
+  // Since the test simulate a 50 minutes run, CheckNumUserHomeDirectories()
+  // will not be called during the run.
   EXPECT_CALL(disk_cleanup_, IsFreeableDiskSpaceAvailable())
       .WillRepeatedly(Return(true));
 
@@ -219,7 +227,10 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicLastActivityUpdate) {
   EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillRepeatedly(Return(true));
 
-  for (int i = 0; i < 50; i++) {
+  int samples = 50;
+  EXPECT_CALL(disk_cleanup_, CheckNumUserHomeDirectories()).Times(samples);
+
+  for (int i = 0; i < samples; i++) {
     bool callback_called = false;
 
     handler_.SetUpdateUserActivityTimestampCallback(

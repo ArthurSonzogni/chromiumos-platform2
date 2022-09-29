@@ -32,6 +32,7 @@ class MockDiskCleanup : public DiskCleanup {
               GetFreeDiskSpaceState,
               (),
               (override, const));
+  MOCK_METHOD(void, CheckNumUserHomeDirectories, (), (override, const));
   MOCK_METHOD(bool, HasTargetFreeSpace, (), (override, const));
   MOCK_METHOD(bool, IsFreeableDiskSpaceAvailable, (), (override));
   MOCK_METHOD(bool, FreeDiskSpace, (), (override));

@@ -137,6 +137,9 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
 
   if (time_for_update_user_activity_timestamp) {
     last_update_user_activity_timestamp_time_ = current_time;
+
+    cleanup_->CheckNumUserHomeDirectories();
+
     update_user_activity_timestamp_callback_.Run();
   }
 

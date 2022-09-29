@@ -76,6 +76,9 @@ class DiskCleanup {
   // to determine the state of the free disk space.
   virtual FreeSpaceState GetFreeDiskSpaceState() const;
 
+  // Report the number of user home directories.
+  virtual void CheckNumUserHomeDirectories() const;
+
   // Returns true if there is now at least cleanup_target_
   // amount of free disk space or false otherwise.
   virtual bool HasTargetFreeSpace() const;

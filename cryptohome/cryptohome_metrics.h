@@ -709,6 +709,9 @@ void ReportLoginDiskCleanupResult(DiskCleanupResult result);
 // histogram.
 void ReportHomedirEncryptionType(HomedirEncryptionType type);
 
+// Reports the number of user directories present in the system.
+void ReportNumUserHomeDirectories(int num_users);
+
 // Reports the result of a Low Entropy (LE) Credential operation to the relevant
 // LE Credential histogram.
 void ReportLEResult(const char* type, const char* action, LECredError result);

@@ -66,6 +66,10 @@ DiskCleanup::FreeSpaceState DiskCleanup::GetFreeDiskSpaceState(
   }
 }
 
+void DiskCleanup::CheckNumUserHomeDirectories() const {
+  ReportNumUserHomeDirectories(homedirs_->GetHomeDirs().size());
+}
+
 bool DiskCleanup::HasTargetFreeSpace() const {
   return GetFreeDiskSpaceState() == DiskCleanup::FreeSpaceState::kAboveTarget;
 }

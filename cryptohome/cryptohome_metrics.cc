@@ -118,6 +118,9 @@ constexpr char kUssExperimentFlag[] =
     "Cryptohome.UssExperiment.UssExperimentFlag";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
 
+constexpr char kNumUserHomeDirectories[] =
+    "Platform.DiskUsage.NumUserHomeDirectories";
+
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
 const TimerHistogramParams kTimerHistogramParams[] = {
@@ -596,6 +599,15 @@ void ReportLoginDiskCleanupResult(DiskCleanupResult result) {
   g_metrics->SendEnumToUMA(kCryptohomeLoginDiskCleanupResultHistogram,
                            static_cast<int>(result),
                            static_cast<int>(DiskCleanupResult::kNumBuckets));
+}
+
+void ReportNumUserHomeDirectories(int num_users) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 1, kMax = 50, kNumBuckets = 50;
+  g_metrics->SendToUMA(kNumUserHomeDirectories, num_users, kMin, kMax,
+                       kNumBuckets);
 }
 
 void ReportHomedirEncryptionType(HomedirEncryptionType type) {
