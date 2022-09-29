@@ -548,6 +548,7 @@ void Device::SelectService(const ServiceRefPtr& service,
   }
 
   selected_service_ = service;
+  network_->set_logging_tag(LoggingTag());
   if (selected_service_) {
     selected_service_->SetAttachedNetwork(network_->AsWeakPtr());
   }

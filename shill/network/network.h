@@ -238,6 +238,9 @@ class Network {
     ip6config_ = std::move(config);
   }
   bool fixed_ip_params() const { return fixed_ip_params_; }
+  void set_logging_tag(const std::string& logging_tag) {
+    logging_tag_ = logging_tag;
+  }
 
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
@@ -316,6 +319,9 @@ class Network {
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
+  // A header tag to use in LOG statement for identifying the Device and Service
+  // associated with a Network connection.
+  std::string logging_tag_;
 
   // If true, IP parameters should not be modified. This should not be changed
   // after a Network object is created. Make it modifiable just for unit tests.

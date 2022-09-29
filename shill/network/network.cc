@@ -28,9 +28,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static std::string ObjectID(const Network* n) {
-  return n->interface_name();
-}
 }  // namespace Logging
 
 namespace {
@@ -65,6 +62,7 @@ Network::Network(int interface_index,
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
+      logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
       event_handler_(event_handler),
       control_interface_(control_interface),
@@ -82,7 +80,7 @@ void Network::Start(const Network::StartOptions& opts) {
 
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
-    LOG(INFO) << interface_name_
+    LOG(INFO) << logging_tag_
               << ": Network has been started, stop it before starting with the "
                  "new options";
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
@@ -236,12 +234,12 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
 }
 
 void Network::InvalidateIPv6Config() {
-  SLOG(this, 2) << interface_name_ << ": " << __func__;
+  SLOG(2) << logging_tag_ << ": " << __func__;
   if (!ip6config_) {
     return;
   }
 
-  SLOG(this, 2) << interface_name_ << "Waiting for new IPv6 configuration";
+  SLOG(2) << logging_tag_ << "Waiting for new IPv6 configuration";
   if (slaac_controller_) {
     // TODO(b/227563210): currently only invalid the RDNSS timer. What we should
     // real do is to force kernel to redo SLAAC here.
@@ -401,7 +399,7 @@ bool Network::RenewDHCPLease() {
   if (!dhcp_controller_) {
     return false;
   }
-  SLOG(this, 2) << interface_name_ << ": renewing DHCP lease";
+  SLOG(2) << logging_tag_ << ": renewing DHCP lease";
   // If RenewIP() fails, DHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP();
 }
@@ -444,7 +442,7 @@ void Network::ConfigureStaticIPv6Address() {
   }
   IPAddress local(IPAddress::kFamilyIPv6);
   if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
-    LOG(ERROR) << interface_name_ << ": Local address "
+    LOG(ERROR) << logging_tag_ << ": Local address "
                << ipv6_static_properties_->address << " is invalid";
     return;
   }
@@ -478,7 +476,7 @@ void Network::OnIPv6AddressChanged() {
   CHECK_EQ(primary_address.family(), IPAddress::kFamilyIPv6);
   IPConfig::Properties properties;
   if (!primary_address.IntoString(&properties.address)) {
-    LOG(ERROR) << interface_name_
+    LOG(ERROR) << logging_tag_
                << ": Unable to convert IPv6 address into a string";
     return;
   }
@@ -488,7 +486,7 @@ void Network::OnIPv6AddressChanged() {
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
                                                 &default_route)) {
     if (!default_route.gateway.IntoString(&properties.gateway)) {
-      LOG(ERROR) << interface_name_
+      LOG(ERROR) << logging_tag_
                  << ": Unable to convert IPv6 gateway into a string";
       return;
     }
@@ -496,7 +494,7 @@ void Network::OnIPv6AddressChanged() {
     // The kernel normally populates the default route before it performs
     // a neighbor solicitation for the new address, so it shouldn't be
     // missing at this point.
-    LOG(WARNING) << interface_name_
+    LOG(WARNING) << logging_tag_
                  << ": No default route for global IPv6 address "
                  << properties.address;
   }
@@ -514,8 +512,8 @@ void Network::OnIPv6AddressChanged() {
              properties.subnet_prefix ==
                  ip6config()->properties().subnet_prefix &&
              properties.gateway == ip6config()->properties().gateway) {
-    SLOG(this, 2) << __func__ << " primary address for " << interface_name_
-                  << " is unchanged";
+    SLOG(2) << logging_tag_ << ": " << __func__ << ": primary address for "
+            << interface_name_ << " is unchanged";
     return;
   }
 
@@ -542,7 +540,7 @@ void Network::OnIPv6AddressChanged() {
 
 void Network::OnIPv6ConfigUpdated() {
   if (!ip6config()) {
-    LOG(WARNING) << interface_name_ << ": " << __func__
+    LOG(WARNING) << logging_tag_ << ": " << __func__
                  << " called but |ip6config_| is empty";
     return;
   }
@@ -586,8 +584,8 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 
   // Done if no change in server addresses.
   if (ip6config()->properties().dns_servers == addresses_str) {
-    SLOG(this, 2) << __func__ << " IPv6 DNS server list for " << interface_name_
-                  << " is unchanged.";
+    SLOG(2) << logging_tag_ << ": " << __func__ << " IPv6 DNS server list for "
+            << interface_name_ << " is unchanged.";
     return;
   }
 
@@ -625,7 +623,7 @@ bool Network::SetIPFlag(IPAddress::Family family,
         !base::Contains(written_flags_, flag_file.value())) {
       // Leave a log if the file is there or this is the first time we try to
       // write it on a failure.
-      LOG(ERROR) << interface_name_ << ": " << message;
+      LOG(ERROR) << logging_tag_ << ": " << message;
     }
     return false;
   } else {
@@ -636,7 +634,8 @@ bool Network::SetIPFlag(IPAddress::Family family,
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {
   if (!connection_) {
-    LOG(WARNING) << __func__ << " called but no connection exists";
+    LOG(WARNING) << logging_tag_ << ": " << __func__
+                 << " called but no connection exists";
     return;
   }
   connection_->SetPriority(priority, is_primary_physical);
@@ -651,7 +650,8 @@ bool Network::IsDefault() const {
 
 void Network::SetUseDNS(bool enable) {
   if (!connection_) {
-    LOG(WARNING) << __func__ << " called but no connection exists";
+    LOG(WARNING) << logging_tag_ << ": " << __func__
+                 << " called but no connection exists";
     return;
   }
   connection_->SetUseDNS(enable);
