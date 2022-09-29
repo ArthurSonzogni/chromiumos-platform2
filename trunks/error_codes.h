@@ -6,6 +6,7 @@
 #define TRUNKS_ERROR_CODES_H_
 
 #include <string>
+#include <optional>
 
 #include "trunks/tpm_generated.h"  // For TPM_RC.
 #include "trunks/trunks_export.h"
@@ -35,6 +36,7 @@ const TPM_RC TRUNKS_RC_WRITE_ERROR = kTrunksErrorBase + 4;
 const TPM_RC TRUNKS_RC_IPC_ERROR = kTrunksErrorBase + 5;
 const TPM_RC TRUNKS_RC_SESSION_SETUP_ERROR = kTrunksErrorBase + 6;
 const TPM_RC TRUNKS_RC_INVALID_TPM_CONFIGURATION = kTrunksErrorBase + 7;
+const TPM_RC TRUNKS_RC_PARSE_ERROR = kTrunksErrorBase + 8;
 
 const TPM_RC TCTI_RC_TRY_AGAIN = kTctiErrorBase + 1;
 const TPM_RC TCTI_RC_GENERAL_FAILURE = kTctiErrorBase + 2;
@@ -77,6 +79,14 @@ TRUNKS_EXPORT TPM_RC GetFormatOneError(TPM_RC error);
 
 // Creates a well-formed response with the given |error_code|.
 TRUNKS_EXPORT std::string CreateErrorResponse(TPM_RC error_code);
+
+// Retrieves response code, |rc|, from the response string, |response|.
+// Return TPM_RC_SUCCESS iff success.
+TRUNKS_EXPORT TPM_RC GetResponseCode(const std::string& response, TPM_RC& rc);
+
+// Retrieves command code, |cc|, from the command string, |command|.
+// Return TPM_RC_SUCCESS iff success.
+TRUNKS_EXPORT TPM_RC GetCommandCode(const std::string& command, TPM_CC& cc);
 
 }  // namespace trunks
 

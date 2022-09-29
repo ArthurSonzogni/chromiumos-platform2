@@ -89,7 +89,8 @@ class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
       return false;
     }
     TPM_RC rc;
-    if (!GetResponseCode(response, &rc)) {
+    TPM_RC parse_rc = GetResponseCode(response, rc);
+    if (parse_rc != TPM_RC_SUCCESS) {
       return false;
     }
     switch (rc) {
@@ -104,23 +105,6 @@ class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
       default:
         return false;
     }
-  }
-
-  bool GetResponseCode(const std::string& response, TPM_RC* rc) {
-    DCHECK(rc);
-    std::string buffer(response);
-    trunks::TPM_ST tag;
-    if (Parse_TPM_ST(&buffer, &tag, nullptr) != TPM_RC_SUCCESS) {
-      return false;
-    }
-    trunks::UINT32 response_size;
-    if (Parse_UINT32(&buffer, &response_size, nullptr) != TPM_RC_SUCCESS) {
-      return false;
-    }
-    if (response_size != response.size()) {
-      return false;
-    }
-    return Parse_TPM_RC(&buffer, rc, nullptr) == TPM_RC_SUCCESS;
   }
 
   base::TimeDelta command_retry_delay_;

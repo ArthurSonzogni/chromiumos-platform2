@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <utility>
+#include <optional>
 
 #include <base/callback.h>
 #include <base/check_op.h>
@@ -15,6 +16,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -36,36 +38,6 @@ constexpr int kMaxRetry = 5;
 // sum 0.1*2^k for k = 0 to 3 = 1.5s
 // Note that if this period is not enough, upstart will still respawn trunksd
 // after it all fall through.
-
-TPM_CC GetCommandCode(const std::string& command) {
-  std::string buffer = command;
-  TPM_ST tag;
-  UINT32 command_size;
-  TPM_CC command_code = 0;
-  // Parse the header to get the command code
-  TPM_RC rc = Parse_TPM_ST(&buffer, &tag, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_UINT32(&buffer, &command_size, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_TPM_CC(&buffer, &command_code, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  return command_code;
-}
-
-TPM_RC GetResponseCode(const std::string& response) {
-  std::string buffer = response;
-  TPM_ST tag;
-  UINT32 response_size;
-  TPM_RC response_code = 0;
-  // Parse the header to get the command code
-  TPM_RC rc = Parse_TPM_ST(&buffer, &tag, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_UINT32(&buffer, &response_size, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  rc = Parse_TPM_RC(&buffer, &response_code, nullptr);
-  DCHECK_EQ(rc, TPM_RC_SUCCESS);
-  return response_code;
-}
 
 }  // namespace
 
@@ -118,14 +90,24 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
     if (errno == ETIME) {
       static bool has_reported = false;
       if (!has_reported) {
-        TPM_CC command_code = GetCommandCode(command);
-        if (metrics_.ReportTpmHandleTimeoutCommandAndTime(result, command_code))
+        TPM_CC cc;
+        TPM_RC parse_rc = GetCommandCode(command, cc);
+        if (parse_rc != TPM_RC_SUCCESS) {
+          LOG(ERROR) << __func__ << ": failed to parse time out command: "
+                     << GetErrorString(parse_rc);
+        } else if (metrics_.ReportTpmHandleTimeoutCommandAndTime(result, cc)) {
           has_reported = true;
+        }
       }
     }
   }
-  TPM_RC response_code = GetResponseCode(response);
-  metrics_.ReportTpmErrorCode(response_code);
+  TPM_RC rc;
+  TPM_RC parse_rc = GetResponseCode(response, rc);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to parse response: " << parse_rc;
+    rc = TRUNKS_RC_PARSE_ERROR;
+  }
+  metrics_.ReportTpmErrorCode(rc);
   return response;
 }
 

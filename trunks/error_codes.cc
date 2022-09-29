@@ -230,6 +230,8 @@ std::string GetErrorStringInternal(trunks::TPM_RC error) {
       return "TRUNKS_RC_IPC_ERROR";
     case trunks::TRUNKS_RC_SESSION_SETUP_ERROR:
       return "TRUNKS_RC_SESSION_SETUP_ERROR";
+    case trunks::TRUNKS_RC_PARSE_ERROR:
+      return "TRUNKS_RC_PARSE_ERROR";
     case trunks::TCTI_RC_TRY_AGAIN:
       return "TCTI_RC_TRY_AGAIN";
     case trunks::TCTI_RC_GENERAL_FAILURE:
@@ -349,6 +351,50 @@ std::string CreateErrorResponse(TPM_RC error_code) {
   CHECK_EQ(Serialize_UINT32(kErrorResponseSize, &response), TPM_RC_SUCCESS);
   CHECK_EQ(Serialize_TPM_RC(error_code, &response), TPM_RC_SUCCESS);
   return response;
+}
+
+TPM_RC GetResponseCode(const std::string& response, TPM_RC& rc) {
+  std::string buffer(response);
+  TPM_ST tag;
+  TPM_RC parse_rc = Parse_TPM_ST(&buffer, &tag, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  UINT32 response_size;
+  parse_rc = Parse_UINT32(&buffer, &response_size, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  if (response_size != response.size()) {
+    return TPM_RC_SIZE;
+  }
+  parse_rc = Parse_TPM_RC(&buffer, &rc, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC GetCommandCode(const std::string& command, TPM_CC& cc) {
+  std::string buffer(command);
+  TPM_ST tag;
+  TPM_RC parse_rc = Parse_TPM_ST(&buffer, &tag, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  UINT32 response_size;
+  parse_rc = Parse_UINT32(&buffer, &response_size, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  if (response_size != command.size()) {
+    return TPM_RC_SIZE;
+  }
+  parse_rc = Parse_TPM_CC(&buffer, &cc, nullptr);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    return parse_rc;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks
