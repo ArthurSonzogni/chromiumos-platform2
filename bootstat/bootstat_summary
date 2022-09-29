@@ -61,5 +61,6 @@ fi
 #  sort: sort the events by the uptime timestamp.
 #  sed: remove '/tmp/uptime-' from the event name.
 #  2nd awk program:  produce the summarized output
-awk '{print 1000*$1, 1000*$2/'"${NCPU}"', FILENAME}' "$@" |
+awk 'BEGIN{OFMT="%f"}
+     {print 1000*$1, 1000*$2/'"${NCPU}"', FILENAME}' "$@" |
   sort -k 1n | sed 's=[^ ]*uptime-==' | awk "${SUMMARIZE_TIME}"
