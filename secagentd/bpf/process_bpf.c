@@ -61,11 +61,11 @@ static inline __attribute__((always_inline)) void fill_image_info(
 }
 
 // trace_sched_process_exec is called by exec_binprm shortly after exec. It has
-// the distinct advantage (over arguably more stable and security focussed
+// the distinct advantage (over arguably more stable and security focused
 // interfaces like bprm_committed_creds) of running in the context of the newly
 // created Task. This makes it much easier for us to grab information about this
 // new Task.
-SEC("raw_tp/sched_process_exec")
+SEC("tp_btf/sched_process_exec")
 int BPF_PROG(handle_sched_process_exec,
              struct task_struct* current,
              pid_t old_pid,
