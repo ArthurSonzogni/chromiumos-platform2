@@ -516,9 +516,16 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
     user_step_index_++;
   num_user_adjustments_++;
 
+  // If we don't actually change the brightness, still emit a signal so the UI
+  // can show the user that nothing changed.
+  if (user_step_index_ == static_cast<int>(user_steps_.size()) - 1) {
+    EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
+                                current_percent_,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+  }
+
   // No longer toggled off if we're making a user-initiated adjustment.
   toggled_off_ = false;
-
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
@@ -533,6 +540,14 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
   if (user_step_index_ > (allow_off ? 0 : 1))
     user_step_index_--;
   num_user_adjustments_++;
+
+  // If we don't actually change the brightness, still emit a signal so the UI
+  // can show the user that nothing changed.
+  if (user_step_index_ == 0) {
+    EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
+                                current_percent_,
+                                BacklightBrightnessChange_Cause_USER_REQUEST);
+  }
 
   // No longer toggled off if we're making a user-initiated adjustment.
   toggled_off_ = false;
