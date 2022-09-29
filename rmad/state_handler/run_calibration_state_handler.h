@@ -9,10 +9,12 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/timer/timer.h>
 
@@ -55,10 +57,11 @@ class RunCalibrationStateHandler : public BaseStateHandler {
  private:
   bool RetrieveVarsAndCalibrate();
   void CalibrateAndSendProgress(RmadComponent component);
-
-  void CheckCalibrationTask(RmadComponent component);
+  void UpdateCalibrationProgress(RmadComponent component, double progress);
 
   void SaveAndSend(RmadComponent component, double progress);
+  void SendComponentSignal(CalibrationComponentStatus component_status);
+  void SendOverallSignal(CalibrationOverallStatus overall_status);
 
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse it with its number of the setup instruction.
@@ -76,13 +79,13 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // progress.
   std::map<RmadComponent, std::unique_ptr<SensorCalibrationUtils>>
       sensor_calibration_utils_map_;
-  // Instead of using a mutex to lock the critical section, we use a timer
-  // (tasks run sequentially on the main thread) to poll the progress.
-  std::map<RmadComponent, std::unique_ptr<base::RepeatingTimer>>
-      progress_timer_map_;
-  // To run sensor calibration with the same setup simultaneously, we use a
-  // normal task_runner to do it.
-  scoped_refptr<base::TaskRunner> task_runner_;
+  // To run sensor calibration with the same settings simultaneously, we do it
+  // in parallel using a normal TaskRunner.
+  scoped_refptr<base::TaskRunner> calibration_task_runner_;
+  // To prevent race conditions, we post all critical sections to the same
+  // SequencedTaskRunner to execute operations sequentially.
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
   scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_thread_safe_;
 };
 

@@ -54,41 +54,41 @@ GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
     const std::string& location,
     const std::string& name)
     : SensorCalibrationUtils(location, name),
-      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe),
-      progress_(kProgressInit) {
+      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe) {
   iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
 }
 
-bool GyroscopeCalibrationUtilsImpl::Calibrate() {
+void GyroscopeCalibrationUtilsImpl::Calibrate(
+    CalibrationProgressCallback progress_callback) {
   std::vector<double> avg_data;
   std::vector<double> original_calibbias;
   std::map<std::string, int> calibbias;
-  SetProgress(kProgressInit);
+  progress_callback.Run(kProgressInit);
 
   // Before the calibration, we get original calibbias by reading sysfs.
   if (!iio_ec_sensor_utils_->GetSysValues(kGyroscopeCalibbias,
                                           &original_calibbias)) {
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressGetOriginalCalibbias);
+  progress_callback.Run(kProgressGetOriginalCalibbias);
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
   if (!iio_ec_sensor_utils_->GetAvgData(kGyroscopeChannels, kSamples,
                                         &avg_data)) {
     LOG(ERROR) << location_ << ":" << name_ << ": Failed to accumulate data.";
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressSensorDataReceived);
+  progress_callback.Run(kProgressSensorDataReceived);
 
   // For each axis, we calculate the difference between the ideal values.
   if (avg_data.size() != kGyroscopIdealValues.size()) {
     LOG(ERROR) << location_ << ":" << name_ << ": Get wrong data size "
                << avg_data.size();
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
 
   // For each axis, we calculate the difference between the ideal values.
@@ -99,30 +99,15 @@ bool GyroscopeCalibrationUtilsImpl::Calibrate() {
                         location_ + kCalibbiasPostfix;
     calibbias[entry] = round(offset / kCalibbias2SensorReading);
   }
-  SetProgress(kProgressBiasCalculated);
+  progress_callback.Run(kProgressBiasCalculated);
 
   // We first write the calibbias data to vpd, and then update the sensor via
   // sysfs accordingly.
   if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias)) {
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressBiasWritten);
-
-  return true;
-}
-
-bool GyroscopeCalibrationUtilsImpl::GetProgress(double* progress) const {
-  CHECK(progress);
-
-  base::AutoLock lock_scope(progress_lock_);
-  *progress = progress_;
-  return true;
-}
-
-void GyroscopeCalibrationUtilsImpl::SetProgress(double progress) {
-  base::AutoLock lock_scope(progress_lock_);
-  progress_ = progress;
+  progress_callback.Run(kProgressBiasWritten);
 }
 
 }  // namespace rmad

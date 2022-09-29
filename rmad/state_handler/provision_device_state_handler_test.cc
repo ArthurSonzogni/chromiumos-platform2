@@ -532,7 +532,6 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   InstructionCalibrationStatusMap calibration_map;
   EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
-  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
   EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
                 RMAD_COMPONENT_BASE_ACCELEROMETER)]
                            [RMAD_COMPONENT_BASE_ACCELEROMETER],

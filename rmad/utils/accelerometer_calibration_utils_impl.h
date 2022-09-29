@@ -26,19 +26,12 @@ class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
       const std::string& name = "cros-ec-accel");
   ~AccelerometerCalibrationUtilsImpl() override = default;
 
-  bool Calibrate() override;
-  bool GetProgress(double* progress) const override;
+  void Calibrate(CalibrationProgressCallback progress_callback) override;
 
  private:
-  void SetProgress(double progress);
-
   // utils part
   scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe_;
   std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils_;
-
-  // progress part
-  double progress_;
-  mutable base::Lock progress_lock_;
 };
 
 }  // namespace rmad

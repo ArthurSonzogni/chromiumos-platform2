@@ -58,48 +58,48 @@ AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
     const std::string& location,
     const std::string& name)
     : SensorCalibrationUtils(location, name),
-      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe),
-      progress_(kProgressInit) {
+      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe) {
   iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
 }
 
-bool AccelerometerCalibrationUtilsImpl::Calibrate() {
+void AccelerometerCalibrationUtilsImpl::Calibrate(
+    CalibrationProgressCallback progress_callback) {
   std::vector<double> avg_data;
   std::vector<double> variance_data;
   std::vector<double> original_calibbias;
   std::map<std::string, int> calibbias;
-  SetProgress(kProgressInit);
+  progress_callback.Run(kProgressInit);
 
   // Before the calibration, we get original calibbias by reading sysfs.
   if (!iio_ec_sensor_utils_->GetSysValues(kAccelerometerCalibbias,
                                           &original_calibbias)) {
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressGetOriginalCalibbias);
+  progress_callback.Run(kProgressGetOriginalCalibbias);
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
   if (!iio_ec_sensor_utils_->GetAvgData(kAccelerometerChannels, kSamples,
                                         &avg_data, &variance_data)) {
     LOG(ERROR) << location_ << ":" << name_ << ": Failed to accumulate data.";
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressSensorDataReceived);
+  progress_callback.Run(kProgressSensorDataReceived);
 
   if (avg_data.size() != kAccelerometerIdealValues.size()) {
     LOG(ERROR) << location_ << ":" << name_ << ": Get wrong data size "
                << avg_data.size();
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
 
   if (variance_data.size() != kAccelerometerIdealValues.size()) {
     LOG(ERROR) << location_ << ":" << name_ << ": Get wrong variance data size "
                << variance_data.size();
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
 
   for (int i = 0; i < variance_data.size(); i++) {
@@ -108,8 +108,8 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
                  << ": Data variance=" << variance_data[i]
                  << " too high in channel " << kAccelerometerChannels[i]
                  << ". Expected to be less than " << kVarianceThreshold;
-      SetProgress(kProgressFailed);
-      return false;
+      progress_callback.Run(kProgressFailed);
+      return;
     }
   }
 
@@ -120,37 +120,22 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
       LOG(ERROR) << location_ << ":" << name_
                  << ": Data is out of range, the accelerometer may be damaged "
                     "or the device setup is incorrect.";
-      SetProgress(kProgressFailed);
-      return false;
+      progress_callback.Run(kProgressFailed);
+      return;
     }
     std::string entry = kCalibbiasPrefix + kAccelerometerChannels[i] + "_" +
                         location_ + kCalibbiasPostfix;
     calibbias[entry] = round(offset / kCalibbias2SensorReading);
   }
-  SetProgress(kProgressBiasCalculated);
+  progress_callback.Run(kProgressBiasCalculated);
 
   // We first write the calibbias data to vpd, and then update the sensor via
   // sysfs accordingly.
   if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias)) {
-    SetProgress(kProgressFailed);
-    return false;
+    progress_callback.Run(kProgressFailed);
+    return;
   }
-  SetProgress(kProgressBiasWritten);
-
-  return true;
-}
-
-bool AccelerometerCalibrationUtilsImpl::GetProgress(double* progress) const {
-  CHECK(progress);
-
-  base::AutoLock lock_scope(progress_lock_);
-  *progress = progress_;
-  return true;
-}
-
-void AccelerometerCalibrationUtilsImpl::SetProgress(double progress) {
-  base::AutoLock lock_scope(progress_lock_);
-  progress_ = progress;
+  progress_callback.Run(kProgressBiasWritten);
 }
 
 }  // namespace rmad

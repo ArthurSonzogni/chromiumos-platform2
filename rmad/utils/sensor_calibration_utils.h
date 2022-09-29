@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/callback.h>
+
 namespace rmad {
 
 class SensorCalibrationUtils {
@@ -16,14 +18,15 @@ class SensorCalibrationUtils {
       : location_(location), name_(name) {}
   virtual ~SensorCalibrationUtils() = default;
 
+  using CalibrationProgressCallback = base::RepeatingCallback<void(double)>;
+
   // Get the location of the ec sensor, which can be "base" or "lid".
   const std::string& GetLocation() const { return location_; }
 
   // Get sensor name of the ec sensor.
   const std::string& GetName() const { return name_; }
 
-  virtual bool Calibrate() = 0;
-  virtual bool GetProgress(double* progress) const = 0;
+  virtual void Calibrate(CalibrationProgressCallback progress_callback) = 0;
 
  protected:
   // For each sensor, we can identify it by its location (base or lid)

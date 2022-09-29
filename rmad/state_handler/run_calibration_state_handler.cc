@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "rmad/utils/accelerometer_calibration_utils_impl.h"
 #include "rmad/utils/calibration_utils.h"
@@ -22,6 +23,7 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
   vpd_utils_thread_safe_ = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<AccelerometerCalibrationUtilsImpl>(
@@ -45,6 +47,7 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
     : BaseStateHandler(json_store, daemon_callback) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
@@ -56,8 +59,12 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
 }
 
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!state_.has_run_calibration()) {
     state_.set_allocated_run_calibration(new RunCalibrationState);
+    calibration_task_runner_ = base::ThreadPool::CreateTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+    sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
   }
   setup_instruction_ = RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK;
   if (std::string calibration_instruction;
@@ -68,19 +75,6 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
     LOG(WARNING) << "Device hasn't been setup for calibration yet!";
   }
 
-  if (!task_runner_) {
-    task_runner_ = base::ThreadPool::CreateTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-  }
-  progress_timer_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
-      std::make_unique<base::RepeatingTimer>();
-  progress_timer_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
-      std::make_unique<base::RepeatingTimer>();
-  progress_timer_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
-      std::make_unique<base::RepeatingTimer>();
-  progress_timer_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
-      std::make_unique<base::RepeatingTimer>();
-
   // We will run the calibration in RetrieveVarsAndCalibrate.
   if (!RetrieveVarsAndCalibrate()) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
@@ -89,19 +83,7 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
 }
 
 void RunCalibrationStateHandler::CleanUpState() {
-  for (auto& progress_timer : progress_timer_map_) {
-    if (!progress_timer.second) {
-      continue;
-    }
-    if (progress_timer.second->IsRunning()) {
-      progress_timer.second->Stop();
-    }
-    progress_timer.second.reset();
-  }
-  progress_timer_map_.clear();
-  if (task_runner_) {
-    task_runner_.reset();
-  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (vpd_utils_thread_safe_.get()) {
     vpd_utils_thread_safe_->FlushOutRoVpdCache();
   }
@@ -109,6 +91,7 @@ void RunCalibrationStateHandler::CleanUpState() {
 
 BaseStateHandler::GetNextStateCaseReply
 RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!state.has_run_calibration()) {
     LOG(ERROR) << "RmadState missing |run calibration| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
@@ -148,6 +131,7 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 
 BaseStateHandler::GetNextStateCaseReply
 RunCalibrationStateHandler::TryGetNextStateCaseAtBoot() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // We don't expect any reboot during calibration, and here is the part right
   // after rebooting. Therefore, we will mark any unexpected status to failed
   // and transition to kCheckCalibration for further error handling.
@@ -170,24 +154,22 @@ RunCalibrationStateHandler::TryGetNextStateCaseAtBoot() {
 }
 
 bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!GetCalibrationMap(json_store_, &calibration_map_)) {
-    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
-        RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
+    SendOverallSignal(RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(ERROR) << "Failed to read calibration variables";
     return false;
   }
 
   running_instruction_ = GetCurrentSetupInstruction(calibration_map_);
   if (running_instruction_ == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
-    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
-        RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
+    SendOverallSignal(RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     return true;
   }
 
   if (running_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    daemon_callback_->GetCalibrationOverallSignalCallback().Run(
-        RMAD_CALIBRATION_OVERALL_COMPLETE);
+    SendOverallSignal(RMAD_CALIBRATION_OVERALL_COMPLETE);
     return true;
   }
 
@@ -204,6 +186,7 @@ bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
 void RunCalibrationStateHandler::CalibrateAndSendProgress(
     RmadComponent component) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto& utils = sensor_calibration_utils_map_[component];
   if (!utils.get()) {
     LOG(ERROR) << RmadComponent_Name(component)
@@ -218,35 +201,27 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
   SetCalibrationMap(json_store_, calibration_map_);
 
-  task_runner_->PostTask(
+  calibration_task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(base::IgnoreResult(&SensorCalibrationUtils::Calibrate),
-                     base::Unretained(utils.get())));
+      base::BindOnce(&SensorCalibrationUtils::Calibrate,
+                     base::Unretained(utils.get()),
+                     base::BindRepeating(
+                         &RunCalibrationStateHandler::UpdateCalibrationProgress,
+                         base::Unretained(this), component)));
   LOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
-
-  progress_timer_map_[component]->Start(
-      FROM_HERE, kPollInterval,
-      base::BindRepeating(&RunCalibrationStateHandler::CheckCalibrationTask,
-                          this, component));
-  LOG(INFO) << "Start polling calibration progress for "
-            << RmadComponent_Name(component);
 }
 
-void RunCalibrationStateHandler::CheckCalibrationTask(RmadComponent component) {
-  auto& utils = sensor_calibration_utils_map_[component];
-  double progress = 0;
-
-  if (!utils->GetProgress(&progress)) {
-    LOG(WARNING) << "Failed to get calibration progress for "
-                 << utils->GetLocation() << ":" << utils->GetName();
-    return;
-  }
-
-  SaveAndSend(component, progress);
+void RunCalibrationStateHandler::UpdateCalibrationProgress(
+    RmadComponent component, double progress) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&RunCalibrationStateHandler::SaveAndSend,
+                                base::Unretained(this), component, progress));
 }
 
 void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
                                              double progress) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CalibrationComponentStatus::CalibrationStatus status =
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
 
@@ -256,11 +231,17 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
     status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
   }
 
+  CalibrationComponentStatus component_status;
+  component_status.set_component(component);
+  component_status.set_status(status);
+  component_status.set_progress(progress);
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&RunCalibrationStateHandler::SendComponentSignal,
+                     base::Unretained(this), component_status));
+
   auto pre_status = calibration_map_[setup_instruction_][component];
   if (pre_status != status) {
-    // This is a critical section, but we don't need to lock it.
-    // Instead of using a mutex to lock the critical section, we use a timer
-    // (tasks run sequentially on the main thread) to prevent race conditions.
     calibration_map_[setup_instruction_][component] = status;
     SetCalibrationMap(json_store_, calibration_map_);
 
@@ -289,21 +270,29 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
         overall_status = CalibrationOverallStatus::
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE;
       }
-      daemon_callback_->GetCalibrationOverallSignalCallback().Run(
-          overall_status);
+      // Since Chrome will trigger state transitions after receiving the overall
+      // signal, we should post the overall signal after everything is done to
+      // prevent another call from the state transition from breaking the
+      // sequence.
+      sequenced_task_runner_->PostTask(
+          FROM_HERE,
+          base::BindOnce(&RunCalibrationStateHandler::SendOverallSignal,
+                         base::Unretained(this), overall_status));
     }
   }
+}
 
-  CalibrationComponentStatus component_status;
-  component_status.set_component(component);
-  component_status.set_status(status);
-  component_status.set_progress(progress);
+void RunCalibrationStateHandler::SendComponentSignal(
+    CalibrationComponentStatus component_status) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   daemon_callback_->GetCalibrationComponentSignalCallback().Run(
-      std::move(component_status));
+      component_status);
+}
 
-  if (status != CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS) {
-    progress_timer_map_[component]->Stop();
-  }
+void RunCalibrationStateHandler::SendOverallSignal(
+    CalibrationOverallStatus overall_status) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  daemon_callback_->GetCalibrationOverallSignalCallback().Run(overall_status);
 }
 
 }  // namespace rmad

@@ -20,8 +20,10 @@ class MockSensorCalibrationUtils : public SensorCalibrationUtils {
       : SensorCalibrationUtils(location, name) {}
   ~MockSensorCalibrationUtils() override = default;
 
-  MOCK_METHOD(bool, Calibrate, (), (override));
-  MOCK_METHOD(bool, GetProgress, (double*), (const, override));
+  MOCK_METHOD(void,
+              Calibrate,
+              (CalibrationProgressCallback callback),
+              (override));
 };
 
 }  // namespace rmad
