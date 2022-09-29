@@ -23,13 +23,6 @@ ENCRYPTED_REBOOT_VAULT="/mnt/stateful_partition/reboot_vault"
 UNVALIDATED_CRX_CACHE="${STATEFUL}/unencrypted/import_extensions"
 VALIDATED_CRX_CACHE=/var/cache/external_cache
 
-report_additional_statistics() {
-  # Number of users on device.
-  local user_count
-  user_count="$(find "${SHADOW}" -maxdepth 1 -mindepth  1 -type d | wc -l)"
-  metrics_client -s Platform.DiskUsage.UsersOnDevice "${user_count}"
-}
-
 # Remove older files, keep deleting until the directory is less than 100MB
 # or only one day old files remains.  ...and also delete older files if
 # there are too many (the number of files to keep can optionally be configured
@@ -199,13 +192,6 @@ main() {
   NUMBER_OF_USERS="$(ls /home/user/ | wc -l)"
   metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                 "${NUMBER_OF_USERS}" 1 50 50
-
-  # Report additional metrics if we are low on free space.
-  if [ "$(get_stateful_free_space_blocks)" -le \
-      "${ADDITIONAL_REPORTING_THRESHOLD_BLOCKS}" ] ; then
-    report_additional_statistics
-  fi
-
   wipe_crx_cache
 }
 main "$@"
