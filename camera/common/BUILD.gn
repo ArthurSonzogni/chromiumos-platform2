@@ -149,6 +149,15 @@ source_set("mojo_base") {
   ]
 }
 
+source_set("privacy_shutter") {
+  sources = [ "//camera/common/privacy_shutter_detector_impl.cc" ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [ ":base" ]
+}
+
 source_set("camera_algo_bridge") {
   sources = [
     "//camera/common/camera_algorithm_bridge_impl.cc",
@@ -283,6 +292,7 @@ shared_library("libcros_camera") {
     ":jpeg",
     ":libcros_camera_device_config",
     ":mojo_base",
+    ":privacy_shutter",
     ":stream_manipulator",
     ":v4l2_device",
     "//camera/features",
