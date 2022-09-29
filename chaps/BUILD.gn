@@ -21,7 +21,6 @@ group("all") {
       ":chaps_service_test",
       ":chaps_test",
       ":chapsd_test",
-      ":isolate_login_client_test",
       ":object_policy_test",
       ":object_pool_test",
       ":object_store_test",
@@ -343,19 +342,6 @@ if (use.test) {
 
   executable("object_store_test") {
     sources = [ "object_store_test.cc" ]
-    configs += [ ":target_defaults" ]
-    deps = [
-      ":libchaps_test",
-      "//common-mk/testrunner",
-    ]
-  }
-
-  executable("isolate_login_client_test") {
-    sources = [
-      "isolate_login_client.cc",
-      "isolate_login_client_test.cc",
-      "token_file_manager_chromeos.cc",
-    ]
     configs += [ ":target_defaults" ]
     deps = [
       ":libchaps_test",
