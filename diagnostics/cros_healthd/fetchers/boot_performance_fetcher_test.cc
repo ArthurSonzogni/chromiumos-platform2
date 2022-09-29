@@ -23,7 +23,7 @@ using ::testing::Return;
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
 
 const char kRelativeUptimeLoginPath[] = "tmp/uptime-login-prompt-visible";
-const char kFakeUptimeLog[] = "7.666666666\n17.000000000";
+const char kFakeUptimeLog[] = "7.666666666 4.32\n17.000000000 123.00";
 
 const char kFakeProcUptime[] = "100.33 126.43";
 const char kFakePowerdShutdownLog[] =

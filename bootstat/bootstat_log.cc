@@ -37,6 +37,10 @@ namespace {
 // stored.
 static const char kDefaultOutputDirectoryName[] = "tmp";
 
+static constexpr char kProcUptime[] = "/proc/uptime";
+
+static constexpr int64_t kNsecsPerSec = 1e9;
+
 // Parse a line of text containing one or more space-separated columns of
 // decimal numbers. For example (without the quotes):
 //   "12.76543 0.89"
@@ -82,7 +86,7 @@ static std::optional<std::vector<base::TimeDelta>> ParseDecimalColumns(
     results.push_back(base::Seconds(secs) + base::Nanoseconds(nsecs));
   }
 
-  return {results};
+  return results;
 }
 
 }  // namespace
@@ -120,6 +124,10 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   return norm;
 }
 
+base::FilePath BootStatSystem::GetUptimePath() const {
+  return base::FilePath(kProcUptime);
+}
+
 std::optional<struct timespec> BootStatSystem::GetUpTime() const {
   struct timespec uptime;
   int ret = clock_gettime(CLOCK_BOOTTIME, &uptime);
@@ -127,7 +135,28 @@ std::optional<struct timespec> BootStatSystem::GetUpTime() const {
     PLOG(ERROR) << "Cannot get uptime (CLOCK_BOOTTIME).";
     return std::nullopt;
   }
-  return {uptime};
+  return uptime;
+}
+
+std::optional<base::TimeDelta> BootStatSystem::GetIdleTime() const {
+  base::FilePath path = GetUptimePath();
+  std::string data;
+  if (!base::ReadFileToString(path, &data)) {
+    PLOG(ERROR) << "Cannot read uptime from: " << path;
+    return std::nullopt;
+  }
+
+  auto numbers = ParseDecimalColumns(data);
+  if (!numbers) {
+    LOG(ERROR) << "Couldn't parse uptime: " << data;
+    return std::nullopt;
+  }
+  if (numbers->size() != 2) {
+    LOG(ERROR) << "Unexpected uptime contents: " << data;
+    return std::nullopt;
+  }
+  // Second column is idle time.
+  return (*numbers)[1];
 }
 
 base::ScopedFD BootStatSystem::OpenRtc() const {
@@ -146,7 +175,7 @@ std::optional<struct rtc_time> BootStatSystem::GetRtcTime(
     return std::nullopt;
   }
 
-  return {rtc_time};
+  return rtc_time;
 }
 
 BootStat::BootStat() : BootStat(base::FilePath("/")) {}
@@ -268,8 +297,14 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   if (!uptime)
     return false;
 
-  std::string data = base::StringPrintf("%jd.%09ld\n", (intmax_t)uptime->tv_sec,
-                                        uptime->tv_nsec);
+  std::optional<base::TimeDelta> idle = boot_stat_system_->GetIdleTime();
+  if (!idle)
+    return false;
+
+  std::string data = base::StringPrintf(
+      "%" PRId64 ".%09ld %" PRId64 ".%09" PRId64 "\n",
+      static_cast<int64_t>(uptime->tv_sec), uptime->tv_nsec, idle->InSeconds(),
+      idle->InNanoseconds() % kNsecsPerSec);
 
   base::ScopedFD output_fd = OpenEventFile("uptime", event_name);
   if (!output_fd.is_valid())
@@ -290,18 +325,19 @@ std::optional<std::vector<BootStat::BootstatTiming>> BootStat::ParseUptimeEvent(
     auto result = ParseDecimalColumns(line);
     if (!result)
       return std::nullopt;
-    if (result->size() != 1) {
+    if (result->size() != 2) {
       LOG(ERROR) << "Unexpected uptime line: " << line;
       return std::nullopt;
     }
 
     BootStat::BootstatTiming event = {
         .uptime = (*result)[0],
+        .idle_time = (*result)[1],
     };
     events.push_back(std::move(event));
   }
 
-  return {events};
+  return events;
 }
 
 // API functions.
@@ -324,12 +360,13 @@ bool BootStat::LogRtcSync(const char* event_name) {
     return false;
 
   std::string data = base::StringPrintf(
-      "%jd.%09ld %jd.%09ld %04d-%02d-%02d %02d:%02d:%02d\n",
-      (intmax_t)tick->boottime_before.tv_sec, tick->boottime_before.tv_nsec,
-      (intmax_t)tick->boottime_after.tv_sec, tick->boottime_after.tv_nsec,
-      tick->rtc_time.tm_year + 1900, tick->rtc_time.tm_mon + 1,
-      tick->rtc_time.tm_mday, tick->rtc_time.tm_hour, tick->rtc_time.tm_min,
-      tick->rtc_time.tm_sec);
+      "%" PRId64 ".%09ld %" PRId64 ".%09ld %04d-%02d-%02d %02d:%02d:%02d\n",
+      static_cast<int64_t>(tick->boottime_before.tv_sec),
+      tick->boottime_before.tv_nsec,
+      static_cast<int64_t>(tick->boottime_after.tv_sec),
+      tick->boottime_after.tv_nsec, tick->rtc_time.tm_year + 1900,
+      tick->rtc_time.tm_mon + 1, tick->rtc_time.tm_mday, tick->rtc_time.tm_hour,
+      tick->rtc_time.tm_min, tick->rtc_time.tm_sec);
 
   bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write rtc sync.";

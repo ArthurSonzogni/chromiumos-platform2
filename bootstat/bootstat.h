@@ -37,9 +37,15 @@ class BootStatSystem {
   // Returns an empty path on failure.
   virtual base::FilePath GetDiskStatisticsFilePath() const;
 
+  // Returns the path for retrieving uptime (e.g., from procfs).
+  virtual base::FilePath GetUptimePath() const;
+
   // Returns the current uptime (clock_gettime's CLOCK_BOOTTIME),
   // std::nullopt on error.
   virtual std::optional<struct timespec> GetUpTime() const;
+
+  // Returns the idle time since boot.
+  std::optional<base::TimeDelta> GetIdleTime() const;
 
   // Returns a scoped FD to the RTC device (used by GetRtcTime below).
   virtual base::ScopedFD OpenRtc() const;
@@ -78,6 +84,12 @@ class BRILLO_EXPORT BootStat {
   struct BootstatTiming {
     // Time since boot.
     base::TimeDelta uptime;
+
+    // Time spent in the idle task since boot. Note that this accumulates for
+    // each CPU, so on a multi-core system, a meaningful comparison of "idle
+    // time" might normalize against the number of available CPUs in the
+    // system.
+    base::TimeDelta idle_time;
   };
 
   // Retrieves the event timings for a given event type (|event_name|). There
