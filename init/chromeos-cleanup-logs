@@ -189,9 +189,6 @@ main() {
   metrics_client Platform.StatefulFreeSpace \
     "$((STATEFUL_FREE / 1000))" 0 2097152 50
 
-  NUMBER_OF_USERS="$(ls /home/user/ | wc -l)"
-  metrics_client Platform.DiskUsage.NumUserHomeDirectories \
-                "${NUMBER_OF_USERS}" 1 50 50
   wipe_crx_cache
 }
 main "$@"
