@@ -364,13 +364,13 @@ void Device::StopAllActivities() {
 }
 
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
-                                            Error* error,
                                             const ResultCallback& callback) {
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+  Error error;
+  Error::PopulateAndLog(FROM_HERE, &error, Error::kNotImplemented,
                         "SetUsbEthernetMacAddressSource from source " + source +
                             " is not implemented for " + GetTechnologyName() +
                             " device on " + link_name_ + ".");
-  return;
+  callback.Run(error);
 }
 
 void Device::ForceIPConfigUpdate() {

@@ -133,7 +133,6 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   bool DisableOffloadFeatures();
 
   void SetUsbEthernetMacAddressSource(const std::string& source,
-                                      Error* error,
                                       const ResultCallback& callback) override;
 
   // Returns hex coded MAC address in lower case and without colons on success.

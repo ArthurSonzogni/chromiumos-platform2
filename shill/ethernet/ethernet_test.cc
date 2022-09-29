@@ -164,9 +164,17 @@ class EthernetTest : public testing::Test {
     run_loop.Run();
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
-                                      Error* error,
                                       const ResultCallback& callback) {
-    ethernet_->SetUsbEthernetMacAddressSource(source, error, callback);
+    base::RunLoop run_loop;
+    auto cb_wrapper = [](const base::RepeatingClosure& quit_closure,
+                         const ResultCallback& callback, const Error& error) {
+      callback.Run(error);
+      quit_closure.Run();
+    };
+    ethernet_->SetUsbEthernetMacAddressSource(
+        source,
+        base::BindRepeating(cb_wrapper, run_loop.QuitClosure(), callback));
+    run_loop.Run();
   }
   std::string GetUsbEthernetMacAddressSource(Error* error) {
     return ethernet_->GetUsbEthernetMacAddressSource(error);
@@ -531,38 +539,35 @@ TEST_F(EthernetTest, Certification) {
   StopEthernet();
 }
 
+MATCHER_P(ErrorEquals, expected_error_type, "") {
+  return arg.type() == expected_error_type;
+}
+
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceInvalidArguments) {
   SetBusType(kDeviceBusTypeUsb);
-  Error error(Error::kOperationInitiated);
+
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kInvalidArguments)));
   SetUsbEthernetMacAddressSource(
-      "invalid_value", &error,
+      "invalid_value",
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
-  EXPECT_EQ(error.type(), Error::kInvalidArguments);
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNotSupportedForNonUsb) {
   SetBusType(kDeviceBusTypePci);
-  Error error(Error::kOperationInitiated);
-  EXPECT_CALL(*this, ErrorCallback(_)).Times(0);
+
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kIllegalOperation)));
   SetUsbEthernetMacAddressSource(
-      kUsbEthernetMacAddressSourceUsbAdapterMac, &error,
+      kUsbEthernetMacAddressSourceUsbAdapterMac,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
-  EXPECT_EQ(error.type(), Error::kIllegalOperation);
 }
 
 TEST_F(EthernetTest,
        SetUsbEthernetMacAddressSourceNotSupportedEmptyFileWithMac) {
   SetBusType(kDeviceBusTypeUsb);
-  Error error(Error::kOperationInitiated);
-  EXPECT_CALL(*this, ErrorCallback(_)).Times(0);
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kNotFound)));
   SetUsbEthernetMacAddressSource(
-      kUsbEthernetMacAddressSourceDesignatedDockMac, &error,
+      kUsbEthernetMacAddressSourceDesignatedDockMac,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
-  EXPECT_EQ(error.type(), Error::kNotFound);
-}
-
-MATCHER_P(ErrorEquals, expected_error_type, "") {
-  return arg.type() == expected_error_type;
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
@@ -583,10 +588,8 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
           })));
 
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kOperationFailed)));
-
-  Error error(Error::kOperationInitiated);
   SetUsbEthernetMacAddressSource(
-      kUsbEthernetMacAddressSourceBuiltinAdapterMac, &error,
+      kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
   EXPECT_EQ(hwaddr_, ethernet_->mac_address());
@@ -609,10 +612,8 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
           })));
 
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kSuccess)));
-
-  Error error(Error::kOperationInitiated);
   SetUsbEthernetMacAddressSource(
-      kUsbEthernetMacAddressSourceBuiltinAdapterMac, &error,
+      kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
   EXPECT_EQ(kBuiltinAdapterMacAddress, ethernet_->mac_address());

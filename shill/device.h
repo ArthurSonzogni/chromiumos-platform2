@@ -246,11 +246,8 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // there is nothing to be done in the general case.
   virtual void OnDarkResume(const ResultCallback& callback);
 
-  // Sets MAC address source for USB Ethernet device. Callback will only be
-  // invoke when device successfully changed MAC address or failed to change MAC
-  // address.
+  // Sets MAC address source for USB Ethernet device.
   virtual void SetUsbEthernetMacAddressSource(const std::string& source,
-                                              Error* error,
                                               const ResultCallback& callback);
 
   // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.

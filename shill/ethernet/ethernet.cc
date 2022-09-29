@@ -147,7 +147,7 @@ Ethernet::Ethernet(Manager* manager,
     // Force change MAC address to |permanent_mac_address_| if
     // |mac_address_| != |permanent_mac_address_|.
     SetUsbEthernetMacAddressSource(kUsbEthernetMacAddressSourceUsbAdapterMac,
-                                   nullptr, ResultCallback());
+                                   base::DoNothing());
   }
 }
 
@@ -704,13 +704,14 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
 }
 
 void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
-                                              Error* error,
                                               const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << " " << source;
 
   if (bus_type_ != kDeviceBusTypeUsb) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kIllegalOperation,
                           "Not allowed on non-USB devices: " + bus_type_);
+    callback.Run(error);
     return;
   }
 
@@ -724,15 +725,19 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
   } else if (source == kUsbEthernetMacAddressSourceUsbAdapterMac) {
     new_mac_address = permanent_mac_address_;
   } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kInvalidArguments,
                           "Unknown source: " + source);
+    callback.Run(error);
     return;
   }
 
   if (new_mac_address.empty()) {
+    Error error;
     Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotFound,
+        FROM_HERE, &error, Error::kNotFound,
         "Failed to find out new MAC address for source: " + source);
+    callback.Run(error);
     return;
   }
 
@@ -743,9 +748,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
       adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
                                    usb_ethernet_mac_address_source_);
     }
-    if (error) {
-      error->Populate(Error::kSuccess);
-    }
+    callback.Run(Error(Error::kSuccess));
     return;
   }
 
