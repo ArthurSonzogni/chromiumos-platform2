@@ -19,6 +19,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/platform_file.h>
+#include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -231,7 +232,7 @@ class Storage::PipelineIdInStorage {
     return write_status;
   }
 
-  StatusOr<std::string> GetPipelineId() {
+  StatusOr<base::StringPiece> GetPipelineId() {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     // Read cached value instead of performing a file read.
     if (pipeline_id_.has_value()) {
@@ -345,6 +346,9 @@ class Storage::PipelineIdInStorage {
     const int32_t read_result = pipeline_id_file.Read(
         /*offset=*/0, file_buffer, kPipelineIdMaxFileSize);
 
+    // The below errors with |error::DATA_LOSS| most likely occur when files are
+    // corrupted. The caller should handle these by resetting the storage
+    // queues.
     if (read_result < 0) {
       return Status(error::DATA_LOSS,
                     base::StrCat({"File read error, full_name= ",
@@ -774,6 +778,48 @@ void Storage::Create(
       new Storage(options, encryption_module, compression_module,
                   std::move(async_start_upload_cb)));
 
+  // Initialize pipeline id if necessary
+  if (const Status found_existing_pipeline_id =
+          storage->pipeline_id_in_storage_->GetPipelineId().status();
+      !found_existing_pipeline_id.ok()) {
+    // Failed to retrieve the pipeline id from the filesystem.
+    // This could mean one of several things:
+    // 1. A pipeline id file does not exist yet, i.e. this is the first time
+    // we've initialize storage on this machine.
+    // 2. A pipeline id file exists, but cannot be read.
+    // In both cases we need to generate a pipeline id and store it.
+    // In case #2, our files are most likely corrupt, so we need to delete them
+    // by resetting all our queues. This should be a rare event.
+    if (found_existing_pipeline_id.error_code() == error::DATA_LOSS) {
+      LOG(ERROR) << "Files corrupted. Purging storage queues. Error status = "
+                 << found_existing_pipeline_id;
+      // Case #2: delete files/reset all storage queues
+      for (const auto& priority_queue_pair : storage->queues_) {
+        if (Status s = priority_queue_pair.second->Purge(); !s.ok()) {
+          std::move(completion_cb)
+              .Run(Status(
+                  error::DATA_LOSS,
+                  "Could not purge storage that was found to be corrupt"));
+          return;
+        }
+      }
+    }
+    // Case #1 and #2: generate a new pipeline id and store it
+    if (Status status = storage->pipeline_id_in_storage_->StorePipelineId(
+            base::GenerateGUID());
+        !status.ok()) {
+      // Error storing the pipeline id. Nothing else we can do at this point
+      // since we've already tried resetting the files.
+      if (!status.ok()) {
+        std::move(completion_cb)
+            .Run(
+                Status(error::DATA_LOSS,
+                       "Files are still corrupt after purging storage queues"));
+        return;
+      }
+    }
+  }
+
   // Asynchronously run initialization.
   Start<StorageInitContext>(options.ProduceQueuesOptions(), std::move(storage),
                             std::move(completion_cb));
@@ -900,11 +946,13 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::GetQueue(
   return it->second;
 }
 
-Status Storage::StorePipelineId(base::StringPiece pipeline_id) {
-  return pipeline_id_in_storage_->StorePipelineId(pipeline_id);
-}
-StatusOr<std::string> Storage::GetPipelineId() {
-  return pipeline_id_in_storage_->GetPipelineId();
+base::StringPiece Storage::GetPipelineId() const {
+  StatusOr<base::StringPiece> pipeline_id_result =
+      pipeline_id_in_storage_->GetPipelineId();
+  // Should always have a pipeline id because we initialize it during
+  // |Storage::Create()|
+  DCHECK(pipeline_id_result.ok()) << pipeline_id_result.status();
+  return pipeline_id_result.ValueOrDie();
 }
 
 }  // namespace reporting

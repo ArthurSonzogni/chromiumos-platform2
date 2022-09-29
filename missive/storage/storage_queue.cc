@@ -244,6 +244,20 @@ Status StorageQueue::Init() {
   return Status::StatusOK();
 }
 
+Status StorageQueue::Purge() {
+  // Reset all of the state that gets set during queue initialization
+  generation_id_ = 1 + base::RandGenerator(std::numeric_limits<int64_t>::max());
+  next_sequencing_id_ = 0;
+  first_sequencing_id_ = 0;
+  first_unconfirmed_sequencing_id_ = std::nullopt;
+  last_record_digest_ = std::nullopt;
+  base::flat_set<base::FilePath> used_files_set;
+  RETURN_IF_ERROR(EnumerateDataFiles(&used_files_set));
+  DeleteUnusedFiles(used_files_set);
+  ReleaseAllFileInstances();
+  return Status::StatusOK();
+}
+
 std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Attach last record digest, if present.

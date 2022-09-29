@@ -119,6 +119,12 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // CollectFilesForUpload.
   void Flush();
 
+  // Performs a full "reset" of the queue:
+  // - Deletes all unused files
+  // - Creates a new generation id
+  // Only used to recover from file corruption scenarios.
+  Status Purge();
+
   // Test only: makes specified records fail on specified operation kind.
   void TestInjectErrorsForOperation(
       const test::StorageQueueOperationKind operation_kind,

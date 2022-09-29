@@ -77,12 +77,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // be paased here.
   void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key);
 
-  // Stores the given |pipeline_id|. Overwrites any data from previous calls.
-  // Returns "ok" |Status| if success. Otherwise returns error Status.
-  Status StorePipelineId(base::StringPiece pipeline_id);
-
-  // Returns the pipeline ID if possible. Otherwise, returns error Status.
-  StatusOr<std::string> GetPipelineId();
+  // Returns the pipeline ID stored in the filesystem. All errors are handled
+  // internally.
+  base::StringPiece GetPipelineId() const;
 
  protected:
   virtual ~Storage();

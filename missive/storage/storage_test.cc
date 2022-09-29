@@ -14,6 +14,7 @@
 #include <base/containers/flat_map.h>
 #include <base/feature_list.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/guid.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
@@ -53,7 +54,8 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
-using ::testing::Ne;
+using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
@@ -1032,71 +1034,16 @@ class StorageTest
 constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
-TEST_P(StorageTest, WriteAndReadPipelineId) {
+TEST_P(StorageTest, ReadPipelineId) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
   // fail
   WriteStringOrDie(FAST_BATCH, kData[0]);
 
-  constexpr char kTestPipelineId[] = "test_pipeline_id";
-  Status status = storage_->StorePipelineId(kTestPipelineId);
-  EXPECT_THAT(status, Eq(Status::StatusOK()));
-
-  StatusOr<std::string> pipeline_id_result = storage_->GetPipelineId();
+  StatusOr<base::StringPiece> pipeline_id_result = storage_->GetPipelineId();
   EXPECT_THAT(pipeline_id_result.status(), Eq(Status::StatusOK()));
-  EXPECT_THAT(pipeline_id_result.ValueOrDie(), Eq(kTestPipelineId));
-}
-
-TEST_P(StorageTest, PipelineIdMultipleSuccessiveReadsOk) {
-  CreateTestStorageOrDie(BuildTestStorageOptions());
-
-  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
-  // fail
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  constexpr char kTestPipelineId[] = "test_pipeline_id";
-  Status status = storage_->StorePipelineId(kTestPipelineId);
-  EXPECT_THAT(status, Eq(Status::StatusOK()));
-
-  StatusOr<std::string> pipeline_id_result = storage_->GetPipelineId();
-  EXPECT_THAT(pipeline_id_result.status(), Eq(Status::StatusOK()));
-  EXPECT_THAT(pipeline_id_result.ValueOrDie(), Eq(kTestPipelineId));
-
-  StatusOr<std::string> pipeline_id_result_2 = storage_->GetPipelineId();
-  EXPECT_THAT(pipeline_id_result_2.status(), Eq(Status::StatusOK()));
-  EXPECT_THAT(pipeline_id_result_2.ValueOrDie(), Eq(kTestPipelineId));
-}
-
-TEST_P(StorageTest, OverwritingPipelineIdReturnsMostRecentWrite) {
-  CreateTestStorageOrDie(BuildTestStorageOptions());
-
-  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
-  // fail
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  constexpr char kTestPipelineId[] = "test_pipeline_id";
-  Status status = storage_->StorePipelineId(kTestPipelineId);
-  EXPECT_THAT(status, Eq(Status::StatusOK()));
-
-  constexpr char kTestPipelineId_2[] = "test_pipeline_id_2";
-  Status status_2 = storage_->StorePipelineId(kTestPipelineId_2);
-  EXPECT_THAT(status_2, Eq(Status::StatusOK()));
-
-  StatusOr<std::string> pipeline_id_result = storage_->GetPipelineId();
-  EXPECT_THAT(pipeline_id_result.status(), Eq(Status::StatusOK()));
-  EXPECT_THAT(pipeline_id_result.ValueOrDie(), Eq(kTestPipelineId_2));
-}
-
-TEST_P(StorageTest, PipelineIdReadReturnsErrorIfNothingStored) {
-  CreateTestStorageOrDie(BuildTestStorageOptions());
-
-  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
-  // fail
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  StatusOr<std::string> pipeline_id_result = storage_->GetPipelineId();
-  EXPECT_THAT(pipeline_id_result.status(), Ne(Status::StatusOK()));
+  EXPECT_TRUE(IsValidGUID(pipeline_id_result.ValueOrDie()));
 }
 
 TEST_P(StorageTest, WriteIntoNewStorageAndReopen) {
