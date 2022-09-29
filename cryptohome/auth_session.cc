@@ -760,12 +760,17 @@ void AuthSession::UpdateVaultKeyset(
 
 bool AuthSession::AuthenticateViaVaultKeyset(
     std::optional<AuthFactorType> request_auth_factor_type,
+    const std::string& key_label,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
+  DCHECK(!key_label.empty());
+
   AuthBlockState auth_state;
+  // Identify the key via `key_label` instead of `key_data_.label()`, as the
+  // latter can be empty for legacy keysets.
   if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
-          key_data_.label(), obfuscated_username_, auth_state /*Out*/)) {
+          key_label, obfuscated_username_, auth_state /*Out*/)) {
     LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
     std::move(on_done).Run(MakeStatus<error::CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionBlockStateMissingInAuthViaVaultKey),
@@ -978,7 +983,8 @@ void AuthSession::Authenticate(
           CreateChallengeCredentialAuthInput(authorization_request)};
 
   AuthenticateViaVaultKeyset(
-      /*request_auth_factor_type=*/std::nullopt, auth_input,
+      /*request_auth_factor_type=*/std::nullopt,
+      credentials->key_data().label(), auth_input,
       std::move(auth_session_performance_timer), std::move(on_done));
 }
 
@@ -1111,8 +1117,9 @@ bool AuthSession::AuthenticateAuthFactor(
           kAuthSessionAuthenticateAuthFactorVKTimer);
 
   return AuthenticateViaVaultKeyset(
-      auth_factor.type(), auth_input_status.value(),
-      std::move(auth_session_performance_timer), std::move(on_done));
+      auth_factor.type(), request.auth_factor_label(),
+      auth_input_status.value(), std::move(auth_session_performance_timer),
+      std::move(on_done));
 }
 
 void AuthSession::RemoveAuthFactor(

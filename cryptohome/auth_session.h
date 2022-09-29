@@ -474,6 +474,7 @@ class AuthSession final {
   // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
   bool AuthenticateViaVaultKeyset(
       std::optional<AuthFactorType> request_auth_factor_type,
+      const std::string& key_label,
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,

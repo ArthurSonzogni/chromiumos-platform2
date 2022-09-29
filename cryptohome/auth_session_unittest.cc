@@ -154,7 +154,8 @@ class AuthSessionTest : public ::testing::Test {
     EXPECT_CALL(keyset_management_, GetVaultKeyset(_, label))
         .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
 
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+    EXPECT_CALL(auth_block_utility_,
+                GetAuthBlockStateFromVaultKeyset(label, _, _))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
         .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
