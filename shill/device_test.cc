@@ -303,25 +303,6 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
-TEST_F(DeviceTest, StopNetwork) {
-  ASSERT_EQ(nullptr, device_->ipconfig());
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  device_->set_ip6config(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  device_->network()->Stop();
-  ASSERT_EQ(nullptr, device_->ipconfig());
-  ASSERT_EQ(nullptr, device_->ip6config());
-}
-
-TEST_F(DeviceTest, StopNetworkNULL) {
-  ASSERT_EQ(nullptr, device_->ipconfig());
-  ASSERT_EQ(nullptr, device_->ip6config());
-  device_->network()->Stop();
-  ASSERT_EQ(nullptr, device_->ipconfig());
-  ASSERT_EQ(nullptr, device_->ip6config());
-}
-
 TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   device_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), "randomname"));

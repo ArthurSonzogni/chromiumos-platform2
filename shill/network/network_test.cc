@@ -651,6 +651,23 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
 }
 
+// Verifies that the exposed IPConfig objects should be cleared on stopped.
+TEST_F(NetworkStartTest, Stop) {
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  TriggerDHCPUpdateCallback();
+  TriggerSLAACUpdate();
+
+  VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
+
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_));
+  network_->Stop();
+  EXPECT_EQ(network_->state(), Network::State::kIdle);
+  VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kNone);
+}
+
 }  // namespace
 
 }  // namespace
