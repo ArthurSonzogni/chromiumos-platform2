@@ -272,6 +272,7 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
       still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()) {
   DCHECK_NE(runtime_options_, nullptr);
+  DCHECK(gpu_resources_);
 
   if (options_override_for_testing) {
     options_ = *options_override_for_testing;

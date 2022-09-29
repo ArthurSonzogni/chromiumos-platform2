@@ -25,6 +25,9 @@ class EglContext {
   // CrOS devices.
   static std::unique_ptr<EglContext> GetSurfacelessContext();
 
+  // Default constructor creates an invalid context.
+  EglContext() = default;
+
   // Creates and initializes an EGLContext. Does not take ownership of
   // |display|.
   explicit EglContext(EGLDisplay display);

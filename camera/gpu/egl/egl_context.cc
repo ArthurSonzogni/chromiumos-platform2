@@ -19,7 +19,8 @@ namespace cros {
 std::unique_ptr<EglContext> EglContext::GetSurfacelessContext() {
   EGLDisplay egl_display = GetInitializedEglDisplay();
   if (egl_display == EGL_NO_DISPLAY) {
-    LOGF(FATAL) << "Failed to create EGL display";
+    LOGF(ERROR) << "Failed to create EGL display";
+    return std::make_unique<EglContext>();
   }
   // This will leak |egl_display|, but it should be okay.
   return std::make_unique<EglContext>(egl_display);

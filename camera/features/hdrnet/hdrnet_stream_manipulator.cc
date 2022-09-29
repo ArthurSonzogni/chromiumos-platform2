@@ -207,6 +207,8 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
       still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
+  DCHECK(gpu_resources_);
+
   if (!config_.IsValid()) {
     if (options) {
       // Options for testing.
@@ -232,6 +234,8 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
 bool HdrNetStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
+  DCHECK(gpu_resources_);
+
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,

@@ -78,8 +78,9 @@ void CameraHalServerImpl::Start() {
     gpu_resources_ = std::make_unique<GpuResources>();
     if (!gpu_resources_->Initialize()) {
       LOGF(ERROR) << "Failed to initialize GPU resources";
-      ExitOnMainThread(-ENODEV);
+      gpu_resources_ = nullptr;
     }
+    DCHECK(gpu_resources_);
   }
 
   int result = LoadCameraHal();
