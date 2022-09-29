@@ -136,19 +136,6 @@ SerializedVaultKeyset CreateFakePinVk(const std::string& label) {
   return serialized_vk;
 }
 
-void MockLabelToKeyDataMapLoading(
-    const std::string& obfuscated_username,
-    const std::vector<SerializedVaultKeyset>& serialized_vks,
-    MockKeysetManagement& keyset_management) {
-  KeyLabelMap key_label_map;
-  for (const auto& serialized_vk : serialized_vks) {
-    key_label_map[serialized_vk.key_data().label()] = serialized_vk.key_data();
-  }
-  EXPECT_CALL(keyset_management,
-              GetVaultKeysetLabelsAndData(obfuscated_username, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(key_label_map), Return(true)));
-}
-
 void MockVKToAuthFactorMapLoading(
     const std::string& obfuscated_username,
     const std::vector<SerializedVaultKeyset>& serialized_vks,
@@ -1345,8 +1332,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -1391,8 +1376,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -1432,8 +1415,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
@@ -1621,8 +1602,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kConfiguredKeyLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -1658,8 +1637,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -1696,8 +1673,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
   // Mock successful authentication via a VaultKeyset.
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
@@ -1880,8 +1855,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
   const SerializedVaultKeyset serialized_vk2 =
       CreateFakePasswordVk(kPasswordLabel2);
   // AuthSession first loads all KeyData mapped to labels.
-  MockLabelToKeyDataMapLoading(
-      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
   MockVKToAuthFactorMapLoading(
       obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
 
@@ -1938,8 +1911,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
 
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -1991,8 +1962,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
 
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 
@@ -2046,8 +2015,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   const SerializedVaultKeyset serialized_vk2 =
       CreateFakePasswordVk(kPasswordLabel2);
   // AuthSession first loads all KeyData mapped to labels.
-  MockLabelToKeyDataMapLoading(
-      obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
   MockVKToAuthFactorMapLoading(
       obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
 
@@ -2104,8 +2071,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
       CreateFakePasswordVk(kPasswordLabel);
-  MockLabelToKeyDataMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
   MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
                                keyset_management_);
 

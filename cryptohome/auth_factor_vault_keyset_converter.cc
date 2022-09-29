@@ -152,14 +152,16 @@ AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
 }
 
 user_data_auth::CryptohomeErrorCode
-AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
+AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     const std::string& username,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
-        out_label_to_auth_factor_backup_vks) {
+        out_label_to_auth_factor_backup_vks,
+    std::map<std::string, KeyData>* key_label_data) {
   DCHECK(out_label_to_auth_factor.empty());
   DCHECK(out_label_to_auth_factor_backup_vks.empty());
+  out_label_to_auth_factor.clear();
 
   std::string obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
@@ -187,6 +189,17 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     } else {
       out_label_to_auth_factor_backup_vks.emplace(vk->GetLabel(),
                                                   std::move(auth_factor));
+    }
+    if (key_label_data) {
+      if (key_label_data->find(vk->GetLabel()) != key_label_data->end()) {
+        // This is a confirmation check, we do not expect to hit this.
+        LOG(ERROR) << "Found a duplicate label, skipping it: "
+                   << vk->GetLabel();
+        continue;
+      }
+
+      key_label_data->emplace(
+          std::make_pair(vk->GetLabel(), vk->GetKeyDataOrDefault()));
     }
   }
 

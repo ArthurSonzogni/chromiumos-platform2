@@ -4157,8 +4157,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
   start_auth_session_req_->mutable_account_id()->set_account_id(
       "foo@example.com");
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
       .WillOnce(Return(new NiceMock<cryptohome::MockFileEnumerator>));
   user_data_auth::StartAuthSessionReply auth_session_reply;
@@ -4504,8 +4502,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(keyLabelData), Return(true)));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));

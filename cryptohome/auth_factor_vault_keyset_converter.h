@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,11 +15,9 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 
 namespace cryptohome {
@@ -42,12 +41,13 @@ class AuthFactorVaultKeysetConverter {
 
   // Returns all the existing VaultKeyset data on disk mapped to their labels
   // and converted into AuthFactor format.
-  user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactors(
+  user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactorsAndKeyLabelData(
       const std::string& username,
       std::map<std::string, std::unique_ptr<AuthFactor>>&
           out_label_to_auth_factor,
       std::map<std::string, std::unique_ptr<AuthFactor>>&
-          out_label_to_auth_factor_backup_vks);
+          out_label_to_auth_factor_backup_vks,
+      std::map<std::string, KeyData>* key_label_data);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.

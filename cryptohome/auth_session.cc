@@ -222,24 +222,19 @@ AuthSession::AuthSession(
   // Decide on USS vs VaultKeyset based on what is on the disk for the user.
   // If at least one non-backup VK exists, don't take USS path even if the
   // experiment is enabled.
-
   user_exists_ = keyset_management_->UserExists(obfuscated_username_);
-  if (user_exists_) {
-    keyset_management_->GetVaultKeysetLabelsAndData(obfuscated_username_,
-                                                    &key_label_data_);
-    user_has_configured_credential_ = !key_label_data_.empty();
-  }
-
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
   std::map<std::string, std::unique_ptr<AuthFactor>>
       label_to_auth_factor_for_backup_vks;
-  if (converter_->VaultKeysetsToAuthFactors(
-          username_, label_to_auth_factor_,
-          label_to_auth_factor_for_backup_vks) !=
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(WARNING) << "Failed to list the available VaultKeyset factors.";
+
+  if (user_exists_) {
+    converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
+        username_, label_to_auth_factor_, label_to_auth_factor_for_backup_vks,
+        &key_label_data_);
+    user_has_configured_credential_ = !key_label_data_.empty();
   }
+
   // Before IsUserSecretStashExperimentEnabled() there are no backup
   // VaultKeysets in disk, hence label_to_auth_factor_for_backup_vks is empty.
   // After IsUserSecretStashExperimentEnabled() is enabled UserSecretStash

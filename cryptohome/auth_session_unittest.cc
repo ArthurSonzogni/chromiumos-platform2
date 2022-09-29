@@ -595,7 +595,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
@@ -665,7 +664,6 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
@@ -732,7 +730,6 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
@@ -796,7 +793,6 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
@@ -859,8 +855,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
   std::string obfuscated_username = SanitizeUserName(kFakeUsername);
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_,
-              GetVaultKeysetLabelsAndData(obfuscated_username, _));
   AuthSession auth_session(
       kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
@@ -1111,7 +1105,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1151,7 +1144,6 @@ TEST_F(AuthSessionTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1244,7 +1236,6 @@ TEST_F(AuthSessionTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1339,7 +1330,6 @@ TEST_F(AuthSessionTest,
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1418,7 +1408,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1723,7 +1712,6 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1798,7 +1786,6 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1849,7 +1836,6 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
 
   AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
@@ -1941,8 +1927,6 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
 
   // Create AuthSession.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
-      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillRepeatedly(Return(true));
