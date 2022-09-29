@@ -75,7 +75,8 @@ class DiagActions final {
   bool ActionRunMemoryRoutine();
   bool ActionRunNvmeSelfTestRoutine(
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type);
-  bool ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold);
+  bool ActionRunNvmeWearLevelRoutine(
+      const std::optional<uint32_t>& wear_level_threshold);
   bool ActionRunPrimeSearchRoutine(
       const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunSignalStrengthRoutine();

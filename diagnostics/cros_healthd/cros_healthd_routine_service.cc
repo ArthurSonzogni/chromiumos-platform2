@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
@@ -288,10 +289,20 @@ void CrosHealthdRoutineService::RunNvmeSelfTestRoutine(
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
+void CrosHealthdRoutineService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
+  RunRoutine(
+      routine_factory_->MakeNvmeWearLevelRoutine(
+          context_->debugd_proxy(),
+          ash::cros_healthd::mojom::NullableUint32::New(wear_level_threshold)),
+      mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
+}
+
+void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
+    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
+    RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
-                 context_->debugd_proxy(), wear_level_threshold),
+                 context_->debugd_proxy(), std::move(wear_level_threshold)),
              mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel,
              std::move(callback));
 }

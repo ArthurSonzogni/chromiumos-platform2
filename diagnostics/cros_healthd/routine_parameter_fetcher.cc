@@ -49,6 +49,14 @@ void RoutineParameterFetcher::GetPrimeSearchParameters(
                        max_num_out);
 }
 
+std::optional<uint32_t> RoutineParameterFetcher::GetNvmeWearLevelParameters()
+    const {
+  std::optional<uint32_t> wear_level_threshold;
+  FetchUint32Parameter(kNvmeWearLevelPropertiesPath,
+                       kWearLevelThresholdProperty, &wear_level_threshold);
+  return wear_level_threshold;
+}
+
 void RoutineParameterFetcher::FetchUint64Parameter(
     const std::string& path,
     const std::string& parameter_name,

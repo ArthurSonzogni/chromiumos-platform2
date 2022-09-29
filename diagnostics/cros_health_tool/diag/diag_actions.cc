@@ -233,7 +233,8 @@ bool DiagActions::ActionRunNvmeSelfTestRoutine(
   return ProcessRoutineResponse(response);
 }
 
-bool DiagActions::ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold) {
+bool DiagActions::ActionRunNvmeWearLevelRoutine(
+    const std::optional<uint32_t>& wear_level_threshold) {
   auto response = adapter_->RunNvmeWearLevelRoutine(wear_level_threshold);
   return ProcessRoutineResponse(response);
 }

@@ -39,6 +39,12 @@ struct GetPrimeSearchParametersTestParams {
   std::optional<uint64_t> expected_max_num_out;
 };
 
+// POD struct for GetNvmeWearLevelParametersTest.
+struct GetNvmeWearLevelParametersTestParams {
+  std::optional<std::string> wear_level_threshold_in;
+  std::optional<uint32_t> expected_wear_level_threshold_out;
+};
+
 class RoutineParameterFetcherTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -285,6 +291,49 @@ INSTANTIATE_TEST_SUITE_P(
                     GetPrimeSearchParametersTestParams{
                         /*max_num_in=*/"10000000000",
                         /*expected_max_num_out=*/10000000000}));
+
+// Tests for the GetNvmeWearLevelParameters() method of RoutineParameterFetcher
+// with different values present in cros_config.
+//
+// This is a parameterized test with the following parameters (accessed
+// through the GetNvmeWearLevelParametersTestParams POD struct):
+// * |wear_level_threshold_in| - If specified, will be written to cros_config's
+// wear_level_threshold property.
+// * |expected_wear_level_threshold_out| - Expected value of
+// |wear_level_threshold_out| after GetNvmeWearLevelParameters() returns.
+class GetNvmeWearLevelParametersTest
+    : public RoutineParameterFetcherTest,
+      public testing::WithParamInterface<GetNvmeWearLevelParametersTestParams> {
+ protected:
+  // Accessors to the test parameters returned by gtest's GetParam():
+  GetNvmeWearLevelParametersTestParams params() const { return GetParam(); }
+};
+
+// Test that GetBatteryHealthParameters() returns correct values.
+TEST_P(GetNvmeWearLevelParametersTest, ReturnsCorrectValues) {
+  MaybeWriteCrosConfigData(params().wear_level_threshold_in,
+                           kWearLevelThresholdProperty,
+                           kNvmeWearLevelPropertiesPath);
+
+  std::optional<uint32_t> actual_wear_level_threshold_out =
+      parameter_fetcher()->GetNvmeWearLevelParameters();
+
+  EXPECT_EQ(actual_wear_level_threshold_out,
+            params().expected_wear_level_threshold_out);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    GetNvmeWearLevelParametersTest,
+    testing::Values(GetNvmeWearLevelParametersTestParams{
+                        /*wear_level_threshold_in=*/std::nullopt,
+                        /*expected_wear_level_threshold_out=*/std::nullopt},
+                    GetNvmeWearLevelParametersTestParams{
+                        /*wear_level_threshold_in=*/"not_int_value",
+                        /*expected_wear_level_threshold_out=*/std::nullopt},
+                    GetNvmeWearLevelParametersTestParams{
+                        /*wear_level_threshold_in=*/"100",
+                        /*expected_wear_level_threshold_out=*/100}));
 
 }  // namespace
 }  // namespace diagnostics

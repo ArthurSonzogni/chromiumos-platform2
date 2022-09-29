@@ -317,7 +317,8 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeWearLevelParams);
       service_->RunNvmeWearLevelRoutine(
-          request.nvme_wear_level_params().wear_level_threshold(),
+          ash::cros_healthd::mojom::NullableUint32::New(
+              request.nvme_wear_level_params().wear_level_threshold()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;

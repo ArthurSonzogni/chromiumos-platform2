@@ -487,7 +487,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunNvmeWearLevelRoutine) {
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   service()->RunNvmeWearLevelRoutine(
-      /*wear_level_threshold=*/30,
+      /*wear_level_threshold=*/mojo_ipc::NullableUint32::New(30),
       base::BindLambdaForTesting(
           [&](mojo_ipc::RunRoutineResponsePtr received_response) {
             response = std::move(received_response);

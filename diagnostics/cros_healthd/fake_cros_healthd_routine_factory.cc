@@ -251,7 +251,7 @@ FakeCrosHealthdRoutineFactory::MakeFloatingPointAccuracyRoutine(
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    uint32_t wear_level_threshold) {
+    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
   DCHECK(debugd_proxy);
   return std::move(next_routine_);
 }

@@ -77,8 +77,14 @@ void FakeRoutineService::RunFloatingPointAccuracyRoutine(
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunNvmeWearLevelRoutine(
+void FakeRoutineService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void FakeRoutineService::RunNvmeWearLevelRoutine(
+    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
+    RunNvmeWearLevelRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 

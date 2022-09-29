@@ -67,8 +67,11 @@ class FakeDiagnosticsService final
   void RunFloatingPointAccuracyRoutine(
       ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunFloatingPointAccuracyRoutineCallback callback) override;
-  void RunNvmeWearLevelRoutine(
+  void DEPRECATED_RunNvmeWearLevelRoutine(
       uint32_t wear_level_threshold,
+      RunNvmeWearLevelRoutineCallback callback) override;
+  void RunNvmeWearLevelRoutine(
+      ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
       RunNvmeWearLevelRoutineCallback callback) override;
   void RunNvmeSelfTestRoutine(
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,

@@ -114,10 +114,14 @@ CrosHealthdRoutineFactoryImpl::MakeFloatingPointAccuracyRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    uint32_t wear_level_threshold) {
+    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
   DCHECK(debugd_proxy);
+  std::optional<uint32_t> wear_level_threshold_ =
+      !wear_level_threshold.is_null()
+          ? wear_level_threshold->value
+          : parameter_fetcher_->GetNvmeWearLevelParameters();
   return std::make_unique<NvmeWearLevelRoutine>(debugd_proxy,
-                                                wear_level_threshold);
+                                                wear_level_threshold_);
 }
 
 std::unique_ptr<DiagnosticRoutine>

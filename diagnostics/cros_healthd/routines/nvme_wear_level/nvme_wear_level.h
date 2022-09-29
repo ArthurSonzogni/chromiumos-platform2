@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/values.h>
@@ -36,7 +37,7 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
   static const bool kNvmeLogRawBinary;
 
   NvmeWearLevelRoutine(org::chromium::debugdProxyInterface* debugd_proxy,
-                       uint32_t wear_level_threshold);
+                       const std::optional<uint32_t>& wear_level_threshold);
   NvmeWearLevelRoutine(const NvmeWearLevelRoutine&) = delete;
   NvmeWearLevelRoutine& operator=(const NvmeWearLevelRoutine&) = delete;
   ~NvmeWearLevelRoutine() override;
@@ -60,7 +61,7 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
       std::string msg);
 
   org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
-  const uint32_t wear_level_threshold_ = 0;
+  const std::optional<uint32_t> wear_level_threshold_;
 
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;

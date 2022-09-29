@@ -26,6 +26,8 @@ class RoutineParameterFetcher {
   RoutineParameterFetcher& operator=(const RoutineParameterFetcher&) = delete;
   ~RoutineParameterFetcher();
 
+  // TODO(b/251696072): Replace pointer arguments with return values.
+
   // Fetches the parameters for the battery capacity routine.
   void GetBatteryCapacityParameters(
       std::optional<uint32_t>* low_mah_out,
@@ -38,6 +40,9 @@ class RoutineParameterFetcher {
 
   // Fetches the parameter for the prime search routine.
   void GetPrimeSearchParameters(std::optional<uint64_t>* max_num_out) const;
+
+  // Fetches the parameter for the NVMe wear level routine.
+  std::optional<uint32_t> GetNvmeWearLevelParameters() const;
 
  private:
   // Fetches a uint64_t parameter from cros_config.

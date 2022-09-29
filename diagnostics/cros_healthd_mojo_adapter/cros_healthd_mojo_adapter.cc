@@ -91,7 +91,7 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
 
   // Runs the NvmeWearLevel routine.
   ash::cros_healthd::mojom::RunRoutineResponsePtr RunNvmeWearLevelRoutine(
-      uint32_t wear_level_threshold) override;
+      const std::optional<uint32_t>& wear_level_threshold) override;
 
   // Runs the NvmeSelfTest routine.
   ash::cros_healthd::mojom::RunRoutineResponsePtr RunNvmeSelfTestRoutine(
@@ -514,14 +514,20 @@ CrosHealthdMojoAdapterImpl::RunFloatingPointAccuracyRoutine(
 
 ash::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunNvmeWearLevelRoutine(
-    uint32_t wear_level_threshold) {
+    const std::optional<uint32_t>& wear_level_threshold) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
   ash::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
+  ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold_parameter;
+  if (wear_level_threshold.has_value()) {
+    wear_level_threshold_parameter =
+        ash::cros_healthd::mojom::NullableUint32::New(
+            wear_level_threshold.value());
+  }
   cros_healthd_diagnostics_service_->RunNvmeWearLevelRoutine(
-      wear_level_threshold,
+      std::move(wear_level_threshold_parameter),
       base::BindOnce(&OnMojoResponseReceived<
                          ash::cros_healthd::mojom::RunRoutineResponsePtr>,
                      &response, run_loop.QuitClosure()));

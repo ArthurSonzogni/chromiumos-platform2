@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -49,7 +50,8 @@ class NvmeWearLevelRoutineTest : public testing::Test {
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 
-  void CreateWearLevelRoutine(uint32_t wear_level_threshold) {
+  void CreateWearLevelRoutine(
+      const std::optional<uint32_t>& wear_level_threshold) {
     routine_ = std::make_unique<NvmeWearLevelRoutine>(&debugd_proxy_,
                                                       wear_level_threshold);
   }
@@ -123,6 +125,16 @@ TEST_F(NvmeWearLevelRoutineTest, HighWearLevel) {
 TEST_F(NvmeWearLevelRoutineTest, InvalidThreshold) {
   const uint32_t kThreshold105 = 105;
   CreateWearLevelRoutine(kThreshold105);
+  VerifyNonInteractiveUpdate(
+      RunRoutineAndWaitForExit()->routine_update_union,
+      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError);
+}
+
+// Tests that the NvmeWearLevel routine fails if threshold is null.
+TEST_F(NvmeWearLevelRoutineTest, NullThreshold) {
+  const std::optional<uint32_t> kThresholdNull = std::nullopt;
+  CreateWearLevelRoutine(kThresholdNull);
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kError,

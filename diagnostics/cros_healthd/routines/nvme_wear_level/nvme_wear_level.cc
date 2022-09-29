@@ -23,7 +23,8 @@ namespace diagnostics {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError[] =
-    "Wear-level status: ERROR, threshold in percentage should be under 100.";
+    "Wear-level status: ERROR, threshold in percentage should be non-empty and "
+    "under 100.";
 constexpr char NvmeWearLevelRoutine::kNvmeWearLevelRoutineGetInfoError[] =
     "Wear-level status: ERROR, cannot get wear level info.";
 constexpr char NvmeWearLevelRoutine::kNvmeWearLevelRoutineFailed[] =
@@ -38,7 +39,7 @@ constexpr bool NvmeWearLevelRoutine::kNvmeLogRawBinary = true;
 
 NvmeWearLevelRoutine::NvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    uint32_t wear_level_threshold)
+    const std::optional<uint32_t>& wear_level_threshold)
     : debugd_proxy_(debugd_proxy), wear_level_threshold_(wear_level_threshold) {
   DCHECK(debugd_proxy_);
 }
@@ -46,9 +47,17 @@ NvmeWearLevelRoutine::NvmeWearLevelRoutine(
 NvmeWearLevelRoutine::~NvmeWearLevelRoutine() = default;
 
 void NvmeWearLevelRoutine::Start() {
-  if (wear_level_threshold_ >= 100) {
+  if (!wear_level_threshold_.has_value()) {
+    LOG(ERROR) << "Threshold value is null. "
+                  "Be sure to provide one if not set in cros-config.";
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 /*percent=*/100, kNvmeWearLevelRoutineThresholdError);
+    return;
+  }
+
+  if (wear_level_threshold_.value() >= 100) {
     LOG(ERROR) << "Invalid threshold value (valid: 0-99): "
-               << wear_level_threshold_;
+               << wear_level_threshold_.value();
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
                  /*percent=*/100, kNvmeWearLevelRoutineThresholdError);
     return;
@@ -135,7 +144,7 @@ void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result) {
 
   if (level >= wear_level_threshold_) {
     LOG(INFO) << "Wear level status is higher than threshold. Level: " << level
-              << ", threshold: " << wear_level_threshold_;
+              << ", threshold: " << wear_level_threshold_.value();
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
                  /*percent=*/100, kNvmeWearLevelRoutineFailed);
     return;

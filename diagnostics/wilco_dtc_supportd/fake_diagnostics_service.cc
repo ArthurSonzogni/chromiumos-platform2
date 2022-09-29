@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 
+#include <cstdint>
 #include <optional>
 #include <utility>
 
@@ -98,8 +99,14 @@ void FakeDiagnosticsService::RunFloatingPointAccuracyRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
-void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
+void FakeDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
+void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
+    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
+    RunNvmeWearLevelRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 

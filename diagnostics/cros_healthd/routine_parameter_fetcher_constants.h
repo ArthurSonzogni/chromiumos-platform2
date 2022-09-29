@@ -14,6 +14,8 @@ inline constexpr char kBatteryHealthPropertiesPath[] =
     "/cros-healthd/routines/battery-health";
 inline constexpr char kPrimeSearchPropertiesPath[] =
     "/cros-healthd/routines/prime-search";
+inline constexpr char kNvmeWearLevelPropertiesPath[] =
+    "/cros-healthd/routines/nvme-wear-level";
 
 // Battery capacity properties read from cros_config.
 inline constexpr char kLowMahProperty[] = "low-mah";
@@ -26,6 +28,9 @@ inline constexpr char kPercentBatteryWearAllowedProperty[] =
 
 // Prime search property read from cros_config.
 inline constexpr char kMaxNumProperty[] = "max-num";
+
+// NVMe wear level property read from cros_config.
+inline constexpr char kWearLevelThresholdProperty[] = "wear-level-threshold";
 
 }  // namespace diagnostics
 

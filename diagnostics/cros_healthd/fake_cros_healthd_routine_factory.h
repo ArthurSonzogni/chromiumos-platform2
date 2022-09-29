@@ -63,7 +63,8 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
       const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
-      uint32_t wear_level_threshold) override;
+      ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold)
+      override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type)

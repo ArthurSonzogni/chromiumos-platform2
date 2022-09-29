@@ -92,7 +92,8 @@ class CrosHealthdMojoAdapter {
 
   // Runs the NvmeWearLevel routine.
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
-  RunNvmeWearLevelRoutine(uint32_t wear_level_threshold) = 0;
+  RunNvmeWearLevelRoutine(
+      const std::optional<uint32_t>& wear_level_threshold) = 0;
 
   // Runs the NvmeSelfTest routine.
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
