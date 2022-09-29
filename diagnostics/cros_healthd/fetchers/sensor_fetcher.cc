@@ -78,6 +78,9 @@ std::vector<mojom::Sensor::Type> GetSupportedTypes(
       case cros::mojom::DeviceType::GRAVITY:
         out_types.push_back(mojom::Sensor::Type::kGravity);
         break;
+      case cros::mojom::DeviceType::MAGN:
+        out_types.push_back(mojom::Sensor::Type::kMagn);
+        break;
       default:
         // Ignore other sensor types.
         LOG(ERROR) << "Unsupport sensor device type: " << type;
@@ -130,7 +133,6 @@ class State {
  private:
   // Used to get sensor devices.
   MojoService* const mojo_service_;
-
   // The info to be returned.
   mojom::SensorInfoPtr info_;
   // The error to be returned.

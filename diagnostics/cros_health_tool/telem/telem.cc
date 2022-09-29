@@ -416,6 +416,8 @@ std::string EnumToString(mojom::Sensor::Type type) {
       return "Angle";
     case mojom::Sensor::Type::kGravity:
       return "Gravity";
+    case mojom::Sensor::Type::kMagn:
+      return "Magn";
   }
 }
 

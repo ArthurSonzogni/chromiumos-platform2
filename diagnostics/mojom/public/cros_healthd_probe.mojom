@@ -1686,7 +1686,7 @@ struct Sensor {
 
   // The supported sensor types.
   //
-  // NextMinVersion: 1, NextIndex: 6
+  // NextMinVersion: 2, NextIndex: 7
   [Stable, Extensible]
   enum Type {
     // For mojo backward compatibility, should not be used.
@@ -1701,6 +1701,8 @@ struct Sensor {
     kAngle = 4,
     // Gravity sensor.
     kGravity = 5,
+    // Magnitude sensor.
+    [MinVersion=1] kMagn = 6,
   };
   Type type@2;
 
