@@ -225,6 +225,20 @@ TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
+TEST_F(NetworkTest, EnableIPv6Flags) {
+  // Not interested in IPv4 flags in this test.
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+      .WillOnce(Return(true));
+  network_->Start(Network::StartOptions{.accept_ra = true});
+}
+
 // This group of tests verify the interaction between Network and Connection,
 // and the events sent out from Network, on calling Network::Start() and other
 // IP acquisition events.

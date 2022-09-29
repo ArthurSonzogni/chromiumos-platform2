@@ -303,24 +303,6 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
-TEST_F(DeviceTest, StartIPv6) {
-  auto network = std::make_unique<MockNetwork>(
-      device_->interface_index(), device_->link_name(), device_->technology());
-  auto* network_ptr = network.get();
-  device_->set_network_for_testing(std::move(network));
-
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv6,
-                                      StrEq("disable_ipv6"), StrEq("0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*network_ptr, SetIPFlag(IPAddress::kFamilyIPv6,
-                                      StrEq("accept_dad"), StrEq("1")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*network_ptr,
-              SetIPFlag(IPAddress::kFamilyIPv6, StrEq("accept_ra"), StrEq("2")))
-      .WillOnce(Return(true));
-  device_->network()->StartIPv6();
-}
-
 TEST_F(DeviceTest, Load) {
   device_->enabled_persistent_ = false;
 
