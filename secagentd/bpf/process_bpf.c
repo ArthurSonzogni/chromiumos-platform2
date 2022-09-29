@@ -109,37 +109,3 @@ int BPF_PROG(handle_sched_process_exec,
   bpf_ringbuf_submit(event, 0);
   return 0;
 }
-
-// We use fexit instead of a syscall attachment since we need access to the
-// syscall return value. The fentry/fexit hooks do not require a kernel
-// CONFIG to enable.
-SEC("fexit/ksys_unshare")
-int BPF_PROG(handle_exit, unsigned long unshare_flags, int rv) {
-  // If unshare fails there is no point in reporting it.
-  if (rv != 0) {
-    return 0;
-  }
-
-  struct task_struct* task;
-  struct event* event;
-  struct process_change_namespace* p;
-
-  // Reserve sample from BPF ringbuf.
-  event = (struct event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
-  if (event == NULL) {
-    return 0;
-  }
-  event->type = process_type;
-  task = (struct task_struct*)bpf_get_current_task();
-  event->data.process_event.type = process_change_namespace_type;
-  p = &(event->data.process_event.data.process_change_namespace);
-
-  fill_ns_info(&p->new_ns, task);
-
-  p->start_time = BPF_CORE_READ(task, start_boottime);
-  p->pid = bpf_get_current_pid_tgid() >> 32;
-
-  // Submit the event to the ring buffer for userspace processing.
-  bpf_ringbuf_submit(event, 0);
-  return 0;
-}
