@@ -1091,6 +1091,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
       "os_version", base::Value{base::Value::Type::DICTIONARY});
   SET_DICT(release_milestone, os_version, out_os_version);
   SET_DICT(build_number, os_version, out_os_version);
+  SET_DICT(branch_number, os_version, out_os_version);
   SET_DICT(patch_number, os_version, out_os_version);
   SET_DICT(release_channel, os_version, out_os_version);
 
