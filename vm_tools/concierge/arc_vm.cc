@@ -903,6 +903,17 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "softlockup_panic=0",
   };
 
+  auto mglru_reclaim_interval = request.mglru_reclaim_interval();
+  if (mglru_reclaim_interval > 0) {
+    params.push_back("androidboot.arcvm_mglru_reclaim_interval=" +
+                     std::to_string(mglru_reclaim_interval));
+    auto mglru_reclaim_swappiness = request.mglru_reclaim_swappiness();
+    if (mglru_reclaim_swappiness >= 0) {
+      params.push_back("androidboot.arcvm_mglru_reclaim_swappiness=" +
+                       std::to_string(mglru_reclaim_swappiness));
+    }
+  }
+
   auto guest_swappiness = request.guest_swappiness();
   if (guest_swappiness > 0) {
     params.push_back(

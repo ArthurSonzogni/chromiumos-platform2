@@ -456,6 +456,18 @@ message StartArcVmRequest {
 
   // List of parameters that are shared by ARCVM and container.
   arc.StartArcMiniInstanceRequest mini_instance_request = 34;
+
+  // Reclaim interval in milliseconds
+  // A value of 0 will disable the MGLRU reclaim feature
+  int32 mglru_reclaim_interval = 35;
+
+  // Swappiness value for MGLRU reclaim (0 - 200)
+  // 0 means only filecache will be used while 200 means only swap will be used
+  // any value in between will be a mix of both
+  // The lower the value, the higher the ratio of freeing filecache pages
+  // Implementation and a more detailed description can be found in
+  // src/third_party/kernel/v5.10-arcvm/mm/vmscan.c
+  int32 mglru_reclaim_swappiness = 36;
 }
 
 enum VmStatus {

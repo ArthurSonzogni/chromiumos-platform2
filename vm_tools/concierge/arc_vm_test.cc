@@ -130,5 +130,46 @@ TEST(ArcVmTest, SwappinessPresentParam) {
       params, base::StringPrintf("sysctl.vm.swappiness=%d", 55)));
 }
 
+TEST(ArcVmTest, MglruReclaimIntervalDisabled) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_mglru_reclaim_interval(0);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  for (const auto& param : params) {
+    EXPECT_FALSE(
+        base::StartsWith(param, "androidboot.arcvm_mglru_reclaim_interval="));
+  }
+}
+
+TEST(ArcVmTest, MglruReclaimWithoutSwappiness) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_mglru_reclaim_interval(30000);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  EXPECT_TRUE(base::Contains(
+      params,
+      base::StringPrintf("androidboot.arcvm_mglru_reclaim_interval=30000")));
+  EXPECT_TRUE(base::Contains(
+      params,
+      base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=0")));
+}
+
+TEST(ArcVmTest, MglruReclaimWithSwappiness) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_mglru_reclaim_interval(30000);
+  request.set_mglru_reclaim_swappiness(100);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, kSeneschalServerPort, request);
+  EXPECT_TRUE(base::Contains(
+      params,
+      base::StringPrintf("androidboot.arcvm_mglru_reclaim_interval=30000")));
+  EXPECT_TRUE(base::Contains(
+      params,
+      base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=100")));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools
