@@ -30,10 +30,6 @@ void FakePlatform::SetIoctlReturnValue(int ret) {
   ioctl_ret_ = ret;
 }
 
-int FakePlatform::GetBootAlertForArg(const std::string& arg) {
-  return alert_result_map_[arg];
-}
-
 bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
@@ -85,10 +81,6 @@ base::ScopedFD FakePlatform::Open(const base::FilePath& pathname, int flags) {
 // NOLINTNEXTLINE(runtime/int)
 int FakePlatform::Ioctl(int fd, unsigned long request, int* arg1) {
   return ioctl_ret_;
-}
-
-void FakePlatform::BootAlert(const std::string& arg) {
-  alert_result_map_[arg] = 1;
 }
 
 }  // namespace startup

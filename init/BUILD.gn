@@ -73,13 +73,11 @@ static_library("libcrosstartup") {
     "startup/chromeos_startup.cc",
     "startup/platform_impl.cc",
     "startup/security_manager.cc",
-    "startup/stateful_mount.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libclobber",
     ":libcrossystem",
-    ":utils",
   ]
 }
 
@@ -175,10 +173,7 @@ executable("usermode-helper") {
 
 if (use.test) {
   pkg_config("test_config") {
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-    ]
+    pkg_deps = [ "libchrome-test" ]
   }
 
   executable("chromeos_startup_test") {
@@ -186,7 +181,6 @@ if (use.test) {
       "startup/chromeos_startup_test.cc",
       "startup/fake_platform_impl.cc",
       "startup/security_manager_test.cc",
-      "startup/stateful_mount_test.cc",
     ]
     configs += [
       "//common-mk:test",

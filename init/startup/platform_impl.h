@@ -45,24 +45,6 @@ class Platform {
   // Can't create virtual templated methods, so define per use case.
   // NOLINTNEXTLINE(runtime/int)
   virtual int Ioctl(int fd, unsigned long request, int* arg1);
-
-  // Runs chromeos-boot-alert with the given arg.
-  virtual void BootAlert(const std::string& arg);
-
-  // Runs clobber-state with the given args.
-  [[noreturn]] virtual void Clobber(const std::vector<std::string> args);
-
-  // Runs hiberman resume-init with the given output file.
-  virtual bool RunHiberman(const base::FilePath& output_file);
-
-  // Runs crash_reporter with the given dev as the mount device.
-  void AddClobberCrashReport(const std::string& dev);
-
-  // Runs e2fsck for the given device.
-  void ReplayExt4Journal(const base::FilePath& dev);
-
-  // Runs clobber-log --repair for the given device with the given message.
-  void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
 };
 
 }  // namespace startup
