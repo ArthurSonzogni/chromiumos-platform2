@@ -144,6 +144,7 @@ void MissiveImpl::AsyncStartUpload(
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
       /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
+      /*pipeline_id=*/storage_module_->GetPipelineId(),
       std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call

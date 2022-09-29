@@ -114,6 +114,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       std::optional<uint64_t> new_events_rate,
       scoped_refptr<dbus::Bus> bus,
       dbus::ObjectProxy* chrome_proxy,
+      base::StringPiece pipeline_id,
       UploadClient::HandleUploadResponseCallback response_callback)
       : bus_(bus),
         chrome_proxy_(chrome_proxy),
@@ -130,6 +131,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     if (new_events_rate.has_value()) {
       request_.set_new_events_rate(new_events_rate.value());
     }
+    request_.set_pipeline_id(std::string(pipeline_id));
   }
 
   // Implementation of DisconnectableClient::Delegate
@@ -214,11 +216,13 @@ void UploadClientImpl::MaybeMakeCall(
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
+    base::StringPiece pipeline_id,
     HandleUploadResponseCallback response_callback) {
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
       std::move(records), need_encryption_keys, remaining_storage_capacity,
-      new_events_rate, bus_, chrome_proxy_, std::move(response_callback));
+      new_events_rate, bus_, chrome_proxy_, pipeline_id,
+      std::move(response_callback));
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
 }
 
@@ -237,13 +241,15 @@ void UploadClientImpl::SendEncryptedRecords(
     const bool need_encryption_keys,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
+    base::StringPiece pipeline_id,
     HandleUploadResponseCallback response_callback) {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&UploadClientImpl::MaybeMakeCall,
                      weak_ptr_factory_.GetWeakPtr(), std::move(records),
                      need_encryption_keys, remaining_storage_capacity,
-                     new_events_rate, std::move(response_callback)));
+                     new_events_rate, std::string(pipeline_id),
+                     std::move(response_callback)));
 }
 
 void UploadClientImpl::OwnerChanged(const std::string& old_owner,

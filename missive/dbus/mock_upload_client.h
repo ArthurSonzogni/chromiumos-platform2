@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/string_piece.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "missive/dbus/upload_client.h"
@@ -29,6 +30,7 @@ class MockUploadClient : public UploadClient {
                bool need_encryption_keys,
                uint64_t remaining_storage_capacity,
                std::optional<uint64_t> new_events_rate,
+               base::StringPiece pipeline_id,
                HandleUploadResponseCallback response_callback),
               (override));
 

@@ -8,6 +8,7 @@
 #include <optional>
 
 #include <base/callback.h>
+#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -38,10 +39,13 @@ class TestStorageModuleStrict : public StorageModule {
               ReportSuccess,
               (SequenceInformation sequence_information, bool force),
               (override));
+
   MOCK_METHOD(void,
               UpdateEncryptionKey,
               (SignedEncryptionInfo signed_encryption_key),
               (override));
+
+  MOCK_METHOD(base::StringPiece, GetPipelineId, (), (const override));
 
   const Record& record() const;
   Priority priority() const;

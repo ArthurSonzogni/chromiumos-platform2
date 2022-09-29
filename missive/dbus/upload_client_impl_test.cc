@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/guid.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
@@ -183,12 +184,12 @@ TEST_F(UploadClientTest, SuccessfulCall) {
                         .AppendProtoAsArrayOfBytes(upload_response));
         std::move(*response_cb).Run(dbus_response.get());
       })));
-
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
       /*need_encryption_keys=*/false,
       /*remaining_storage_capacity=*/0U,
-      /*new_events_rate=*/1U, std::move(response_callback));
+      /*new_events_rate=*/1U, /*pipeline_id=*/base::GenerateGUID(),
+      std::move(response_callback));
   waiter.Wait();
 }
 
@@ -230,7 +231,8 @@ TEST_F(UploadClientTest, CallUnavailable) {
       std::vector<EncryptedRecord>(1, encrypted_record),
       /*need_encryption_keys=*/false,
       /*remaining_storage_capacity=*/std::numeric_limits<uint64_t>::max(),
-      /*new_events_rate=*/10U, std::move(response_callback));
+      /*new_events_rate=*/10U, /*pipeline_id=*/base::GenerateGUID(),
+      std::move(response_callback));
   waiter.Wait();
 }
 
@@ -273,7 +275,8 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
       std::vector<EncryptedRecord>(1, encrypted_record),
       /*need_encryption_keys=*/false,
       /*remaining_storage_capacity=*/3000U,
-      /*new_events_rate=*/std::nullopt, std::move(response_callback));
+      /*new_events_rate=*/std::nullopt, /*pipeline_id=*/base::GenerateGUID(),
+      std::move(response_callback));
 
   upload_client_->SetAvailabilityForTest(/*is_available=*/false);
 
