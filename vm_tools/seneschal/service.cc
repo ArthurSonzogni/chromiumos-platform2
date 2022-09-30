@@ -6,7 +6,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <grp.h>
 #include <limits.h>
 #include <mntent.h>
 #include <signal.h>
@@ -66,9 +65,6 @@ constexpr gid_t kChronosGid = 1000;
 // Access to android files requires android-everybody gid.
 constexpr gid_t kAndroidEverybodyGid = 665357;
 constexpr gid_t kSupplementaryGroups[] = {kAndroidEverybodyGid};
-
-// The gid of the chronos-access group.
-constexpr gid_t kChronosAccessGid = 1001;
 
 // The uid used for authenticating with DBus.
 constexpr uid_t kDbusAuthUid = 20115;
@@ -274,22 +270,6 @@ bool Service::Init() {
 
   if (seteuid(0) != 0) {
     PLOG(ERROR) << "Unable to change effective uid back to 0";
-    return false;
-  }
-
-  // Add chronos-access to our list of supplementary groups.  This is needed so
-  // that we can access the user's files in the /home directory.
-  gid_t list[NGROUPS_MAX] = {};
-  int count = getgroups(NGROUPS_MAX, list);
-  if (count < 0) {
-    PLOG(ERROR) << "Failed to get supplementary groups";
-    return false;
-  }
-  CHECK_LT(count, NGROUPS_MAX);
-
-  list[count++] = kChronosAccessGid;
-  if (setgroups(count, list) != 0) {
-    PLOG(ERROR) << "Failed to add chronos-access to supplementary groups";
     return false;
   }
 
