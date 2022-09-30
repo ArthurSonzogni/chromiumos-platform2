@@ -86,6 +86,9 @@ void LibdrmUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
   if (!connector)
     return;
 
+  *privacy_screen_supported = false;
+  *privacy_screen_enabled = false;
+
   ScopedDrmPropertyPtr hw_prop;
   ScopedDrmPropertyPtr sw_prop;
   int hw_idx = GetDrmProperty(connector, "privacy-screen hw-state", &hw_prop);
