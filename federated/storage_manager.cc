@@ -12,6 +12,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "federated/federated_metadata.h"
 #include "federated/session_manager_proxy.h"
@@ -88,20 +90,46 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
 }
 
 std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
-    const std::string& client_name) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    const std::string& client_name,
+    const fcp::client::CrosExampleSelectorCriteria& criteria) const {
+  // This method may be called from different sequence but ExampleDatabase are
+  // threadsafe.
   if (example_database_ == nullptr || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
     return std::nullopt;
   }
 
-  if (example_database_->ExampleCount(client_name) < kMinExampleCount) {
-    DVLOG(1) << "Client '" << client_name << " "
+  if (!criteria.has_start_time() || !criteria.has_end_time()) {
+    LOG(ERROR) << "Client " << client_name << " time range not specified";
+    return std::nullopt;
+  }
+
+  // TODO(b/251027462): criteria may contain this info
+  size_t min_example_count = kMinExampleCount;
+
+  const auto start_time = base::Time::FromJavaTime(
+      ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
+          criteria.start_time()));
+  const auto end_time = base::Time::FromJavaTime(
+      ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
+          criteria.end_time()));
+
+  DVLOG(1) << "Client " << client_name << " example time range {" << start_time
+           << ", " << end_time << "}.";
+  if (start_time > end_time || start_time < base::Time::UnixEpoch()) {
+    LOG(ERROR) << "Criteria has invalid start_time and end_time {" << start_time
+               << ", " << end_time << "}";
+    return std::nullopt;
+  }
+
+  if (example_database_->ExampleCount(client_name, start_time, end_time) <
+      min_example_count) {
+    DVLOG(1) << "Client " << client_name << " "
              << "doesn't meet the minimum example count requirement";
     return std::nullopt;
   }
 
-  return example_database_->GetIterator(client_name);
+  return example_database_->GetIterator(client_name, start_time, end_time);
 }
 
 void StorageManager::OnSessionStarted() {

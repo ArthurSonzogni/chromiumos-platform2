@@ -12,6 +12,7 @@
 #include "federated/device_status_monitor.h"
 #include "federated/example_database.h"
 #include "federated/federated_metadata.h"
+#include "federated/storage_manager.h"
 
 namespace federated {
 
@@ -26,14 +27,14 @@ class FederatedClient {
                   const std::string& service_uri,
                   const std::string& api_key,
                   ClientConfigMetadata client_config,
-                  const DeviceStatusMonitor* const device_status_monitor);
+                  const DeviceStatusMonitor* device_status_monitor);
   FederatedClient& operator=(const FederatedClient&) = delete;
   ~FederatedClient();
 
   // Tries to checkin and start a federated task with the server, then updates
   // the client config, such as retry_token and next_retry_delay. It is
   // scheduled recurrently by Scheduler, see scheduler.cc for more details.
-  void RunPlan(ExampleDatabase::Iterator&& example_iterator);
+  void RunPlan(const StorageManager* storage_manager);
   // Resets `next_retry_delay_` to default. Called when current
   // `next_retry_delay_` elapses and a federated task is about to run.
   void ResetRetryDelay();
@@ -45,14 +46,21 @@ class FederatedClient {
   // Context provides several static functions used in constructing
   // FlTaskEnvironment that serves as hook for the library to e.g. request
   // examples.
+  // All the methods on this are static and take a void* context because this is
+  // meant to be passed across as a C ABI.
   class Context {
    public:
-    Context(const DeviceStatusMonitor* const device_status_monitor,
-            ExampleDatabase::Iterator&& example_iterator);
+    Context(const std::string& client_name,
+            const DeviceStatusMonitor* device_status_monitor,
+            const StorageManager* storage_manager);
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
     ~Context();
 
+    // Called by the library to prepare examples according to the criteria.
+    static bool PrepareExamples(const char* const criteria_data,
+                                int criteria_data_size,
+                                void* context);
     // Called by the library to get next example. `context` is effectively a
     // pointer to an Context instance, the same to the following methods.
     // Returns true if no errors, caller can construct a serialized example with
@@ -73,8 +81,10 @@ class FederatedClient {
                              void* const context);
 
    private:
+    const std::string client_name_;
     // Not owned:
     const DeviceStatusMonitor* const device_status_monitor_;
+    const StorageManager* const storage_manager_;
 
     ExampleDatabase::Iterator example_iterator_;
   };

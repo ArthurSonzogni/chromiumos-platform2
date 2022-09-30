@@ -15,6 +15,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/thread_pool.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 #include <sqlite3.h>
@@ -80,6 +82,11 @@ int PopulateTableForTesting(sqlite3* const db,
 
 }  // namespace
 
+// Checks sqlite3 has threading model = Serialized.
+TEST(SqliteThreadSafe, Check) {
+  EXPECT_EQ(1, sqlite3_threadsafe());
+}
+
 class ExampleDatabaseTest : public Test {
  public:
   ExampleDatabaseTest(const ExampleDatabaseTest&) = delete;
@@ -117,6 +124,7 @@ class ExampleDatabaseTest : public Test {
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
   void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
 
+  base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<ExampleDatabase> db_;
 };
@@ -167,7 +175,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmpty) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   int count = 0;
-  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
+  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
     if (!record.ok()) {
@@ -186,9 +194,51 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmpty) {
   EXPECT_TRUE(db_->Close());
 }
 
+TEST_F(ExampleDatabaseTest, DatabaseReadNonEmptyWithTimeRange) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  int count = 0;
+  int expected_id = 11;
+  ExampleDatabase::Iterator it = db_->GetIterator(
+      "test_client_1", SecondsAfterEpoch(11), SecondsAfterEpoch(30));
+  while (true) {
+    const absl::StatusOr<ExampleRecord> record = it.Next();
+    if (!record.ok()) {
+      EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+      break;
+    }
+
+    EXPECT_EQ(record->id, expected_id);
+    EXPECT_EQ(record->serialized_example,
+              base::StringPrintf("example_%d", expected_id));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(expected_id));
+    expected_id++;
+    count++;
+  }
+
+  EXPECT_EQ(count, 20);
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DatabaseReadWithInvalidTimeRange) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // start_time must <= end_time
+  EXPECT_DEATH(db_->GetIterator("test_client_1", SecondsAfterEpoch(11),
+                                SecondsAfterEpoch(10)),
+               "Invalid time range: start_time must <= end_time");
+
+  // start_time >= UnixEpoch
+  EXPECT_DEATH(db_->GetIterator("test_client_1", SecondsAfterEpoch(-1),
+                                SecondsAfterEpoch(10)),
+               "Invalid time range: start_time must > UnixEpoch()");
+
+  EXPECT_TRUE(db_->Close());
+}
+
 TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
+  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
 
   // The iterator sqlite query is ongoing.
   EXPECT_FALSE(db_->Close());
@@ -196,7 +246,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
 
 TEST_F(ExampleDatabaseTest, DatabaseReadAbort) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
+  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
 
   // Iterate through 3 of the 100 examples.
   for (int i = 1; i <= 3; ++i) {
@@ -230,8 +280,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadCallback) {
                     base::StringPrintf("example_%d", i));
           EXPECT_EQ(record->timestamp, SecondsAfterEpoch(i));
         },
-        base::Owned(
-            new ExampleDatabase::Iterator(db_->GetIterator("test_client_1"))));
+        base::Owned(new ExampleDatabase::Iterator(
+            db_->GetIteratorForTesting("test_client_1"))));
 
     // Run the callback to test sequential use works.
     for (int i = 1; i <= 3; ++i) {
@@ -254,9 +304,9 @@ TEST_F(ExampleDatabaseTest, DatabaseReadConcurrent) {
       SQLITE_OK);
 
   ExampleDatabase::Iterator it[] = {
-      db_->GetIterator("test_client_1"),
-      db_->GetIterator("test_client_1"),
-      db_->GetIterator("test_client_2"),
+      db_->GetIteratorForTesting("test_client_1"),
+      db_->GetIteratorForTesting("test_client_1"),
+      db_->GetIteratorForTesting("test_client_2"),
   };
   int count[] = {0, 0, 0};
   bool going[] = {true, true, true};
@@ -288,15 +338,151 @@ TEST_F(ExampleDatabaseTest, DatabaseReadConcurrent) {
   EXPECT_TRUE(db_->Close());
 }
 
+// Tests that it's safe to have write requests when example iterators are live.
+TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentWithTimeRange) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Add 50 examples to the second table.
+  ASSERT_EQ(
+      PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_2", 50),
+      SQLITE_OK);
+
+  ExampleDatabase::Iterator it[] = {
+      db_->GetIterator("test_client_1", SecondsAfterEpoch(1),
+                       SecondsAfterEpoch(30)),
+      db_->GetIterator("test_client_1", SecondsAfterEpoch(51),
+                       SecondsAfterEpoch(90)),
+      db_->GetIterator("test_client_2", SecondsAfterEpoch(1),
+                       SecondsAfterEpoch(50)),
+  };
+  int count[] = {0, 0, 0};
+  int expected_id[] = {1, 51, 1};
+  bool going[] = {true, true, true};
+
+  // This makes newly added examples not interact with existing iterators.
+  int64_t current_timestamp = 101;
+  while (going[0] || going[1] || going[2]) {
+    for (int i = 0; i < 3; ++i) {
+      if (!going[i]) {
+        continue;
+      }
+
+      const absl::StatusOr<ExampleRecord> record = it[i].Next();
+      if (!record.ok()) {
+        EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+        going[i] = false;
+        continue;
+      }
+
+      EXPECT_EQ(record->id, expected_id[i]);
+      EXPECT_EQ(record->serialized_example,
+                base::StringPrintf("example_%d", expected_id[i]));
+      EXPECT_EQ(record->timestamp, SecondsAfterEpoch(expected_id[i]));
+
+      ExampleRecord record_to_insert = {-1, "manual_example",
+                                        SecondsAfterEpoch(current_timestamp++)};
+
+      EXPECT_TRUE(db_->InsertExample("test_client_1", record_to_insert));
+      // {-1, "manual_example", SecondsAfterEpoch(current_timestamp++)}));
+      EXPECT_TRUE(db_->InsertExample("test_client_2", record_to_insert));
+      // {-1, "manual_example", SecondsAfterEpoch(current_timestamp++)}));
+      count[i]++;
+      expected_id[i]++;
+    }
+  }
+
+  EXPECT_EQ(count[0], 30);
+  EXPECT_EQ(count[1], 40);
+  EXPECT_EQ(count[2], 50);
+  EXPECT_TRUE(db_->Close());
+}
+
+// Tests that it's safe to have write requests when example iterators are live
+// on other threads.
+TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentMultipleThread) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Add 50 examples to the second table.
+  ASSERT_EQ(
+      PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_2", 50),
+      SQLITE_OK);
+
+  std::string client_names[] = {"test_client_1", "test_client_1",
+                                "test_client_2"};
+  int count[] = {0, 0, 0};
+  int start_second[] = {1, 51, 1};
+  int end_second[] = {30, 90, 50};
+
+  base::RepeatingCallback<void()> insert_cb = base::BindRepeating(
+      [](ExampleDatabase* const db) {
+        EXPECT_TRUE(db->InsertExample(
+            "test_client_1", {-1, "manual_example", SecondsAfterEpoch(500)}));
+        EXPECT_TRUE(db->InsertExample(
+            "test_client_2", {-1, "manual_example", SecondsAfterEpoch(500)}));
+      },
+      db_.get());
+
+  // Starts 3 iterators, 2 for test_client_1, 1 for test_client_2 on different
+  // threads and reads examples from them. Meanwhile posts several insert tasks
+  // to multiple threads.
+  for (int i = 0; i < 3; i++) {
+    base::ThreadPool::PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](ExampleDatabase* const db, const std::string& client_name,
+               const int start_second, const int end_second, int* const count) {
+              ExampleDatabase::Iterator it =
+                  db->GetIterator(client_name, SecondsAfterEpoch(start_second),
+                                  SecondsAfterEpoch(end_second));
+              while (true) {
+                const absl::StatusOr<ExampleRecord> record = it.Next();
+                if (!record.ok()) {
+                  EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+                  break;
+                }
+
+                EXPECT_EQ(record->id, *count + start_second);
+                EXPECT_EQ(
+                    record->serialized_example,
+                    base::StringPrintf("example_%d", *count + start_second));
+                EXPECT_EQ(record->timestamp,
+                          SecondsAfterEpoch(*count + start_second));
+                (*count)++;
+              }
+            },
+            db_.get(), client_names[i], start_second[i], end_second[i],
+            &count[i]));
+
+    for (int j = 0; j < 10; j++) {
+      base::ThreadPool::PostTask(FROM_HERE, insert_cb);
+    }
+  }
+
+  task_environment_.RunUntilIdle();
+
+  // All iterator are expected to get correct numbers of examples.
+  EXPECT_EQ(count[0], 30);
+  EXPECT_EQ(count[1], 40);
+  EXPECT_EQ(count[2], 50);
+
+  // All insert requests should succeed, hence new example counts.
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 130);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 80);
+
+  EXPECT_TRUE(db_->Close());
+}
+
 TEST_F(ExampleDatabaseTest, DatabaseReadMalformed) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Inject malformed SQL code.
-  ExampleDatabase::Iterator it_invalid = db_->GetIterator("test_client_1\"");
+  ExampleDatabase::Iterator it_invalid =
+      db_->GetIteratorForTesting("test_client_1\"");
   EXPECT_TRUE(absl::IsInvalidArgument(it_invalid.Next().status()));
 
   // Now try a valid read.
-  ExampleDatabase::Iterator it_valid = db_->GetIterator("test_client_1");
+  ExampleDatabase::Iterator it_valid =
+      db_->GetIteratorForTesting("test_client_1");
   const absl::StatusOr<ExampleRecord> record = it_valid.Next();
   EXPECT_TRUE(record.ok());
   EXPECT_EQ(record->id, 1);
@@ -311,14 +497,14 @@ TEST_F(ExampleDatabaseTest, InsertExample) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Before inserting, table test_client_2 is empty.
-  EXPECT_TRUE(
-      absl::IsOutOfRange(db_->GetIterator("test_client_2").Next().status()));
+  EXPECT_TRUE(absl::IsOutOfRange(
+      db_->GetIteratorForTesting("test_client_2").Next().status()));
 
   // After inserting, iteration will succeed 1 time.
   EXPECT_TRUE(db_->InsertExample("test_client_2",
                                  {-1, "manual_example", SecondsAfterEpoch(0)}));
 
-  ExampleDatabase::Iterator it = db_->GetIterator("test_client_2");
+  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_2");
   const absl::StatusOr<ExampleRecord> result = it.Next();
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result->id, 1);  // First entry in the client 2 table.
@@ -347,7 +533,7 @@ TEST_F(ExampleDatabaseTest, InsertExampleMalformed) {
   // Now try a valid insertion.
   EXPECT_TRUE(db_->InsertExample("test_client_2",
                                  {-1, "example_2", SecondsAfterEpoch(2)}));
-  ExampleDatabase::Iterator it = db_->GetIterator("test_client_2");
+  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_2");
   const absl::StatusOr<ExampleRecord> record = it.Next();
   EXPECT_TRUE(record.ok());
   EXPECT_EQ(record->id, 1);
@@ -361,51 +547,75 @@ TEST_F(ExampleDatabaseTest, InsertExampleMalformed) {
 TEST_F(ExampleDatabaseTest, CountExamples) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
 
   // Client table 3 doesn't exist.
-  EXPECT_EQ(db_->ExampleCount("test_client_3"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_3"), 0);
+}
+
+TEST_F(ExampleDatabaseTest, CountExamplesWithTimeRange) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(1),
+                              SecondsAfterEpoch(30)),
+            30);
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
+                              SecondsAfterEpoch(30)),
+            20);
+  // The max timestamp in table is 100.
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
+                              SecondsAfterEpoch(200)),
+            90);
+  // CHECK fails if start_time > end_time.
+  EXPECT_DEATH(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
+                                 SecondsAfterEpoch(10)),
+               "Invalid time range: start_time must <= end_time");
+
+  // CHECK fails if start_time < UnixEpoch.
+  EXPECT_DEATH(db_->ExampleCount("test_client_1", SecondsAfterEpoch(-1),
+                                 SecondsAfterEpoch(10)),
+               "Invalid time range: start_time must > UnixEpoch()");
 }
 
 TEST_F(ExampleDatabaseTest, CountExamplesMalformed) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Inject invalid SQL code.
-  EXPECT_EQ(db_->ExampleCount("test_client_1\""), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1\""), 0);
 
   // Now try a valid read.
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
 }
 
 TEST_F(ExampleDatabaseTest, DeleteExamples) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Populated table.
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
   db_->DeleteAllExamples("test_client_1");
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 0);
 
   // Unpopulated table.
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
   db_->DeleteAllExamples("test_client_2");
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
 
   // Newly-populated table.
   db_->InsertExample("test_client_2", {-1, "example_1", SecondsAfterEpoch(1)});
   db_->InsertExample("test_client_2", {-1, "example_2", SecondsAfterEpoch(2)});
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 2);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 2);
   db_->DeleteAllExamples("test_client_2");
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
 
   db_->InsertExample("test_client_2", {-1, "example_3", SecondsAfterEpoch(3)});
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 1);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 1);
   db_->DeleteAllExamples("test_client_2");
-  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
 
   // Missing table.
   db_->DeleteAllExamples("test_client_3");
-  EXPECT_EQ(db_->ExampleCount("test_client_3"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_3"), 0);
 
   EXPECT_TRUE(db_->Close());
 }
@@ -417,9 +627,9 @@ TEST_F(ExampleDatabaseTest, DeleteExamplesMalformed) {
   db_->DeleteAllExamples("test_client_1\"");
 
   // Now test valid deletion still works.
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
   db_->DeleteAllExamples("test_client_1");
-  EXPECT_EQ(db_->ExampleCount("test_client_1"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 0);
 
   EXPECT_TRUE(db_->Close());
 }

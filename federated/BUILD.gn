@@ -15,7 +15,10 @@ group("all") {
     ":install_upstart_conf",
   ]
   if (use.test) {
-    deps += [ ":federated_service_test" ]
+    deps += [
+      ":components_test",
+      ":federated_service_test",
+    ]
   }
 }
 
@@ -51,10 +54,13 @@ proto_library("tf_example_proto") {
   ]
 }
 
-proto_library("cros_event_proto") {
+proto_library("cros_fcp_proto") {
   proto_in_dir = "${sysroot}/usr/include/fcp"
   proto_out_dir = "federated/protos/"
-  sources = [ "${proto_in_dir}/cros_events.proto" ]
+  sources = [
+    "${proto_in_dir}/cros_events.proto",
+    "${proto_in_dir}/cros_example_selector_criteria.proto",
+  ]
 }
 
 static_library("federated_common") {
@@ -77,7 +83,7 @@ static_library("federated_common") {
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
   pkg_deps = [ "protobuf" ]
   deps = [
-    ":cros_event_proto",
+    ":cros_fcp_proto",
     ":federated_mojo_bindings",
     ":tf_example_proto",
   ]
@@ -118,18 +124,36 @@ if (use.test) {
       "libsession_manager-client-test",
     ]
   }
+
+  static_library("test_utils") {
+    sources = [ "test_utils.cc" ]
+    configs += [ ":libchrome_test_config" ]
+    deps = [ ":federated_common" ]
+  }
+
+  # This test requires mojo setup.
   executable("federated_service_test") {
+    sources = [
+      "federated_service_impl_test.cc",
+      "mojo_testrunner.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":libchrome_test_config",
+    ]
+    run_test = true
+    deps = [ ":test_utils" ]
+  }
+
+  executable("components_test") {
     sources = [
       "device_status_monitor_test.cc",
       "example_database_test.cc",
-      "federated_service_impl_test.cc",
       "mock_example_database.cc",
       "network_status_training_condition_test.cc",
       "power_supply_training_condition_test.cc",
       "session_manager_proxy_test.cc",
       "storage_manager_test.cc",
-      "test_utils.cc",
-      "testrunner.cc",
       "utils_test.cc",
     ]
     configs += [
@@ -137,6 +161,9 @@ if (use.test) {
       ":libchrome_test_config",
     ]
     run_test = true
-    deps = [ ":federated_common" ]
+    deps = [
+      ":test_utils",
+      "//common-mk/testrunner",
+    ]
   }
 }

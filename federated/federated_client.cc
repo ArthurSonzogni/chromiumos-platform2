@@ -14,6 +14,7 @@
 #include "federated/example_database.h"
 #include "federated/federated_metadata.h"
 #include "federated/protos/cros_events.pb.h"
+#include "federated/protos/cros_example_selector_criteria.pb.h"
 
 namespace federated {
 
@@ -22,14 +23,14 @@ namespace {
 constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(30);
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(10);
 #else
-// TODO(alanlxl): discussion required about the default window.
+// TODO(b/239623649): discussion required about the default window.
 constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 30);
 
 // To avoid spam, retry window should not be shorter than kMinimalRetryWindow.
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
 #endif
 
-// TODO(alanlxl): Just dummpy impl.
+// TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id();
   DVLOG(1) << "cros_event is " << cros_event.DebugString();
@@ -75,7 +76,7 @@ void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   }
 }
 
-// TODO(alanlxl): Just dummpy impl.
+// TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
 void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
   LOG(INFO) << "In LogCrosSecAggEvent, session_id is "
             << cros_secagg_event.execution_session_id();
@@ -93,12 +94,38 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
 }  // namespace
 
 FederatedClient::Context::Context(
+    const std::string& client_name,
     const DeviceStatusMonitor* const device_status_monitor,
-    ExampleDatabase::Iterator&& example_iterator)
-    : device_status_monitor_(device_status_monitor),
-      example_iterator_(std::move(example_iterator)) {}
+    const StorageManager* const storage_manager)
+    : client_name_(client_name),
+      device_status_monitor_(device_status_monitor),
+      storage_manager_(storage_manager) {}
 
 FederatedClient::Context::~Context() = default;
+
+bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
+                                               const int criteria_data_size,
+                                               void* const context) {
+  fcp::client::CrosExampleSelectorCriteria criteria;
+  if (!criteria.ParseFromArray(criteria_data, criteria_data_size)) {
+    LOG(ERROR) << "Failed to parse criteria.";
+    return false;
+  }
+
+  auto* typed_context = static_cast<FederatedClient::Context*>(context);
+
+  std::optional<ExampleDatabase::Iterator> example_iterator =
+      typed_context->storage_manager_->GetExampleIterator(
+          typed_context->client_name_, criteria);
+  if (!example_iterator.has_value()) {
+    DVLOG(1) << "Client " << typed_context->client_name_
+             << " failed to prepare examples.";
+    return false;
+  }
+
+  typed_context->example_iterator_ = std::move(example_iterator.value());
+  return true;
+}
 
 bool FederatedClient::Context::GetNextExample(const char** const data,
                                               int* const size,
@@ -182,11 +209,12 @@ FederatedClient::FederatedClient(
 
 FederatedClient::~FederatedClient() = default;
 
-void FederatedClient::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
-  FederatedClient::Context context(device_status_monitor_,
-                                   std::move(example_iterator));
+void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
+  FederatedClient::Context context(client_config_.name, device_status_monitor_,
+                                   storage_manager);
 
   const FlTaskEnvironment env = {
+      &FederatedClient::Context::PrepareExamples,
       &FederatedClient::Context::GetNextExample,
       &FederatedClient::Context::FreeExample,
       &FederatedClient::Context::TrainingConditionsSatisfied,
@@ -199,7 +227,7 @@ void FederatedClient::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
                    /*population_name=*/client_config_.name.c_str(),
                    client_config_.retry_token.c_str());
 
-  // TODO(alanlxl): maybe log the event to UMA
+  // TODO(b/251378482): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {
     DVLOG(1) << "result.status = " << result.status;
     DVLOG(1) << "result.retry_token = " << result.retry_token;
@@ -207,9 +235,9 @@ void FederatedClient::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
     client_config_.retry_token = std::string(result.retry_token);
     next_retry_delay_ = base::Microseconds(result.delay_usecs);
 
-    // TODO(alanlxl): result.delay_usecs may be 0 when setup is wrong, now I set
-    // next_retry_delay_ to kMinimalRetryWindow to avoid spam, consider stopping
-    // retry in this case because it's very likely to fail again.
+    // TODO(b/239623649): result.delay_usecs may be 0 when setup is wrong, now I
+    // set next_retry_delay_ to kMinimalRetryWindow to avoid spam, consider
+    // stopping retry in this case because it's very likely to fail again.
     if (next_retry_delay_ < kMinimalRetryWindow)
       next_retry_delay_ = kMinimalRetryWindow;
 

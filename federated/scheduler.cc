@@ -162,16 +162,7 @@ void Scheduler::TryToStartJobForClient(
     return;
   }
 
-  std::optional<ExampleDatabase::Iterator> example_iterator =
-      storage_manager_->GetExampleIterator(federated_client->GetClientName());
-  if (!example_iterator.has_value()) {
-    DVLOG(1) << "Client " << federated_client->GetClientName()
-             << " failed to prepare examples.";
-    KeepSchedulingJobForClient(federated_client);
-    return;
-  }
-
-  federated_client->RunPlan(std::move(example_iterator.value()));
+  federated_client->RunPlan(storage_manager_);
 
   // Posts next task.
   KeepSchedulingJobForClient(federated_client);

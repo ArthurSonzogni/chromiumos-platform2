@@ -13,6 +13,7 @@
 #include <base/sequence_checker.h>
 
 #include "federated/example_database.h"
+#include "federated/protos/cros_example_selector_criteria.pb.h"
 #include "federated/session_manager_observer_interface.h"
 #include "federated/session_manager_proxy.h"
 
@@ -39,7 +40,8 @@ class StorageManager : public SessionManagerObserverInterface {
   virtual bool OnExampleReceived(const std::string& client_name,
                                  const std::string& serialized_example);
   virtual std::optional<ExampleDatabase::Iterator> GetExampleIterator(
-      const std::string& client_name) const;
+      const std::string& client_name,
+      const fcp::client::CrosExampleSelectorCriteria& criteria) const;
 
  protected:
   // NoDestructor needs access to constructor.

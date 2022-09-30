@@ -22,6 +22,22 @@ namespace federated {
 
 namespace {
 
+// Populates SQL where clause with given start and end time if they are not zero
+// values, returns an empty string (i.e. no-op) otherwise.
+std::string MaybeWhereClause(const base::Time& start_time,
+                             const base::Time& end_time) {
+  if (start_time == base::Time() && end_time == base::Time())
+    return std::string();
+
+  DCHECK(start_time <= end_time)
+      << "Invalid time range: start_time must <= end_time";
+  DCHECK(start_time > base::Time::UnixEpoch())
+      << "Invalid time range: start_time must > UnixEpoch()";
+  return base::StringPrintf("WHERE timestamp>=%" PRId64
+                            " AND timestamp<=%" PRId64,
+                            start_time.ToJavaTime(), end_time.ToJavaTime());
+}
+
 // Used in ExampleCount to return number of examples.
 int ExampleCountCallback(void* const /* int* const */ data,
                          const int col_count,
@@ -81,16 +97,20 @@ int ClientTableExistsCallback(void* const /* int* const */ data,
 
 }  // namespace
 
+ExampleDatabase::Iterator::Iterator() : stmt_(nullptr) {}
+
 ExampleDatabase::Iterator::Iterator(sqlite3* const db,
-                                    const std::string& client_name) {
+                                    const std::string& client_name,
+                                    const base::Time& start_time,
+                                    const base::Time& end_time) {
   if (db == nullptr) {
     stmt_ = nullptr;
     return;
   }
 
-  const std::string sql_code =
-      base::StringPrintf("SELECT id, example, timestamp FROM %s ORDER BY id;",
-                         client_name.c_str());
+  const std::string sql_code = base::StringPrintf(
+      "SELECT id, example, timestamp FROM %s %s ORDER BY id;",
+      client_name.c_str(), MaybeWhereClause(start_time, end_time).c_str());
   const int result =
       sqlite3_prepare_v2(db, sql_code.c_str(), -1, &stmt_, nullptr);
 
@@ -101,9 +121,25 @@ ExampleDatabase::Iterator::Iterator(sqlite3* const db,
   }
 }
 
+ExampleDatabase::Iterator::Iterator(sqlite3* const db,
+                                    const std::string& client_name)
+    : ExampleDatabase::Iterator::Iterator(
+          db, client_name, base::Time(), base::Time()) {}
+
 ExampleDatabase::Iterator::Iterator(ExampleDatabase::Iterator&& o)
     : stmt_(o.stmt_) {
   o.stmt_ = nullptr;
+}
+
+ExampleDatabase::Iterator& ExampleDatabase::Iterator::operator=(
+    Iterator&& other) {
+  if (stmt_ != nullptr) {
+    Close();
+  }
+  stmt_ = other.stmt_;
+  other.stmt_ = nullptr;
+
+  return *this;
 }
 
 ExampleDatabase::Iterator::~Iterator() {
@@ -153,15 +189,26 @@ void ExampleDatabase::Iterator::Close() {
 }
 
 ExampleDatabase::ExampleDatabase(const base::FilePath& db_path)
-    : db_path_(db_path), db_(nullptr, nullptr) {}
+    : db_path_(db_path), db_(nullptr, nullptr) {
+  // Checks that sqlite3 is compiled with threading mode = Serialized, so that
+  // the db connection can be used in multiple threads. See
+  // https://www.sqlite.org/threadsafe.html for more information.
+  DCHECK_EQ(1, sqlite3_threadsafe());
+}
 
 ExampleDatabase::~ExampleDatabase() {
   Close();
 }
 
 bool ExampleDatabase::Init(const std::unordered_set<std::string>& clients) {
+  // SQLITE_OPEN_FULLMUTEX means sqlite3 threadding mode = serialized so that
+  // it's safe to access the same database connection in multiple threads.
+  // This is the default when `sqlite3_threadsafe() == 1` but no harm to make a
+  // double insurance with this flag.
   sqlite3* db_ptr;
-  const int result = sqlite3_open(db_path_.MaybeAsASCII().c_str(), &db_ptr);
+  const int result = sqlite3_open_v2(
+      db_path_.MaybeAsASCII().c_str(), &db_ptr,
+      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
   db_ = std::unique_ptr<sqlite3, decltype(&sqlite3_close)>(db_ptr,
                                                            &sqlite3_close);
   if (result != SQLITE_OK) {
@@ -227,6 +274,13 @@ bool ExampleDatabase::CheckIntegrity() const {
 }
 
 ExampleDatabase::Iterator ExampleDatabase::GetIterator(
+    const std::string& client_name,
+    const base::Time& start_time,
+    const base::Time& end_time) const {
+  return Iterator(db_.get(), client_name, start_time, end_time);
+}
+
+ExampleDatabase::Iterator ExampleDatabase::GetIteratorForTesting(
     const std::string& client_name) const {
   return Iterator(db_.get(), client_name);
 }
@@ -331,16 +385,32 @@ bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
   return true;
 }
 
-int ExampleDatabase::ExampleCount(const std::string& client_name) const {
+int ExampleDatabase::ExampleCount(const std::string& client_name,
+                                  const base::Time& start_time,
+                                  const base::Time& end_time) const {
+  DCHECK(start_time != base::Time() && end_time != base::Time())
+      << "start_time and end_time cannot be zero values";
+  return ExampleCountInternal(client_name,
+                              MaybeWhereClause(start_time, end_time));
+}
+
+int ExampleDatabase::ExampleCountForTesting(
+    const std::string& client_name) const {
+  return ExampleCountInternal(client_name, /* where_clause = */ std::string());
+}
+
+int ExampleDatabase::ExampleCountInternal(
+    const std::string& client_name, const std::string& where_clause) const {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to count examples in a closed database";
     return 0;
   }
 
   int count = 0;
-  const ExecResult result = ExecSql(
-      base::StringPrintf("SELECT COUNT(*) FROM %s;", client_name.c_str()),
-      &ExampleCountCallback, &count);
+  const ExecResult result =
+      ExecSql(base::StringPrintf("SELECT COUNT(*) FROM %s %s;",
+                                 client_name.c_str(), where_clause.c_str()),
+              &ExampleCountCallback, &count);
 
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to count examples: " << result.error_msg;
