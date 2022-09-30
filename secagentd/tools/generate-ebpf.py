@@ -12,6 +12,7 @@ used by userspace programs to load, attach and communicate with bpf functions.
 
 import argparse
 import os
+import pathlib
 import subprocess
 import sys
 import typing
@@ -36,11 +37,16 @@ def do_gen_bpf_skeleton(args):
 
     Takes a BPF application written in C and generates the BPF object file and
     then uses that to generate BPF skeletons using bpftool.
+    If args.out_min_btf is specified, the BPF object file is also processed to
+    generate a min CO-RE BTF.
     """
-    out = args.out
+    out_header = args.out_header
+    out_btf = args.out_min_btf
+    vmlinux_btf = args.vmlinux_btf
     source = args.source
     arch = args.arch
     includes = args.includes
+    defines = args.defines or []
     clang = args.clang
     sysroot = args.sysroot
 
@@ -74,6 +80,7 @@ def do_gen_bpf_skeleton(args):
     call_clang = (
         [clang, "-g", "-O2", "-target", "bpf", f"--sysroot={sysroot}"]
         + [f"-I{x}" for x in includes]
+        + [f"-D{x}" for x in defines]
         + [f"-D{arch}", "-c", source, "-o", obj]
     )
     gen_skeleton = ["/usr/sbin/bpftool", "gen", "skeleton", obj]
@@ -88,8 +95,26 @@ def do_gen_bpf_skeleton(args):
 
     # BPFtools will output the C formatted dump of kernel symbols to stdout.
     # Write the contents to file.
-    with open(out, "w", encoding="utf-8") as bpf_skeleton:
+    with open(out_header, "w", encoding="utf-8") as bpf_skeleton:
         bpf_skeleton.write(bpftool_proc.stdout)
+
+    # Generate a detached min_core BTF.
+    if out_btf:
+        if not vmlinux_btf:
+            print(
+                "Need a full vmlinux BTF as input in order to generate a min "
+                "BTF"
+            )
+            return -1
+        gen_min_core_btf = [
+            "/usr/sbin/bpftool",
+            "gen",
+            "min_core_btf",
+            vmlinux_btf,
+            out_btf,
+            obj,
+        ]
+        _run_command(gen_min_core_btf)
 
     return 0
 
@@ -97,19 +122,35 @@ def do_gen_bpf_skeleton(args):
 def do_gen_vmlinux(args):
     """Generate vmlinux.h for use in BPF programs.
 
-    Invokes bpftool to generate vmlinux.h from vmlinux from the kernel build.
+    Invokes pahole and bpftool to generate vmlinux.h from vmlinux from the
+    kernel build. Uses BTF as an intermediate format. The generated BTF is
+    preserved for possible use in generation of min CO-RE BTFs.
     """
     sysroot = args.sysroot
-    vmlinux_out = args.out
+    vmlinux_out = args.out_header
+    btf_out = args.out_btf
+    gen_detached_btf = [
+        "/usr/bin/pahole",
+        "--btf_encode_detached",
+        btf_out,
+        f"{sysroot}/usr/lib/debug/boot/vmlinux",
+    ]
     gen_vmlinux = [
         "/usr/sbin/bpftool",
         "btf",
         "dump",
         "file",
-        f"{sysroot}/usr/lib/debug/boot/vmlinux",
+        btf_out,
         "format",
         "c",
     ]
+    # First, run pahole to generate a detached vmlinux BTF. This step works
+    # regardless of whether the vmlinux was built with CONFIG_DEBUG_BTF_INFO.
+    pathlib.Path(os.path.dirname(btf_out)).mkdir(parents=True, exist_ok=True)
+    _run_command(gen_detached_btf)
+
+    # Then, use the generated BTF (and not vmlinux itself) to generate the
+    # header.
     vmlinux_cmd = _run_command(gen_vmlinux)
     with open(f"{vmlinux_out}", "w", encoding="utf-8") as vmlinux:
         vmlinux.write(vmlinux_cmd.stdout)
@@ -127,7 +168,9 @@ def main(argv: typing.List[str]) -> int:
 
     gen_skel = subparsers.add_parser("gen_skel")
     gen_skel.add_argument(
-        "--out", required=True, help="The name of the output file."
+        "--out_header",
+        required=True,
+        help="The name of the output header file.",
     )
     gen_skel.add_argument(
         "--source", required=True, help="The bpf source code."
@@ -143,6 +186,22 @@ def main(argv: typing.List[str]) -> int:
         required=True,
         nargs="+",
         help="Additional include directories.",
+    )
+    gen_skel.add_argument(
+        "--defines",
+        required=False,
+        nargs="*",
+        help="Additional preprocessor defines.",
+    )
+    gen_skel.add_argument(
+        "--vmlinux_btf",
+        required=False,
+        help="The detached full vmlinux BTF file.",
+    )
+    gen_skel.add_argument(
+        "--out_min_btf",
+        required=False,
+        help="The name of the output min BTF file.",
     )
     # We require the board sysroot so that BPF compilations will use board
     # libbpf headers.
@@ -161,7 +220,14 @@ def main(argv: typing.List[str]) -> int:
         help="The path that should be treated as the root directory.",
     )
     gen_vmlinux.add_argument(
-        "--out", required=True, help="The name of the output file."
+        "--out_header",
+        required=True,
+        help="The name of the output vmlinux.h file.",
+    )
+    gen_vmlinux.add_argument(
+        "--out_btf",
+        required=True,
+        help="The name of the output vmlinux BTF file.",
     )
     gen_vmlinux.set_defaults(func=do_gen_vmlinux)
     args = parser.parse_args(argv)

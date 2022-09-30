@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <absl/status/status.h>
-#include <base/logging.h>
 #include <bpf/libbpf.h>
+#include <bpf/libbpf_legacy.h>
 #include <string.h>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "base/strings/strcat.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 #include "secagentd/bpf_utils.h"
@@ -48,7 +49,19 @@ absl::Status ProcessBpfSkeleton::LoadAndAttach() {
         "are null.");
   }
   libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
+  // Ask libbpf to load a BTF that's tailored specifically to this BPF. Note
+  // that this is more of a suggestion because libbpf will silently ignore the
+  // request if it doesn't like the type of BPF or its access patterns.
+  const std::string btf_path =
+      base::StrCat({secagentd::kMinCoreBtfDir, "process_bpf.min.btf"});
+  DECLARE_LIBBPF_OPTS(bpf_object_open_opts, open_opts,
+                      .btf_custom_path = btf_path.c_str());
+  skel_ = process_bpf__open_opts(&open_opts);
+#else
+  // Let libbpf extract BTF from /sys/kernel/btf/vmlinux.
   skel_ = process_bpf__open();
+#endif  // USE_MIN_CORE_BTF
 
   if (!skel_) {
     return absl::InternalError("BPF skeleton failed to open.");

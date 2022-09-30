@@ -65,7 +65,13 @@ static inline __attribute__((always_inline)) void fill_image_info(
 // interfaces like bprm_committed_creds) of running in the context of the newly
 // created Task. This makes it much easier for us to grab information about this
 // new Task.
+#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
+// tp_btf will make libbpf silently fall back to looking for a full vmlinux BTF.
+// So use a raw tracepoint instead.
+SEC("raw_tracepoint/sched_process_exec")
+#else
 SEC("tp_btf/sched_process_exec")
+#endif  // USE_MIN_CORE_BTF
 int BPF_PROG(handle_sched_process_exec,
              struct task_struct* current,
              pid_t old_pid,

@@ -15,6 +15,10 @@
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 
 namespace secagentd {
+
+// Directory with min_core_btf payloads. Must match the ebuild.
+constexpr char kMinCoreBtfDir[] = "/usr/share/btf/secagentd/";
+
 // The following callback definitions must have void return type since they will
 // bind to an object method.
 using BpfEventCb = base::RepeatingCallback<void(const bpf::event&)>;
