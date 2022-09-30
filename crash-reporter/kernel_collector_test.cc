@@ -29,6 +29,9 @@ const int kMaxEfiParts = 100;
 class KernelCollectorTest : public ::testing::Test {
  protected:
   void SetUpSuccessfulCollect();
+  void SetUpWatchdog0BootstatusCardReset(const FilePath& path);
+  void SetUpWatchdog0BootstatusCardResetFanFault(const FilePath& path);
+  void SetUpWatchdog0BootstatusNoResetFwHwReset(const FilePath& path);
   void SetUpSuccessfulWatchdog(const FilePath&);
   void WatchdogOptedOutHelper(const FilePath&);
   void WatchdogOKHelper(const FilePath&);
@@ -45,6 +48,7 @@ class KernelCollectorTest : public ::testing::Test {
     return test_efikcrash_[part];
   }
   const FilePath& test_crash_directory() const { return test_crash_directory_; }
+  const FilePath& bootstatus_file() const { return test_bootstatus_; }
 
   KernelCollectorMock collector_;
 
@@ -81,6 +85,15 @@ class KernelCollectorTest : public ::testing::Test {
     ASSERT_FALSE(base::PathExists(test_eventlog_));
     collector_.OverrideEventLogPath(test_eventlog_);
 
+    collector_.OverrideWatchdogSysPath(scoped_temp_dir_.GetPath());
+    // The watchdog sysfs directory structure is:
+    // watchdogsys_path_ + "watchdogN/bootstatus"
+    // Testing uses "watchdog0".
+    FilePath test_watchdog0 = scoped_temp_dir_.GetPath().Append("watchdog0");
+    ASSERT_TRUE(base::CreateDirectory(test_watchdog0));
+    test_bootstatus_ = test_watchdog0.Append("bootstatus");
+    ASSERT_FALSE(base::PathExists(test_bootstatus_));
+
     test_bios_log_ = scoped_temp_dir_.GetPath().Append("bios_log");
     ASSERT_FALSE(base::PathExists(test_bios_log_));
     collector_.OverrideBiosLogPath(test_bios_log_);
@@ -94,6 +107,7 @@ class KernelCollectorTest : public ::testing::Test {
   FilePath test_kcrash_;
   FilePath test_efikcrash_[kMaxEfiParts];
   FilePath test_crash_directory_;
+  FilePath test_bootstatus_;
   base::ScopedTempDir scoped_temp_dir_;
 };
 
@@ -332,6 +346,36 @@ void KernelCollectorTest::SetUpSuccessfulCollect() {
   ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
 }
 
+void KernelCollectorTest::SetUpWatchdog0BootstatusCardReset(
+    const FilePath& path) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  // WDIOF_CARDRESET = 0x0020 (32)
+  ASSERT_TRUE(test_util::CreateFile(bootstatus_file(), "32\n"));
+  ASSERT_TRUE(test_util::CreateFile(path, "\n[ 0.0000] I can haz boot!"));
+}
+
+void KernelCollectorTest::SetUpWatchdog0BootstatusCardResetFanFault(
+    const FilePath& path) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  // WDIOF_CARDRESET = 0x0020 (32)
+  // WDIOF_FANFAULT = 0x0002 (2)
+  ASSERT_TRUE(test_util::CreateFile(bootstatus_file(), "34\n"));
+  ASSERT_TRUE(test_util::CreateFile(path, "\n[ 0.0000] I can haz boot!"));
+}
+
+void KernelCollectorTest::SetUpWatchdog0BootstatusNoResetFwHwReset(
+    const FilePath& path) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  // 0: Normal boot
+  ASSERT_TRUE(test_util::CreateFile(bootstatus_file(), "0\n"));
+  ASSERT_TRUE(test_util::CreateFile(
+      eventlog_file(),
+      "112 | 2016-03-24 15:09:39 | System boot | 0\n"
+      "113 | 2016-03-24 15:11:20 | System boot | 0\n"
+      "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n"));
+  ASSERT_TRUE(test_util::CreateFile(path, "\n[ 0.0000] I can haz boot!"));
+}
+
 void KernelCollectorTest::SetUpSuccessfulWatchdog(const FilePath& path) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(
@@ -440,6 +484,39 @@ TEST_F(KernelCollectorTest, BiosCrashArmOK) {
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("bios-(PANIC)-0x00003698"));
+}
+
+TEST_F(KernelCollectorTest, Watchdog0BootstatusCardReset) {
+  const std::string signature = "kernel-(WATCHDOG)-";
+
+  SetUpWatchdog0BootstatusCardReset(console_ramoops_file());
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(FindLog("(handling)"));
+  ASSERT_TRUE(FindLog(signature.c_str()));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "*.meta", signature));
+}
+
+TEST_F(KernelCollectorTest, Watchdog0BootstatusCardResetFanFault) {
+  const std::string signature = "kernel-(FANFAULT)-(WATCHDOG)-";
+
+  SetUpWatchdog0BootstatusCardResetFanFault(console_ramoops_file());
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(FindLog("(handling)"));
+  ASSERT_TRUE(FindLog(signature.c_str()));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "*.meta", signature));
+}
+
+TEST_F(KernelCollectorTest, Watchdog0BootstatusNoResetFwHwReset) {
+  const std::string signature = "kernel-(WATCHDOG)-";
+
+  SetUpWatchdog0BootstatusNoResetFwHwReset(console_ramoops_file());
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(FindLog("(handling)"));
+  ASSERT_TRUE(FindLog(signature.c_str()));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "*.meta", signature));
 }
 
 TEST_F(KernelCollectorTest, WatchdogOK) {

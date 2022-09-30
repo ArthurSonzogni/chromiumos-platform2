@@ -300,7 +300,8 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
 
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
-std::string WatchdogSignature(const std::string& console_ramoops) {
+std::string WatchdogSignature(const std::string& console_ramoops,
+                              const std::string& watchdogRebootReason) {
   StringPiece line(console_ramoops);
   constexpr char kTimestampEnd[] = "] ";
   size_t timestamp_end_pos = line.rfind(kTimestampEnd);
@@ -311,9 +312,9 @@ std::string WatchdogSignature(const std::string& console_ramoops) {
   size_t end = (newline_pos == StringPiece::npos
                     ? StringPiece::npos
                     : std::min(newline_pos, kMaxHumanStringLength));
-  return StringPrintf("%s-(WATCHDOG)-%s-%08X", kKernelExecName,
-                      std::string(line.substr(0, end)).c_str(),
-                      util::HashString(line));
+  return StringPrintf(
+      "%s%s-%s-%08X", kKernelExecName, watchdogRebootReason.c_str(),
+      std::string(line.substr(0, end)).c_str(), util::HashString(line));
 }
 
 bool ExtractHypervisorLog(std::string& console_ramoops,

@@ -30,6 +30,7 @@ class KernelCollector : public CrashCollector {
   void OverrideEventLogPath(const base::FilePath& file_path);
   void OverrideBiosLogPath(const base::FilePath& file_path);
   void OverridePreservedDumpPath(const base::FilePath& file_path);
+  void OverrideWatchdogSysPath(const base::FilePath& file_path);
 
   // Enable collection.
   bool Enable();
@@ -136,7 +137,7 @@ class KernelCollector : public CrashCollector {
 
   bool LastRebootWasBiosCrash(const std::string& dump);
   bool LastRebootWasNoCError(const std::string& dump);
-  bool LastRebootWasWatchdog();
+  bool LastRebootWasWatchdog(std::string& signature);
   bool LoadConsoleRamoops(std::string* contents);
 
   base::FilePath GetDumpRecordPath(const char* type,
@@ -179,6 +180,7 @@ class KernelCollector : public CrashCollector {
   base::FilePath eventlog_path_;
   base::FilePath dump_path_;
   base::FilePath bios_log_path_;
+  base::FilePath watchdogsys_path_;
   size_t records_;
 
   // The architecture of kernel dump strings we are working with.
