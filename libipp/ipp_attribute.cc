@@ -710,10 +710,6 @@ AttrType Attribute::GetType() const {
   return GetOwner()->GetAttributeDefinition(name_).ipp_type;
 }
 
-bool Attribute::IsASet() const {
-  return GetOwner()->GetAttributeDefinition(name_).is_a_set;
-}
-
 AttrState Attribute::GetState() const {
   Collection* coll = GetOwner();
   if (coll->values_.count(name_))
@@ -1042,6 +1038,24 @@ Code Collection::AddAttr(const std::string& name,
   return AddAttr(name, tag, std::vector<StringWithLanguage>{value});
 }
 
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         DateTime value) {
+  return AddAttr(name, tag, std::vector<DateTime>{value});
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         Resolution value) {
+  return AddAttr(name, tag, std::vector<Resolution>{value});
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         RangeOfInteger value) {
+  return AddAttr(name, tag, std::vector<RangeOfInteger>{value});
+}
+
 Code Collection::AddAttr(const std::string& name, bool value) {
   return AddAttr(name, std::vector<bool>{value});
 }
@@ -1101,6 +1115,33 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<StringWithLanguage>& values) {
   if (tag == ValueTag::nameWithLanguage || tag == ValueTag::textWithLanguage) {
+    return AddAttributeToCollection(this, name, tag, values);
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<DateTime>& values) {
+  if (tag == ValueTag::dateTime) {
+    return AddAttributeToCollection(this, name, tag, values);
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<Resolution>& values) {
+  if (tag == ValueTag::resolution) {
+    return AddAttributeToCollection(this, name, tag, values);
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<RangeOfInteger>& values) {
+  if (tag == ValueTag::rangeOfInteger) {
     return AddAttributeToCollection(this, name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;

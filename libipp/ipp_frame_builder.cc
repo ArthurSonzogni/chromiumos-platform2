@@ -5,9 +5,14 @@
 #include "libipp/ipp_frame_builder.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "libipp/ipp_attribute.h"
 #include "libipp/ipp_encoding.h"
+#include "libipp/ipp_package.h"
 
 namespace ipp {
 
@@ -30,6 +35,9 @@ bool SaveInteger(int v, std::vector<uint8_t>* buf) {
 
 // Saves simple string to buf, buf is resized accordingly.
 void SaveOctetString(const std::string& s, std::vector<uint8_t>* buf) {
+  buf->assign(s.begin(), s.end());
+}
+void SaveOctetString(std::string_view s, std::vector<uint8_t>* buf) {
   buf->assign(s.begin(), s.end());
 }
 
@@ -123,10 +131,10 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
                                  size_t index,
                                  uint8_t* tag,
                                  std::vector<uint8_t>* buf) {
-  *tag = static_cast<uint8_t>(attr->GetType());
+  *tag = static_cast<uint8_t>(attr->Tag());
   bool result = true;
-  switch (attr->GetType()) {
-    case AttrType::boolean: {
+  switch (attr->Tag()) {
+    case ValueTag::boolean: {
       int v = 0;
       attr->GetValue(&v, index);
       if (v != 0)
@@ -134,32 +142,32 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
       result = SaveInteger<1>(v, buf);
       break;
     }
-    case AttrType::integer:
-    case AttrType::enum_: {
+    case ValueTag::integer:
+    case ValueTag::enum_: {
       int v = 0;
       attr->GetValue(&v, index);
       result = SaveInteger<4>(v, buf);
       break;
     }
-    case AttrType::dateTime: {
+    case ValueTag::dateTime: {
       DateTime v;
       attr->GetValue(&v, index);
       result = SaveDateTime(v, buf);
       break;
     }
-    case AttrType::resolution: {
+    case ValueTag::resolution: {
       Resolution v;
       attr->GetValue(&v, index);
       result = SaveResolution(v, buf);
       break;
     }
-    case AttrType::rangeOfInteger: {
+    case ValueTag::rangeOfInteger: {
       RangeOfInteger v;
       attr->GetValue(&v, index);
       result = SaveRangeOfInteger(v, buf);
       break;
     }
-    case AttrType::text: {
+    case ValueTag::textWithLanguage: {
       StringWithLanguage s;
       attr->GetValue(&s, index);
       if (s.language.empty()) {
@@ -169,7 +177,7 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
         result = SaveStringWithLanguage(s, buf);
       }
     } break;
-    case AttrType::name: {
+    case ValueTag::nameWithLanguage: {
       StringWithLanguage s;
       attr->GetValue(&s, index);
       if (s.language.empty()) {
@@ -179,13 +187,15 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
         result = SaveStringWithLanguage(s, buf);
       }
     } break;
-    case AttrType::octetString:
-    case AttrType::keyword:
-    case AttrType::uri:
-    case AttrType::uriScheme:
-    case AttrType::charset:
-    case AttrType::naturalLanguage:
-    case AttrType::mimeMediaType: {
+    case ValueTag::octetString:
+    case ValueTag::textWithoutLanguage:
+    case ValueTag::nameWithoutLanguage:
+    case ValueTag::keyword:
+    case ValueTag::uri:
+    case ValueTag::uriScheme:
+    case ValueTag::charset:
+    case ValueTag::naturalLanguage:
+    case ValueTag::mimeMediaType: {
       std::string s = "";
       attr->GetValue(&s, index);
       SaveOctetString(s, buf);
@@ -194,12 +204,13 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
     default:
       LogFrameBuilderError(
           "Internal error: cannot recognize value type of the attribute " +
-          attr->GetName());
+          std::string(attr->Name()));
       buf->clear();
       break;
   }
   if (!result)
-    LogFrameBuilderError("Incorrect value of the attribute " + attr->GetName() +
+    LogFrameBuilderError("Incorrect value of the attribute " +
+                         std::string(attr->Name()) +
                          ". Default value was written instead");
 }
 
@@ -209,22 +220,19 @@ void FrameBuilder::SaveCollection(const Collection* coll,
   std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
   for (const Attribute* attr : attrs) {
-    if (attr->GetState() == AttrState::unset)
-      continue;
     TagNameValue tnv;
     tnv.tag = memberAttrName_value_tag;
     tnv.name.clear();
-    SaveOctetString(attr->GetName(), &tnv.value);
+    SaveOctetString(attr->Name(), &tnv.value);
     data_chunks->push_back(tnv);
-    if (attr->GetState() != AttrState::set) {
-      // out-of-band value (tag)
-      tnv.tag = static_cast<uint8_t>(attr->GetState());
+    if (IsOutOfBand(attr->Tag())) {
+      tnv.tag = static_cast<uint8_t>(attr->Tag());
       tnv.value.clear();
       data_chunks->push_back(tnv);
     } else {
       // standard values (one or more)
-      for (size_t val_index = 0; val_index < attr->GetSize(); ++val_index) {
-        if (attr->GetType() == AttrType::collection) {
+      for (size_t val_index = 0; val_index < attr->Size(); ++val_index) {
+        if (attr->Tag() == ValueTag::collection) {
           tnv.tag = begCollection_value_tag;
           tnv.value.clear();
           data_chunks->push_back(tnv);
@@ -246,18 +254,16 @@ void FrameBuilder::SaveGroup(const Collection* coll,
   std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
   for (const Attribute* attr : attrs) {
-    if (attr->GetState() == AttrState::unset)
-      continue;
     TagNameValue tnv;
-    SaveOctetString(attr->GetName(), &tnv.name);
-    if (attr->GetState() != AttrState::set) {
-      tnv.tag = static_cast<uint8_t>(attr->GetState());
+    SaveOctetString(attr->Name(), &tnv.name);
+    if (IsOutOfBand(attr->Tag())) {
+      tnv.tag = static_cast<uint8_t>(attr->Tag());
       tnv.value.clear();
       data_chunks->push_back(tnv);
       continue;
     }
-    for (size_t val_index = 0; val_index < attr->GetSize(); ++val_index) {
-      if (attr->GetType() == AttrType::collection) {
+    for (size_t val_index = 0; val_index < attr->Size(); ++val_index) {
+      if (attr->Tag() == ValueTag::collection) {
         tnv.tag = begCollection_value_tag;
         tnv.value.clear();
         data_chunks->push_back(tnv);

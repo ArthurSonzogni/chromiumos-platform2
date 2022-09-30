@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "ipp_attribute.h"
-#include "ipp_base.h"
 #include "ipp_frame.h"
+#include "ipp_log.h"
 
 namespace ipp {
 
@@ -24,11 +24,19 @@ class Package;
 struct RawAttribute;
 struct RawCollection;
 
-enum ErrorCode {
-  kAttributeNameIsEmpty,
-  kAttributeNameIsTooLong,
-  kAttributeNameDoesNotBeginWithLowercaseLetter,
-  kAttributeNameContainsIncorrectCharacters
+// The errors spotted by the parser. Comments next to the values describe
+// actions taken by the parser.
+enum class ParserCode : uint8_t {
+  kOK = 0,
+  kAttributeNameIsEmpty,             // the parser stopped
+  kValueMismatchTagConverted,        // the value was converted
+  kValueMismatchTagOmitted,          // the value was omitted
+  kAttributeNoValues,                // the attribute was omitted
+  kAttributeNameConflict,            // the attribute was omitted
+  kBooleanValueOutOfRange,           // the boolean value was set to 1
+  kValueInvalidSize,                 // the value was omitted
+  kErrorWhenAddingAttribute,         // the attribute was omitted
+  kOutOfBandAttributeWithManyValues  // additional values were ignored
 };
 
 class Parser {
@@ -60,10 +68,10 @@ class Parser {
 
   // Methods for adding entries to the log.
   void LogScannerError(const std::string& message, const uint8_t* position);
-  void LogParserError(ErrorCode error_code);
   void LogParserError(
       const std::string& message,
       std::string action = "This is critical error, parsing was cancelled.");
+  void LogParserErrors(const std::vector<ParserCode>& errors);
   void LogParserWarning(const std::string& message);
   void LogParserNewElement();
 
@@ -82,13 +90,7 @@ class Parser {
                           std::list<TagNameValue>* data_chunks,
                           RawCollection* coll);
   bool ParseRawGroup(std::list<TagNameValue>* data_chunks, RawCollection* coll);
-  bool DecodeCollection(RawCollection* raw, Collection* coll);
-
-  // Helper for parsing individual values.
-  void LoadAttrValue(Attribute* attr,
-                     size_t index,
-                     const std::vector<uint8_t>& buf,
-                     uint8_t tag);
+  void DecodeCollection(RawCollection* raw, Collection* coll);
 
   // Internal buffer.
   FrameData* frame_;

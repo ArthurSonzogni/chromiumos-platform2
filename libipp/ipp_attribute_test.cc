@@ -5,6 +5,7 @@
 #include "libipp/ipp_attribute.h"
 
 #include <limits>
+#include <string_view>
 
 #include <gtest/gtest.h>
 
@@ -17,19 +18,11 @@ static bool operator==(const ipp::RangeOfInteger& a,
 
 namespace {
 
-void TestNewAttribute(Attribute* attr,
-                      const std::string& name,
-                      bool is_a_set,
-                      AttrType type) {
+void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
   EXPECT_TRUE(attr != nullptr);
   EXPECT_EQ(attr->Name(), name);
-  if (attr->GetNameAsEnum() != AttrName::_unknown) {
-    EXPECT_EQ(ToString(attr->GetNameAsEnum()), name);
-  }
-  EXPECT_EQ(attr->IsASet(), is_a_set);
-  EXPECT_EQ(attr->GetType(), type);
+  EXPECT_EQ(attr->Tag(), tag);
   // default state after creation
-  EXPECT_EQ(attr->GetState(), AttrState::unset);
   EXPECT_EQ(attr->Size(), 0);
 }
 
@@ -79,21 +72,19 @@ const std::map<AttrName, AttrDef> TestCollection::defs_ = {
 
 TEST(attribute, SingleValue) {
   TestCollection coll;
-  TestNewAttribute(&coll.attr1, "attributes-charset", false, AttrType::integer);
+  TestNewAttribute(&coll.attr1, "attributes-charset", ValueTag::integer);
   coll.attr1.Set(123);
   EXPECT_EQ(coll.attr1.Get(), 123);
-  EXPECT_EQ(coll.attr1.GetState(), AttrState::set);
 }
 
 TEST(attribute, SetOfValues) {
   TestCollection coll;
-  TestNewAttribute(&coll.attr2, "auth-info", true, AttrType::rangeOfInteger);
+  TestNewAttribute(&coll.attr2, "auth-info", ValueTag::rangeOfInteger);
   RangeOfInteger r1{123, 234};
   RangeOfInteger r2{123, 234};
   RangeOfInteger r3{123, 234};
   coll.attr2.Set({r1, r2, r3});
   EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2, r3}));
-  EXPECT_EQ(coll.attr2.GetState(), AttrState::set);
   EXPECT_EQ(coll.attr2.Size(), 3);
   coll.attr2.Resize(2);
   EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2}));
@@ -102,13 +93,12 @@ TEST(attribute, SetOfValues) {
 
 TEST(attribute, OpenSetOfValues) {
   TestCollection coll;
-  TestNewAttribute(&coll.attr3, "baling", true, AttrType::integer);
+  TestNewAttribute(&coll.attr3, "baling", ValueTag::integer);
   coll.attr3.Set({11, 22, 33});
   coll.attr3.Add(std::vector<std::string>({"aaa", "bbb"}));
   coll.attr3.Add({44, 55});
   EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22", "33", "aaa",
                                                         "bbb", "44", "55"}));
-  EXPECT_EQ(coll.attr3.GetState(), AttrState::set);
   EXPECT_EQ(coll.attr3.Size(), 7);
   coll.attr3.Resize(2);
   EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22"}));
@@ -120,29 +110,24 @@ TEST(attribute, OpenSetOfValues) {
 
 TEST(attribute, SingleCollection) {
   TestCollection coll;
-  TestNewAttribute(&coll.attr4, "printer-supply-description", false,
-                   AttrType::collection);
-  EXPECT_EQ(coll.attr4->hi.GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr4.GetState(), AttrState::set);
+  TestNewAttribute(&coll.attr4, "printer-supply-description",
+                   ValueTag::collection);
   coll.attr4->hi.Set(false);
   EXPECT_EQ(coll.attr4->hi.Get(), false);
-  EXPECT_EQ(coll.attr4->hi.GetState(), AttrState::set);
 }
 
 TEST(attribute, SetOfCollections) {
   TestCollection coll;
-  TestNewAttribute(&coll.attr5, "punching-locations", true,
-                   AttrType::collection);
+  TestNewAttribute(&coll.attr5, "punching-locations", ValueTag::collection);
   coll.attr5[3].hi.SetState(AttrState::not_settable);
-  EXPECT_EQ(coll.attr5.GetState(), AttrState::set);
   EXPECT_EQ(coll.attr5.Size(), 4);
-  EXPECT_EQ(coll.attr5[3].hi.GetState(), AttrState::not_settable);
+  EXPECT_EQ(coll.attr5[3].hi.Tag(), ValueTag::not_settable);
 }
 
 TEST(attribute, UnknownValueAttribute) {
   TestCollection coll;
   Attribute* attr = coll.AddUnknownAttribute("abc", false, AttrType::name);
-  TestNewAttribute(attr, "abc", false, AttrType::name);
+  TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
   ASSERT_TRUE(attr->SetValue("val"));
   StringWithLanguage sl;
   ASSERT_TRUE(attr->GetValue(&sl));
@@ -154,7 +139,7 @@ TEST(attribute, UnknownCollectionAttribute) {
   TestCollection coll;
   Attribute* attr =
       coll.AddUnknownAttribute("abcd", true, AttrType::collection);
-  TestNewAttribute(attr, "abcd", true, AttrType::collection);
+  TestNewAttribute(attr, "abcd", ValueTag::collection);
   EXPECT_EQ(attr->GetCollection(), nullptr);
   attr->Resize(3);
   EXPECT_NE(attr->GetCollection(), nullptr);

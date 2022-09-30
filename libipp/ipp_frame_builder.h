@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "ipp_base.h"
 #include "ipp_frame.h"
+#include "ipp_log.h"
 
 namespace ipp {
 

@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "ipp_base.h"
 #include "ipp_frame.h"
 #include "ipp_frame_builder.h"
 #include "ipp_parser.h"
@@ -28,12 +27,9 @@ namespace {
 void SetCharsetAndLanguageAttributes(Frame* frame) {
   Collection* grp;
   frame->AddGroup(ipp::GroupTag::operation_attributes, &grp);
-  auto attr = grp->AddUnknownAttribute("attributes-charset", true,
-                                       ipp::AttrType::charset);
-  attr->SetValue("utf-8");
-  attr = grp->AddUnknownAttribute("attributes-natural-language", true,
-                                  ipp::AttrType::naturalLanguage);
-  attr->SetValue("en-us");
+  grp->AddAttr("attributes-charset", ValueTag::charset, "utf-8");
+  grp->AddAttr("attributes-natural-language", ValueTag::naturalLanguage,
+               "en-us");
 }
 
 struct Converter {

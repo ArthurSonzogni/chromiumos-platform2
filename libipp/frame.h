@@ -10,11 +10,23 @@
 #include <utility>
 #include <vector>
 
-#include "ipp_base.h"
+#include "ipp_enums.h"
 #include "ipp_export.h"
+#include "ipp_log.h"
 #include "ipp_package.h"
 
 namespace ipp {
+
+// represents operation id
+typedef E_operations_supported Operation;
+
+// represents status-code [rfc8010]
+typedef E_status_code Status;
+
+// represents the version of IPP protocol
+// The first byte (MSB) of this value correspond to major version number, the
+// second one to minor version number.
+typedef E_ipp_versions_supported Version;
 
 // There are methods that return error codes. The error code is usually
 // returned via the last method's parameter that is optional.

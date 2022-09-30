@@ -25,6 +25,7 @@ enum class Code;
 // Represents the current state of the attribute:
 // set/unset or one of the out-of-band values.
 // "unset" means that the attribute is not included in a IPP frame.
+// It is DEPRECATED. Use ValueTag instead.
 enum class AttrState : uint8_t {
   unset = 0x00,             // internal
   set = 0x01,               // internal
@@ -38,6 +39,7 @@ enum class AttrState : uint8_t {
 
 // Represents types of values hold by attributes (see [rfc8010]).
 // "collection" means that the attribute has Collection object as a value.
+// It is DEPRECATED. Use ValueTag instead.
 enum class AttrType : uint8_t {
   integer = 0x21,
   boolean = 0x22,
@@ -57,10 +59,8 @@ enum class AttrType : uint8_t {
   mimeMediaType = 0x49
 };
 
-// TODO(pawliczek) - ValueTag is going to replace AttrState and AttrType defined
-// above. Values of these enums are copied from IPP specification; this is why
+// Values of ValueTag enum are copied from IPP specification; this is why
 // they do not follow the standard naming rule.
-
 // ValueTag defines type of an attribute. It is also called as `syntax` in the
 // IPP specification. All valid tags are listed below. Values of attributes with
 // these tags are mapped to C++ types.
@@ -143,7 +143,10 @@ struct StringWithLanguage {
 struct Resolution {
   int32_t xres = 0;
   int32_t yres = 0;
-  enum Units { kDotsPerInch = 3, kDotsPerCentimeter = 4 } units = kDotsPerInch;
+  enum Units : int8_t {
+    kDotsPerInch = 3,
+    kDotsPerCentimeter = 4
+  } units = kDotsPerInch;
   Resolution() = default;
   Resolution(int32_t size1, int32_t size2, Units units = Units::kDotsPerInch)
       : xres(size1), yres(size2), units(units) {}
@@ -219,6 +222,11 @@ struct AttrDef {
 // Attributes. Each attribute in Collection must have unique name.
 class IPP_EXPORT Collection {
  public:
+  Collection(const Collection&) = delete;
+  Collection(Collection&&) = delete;
+  Collection& operator=(const Collection&) = delete;
+  Collection& operator=(Collection&&) = delete;
+
   virtual ~Collection();
 
   // Returns all attributes in the collection.
@@ -230,8 +238,6 @@ class IPP_EXPORT Collection {
 
   // Methods return attribute by name. Methods return nullptr <=> the collection
   // has no attribute with this name.
-  Attribute* GetAttribute(AttrName);
-  const Attribute* GetAttribute(AttrName) const;
   Attribute* GetAttribute(const std::string& name);
   const Attribute* GetAttribute(const std::string& name) const;
 
@@ -256,6 +262,9 @@ class IPP_EXPORT Collection {
   //  * int32_t: IsInteger(tag) == true
   //  * std::string: IsString(tag) == true OR tag == octetString
   //  * StringWithLanguage: tag == nameWithLanguage OR tag == textWithLanguage
+  //  * DateTime: tag == dateTime
+  //  * Resolution: tag == resolution
+  //  * RangeOfInteger: tag == rangeOfInteger
   // Possible errors:
   //  * kInvalidName
   //  * kNameConflict
@@ -268,6 +277,9 @@ class IPP_EXPORT Collection {
   Code AddAttr(const std::string& name,
                ValueTag tag,
                const StringWithLanguage& value);
+  Code AddAttr(const std::string& name, ValueTag tag, DateTime value);
+  Code AddAttr(const std::string& name, ValueTag tag, Resolution value);
+  Code AddAttr(const std::string& name, ValueTag tag, RangeOfInteger value);
   Code AddAttr(const std::string& name,
                ValueTag tag,
                const std::vector<int32_t>& values);
@@ -277,6 +289,15 @@ class IPP_EXPORT Collection {
   Code AddAttr(const std::string& name,
                ValueTag tag,
                const std::vector<StringWithLanguage>& values);
+  Code AddAttr(const std::string& name,
+               ValueTag tag,
+               const std::vector<DateTime>& values);
+  Code AddAttr(const std::string& name,
+               ValueTag tag,
+               const std::vector<Resolution>& values);
+  Code AddAttr(const std::string& name,
+               ValueTag tag,
+               const std::vector<RangeOfInteger>& values);
 
   // Add a new attribute with one or more values. Tag of the new attribute is
   // deduced from the type of the parameter `value`/`values`.
@@ -314,11 +335,11 @@ class IPP_EXPORT Collection {
 
  private:
   friend class Attribute;
-  // Copy/move/assign constructors/operators are forbidden.
-  Collection(const Collection&) = delete;
-  Collection(Collection&&) = delete;
-  Collection& operator=(const Collection&) = delete;
-  Collection& operator=(Collection&&) = delete;
+
+  // Methods return attribute by name. Methods return nullptr <=> the collection
+  // has no attribute with this name.
+  Attribute* GetAttribute(AttrName);
+  const Attribute* GetAttribute(AttrName) const;
 
   // Methods to implement in derived class, return attributes from schema
   // and their definitions. There is no nullptrs in the returned vector.
@@ -370,13 +391,10 @@ class IPP_EXPORT EmptyCollection : public Collection {
 // Base class representing Attribute, contains general API for Attribute.
 class IPP_EXPORT Attribute {
  public:
-  // Returns a type of the attribute.
-  AttrType GetType() const;
-
-  // Returns a state of an attribute. Default state is always AttrState::unset,
-  // setting any value with SetValues(...) switches the state to AttrState::set.
-  // State can be also set by hand with SetState() method.
-  AttrState GetState() const;
+  Attribute(const Attribute&) = delete;
+  Attribute(Attribute&&) = delete;
+  Attribute& operator=(const Attribute&) = delete;
+  Attribute& operator=(Attribute&&) = delete;
 
   // Returns tag of the attribute.
   ValueTag Tag() const;
@@ -386,39 +404,16 @@ class IPP_EXPORT Attribute {
   // * If (new_state == set), it adds single value if the attribute is empty.
   void SetState(AttrState new_state);
 
-  // Returns true if the attribute is a set, false if it is a single value.
-  bool IsASet() const;
-
-  // Returns enum value corresponding to attributes name. If the name has
-  // no corresponding AttrName value, it returns AttrName::_unknown.
-  AttrName GetNameAsEnum() const {
-    if (offset_ == std::numeric_limits<int16_t>::min() && ToString(name_) == "")
-      return AttrName::_unknown;
-    return name_;
-  }
-
-  // Returns an attribute's name as a non-empty string.
-  // This method is deprecated, use Name() instead.
-  std::string GetName() const {
-    const std::string s = ToString(name_);
-    if (!s.empty()) {
-      return s;
-    }
-    const Collection* coll = GetOwner();
-    return coll->unknown_names.at(name_);
-  }
-
   // Returns an attribute's name. It is always a non-empty string.
   std::string_view Name() const;
 
   // Returns the current number of elements (values or Collections).
-  // (IsASet() == false) => always returns 0 or 1.
-  size_t GetSize() const;  // This one is deprecated.
+  // It returns 0 <=> IsOutOfBand(Tag()).
   size_t Size() const;
 
   // Resizes the attribute (changes the number of stored values/collections).
   // (IsASet() == false) and (new_size > 1) => does nothing.
-  // (GetSize() > 0) and (|new_size| == 0) => the attribute's state is changed
+  // (Size() > 0) and (|new_size| == 0) => the attribute's state is changed
   // to AttrState::unset.
   void Resize(size_t new_size);
 
@@ -449,7 +444,7 @@ class IPP_EXPORT Attribute {
   bool SetValue(const DateTime& val, size_t index = 0);
 
   // Returns a pointer to Collection.
-  // (GetType() != collection || index >= GetSize()) <=> returns nullptr.
+  // (GetType() != collection || index >= Size()) <=> returns nullptr.
   Collection* GetCollection(size_t index = 0);
   const Collection* GetCollection(size_t index = 0) const;
 
@@ -467,11 +462,27 @@ class IPP_EXPORT Attribute {
   const AttrName name_;
 
  private:
-  // Copy/move/assign constructors/operators are forbidden.
-  Attribute(const Attribute&) = delete;
-  Attribute(Attribute&&) = delete;
-  Attribute& operator=(const Attribute&) = delete;
-  Attribute& operator=(Attribute&&) = delete;
+  friend class Collection;
+
+  // Returns a type of the attribute.
+  AttrType GetType() const;
+
+  // Returns a state of an attribute. Default state is always AttrState::unset,
+  // setting any value with SetValues(...) switches the state to AttrState::set.
+  // State can be also set by hand with SetState() method.
+  AttrState GetState() const;
+
+  // Returns enum value corresponding to attributes name. If the name has
+  // no corresponding AttrName value, it returns AttrName::_unknown.
+  AttrName GetNameAsEnum() const {
+    if (offset_ == std::numeric_limits<int16_t>::min() && ToString(name_) == "")
+      return AttrName::_unknown;
+    return name_;
+  }
+
+  // Returns the current number of elements (values or Collections).
+  // (IsASet() == false) => always returns 0 or 1.
+  size_t GetSize() const;
 };
 
 // These templates convert the type from specialized API to the internal type
@@ -560,7 +571,7 @@ class SetOfValues : public Attribute {
       SetValue(vals[i], i);
   }
   std::vector<TValue> Get() const {
-    std::vector<TValue> vals(GetSize());
+    std::vector<TValue> vals(Size());
     for (size_t i = 0; i < vals.size(); ++i) {
       typename AsInternalType<TValue>::Type val;
       GetValue(&val, i);
@@ -569,7 +580,7 @@ class SetOfValues : public Attribute {
     return vals;
   }
   void Add(const std::vector<TValue>& vals) {
-    const size_t old_size = GetSize();
+    const size_t old_size = Size();
     Resize(old_size + vals.size());
     for (size_t i = 0; i < vals.size(); ++i)
       SetValue(vals[i], old_size + i);
@@ -595,7 +606,7 @@ class SetOfValues<StringWithLanguage> : public Attribute {
       SetValue(vals[i], i);
   }
   std::vector<StringWithLanguage> Get() const {
-    std::vector<StringWithLanguage> vals(GetSize());
+    std::vector<StringWithLanguage> vals(Size());
     for (size_t i = 0; i < vals.size(); ++i) {
       StringWithLanguage val;
       GetValue(&val, i);
@@ -604,13 +615,13 @@ class SetOfValues<StringWithLanguage> : public Attribute {
     return vals;
   }
   void Add(const std::vector<StringWithLanguage>& vals) {
-    const size_t old_size = GetSize();
+    const size_t old_size = Size();
     Resize(old_size + vals.size());
     for (size_t i = 0; i < vals.size(); ++i)
       SetValue(vals[i], old_size + i);
   }
   void Add(const std::vector<std::string>& vals) {
-    const size_t old_size = GetSize();
+    const size_t old_size = Size();
     Resize(old_size + vals.size());
     for (size_t i = 0; i < vals.size(); ++i)
       SetValue(vals[i], old_size + i);
@@ -636,19 +647,19 @@ class OpenSetOfValues : public Attribute {
       SetValue(ToString(vals[i]), i);
   }
   std::vector<std::string> Get() const {
-    std::vector<std::string> vals(GetSize());
+    std::vector<std::string> vals(Size());
     for (size_t i = 0; i < vals.size(); ++i)
       GetValue(&(vals[i]), i);
     return vals;
   }
   void Add(const std::vector<std::string>& vals) {
-    const size_t old_size = GetSize();
+    const size_t old_size = Size();
     Resize(old_size + vals.size());
     for (size_t i = 0; i < vals.size(); ++i)
       SetValue(vals[i], old_size + i);
   }
   void Add(const std::vector<TValue>& vals) {
-    const size_t old_size = GetSize();
+    const size_t old_size = Size();
     Resize(old_size + vals.size());
     for (size_t i = 0; i < vals.size(); ++i)
       SetValue(ToString(vals[i]), old_size + i);
@@ -685,7 +696,7 @@ class SetOfCollections : public Attribute {
   SetOfCollections(Collection* owner, AttrName name) : Attribute(owner, name) {}
   // If |index| is out of range, the vector is resized to (index+1).
   TCollection& operator[](size_t index) {
-    if (GetSize() <= index)
+    if (Size() <= index)
       Resize(index + 1);
     return *(dynamic_cast<TCollection*>(GetCollection(index)));
   }

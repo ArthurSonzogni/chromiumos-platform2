@@ -5,7 +5,9 @@
 #include "libipp/ipp_parser.h"
 #include <set>
 
+#include "libipp/frame.h"
 #include "libipp/ipp_encoding.h"
+#include "libipp/ipp_package.h"
 
 namespace ipp {
 
@@ -18,33 +20,6 @@ constexpr int kMaxCollectionLevel = 16;
 
 // This parameters defines maximum number of attribute groups in single package.
 constexpr int kMaxCountOfAttributeGroups = 20 * 1024;
-
-// Maximum size of 'text' value (rfc8011, section 5.1.2).
-constexpr int kMaxLengthOfText = 1023;
-
-// Maximum size of 'name' value (rfc8011, section 5.1.3).
-constexpr int kMaxLengthOfName = 255;
-
-// Maximum size of 'keyword' value (rfc8011, section 5.1.4).
-constexpr int kMaxLengthOfKeyword = 255;
-
-// Maximum size of 'uri' value (rfc8011, section 5.1.6).
-constexpr int kMaxLengthOfUri = 1023;
-
-// Maximum size of 'uriScheme' value (rfc8011, section 5.1.7).
-constexpr int kMaxLengthOfUriScheme = 63;
-
-// Maximum size of 'charset' value (rfc8011, section 5.1.8).
-constexpr int kMaxLengthOfCharset = 63;
-
-// Maximum size of 'naturalLanguage' value (rfc8011, section 5.1.9).
-constexpr int kMaxLengthOfNaturalLanguage = 63;
-
-// Maximum size of 'mimeMediaType' value (rfc8011, section 5.1.10).
-constexpr int kMaxLengthOfMimeMediaType = 255;
-
-// Maximum size of 'octetString' value (rfc8011, section 5.1.11).
-constexpr int kMaxLengthOfOctetString = 1023;
 
 // Converts the least significant 4 bits to hexadecimal digit (ASCII char).
 char ToHexDigit(uint8_t v) {
@@ -78,7 +53,7 @@ std::string ToHexSeq(const uint8_t* begin, const uint8_t* end) {
 // Decodes 1-, 2- or 4-bytes integers (two's-complement binary encoding).
 // Returns false if (data.size() != BytesCount) or (out == nullptr).
 template <size_t BytesCount>
-bool LoadInteger(const std::vector<uint8_t>& data, int* out) {
+bool LoadInteger(const std::vector<uint8_t>& data, int32_t* out) {
   if ((data.size() != BytesCount) || (out == nullptr))
     return false;
   const uint8_t* ptr = data.data();
@@ -86,29 +61,15 @@ bool LoadInteger(const std::vector<uint8_t>& data, int* out) {
   return true;
 }
 
-// Reads simple string from buf. The string is truncated if it is longer than
-// |max_length|. |truncated_chars| must not be nullptr and it is set to a count
-// of truncated characters.
-std::string LoadOctetString(const std::vector<uint8_t>& buf,
-                            size_t max_length,
-                            int* truncated_chars) {
-  if (max_length >= buf.size()) {
-    *truncated_chars = 0;
-    return std::string(buf.data(), buf.data() + buf.size());
-  }
-  *truncated_chars = buf.size() - max_length;
-  return std::string(buf.data(), buf.data() + max_length);
+// Reads simple string from buf.
+std::string LoadString(const std::vector<uint8_t>& buf) {
+  return std::string(buf.data(), buf.data() + buf.size());
 }
 
 // Reads textWithLanguage/nameWithLanguage (see [rfc8010], section 3.9) from
-// buf. Returns false if given content is incorrect or (out == nullptr).
-// If parsed string is longer than |max_length|, it is truncated and true is
-// returned. |truncated_chars| must not be nullptr and is set to a count of
-// truncated characters when the function returns true.
+// buf. Returns false if given content is invalid or (out == nullptr).
 bool LoadStringWithLanguage(const std::vector<uint8_t>& buf,
-                            size_t max_length,
-                            ipp::StringWithLanguage* out,
-                            int* truncated_chars) {
+                            ipp::StringWithLanguage* out) {
   // The shortest possible value has 4 bytes: 2 times 2-bytes zero.
   if ((buf.size() < 4) || (out == nullptr))
     return false;
@@ -118,26 +79,18 @@ bool LoadStringWithLanguage(const std::vector<uint8_t>& buf,
     return false;
   if (buf.size() < 4 + length)
     return false;
-  if (length > kMaxLengthOfNaturalLanguage)
-    return false;
   out->language.assign(ptr, ptr + length);
   ptr += length;
   if (!ParseUnsignedInteger<2>(&ptr, &length))
     return false;
   if (buf.size() != 4 + out->language.size() + length)
     return false;
-  if (max_length >= length) {
-    out->value.assign(ptr, ptr + length);
-    *truncated_chars = 0;
-  } else {
-    out->value.assign(ptr, ptr + max_length);
-    *truncated_chars = length - max_length;
-  }
+  out->value.assign(ptr, ptr + length);
   return true;
 }
 
 // Reads dateTime (see [rfc8010]) from buf.
-// Fails when binary representation is incorrect or (out == nullptr).
+// Fails when binary representation has invalid size or (out == nullptr).
 bool LoadDateTime(const std::vector<uint8_t>& buf, ipp::DateTime* out) {
   if ((buf.size() != 11) || (out == nullptr))
     return false;
@@ -155,28 +108,21 @@ bool LoadDateTime(const std::vector<uint8_t>& buf, ipp::DateTime* out) {
 }
 
 // Reads resolution (see [rfc8010]) from buf.
-// Fails when binary representation is incorrect or (out == nullptr).
+// Fails when binary representation has invalid size or (out == nullptr).
 bool LoadResolution(const std::vector<uint8_t>& buf, ipp::Resolution* out) {
   if ((buf.size() != 9) || (out == nullptr))
     return false;
   const uint8_t* ptr = buf.data();
   ParseSignedInteger<4>(&ptr, &out->xres);
   ParseSignedInteger<4>(&ptr, &out->yres);
-  switch (*ptr) {
-    case static_cast<uint8_t>(ipp::Resolution::kDotsPerCentimeter):
-      out->units = ipp::Resolution::kDotsPerCentimeter;
-      break;
-    case static_cast<uint8_t>(ipp::Resolution::kDotsPerInch):
-      out->units = ipp::Resolution::kDotsPerInch;
-      break;
-    default:
-      return false;
-  }
+  int8_t units;
+  ParseSignedInteger<1>(&ptr, &units);
+  out->units = static_cast<Resolution::Units>(units);
   return true;
 }
 
 // Reads rangeOfInteger (see [rfc8010]) from buf.
-// Fails when binary representation is incorrect or (out == nullptr).
+// Fails when binary representation has invalid size or (out == nullptr).
 bool LoadRangeOfInteger(const std::vector<uint8_t>& buf,
                         ipp::RangeOfInteger* out) {
   if ((buf.size() != 8) || (out == nullptr))
@@ -185,42 +131,6 @@ bool LoadRangeOfInteger(const std::vector<uint8_t>& buf,
   ParseSignedInteger<4>(&ptr, &out->min_value);
   ParseSignedInteger<4>(&ptr, &out->max_value);
   return true;
-}
-
-// Reads name as specified in 3.2 section of rfc8010 and stores it in |out|.
-// Returns list of errors (no error codes are repeated). The parameter |out|
-// is always set to obtained name. The resultant name is truncated if too long
-// and incorrect characters are replaced by '_' (underscore). For empty |buf|,
-// an empty string is set in |out|. |out| must not be nullptr.
-std::vector<ErrorCode> LoadName(const std::vector<uint8_t>& buf,
-                                std::string* out) {
-  if (buf.empty()) {
-    *out = "";
-    return {ErrorCode::kAttributeNameIsEmpty};
-  }
-  std::vector<ErrorCode> result;
-  if (buf.front() < 0x61 || buf.front() > 0x7a) {
-    result.push_back(ErrorCode::kAttributeNameDoesNotBeginWithLowercaseLetter);
-  }
-  size_t length = buf.size();
-  if (length > kMaxLengthOfKeyword) {
-    result.push_back(ErrorCode::kAttributeNameIsTooLong);
-    length = kMaxLengthOfKeyword;
-  }
-  out->resize(length);
-  bool has_incorrect_characters = false;
-  for (size_t i = 0; i < length; ++i) {
-    uint8_t c = buf[i];
-    if ((c < 0x30 || c > 0x39) && (c < 0x61 || c > 0x7a) && (c != '-') &&
-        (c != '_') && (c != '.')) {
-      c = '_';
-      has_incorrect_characters = true;
-    }
-    (*out)[i] = c;
-  }
-  if (has_incorrect_characters)
-    result.push_back(ErrorCode::kAttributeNameContainsIncorrectCharacters);
-  return result;
 }
 
 // Scope guard to control the context path. Constructor adds new a element to
@@ -258,13 +168,19 @@ std::string PathAsString(
 }
 
 // Return true if source type can be used in attribute of target type.
-bool IsConvertibleTo(const ipp::AttrType source, const ipp::AttrType target) {
+bool IsConvertibleTo(const ipp::ValueTag source, const ipp::ValueTag target) {
   if (source == target)
     return true;
-  if (source == ipp::AttrType::integer &&
-      target == ipp::AttrType::rangeOfInteger)
+  if (source == ipp::ValueTag::integer &&
+      target == ipp::ValueTag::rangeOfInteger)
     return true;
-  if (source == ipp::AttrType::integer && target == ipp::AttrType::enum_)
+  if (source == ipp::ValueTag::integer && target == ipp::ValueTag::enum_)
+    return true;
+  if (source == ipp::ValueTag::nameWithoutLanguage &&
+      target == ipp::ValueTag::nameWithLanguage)
+    return true;
+  if (source == ipp::ValueTag::textWithoutLanguage &&
+      target == ipp::ValueTag::textWithLanguage)
     return true;
   return false;
 }
@@ -293,24 +209,47 @@ void Parser::LogScannerError(const std::string& message, const uint8_t* ptr) {
   errors_->push_back(l);
 }
 
-void Parser::LogParserError(ErrorCode error_code) {
-  switch (error_code) {
-    case ErrorCode::kAttributeNameIsEmpty:
-      LogParserError("Attribute with an empty name was spotted");
-      break;
-    case ErrorCode::kAttributeNameIsTooLong:
-      LogParserError("Attribute's name is too long",
-                     "The name was truncated to " +
-                         std::to_string(kMaxLengthOfKeyword) + " characters");
-      break;
-    case ErrorCode::kAttributeNameDoesNotBeginWithLowercaseLetter:
-      LogParserError("Attribute's name does not begin with a lowercase letter",
-                     "The error was ignored");
-      break;
-    case ErrorCode::kAttributeNameContainsIncorrectCharacters:
-      LogParserError("Attribute's name contains incorrect characters",
-                     "Incorrect characters were replaced by '_'");
-      break;
+void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
+  for (ParserCode error_code : error_codes) {
+    switch (error_code) {
+      case ParserCode::kOK:
+        // ignore
+        break;
+      case ParserCode::kAttributeNameIsEmpty:
+        LogParserError("Attribute with an empty name was spotted");
+        break;
+      case ParserCode::kValueMismatchTagConverted:
+        LogParserError("Value with mismatch tag was spotted",
+                       "The value was converted to the attribute's type");
+        break;
+      case ParserCode::kValueMismatchTagOmitted:
+        LogParserError("A value with incompatible tag was spotted",
+                       "The value was ignored");
+        break;
+      case ParserCode::kAttributeNameConflict:
+        LogParserError("An attribute with duplicate name was spotted",
+                       "The attribute was ignored");
+        break;
+      case ParserCode::kBooleanValueOutOfRange:
+        LogParserError("A boolean value has an integer different that 0 and 1",
+                       "The value was set to true");
+        break;
+      case ParserCode::kValueInvalidSize:
+        LogParserError("A value has invalid size", "The value was ignored");
+        break;
+      case ParserCode::kAttributeNoValues:
+        LogParserError("An attribute has no valid values",
+                       "The attribute was ignored");
+        break;
+      case ParserCode::kErrorWhenAddingAttribute:
+        LogParserError("Internal parser error: cannot add an attribute",
+                       "The attribute was ignored");
+        break;
+      case ParserCode::kOutOfBandAttributeWithManyValues:
+        LogParserError("An out-of-band attribute has more than one value",
+                       "Additional values were ignored");
+        break;
+    }
   }
 }
 
@@ -338,148 +277,25 @@ void Parser::LogParserNewElement() {
   }
 }
 
-void Parser::LoadAttrValue(Attribute* attr,
-                           size_t index,
-                           const std::vector<uint8_t>& buf,
-                           uint8_t tag) {
-  const AttrType tag_type = static_cast<AttrType>(tag);
-
-  // Process values mapped to simple strings.
-  size_t max_length = 0;
-  // Check the value type and set max_length if it is a simple string.
-  switch (tag_type) {
-    case AttrType::octetString:
-      max_length = kMaxLengthOfOctetString;
-      break;
-    case AttrType::keyword:
-      max_length = kMaxLengthOfKeyword;
-      break;
-    case AttrType::uri:
-      max_length = kMaxLengthOfUri;
-      break;
-    case AttrType::uriScheme:
-      max_length = kMaxLengthOfUriScheme;
-      break;
-    case AttrType::charset:
-      max_length = kMaxLengthOfCharset;
-      break;
-    case AttrType::naturalLanguage:
-      max_length = kMaxLengthOfNaturalLanguage;
-      break;
-    case AttrType::mimeMediaType:
-      max_length = kMaxLengthOfMimeMediaType;
-      break;
-    default:
-      // nameWithoutLanguage and textWithoutLanguage are not in AttrType.
-      if (tag == nameWithoutLanguage_value_tag) {
-        max_length = kMaxLengthOfName;
-      } else if (tag == textWithoutLanguage_value_tag) {
-        max_length = kMaxLengthOfText;
-      } else {
-        // Just leave max_length = 0.
-      }
-      break;
-  }
-  if (max_length != 0) {
-    // The value can be read as a simple string. Read it and exit.
-    int truncated_chars = 0;
-    attr->SetValue(LoadOctetString(buf, max_length, &truncated_chars), index);
-    if (truncated_chars != 0)
-      LogParserError("String value is too long", "The value was truncated");
-    return;
-  }
-
-  // If we are here, the value is not a simple string.
-  // Build the first part of error message.
-  const std::string msg_prefix = "Incorrect " + ToString(tag_type) + " value";
-  // Load value from the buffer.
-  switch (tag_type) {
-    case AttrType::boolean: {
-      int v = 0;
-      if (!LoadInteger<1>(buf, &v) || v < 0 || v > 1)
-        LogParserError(msg_prefix + ": 0x" + ToHexByte(v),
-                       "The value set to false");
-      attr->SetValue(v, index);
-      break;
-    }
-    case AttrType::integer:
-    case AttrType::enum_: {
-      int v = 0;
-      if (!LoadInteger<4>(buf, &v))
-        LogParserError(msg_prefix, "The value set to 0");
-      attr->SetValue(v, index);
-      break;
-    }
-    case AttrType::dateTime: {
-      DateTime v;
-      if (!LoadDateTime(buf, &v))
-        LogParserError(msg_prefix, "The value not set");
-      attr->SetValue(v, index);
-      break;
-    }
-    case AttrType::resolution: {
-      Resolution v;
-      if (!LoadResolution(buf, &v))
-        LogParserError(msg_prefix, "The value not set");
-      attr->SetValue(v, index);
-      break;
-    }
-    case AttrType::rangeOfInteger: {
-      RangeOfInteger v;
-      if (!LoadRangeOfInteger(buf, &v))
-        LogParserError(msg_prefix, "The value not set");
-      attr->SetValue(v, index);
-      break;
-    }
-    case AttrType::text:
-    case AttrType::name: {
-      max_length =
-          (tag_type == AttrType::text) ? kMaxLengthOfText : kMaxLengthOfName;
-      StringWithLanguage v;
-      int truncated_chars = 0;
-      if (!LoadStringWithLanguage(buf, max_length, &v, &truncated_chars))
-        LogParserError(msg_prefix, "The value not set");
-      if (truncated_chars != 0)
-        LogParserError("String value is too long", "The value was truncated");
-      attr->SetValue(v, index);
-      break;
-    }
-    default:
-      LogParserError("Internal parser error: cannot recognize value type",
-                     "The value was not set");
-      break;
-  }
-}
-
 // Temporary representation of an attribute's value parsed from TNVs.
 struct RawValue {
-  // Out-Of-Bond value or "set" when contains standard value or collection
-  AttrState state;
-  // corresponding attribute's type - verified
-  AttrType type;
   // original tag - verified
-  uint8_t tag;
-  // original data, empty when (type == collection) - not verified
+  ValueTag tag;
+  // original data, empty when (tag == collection OR IsOutOfBand(tag)) - not
+  // verified
   std::vector<uint8_t> data;
-  // (not nullptr) <=> (type == collection)
+  // (not nullptr) <=> (tag == collection)
   std::unique_ptr<RawCollection> collection;
   // default constructor
-  RawValue()
-      : state(AttrState::set),
-        type(AttrType::integer),
-        tag(static_cast<uint8_t>(AttrType::integer)) {}
+  RawValue() : tag(ValueTag::unsupported) {}
   // create as Out-Of-Band value
-  explicit RawValue(uint8_t tag)
-      : state(static_cast<AttrState>(tag)), type(AttrType::integer), tag(tag) {}
+  explicit RawValue(ValueTag tag) : tag(tag) {}
   // create as standard value
-  RawValue(AttrType type, uint8_t tag, const std::vector<uint8_t>& data)
-      : state(AttrState::set), type(type), tag(tag), data(data) {}
+  RawValue(ValueTag tag, const std::vector<uint8_t>& data)
+      : tag(tag), data(data) {}
   // create as collection
   explicit RawValue(RawCollection* coll)
-      : state(AttrState::set),
-        type(AttrType::collection),
-        tag(static_cast<uint8_t>(AttrType::collection)),
-        collection(coll) {}
+      : tag(ValueTag::collection), collection(coll) {}
 };
 
 struct RawCollection;
@@ -498,6 +314,165 @@ struct RawCollection {
   // parsed attributes (may have duplicate names)
   std::vector<RawAttribute> attributes;
 };
+
+// Parse a value of type `attr_type` from `raw_value` to `output` when possible.
+template <typename ApiType>
+ParserCode LoadAttrValue(ValueTag attr_type,
+                         const RawValue& raw_value,
+                         ApiType& output);
+
+template <>
+ParserCode LoadAttrValue<std::string>(ValueTag attr_type,
+                                      const RawValue& raw_value,
+                                      std::string& output) {
+  if (!IsString(raw_value.tag) && raw_value.tag != ValueTag::octetString) {
+    return ParserCode::kValueMismatchTagOmitted;
+  }
+  output = LoadString(raw_value.data);
+  return (attr_type == raw_value.tag) ? ParserCode::kOK
+                                      : ParserCode::kValueMismatchTagConverted;
+}
+
+template <>
+ParserCode LoadAttrValue<int32_t>(ValueTag attr_type,
+                                  const RawValue& raw_value,
+                                  int32_t& output) {
+  switch (raw_value.tag) {
+    case ValueTag::boolean: {
+      if (!LoadInteger<1>(raw_value.data, &output)) {
+        return ParserCode::kValueInvalidSize;
+      }
+      if (attr_type != ValueTag::boolean) {
+        return ParserCode::kValueMismatchTagConverted;
+      }
+      if (output < 0 || output > 1) {
+        output = 1;
+        return ParserCode::kBooleanValueOutOfRange;
+      }
+      return ParserCode::kOK;
+    }
+    case ValueTag::integer:
+    case ValueTag::enum_: {
+      if (!LoadInteger<4>(raw_value.data, &output)) {
+        return ParserCode::kValueInvalidSize;
+      }
+      if (attr_type != raw_value.tag) {
+        return ParserCode::kValueMismatchTagConverted;
+      }
+      return ParserCode::kOK;
+    }
+    default:
+      return ParserCode::kValueMismatchTagOmitted;
+  }
+}
+
+template <>
+ParserCode LoadAttrValue<DateTime>(ValueTag attr_type,
+                                   const RawValue& raw_value,
+                                   DateTime& output) {
+  if (raw_value.tag != ValueTag::dateTime) {
+    return ParserCode::kValueMismatchTagOmitted;
+  }
+  if (!LoadDateTime(raw_value.data, &output)) {
+    return ParserCode::kValueInvalidSize;
+  }
+  return ParserCode::kOK;
+}
+
+template <>
+ParserCode LoadAttrValue<Resolution>(ValueTag attr_type,
+                                     const RawValue& raw_value,
+                                     Resolution& output) {
+  if (raw_value.tag != ValueTag::resolution) {
+    return ParserCode::kValueMismatchTagOmitted;
+  }
+  if (!LoadResolution(raw_value.data, &output)) {
+    return ParserCode::kValueInvalidSize;
+  }
+  return ParserCode::kOK;
+}
+
+template <>
+ParserCode LoadAttrValue<RangeOfInteger>(ValueTag attr_type,
+                                         const RawValue& raw_value,
+                                         RangeOfInteger& output) {
+  if (raw_value.tag == ValueTag::integer) {
+    if (!LoadInteger<4>(raw_value.data, &output.min_value)) {
+      return ParserCode::kValueInvalidSize;
+    }
+    output.max_value = output.min_value;
+    return ParserCode::kOK;
+  }
+  if (raw_value.tag != ValueTag::rangeOfInteger) {
+    return ParserCode::kValueMismatchTagOmitted;
+  }
+  if (!LoadRangeOfInteger(raw_value.data, &output)) {
+    return ParserCode::kValueInvalidSize;
+  }
+  return ParserCode::kOK;
+}
+
+template <>
+ParserCode LoadAttrValue<StringWithLanguage>(ValueTag attr_type,
+                                             const RawValue& raw_value,
+                                             StringWithLanguage& output) {
+  if (raw_value.tag == ValueTag::nameWithLanguage ||
+      raw_value.tag == ValueTag::textWithLanguage) {
+    if (!LoadStringWithLanguage(raw_value.data, &output)) {
+      return ParserCode::kValueInvalidSize;
+    }
+    if (raw_value.tag != attr_type) {
+      return ParserCode::kValueMismatchTagConverted;
+    }
+    return ParserCode::kOK;
+  }
+  if (IsString(raw_value.tag)) {
+    output.language.clear();
+    output.value = LoadString(raw_value.data);
+    if (raw_value.tag == ValueTag::nameWithoutLanguage &&
+        attr_type != ValueTag::nameWithLanguage) {
+      return ParserCode::kValueMismatchTagConverted;
+    }
+    if (raw_value.tag == ValueTag::textWithoutLanguage &&
+        attr_type != ValueTag::textWithLanguage) {
+      return ParserCode::kValueMismatchTagConverted;
+    }
+    return ParserCode::kOK;
+  }
+  return ParserCode::kValueMismatchTagOmitted;
+}
+
+// Parse an attribute of type `attr_type` from `raw_attr` and add it to `coll`
+// when possible. Return a list of parser errors. `coll` must not be nullptr.
+template <typename ApiType>
+std::vector<ParserCode> LoadAttrValues(Collection* coll,
+                                       ValueTag attr_type,
+                                       const RawAttribute& raw_attr) {
+  std::vector<ParserCode> errors;
+  std::vector<ApiType> vals;
+  vals.reserve(raw_attr.values.size());
+  for (const RawValue& raw_value : raw_attr.values) {
+    ApiType val;
+    ParserCode code = LoadAttrValue<ApiType>(attr_type, raw_value, val);
+    if (code == ParserCode::kOK ||
+        code == ParserCode::kValueMismatchTagConverted ||
+        code == ParserCode::kBooleanValueOutOfRange) {
+      vals.push_back(std::move(val));
+    }
+    if (code != ParserCode::kOK) {
+      errors.push_back(code);
+    }
+  }
+  if (vals.empty()) {
+    errors.push_back(ParserCode::kAttributeNoValues);
+  } else {
+    const Code err = coll->AddAttr(raw_attr.name, attr_type, vals);
+    if (err != Code::kOK) {
+      errors.push_back(ParserCode::kErrorWhenAddingAttribute);
+    }
+  }
+  return errors;
+}
 
 bool Parser::SaveFrameToPackage(bool log_unknown_values, Package* package) {
   std::set<GroupTag> processed_single_groups;
@@ -535,8 +510,7 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Package* package) {
     RawCollection raw_coll;
     if (!ParseRawGroup(&(frame_->groups_content_[i]), &raw_coll))
       return false;
-    if (!DecodeCollection(&raw_coll, coll))
-      return false;
+    DecodeCollection(&raw_coll, coll);
   }
   package->Data() = frame_->data_;
   return true;
@@ -672,7 +646,7 @@ bool Parser::ParseRawValue(int coll_level,
       LogParserError(
           "Tag-name-value with an out-of-band tag has a non-empty value",
           "The field is ignored");
-    attr->values.emplace_back(tnv.tag);
+    attr->values.emplace_back(static_cast<ValueTag>(tnv.tag));
     return true;
   }
   // Is it correct attribute's syntax tag? If not then fail.
@@ -696,24 +670,15 @@ bool Parser::ParseRawValue(int coll_level,
     attr->values.emplace_back(coll.release());
     return true;
   }
-  // Is is a standard attribute type ?
-  if (tnv.tag == nameWithoutLanguage_value_tag) {
-    attr->values.emplace_back(AttrType::name, tnv.tag, tnv.value);
-    return true;
-  }
-  if (tnv.tag == textWithoutLanguage_value_tag) {
-    attr->values.emplace_back(AttrType::text, tnv.tag, tnv.value);
-    return true;
-  }
-  AttrType type = static_cast<AttrType>(tnv.tag);
-  if (ToString(type).empty()) {
+  ValueTag type = static_cast<ValueTag>(tnv.tag);
+  if (!IsValid(type)) {
     // unknown attribute's syntax
     LogParserWarning(
         "Tag representing unknown attribute syntax was spotted: 0x" +
         ToHexByte(tnv.tag) + ". The attribute's value was omitted");
     return true;
   }
-  attr->values.emplace_back(type, tnv.tag, tnv.value);
+  attr->values.emplace_back(type, tnv.value);
   return true;
 }
 
@@ -762,11 +727,10 @@ bool Parser::ParseRawCollection(int coll_level,
       LogParserError(
           "Tag-name-value opening member attribute has non-empty name",
           "The field is ignored");
-    std::string name;
-    for (ErrorCode error_code : LoadName(tnv.value, &name)) {
-      LogParserError(error_code);
-      if (error_code == ErrorCode::kAttributeNameIsEmpty)
-        return false;
+    const std::string name = LoadString(tnv.value);
+    if (name.empty()) {
+      LogParserErrors({ParserCode::kAttributeNameIsEmpty});
+      return false;
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();
@@ -801,11 +765,10 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
     TagNameValue tnv = tnvs->front();
     tnvs->pop_front();
     // parse name & create attribute
-    std::string name;
-    for (ErrorCode error_code : LoadName(tnv.name, &name)) {
-      LogParserError(error_code);
-      if (error_code == ErrorCode::kAttributeNameIsEmpty)
-        return false;
+    const std::string name = LoadString(tnv.name);
+    if (name.empty()) {
+      LogParserErrors({ParserCode::kAttributeNameIsEmpty});
+      return false;
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();
@@ -826,104 +789,105 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
   return true;
 }
 
-// Removes from |attr| values/collections not matching given attribute's |type|.
-// Returns number of element removed from |attr|. |attr| cannot be nullptr.
-size_t RemoveIncompatibleValues(const ipp::AttrType type, RawAttribute* attr) {
-  size_t incorrect_values = 0;
-  // Is the attribute a Out-Of-Band value? In this case it must have single
-  // value only.
-  if (!attr->values.empty() && attr->values.front().state != AttrState::set) {
-    incorrect_values = attr->values.size() - 1;
-    attr->values.resize(1);
-    return incorrect_values;
-  }
-  // Not Out-Of-Band value. Filter out incorrect values.
-  std::vector<RawValue> new_values;
-  new_values.reserve(attr->values.size());
-  for (RawValue& val : attr->values) {
-    if (val.state == AttrState::set && IsConvertibleTo(val.type, type)) {
-      new_values.emplace_back(std::move(val));
-    } else {
-      ++incorrect_values;
-    }
-  }
-  attr->values = std::move(new_values);
-  return incorrect_values;
-}
-
 // Converts a collection/group saved in |raw_coll| to |coll|. Both |raw_coll|
-// and |coll| must not be nullptr. Returns false <=> critical parsing error was
-// spotted.
-bool Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
+// and |coll| must not be nullptr.
+void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
   for (RawAttribute& raw_attr : raw_coll->attributes) {
     // Tries to match the attribute to existing one by name.
     Attribute* attr = coll->GetAttribute(raw_attr.name);
     ContextPathGuard path_update(&parser_context_, raw_attr.name,
                                  attr != nullptr);
-    // Tries to detect a type.
-    AttrType detectedType = AttrType::integer;
-    if (attr == nullptr) {
-      // It is unknown one, try to detect type and create UnknownAttribute.
-      if (!raw_attr.values.empty()) {
-        detectedType = static_cast<AttrType>(raw_attr.values.front().type);
-        for (auto& raw_val : raw_attr.values)
-          if (IsConvertibleTo(detectedType, raw_val.type))
-            detectedType = raw_val.type;
-      }
-    } else {
+    if (attr != nullptr) {
       // The attribute exists.
-      detectedType = attr->GetType();
-      // Make sure there is no name conflict.
-      if (attr->GetState() != AttrState::unset) {
-        LogParserError("An attribute with duplicated name was spotted",
-                       "The attribute was ignored");
-        continue;
-      }
+      LogParserErrors({ParserCode::kAttributeNameConflict});
+      continue;
     }
-    // Remove values with incorrect type.
-    size_t incorrect_values = RemoveIncompatibleValues(detectedType, &raw_attr);
-    if (incorrect_values > 0)
-      LogParserError(
-          "An attribute contains at least one value with incorrect type",
-          "Additional values were ignored");
-    // Check if there are any values left.
+
     if (raw_attr.values.empty()) {
-      LogParserError("An attribute contains no correct values",
-                     "The attribute was ignored");
+      LogParserErrors({ParserCode::kAttributeNoValues});
       continue;
     }
-    // Register UnknownAtribute if it was not found.
-    if (attr == nullptr) {
-      attr = coll->AddUnknownAttribute(raw_attr.name, true, detectedType);
-      if (attr == nullptr) {
-        LogParserError("Internal parser error: cannot create unknown attribute",
-                       "The attribute was ignored");
-        continue;
+
+    // Tries to detect an attribute's type.
+    ValueTag detected_type = raw_attr.values.front().tag;
+    for (auto& raw_val : raw_attr.values)
+      if (IsConvertibleTo(detected_type, raw_val.tag))
+        detected_type = raw_val.tag;
+
+    LogParserNewElement();
+
+    // It is a collection?
+    if (detected_type == ValueTag::collection) {
+      std::vector<ParserCode> errors;
+      std::vector<RawCollection*> raw_colls;
+      raw_colls.reserve(raw_attr.values.size());
+      for (const RawValue& raw_value : raw_attr.values) {
+        if (raw_value.collection) {
+          raw_colls.push_back(raw_value.collection.get());
+        } else {
+          errors.push_back(ParserCode::kValueMismatchTagOmitted);
+        }
       }
-      LogParserNewElement();
-    }
-    // Is it an attribute with Ouf-Of-Band value? Then set it and finish.
-    if (raw_attr.values.front().state != AttrState::set) {
-      attr->SetState(raw_attr.values.front().state);
-      continue;
-    }
-    // Parses all values.
-    if (!attr->IsASet() && raw_attr.values.size() > 1) {
-      LogParserError("An attribute is not a set and has more than one value",
-                     "Only the first value was parsed");
-      raw_attr.values.resize(1);
-    }
-    attr->Resize(raw_attr.values.size());
-    for (size_t i = 0; i < attr->GetSize(); ++i)
-      if (attr->GetType() == AttrType::collection) {
-        if (!DecodeCollection(raw_attr.values[i].collection.get(),
-                              attr->GetCollection(i)))
-          return false;
+      std::vector<Collection*> colls(raw_colls.size());
+      Code err = coll->AddAttr(raw_attr.name, colls);
+      if (err == Code::kOK) {
+        for (size_t i = 0; i < colls.size(); ++i) {
+          DecodeCollection(raw_colls[i], colls[i]);
+        }
       } else {
-        LoadAttrValue(attr, i, raw_attr.values[i].data, raw_attr.values[i].tag);
+        errors.push_back(ParserCode::kErrorWhenAddingAttribute);
       }
+      LogParserErrors(errors);
+      continue;
+    }
+
+    // Is it an attribute with Ouf-Of-Band value? Then set it and finish.
+    if (IsOutOfBand(detected_type)) {
+      if (raw_attr.values.size() > 1) {
+        LogParserError("An out-of-band attribute has more than one value",
+                       "Additional values were ignored");
+      }
+      const Code err = coll->AddAttr(raw_attr.name, detected_type);
+      if (err != Code::kOK) {
+        LogParserErrors({ParserCode::kErrorWhenAddingAttribute});
+      }
+      continue;
+    }
+
+    // It is an attribute with standard values. Parse the values and create
+    // a new attribute.
+    if (IsInteger(detected_type)) {
+      LogParserErrors(LoadAttrValues<int32_t>(coll, detected_type, raw_attr));
+      continue;
+    }
+    if (IsString(detected_type) || detected_type == ValueTag::octetString) {
+      LogParserErrors(
+          LoadAttrValues<std::string>(coll, detected_type, raw_attr));
+      continue;
+    }
+    switch (detected_type) {
+      case ValueTag::dateTime:
+        LogParserErrors(
+            LoadAttrValues<DateTime>(coll, detected_type, raw_attr));
+        break;
+      case ValueTag::resolution:
+        LogParserErrors(
+            LoadAttrValues<Resolution>(coll, detected_type, raw_attr));
+        break;
+      case ValueTag::rangeOfInteger:
+        LogParserErrors(
+            LoadAttrValues<RangeOfInteger>(coll, detected_type, raw_attr));
+        break;
+      case ValueTag::nameWithLanguage:
+      case ValueTag::textWithLanguage:
+        LogParserErrors(
+            LoadAttrValues<StringWithLanguage>(coll, detected_type, raw_attr));
+        break;
+      default:
+        LogParserErrors({ParserCode::kErrorWhenAddingAttribute});
+        break;
+    }
   }
-  return true;
 }
 
 }  // namespace ipp

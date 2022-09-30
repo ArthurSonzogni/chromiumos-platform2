@@ -77,8 +77,8 @@ TEST(package, Collection) {
   Attribute* new_attr =
       coll.AddUnknownAttribute("other-name", true, AttrType::boolean);
   ASSERT_NE(new_attr, nullptr);
-  EXPECT_EQ(new_attr->GetName(), "other-name");
-  EXPECT_EQ(new_attr->GetType(), AttrType::boolean);
+  EXPECT_EQ(new_attr->Name(), "other-name");
+  EXPECT_EQ(new_attr->Tag(), ValueTag::boolean);
   // get known/all attributes
   std::vector<Attribute*> all = coll.GetAllAttributes();
   for (auto a : all)
@@ -90,7 +90,7 @@ TEST(package, Collection) {
   EXPECT_EQ(known, all);
   // get attribute by name
   EXPECT_EQ(coll.GetAttribute("printer-info"), &(coll.attr_single_coll));
-  EXPECT_EQ(coll.GetAttribute(AttrName::job_name), &(coll.attr_set_of_val));
+  EXPECT_EQ(coll.GetAttribute("job-name"), &(coll.attr_set_of_val));
   EXPECT_EQ(coll.GetAttribute("other-name"), new_attr);
   EXPECT_EQ(coll.GetAttribute("adasad"), nullptr);
 }
