@@ -19,7 +19,8 @@ The following chromeos-config values are supported:
         * ondemand/
           * powersave-bias
       * fullscreen-power-preferences/governor/..
-      * gaming-power-preferences/governor/..
+      * borealis-gaming-power-preferences/governor/..
+      * arcvm-gaming-power-preferences/governor/..
       * default-power-preferences/governor/..
 
 ## Debugging

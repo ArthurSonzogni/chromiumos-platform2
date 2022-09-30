@@ -461,8 +461,12 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             "fullscreen-power-preferences",
         ),
         (
-            config::PowerPreferencesType::Gaming,
-            "gaming-power-preferences",
+            config::PowerPreferencesType::BorealisGaming,
+            "borealis-gaming-power-preferences",
+        ),
+        (
+            config::PowerPreferencesType::ArcvmGaming,
+            "arcvm-gaming-power-preferences",
         ),
     ];
 
@@ -610,7 +614,9 @@ struct FakeConfigProvider {
         fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
     fullscreen_power_preferences:
         fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-    gaming_power_preferences:
+    borealis_gaming_power_preferences:
+        fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+    arcvm_gaming_power_preferences:
         fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
 }
 
@@ -621,7 +627,8 @@ impl Default for FakeConfigProvider {
             default_power_preferences: |_| bail!("Default not Implemented"),
             web_rtc_power_preferences: |_| bail!("WebRTC not Implemented"),
             fullscreen_power_preferences: |_| bail!("Fullscreen not Implemented"),
-            gaming_power_preferences: |_| bail!("Gaming not Implemented"),
+            borealis_gaming_power_preferences: |_| bail!("Borealis gaming not Implemented"),
+            arcvm_gaming_power_preferences: |_| bail!("ARCVM gaming not Implemented"),
         }
     }
 }
@@ -642,8 +649,11 @@ impl config::ConfigProvider for FakeConfigProvider {
             config::PowerPreferencesType::Fullscreen => {
                 (self.fullscreen_power_preferences)(power_source_type)
             }
-            config::PowerPreferencesType::Gaming => {
-                (self.gaming_power_preferences)(power_source_type)
+            config::PowerPreferencesType::BorealisGaming => {
+                (self.borealis_gaming_power_preferences)(power_source_type)
+            }
+            config::PowerPreferencesType::ArcvmGaming => {
+                (self.arcvm_gaming_power_preferences)(power_source_type)
             }
         }
     }
@@ -1065,7 +1075,7 @@ fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
 }
 
 #[test]
-fn test_power_update_power_preferences_gaming_active() -> Result<()> {
+fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
     let root = tempdir()?;
 
     write_powersave_bias(root.path(), 0)?;
@@ -1076,7 +1086,7 @@ fn test_power_update_power_preferences_gaming_active() -> Result<()> {
     };
 
     let config_provider = FakeConfigProvider {
-        gaming_power_preferences: |_| {
+        borealis_gaming_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
                 governor: Some(config::Governor::OndemandGovernor {
                     powersave_bias: 200,
@@ -1097,6 +1107,50 @@ fn test_power_update_power_preferences_gaming_active() -> Result<()> {
         common::RTCAudioActive::Inactive,
         common::FullscreenVideo::Inactive,
         common::GameMode::Borealis,
+    )?;
+
+    let powersave_bias = read_powersave_bias(root.path())?;
+    assert_eq!(powersave_bias, "200");
+
+    let sampling_rate = read_sampling_rate(root.path())?;
+    assert_eq!(sampling_rate, "16000");
+
+    Ok(())
+}
+
+#[test]
+fn test_power_update_power_preferences_arcvm_gaming_active() -> Result<()> {
+    let root = tempdir()?;
+
+    write_powersave_bias(root.path(), 0)?;
+    write_sampling_rate(root.path(), 2000)?;
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        arcvm_gaming_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 200,
+                    sampling_rate: Some(16000),
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.path().to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Arc,
     )?;
 
     let powersave_bias = read_powersave_bias(root.path())?;

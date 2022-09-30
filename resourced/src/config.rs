@@ -40,7 +40,8 @@ pub enum PowerPreferencesType {
     Default,
     WebRTC,
     Fullscreen,
-    Gaming,
+    BorealisGaming,
+    ArcvmGaming,
 }
 
 impl PowerPreferencesType {
@@ -49,7 +50,8 @@ impl PowerPreferencesType {
             PowerPreferencesType::Default => "default-power-preferences",
             PowerPreferencesType::WebRTC => "web-rtc-power-preferences",
             PowerPreferencesType::Fullscreen => "fullscreen-power-preferences",
-            PowerPreferencesType::Gaming => "gaming-power-preferences",
+            PowerPreferencesType::BorealisGaming => "borealis-gaming-power-preferences",
+            PowerPreferencesType::ArcvmGaming => "arcvm-gaming-power-preferences",
         }
     }
 }
@@ -139,7 +141,8 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  *       * ondemand/
  *         * powersave-bias
  *     * fullscreen-power-preferences/governor/..
- *     * gaming-power-preferences/governor/..
+ *     * borealis-gaming-power-preferences/governor/..
+ *     * arcvm-gaming-power-preferences/governor/..
  *     * default-power-preferences/governor/..
  */
 #[derive(Debug)]

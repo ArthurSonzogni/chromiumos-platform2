@@ -136,9 +136,10 @@ pub trait PowerPreferencesManager {
     /// to determine which [power preference](config::PowerPreferences) to apply. If there is no
     /// power preference defined for an activity, the next activity in the list will be tried.
     ///
-    /// 1) [Gaming](config::PowerPreferencesType::Gaming)
-    /// 2) [WebRTC](config::PowerPreferencesType::WebRTC)
-    /// 3) [Fullscreen Video](config::PowerPreferencesType::Fullscreen)
+    /// 1) [Borealis Gaming](config::PowerPreferencesType::BorealisGaming)
+    /// 2) [ARCVM Gaming](config::PowerPreferencesType::ArcvmGaming)
+    /// 3) [WebRTC](config::PowerPreferencesType::WebRTC)
+    /// 4) [Fullscreen Video](config::PowerPreferencesType::Fullscreen)
     ///
     /// The [default](config::PowerPreferencesType::Default) preference will be applied when no
     /// activity is active.
@@ -240,10 +241,15 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
 
         info!("Power source {:?}", power_source);
 
-        if game != GameMode::Off {
+        if game == GameMode::Borealis {
+            preferences = self.config_provider.read_power_preferences(
+                power_source,
+                config::PowerPreferencesType::BorealisGaming,
+            )?;
+        } else if game == GameMode::Arc {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::Gaming)?;
+                .read_power_preferences(power_source, config::PowerPreferencesType::ArcvmGaming)?;
         }
 
         if preferences.is_none() && rtc == RTCAudioActive::Active {
