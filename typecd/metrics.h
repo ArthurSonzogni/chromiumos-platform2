@@ -57,6 +57,41 @@ enum class WrongConfigurationMetric {
   kMaxValue = kSpeedLimitingCable,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PartnerLocationMetric {
+  kOther = 0,
+  // All available ports are only on one side.
+  kUserHasNoChoice = 1,
+  // The first partner connects to the port on the left side.
+  kLeftFirst = 2,
+  // The second partner connects to the port on the left side while the first is
+  // also on the same side.
+  kLeftSecondSameSideWithFirst = 3,
+  // The second partner connects to the port on the left side while the first is
+  // on the opposite side.
+  kLeftSecondOppositeSideToFirst = 4,
+  // The third partner connects to the port on the left side.
+  kLeftThirdOrLater = 5,
+  // Coldplugged partner connected to the port on the left side.
+  // The connection order cannot be determined.
+  kLeftColdplugged = 6,
+  // The first partner connects to the port on the right side.
+  kRightFirst = 7,
+  // The second partner connects to the port on the right side while the first
+  // is also on the same side.
+  kRightSecondSameSideWithFirst = 8,
+  // The second partner connects to the port on the right side while the first
+  // is on the opposite side.
+  kRightSecondOppositeSideToFirst = 9,
+  // The third partner connects to the port on the right side.
+  kRightThirdOrLater = 10,
+  // Coldplugged partner connected to the port on the right side.
+  // The connection order cannot be determined.
+  kRightColdplugged = 11,
+  kMaxValue = kRightColdplugged,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -69,6 +104,7 @@ class Metrics {
   void ReportPartnerType(PartnerTypeMetric type);
   void ReportCableSpeed(CableSpeedMetric speed);
   void ReportWrongCableError(WrongConfigurationMetric value);
+  void ReportPartnerLocation(PartnerLocationMetric location);
 
  private:
   MetricsLibrary metrics_library_;
