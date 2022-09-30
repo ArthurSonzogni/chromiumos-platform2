@@ -141,7 +141,10 @@ class Service final {
   std::unique_ptr<dbus::Response> StopVm(dbus::MethodCall* method_call);
 
   // Handles a request to stop a VM.
-  bool StopVm(const VmId& vm_id, VmStopReason reason);
+  bool StopVmInternal(const VmId& vm_id, VmStopReason reason);
+  // Wrapper to post |StopVmInternal| as a task. Only difference is that we
+  // ignore the return value here.
+  void StopVmInternalAsTask(VmId vm_id, VmStopReason reason);
 
   // Handles a request to suspend a VM.  |method_call| must have a
   // SuspendVmRequest protobuf serialized as an array of bytes.
@@ -432,6 +435,10 @@ class Service final {
   // Removes the |vm_id| from the list of VMs that are using storage
   // ballooning.
   void RemoveStorageBalloonVm(VmId vm_id);
+
+  // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
+  // sibling VM process has died on the hypervisor.
+  void OnSiblingVmDead(VmId vm_id);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;

@@ -40,6 +40,7 @@
 #include <base/base64url.h>
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/callback_forward.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -2321,6 +2322,12 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     }
   }
 
+  if (USE_CROSVM_SIBLINGS) {
+    // This is guaranteed to be called only once by a sibling VM instance.
+    vm->SetSiblingDeadCb(base::BindOnce(&Service::OnSiblingVmDead,
+                                        weak_ptr_factory_.GetWeakPtr()));
+  }
+
   response.set_success(true);
   response.set_status(request.start_termina() ? VM_STATUS_STARTING
                                               : VM_STATUS_RUNNING);
@@ -2363,7 +2370,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   }
   VmId vm_id(request.owner_id(), request.name());
 
-  if (!StopVm(vm_id, STOP_VM_REQUESTED)) {
+  if (!StopVmInternal(vm_id, STOP_VM_REQUESTED)) {
     LOG(ERROR) << "Unable to shut down VM";
     response.set_failure_reason("Unable to shut down VM");
   } else {
@@ -2374,7 +2381,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   return dbus_response;
 }
 
-bool Service::StopVm(const VmId& vm_id, VmStopReason reason) {
+bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
@@ -2385,8 +2392,12 @@ bool Service::StopVm(const VmId& vm_id, VmStopReason reason) {
   // Notify that we are about to stop a VM.
   NotifyVmStopping(iter->first, iter->second->GetInfo().cid);
 
-  if (!iter->second->Shutdown()) {
-    return false;
+  // If the sibling VM process has died on the hypervisor there is nothing to
+  // shutdown.
+  if (reason != VmStopReason::SIBLING_VM_EXITED) {
+    if (!iter->second->Shutdown()) {
+      return false;
+    }
   }
 
   if (USE_CROSVM_SIBLINGS) {
@@ -2402,6 +2413,10 @@ bool Service::StopVm(const VmId& vm_id, VmStopReason reason) {
 
   vms_.erase(iter);
   return true;
+}
+
+void Service::StopVmInternalAsTask(VmId vm_id, VmStopReason reason) {
+  StopVmInternal(vm_id, reason);
 }
 
 // Wrapper to destroy VM in another thread
@@ -3249,8 +3264,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   if (iter != vms_.end()) {
     LOG(INFO) << "Shutting down VM";
 
-    if (!StopVm(VmId(request.cryptohome_id(), request.vm_name()),
-                DESTROY_DISK_IMAGE_REQUESTED)) {
+    if (!StopVmInternal(VmId(request.cryptohome_id(), request.vm_name()),
+                        DESTROY_DISK_IMAGE_REQUESTED)) {
       LOG(ERROR) << "Unable to shut down VM";
 
       response.set_status(DISK_STATUS_FAILED);
@@ -4967,6 +4982,16 @@ void Service::HandleStatefulDiskSpaceUpdate(
   if (classification == VmInfo::BOREALIS || classification == VmInfo::TERMINA) {
     static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
   }
+}
+
+void Service::OnSiblingVmDead(VmId vm_id) {
+  // This function is called from a `TerminaVm` instance. If we don't post
+  // `StopVm` as a task, we will destroy it while we're being called from it.
+  // This is complicated and we rather do it as a separate task.
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&Service::StopVmInternalAsTask,
+                                weak_ptr_factory_.GetWeakPtr(), vm_id,
+                                VmStopReason::SIBLING_VM_EXITED));
 }
 
 }  // namespace concierge

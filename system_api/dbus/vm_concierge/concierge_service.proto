@@ -568,6 +568,9 @@ enum VmStopReason {
 
   // The service process is shutting down.
   SERVICE_SHUTDOWN = 4;
+
+  // Sibling Vm process has exited on the hypervisor.
+  SIBLING_VM_EXITED = 5;
 }
 
 // Message used in the signal for when a VM has stopped.

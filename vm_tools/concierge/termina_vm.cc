@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback_forward.h>
 #include <base/callback_helpers.h>
 #include <base/containers/span.h>
 #include <base/check.h>
@@ -548,8 +549,25 @@ void TerminaVm::OnFdToSiblingReadable() {
   int ret = recv(sibling_state_->fd_in.get(), &buf, sizeof(buf),
                  MSG_PEEK | MSG_DONTWAIT);
   if ((ret == 0) || ((ret < 0) && (errno != EAGAIN))) {
+    // Notify concierge of the sibling VM process dying for it to update its
+    // internal state. `sibling_state` houses `sibling_dead_cb` so this
+    // needs to happen before it's reset.
+    std::move(sibling_state_->sibling_dead_cb).Run(id_);
+
+    // The sibling VM process is dead, reset all its state. This also ensures
+    // that `sibling_dead_cb` is only called once.
     sibling_state_.reset();
   }
+}
+
+void TerminaVm::SetSiblingDeadCb(
+    base::OnceCallback<void(VmId vm_id)> sibling_dead_cb) {
+  if (!sibling_state_) {
+    LOG(ERROR) << "Sibling VM not initialized to set callback";
+    return;
+  }
+
+  sibling_state_->sibling_dead_cb = std::move(sibling_dead_cb);
 }
 
 bool TerminaVm::Shutdown() {

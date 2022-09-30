@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/notreached.h>
@@ -81,6 +82,10 @@ struct SiblingState {
 
   // Processes for virtio-vhost-user device backend processes.
   std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes;
+
+  // Callback fired when the sibling VM process dies on the hypervisor.
+  // Guaranteed to be called only once in the lifetime of this object.
+  base::OnceCallback<void(VmId id)> sibling_dead_cb;
 };
 
 // Represents a single instance of a running termina VM.
@@ -212,6 +217,11 @@ class TerminaVm final : public VmBaseImpl {
 
   // Fired when a sibling VM's input descriptor is written.
   void OnFdToSiblingReadable();
+
+  // Sets the callback that is fired when the sibling VM process dies on the
+  // hypervisor. Does nothing if `sibling_state_` isn't set i.e. this is not a
+  // sibling VM.
+  void SetSiblingDeadCb(base::OnceCallback<void(VmId vm_id)> sibling_dead_cb);
 
   // VmInterface overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending

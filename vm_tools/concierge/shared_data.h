@@ -188,7 +188,7 @@ void Service::StartVmHelper(
       // startup, in which case the crash handling should clean it
       // up. However, stop it anyway just in case. At worst, this
       // should just result in some extra error logs.
-      service->StopVm(vm_id, VM_EXITED);
+      service->StopVmInternal(vm_id, VM_EXITED);
     }
   };
   auto send_resp = [](dbus::ExportedObject::ResponseSender response_sender,
