@@ -134,6 +134,10 @@ constexpr char kFallbackToHomeDir[] = "/home/chronos";
 // per_user_state_manager_chromeos.cc.
 constexpr char kBootConsentFile[] = "/home/chronos/boot-collect-consent";
 
+// Used to build up the path to a watchdog's boot status:
+// For example: /sys/class/watchdog/watchdog0/bootstatus
+constexpr char kWatchdogSysPath[] = "/sys/class/watchdog/";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

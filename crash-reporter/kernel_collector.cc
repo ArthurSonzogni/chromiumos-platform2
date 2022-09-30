@@ -4,7 +4,6 @@
 
 #include "crash-reporter/kernel_collector.h"
 
-#include <sys/stat.h>
 #include <algorithm>
 #include <cinttypes>
 #include <utility>
@@ -16,9 +15,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <linux/watchdog.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -65,6 +66,10 @@ constexpr size_t kMaxRecordSize = 1024 * 1024;
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 
+// Used to build up the path to a watchdog's boot status:
+// For example: /sys/class/watchdog/watchdog0/bootstatus
+constexpr char kWatchdogSysBootstatusFile[] = "bootstatus";
+
 static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 
 }  // namespace
@@ -75,6 +80,7 @@ KernelCollector::KernelCollector()
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),
       bios_log_path_(kBiosLogPath),
+      watchdogsys_path_(paths::Get(paths::kWatchdogSysPath)),
       records_(0),
       // We expect crash dumps in the format of architecture we are built for.
       arch_(kernel_util::GetCompilerArch()) {}
@@ -91,6 +97,10 @@ void KernelCollector::OverrideBiosLogPath(const FilePath& file_path) {
 
 void KernelCollector::OverridePreservedDumpPath(const FilePath& file_path) {
   dump_path_ = file_path;
+}
+
+void KernelCollector::OverrideWatchdogSysPath(const FilePath& file_path) {
+  watchdogsys_path_ = file_path;
 }
 
 bool KernelCollector::ReadRecordToString(std::string* contents,
@@ -273,11 +283,90 @@ bool KernelCollector::LastRebootWasNoCError(const std::string& dump) {
   return RE2::PartialMatch(dump, RE2("QTISECLIB.*NOC ERROR: ERRLOG"));
 }
 
+// Return true if the HW watchdog caused a reboot, so a crash report
+// can be collected. Fills out `watchdog_reboot_reason` with the decoded
+// reboot reason.
+static bool GetWatchdogRebootReasonFromPath(
+    const base::FilePath& watchdog_path, std::string& watchdog_reboot_reason) {
+  std::string bootstatus_string;
+  if (!base::ReadFileToString(watchdog_path, &bootstatus_string)) {
+    PLOG(ERROR) << "Unable to read " << watchdog_path.value();
+    return false;
+  }
+
+  int bootstatus = 0;
+  if (!base::StringToInt(base::CollapseWhitespaceASCII(bootstatus_string, true),
+                         &bootstatus)) {
+    LOG(ERROR) << "Invalid bootstatus string '" << bootstatus_string << "'";
+    return false;
+  }
+
+  // Ignore normal/unknown bootstatus.
+  if (bootstatus <= 0) {
+    return false;
+  }
+
+  watchdog_reboot_reason = std::string();
+  uint32_t known_bootstatus_values =
+      WDIOF_OVERHEAT | WDIOF_FANFAULT | WDIOF_EXTERN1 | WDIOF_EXTERN2 |
+      WDIOF_POWERUNDER | WDIOF_CARDRESET | WDIOF_POWEROVER;
+  if (bootstatus & ~known_bootstatus_values) {
+    watchdog_reboot_reason += "-(UNKNOWN)";
+    LOG(ERROR) << watchdog_path
+               << ": unknown boot status value: " << std::showbase << std::hex
+               << (bootstatus & ~known_bootstatus_values);
+  }
+
+  // bootstatus is a bitmap, so build up the reboot reason string.
+  if (bootstatus & WDIOF_OVERHEAT)
+    watchdog_reboot_reason += "-(OVERHEAT)";
+  if (bootstatus & WDIOF_FANFAULT)
+    watchdog_reboot_reason += "-(FANFAULT)";
+  if (bootstatus & WDIOF_EXTERN1)
+    watchdog_reboot_reason += "-(EXTERN1)";
+  if (bootstatus & WDIOF_EXTERN2)
+    watchdog_reboot_reason += "-(EXTERN2)";
+  if (bootstatus & WDIOF_POWERUNDER)
+    watchdog_reboot_reason += "-(POWERUNDER)";
+  if (bootstatus & WDIOF_CARDRESET)
+    watchdog_reboot_reason += "-(WATCHDOG)";
+  if (bootstatus & WDIOF_POWEROVER)
+    watchdog_reboot_reason += "-(POWEROVER)";
+
+  // Watchdog recorded some kind of reset, so collect a crash dump.
+  return true;
+}
+
 // We can't always trust kernel watchdog drivers to correctly report the boot
 // reason, since on some platforms our BIOS has to reinitialize the hardware
-// registers in a way that clears this information. Instead read the BIOS
-// eventlog to figure out if a watchdog reset was detected during the last boot.
-bool KernelCollector::LastRebootWasWatchdog() {
+// registers in a way that clears this information. If /sys/class/watchdog is
+// unavailable, read the BIOS eventlog to figure out if a watchdog reset was
+// detected during the last boot.
+bool KernelCollector::LastRebootWasWatchdog(
+    std::string& watchdog_reboot_reason) {
+  if (base::PathExists(watchdogsys_path_)) {
+    base::FilePath watchdog_sys_dir(watchdogsys_path_);
+    base::FileEnumerator watchdog_sys_dir_enumerator(
+        watchdog_sys_dir, false, base::FileEnumerator::DIRECTORIES);
+
+    // Iterate through the watchdogN devices and look for a reboot.
+    for (base::FilePath watchdog_path =
+             watchdog_sys_dir_enumerator.Next().StripTrailingSeparators();
+         !watchdog_path.empty();
+         watchdog_path =
+             watchdog_sys_dir_enumerator.Next().StripTrailingSeparators()) {
+      // Build up the path to the watchdog's boot status:
+      // For example: /sys/class/watchdog/watchdog0/bootstatus
+      base::FilePath watchdog_sys_path =
+          watchdog_path.Append(kWatchdogSysBootstatusFile);
+
+      if (GetWatchdogRebootReasonFromPath(watchdog_sys_path,
+                                          watchdog_reboot_reason)) {
+        return true;
+      }
+    }
+  }
+
   if (!base::PathExists(eventlog_path_)) {
     LOG(INFO) << "Cannot find " << eventlog_path_.value()
               << ", skipping hardware watchdog check.";
@@ -295,6 +384,7 @@ bool KernelCollector::LastRebootWasWatchdog() {
   if (last_boot == StringPiece::npos)
     return false;
 
+  watchdog_reboot_reason = "-(WATCHDOG)";
   return piece.find(kEventNameWatchdog, last_boot) != StringPiece::npos;
 }
 
@@ -596,6 +686,7 @@ bool KernelCollector::CollectRamoopsCrash() {
   std::string console_dump;
   std::string hypervisor_dump;
   std::string signature;
+  std::string watchdog_reboot_reason;
 
   LoadLastBootBiosLog(&bios_dump);
   LoadConsoleRamoops(&console_dump);
@@ -604,14 +695,16 @@ bool KernelCollector::CollectRamoopsCrash() {
     signature = kernel_util::ComputeKernelStackSignature(kernel_dump, arch_);
   } else {
     kernel_dump = std::move(console_dump);
-    if (LastRebootWasBiosCrash(bios_dump))
+    if (LastRebootWasBiosCrash(bios_dump)) {
       signature = kernel_util::BiosCrashSignature(bios_dump);
-    else if (LastRebootWasNoCError(bios_dump))
+    } else if (LastRebootWasNoCError(bios_dump)) {
       signature = kernel_util::ComputeNoCErrorSignature(bios_dump);
-    else if (LastRebootWasWatchdog())
-      signature = kernel_util::WatchdogSignature(kernel_dump);
-    else
+    } else if (LastRebootWasWatchdog(watchdog_reboot_reason)) {
+      signature =
+          kernel_util::WatchdogSignature(kernel_dump, watchdog_reboot_reason);
+    } else {
       return false;
+    }
   }
   StripSensitiveData(&bios_dump);
   StripSensitiveData(&hypervisor_dump);
