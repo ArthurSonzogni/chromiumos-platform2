@@ -112,7 +112,6 @@ struct sl_relative_pointer_manager {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zwp_relative_pointer_manager_v1* internal;
 };
 
 struct sl_viewport {
@@ -297,14 +296,12 @@ struct sl_text_input_manager {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zwp_text_input_manager_v1* internal;
 };
 
 struct sl_text_input_extension {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zcr_text_input_extension_v1* internal;
 };
 
 #ifdef GAMEPAD_SUPPORT
@@ -319,7 +316,6 @@ struct sl_pointer_constraints {
   struct sl_context* ctx;
   uint32_t id;
   struct sl_global* host_global;
-  struct zwp_pointer_constraints_v1* internal;
 };
 
 struct sl_viewporter {

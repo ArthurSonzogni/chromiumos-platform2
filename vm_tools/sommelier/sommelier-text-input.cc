@@ -216,8 +216,8 @@ static void sl_text_input_manager_create_text_input(
 
   text_input_host->resource = text_input_resource;
   text_input_host->ctx = host->ctx;
-  text_input_host->proxy = zwp_text_input_manager_v1_create_text_input(
-      host->ctx->text_input_manager->internal);
+  text_input_host->proxy =
+      zwp_text_input_manager_v1_create_text_input(host->proxy);
   wl_resource_set_implementation(text_input_resource,
                                  &sl_text_input_implementation, text_input_host,
                                  sl_destroy_host_text_input);
@@ -373,7 +373,7 @@ static void sl_text_input_extension_get_extended_text_input(
   extended_text_input_host->ctx = host->ctx;
   extended_text_input_host->proxy =
       zcr_text_input_extension_v1_get_extended_text_input(
-          host->ctx->text_input_extension->internal, host_text_input->proxy);
+          host->proxy, host_text_input->proxy);
   wl_resource_set_implementation(
       extended_text_input_resource, &sl_extended_text_input_implementation,
       extended_text_input_host, sl_destroy_host_extended_text_input);

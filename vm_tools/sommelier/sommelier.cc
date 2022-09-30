@@ -520,9 +520,6 @@ void sl_registry_handler(void* data,
     assert(relative_pointer);
     relative_pointer->ctx = ctx;
     relative_pointer->id = id;
-    relative_pointer->internal =
-        static_cast<zwp_relative_pointer_manager_v1*>(wl_registry_bind(
-            registry, id, &zwp_relative_pointer_manager_v1_interface, 1));
     assert(!ctx->relative_pointer_manager);
     ctx->relative_pointer_manager = relative_pointer;
     relative_pointer->host_global =
@@ -534,9 +531,6 @@ void sl_registry_handler(void* data,
     assert(pointer_constraints);
     pointer_constraints->ctx = ctx;
     pointer_constraints->id = id;
-    pointer_constraints->internal =
-        static_cast<zwp_pointer_constraints_v1*>(wl_registry_bind(
-            registry, id, &zwp_pointer_constraints_v1_interface, 1));
     assert(!ctx->pointer_constraints);
     ctx->pointer_constraints = pointer_constraints;
     pointer_constraints->host_global =
@@ -651,9 +645,6 @@ void sl_registry_handler(void* data,
     assert(text_input_manager);
     text_input_manager->ctx = ctx;
     text_input_manager->id = id;
-    text_input_manager->internal =
-        static_cast<zwp_text_input_manager_v1*>(wl_registry_bind(
-            registry, id, &zwp_text_input_manager_v1_interface, 1));
     text_input_manager->host_global = sl_text_input_manager_global_create(ctx);
     assert(!ctx->text_input_manager);
     ctx->text_input_manager = text_input_manager;
@@ -664,9 +655,6 @@ void sl_registry_handler(void* data,
     assert(text_input_extension);
     text_input_extension->ctx = ctx;
     text_input_extension->id = id;
-    text_input_extension->internal =
-        static_cast<zcr_text_input_extension_v1*>(wl_registry_bind(
-            registry, id, &zcr_text_input_extension_v1_interface, 1));
     text_input_extension->host_global =
         sl_text_input_extension_global_create(ctx);
     assert(!ctx->text_input_extension);

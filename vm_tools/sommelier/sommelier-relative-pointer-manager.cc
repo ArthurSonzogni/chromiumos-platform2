@@ -121,8 +121,8 @@ static void sl_relative_pointer_manager_get_relative_pointer(
   relative_pointer_host->resource = relative_pointer_resource;
   relative_pointer_host->ctx = host->ctx;
   relative_pointer_host->proxy =
-      zwp_relative_pointer_manager_v1_get_relative_pointer(
-          host->ctx->relative_pointer_manager->internal, host_pointer->proxy);
+      zwp_relative_pointer_manager_v1_get_relative_pointer(host->proxy,
+                                                           host_pointer->proxy);
   wl_resource_set_implementation(
       relative_pointer_resource, &sl_relative_pointer_implementation,
       relative_pointer_host, sl_destroy_host_relative_pointer);

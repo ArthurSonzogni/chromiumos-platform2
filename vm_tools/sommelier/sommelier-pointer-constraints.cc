@@ -128,8 +128,8 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
   locked_pointer_host->resource = locked_pointer_resource;
   locked_pointer_host->ctx = host->ctx;
   locked_pointer_host->proxy = zwp_pointer_constraints_v1_lock_pointer(
-      host->ctx->pointer_constraints->internal, host_surface->proxy,
-      host_pointer->proxy, host_region ? host_region->proxy : NULL, lifetime);
+      host->proxy, host_surface->proxy, host_pointer->proxy,
+      host_region ? host_region->proxy : NULL, lifetime);
   wl_resource_set_implementation(
       locked_pointer_resource, &sl_locked_pointer_implementation,
       locked_pointer_host, sl_destroy_host_locked_pointer);
@@ -168,8 +168,8 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
   confined_pointer_host->resource = confined_pointer_resource;
   confined_pointer_host->ctx = host->ctx;
   confined_pointer_host->proxy = zwp_pointer_constraints_v1_confine_pointer(
-      host->ctx->pointer_constraints->internal, host_surface->proxy,
-      host_pointer->proxy, host_region ? host_region->proxy : NULL, lifetime);
+      host->proxy, host_surface->proxy, host_pointer->proxy,
+      host_region ? host_region->proxy : NULL, lifetime);
   wl_resource_set_implementation(
       confined_pointer_resource, &sl_confined_pointer_implementation,
       confined_pointer_host, sl_destroy_host_confined_pointer);
