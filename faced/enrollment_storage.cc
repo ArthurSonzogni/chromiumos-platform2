@@ -11,6 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_piece.h>
 
 #include <string>
 
@@ -24,15 +26,15 @@ constexpr char kEnrollmentFileName[] = "enrollment";
 
 }  // namespace
 
-absl::Status EnrollmentStorage::WriteEnrollment(const std::string& user_id,
-                                                const std::string& data) {
+absl::Status EnrollmentStorage::WriteEnrollment(base::StringPiece user_id,
+                                                base::StringPiece data) {
   base::FilePath save_path = GetEnrollmentFilePath(user_id);
 
   base::File::Error error;
   if (!CreateDirectoryAndGetError(save_path.DirName(), &error)) {
     return absl::UnavailableError(
-        absl::StrCat("Unable to create directory for user: ",
-                     base::File::ErrorToString(error)));
+        base::StrCat({"Unable to create directory for user: ",
+                      base::File::ErrorToString(error)}));
   }
 
   if (!base::ImportantFileWriter::WriteFileAtomically(save_path, data)) {
@@ -44,7 +46,7 @@ absl::Status EnrollmentStorage::WriteEnrollment(const std::string& user_id,
 }
 
 absl::StatusOr<std::string> EnrollmentStorage::ReadEnrollment(
-    const std::string& user_id) {
+    base::StringPiece user_id) {
   base::FilePath enrollment_path = GetEnrollmentFilePath(user_id);
 
   std::string data;
@@ -56,7 +58,7 @@ absl::StatusOr<std::string> EnrollmentStorage::ReadEnrollment(
 }
 
 base::FilePath EnrollmentStorage::GetEnrollmentFilePath(
-    const std::string& user_id) {
+    base::StringPiece user_id) {
   return root_path_.Append(kFaced).Append(user_id).Append(kEnrollmentFileName);
 }
 

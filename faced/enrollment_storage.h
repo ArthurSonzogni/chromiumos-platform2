@@ -5,10 +5,10 @@
 #ifndef FACED_ENROLLMENT_STORAGE_H_
 #define FACED_ENROLLMENT_STORAGE_H_
 
-#include <base/files/file_path.h>
-
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_piece.h>
 
 #include <string>
 
@@ -27,15 +27,15 @@ class EnrollmentStorage {
       : root_path_(root_path) {}
 
   // Writes an enrollment for a specified user.
-  absl::Status WriteEnrollment(const std::string& user_id,
-                               const std::string& data);
+  absl::Status WriteEnrollment(base::StringPiece user_id,
+                               base::StringPiece data);
 
   // Reads an enrollment for a specified user.
-  absl::StatusOr<std::string> ReadEnrollment(const std::string& user_id);
+  absl::StatusOr<std::string> ReadEnrollment(base::StringPiece user_id);
 
  private:
   // Returns the filepath to load and save an enrollment given a user_id.
-  base::FilePath GetEnrollmentFilePath(const std::string& user_id);
+  base::FilePath GetEnrollmentFilePath(base::StringPiece user_id);
 
   base::FilePath root_path_;
 };

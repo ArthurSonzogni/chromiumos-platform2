@@ -9,6 +9,7 @@
 #include <absl/strings/str_format.h>
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/strings/string_piece.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
 #include <brillo/flag_helper.h>
@@ -25,7 +26,7 @@ namespace faced {
 namespace {
 
 // CLI documentation.
-constexpr std::string_view kUsage = R"(Usage: faced_cli <command> [options]
+constexpr base::StringPiece kUsage = R"(Usage: faced_cli <command> [options]
 
 Commands:
   connect             Set up a Mojo connection to Faced by bootstrapping over
@@ -38,7 +39,7 @@ Full details of options can be shown using "--help".
 )";
 
 // Parse a command string into the enum type `Command`.
-std::optional<Command> ParseCommand(std::string_view command) {
+std::optional<Command> ParseCommand(base::StringPiece command) {
   if (command == "connect") {
     return Command::kConnectToFaced;
   }
