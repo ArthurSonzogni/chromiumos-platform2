@@ -30,7 +30,7 @@ bool Stream::SetPosition(uint64_t position, ErrorPtr* error) {
 bool Stream::ReadAsync(void* buffer,
                        size_t size_to_read,
                        base::OnceCallback<void(size_t)> success_callback,
-                       ErrorOnceCallback error_callback,
+                       ErrorCallback error_callback,
                        ErrorPtr* error) {
   if (is_async_read_pending_) {
     Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
@@ -50,7 +50,7 @@ bool Stream::ReadAsync(void* buffer,
 bool Stream::ReadAllAsync(void* buffer,
                           size_t size_to_read,
                           base::OnceClosure success_callback,
-                          ErrorOnceCallback error_callback,
+                          ErrorCallback error_callback,
                           ErrorPtr* error) {
   if (is_async_read_pending_) {
     Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
@@ -107,7 +107,7 @@ bool Stream::ReadAllBlocking(void* buffer,
 bool Stream::WriteAsync(const void* buffer,
                         size_t size_to_write,
                         base::OnceCallback<void(size_t)> success_callback,
-                        ErrorOnceCallback error_callback,
+                        ErrorCallback error_callback,
                         ErrorPtr* error) {
   if (is_async_write_pending_) {
     Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
@@ -124,7 +124,7 @@ bool Stream::WriteAsync(const void* buffer,
 bool Stream::WriteAllAsync(const void* buffer,
                            size_t size_to_write,
                            base::OnceClosure success_callback,
-                           ErrorOnceCallback error_callback,
+                           ErrorCallback error_callback,
                            ErrorPtr* error) {
   if (is_async_write_pending_) {
     Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
@@ -181,7 +181,7 @@ bool Stream::WriteAllBlocking(const void* buffer,
 }
 
 bool Stream::FlushAsync(base::OnceClosure success_callback,
-                        ErrorOnceCallback error_callback,
+                        ErrorCallback error_callback,
                         ErrorPtr* /* error */) {
   MessageLoop::current()->PostTask(
       FROM_HERE,
@@ -202,7 +202,7 @@ bool Stream::ReadAsyncImpl(
     void* buffer,
     size_t size_to_read,
     base::OnceCallback<void(size_t, bool)> success_callback,
-    ErrorOnceCallback error_callback,
+    ErrorCallback error_callback,
     ErrorPtr* error,
     bool force_async_callback) {
   CHECK(!is_async_read_pending_);
@@ -249,7 +249,7 @@ void Stream::OnReadAvailable(
     void* buffer,
     size_t size_to_read,
     base::OnceCallback<void(size_t, bool)> success_callback,
-    ErrorOnceCallback error_callback) {
+    ErrorCallback error_callback) {
   CHECK(is_async_read_pending_);
   is_async_read_pending_ = false;
   ErrorPtr error;
@@ -266,7 +266,7 @@ void Stream::OnReadAvailable(
 bool Stream::WriteAsyncImpl(const void* buffer,
                             size_t size_to_write,
                             base::OnceCallback<void(size_t)> success_callback,
-                            ErrorOnceCallback error_callback,
+                            ErrorCallback error_callback,
                             ErrorPtr* error,
                             bool force_async_callback) {
   CHECK(!is_async_write_pending_);
@@ -308,7 +308,7 @@ void Stream::OnWriteAsyncDone(base::OnceCallback<void(size_t)> success_callback,
 void Stream::OnWriteAvailable(const void* buffer,
                               size_t size,
                               base::OnceCallback<void(size_t)> success_callback,
-                              ErrorOnceCallback error_callback) {
+                              ErrorCallback error_callback) {
   CHECK(is_async_write_pending_);
   is_async_write_pending_ = false;
   ErrorPtr error;
@@ -325,7 +325,7 @@ void Stream::OnWriteAvailable(const void* buffer,
 void Stream::ReadAllAsyncCallback(void* buffer,
                                   size_t size_to_read,
                                   base::OnceClosure success_callback,
-                                  ErrorOnceCallback error_callback,
+                                  ErrorCallback error_callback,
                                   size_t size_read,
                                   bool eos) {
   ErrorPtr error;
@@ -356,7 +356,7 @@ void Stream::ReadAllAsyncCallback(void* buffer,
 void Stream::WriteAllAsyncCallback(const void* buffer,
                                    size_t size_to_write,
                                    base::OnceClosure success_callback,
-                                   ErrorOnceCallback error_callback,
+                                   ErrorCallback error_callback,
                                    size_t size_written) {
   ErrorPtr error;
   if (size_to_write != 0 && size_written == 0) {
@@ -384,7 +384,7 @@ void Stream::WriteAllAsyncCallback(const void* buffer,
 }
 
 void Stream::FlushAsyncCallback(base::OnceClosure success_callback,
-                                ErrorOnceCallback error_callback) {
+                                ErrorCallback error_callback) {
   ErrorPtr error;
   if (FlushBlocking(&error)) {
     std::move(success_callback).Run();
