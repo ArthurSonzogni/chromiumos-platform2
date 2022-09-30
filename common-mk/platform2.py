@@ -134,6 +134,7 @@ _IUSE = [
     "protected_av1",
     "qrtr",
     "report_requisition",
+    "secagentd_min_core_btf",
     "selinux",
     "slow_mount",
     "systemd",
