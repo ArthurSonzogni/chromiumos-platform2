@@ -95,6 +95,10 @@ void Port::RemovePartner() {
   LOG(INFO) << "Partner removed for port " << port_num_;
 }
 
+bool Port::HasPartner() {
+  return partner_.get() != nullptr;
+}
+
 void Port::AddRemovePartnerAltMode(const base::FilePath& path, bool added) {
   if (!partner_) {
     LOG(WARNING) << "Trying to add alt mode for non-existent partner on port "

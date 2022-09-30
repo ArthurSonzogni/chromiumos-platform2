@@ -42,7 +42,8 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
 
   void OnPartnerAddedOrRemoved(const base::FilePath& path,
                                int port_num,
-                               bool added) override {
+                               bool added,
+                               bool is_hotplug) override {
     if (added)
       num_partners_++;
     else

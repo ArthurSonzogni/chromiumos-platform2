@@ -29,7 +29,8 @@ class FuzzerTypecObserver : public typecd::UdevMonitor::TypecObserver {
                             bool added) override{};
   void OnPartnerAddedOrRemoved(const base::FilePath& path,
                                int port_num,
-                               bool added) override{};
+                               bool added,
+                               bool is_hotplug) override{};
   void OnPartnerAltModeAddedOrRemoved(const base::FilePath& path,
                                       int port_num,
                                       bool added) override{};

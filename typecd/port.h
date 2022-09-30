@@ -68,6 +68,7 @@ class Port {
 
   void AddPartner(const base::FilePath& path);
   void RemovePartner();
+  bool HasPartner();
 
   void AddCable(const base::FilePath& path);
   void RemoveCable();

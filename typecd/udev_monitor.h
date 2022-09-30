@@ -62,7 +62,8 @@ class UdevMonitor {
     // otherwise.
     virtual void OnPartnerAddedOrRemoved(const base::FilePath& path,
                                          int port_num,
-                                         bool added) = 0;
+                                         bool added,
+                                         bool is_hotplug) = 0;
 
     // Callback that is executed when a port partner alt mode is registered or
     // removed.
@@ -132,7 +133,9 @@ class UdevMonitor {
 
   // Handle a udev event which causes a Type C device and/or USB device to be
   // added/removed.
-  bool HandleDeviceAddedRemoved(const base::FilePath& path, bool added);
+  bool HandleDeviceAddedRemoved(const base::FilePath& path,
+                                bool added,
+                                bool is_initial_scan = false);
 
   // Handle a udev "change" event for a Type C device.
   void HandleDeviceChange(const base::FilePath& path);

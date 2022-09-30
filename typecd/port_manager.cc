@@ -76,7 +76,8 @@ void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
 
 void PortManager::OnPartnerAddedOrRemoved(const base::FilePath& path,
                                           int port_num,
-                                          bool added) {
+                                          bool added,
+                                          bool is_hotplug) {
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {
     LOG(WARNING) << "Partner add/remove attempted for non-existent port "
@@ -88,7 +89,7 @@ void PortManager::OnPartnerAddedOrRemoved(const base::FilePath& path,
   if (added) {
     port->AddPartner(path);
     RunModeEntry(port_num);
-    port->EnqueueMetricsTask(metrics_, GetModeEntrySupported());
+    ReportMetrics(port_num, is_hotplug);
   } else {
     port->RemovePartner();
     port->SetCurrentMode(TypeCMode::kNone);
@@ -443,6 +444,99 @@ void PortManager::RunModeEntry(int port_num) {
     notify_mgr_->NotifyCableWarning(cable_warning);
 
   return;
+}
+
+void PortManager::ReportMetrics(int port_num, bool is_hotplug) {
+  if (!metrics_)
+    return;
+
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING) << "Metrics reporting attempted for non-existent port "
+                 << port_num;
+    return;
+  }
+
+  auto port = it->second.get();
+  port->EnqueueMetricsTask(metrics_, GetModeEntrySupported());
+
+  if (port->GetPanel() != Panel::kUnknown)
+    metrics_->ReportPartnerLocation(
+        GetPartnerLocationMetric(port_num, is_hotplug));
+}
+
+PartnerLocationMetric PortManager::GetPartnerLocationMetric(int port_num,
+                                                            bool is_hotplug) {
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING)
+        << "Port location metric reporting attempted for non-existent port "
+        << port_num;
+    return PartnerLocationMetric::kOther;
+  }
+  auto port = it->second.get();
+
+  PartnerLocationMetric ret = PartnerLocationMetric::kOther;
+  Panel panel = port->GetPanel();
+  int num_ports_already_in_use = 0;
+  Panel panel_already_in_use = Panel::kUnknown;
+  int num_available_ports_on_left = 0;
+  int num_available_ports_on_right = 0;
+
+  if (!is_hotplug && panel == Panel::kLeft) {
+    ret = PartnerLocationMetric::kLeftColdplugged;
+    goto end;
+  } else if (!is_hotplug && panel == Panel::kRight) {
+    ret = PartnerLocationMetric::kRightColdplugged;
+    goto end;
+  }
+
+  for (auto it = ports_.begin(); it != ports_.end(); it++) {
+    if (it->first == port_num)
+      continue;
+    auto port_to_check = it->second.get();
+    if (port_to_check->HasPartner()) {
+      num_ports_already_in_use++;
+      // It is okay to overwrite panel_already_in_use because when multiple
+      // partners are in use, the metric won't track previous port connections.
+      panel_already_in_use = port_to_check->GetPanel();
+    } else if (port_to_check->GetPanel() == Panel::kLeft) {
+      num_available_ports_on_left++;
+    } else if (port_to_check->GetPanel() == Panel::kRight) {
+      num_available_ports_on_right++;
+    }
+  }
+
+  if (panel == Panel::kLeft) {
+    if (num_available_ports_on_right == 0)
+      ret = PartnerLocationMetric::kUserHasNoChoice;
+    else if (num_ports_already_in_use == 0)
+      ret = PartnerLocationMetric::kLeftFirst;
+    else if (num_ports_already_in_use == 1 &&
+             panel_already_in_use == Panel::kLeft)
+      ret = PartnerLocationMetric::kLeftSecondSameSideWithFirst;
+    else if (num_ports_already_in_use == 1 &&
+             panel_already_in_use == Panel::kRight)
+      ret = PartnerLocationMetric::kLeftSecondOppositeSideToFirst;
+    else if (num_ports_already_in_use >= 2)
+      ret = PartnerLocationMetric::kLeftThirdOrLater;
+  } else if (panel == Panel::kRight) {
+    if (num_available_ports_on_left == 0)
+      ret = PartnerLocationMetric::kUserHasNoChoice;
+    else if (num_ports_already_in_use == 0)
+      ret = PartnerLocationMetric::kRightFirst;
+    else if (num_ports_already_in_use == 1 &&
+             panel_already_in_use == Panel::kRight)
+      ret = PartnerLocationMetric::kRightSecondSameSideWithFirst;
+    else if (num_ports_already_in_use == 1 &&
+             panel_already_in_use == Panel::kLeft)
+      ret = PartnerLocationMetric::kRightSecondOppositeSideToFirst;
+    else if (num_ports_already_in_use >= 2)
+      ret = PartnerLocationMetric::kRightThirdOrLater;
+  }
+
+end:
+  return ret;
 }
 
 }  // namespace typecd

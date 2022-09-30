@@ -53,7 +53,7 @@ bool UdevMonitor::ScanDevices() {
 
   while (entry != nullptr) {
     HandleDeviceAddedRemoved(base::FilePath(std::string(entry->GetName())),
-                             true);
+                             true, true);
     entry = entry->GetNext();
   }
 
@@ -104,7 +104,8 @@ void UdevMonitor::RemoveTypecObserver(TypecObserver* obs) {
 }
 
 bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
-                                           bool added) {
+                                           bool added,
+                                           bool is_initial_scan) {
   auto name = path.BaseName();
   int port_num;
 
@@ -112,7 +113,7 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
     if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
       observer.OnPortAddedOrRemoved(path, port_num, added);
     else if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
-      observer.OnPartnerAddedOrRemoved(path, port_num, added);
+      observer.OnPartnerAddedOrRemoved(path, port_num, added, !is_initial_scan);
     else if (RE2::FullMatch(name.value(), kPartnerAltModeRegex, &port_num))
       observer.OnPartnerAltModeAddedOrRemoved(path, port_num, added);
     else if (RE2::FullMatch(name.value(), kCableRegex, &port_num))

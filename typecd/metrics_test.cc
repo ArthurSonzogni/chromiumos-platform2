@@ -4,6 +4,7 @@
 
 #include "typecd/cable.h"
 #include "typecd/partner.h"
+#include "typecd/port_manager.h"
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
@@ -279,6 +280,108 @@ TEST_F(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1) {
   c.SetNumAltModes(0);
 
   EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1, c.GetCableSpeedMetric());
+}
+
+TEST_F(MetricsTest, CheckPartnerLocationPreferRightSide) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Vell
+  auto port0 = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  auto port1 = std::make_unique<MockPort>(base::FilePath("port1"), 1);
+  auto port2 = std::make_unique<MockPort>(base::FilePath("port2"), 2);
+  auto port3 = std::make_unique<MockPort>(base::FilePath("port3"), 3);
+  EXPECT_CALL(*port0, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port1, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port2, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  EXPECT_CALL(*port3, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(2, std::move(port2)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(3, std::move(port3)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+  EXPECT_EQ(PartnerLocationMetric::kRightFirst,
+            port_manager->GetPartnerLocationMetric(0, true));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 1, true);
+  EXPECT_EQ(PartnerLocationMetric::kRightSecondSameSideWithFirst,
+            port_manager->GetPartnerLocationMetric(1, true));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 2, true);
+  EXPECT_EQ(PartnerLocationMetric::kUserHasNoChoice,
+            port_manager->GetPartnerLocationMetric(2, true));
+}
+
+TEST_F(MetricsTest, CheckPartnerLocationPreferLeftSide) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Vell
+  auto port0 = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  auto port1 = std::make_unique<MockPort>(base::FilePath("port1"), 1);
+  auto port2 = std::make_unique<MockPort>(base::FilePath("port2"), 2);
+  auto port3 = std::make_unique<MockPort>(base::FilePath("port3"), 3);
+  EXPECT_CALL(*port0, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port1, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port2, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  EXPECT_CALL(*port3, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(2, std::move(port2)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(3, std::move(port3)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 2, true);
+  EXPECT_EQ(PartnerLocationMetric::kLeftFirst,
+            port_manager->GetPartnerLocationMetric(2, true));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 3, true);
+  EXPECT_EQ(PartnerLocationMetric::kLeftSecondSameSideWithFirst,
+            port_manager->GetPartnerLocationMetric(3, true));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+  EXPECT_EQ(PartnerLocationMetric::kUserHasNoChoice,
+            port_manager->GetPartnerLocationMetric(0, true));
+}
+
+TEST_F(MetricsTest, CheckPartnerLocationNoPreference) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Vell
+  auto port0 = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  auto port1 = std::make_unique<MockPort>(base::FilePath("port1"), 1);
+  auto port2 = std::make_unique<MockPort>(base::FilePath("port2"), 2);
+  auto port3 = std::make_unique<MockPort>(base::FilePath("port3"), 3);
+  EXPECT_CALL(*port0, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port1, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port2, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  EXPECT_CALL(*port3, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(2, std::move(port2)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(3, std::move(port3)));
+
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 0, true);
+  EXPECT_EQ(PartnerLocationMetric::kRightColdplugged,
+            port_manager->GetPartnerLocationMetric(0, false));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 2, true);
+  EXPECT_EQ(PartnerLocationMetric::kLeftSecondOppositeSideToFirst,
+            port_manager->GetPartnerLocationMetric(2, true));
+  port_manager->OnPartnerAddedOrRemoved(base::FilePath("fakepath"), 3, true);
+  EXPECT_EQ(PartnerLocationMetric::kLeftThirdOrLater,
+            port_manager->GetPartnerLocationMetric(3, true));
 }
 
 }  // namespace typecd

@@ -89,6 +89,9 @@ class PortManager : public UdevMonitor::TypecObserver,
               ModeEntryDpAltModeNotifyInvalidDpCable);
   FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNoCableNotification);
   FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable);
+  FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferRightSide);
+  FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferLeftSide);
+  FRIEND_TEST(MetricsTest, CheckPartnerLocationNoPreference);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
@@ -96,7 +99,8 @@ class PortManager : public UdevMonitor::TypecObserver,
                             bool added) override;
   void OnPartnerAddedOrRemoved(const base::FilePath& path,
                                int port_num,
-                               bool added) override;
+                               bool added,
+                               bool is_hotplug = true) override;
   void OnPartnerAltModeAddedOrRemoved(const base::FilePath& path,
                                       int port_num,
                                       bool added) override;
@@ -119,7 +123,11 @@ class PortManager : public UdevMonitor::TypecObserver,
   void HandleSessionStopped();
 
   // Central function to perform metrics reporting for the peripherals.
-  void ReportMetrics(int port_num);
+  void ReportMetrics(int port_num, bool is_hotplug);
+
+  // Convenience function used by ReportMetrics to get the right enum for
+  // PartnerLocationMetric.
+  PartnerLocationMetric GetPartnerLocationMetric(int port_num, bool is_hotplug);
 
   // The central function which contains the main mode entry logic. This decides
   // which partner mode we select, based on partner/cable characteristics as
