@@ -712,6 +712,10 @@ properties:
                       description: Specifies the list of Zephyr-based firmware
                         targets to build.
                   additionalProperties: false
+                detachable-ui:
+                  description: Enables the firmware detachable UI.
+                  type: boolean
+                  build-only-element: true
                 ec-ro-image: *bcs_file_name
                 pd-ro-image: *bcs_file_name
                 key-id:

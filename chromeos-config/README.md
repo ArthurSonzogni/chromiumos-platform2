@@ -743,6 +743,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | bcs-overlay | string |  | False |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build_targets) |  | False |  | True |  |
+| detachable-ui | boolean |  | False |  | True | Enables the firmware detachable UI. |
 | ec-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | firmware-config | integer |  | False |  | False | The firmware config bitmap to be flashed to the CBI. This field is used in the factory. |
 | image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |

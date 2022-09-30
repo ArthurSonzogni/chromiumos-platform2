@@ -783,3 +783,97 @@ class CrosConfigBaseImpl(object):
 
         # No found or generated config
         return ""
+
+    def GetKeyValuePairs(self, key_path, key_name, value_path, value_name):
+        """A dictionary of key-value pairs for the given config paths.
+
+        This will check for consistency across kv pairs, a 1:1 mapping of
+        key to value must occur in the config.
+        If no pairs are found, an empty dict is returned.
+
+        Args:
+            key_path: Path to property to use as the key (e.g. "/firmware")
+            key_name: Name of property to use as the key (e.g. "image-name")
+            value_path: Path to property to use as the value
+            value_name: Path to property to use as the value
+
+        Returns:
+            dict of key-value pairs
+
+        Raises:
+            ValidationError if conflicting values are found for a key
+        """
+        pairs = OrderedDict()
+        for device in self.GetDeviceConfigs():
+            key = device.GetProperty(key_path, key_name)
+            value = device.GetProperty(value_path, value_name)
+
+            if not key:
+                continue
+
+            if key in pairs and pairs.get(key, value) != value:
+                raise ValueError(
+                    f"Colliding key-value pair found for key {key}: "
+                    f"{value}, {pairs[key]}"
+                )
+            else:
+                pairs[key] = value
+
+        return pairs
+
+    def GetKeyValue(
+        self,
+        key_path,
+        key_name,
+        key_match,
+        value_path,
+        value_name,
+        ignore_unset=False,
+    ):
+        """A unique value of a given config path for a matching key
+
+        This will check for consistency across kv pairs, a 1:1 mapping of
+        key to value must occur in the config.
+        If no pairs are found, None is returned.
+
+        Args:
+            key_path: Path to property to use as the key (e.g. "/firmware")
+            key_name: Name of property to use as the key (e.g. "image-name")
+            key_match: Only key-value pairs where the key matches this value
+                will be considered.
+            value_path: Path to property to use as the value
+            value_name: Path to property to use as the value
+            ignore_unset: Ignore key-value pairs if the value isn't set. The
+                key-value pair may be used on devices which do not specify this
+                property.
+
+        Returns:
+            value
+
+        Raises:
+            ValidationError if conflicting values are found for the key
+        """
+        values = OrderedDict()
+        for device in self.GetDeviceConfigs():
+            key = device.GetProperty(key_path, key_name)
+            value = device.GetProperty(value_path, value_name)
+
+            # Skip targets that aren't specified in the JSON or don't match
+            if not key or key != key_match:
+                continue
+            if ignore_unset and not value:
+                continue
+
+            if key in values and values.get(key, value) != value:
+                raise ValueError(
+                    f"Colliding key-value pair found for key {key}: "
+                    f"{value}, {values[key]}"
+                )
+            else:
+                values[key_match] = value
+
+        if key_match in values:
+            return values[key_match]
+
+        # Not found
+        return None

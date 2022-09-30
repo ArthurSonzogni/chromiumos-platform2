@@ -1415,6 +1415,17 @@ def _build_firmware(config):
         "build-targets": build_targets,
     }
 
+    hw_features = config.hw_design_config.hardware_features
+    if hw_features.form_factor.HasField("detachable_ui"):
+        result["detachable-ui"] = hw_features.form_factor.detachable_ui.value
+    else:
+        assume_on_ffs = [
+            topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE,
+            topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
+        ]
+        if hw_features.form_factor.form_factor in assume_on_ffs:
+            result["detachable-ui"] = True
+
     if main_ro and main_ro.firmware_image_name:
         _upsert(
             config.hw_design.id.value.lower(),
@@ -1637,12 +1648,8 @@ class _AudioConfigBuilder:
         cras_config_with_suffix = self._CRAS_CONFIG_PATH
         design_name_with_suffix = self._design_name
         if cras_suffix:
-            cras_config_with_suffix = (
-                f"{cras_config_with_suffix}.{cras_suffix}"
-            )
-            design_name_with_suffix = (
-                f"{design_name_with_suffix}.{cras_suffix}"
-            )
+            cras_config_with_suffix = f"{cras_config_with_suffix}.{cras_suffix}"
+            design_name_with_suffix = f"{design_name_with_suffix}.{cras_suffix}"
 
         cras_config_source_path = self._build_source_path(
             card_config.cras_config, cras_config_with_suffix
@@ -1708,12 +1715,8 @@ class _AudioConfigBuilder:
 
         cras_suffix = self._select_from_set(self._cras_suffixes, "cras-suffix")
         if cras_suffix:
-            design_name_with_suffix = (
-                f"{design_name_with_suffix}.{cras_suffix}"
-            )
-            cras_config_with_suffix = (
-                f"{cras_config_with_suffix}.{cras_suffix}"
-            )
+            design_name_with_suffix = f"{design_name_with_suffix}.{cras_suffix}"
+            cras_config_with_suffix = f"{cras_config_with_suffix}.{cras_suffix}"
 
         cras_config_source_path = self._build_source_path(
             self._audio.cras_config, cras_config_with_suffix

@@ -274,6 +274,7 @@
             "libpayload": "another",
             "zephyr-ec": "some/another"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Another_EC.1111.11.1.tbz2",
           "firmware-config": 4294967295,
           "main-ro-image": "bcs://Another.1111.11.1.tbz2",

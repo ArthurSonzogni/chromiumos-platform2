@@ -548,7 +548,7 @@
           "bcs-overlay": "overlay-fake_program-private",
           "build-targets": {
             "coreboot": "fake",
-            "depthcharge": "fake",
+            "depthcharge": "fake2",
             "ec": "fake",
             "ec_extras": [
               "fake_ec_extra1",
@@ -808,6 +808,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 66336,
           "image-name": "project_b",
@@ -992,6 +993,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 66336,
           "image-name": "project_b",
@@ -1200,6 +1202,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 66336,
           "image-name": "project_b",
@@ -1394,6 +1397,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 66337,
           "image-name": "project_c",
@@ -1484,6 +1488,7 @@
             "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname WL",
             "metrics-tag": "project_wl",
+            "oem": "FAKE_OEM",
             "product": "fake_program"
           },
           "hardware-features": {
@@ -1529,7 +1534,8 @@
         },
         "brand-code": "WLZZ",
         "branding": {
-          "marketing-name": "ChromeOS Device Brandname WL"
+          "marketing-name": "ChromeOS Device Brandname WL",
+          "oem-name": "FAKE_OEM"
         },
         "camera": {
           "count": 1,
@@ -2528,6 +2534,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 90897,
           "image-name": "project_box",
@@ -2677,6 +2684,7 @@
             "libpayload": "fake",
             "zephyr-ec": "projects/fake/fake"
           },
+          "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "firmware-config": 90113,
           "image-name": "project_box",

@@ -272,6 +272,54 @@ class CrosConfigHostTest(unittest.TestCase):
         with self.assertRaises(Exception):
             config.GetFirmwareRecoveryInput("depthcharge", "badrecovery2")
 
+    def testKeyValuePair(self):
+        """Test querying for a set of key-value pairs"""
+        config = CrosConfig(self.filepath)
+        expected = {
+            "some": "bloonchipper",
+            "some2": "bloonchipper",
+            "another": "dartmonkey",
+            "some_customization": "bloonchipper",
+            "whitelabel": "bloonchipper",
+            "badrecovery1": "bloonchipper",
+            "badrecovery2": "bloonchipper",
+        }
+        result = config.GetKeyValuePairs("/", "name", "/fingerprint", "board")
+        self.assertEqual(expected, result)
+
+        # Test a clash in key-value pairs
+        with self.assertRaises(Exception):
+            config.GetKeyValuePairs("/", "name", "/firmware", "image-name")
+
+    def testKeyValue(self):
+        """Test querying a particular key-value pair by key"""
+        config = CrosConfig(self.filepath)
+        expected = "bloonchipper"
+        result = config.GetKeyValue(
+            key_path="/",
+            key_name="name",
+            key_match="some",
+            value_path="/fingerprint",
+            value_name="board",
+        )
+        self.assertEqual(expected, result)
+
+        # Test ignore-unset option
+        expected = "True"
+        result = config.GetKeyValue(
+            key_path="/",
+            key_name="name",
+            key_match="some",
+            value_path="/hardware-properties",
+            value_name="has-base-accelerometer",
+            ignore_unset=True,
+        )
+        self.assertEqual(expected, result)
+
+        # Test a clash in key-value pairs
+        with self.assertRaises(Exception):
+            config.GetKeyValue("/", "name", "/firmware", "image-name")
+
     def testGetWallpaper(self):
         """Test that we can access the wallpaper information"""
         config = CrosConfig(self.filepath)

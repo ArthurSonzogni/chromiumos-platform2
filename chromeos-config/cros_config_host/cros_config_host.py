@@ -315,6 +315,53 @@ def GetFirmwareRecoveryInput(config, build_target_name, build_target_value):
     )
 
 
+def GetKeyValuePairs(config, key_path, key_name, value_path, value_name):
+    """Print the key-value pairs that exist for the given paths
+
+    Args:
+        config: A CrosConfig instance
+        key_path: Path to property to use as the key (e.g. "/firmware")
+        key_name: Name of property to use as the key (e.g. "image-name")
+        value_path: Path to property to use as the value
+        value_name: Path to property to use as the value
+    """
+    d = config.GetKeyValuePairs(key_path, key_name, value_path, value_name)
+    for name, value in d.items():
+        print(name)
+        print(value)
+
+
+def GetKeyValue(
+    config,
+    key_path,
+    key_name,
+    key_match,
+    value_path,
+    value_name,
+    ignore_unset=False,
+):
+    """Print the unique value for a key in a key-value pair.
+
+    Args:
+        config: A CrosConfig instance
+        key_path: Path to property to use as the key (e.g. "/firmware")
+        key_name: Name of property to use as the key (e.g. "image-name")
+        key_match: Value of key in kv pair
+        value_path: Path to property to use as the value
+        value_name: Path to property to use as the value
+        ignore_unset: Ignore a device in the config if the value for a
+            particular path is not set. This is useful when trying to resolve
+            conflicts between a value and configs that don't set a value.
+    """
+    value = config.GetKeyValue(
+        key_path, key_name, key_match, value_path, value_name, ignore_unset
+    )
+    if value:
+        print(value)
+    else:
+        print()
+
+
 def GetParser(description):
     """Returns an ArgumentParser structured for the cros_config_host CLI.
 
@@ -480,6 +527,49 @@ def GetParser(description):
     firmware_recovery_input_parser.add_argument(
         "build_target_value", help="Build target value"
     )
+    # Parser: get-key-value-pairs
+    key_value_pairs_input_parser = subparsers.add_parser(
+        "get-key-value-pairs",
+        help="Lists combinations of (key,value) pairs when given an input of "
+        "(key property path, value property path).",
+    )
+    key_value_pairs_input_parser.add_argument(
+        "key_property_path", help="Config path of key"
+    )
+    key_value_pairs_input_parser.add_argument(
+        "key_property_name", help="Config name of key"
+    )
+    key_value_pairs_input_parser.add_argument(
+        "value_property_path", help="Config path of value"
+    )
+    key_value_pairs_input_parser.add_argument(
+        "value_property_name", help="Config name of value"
+    )
+    # Parser: get-key-value
+    key_value_input_parser = subparsers.add_parser(
+        "get-key-value",
+        help="Lists a key-value pairs's value for the given key.",
+    )
+    key_value_input_parser.add_argument(
+        "key_property_path", help="Config path of key"
+    )
+    key_value_input_parser.add_argument(
+        "key_property_name", help="Config name of key"
+    )
+    key_value_input_parser.add_argument(
+        "key_property_match", help="Key to match against"
+    )
+    key_value_input_parser.add_argument(
+        "value_property_path", help="Config path of value"
+    )
+    key_value_input_parser.add_argument(
+        "value_property_name", help="Config name of value"
+    )
+    key_value_input_parser.add_argument(
+        "--ignore-unset",
+        action="store_true",
+        help="Ignore key-value pairs " "where the value is not set",
+    )
     return parser
 
 
@@ -555,6 +645,24 @@ def main(argv=None):
     elif opts.subcommand == "get-firmware-recovery-input":
         GetFirmwareRecoveryInput(
             config, opts.build_target_name, opts.build_target_value
+        )
+    elif opts.subcommand == "get-key-value-pairs":
+        GetKeyValuePairs(
+            config,
+            opts.key_property_path,
+            opts.key_property_name,
+            opts.value_property_path,
+            opts.value_property_name,
+        )
+    elif opts.subcommand == "get-key-value":
+        GetKeyValue(
+            config,
+            key_path=opts.key_property_path,
+            key_name=opts.key_property_name,
+            key_match=opts.key_property_match,
+            value_path=opts.value_property_path,
+            value_name=opts.value_property_name,
+            ignore_unset=opts.ignore_unset,
         )
 
 
