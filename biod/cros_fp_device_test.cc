@@ -21,6 +21,9 @@ using ec::EcCommandInterface;
 using ec::FpGetNonceCommand;
 using ec::FpInfoCommand;
 using ec::FpMode;
+using ec::FpPairingKeyKeygenCommand;
+using ec::FpPairingKeyLoadCommand;
+using ec::FpPairingKeyWrapCommand;
 using ec::FpReadMatchSecretWithPubkeyCommand;
 using ec::FpSensorErrors;
 using ec::FpSetNonceContextCommand;
@@ -752,6 +755,253 @@ TEST_F(CrosFpDevice_GetPositiveMatchSecretWithPubkey, RunFailure) {
   std::optional<ec::CrosFpDeviceInterface::GetSecretReply> reply =
       mock_cros_fp_device_->GetPositiveMatchSecretWithPubkey(kIndex, kPkInX,
                                                              kPkInY);
+  EXPECT_FALSE(reply.has_value());
+}
+
+class CrosFpDevice_PairingKeyKeygen : public testing::Test {
+ public:
+  CrosFpDevice_PairingKeyKeygen() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpPairingKeyKeygenCommand : public FpPairingKeyKeygenCommand {
+   public:
+    MockFpPairingKeyKeygenCommand() {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(brillo::Blob, PubX, (), (override, const));
+    MOCK_METHOD(brillo::Blob, PubY, (), (override, const));
+    MOCK_METHOD(brillo::Blob, EncryptedKey, (), (override, const));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_PairingKeyKeygen, Success) {
+  const brillo::Blob kPubX(32, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedKey(sizeof(fp_encrypted_private_key), 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyKeygenCommand)
+      .WillOnce([&]() {
+        auto cmd = std::make_unique<NiceMock<MockFpPairingKeyKeygenCommand>>();
+        EXPECT_CALL(*cmd, PubX).WillRepeatedly(Return(kPubX));
+        EXPECT_CALL(*cmd, PubY).WillRepeatedly(Return(kPubY));
+        EXPECT_CALL(*cmd, EncryptedKey).WillRepeatedly(Return(kEncryptedKey));
+        return cmd;
+      });
+
+  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+      mock_cros_fp_device_->PairingKeyKeygen();
+  ASSERT_TRUE(reply.has_value());
+  EXPECT_EQ(reply->pub_x, kPubX);
+  EXPECT_EQ(reply->pub_y, kPubY);
+  EXPECT_EQ(reply->encrypted_private_key, kEncryptedKey);
+}
+
+TEST_F(CrosFpDevice_PairingKeyKeygen, RunFailure) {
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyKeygenCommand)
+      .WillOnce([]() {
+        auto cmd = std::make_unique<NiceMock<MockFpPairingKeyKeygenCommand>>();
+        EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        return cmd;
+      });
+
+  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+      mock_cros_fp_device_->PairingKeyKeygen();
+  EXPECT_FALSE(reply.has_value());
+}
+
+class CrosFpDevice_LoadPairingKey : public testing::Test {
+ public:
+  CrosFpDevice_LoadPairingKey() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpPairingKeyLoadCommand : public FpPairingKeyLoadCommand {
+   public:
+    using FpPairingKeyLoadCommand::FpPairingKeyLoadCommand;
+    MOCK_METHOD(bool, Run, (int fd), (override));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_LoadPairingKey, Success) {
+  const brillo::Blob kEncryptedKey(sizeof(ec_fp_encrypted_pairing_key), 1);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyLoadCommand)
+      .WillOnce([](const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyLoadCommand> {
+        auto cmd = FpPairingKeyLoadCommand::Create<MockFpPairingKeyLoadCommand>(
+            encrypted_key);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(true));
+        }
+        return cmd;
+      });
+
+  EXPECT_TRUE(mock_cros_fp_device_->LoadPairingKey(kEncryptedKey));
+}
+
+TEST_F(CrosFpDevice_LoadPairingKey, InvalidParams) {
+  // Incorrect size.
+  const brillo::Blob kEncryptedKey(sizeof(ec_fp_encrypted_pairing_key) + 1, 1);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyLoadCommand)
+      .WillOnce([](const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyLoadCommand> {
+        auto cmd = FpPairingKeyLoadCommand::Create<MockFpPairingKeyLoadCommand>(
+            encrypted_key);
+        EXPECT_EQ(cmd, nullptr);
+        return cmd;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->LoadPairingKey(kEncryptedKey));
+}
+
+TEST_F(CrosFpDevice_LoadPairingKey, RunFailure) {
+  const brillo::Blob kEncryptedKey(sizeof(ec_fp_encrypted_pairing_key), 1);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyLoadCommand)
+      .WillOnce([](const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyLoadCommand> {
+        auto cmd = FpPairingKeyLoadCommand::Create<MockFpPairingKeyLoadCommand>(
+            encrypted_key);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        }
+        return cmd;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->LoadPairingKey(kEncryptedKey));
+}
+
+class CrosFpDevice_PairingKeyWrap : public testing::Test {
+ public:
+  CrosFpDevice_PairingKeyWrap() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpPairingKeyWrapCommand : public FpPairingKeyWrapCommand {
+   public:
+    using FpPairingKeyWrapCommand::FpPairingKeyWrapCommand;
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(brillo::Blob, EncryptedPairingKey, (), (override, const));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_PairingKeyWrap, Success) {
+  const brillo::Blob kPubX(32, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedKey(sizeof(fp_encrypted_private_key), 3);
+  const brillo::Blob kEncryptedPk(sizeof(ec_fp_encrypted_pairing_key), 4);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyWrapCommand)
+      .WillOnce([&](const brillo::Blob& pub_x, const brillo::Blob& pub_y,
+                    const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyWrapCommand> {
+        auto cmd = FpPairingKeyWrapCommand::Create<MockFpPairingKeyWrapCommand>(
+            pub_x, pub_y, encrypted_key);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(true));
+          EXPECT_CALL(*cmd, EncryptedPairingKey)
+              .WillRepeatedly(Return(kEncryptedPk));
+        }
+        return cmd;
+      });
+
+  std::optional<brillo::Blob> reply =
+      mock_cros_fp_device_->PairingKeyWrap(kPubX, kPubY, kEncryptedKey);
+  ASSERT_TRUE(reply.has_value());
+  EXPECT_EQ(*reply, kEncryptedPk);
+}
+
+TEST_F(CrosFpDevice_PairingKeyWrap, InvalidParams) {
+  // Incorrect size.
+  const brillo::Blob kPubX(33, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedKey(sizeof(fp_encrypted_private_key), 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyWrapCommand)
+      .WillOnce([&](const brillo::Blob& pub_x, const brillo::Blob& pub_y,
+                    const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyWrapCommand> {
+        auto cmd = FpPairingKeyWrapCommand::Create<MockFpPairingKeyWrapCommand>(
+            pub_x, pub_y, encrypted_key);
+        EXPECT_EQ(cmd, nullptr);
+        return cmd;
+      });
+
+  std::optional<brillo::Blob> reply =
+      mock_cros_fp_device_->PairingKeyWrap(kPubX, kPubY, kEncryptedKey);
+  EXPECT_FALSE(reply.has_value());
+}
+
+TEST_F(CrosFpDevice_PairingKeyWrap, RunFailure) {
+  const brillo::Blob kPubX(32, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedKey(sizeof(fp_encrypted_private_key), 3);
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpPairingKeyWrapCommand)
+      .WillOnce([&](const brillo::Blob& pub_x, const brillo::Blob& pub_y,
+                    const brillo::Blob& encrypted_key)
+                    -> std::unique_ptr<FpPairingKeyWrapCommand> {
+        auto cmd = FpPairingKeyWrapCommand::Create<MockFpPairingKeyWrapCommand>(
+            pub_x, pub_y, encrypted_key);
+        if (cmd) {
+          EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        }
+        return cmd;
+      });
+
+  std::optional<brillo::Blob> reply =
+      mock_cros_fp_device_->PairingKeyWrap(kPubX, kPubY, kEncryptedKey);
   EXPECT_FALSE(reply.has_value());
 }
 

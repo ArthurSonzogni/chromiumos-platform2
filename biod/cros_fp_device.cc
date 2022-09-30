@@ -784,21 +784,51 @@ bool CrosFpDevice::UpdateEntropy(bool reset) {
 
 std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply>
 CrosFpDevice::PairingKeyKeygen() {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return std::nullopt;
+  auto keygen_cmd = ec_command_factory_->FpPairingKeyKeygenCommand();
+  if (!keygen_cmd) {
+    LOG(ERROR) << "Invalid generate Pk params.";
+    return std::nullopt;
+  }
+  if (!keygen_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to generate Pk: " << keygen_cmd->Result();
+    return std::nullopt;
+  }
+  return ec::CrosFpDeviceInterface::PairingKeyKeygenReply{
+      .pub_x = keygen_cmd->PubX(),
+      .pub_y = keygen_cmd->PubY(),
+      .encrypted_private_key = keygen_cmd->EncryptedKey(),
+  };
 }
 
 std::optional<brillo::Blob> CrosFpDevice::PairingKeyWrap(
     const brillo::Blob& pub_x,
     const brillo::Blob& pub_y,
     const brillo::Blob& encrypted_priv) {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return std::nullopt;
+  auto wrap_cmd = ec_command_factory_->FpPairingKeyWrapCommand(pub_x, pub_y,
+                                                               encrypted_priv);
+  if (!wrap_cmd) {
+    LOG(ERROR) << "Invalid wrap Pk params.";
+    return std::nullopt;
+  }
+  if (!wrap_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to wrap Pk: " << wrap_cmd->Result();
+    return std::nullopt;
+  }
+  return wrap_cmd->EncryptedPairingKey();
 }
 
 bool CrosFpDevice::LoadPairingKey(const brillo::Blob& encrypted_pairing_key) {
-  // TODO(b/251380205): Implement new commands in CrosFpDevice.
-  return false;
+  auto load_cmd =
+      ec_command_factory_->FpPairingKeyLoadCommand(encrypted_pairing_key);
+  if (!load_cmd) {
+    LOG(ERROR) << "Invalid load Pk params.";
+    return false;
+  }
+  if (!load_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to load Pk: " << load_cmd->Result();
+    return false;
+  }
+  return true;
 }
 
 int CrosFpDevice::MaxTemplateCount() {
