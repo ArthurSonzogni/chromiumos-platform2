@@ -19,6 +19,7 @@
 #include "runtime_probe/functions/gpu.h"
 #include "runtime_probe/functions/input_device.h"
 #include "runtime_probe/functions/memory.h"
+#include "runtime_probe/functions/mipi_camera.h"
 #include "runtime_probe/functions/mmc_storage.h"
 #include "runtime_probe/functions/nvme_storage.h"
 #include "runtime_probe/functions/sequence.h"
@@ -65,6 +66,7 @@ auto ProbeFunction::registered_functions_ =
                                      GpuFunction,
                                      InputDeviceFunction,
                                      MemoryFunction,
+                                     MipiCameraFunction,
                                      MmcStorageFunction,
                                      NvmeStorageFunction,
                                      SequenceFunction,

@@ -98,6 +98,26 @@
     "CAP_DAC_READ_SEARCH+ep",
     "--ambient"
   ],
+  "mipi_camera": [
+    "-k",
+    "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-k",
+    "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+    "-b",
+    "/sys/class/video4linux/",
+    "-b",
+    "/sys/devices/pci0000:00/",
+    "-b",
+    "/sys/bus/nvmem/devices/",
+    "-b",
+    "/sys/bus/i2c/devices/",
+    "-b",
+    "/run/chromeos-config/v1/",
+    "-b",
+    "/dev/",
+    "-c",
+    "CAP_DAC_READ_SEARCH+ep"
+  ],
   "mmc_storage": [
     "-k",
     "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
