@@ -563,37 +563,22 @@ std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
 }
 
 bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
-  union cmd_with_data {
-    struct ec_params_fp_template req;
-    uint8_t _fullsize[ec::kMaxPacketSize];
-  };
-  EcCommand<union cmd_with_data, EmptyParam> cmd(EC_CMD_FP_TEMPLATE);
-  struct ec_params_fp_template* req = &cmd.Req()->req;
+  auto fp_template_cmd =
+      ec_command_factory_->FpTemplateCommand(tmpl, ec_protocol_info_.max_write);
 
-  size_t max_chunk = ec_protocol_info_.max_write -
-                     offsetof(struct ec_params_fp_template, data);
-
-  auto pos = tmpl.begin();
-  while (pos < tmpl.end()) {
-    size_t remaining = tmpl.end() - pos;
-    uint32_t tlen = std::min(max_chunk, remaining);
-    req->offset = pos - tmpl.begin();
-    req->size = tlen | (remaining == tlen ? FP_TEMPLATE_COMMIT : 0);
-    std::copy(pos, pos + tlen, req->data);
-    cmd.SetReqSize(tlen + sizeof(struct ec_params_fp_template));
-    if (!cmd.Run(cros_fd_.get())) {
-      LOG(ERROR) << "Failed to run FP_TEMPLATE command";
-      biod_metrics_->SendUploadTemplateResult(metrics::kCmdRunFailure);
-      return false;
-    }
-    if (cmd.Result() != EC_RES_SUCCESS) {
-      LOG(ERROR) << "FP_TEMPLATE command failed @ " << pos - tmpl.begin();
-      biod_metrics_->SendUploadTemplateResult(cmd.Result());
-      return false;
-    }
-    pos += tlen;
+  if (!fp_template_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to run FP_TEMPLATE command";
+    biod_metrics_->SendUploadTemplateResult(metrics::kCmdRunFailure);
+    return false;
   }
-  biod_metrics_->SendUploadTemplateResult(EC_RES_SUCCESS);
+
+  biod_metrics_->SendUploadTemplateResult(fp_template_cmd->Result());
+
+  if (fp_template_cmd->Result() != EC_RES_SUCCESS) {
+    LOG(ERROR) << "FP_TEMPLATE command failed";
+    return false;
+  }
+
   return true;
 }
 

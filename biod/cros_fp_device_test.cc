@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 #include <libec/ec_usb_endpoint.h>
 #include <libec/fingerprint/fp_info_command.h>
+#include <libec/fingerprint/fp_template_command.h>
 #include <libec/mock_ec_command_factory.h>
 
 #include "biod/cros_fp_device.h"
@@ -18,6 +19,7 @@ using ec::EcCommandFactoryInterface;
 using ec::EcCommandInterface;
 using ec::FpInfoCommand;
 using ec::FpMode;
+using ec::FpTemplateCommand;
 using testing::An;
 using testing::NiceMock;
 using testing::Return;
@@ -296,6 +298,84 @@ TEST_F(CrosFpDevice_ReadVersion, InvalidVersionStringNoNewline) {
       });
   std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_FALSE(version.has_value());
+}
+
+class CrosFpDevice_UploadTemplate : public testing::Test {
+ public:
+  CrosFpDevice_UploadTemplate() {
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
+    mock_ec_command_factory_ = mock_command_factory.get();
+    mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
+        &mock_biod_metrics_, std::move(mock_command_factory));
+  }
+
+ protected:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    MockCrosFpDevice(
+        BiodMetricsInterface* biod_metrics,
+        std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+        : CrosFpDevice(biod_metrics, std::move(ec_command_factory)) {}
+  };
+
+  class MockFpTemplateCommand : public FpTemplateCommand {
+   public:
+    MockFpTemplateCommand(std::vector<uint8_t> tmpl, uint16_t max_write_size)
+        : FpTemplateCommand(tmpl, max_write_size) {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+      ON_CALL(*this, Result).WillByDefault(Return(EC_RES_SUCCESS));
+    }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(uint32_t, Result, (), (override, const));
+  };
+
+  metrics::MockBiodMetrics mock_biod_metrics_;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
+};
+
+TEST_F(CrosFpDevice_UploadTemplate, Success) {
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
+        return std::make_unique<NiceMock<MockFpTemplateCommand>>(
+            tmpl, max_write_size);
+      });
+
+  EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_SUCCESS));
+  EXPECT_TRUE(mock_cros_fp_device_->UploadTemplate(templ));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, RunFailure) {
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
+        auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
+            tmpl, max_write_size);
+        EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_biod_metrics_,
+              SendUploadTemplateResult(metrics::kCmdRunFailure));
+  EXPECT_FALSE(mock_cros_fp_device_->UploadTemplate(templ));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, CommandFailure) {
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
+        auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
+            tmpl, max_write_size);
+        EXPECT_CALL(*cmd, Result).WillRepeatedly(Return(EC_RES_ERROR));
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_ERROR));
+  EXPECT_FALSE(mock_cros_fp_device_->UploadTemplate(templ));
 }
 
 }  // namespace
