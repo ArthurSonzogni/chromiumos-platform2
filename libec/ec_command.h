@@ -123,6 +123,7 @@ class EcCommand : public EcCommandInterface {
   uint32_t Version() const override { return data_.cmd.version; }
   uint32_t Command() const override { return data_.cmd.command; }
 
+ protected:
   struct Data {
     struct cros_ec_command_v2 cmd;
     union {
@@ -130,6 +131,8 @@ class EcCommand : public EcCommandInterface {
       Response resp;
     };
   };
+
+  bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
 
  private:
   virtual int ioctl(int fd, uint32_t request, Data* data) {
@@ -144,9 +147,6 @@ class EcCommand : public EcCommandInterface {
   unsigned int kUsbXferTimeoutMs = 1000;
 
   Data data_;
-
- protected:
-  bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
 };
 
 /**
