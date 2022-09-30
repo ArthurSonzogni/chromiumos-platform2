@@ -30,6 +30,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
+#include <base/task/bind_post_task.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "common/utils/camera_hal_enumerator.h"
@@ -243,10 +244,12 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
   }
   callbacks_.Bind(std::move(callbacks));
 
-  std::move(set_privacy_switch_callback)
-      .Run(base::BindRepeating(
+  auto privacy_switch_callback = base::BindPostTask(
+      ipc_task_runner_,
+      base::BindRepeating(
           &CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged,
           base::Unretained(this)));
+  std::move(set_privacy_switch_callback).Run(privacy_switch_callback);
 
   LOGF(INFO) << "Successfully registered camera server.";
 }
@@ -268,6 +271,10 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
     int camera_id, PrivacySwitchState state) {
+  VLOGF_ENTER();
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(callbacks_.is_bound());
+
   cros::mojom::CameraPrivacySwitchState state_in_mojo;
   if (state == PrivacySwitchState::kUnknown) {
     state_in_mojo = cros::mojom::CameraPrivacySwitchState::UNKNOWN;
