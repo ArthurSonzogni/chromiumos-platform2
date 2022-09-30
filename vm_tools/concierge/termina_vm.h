@@ -80,7 +80,7 @@ struct SiblingState {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_in_watcher;
 
   // Processes for virtio-vhost-user device backend processes.
-  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes_;
+  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes;
 };
 
 // Represents a single instance of a running termina VM.

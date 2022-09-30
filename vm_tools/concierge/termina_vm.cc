@@ -459,7 +459,7 @@ bool TerminaVm::StartSiblingVm(std::vector<base::StringPairs> vvu_device_cmds,
       SiblingState{.fd_in = std::move(fd_in),
                    .fd_out = std::move(fd_out),
                    .fd_in_watcher = std::move(fd_in_watcher),
-                   .vvu_device_processes_ = std::move(*vvu_device_processes)});
+                   .vvu_device_processes = std::move(*vvu_device_processes)});
   LOG(INFO) << "Sibling Vm Started: " << vm_started;
   return vm_started;
 }
