@@ -394,6 +394,7 @@ type cros_var_db_pkg, file_type, cros_file_type, cros_var_file_type;
 
 # var/lib
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_boot-update-firmware, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_chaps, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_cras, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
