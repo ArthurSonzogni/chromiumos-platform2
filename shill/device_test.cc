@@ -240,6 +240,14 @@ class DeviceTest : public testing::Test {
     device_->ip6config()->set_properties(properties);
   }
 
+  void TriggerConnectionUpdate() {
+    EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(true));
+    network_->set_ipconfig(
+        std::make_unique<MockIPConfig>(control_interface(), kDeviceName));
+    device_->OnConnectionUpdated();
+    device_->OnIPConfigsPropertyUpdated();
+  }
+
   void SetDHCPProvider(DHCPProvider* dhcp_provider) {
     device_->network()->set_dhcp_provider_for_testing(dhcp_provider);
   }
@@ -372,81 +380,19 @@ TEST_F(DeviceTest, ResetConnection) {
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
-TEST_F(DeviceTest, DHCPFailure) {
-  SetupIPv4DHCPConfig();
+TEST_F(DeviceTest, NetworkFailure) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
-  EXPECT_CALL(*ipconfig_, ResetProperties());
-  OnDHCPFailure();
+  device_->OnNetworkStopped(/*is_failure=*/true);
 }
 
-TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
-  // Setup IPv6 configuration.
-  SetupIPv6Config();
-  EXPECT_NE(device_->ip6config(), nullptr);
-
-  // IPv4 configuration failed, fallback to use IPv6 configuration.
-  SetupIPv4DHCPConfig();
+TEST_F(DeviceTest, ConnectionUpdated) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  auto* connection = new StrictMock<MockConnection>(&device_info_);
-  SetConnection(std::unique_ptr<Connection>(connection));
-
-  EXPECT_CALL(*ipconfig_, ResetProperties());
-  EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection,
-              UpdateFromIPConfig(Ref(device_->ip6config()->properties())));
-  EXPECT_CALL(*service, IsConnected(nullptr))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, SetState(Service::kStateConnected));
-  EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  OnDHCPFailure();
-}
-
-// IPv4 configuration failed with existing IPv6 connection.
-TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
-  // Setup IPv6 configuration.
-  SetupIPv6Config();
-  EXPECT_NE(device_->ip6config(), nullptr);
-
-  SetupIPv4DHCPConfig();
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  auto* connection = new StrictMock<MockConnection>(&device_info_);
-  SetConnection(std::unique_ptr<Connection>(connection));
-
-  EXPECT_CALL(*ipconfig_, ResetProperties());
-  EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
-  OnDHCPFailure();
-  // Verify connection not teardown.
-  EXPECT_TRUE(device_->network()->IsConnected());
-}
-
-TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
-  SetupIPv4DHCPConfig();
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  NetworkConfig config;
-  config.ipv4_address_cidr = "1.1.1.1/16";
-  device_->network()->OnStaticIPConfigChanged(config);
-  // Even though we won't call DisconnectWithFailure, we should still have
-  // the service learn from the failed DHCP attempt.
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
-  // The IPConfig should retain the previous values.
-  EXPECT_CALL(*ipconfig_, ResetProperties()).Times(0);
-  OnDHCPFailure();
-}
-
-TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
-  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  SelectService(service);
-  SetupIPv4DHCPConfig();
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -459,20 +405,16 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
-  OnIPv4ConfigUpdated();
-
-  // Verify static IP config change callback.
-  EXPECT_CALL(*dhcp_controller_, RenewIP());
-  device_->network()->OnStaticIPConfigChanged({});
+  TriggerConnectionUpdate();
 }
 
-TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
+TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
   // The service is already Online and selected, so it should not transition
   // back to Connected.
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  auto ipconfig = std::make_unique<NiceMock<MockIPConfig>>(control_interface(),
-                                                           kDeviceName);
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
@@ -485,18 +427,16 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
-  device_->set_ipconfig(std::move(ipconfig));
-  OnIPv4ConfigUpdated();
+  TriggerConnectionUpdate();
 }
 
-TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
-  // Make sure shill doesn't crash if a service is disabled immediately
-  // after receiving its IP config (selected_service_ is nullptr in this case).
-  auto ipconfig = std::make_unique<NiceMock<MockIPConfig>>(control_interface(),
-                                                           kDeviceName);
+TEST_F(DeviceTest, ConnectionUpdatedSuccessNoSelectedService) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
+  // Make sure shill doesn't crash if a service is disabled immediately after
+  // Network is connected (selected_service_ is nullptr in this case).
   SelectService(nullptr);
-  device_->set_ipconfig(std::move(ipconfig));
-  OnIPv4ConfigUpdated();
+  TriggerConnectionUpdate();
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {

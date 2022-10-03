@@ -509,6 +509,10 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);
+
+  // Reset static IP, DHCP should be renewed.
+  EXPECT_CALL(*dhcp_controller_, RenewIP());
+  network_->OnStaticIPConfigChanged({});
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
@@ -615,7 +619,7 @@ TEST_F(NetworkStartTest, DualStackDHCPFailure) {
   EXPECT_EQ(network_->state(), Network::State::kIdle);
 }
 
-TEST_F(NetworkStartTest, DualStackDHCPFailureAfterConnected) {
+TEST_F(NetworkStartTest, DualStackDHCPFailureAfterIPv6Connected) {
   const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped(_)).Times(0);
 
@@ -626,6 +630,25 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterConnected) {
   TriggerSLAACUpdate();
   TriggerDHCPFailureCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
+}
+
+// Verifies the behavior on IPv4 failure after both v4 and v6 are connected.
+TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_)).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  TriggerDHCPUpdateCallback();
+  TriggerSLAACUpdate();
+
+  // Connection should be reconfigured with IPv6 on IPv4 failure.
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  TriggerDHCPFailureCallback();
+  // TODO(b/232177767): We do not verify IPConfigs here, since currently we only
+  // reset the properties in ipconfig on DHCP failure instead of removing it.
+  // Consider changing this behavior in the future.
 }
 
 TEST_F(NetworkStartTest, DualStackSLAACFirst) {
