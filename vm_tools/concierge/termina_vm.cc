@@ -83,7 +83,8 @@ constexpr char kRenderServerCacheSizeString[] = "50M";
 // The maximum render server shader cache disk usage for borealis.
 // TODO(b/169802596): Set cache size in a smarter way.
 // See b/209849605#comment5 for borealis cache size reasoning.
-constexpr char kRenderServerCacheSizeStringBorealis[] = "300M";
+constexpr char kGpuCacheSizeStringBorealis[] = "1000M";
+constexpr char kRenderServerCacheSizeStringBorealis[] = "1000M";
 
 // Special value to represent an invalid disk index for `crosvm disk`
 // operations.
@@ -302,15 +303,22 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableGpu(true)
         .EnableVulkan(features_.vulkan)
         .EnableBigGl(features_.big_gl)
-        .EnableVirtgpuNativeContext(features_.virtgpu_native_context)
-        .SetGpuCacheSize(kGpuCacheSizeString);
+        .EnableVirtgpuNativeContext(features_.virtgpu_native_context);
+
+    if (classification_ == VmInfo::BOREALIS) {
+      vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
+    } else {
+      vm_builder.SetGpuCacheSize(kGpuCacheSizeString);
+    }
 
     if (features_.render_server) {
-      const char* cache_size = kRenderServerCacheSizeString;
-      if (id_.name() == "borealis") {
-        cache_size = kRenderServerCacheSizeStringBorealis;
+      vm_builder.EnableRenderServer(true);
+      if (classification_ == VmInfo::BOREALIS) {
+        vm_builder.SetRenderServerCacheSize(
+            kRenderServerCacheSizeStringBorealis);
+      } else {
+        vm_builder.SetRenderServerCacheSize(kRenderServerCacheSizeString);
       }
-      vm_builder.EnableRenderServer(true).SetRenderServerCacheSize(cache_size);
     }
   }
 
