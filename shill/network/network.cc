@@ -426,6 +426,8 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
     if (ip6config()) {
       set_ip6config(nullptr);
       event_handler_->OnIPConfigsPropertyUpdated();
+      // TODO(b/232177767): We may lose the whole IP connectivity here (if there
+      // is no IPv4).
     }
     return;
   }
