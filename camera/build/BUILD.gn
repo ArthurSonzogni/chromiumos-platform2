@@ -5,7 +5,13 @@
 import("//common-mk/pkg_config.gni")
 
 pkg_config("cros_camera_common_pkg_config") {
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    # libchrome is used by nearly all components.
+    "libchrome",
+
+    # For event tracing helpers.
+    "perfetto",
+  ]
 }
 
 config("cros_camera_common") {

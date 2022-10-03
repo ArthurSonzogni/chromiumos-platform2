@@ -18,7 +18,6 @@ pkg_config("target_defaults") {
     "libmojo",
     "libsync",
     "libyuv",
-    "perfetto",
     "re2",
   ]
 }
