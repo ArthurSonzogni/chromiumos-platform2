@@ -2471,6 +2471,23 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     SetCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   }
 
+  if (enable_create_backup_vk_with_uss_) {
+    // Authentication with UserSecretStash just finished. Now load the decrypted
+    // backup VaultKeyset from disk so that adding a PIN backup VaultKeyset will
+    // be possible when/if needed.
+    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+        keyset_management_->GetValidKeysetWithKeyBlobs(
+            obfuscated_username_, std::move(*key_blobs.get()),
+            auth_factor_label);
+    if (vk_status.ok()) {
+      vault_keyset_ = std::move(vk_status).value();
+
+    } else {
+      // Don't abort the authentication if obtaining backup VaultKeyset fails.
+      LOG(WARNING) << "Failed to load the backup VaultKeyset for the "
+                      "authenticated user.";
+    }
+  }
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(std::move(prepare_status));
 }
