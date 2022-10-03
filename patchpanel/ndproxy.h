@@ -183,6 +183,9 @@ class NDProxy {
   // the downstream guests treat the host as the next hop router.
   std::set<int> modify_ra_uplinks_;
 
+  // Map from downlink interface id to the link local address on it
+  std::map<int, in6_addr> downlink_link_local_;
+
   base::RepeatingCallback<void(int, const in6_addr&)> guest_discovery_handler_;
   base::RepeatingCallback<void(int, const in6_addr&, int)>
       router_discovery_handler_;

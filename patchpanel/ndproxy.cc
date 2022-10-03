@@ -353,6 +353,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
   NotifyPacketCallbacks(recv_ll_addr.sll_ifindex, in_packet, len);
 
+  if (downlink_link_local_.find(recv_ll_addr.sll_ifindex) !=
+          downlink_link_local_.end() &&
+      memcmp(&ip6->ip6_dst, &downlink_link_local_[recv_ll_addr.sll_ifindex],
+             sizeof(in6_addr)) == 0) {
+    // If destination IP is our link local unicast, no need to proxy the packet.
+    return;
+  }
+
   // Translate the NDP frame and send it through proxy interface
   auto map_entry =
       MapForType(icmp6->icmp6_type)->find(recv_ll_addr.sll_ifindex);
@@ -379,12 +387,10 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     if (modify_ra_uplinks_.find(recv_ll_addr.sll_ifindex) !=
             modify_ra_uplinks_.end() &&
         icmp6->icmp6_type == ND_ROUTER_ADVERT) {
-      if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
-        LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
-                        "proxy RA to interface "
-                     << target_if;
+      if (downlink_link_local_.find(target_if) == downlink_link_local_.end()) {
         continue;
       }
+      memcpy(&new_src_ip, &downlink_link_local_[target_if], sizeof(in6_addr));
       new_src_ip_p = &new_src_ip;
     }
 
@@ -757,6 +763,12 @@ void NDProxy::StartRSRAProxy(int if_id_upstream,
   if (modify_router_address) {
     modify_ra_uplinks_.insert(if_id_upstream);
   }
+  downlink_link_local_[if_id_downstream] = in6_addr{};
+  if (!GetLinkLocalAddress(if_id_downstream,
+                           &downlink_link_local_[if_id_downstream])) {
+    LOG(WARNING) << "Cannot find a link local address on interface "
+                 << if_id_downstream;
+  }
 }
 
 void NDProxy::StartNSNAProxy(int if_id_na_side, int if_id_ns_side) {
@@ -788,6 +800,8 @@ void NDProxy::StopProxy(int if_id1, int if_id2) {
   if (!IsRouterInterface(if_id2)) {
     modify_ra_uplinks_.erase(if_id2);
   }
+  downlink_link_local_.erase(if_id1);
+  downlink_link_local_.erase(if_id2);
 }
 
 bool NDProxy::IsGuestInterface(int ifindex) {
