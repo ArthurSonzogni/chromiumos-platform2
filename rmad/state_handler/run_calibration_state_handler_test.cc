@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_util.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -18,6 +17,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/mock_sensor_calibration_utils.h"
+#include "rmad/utils/mock_vpd_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -88,29 +88,49 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     expected_progresses_[RMAD_COMPONENT_BASE_GYROSCOPE] = base_gyro_progress;
     expected_progresses_[RMAD_COMPONENT_LID_GYROSCOPE] = lid_gyro_progress;
 
-    EXPECT_CALL(*base_acc_utils, Calibrate(_))
-        .WillRepeatedly([&, base_acc_progress](auto callback) {
+    EXPECT_CALL(*base_acc_utils, Calibrate(_, _))
+        .WillRepeatedly([base_acc_progress](
+                            SensorCalibrationUtils::CalibrationProgressCallback
+                                progress_callback,
+                            SensorCalibrationUtils::CalibrationResultCallback&&
+                                result_callback) {
           for (auto progress : base_acc_progress) {
-            callback.Run(progress);
+            progress_callback.Run(progress);
           }
+          std::move(result_callback).Run(std::map<std::string, int>());
         });
-    EXPECT_CALL(*lid_acc_utils, Calibrate(_))
-        .WillRepeatedly([&, lid_acc_progress](auto callback) {
+    EXPECT_CALL(*lid_acc_utils, Calibrate(_, _))
+        .WillRepeatedly([lid_acc_progress](
+                            SensorCalibrationUtils::CalibrationProgressCallback
+                                progress_callback,
+                            SensorCalibrationUtils::CalibrationResultCallback&&
+                                result_callback) {
           for (auto progress : lid_acc_progress) {
-            callback.Run(progress);
+            progress_callback.Run(progress);
           }
+          std::move(result_callback).Run(std::map<std::string, int>());
         });
-    EXPECT_CALL(*base_gyro_utils, Calibrate(_))
-        .WillRepeatedly([&, base_gyro_progress](auto callback) {
+    EXPECT_CALL(*base_gyro_utils, Calibrate(_, _))
+        .WillRepeatedly([base_gyro_progress](
+                            SensorCalibrationUtils::CalibrationProgressCallback
+                                progress_callback,
+                            SensorCalibrationUtils::CalibrationResultCallback&&
+                                result_callback) {
           for (auto progress : base_gyro_progress) {
-            callback.Run(progress);
+            progress_callback.Run(progress);
           }
+          std::move(result_callback).Run(std::map<std::string, int>());
         });
-    EXPECT_CALL(*lid_gyro_utils, Calibrate(_))
-        .WillRepeatedly([&, lid_gyro_progress](auto&& callback) {
+    EXPECT_CALL(*lid_gyro_utils, Calibrate(_, _))
+        .WillRepeatedly([lid_gyro_progress](
+                            SensorCalibrationUtils::CalibrationProgressCallback
+                                progress_callback,
+                            SensorCalibrationUtils::CalibrationResultCallback&&
+                                result_callback) {
           for (auto progress : lid_gyro_progress) {
-            callback.Run(progress);
+            progress_callback.Run(progress);
           }
+          std::move(result_callback).Run(std::map<std::string, int>());
         });
 
     // To PostTask into TaskRunner, we ignore the return value of Calibrate.
@@ -130,10 +150,15 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
         &SignalSender::SendCalibrationProgressSignal,
         base::Unretained(&signal_calibration_component_sender_)));
 
+    std::unique_ptr<StrictMock<MockVpdUtils>> vpd_utils =
+        std::make_unique<StrictMock<MockVpdUtils>>();
+    EXPECT_CALL(*vpd_utils, SetCalibbias(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*vpd_utils, FlushOutRoVpdCache()).WillRepeatedly(Return(true));
+
     return base::MakeRefCounted<RunCalibrationStateHandler>(
         json_store_, daemon_callback_, std::move(base_acc_utils),
         std::move(lid_acc_utils), std::move(base_gyro_utils),
-        std::move(lid_gyro_utils));
+        std::move(lid_gyro_utils), std::move(vpd_utils));
   }
 
   void CheckProgress(CalibrationComponentStatus component_progress) {

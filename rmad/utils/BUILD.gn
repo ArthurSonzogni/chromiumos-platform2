@@ -41,7 +41,6 @@ source_set("libutils") {
     "sys_utils_impl.cc",
     "type_conversions.cc",
     "vpd_utils_impl.cc",
-    "vpd_utils_impl_thread_safe.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]

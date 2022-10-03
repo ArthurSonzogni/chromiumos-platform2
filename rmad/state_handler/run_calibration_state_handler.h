@@ -20,7 +20,7 @@
 
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/sensor_calibration_utils.h"
-#include "rmad/utils/vpd_utils_impl_thread_safe.h"
+#include "rmad/utils/vpd_utils_impl.h"
 
 namespace rmad {
 
@@ -41,7 +41,8 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
       std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
       std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
-      std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils);
+      std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils,
+      std::unique_ptr<VpdUtils> vpd_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kRunCalibration);
   SET_REPEATABLE;
@@ -58,6 +59,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   bool RetrieveVarsAndCalibrate();
   void CalibrateAndSendProgress(RmadComponent component);
   void UpdateCalibrationProgress(RmadComponent component, double progress);
+  void UpdateCalibrationResult(const std::map<std::string, int>& result);
 
   void SaveAndSend(RmadComponent component, double progress);
   void SendComponentSignal(CalibrationComponentStatus component_status);
@@ -86,7 +88,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // SequencedTaskRunner to execute operations sequentially.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
-  scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_thread_safe_;
+  std::unique_ptr<VpdUtils> vpd_utils_;
 };
 
 }  // namespace rmad

@@ -4,18 +4,15 @@
 
 #include "rmad/utils/accelerometer_calibration_utils_impl.h"
 
+#include <cmath>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/synchronization/lock.h>
 
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
-#include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
 
@@ -54,16 +51,14 @@ const std::vector<double> kAccelerometerIdealValues = {0, 0, kGravity};
 namespace rmad {
 
 AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
-    scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe,
-    const std::string& location,
-    const std::string& name)
-    : SensorCalibrationUtils(location, name),
-      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe) {
+    const std::string& location, const std::string& name)
+    : SensorCalibrationUtils(location, name) {
   iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
 }
 
 void AccelerometerCalibrationUtilsImpl::Calibrate(
-    CalibrationProgressCallback progress_callback) {
+    CalibrationProgressCallback progress_callback,
+    CalibrationResultCallback result_callback) {
   std::vector<double> avg_data;
   std::vector<double> variance_data;
   std::vector<double> original_calibbias;
@@ -129,12 +124,7 @@ void AccelerometerCalibrationUtilsImpl::Calibrate(
   }
   progress_callback.Run(kProgressBiasCalculated);
 
-  // We first write the calibbias data to vpd, and then update the sensor via
-  // sysfs accordingly.
-  if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias)) {
-    progress_callback.Run(kProgressFailed);
-    return;
-  }
+  std::move(result_callback).Run(calibbias);
   progress_callback.Run(kProgressBiasWritten);
 }
 

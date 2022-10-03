@@ -22,7 +22,7 @@ class MockSensorCalibrationUtils : public SensorCalibrationUtils {
 
   MOCK_METHOD(void,
               Calibrate,
-              (CalibrationProgressCallback callback),
+              (CalibrationProgressCallback, CalibrationResultCallback),
               (override));
 };
 

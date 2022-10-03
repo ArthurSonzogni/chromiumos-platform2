@@ -24,19 +24,15 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
-  vpd_utils_thread_safe_ = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
+  vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>(
-          vpd_utils_thread_safe_, "base");
+      std::make_unique<AccelerometerCalibrationUtilsImpl>("base");
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>(
-          vpd_utils_thread_safe_, "lid");
+      std::make_unique<AccelerometerCalibrationUtilsImpl>("lid");
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>(vpd_utils_thread_safe_,
-                                                      "base");
+      std::make_unique<GyroscopeCalibrationUtilsImpl>("base");
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>(vpd_utils_thread_safe_,
-                                                      "lid");
+      std::make_unique<GyroscopeCalibrationUtilsImpl>("lid");
 }
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
@@ -45,8 +41,10 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
-    std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
-    : BaseStateHandler(json_store, daemon_callback) {
+    std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils,
+    std::unique_ptr<VpdUtils> vpd_utils)
+    : BaseStateHandler(json_store, daemon_callback),
+      vpd_utils_(std::move(vpd_utils)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
@@ -84,9 +82,6 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
 
 void RunCalibrationStateHandler::CleanUpState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (vpd_utils_thread_safe_.get()) {
-    vpd_utils_thread_safe_->FlushOutRoVpdCache();
-  }
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -203,11 +198,13 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
 
   calibration_task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(&SensorCalibrationUtils::Calibrate,
-                     base::Unretained(utils.get()),
-                     base::BindRepeating(
-                         &RunCalibrationStateHandler::UpdateCalibrationProgress,
-                         base::Unretained(this), component)));
+      base::BindOnce(
+          &SensorCalibrationUtils::Calibrate, base::Unretained(utils.get()),
+          base::BindRepeating(
+              &RunCalibrationStateHandler::UpdateCalibrationProgress,
+              base::Unretained(this), component),
+          base::BindOnce(&RunCalibrationStateHandler::UpdateCalibrationResult,
+                         base::Unretained(this))));
   LOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
 }
 
@@ -217,6 +214,13 @@ void RunCalibrationStateHandler::UpdateCalibrationProgress(
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&RunCalibrationStateHandler::SaveAndSend,
                                 base::Unretained(this), component, progress));
+}
+
+void RunCalibrationStateHandler::UpdateCalibrationResult(
+    const std::map<std::string, int>& result) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(base::IgnoreResult(&VpdUtils::SetCalibbias),
+                                base::Unretained(vpd_utils_.get()), result));
 }
 
 void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
@@ -256,8 +260,7 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
 
     // We only update the overall status after all calibrations are done.
     if (!in_progress) {
-      failed |= (vpd_utils_thread_safe_.get() &&
-                 !vpd_utils_thread_safe_->FlushOutRoVpdCache());
+      failed |= (vpd_utils_.get() && !vpd_utils_->FlushOutRoVpdCache());
       CalibrationOverallStatus overall_status;
       if (failed) {
         overall_status = CalibrationOverallStatus::

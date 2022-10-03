@@ -10,27 +10,22 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/scoped_refptr.h>
-#include <base/synchronization/lock.h>
-
 #include "rmad/utils/iio_ec_sensor_utils.h"
-#include "rmad/utils/vpd_utils_impl_thread_safe.h"
 
 namespace rmad {
 
 class GyroscopeCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
   explicit GyroscopeCalibrationUtilsImpl(
-      scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe,
       const std::string& location,
       const std::string& name = "cros-ec-gyro");
   ~GyroscopeCalibrationUtilsImpl() override = default;
 
-  void Calibrate(CalibrationProgressCallback progress_callback) override;
+  void Calibrate(CalibrationProgressCallback progress_callback,
+                 CalibrationResultCallback result_callback) override;
 
  private:
   // utils part
-  scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe_;
   std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils_;
 };
 
