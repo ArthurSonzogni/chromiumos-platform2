@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -131,6 +131,39 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
   }
 }
 
+void sl_output_get_logical_dimensions(struct sl_host_output* host,
+                                      bool rotated,
+                                      int32_t* width,
+                                      int32_t* height) {
+  if (rotated) {
+    // Pass the dimensions as is (it could be rotated)
+    *width = host->logical_width;
+    *height = host->logical_height;
+  } else {
+    // The transform here indicates how a window image will be
+    // rotated when composited. The incoming surface from the
+    // application will NOT have its dimensions rotated.
+    // For this reason, in order to calculate the scale factors
+    // for direct scale, we will need the non rotated logical
+    // dimensions.
+
+    switch (host->transform) {
+      case WL_OUTPUT_TRANSFORM_NORMAL:
+      case WL_OUTPUT_TRANSFORM_180:
+      case WL_OUTPUT_TRANSFORM_FLIPPED:
+      case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        *width = host->logical_width;
+        *height = host->logical_height;
+        break;
+
+      default:
+        *width = host->logical_height;
+        *height = host->logical_width;
+        break;
+    }
+  }
+}
+
 void sl_output_init_dimensions_direct(struct sl_host_output* host,
                                       int* out_scale,
                                       int* out_physical_width,
@@ -168,14 +201,20 @@ void sl_output_init_dimensions_direct(struct sl_host_output* host,
   *out_physical_width = host->physical_width;
   *out_physical_height = host->physical_height;
 
+  // Retrieve the logical dimensions
+  int32_t logical_width, logical_height;
+
+  sl_output_get_logical_dimensions(host, /*rotated=*/false, &logical_width,
+                                   &logical_height);
+
   // We want to be able to transform from virtual to XDG logical
   // coordinates
   // Virt to XDG -> div
   // XDG to Virt -> mul
-  host->xdg_scale_x = static_cast<double>(virtual_width) /
-                      static_cast<double>(host->logical_width);
-  host->xdg_scale_y = static_cast<double>(virtual_height) /
-                      static_cast<double>(host->logical_height);
+  host->xdg_scale_x =
+      static_cast<double>(virtual_width) / static_cast<double>(logical_width);
+  host->xdg_scale_y =
+      static_cast<double>(virtual_height) / static_cast<double>(logical_height);
 
   if (host->internal) {
     host->ctx->virt_scale_x = host->virt_scale_x;
