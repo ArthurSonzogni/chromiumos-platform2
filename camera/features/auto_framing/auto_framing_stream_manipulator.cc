@@ -56,8 +56,6 @@ constexpr uint32_t kStillYuvBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
 constexpr uint32_t kStillYuvBufferUsage =
     GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
 #endif  // USE_IPU6 || USE_IPU6EP
-constexpr uint32_t kClientYuvBufferUsage =
-    GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
 constexpr int kSyncWaitTimeoutMs = 300;
 
 // Find the largest (video, still) stream resolutions with full FOV.
@@ -576,13 +574,6 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
             .max_num_buffers =
                 base::strict_cast<size_t>(still_yuv_stream_->max_buffers) + 1,
         });
-  }
-
-  // Configure client streams that can be processed by us.
-  for (auto* s : client_streams_) {
-    if (!IsStreamBypassed(s) && s->format != HAL_PIXEL_FORMAT_BLOB) {
-      s->usage |= kClientYuvBufferUsage;
-    }
   }
 
   if (!stream_config->SetStreams(client_streams_)) {
