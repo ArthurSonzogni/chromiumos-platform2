@@ -46,6 +46,7 @@ class AuthenticationSession
   uint64_t session_id() override { return session_id_; }
   void RegisterDisconnectHandler(
       DisconnectCallback disconnect_handler) override;
+  void Start(StartCallback callback) override;
 
   // Notify FaceAuthenticationSessionDelegate of session state changes.
   //

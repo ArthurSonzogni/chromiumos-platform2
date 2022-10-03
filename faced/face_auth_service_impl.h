@@ -77,6 +77,12 @@ class FaceAuthServiceImpl
   // Handle the disconnection of the receiver.
   void HandleDisconnect(base::OnceClosure callback);
 
+  using StartSessionCallback = base::OnceCallback<void(
+      chromeos::faceauth::mojom::CreateSessionResultPtr)>;
+
+  // Called with the result of session start.
+  void CompleteSessionStart(StartSessionCallback callback, absl::Status status);
+
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationService>
       receiver_;
 

@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
@@ -100,11 +101,14 @@ void RunUntil(std::function<bool()> check,
 
 }  // namespace
 
-TEST(FaceAuthServiceImpl, TestCreateEnrollmentSession) {
-  // Create a fake manager.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
-      FakeFaceServiceManager::Create());
+TEST(FaceAuthServiceImpl, TestCreateEnrollmentSessionAndDisconnect) {
+  // Create a fake manager and set the expected gRPC service calls.
+  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
+                            FakeFaceServiceManager::Create());
+  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
+      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), AbortEnrollment)
+      .WillOnce(GrpcReplyOk(AbortEnrollmentSuccessResponse()));
 
   // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
@@ -130,13 +134,24 @@ TEST(FaceAuthServiceImpl, TestCreateEnrollmentSession) {
 
   // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
+
+  // Reset delegate connection
+  receiver.reset();
+
+  // Wait for `service_impl` to report that there is no longer an active
+  // session.
+  RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
+  EXPECT_FALSE(service_impl.has_active_session());
 }
 
-TEST(FaceAuthServiceImpl, TestCancelEnrollmentSession) {
-  // Create a fake manager.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
-      FakeFaceServiceManager::Create());
+TEST(FaceAuthServiceImpl, TestSuccessfulCancelEnrollmentSession) {
+  // Create a fake manager and set the expected gRPC service calls.
+  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
+                            FakeFaceServiceManager::Create());
+  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
+      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), AbortEnrollment)
+      .WillOnce(GrpcReplyOk(AbortEnrollmentSuccessResponse()));
 
   // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
@@ -147,6 +162,51 @@ TEST(FaceAuthServiceImpl, TestCancelEnrollmentSession) {
   // triggered.
   StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
   EXPECT_CALL(delegate, OnEnrollmentCancelled()).Times(1);
+
+  // Request the service to begin an enrollment session.
+  base::RunLoop run_loop;
+  mojo::Remote<FaceEnrollmentSession> session_remote;
+  mojo::Receiver<FaceEnrollmentSessionDelegate> receiver(&delegate);
+  service->CreateEnrollmentSession(
+      EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false),
+      session_remote.BindNewPipeAndPassReceiver(),
+      receiver.BindNewPipeAndPassRemote(),
+      base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
+        EXPECT_TRUE(result->is_session_info());
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+
+  // Ensure the service indicates a session is active.
+  EXPECT_TRUE(service_impl.has_active_session());
+
+  // Cancel the session by disconnecting `session_remote`.
+  session_remote.reset();
+
+  // Wait for `service_impl` to report that there is no longer an active
+  // session.
+  RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
+  EXPECT_FALSE(service_impl.has_active_session());
+}
+
+TEST(FaceAuthServiceImpl, TestFailingCancelEnrollmentSession) {
+  // Create a fake manager and set the expected gRPC service calls.
+  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
+                            FakeFaceServiceManager::Create());
+  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
+      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), AbortEnrollment)
+      .WillOnce(GrpcReplyOk(AbortEnrollmentFailureResponse()));
+
+  // Create the service remote and impl.
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(), *(service_mgr));
+
+  // Create a mock session delegate, that expects a cancellation event to be
+  // triggered.
+  StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
+  EXPECT_CALL(delegate, OnEnrollmentError(_)).Times(1);
 
   // Request the service to begin an enrollment session.
   base::RunLoop run_loop;
@@ -302,7 +362,9 @@ TEST(FaceAuthServiceImpl, TestDisconnection) {
       std::unique_ptr<FaceServiceManagerInterface> service_mgr,
       FakeFaceServiceManager::Create());
 
-  base::RunLoop second_run_loop;  // Create the service remote and impl.
+  base::RunLoop second_run_loop;
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(
       service.BindNewPipeAndPassReceiver(),
@@ -339,6 +401,11 @@ TEST(FaceAuthServiceImpl, TestDisconnection) {
 }
 
 TEST(FaceAuthServiceImpl, TestIsUserEnrolledForEnrolledAndNotEnrolledUsers) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
   TestStorage storage = CreateTestStorage();
 
   // Enroll one user
@@ -346,7 +413,7 @@ TEST(FaceAuthServiceImpl, TestIsUserEnrolledForEnrolledAndNotEnrolledUsers) {
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(),
+                                   base::OnceClosure(), *(service_mgr),
                                    storage.temp_dir.GetPath());
 
   // Check that kUserId1 is enrolled
@@ -365,6 +432,11 @@ TEST(FaceAuthServiceImpl, TestIsUserEnrolledForEnrolledAndNotEnrolledUsers) {
 }
 
 TEST(FaceAuthServiceImpl, TestListEnrollments) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
   TestStorage storage = CreateTestStorage();
 
   // Enroll two users
@@ -373,7 +445,7 @@ TEST(FaceAuthServiceImpl, TestListEnrollments) {
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(),
+                                   base::OnceClosure(), *(service_mgr),
                                    storage.temp_dir.GetPath());
 
   BlockingFuture<std::vector<EnrollmentMetadataPtr>> enrollments;
@@ -390,6 +462,11 @@ TEST(FaceAuthServiceImpl, TestListEnrollments) {
 }
 
 TEST(FaceAuthServiceImpl, TestRemoveEnrollmentDeletesEnrollment) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
   TestStorage storage = CreateTestStorage();
 
   // Enroll one user
@@ -397,7 +474,7 @@ TEST(FaceAuthServiceImpl, TestRemoveEnrollmentDeletesEnrollment) {
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(),
+                                   base::OnceClosure(), *(service_mgr),
                                    storage.temp_dir.GetPath());
 
   // Remove enrollment for kUserId1 via the FaceAuthenticationService API
@@ -412,11 +489,16 @@ TEST(FaceAuthServiceImpl, TestRemoveEnrollmentDeletesEnrollment) {
 }
 
 TEST(FaceAuthServiceImpl, TestRemoveEnrollmentFailureForNotEnrolledUser) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
   TestStorage storage = CreateTestStorage();
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(),
+                                   base::OnceClosure(), *(service_mgr),
                                    storage.temp_dir.GetPath());
 
   // Verify that RemoveEnrollment for kUserId1 which is not enrolled results in
@@ -430,6 +512,11 @@ TEST(FaceAuthServiceImpl, TestRemoveEnrollmentFailureForNotEnrolledUser) {
 }
 
 TEST(FaceAuthServiceImpl, TestClearEnrollmentsDeletesEnrollments) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
   TestStorage storage = CreateTestStorage();
 
   // Enroll two users
@@ -438,7 +525,7 @@ TEST(FaceAuthServiceImpl, TestClearEnrollmentsDeletesEnrollments) {
 
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(),
+                                   base::OnceClosure(), *(service_mgr),
                                    storage.temp_dir.GetPath());
 
   // Verify that ClearEnrollments removes enrollments for both kUserId1 and

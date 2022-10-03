@@ -9,12 +9,14 @@
 #include <string>
 #include <utility>
 
+#include <absl/status/status.h>
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <brillo/cryptohome.h>
 
 #include "faced/authentication_session.h"
 #include "faced/enrollment_session.h"
+#include "faced/mojom/faceauth.mojom-forward.h"
 #include "faced/util/task.h"
 
 namespace faced {
@@ -90,10 +92,8 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
   session_->RegisterDisconnectHandler(base::BindOnce(
       &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
 
-  // Return session information to the caller.
-  CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
-      SessionInfo::New(session_->session_id())));
-  PostToCurrentSequence(base::BindOnce(std::move(callback), std::move(result)));
+  session_->Start(base::BindOnce(&FaceAuthServiceImpl::CompleteSessionStart,
+                                 base::Unretained(this), std::move(callback)));
 }
 
 void FaceAuthServiceImpl::CreateAuthenticationSession(
@@ -132,6 +132,25 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
   session_ = std::move(session.value());
   session_->RegisterDisconnectHandler(base::BindOnce(
       &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
+
+  PostToCurrentSequence(base::BindOnce(
+      &FaceAuthServiceImpl::CompleteSessionStart, base::Unretained(this),
+      std::move(callback), absl::OkStatus()));
+}
+
+void FaceAuthServiceImpl::CompleteSessionStart(StartSessionCallback callback,
+                                               absl::Status status) {
+  if (!status.ok()) {
+    session_.reset();
+
+    // Return session error to the caller.
+    CreateSessionResultPtr result(
+        CreateSessionResult::NewError(SessionCreationError::UNKNOWN));
+    PostToCurrentSequence(
+        base::BindOnce(std::move(callback), std::move(result)));
+
+    return;
+  }
 
   // Return session information to the caller.
   CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(

@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include <absl/random/random.h>
+#include <absl/status/status.h>
 #include <base/callback_forward.h>
 
 namespace faced {
@@ -23,6 +24,11 @@ uint64_t GenerateSessionId(absl::BitGen& bitgen);
 class SessionInterface {
  public:
   virtual ~SessionInterface() = default;
+
+  using StartCallback = base::OnceCallback<void(absl::Status)>;
+
+  // Starts the session and invokes the callback with result status.
+  virtual void Start(StartCallback callback) = 0;
 
   // Return a unique identifier for this session.
   //

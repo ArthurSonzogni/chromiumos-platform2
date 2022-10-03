@@ -11,13 +11,16 @@
 #include <absl/random/random.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <base/callback_forward.h>
 #include <brillo/grpc/async_grpc_client.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/proto/face_service.grpc.pb.h"
+#include "faced/proto/face_service.pb.h"
 #include "faced/session.h"
+#include "faced/util/lease.h"
 
 namespace faced {
 
@@ -46,6 +49,7 @@ class EnrollmentSession
   uint64_t session_id() override { return session_id_; }
   void RegisterDisconnectHandler(
       DisconnectCallback disconnect_handler) override;
+  void Start(StartCallback callback) override;
 
   // Notify FaceEnrollmentSessionDelegate of enrollment state changes.
   //
@@ -78,6 +82,24 @@ class EnrollmentSession
       delegate_;
 
   DisconnectCallback disconnect_callback_;
+
+  // Callback to process the response from StartEnrollment.
+  void CompleteStartEnrollment(
+      StartCallback callback,
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::StartEnrollmentResponse> response);
+
+  using AbortCallback = base::OnceCallback<void(
+      grpc::Status, std::unique_ptr<faceauth::eora::AbortEnrollmentResponse>)>;
+  void AbortEnrollment(AbortCallback callback);
+
+  // Callbacks to process the response from AbortEnrollment.
+  void FinishOnSessionDisconnect(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response);
+  void FinishOnDelegateDisconnect(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response);
 
   // Async gRPC client that uses an internal completion queue.
   Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;

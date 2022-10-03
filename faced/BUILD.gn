@@ -74,6 +74,7 @@ generate_dbus_adaptors("libfaced_dbus_adaptor") {
 source_set("libfaced") {
   sources = [
     "authentication_session.cc",
+    "common/face_status.cc",
     "dbus_adaptor.cc",
     "enrollment_session.cc",
     "enrollment_storage.cc",

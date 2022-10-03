@@ -70,6 +70,11 @@ void AuthenticationSession::RegisterDisconnectHandler(
   disconnect_callback_ = std::move(disconnect_handler);
 }
 
+void AuthenticationSession::Start(StartCallback callback) {
+  PostToCurrentSequence(base::BindOnce(
+      std::move(callback), absl::UnimplementedError("Not yet implemented")));
+}
+
 void AuthenticationSession::NotifyUpdate(FaceOperationStatus status) {
   AuthenticationUpdateMessagePtr message(
       AuthenticationUpdateMessage::New(status));

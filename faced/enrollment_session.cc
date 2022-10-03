@@ -11,10 +11,15 @@
 
 #include <absl/status/status.h>
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
+#include "faced/common/face_status.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/proto/face_service.grpc.pb.h"
+#include "faced/proto/face_service.pb.h"
 #include "faced/util/task.h"
 
 namespace faced {
@@ -27,6 +32,11 @@ using ::chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
 using ::chromeos::faceauth::mojom::FaceOperationStatus;
 using ::chromeos::faceauth::mojom::SessionError;
+
+using ::faceauth::eora::AbortEnrollmentRequest;
+using ::faceauth::eora::AbortEnrollmentResponse;
+using ::faceauth::eora::StartEnrollmentRequest;
+using ::faceauth::eora::StartEnrollmentResponse;
 
 absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
     absl::BitGen& bitgen,
@@ -76,7 +86,7 @@ void EnrollmentSession::NotifyComplete(FaceOperationStatus status) {
   EnrollmentCompleteMessagePtr message(EnrollmentCompleteMessage::New(status));
   delegate_->OnEnrollmentComplete(std::move(message));
 
-  // Close connection to delegate interface
+  // Close the connection to the delegate interface.
   delegate_.reset();
 
   if (disconnect_callback_) {
@@ -87,7 +97,7 @@ void EnrollmentSession::NotifyComplete(FaceOperationStatus status) {
 void EnrollmentSession::NotifyCancelled() {
   delegate_->OnEnrollmentCancelled();
 
-  // Close connection to delegate interface
+  // Close the connection to the delegate interface.
   delegate_.reset();
 
   if (disconnect_callback_) {
@@ -100,7 +110,7 @@ void EnrollmentSession::NotifyError(absl::Status error) {
   SessionError session_error = SessionError::UNKNOWN;
   delegate_->OnEnrollmentError(session_error);
 
-  // Close connection to delegate interface
+  // Close the connection to the delegate interface.
   delegate_.reset();
 
   if (disconnect_callback_) {
@@ -108,20 +118,79 @@ void EnrollmentSession::NotifyError(absl::Status error) {
   }
 }
 
+void EnrollmentSession::Start(StartCallback callback) {
+  (*rpc_client_)
+      ->CallRpc(&faceauth::eora::FaceService::Stub::AsyncStartEnrollment,
+                StartEnrollmentRequest(),
+                base::BindOnce(&EnrollmentSession::CompleteStartEnrollment,
+                               base::Unretained(this), std::move(callback)));
+}
+
+void EnrollmentSession::CompleteStartEnrollment(
+    StartCallback callback,
+    grpc::Status status,
+    std::unique_ptr<StartEnrollmentResponse> response) {
+  // Ensure the StartEnrollment RPC succeeded.
+  if (!status.ok()) {
+    PostToCurrentSequence(base::BindOnce(
+        std::move(callback), absl::UnavailableError(status.error_message())));
+    return;
+  }
+
+  absl::Status rpc_status = ToAbslStatus(response->status());
+  PostToCurrentSequence(base::BindOnce(std::move(callback), rpc_status));
+}
+
 void EnrollmentSession::OnSessionDisconnect() {
+  // Remove delegate disconnection handler once abort is in progress
+  delegate_.reset_on_disconnect();
   receiver_.reset();
 
-  // TODO(b/249184051): cancel enrollment session operation
-
-  NotifyCancelled();
+  AbortEnrollment(base::BindOnce(&EnrollmentSession::FinishOnSessionDisconnect,
+                                 base::Unretained(this)));
 }
 
 void EnrollmentSession::OnDelegateDisconnect() {
   receiver_.reset();
   delegate_.reset();
 
-  // TODO(b/249184051): cancel enrollment session operation
+  AbortEnrollment(base::BindOnce(&EnrollmentSession::FinishOnDelegateDisconnect,
+                                 base::Unretained(this)));
+}
 
+void EnrollmentSession::AbortEnrollment(AbortCallback callback) {
+  (*rpc_client_)
+      ->CallRpc(&faceauth::eora::FaceService::Stub::AsyncAbortEnrollment,
+                AbortEnrollmentRequest(), std::move(callback));
+}
+
+void EnrollmentSession::FinishOnSessionDisconnect(
+    grpc::Status status, std::unique_ptr<AbortEnrollmentResponse> response) {
+  if (!delegate_.is_bound()) {
+    VLOG(1) << "Cannot notify of session disconnect as delegate is not bound.";
+    if (disconnect_callback_) {
+      PostToCurrentSequence(std::move(disconnect_callback_));
+    }
+    return;
+  }
+
+  if (!status.ok()) {
+    NotifyError(absl::UnavailableError(status.error_message()));
+    return;
+  }
+
+  absl::Status rpc_status = ToAbslStatus(response->status());
+  if (!rpc_status.ok()) {
+    NotifyError(rpc_status);
+    return;
+  }
+
+  NotifyCancelled();
+}
+
+void EnrollmentSession::FinishOnDelegateDisconnect(
+    grpc::Status status, std::unique_ptr<AbortEnrollmentResponse> response) {
+  // Ignore status and response as we are disconnecting without notification
   if (disconnect_callback_) {
     PostToCurrentSequence(std::move(disconnect_callback_));
   }
