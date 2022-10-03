@@ -26,6 +26,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/proto_bindings/rpc.pb.h"
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
@@ -74,6 +75,8 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
   DCHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
+  DCHECK(!cryptohome_recovery_auth_input.user_gaia_id.empty());
+  DCHECK(!cryptohome_recovery_auth_input.device_user_id.empty());
 
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
@@ -98,8 +101,31 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   }
 
   // Generates HSM payload that would be persisted on a chromebook.
-  // TODO(b/184924482): set values in onboarding_metadata.
   OnboardingMetadata onboarding_metadata;
+  AccountIdentifier account_id;
+  account_id.set_email(obfuscated_username);
+  if (!recovery->GenerateRecoveryId(account_id)) {
+    LOG(ERROR) << "Unable to generate a new recovery_id";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocCryptohomeRecoveryAuthBlockNoRecoveryIdInCreate),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  std::string recovery_id = recovery->LoadStoredRecoveryId(account_id);
+  if (recovery_id.empty()) {
+    LOG(ERROR) << "Unable to load persisted recovery_id";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocCryptohomeRecoveryAuthBlockFailedRecoveryIdReadInCreate),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+  recovery->GenerateOnboardingMetadata(
+      cryptohome_recovery_auth_input.user_gaia_id,
+      cryptohome_recovery_auth_input.device_user_id, recovery_id,
+      &onboarding_metadata);
   cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
       {.mediator_pub_key = mediator_pub_key,
        .onboarding_metadata = onboarding_metadata,

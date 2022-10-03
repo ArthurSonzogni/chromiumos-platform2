@@ -26,6 +26,10 @@ namespace cryptohome {
 struct CryptohomeRecoveryAuthInput {
   // Public key of the mediator for Cryptohome recovery flow.
   std::optional<brillo::SecureBlob> mediator_pub_key;
+  // GaiaId of the owner of cryptohome to be recovered.
+  std::string user_gaia_id;
+  // Unique identifier generated on cryptohome creation.
+  std::string device_user_id;
   // Serialized cryptorecovery::CryptoRecoveryEpochResponse.
   // An epoch response received from Recovery Mediator service containing epoch
   // beacon value for Cryptohome recovery flow.

@@ -45,6 +45,8 @@ AuthInput FromCryptohomeRecoveryAuthInput(
   CryptohomeRecoveryAuthInput recovery_auth_input{
       // These fields are used for `Create`:
       .mediator_pub_key = SecureBlob(proto.mediator_pub_key()),
+      .user_gaia_id = proto.user_gaia_id(),
+      .device_user_id = proto.device_user_id(),
       // These fields are used for `Derive`:
       .epoch_response = SecureBlob(proto.epoch_response()),
       .ephemeral_pub_key =

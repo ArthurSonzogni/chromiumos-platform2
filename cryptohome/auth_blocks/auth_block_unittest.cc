@@ -66,6 +66,8 @@ using ::testing::SetArgPointee;
 
 namespace cryptohome {
 namespace {
+constexpr char kFakeGaiaId[] = "123456789";
+constexpr char kFakeDeviceId[] = "1234-5678-AAAA-BBBB";
 constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
 
 TpmEccAuthBlockState GetDefaultEccAuthBlockState() {
@@ -1350,6 +1352,17 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
         response_proto));
   }
 
+  AuthInput GenerateFakeAuthInput() const {
+    AuthInput auth_input;
+    CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
+    cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
+    cryptohome_recovery_auth_input.user_gaia_id = kFakeGaiaId;
+    cryptohome_recovery_auth_input.device_user_id = kFakeDeviceId;
+    auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
+    auth_input.obfuscated_username = kObfuscatedUsername;
+    return auth_input;
+  }
+
  protected:
   brillo::SecureBlob mediator_pub_key_;
   brillo::SecureBlob epoch_pub_key_;
@@ -1358,11 +1371,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
 };
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
-  AuthInput auth_input;
-  CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
-  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
-  auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
-  auth_input.obfuscated_username = kObfuscatedUsername;
+  AuthInput auth_input = GenerateFakeAuthInput();
 
   // IsPinWeaverEnabled()) returns `false` -> revocation is not supported.
   hwsec::Tpm2SimulatorFactoryForTest factory;
@@ -1418,11 +1427,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 }
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
-  AuthInput auth_input;
-  CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
-  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
-  auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
-  auth_input.obfuscated_username = kObfuscatedUsername;
+  AuthInput auth_input = GenerateFakeAuthInput();
 
   // IsPinWeaverEnabled() returns `true` -> revocation is supported.
   hwsec::Tpm2SimulatorFactoryForTest factory;
@@ -1497,10 +1502,8 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 }
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
-  AuthInput auth_input;
-  CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
-  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
-  auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
+  AuthInput auth_input = GenerateFakeAuthInput();
+  auth_input.obfuscated_username.reset();
 
   // Tpm::GetLECredentialBackend() returns `nullptr` -> revocation is not
   // supported.

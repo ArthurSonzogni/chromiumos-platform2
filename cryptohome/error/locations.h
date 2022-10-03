@@ -1343,6 +1343,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3504,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoLabelInPrepareForRemoval = 3505,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockNoRecoveryIdInCreate = 3506,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocCryptohomeRecoveryAuthBlockFailedRecoveryIdReadInCreate = 3507,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
