@@ -17,10 +17,10 @@
 #include "metrics/fake_metrics_library.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
+#include "shill/network/mock_network.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
 #include "shill/service_under_test.h"
@@ -233,8 +233,13 @@ class DevicePortalDetectorTest : public testing::Test {
     ManagerProperties props = GetManagerPortalProperties();
     EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
 
-    device_->network_->set_connection_for_testing(CreateMockConnection());
-    device_->network_->set_state_for_testing(Network::State::kConnected);
+    auto network = std::make_unique<NiceMock<MockNetwork>>(
+        kDeviceInterfaceIndex, kDeviceName, Technology::kUnknown);
+    ON_CALL(*network, local()).WillByDefault(Return(IPAddress("192.168.86.2")));
+    ON_CALL(*network, dns_servers())
+        .WillByDefault(Return(std::vector<std::string>{"8.8.8.8", "8.8.4.4"}));
+    ON_CALL(*network, IsConnected()).WillByDefault(Return(true));
+    device_->set_network_for_testing(std::move(network));
 
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);
@@ -290,20 +295,6 @@ class DevicePortalDetectorTest : public testing::Test {
   }
 
  protected:
-  std::unique_ptr<MockConnection> CreateMockConnection() {
-    auto connection = std::make_unique<NiceMock<MockConnection>>(&device_info_);
-    const IPAddress ip_addr = IPAddress("192.168.86.2");
-    EXPECT_CALL(*connection, local()).WillRepeatedly(ReturnRefOfCopy(ip_addr));
-    EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-    const IPAddress gateway = IPAddress("192.168.86.1");
-    EXPECT_CALL(*connection, gateway())
-        .WillRepeatedly(ReturnRefOfCopy(gateway));
-    const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
-    EXPECT_CALL(*connection, dns_servers())
-        .WillRepeatedly(ReturnRefOfCopy(dns_list));
-    return connection;
-  }
-
   ManagerProperties GetManagerPortalProperties() {
     ManagerProperties props;
     props.portal_http_url = PortalDetector::kDefaultHttpUrl;
