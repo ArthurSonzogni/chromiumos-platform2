@@ -31,7 +31,7 @@ lib_files = [
 ]
 src_files = lib_files + ['main.c']
 
-libcrosid = library('crosid', lib_files, c_args: common_c_args)
+libcrosid = library('crosid', lib_files, c_args: common_c_args, install: true)
 
 # Generate crosid.pc
 pkg = import('pkgconfig')
