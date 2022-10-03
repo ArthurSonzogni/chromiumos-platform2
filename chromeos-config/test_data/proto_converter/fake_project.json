@@ -593,14 +593,6 @@
                 }
               }
             },
-            "gaming-power-preferences": {
-              "governor": {
-                "ondemand": {
-                  "powersave-bias": 0,
-                  "sampling-rate-ms": 16
-                }
-              }
-            },
             "web-rtc-power-preferences": {
               "governor": {
                 "ondemand": {

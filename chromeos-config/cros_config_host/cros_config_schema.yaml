@@ -313,7 +313,8 @@ typeDefs:
       default-power-preferences: *resourced_power_preferences
       web-rtc-power-preferences: *resourced_power_preferences
       fullscreen-power-preferences: *resourced_power_preferences
-      gaming-power-preferences: *resourced_power_preferences
+      borealis-gaming-power-preferences: *resourced_power_preferences
+      arcvm-gaming-power-preferences: *resourced_power_preferences
 type: object
 properties:
   chromeos:

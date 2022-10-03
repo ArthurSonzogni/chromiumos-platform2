@@ -918,10 +918,43 @@ In the tables below,
 ### ac
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| gaming-power-preferences | [gaming-power-preferences](#gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+
+### arcvm-gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
+
+### borealis-gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -940,22 +973,6 @@ In the tables below,
 | sampling-rate-ms | integer |  | False |  | False |  |
 
 ### fullscreen-power-preferences
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| governor | [governor](#governor) |  | False |  | False |  |
-
-### governor
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
-
-### ondemand
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| powersave-bias | integer |  | False |  | False |  |
-| sampling-rate-ms | integer |  | False |  | False |  |
-
-### gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | governor | [governor](#governor) |  | False |  | False |  |
@@ -990,10 +1007,43 @@ In the tables below,
 ### dc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
-| gaming-power-preferences | [gaming-power-preferences](#gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
 | web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+
+### arcvm-gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
+
+### borealis-gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
 
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1012,22 +1062,6 @@ In the tables below,
 | sampling-rate-ms | integer |  | False |  | False |  |
 
 ### fullscreen-power-preferences
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| governor | [governor](#governor) |  | False |  | False |  |
-
-### governor
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
-
-### ondemand
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| powersave-bias | integer |  | False |  | False |  |
-| sampling-rate-ms | integer |  | False |  | False |  |
-
-### gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | governor | [governor](#governor) |  | False |  | False |  |
