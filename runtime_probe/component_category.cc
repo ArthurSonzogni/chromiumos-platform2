@@ -39,24 +39,24 @@ std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
   return instance;
 }
 
-base::Value ComponentCategory::Eval() const {
-  base::Value::ListStorage results;
+base::Value::List ComponentCategory::Eval() const {
+  base::Value::List results;
 
   for (const auto& entry : component_) {
     const auto& component_name = entry.first;
     const auto& probe_statement = entry.second;
     for (auto& probe_statement_dv : probe_statement->Eval()) {
-      base::Value result(base::Value::Type::DICTIONARY);
-      result.SetStringKey("name", component_name);
-      result.SetKey("values", std::move(probe_statement_dv));
+      base::Value::Dict result;
+      result.Set("name", component_name);
+      result.Set("values", std::move(probe_statement_dv));
       auto information_dv = probe_statement->GetInformation();
       if (information_dv)
-        result.SetKey("information", std::move(*information_dv));
-      results.push_back(std::move(result));
+        result.Set("information", std::move(*information_dv));
+      results.Append(std::move(result));
     }
   }
 
-  return base::Value(std::move(results));
+  return results;
 }
 
 std::vector<std::string> ComponentCategory::GetComponentNames() const {

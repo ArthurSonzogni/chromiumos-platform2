@@ -51,7 +51,7 @@ base::Value ProbeConfig::Eval(const std::vector<std::string>& category) const {
       continue;
     }
 
-    result.SetKey(c, it->second->Eval());
+    result.SetKey(c, base::Value(it->second->Eval()));
   }
 
   return result;

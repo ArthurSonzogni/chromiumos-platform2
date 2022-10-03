@@ -28,8 +28,8 @@ class ComponentCategory {
   static std::unique_ptr<ComponentCategory> FromValue(
       const std::string& category_name, const base::Value& dv);
 
-  // Evaluates this category and return a base::Value with type list.
-  base::Value Eval() const;
+  // Evaluates this category and return a base::Value::List.
+  base::Value::List Eval() const;
 
   std::vector<std::string> GetComponentNames() const;
 
