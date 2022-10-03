@@ -476,25 +476,43 @@ bool State::FetchNumTotalThreads() {
     return false;
   }
 
-  // Two strings will be parsed directly from the regex, then converted to
-  // uint32_t's. Expect |cpu_present| to contain the pattern "%d-%d", where the
-  // first integer is strictly smaller than the second.
-  std::string low_thread_num;
-  std::string high_thread_num;
-  uint32_t low_thread_int;
-  uint32_t high_thread_int;
-  if (!RE2::FullMatch(cpu_present, kPresentFileRegex, &low_thread_num,
-                      &high_thread_num) ||
-      !base::StringToUint(low_thread_num, &low_thread_int) ||
-      !base::StringToUint(high_thread_num, &high_thread_int)) {
+  // Expect |cpu_present| to contain a comma separated list of values either in
+  // the pattern of "%d" or "%d-%d". In the case of "%d-%d", the first integer
+  // is strictly smaller than the second. The total number of threads is the
+  // sum of the number of threads calculated in each individual pattern.
+  //
+  // https://www.kernel.org/doc/html/v5.5/admin-guide/cputopology.html
+
+  std::vector<std::string> cpu_threads = base::SplitString(
+      cpu_present, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  uint32_t total_thread_count = 0;
+
+  for (auto& thread : cpu_threads) {
+    std::string low_thread_num;
+    std::string high_thread_num;
+    uint32_t low_thread_int;
+    uint32_t high_thread_int;
+    // Check if is in the form of "%d".
+    if (base::StringToUint(thread, &low_thread_int)) {
+      total_thread_count++;
+      continue;
+    }
+    // Check if is in the form of "%d-%d".
+    if (RE2::FullMatch(thread, kPresentFileRegex, &low_thread_num,
+                       &high_thread_num) &&
+        base::StringToUint(low_thread_num, &low_thread_int) &&
+        base::StringToUint(high_thread_num, &high_thread_int)) {
+      DCHECK_GT(high_thread_int, low_thread_int);
+      total_thread_count += high_thread_int - low_thread_int + 1;
+      continue;
+    }
+
     LogAndSetError(mojo_ipc::ErrorType::kParseError,
                    "Unable to parse CPU present file: " + cpu_present);
     return false;
   }
 
-  DCHECK_GT(high_thread_int, low_thread_int);
-
-  cpu_info_->num_total_threads = high_thread_int - low_thread_int + 1;
+  cpu_info_->num_total_threads = total_thread_count;
 
   return true;
 }

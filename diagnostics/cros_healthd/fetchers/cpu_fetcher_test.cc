@@ -702,6 +702,31 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
 }
 
+// Test that we handle a single threaded present file.
+TEST_F(CpuFetcherTest, SingleThreadedPresentFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeCpuDir).Append(kPresentFileName), "0"));
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->num_total_threads, 1);
+}
+
+// Test that we handle a complexly-formatted present file.
+TEST_F(CpuFetcherTest, ComplexlyFormattedPresentFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeCpuDir).Append(kPresentFileName),
+      "0,2-3,5-7"));
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->num_total_threads, 6);
+}
+
 // Test that we handle a missing cpuinfo_max_freq file.
 TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   ASSERT_TRUE(
