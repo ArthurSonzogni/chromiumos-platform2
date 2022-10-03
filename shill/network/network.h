@@ -160,7 +160,7 @@ class Network {
   // Functions for DHCP.
   // Initiate renewal of existing DHCP lease. Return false if the renewal failed
   // immediately, or we don't have active lease now.
-  bool RenewDHCPLease();
+  mockable bool RenewDHCPLease();
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
   mockable void DestroyDHCPLease(const std::string& name);
@@ -177,7 +177,7 @@ class Network {
   void StartIPv6();
   // Invalidate the IPv6 config kept in shill and wait for the new config from
   // the kernel.
-  void InvalidateIPv6Config();
+  mockable void InvalidateIPv6Config();
   void set_ipv6_static_properties(const IPConfig::Properties& props) {
     ipv6_static_properties_ = props;
   }

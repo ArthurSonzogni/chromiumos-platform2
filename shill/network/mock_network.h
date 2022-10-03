@@ -41,8 +41,10 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
+  MOCK_METHOD(bool, RenewDHCPLease, (), (override));
   MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
 
+  MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
   MOCK_METHOD(void, OnIPv6AddressChanged, (const IPAddress*), (override));
   MOCK_METHOD(void, OnIPv6DnsServerAddressesChanged, (), (override));
 

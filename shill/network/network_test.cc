@@ -239,6 +239,17 @@ TEST_F(NetworkTest, EnableIPv6Flags) {
   network_->Start(Network::StartOptions{.accept_ra = true});
 }
 
+TEST_F(NetworkTest, DHCPRenew) {
+  ExpectCreateDHCPController(true);
+  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  EXPECT_CALL(*dhcp_controller_, RenewIP()).WillOnce(Return(true));
+  EXPECT_TRUE(network_->RenewDHCPLease());
+}
+
+TEST_F(NetworkTest, DHCPRenewWithoutController) {
+  EXPECT_FALSE(network_->RenewDHCPLease());
+}
+
 // This group of tests verify the interaction between Network and Connection,
 // and the events sent out from Network, on calling Network::Start() and other
 // IP acquisition events.

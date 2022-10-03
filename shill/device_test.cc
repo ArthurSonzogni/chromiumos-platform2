@@ -40,8 +40,6 @@
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/network/mock_dhcp_controller.h"
-#include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -213,20 +211,6 @@ class DeviceTest : public testing::Test {
   MockMetrics* metrics() { return &metrics_; }
   MockManager* manager() { return &manager_; }
 
-  std::unique_ptr<MockDHCPController> CreateDHCPController() {
-    return std::make_unique<MockDHCPController>(&control_interface_,
-                                                kDeviceName);
-  }
-
-  void SetupIPv4DHCPConfig() {
-    ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
-    device_->set_ipconfig(std::unique_ptr<MockIPConfig>(ipconfig_));
-    auto controller = CreateDHCPController();
-    dhcp_controller_ = controller.get();
-    device_->network()->set_dhcp_controller(std::move(controller));
-    device_->network()->state_ = Network::State::kConnected;
-  }
-
   void SetupIPv6Config() {
     const char kAddress[] = "2001:db8::1";
     const char kDnsServer1[] = "2001:db8::2";
@@ -273,7 +257,6 @@ class DeviceTest : public testing::Test {
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
   MockIPConfig* ipconfig_;               // owned by |device_|
-  MockDHCPController* dhcp_controller_;  // owned by |device_|
   MockNetwork* network_;                 // owned by |device_|
 };
 
@@ -657,15 +640,11 @@ TEST_F(DeviceTest, Reset) {
   EXPECT_EQ(Error::kNotImplemented, e.type());
 }
 
-TEST_F(DeviceTest, ResumeWithIPConfig) {
-  SetupIPv4DHCPConfig();
-  EXPECT_CALL(*dhcp_controller_, RenewIP());
-  device_->OnAfterResume();
-}
-
-TEST_F(DeviceTest, ResumeWithoutIPConfig) {
-  // Just test that we don't crash in this case.
-  ASSERT_EQ(nullptr, device_->ipconfig());
+TEST_F(DeviceTest, Resume) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
+  EXPECT_CALL(*network_, RenewDHCPLease());
+  EXPECT_CALL(*network_, InvalidateIPv6Config());
   device_->OnAfterResume();
 }
 
