@@ -125,7 +125,7 @@ class Network {
   void Start(const StartOptions& options);
   // Stops the network connection. OnNetworkStopped() will be called when
   // cleaning up the network state is finished.
-  void Stop();
+  mockable void Stop();
 
   State state() const { return state_; }
 

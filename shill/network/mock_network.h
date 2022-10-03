@@ -28,6 +28,8 @@ class MockNetwork : public Network {
   MockNetwork& operator=(const MockNetwork&) = delete;
   ~MockNetwork() override = default;
 
+  MOCK_METHOD(void, Stop, (), (override));
+
   MOCK_METHOD(bool, IsConnected, (), (const, override));
   MOCK_METHOD(void,
               OnStaticIPConfigChanged,

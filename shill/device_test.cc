@@ -150,6 +150,13 @@ class DeviceTest : public testing::Test {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
+  void CreateMockNetwork() {
+    auto network = std::make_unique<NiceMock<MockNetwork>>(
+        kDeviceInterfaceIndex, kDeviceName, Technology::kUnknown);
+    network_ = network.get();
+    device_->set_network_for_testing(std::move(network));
+  }
+
   void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
 
   void OnDHCPFailure() { device_->network()->OnDHCPFailure(); }
@@ -259,6 +266,7 @@ class DeviceTest : public testing::Test {
   patchpanel::FakeClient* patchpanel_client_;
   MockIPConfig* ipconfig_;               // owned by |device_|
   MockDHCPController* dhcp_controller_;  // owned by |device_|
+  MockNetwork* network_;                 // owned by |device_|
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
@@ -616,10 +624,10 @@ TEST_F(DeviceTest, StartFailure) {
 }
 
 TEST_F(DeviceTest, Stop) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -629,18 +637,18 @@ TEST_F(DeviceTest, Stop) {
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
+  EXPECT_CALL(*network_, Stop());
   device_->SetEnabled(false);
 
-  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, StopWithFixedIpParams) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
   device_->network()->set_fixed_ip_params_for_testing(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -650,17 +658,17 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
+  EXPECT_CALL(*network_, Stop());
   device_->SetEnabled(false);
 
-  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
+  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
+  CreateMockNetwork();
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -672,9 +680,9 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
+  EXPECT_CALL(*network_, Stop());
   device_->SetEnabled(false);
 
-  EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
