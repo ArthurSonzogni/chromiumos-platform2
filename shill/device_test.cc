@@ -26,7 +26,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -39,7 +38,6 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
-#include "shill/network/dhcp_provider.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -135,6 +133,11 @@ class DeviceTest : public testing::Test {
     device_ =
         new NiceMock<TestDevice>(manager(), kDeviceName, kDeviceAddress,
                                  kDeviceInterfaceIndex, Technology::kUnknown);
+
+    auto network = std::make_unique<NiceMock<MockNetwork>>(
+        kDeviceInterfaceIndex, kDeviceName, Technology::kUnknown);
+    network_ = network.get();
+    device_->set_network_for_testing(std::move(network));
   }
   ~DeviceTest() override = default;
 
@@ -147,13 +150,6 @@ class DeviceTest : public testing::Test {
   static const char kDeviceName[];
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
-
-  void CreateMockNetwork() {
-    auto network = std::make_unique<NiceMock<MockNetwork>>(
-        kDeviceInterfaceIndex, kDeviceName, Technology::kUnknown);
-    network_ = network.get();
-    device_->set_network_for_testing(std::move(network));
-  }
 
   void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
 
@@ -180,12 +176,6 @@ class DeviceTest : public testing::Test {
                   SetAttachedNetwork(IsWeakPtrTo(device_->network())));
     }
     device_->SelectService(service);
-  }
-
-  void SetConnection(std::unique_ptr<Connection> connection) {
-    device_->network_->set_state_for_testing(
-        connection ? Network::State::kConnected : Network::State::kIdle);
-    device_->network_->set_connection_for_testing(std::move(connection));
   }
 
   MockPortalDetector* SetMockPortalDetector() {
@@ -219,10 +209,6 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigsPropertyUpdated();
   }
 
-  void SetDHCPProvider(DHCPProvider* dhcp_provider) {
-    device_->network()->set_dhcp_provider_for_testing(dhcp_provider);
-  }
-
   static ManagerProperties MakePortalProperties() {
     ManagerProperties props;
     props.portal_http_url = PortalDetector::kDefaultHttpUrl;
@@ -240,11 +226,9 @@ class DeviceTest : public testing::Test {
 
   scoped_refptr<TestDevice> device_;
   NiceMock<MockDeviceInfo> device_info_;
-  MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
-  MockIPConfig* ipconfig_;  // owned by |device_|
-  MockNetwork* network_;    // owned by |device_|
+  MockNetwork* network_;  // owned by |device_|
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
@@ -359,8 +343,6 @@ TEST_F(DeviceTest, NetworkFailure) {
 }
 
 TEST_F(DeviceTest, ConnectionUpdated) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_CALL(*service, IsConnected(nullptr))
@@ -379,8 +361,6 @@ TEST_F(DeviceTest, ConnectionUpdated) {
 }
 
 TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   // The service is already Online and selected, so it should not transition
   // back to Connected.
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
@@ -401,8 +381,6 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
 }
 
 TEST_F(DeviceTest, ConnectionUpdatedSuccessNoSelectedService) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   // Make sure shill doesn't crash if a service is disabled immediately after
   // Network is connected (selected_service_ is nullptr in this case).
   SelectService(nullptr);
@@ -534,8 +512,6 @@ TEST_F(DeviceTest, StartFailure) {
 }
 
 TEST_F(DeviceTest, Stop) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
@@ -554,8 +530,6 @@ TEST_F(DeviceTest, Stop) {
 }
 
 TEST_F(DeviceTest, StopWithFixedIpParams) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   device_->network()->set_fixed_ip_params_for_testing(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
@@ -575,8 +549,6 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
 }
 
 TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
@@ -628,8 +600,6 @@ TEST_F(DeviceTest, Reset) {
 }
 
 TEST_F(DeviceTest, Resume) {
-  // TODO(b/232177767): Remove this after all tests are based on MockNetwork.
-  CreateMockNetwork();
   EXPECT_CALL(*network_, RenewDHCPLease());
   EXPECT_CALL(*network_, InvalidateIPv6Config());
   device_->OnAfterResume();
@@ -639,7 +609,7 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
   EXPECT_FALSE(device_->IsConnectedViaTether());
 
   // An empty ipconfig doesn't mean we're tethered.
-  device_->set_ipconfig(
+  network_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
   EXPECT_FALSE(device_->IsConnectedViaTether());
 
@@ -662,11 +632,11 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 
 TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
-  device_->set_ipconfig(
+  network_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
   EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
-  device_->set_ip6config(
+  network_->set_ip6config(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
 
   // We don't really care that the RPC IDs for all IPConfig mock adaptors
@@ -674,11 +644,11 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   // of them when both IPv6 and IPv4 IPConfigs are available.
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
-  device_->set_ipconfig(nullptr);
+  network_->set_ipconfig(nullptr);
   EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
 
-  device_->set_ip6config(nullptr);
+  network_->set_ip6config(nullptr);
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
 }
 
@@ -745,7 +715,6 @@ class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()
       : service_(new StrictMock<MockService>(manager())) {
-    CreateMockNetwork();
     ON_CALL(*network_, IsConnected()).WillByDefault(Return(true));
   }
   ~DevicePortalDetectionTest() override = default;
