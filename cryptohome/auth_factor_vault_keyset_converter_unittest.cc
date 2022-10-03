@@ -241,6 +241,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
                 kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
                 &key_label_data_));
+
   EXPECT_EQ(3, label_to_auth_factor_.size());
 
   EXPECT_EQ(kLabel0, label_to_auth_factor_[kLabel0]->label());
@@ -356,6 +357,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListKiosk) {
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
                 kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
                 &key_label_data_));
+
   EXPECT_EQ(1, label_to_auth_factor_.size());
 
   EXPECT_EQ(kLabel0, label_to_auth_factor_[kLabel0]->label());
@@ -377,12 +379,11 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
   BackupKeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndex);
   BackupKeysetSetUpWithKeyData(SetPinKeyData(kLabel2), kThirdIndex);
 
-  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
-
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
                 kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
                 nullptr));
+
   EXPECT_TRUE(label_to_auth_factor_.empty());
   EXPECT_EQ(3, label_to_auth_factor_backup_.size());
 
@@ -406,8 +407,6 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
   KeysetSetUpWithKeyData(SetKeyData(kLabel0), kFirstIndex);
   BackupKeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndex);
   BackupKeysetSetUpWithKeyData(SetPinKeyData(kLabel2), kThirdIndex);
-
-  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
