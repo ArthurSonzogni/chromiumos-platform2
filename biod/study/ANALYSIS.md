@@ -116,7 +116,7 @@ MCU (FPMCU), and matching library that runs on the FPMCU.
 
 <!-- TODO(hesling): The following test procedure needs to be published for all. -->
 
-[Fingerprint Sensor FAR/FRR Test Procedure]: https://docs.google.com/document/d/1_Q4rdvAwgKNd3zos-_6H1spResgOn8A7ept7jhGIk_Q
+[Fingerprint Sensor FAR/FRR Test Procedure]: https://chromeos.google.com/partner/dlm/docs/hardware-specs/fingerprintsensor.html
 [Chrome OS Fingerprint Requirements]: https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#fingerprint
 [Detection error tradeoff]: https://en.wikipedia.org/wiki/Detection_error_tradeoff
 [Chromium OS FP Study Repository]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/biod/study/
