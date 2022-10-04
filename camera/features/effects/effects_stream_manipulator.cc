@@ -139,10 +139,12 @@ bool EffectsStreamManipulator::ConfigureStreamsOnThread(
       // Currently selecting the widest stream to process as it satisfies
       // the most initial VC situations. Want to expand this to handle
       // many streams
-      if ((!yuv_stream_ || s->width > yuv_stream_->width) &&
-          ((s->usage & GRALLOC_USAGE_HW_COMPOSER) ==
-           GRALLOC_USAGE_HW_COMPOSER)) {
+      if (!yuv_stream_ || s->width > yuv_stream_->width) {
         yuv_stream_ = s;
+        if ((s->usage & GRALLOC_USAGE_HW_COMPOSER) !=
+            GRALLOC_USAGE_HW_COMPOSER) {
+          LOGF(WARNING) << "Stream doesn't support GRALLOC_USAGE_HW_COMPOSER";
+        }
       }
     }
   }
@@ -204,6 +206,9 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
 
 bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
+  if (!yuv_stream_)
+    return true;
+
   if (!pipeline_ && !runtime_options_->GetDlcRootPath().empty()) {
     CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
   }

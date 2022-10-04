@@ -53,17 +53,19 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
  protected:
   EffectsPipelineImpl() {}
   bool Initialize(const base::FilePath& dlc_root_path) {
+    base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
     base::NativeLibraryOptions native_library_options;
     base::NativeLibraryLoadError load_error;
     native_library_options.prefer_own_symbols = true;
     library_.emplace(base::LoadNativeLibraryWithOptions(
-        dlc_root_path.Append(kLibraryName), native_library_options,
-        &load_error));
+        lib_path, native_library_options, &load_error));
 
     if (!library_->is_valid()) {
       LOG(ERROR) << "Pipeline library load error: " << load_error.ToString();
       return false;
     }
+
+    LOG(INFO) << "Loading pipeline library from: " << lib_path;
 
     create_fn_ = reinterpret_cast<cros_ml_effects_CreateEffectsPipelineFn>(
         library_->GetFunctionPointer("cros_ml_effects_CreateEffectsPipeline"));
