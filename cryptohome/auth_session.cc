@@ -33,6 +33,7 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credential_verifier_factory.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -433,7 +434,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
   // Flip the flag, so that our future invocations go through AddKeyset() and
   // not AddInitialKeyset(). Create a verifier if applicable.
   if (!user_has_configured_credential_) {
-    SetCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
+    AddCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
   }
   user_has_configured_credential_ = true;
 
@@ -773,7 +774,7 @@ void AuthSession::UpdateVaultKeyset(
   if (auth_factor_type) {
     verifier_type = *auth_factor_type;
   }
-  SetCredentialVerifier(verifier_type, key_data.label(), auth_input);
+  AddCredentialVerifier(verifier_type, key_data.label(), auth_input);
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
@@ -929,7 +930,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
         obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
         *passkey);
-    SetCredentialVerifier(verifier_type, key_data_.label(), auth_input);
+    AddCredentialVerifier(verifier_type, key_data_.label(), auth_input);
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -993,7 +994,7 @@ void AuthSession::Authenticate(
     AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
         obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
         credentials->passkey());
-    SetCredentialVerifier(AuthFactorType::kPassword, key_data_.label(),
+    AddCredentialVerifier(AuthFactorType::kPassword, key_data_.label(),
                           auth_input);
 
     // SetAuthSessionAsAuthenticated() should already have been called
@@ -1069,7 +1070,8 @@ bool AuthSession::AuthenticateAuthFactor(
   // If suitable, attempt lightweight authentication via a credential verifier.
   if (auth_intent_ == AuthIntent::kVerifyOnly &&
       IsCredentialVerifierSupported(*request_auth_factor_type) &&
-      AuthenticateViaCredentialVerifier(request.auth_input())) {
+      AuthenticateViaCredentialVerifier(request.auth_factor_label(),
+                                        request.auth_input())) {
     CompleteVerifyOnlyAuthentication(std::move(on_done),
                                      OkStatus<CryptohomeError>());
     return true;
@@ -1612,7 +1614,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
+    AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
@@ -1771,8 +1773,9 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
   vault_keyset_ = std::make_unique<VaultKeyset>(updated_vault_keyset);
 }
 
-std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
-  return std::move(credential_verifier_);
+std::map<std::string, std::unique_ptr<CredentialVerifier>>
+AuthSession::TakeCredentialVerifiersMap() {
+  return std::move(label_to_credential_verifier_);
 }
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
@@ -1841,13 +1844,20 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   return std::move(auth_input.value());
 }
 
-void AuthSession::SetCredentialVerifier(AuthFactorType auth_factor_type,
-                                        const std::string& auth_factor_label,
-                                        const AuthInput& auth_input) {
-  // Note that we always overwrite the old verifier, even when the creation of
-  // the new one failed - to avoid any risk of accepting old credentials.
-  credential_verifier_ =
-      CreateCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+CredentialVerifier* AuthSession::AddCredentialVerifier(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input) {
+  if (auto new_verifier = CreateCredentialVerifier(
+          auth_factor_type, auth_factor_label, auth_input)) {
+    auto& map_entry = label_to_credential_verifier_[auth_factor_label];
+    map_entry = std::move(new_verifier);
+    return map_entry.get();
+  }
+  // If we couldn't create the new verifier, erase the old one. This avoids the
+  // risk of continuing to accept old credentials.
+  label_to_credential_verifier_.erase(auth_factor_label);
+  return nullptr;
 }
 
 // static
@@ -2065,7 +2075,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   // Create the credential verifier if applicable.
   if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
+    AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
@@ -2293,9 +2303,9 @@ void AuthSession::AddAuthFactorForEphemeral(
     return;
   }
 
-  if (credential_verifier_) {
-    // Adding more than one factor is not supported for ephemeral users at the
-    // moment.
+  if (label_to_credential_verifier_.find(auth_factor_label) !=
+      label_to_credential_verifier_.end()) {
+    // Overriding the verifier for a given label is not supported.
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVerifierAlreadySetInAddFactorForEphemeral),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -2303,9 +2313,10 @@ void AuthSession::AddAuthFactorForEphemeral(
     return;
   }
 
-  SetCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+  CredentialVerifier* verifier =
+      AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   // Check whether the verifier creation failed.
-  if (!credential_verifier_) {
+  if (!verifier) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVerifierSettingErrorInAddFactorForEphemeral),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -2317,6 +2328,7 @@ void AuthSession::AddAuthFactorForEphemeral(
 }
 
 bool AuthSession::AuthenticateViaCredentialVerifier(
+    const std::string& auth_factor_label,
     const user_data_auth::AuthInput& auth_input) {
   const UserSession* user_session = user_session_map_->Find(username_);
   if (!user_session) {
@@ -2334,8 +2346,11 @@ bool AuthSession::AuthenticateViaCredentialVerifier(
   if (!auth_input_status.value().user_input.has_value()) {
     return false;
   }
+  KeyData key_data;
+  key_data.set_label(auth_factor_label);
   Credentials credentials(username_,
                           auth_input_status.value().user_input.value());
+  credentials.set_key_data(std::move(key_data));
   return user_session->VerifyCredentials(credentials);
 }
 
@@ -2475,7 +2490,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   if (auth_input.user_input.has_value()) {
-    SetCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+    AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   }
 
   if (enable_create_backup_vk_with_uss_) {

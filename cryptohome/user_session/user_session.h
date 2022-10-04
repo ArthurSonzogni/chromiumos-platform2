@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
@@ -85,16 +86,21 @@ class UserSession {
   // Returns the hibernate secret.
   virtual std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() = 0;
 
-  // Sets credentials current session can be re-authenticated with.
+  // Adds credentials the current session can be re-authenticated with.
   // Logs warning in case anything went wrong in setting up new re-auth state.
-  virtual void SetCredentials(const Credentials& credentials) = 0;
+  virtual void AddCredentials(const Credentials& credentials) = 0;
 
-  // Sets credentials current session can be re-authenticated with.
-  virtual void SetCredentials(AuthSession* auth_session) = 0;
+  // Takes the credentials from the given (auth) session and merges them into
+  // this (user) session. Any existing credentials that have the same label as
+  // the newly taken ones will be overwritten.
+  virtual void TakeCredentialsFrom(AuthSession* auth_session) = 0;
 
-  // Returns the credential verifier for this session. Returns null if there is
-  // no verifier that has been set.
-  virtual CredentialVerifier* GetCredentialVerifier() const = 0;
+  // Returns a bool indicating if this session has any credential verifiers.
+  virtual bool HasCredentialVerifiers() const = 0;
+
+  // Returns the credential verifiers for this session.
+  virtual std::vector<const CredentialVerifier*> GetCredentialVerifiers()
+      const = 0;
 
   // Checks that the session belongs to the obfuscated_user.
   virtual bool VerifyUser(const std::string& obfuscated_username) const = 0;

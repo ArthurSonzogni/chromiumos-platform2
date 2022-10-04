@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
@@ -61,12 +62,8 @@ class MockUserSession : public UserSession {
               GetHibernateSecret,
               (),
               (override));
-  MOCK_METHOD(void, SetCredentials, (const Credentials&), (override));
-  MOCK_METHOD(void, SetCredentials, (AuthSession*), (override));
-  MOCK_METHOD(CredentialVerifier*,
-              GetCredentialVerifier,
-              (),
-              (const, override));
+  MOCK_METHOD(void, AddCredentials, (const Credentials&), (override));
+  MOCK_METHOD(void, TakeCredentialsFrom, (AuthSession*), (override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
   MOCK_METHOD(void,
@@ -84,6 +81,22 @@ class MockUserSession : public UserSession {
               ResetApplicationContainer,
               (const std::string&),
               (override));
+
+  // Use this to manipulate the set of credential verifiers reported by the Has
+  // and Get functions.
+  std::vector<const CredentialVerifier*>& get_credential_verifiers() {
+    return credential_verifiers_;
+  }
+  bool HasCredentialVerifiers() const override {
+    return !credential_verifiers_.empty();
+  }
+  std::vector<const CredentialVerifier*> GetCredentialVerifiers()
+      const override {
+    return credential_verifiers_;
+  }
+
+ private:
+  std::vector<const CredentialVerifier*> credential_verifiers_;
 };
 
 }  // namespace cryptohome

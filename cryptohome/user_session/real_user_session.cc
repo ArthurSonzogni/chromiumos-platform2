@@ -257,28 +257,48 @@ std::unique_ptr<brillo::SecureBlob> RealUserSession::GetHibernateSecret() {
   return std::move(hibernate_secret_);
 }
 
-void RealUserSession::SetCredentials(const Credentials& credentials) {
+void RealUserSession::AddCredentials(const Credentials& credentials) {
   if (obfuscated_username_ != credentials.GetObfuscatedUsername()) {
-    NOTREACHED() << "SetCredentials username mismatch.";
+    NOTREACHED() << "AddCredentials username mismatch.";
     return;
   }
 
   key_data_ = credentials.key_data();
 
-  credential_verifier_.reset(new ScryptVerifier(key_data_.label()));
-  if (!credential_verifier_->Set(credentials.passkey())) {
+  // Create a matching passkey-based verifier for the key data.
+  auto& map_entry = label_to_credential_verifier_[key_data_.label()];
+  map_entry = std::make_unique<ScryptVerifier>(key_data_.label());
+  if (!map_entry->Set(credentials.passkey())) {
     LOG(WARNING) << "CredentialVerifier could not be set";
   }
 }
 
-void RealUserSession::SetCredentials(AuthSession* auth_session) {
+void RealUserSession::TakeCredentialsFrom(AuthSession* auth_session) {
   if (obfuscated_username_ != auth_session->obfuscated_username()) {
-    NOTREACHED() << "SetCredentials auth session username mismatch.";
+    NOTREACHED() << "TakeCredentialsFrom auth session username mismatch.";
     return;
   }
 
   key_data_ = auth_session->current_key_data();
-  credential_verifier_ = auth_session->TakeCredentialVerifier();
+  // Merge all of the verifiers into the existing map. Note that this will
+  // replace any existing verifiers with the same label.
+  for (auto&& [label, verifier] : auth_session->TakeCredentialVerifiersMap()) {
+    label_to_credential_verifier_[label] = std::move(verifier);
+  }
+}
+
+bool RealUserSession::HasCredentialVerifiers() const {
+  return !label_to_credential_verifier_.empty();
+}
+
+std::vector<const CredentialVerifier*> RealUserSession::GetCredentialVerifiers()
+    const {
+  std::vector<const CredentialVerifier*> verifiers;
+  verifiers.reserve(label_to_credential_verifier_.size());
+  for (const auto& [unused, verifier] : label_to_credential_verifier_) {
+    verifiers.push_back(verifier.get());
+  }
+  return verifiers;
 }
 
 bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
@@ -290,22 +310,24 @@ bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
 bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   ReportTimerStart(kSessionUnlockTimer);
 
-  if (!credential_verifier_) {
-    LOG(ERROR) << "Attempt to verify credentials with no verifier set";
-    return false;
-  }
   if (!VerifyUser(credentials.GetObfuscatedUsername())) {
     return false;
   }
-  // If the incoming credentials have no label, then just test the secret. If it
-  // is labeled, then the label must match.
-  if (!credentials.key_data().label().empty() &&
-      credentials.key_data().label() !=
-          credential_verifier_->auth_factor_label()) {
+
+  // If the incoming credentials have no label, the want to use the verifier
+  // that's associated with key_data_ (found by using the key_data_ label).
+  // Otherwise, use the one specified by the credentials.
+  const std::string& label_to_use = credentials.key_data().label().empty()
+                                        ? key_data_.label()
+                                        : credentials.key_data().label();
+  auto verifier_iter = label_to_credential_verifier_.find(label_to_use);
+  if (verifier_iter == label_to_credential_verifier_.end()) {
+    LOG(ERROR) << "Attempt to verify credentials with no verifier set";
     return false;
   }
 
-  bool status = credential_verifier_->Verify(credentials.passkey());
+  // Try testing the secret now.
+  bool status = verifier_iter->second->Verify(credentials.passkey());
 
   ReportTimerStop(kSessionUnlockTimer);
 
@@ -314,15 +336,12 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
 
 void RealUserSession::RemoveCredentialVerifierForKeyLabel(
     const std::string& key_label) {
-  if (!credential_verifier_) {
-    return;
-  }
+  // Remove the matching credential verifier, if it exists.
+  label_to_credential_verifier_.erase(key_label);
 
-  // If the credential to remove has the same label as the current credential
-  // verifier, then we reset the credential verifier and remove KeyData.
-  if (key_label == credential_verifier_->auth_factor_label()) {
-    credential_verifier_.reset();
-    key_data_ = KeyData();
+  // Also clear the KeyData, if it matches the given label.
+  if (key_data_.label() == key_label) {
+    key_data_.Clear();
   }
 }
 

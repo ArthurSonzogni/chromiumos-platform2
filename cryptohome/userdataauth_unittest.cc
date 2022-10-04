@@ -3361,7 +3361,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials);
+  session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
@@ -3383,7 +3383,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsUnlockWebAuthnSecretSuccess) {
   check_req_->set_unlock_webauthn_secret(true);
 
   Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials);
+  session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
@@ -3406,7 +3406,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
 
   // Ensure failure
   Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials);
+  session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(ReturnError<CryptohomeMountError>(
@@ -4575,8 +4575,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
           {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
   // Add a verifier as well.
   ScryptVerifier verifier(kFakeLabel);
-  EXPECT_CALL(*session_, GetCredentialVerifier())
-      .WillRepeatedly(Return(&verifier));
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4614,8 +4613,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   ScryptVerifier verifier("password-verifier-label");
-  EXPECT_CALL(*session_, GetCredentialVerifier())
-      .WillRepeatedly(Return(&verifier));
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4700,8 +4698,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*session_, GetCredentialVerifier())
-      .WillRepeatedly(Return(nullptr));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -4730,8 +4726,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
   ScryptVerifier verifier("password-label");
-  EXPECT_CALL(*session_, GetCredentialVerifier())
-      .WillRepeatedly(Return(&verifier));
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");

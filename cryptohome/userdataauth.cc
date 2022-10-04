@@ -2392,7 +2392,7 @@ MountStatus UserDataAuth::AttemptUserMount(
   }
 
   if (mount_args.is_ephemeral) {
-    user_session->SetCredentials(credentials);
+    user_session->AddCredentials(credentials);
     MountStatus err = user_session->MountEphemeral(credentials.username());
     if (err.ok())
       return OkStatus<CryptohomeMountError>();
@@ -2458,7 +2458,7 @@ MountStatus UserDataAuth::AttemptUserMount(
       MountArgsToVaultOptions(mount_args));
   if (mount_status.ok()) {
     // Store the credentials in the cache to use on session unlock.
-    user_session->SetCredentials(credentials);
+    user_session->AddCredentials(credentials);
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
@@ -2483,7 +2483,7 @@ MountStatus UserDataAuth::AttemptUserMount(
   // Mount ephemerally using authsession
   if (mount_args.is_ephemeral) {
     // Store the credentials in the cache to use on session unlock.
-    user_session->SetCredentials(auth_session);
+    user_session->TakeCredentialsFrom(auth_session);
     MountStatus err = user_session->MountEphemeral(auth_session->username());
     return MakeStatus<CryptohomeMountError>(
                CRYPTOHOME_ERR_LOC(
@@ -2506,7 +2506,7 @@ MountStatus UserDataAuth::AttemptUserMount(
 
   if (mount_status.ok()) {
     // Store the credentials in the cache to use on session unlock.
-    user_session->SetCredentials(auth_session);
+    user_session->TakeCredentialsFrom(auth_session);
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
@@ -3284,7 +3284,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
 
   UserSession* const session = sessions_->Find(account_id);
   if (session) {
-    session->SetCredentials(credentials);
+    session->AddCredentials(credentials);
   }
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -4099,8 +4099,8 @@ void UserDataAuth::StartAuthSession(
   if (request.intent() == user_data_auth::AUTH_INTENT_VERIFY_ONLY) {
     if (UserSession* user_session =
             sessions_->Find(request.account_id().account_id())) {
-      if (CredentialVerifier* verifier =
-              user_session->GetCredentialVerifier()) {
+      for (const CredentialVerifier* verifier :
+           user_session->GetCredentialVerifiers()) {
         if (auto proto_factor = GetAuthFactorProto(
                 verifier->auth_factor_metadata(), verifier->auth_factor_type(),
                 verifier->auth_factor_label())) {
@@ -4137,7 +4137,7 @@ UserDataAuth::HandleAddCredentialForEphemeralVault(
       auth_session->username(), SecureBlob(request.key().secret()));
   // Everything else can be the default.
   credentials->set_key_data(request.key().data());
-  session->SetCredentials(*credentials);
+  session->AddCredentials(*credentials);
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
@@ -4230,9 +4230,9 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     return;
   }
 
-  if (session->GetCredentialVerifier() == nullptr ||
+  if (!session->HasCredentialVerifiers() ||
       override_existing_credential_verifier) {
-    session->SetCredentials(auth_session);
+    session->TakeCredentialsFrom(auth_session);
   }
 }
 
@@ -5111,8 +5111,8 @@ void UserDataAuth::ListAuthFactors(
     // Use the credential verifier for the session to determine what types of
     // factors are configured.
     if (user_session) {
-      if (CredentialVerifier* verifier =
-              user_session->GetCredentialVerifier()) {
+      for (const CredentialVerifier* verifier :
+           user_session->GetCredentialVerifiers()) {
         if (auto proto_factor = GetAuthFactorProto(
                 verifier->auth_factor_metadata(), verifier->auth_factor_type(),
                 verifier->auth_factor_label())) {

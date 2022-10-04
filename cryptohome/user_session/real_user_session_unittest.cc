@@ -189,7 +189,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->SetCredentials(users_[0].credentials);
+  session_->AddCredentials(users_[0].credentials);
   FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
@@ -229,7 +229,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->SetCredentials(users_[0].credentials);
+  session_->AddCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(ReturnOk<StorageError>());
@@ -256,7 +256,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   // SETUP
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->SetCredentials(users_[0].credentials);
+  session_->AddCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs3));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
@@ -457,7 +457,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
   RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
                           nullptr);
-  session.SetCredentials(credentials);
+  session.AddCredentials(credentials);
 
   EXPECT_TRUE(session.VerifyUser(credentials.GetObfuscatedUsername()));
   EXPECT_FALSE(session.VerifyUser("other"));
@@ -471,7 +471,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   {
     RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
                             nullptr, nullptr);
-    session.SetCredentials(credentials_1);
+    session.AddCredentials(credentials_1);
     EXPECT_TRUE(session.VerifyCredentials(credentials_1));
     EXPECT_FALSE(session.VerifyCredentials(credentials_2));
     EXPECT_FALSE(session.VerifyCredentials(credentials_3));
@@ -480,7 +480,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   {
     RealUserSession session(credentials_2.username(), nullptr, nullptr, nullptr,
                             nullptr, nullptr);
-    session.SetCredentials(credentials_2);
+    session.AddCredentials(credentials_2);
     EXPECT_FALSE(session.VerifyCredentials(credentials_1));
     EXPECT_TRUE(session.VerifyCredentials(credentials_2));
     EXPECT_FALSE(session.VerifyCredentials(credentials_3));
@@ -489,7 +489,7 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   {
     RealUserSession session(credentials_3.username(), nullptr, nullptr, nullptr,
                             nullptr, nullptr);
-    session.SetCredentials(credentials_3);
+    session.AddCredentials(credentials_3);
     EXPECT_FALSE(session.VerifyCredentials(credentials_1));
     EXPECT_FALSE(session.VerifyCredentials(credentials_2));
     EXPECT_TRUE(session.VerifyCredentials(credentials_3));
@@ -510,7 +510,7 @@ TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
   {
     RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
                             nullptr, nullptr);
-    session.SetCredentials(credentials_1);
+    session.AddCredentials(credentials_1);
     EXPECT_TRUE(session.VerifyCredentials(credentials_1));
     EXPECT_FALSE(session.VerifyCredentials(credentials_2));
 

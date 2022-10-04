@@ -170,9 +170,10 @@ class AuthSession final {
   // state before requesting the file system keyset.
   const FileSystemKeyset& file_system_keyset() const;
 
-  // Transfer ownership of password verifier that can be used to verify
-  // credentials during unlock.
-  std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
+  // Transfer ownership of all of the currently owned verifiers that can be used
+  // for unlock. Returns a map of label -> verifier.
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+  TakeCredentialVerifiersMap();
 
   // This function returns if the user existed when the auth session started.
   bool user_exists() const { return user_exists_; }
@@ -301,10 +302,13 @@ class AuthSession final {
   CreateChallengeCredentialAuthInput(
       const cryptohome::AuthorizationRequest& authorization);
 
-  // This function sets the credential_verifier_ based on the passkey parameter.
-  void SetCredentialVerifier(AuthFactorType auth_factor_type,
-                             const std::string& auth_factor_label,
-                             const AuthInput& auth_input);
+  // This function attempts to add verifier for the given label based on the
+  // AuthInput. If it succeeds it will return a pointer to the verifier.
+  // Otherwise it will return null.
+  CredentialVerifier* AddCredentialVerifier(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input);
 
   // Set the timeout timer to now + delay
   void SetTimeoutTimer(const base::TimeDelta& delay);
@@ -458,6 +462,7 @@ class AuthSession final {
   // Attempts to authenticate the user using a lightweight check against an
   // in-memory credential verifier.
   bool AuthenticateViaCredentialVerifier(
+      const std::string& auth_factor_label,
       const user_data_auth::AuthInput& auth_input);
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
@@ -570,8 +575,10 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
-  // This is used by User Session to verify users credentials at unlock.
-  std::unique_ptr<CredentialVerifier> credential_verifier_;
+  // Verifiers that can be used by UserSession for unlock-only verification.
+  // Maps labels to verifier.
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+      label_to_credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and

@@ -5,8 +5,10 @@
 #ifndef CRYPTOHOME_USER_SESSION_REAL_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_REAL_USER_SESSION_H_
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
@@ -39,25 +41,19 @@ class RealUserSession : public UserSession {
       Pkcs11TokenFactory* pkcs11_token_factory,
       const scoped_refptr<Mount> mount);
 
-  // Disallow Copy/Move/Assign
   RealUserSession(const RealUserSession&) = delete;
   RealUserSession(const RealUserSession&&) = delete;
   void operator=(const RealUserSession&) = delete;
   void operator=(const RealUserSession&&) = delete;
 
-  // Returns whether the user session represents an active login session.
   bool IsActive() const override { return mount_->IsMounted(); }
 
-  // Returns whether the session is for an ephemeral user.
   bool IsEphemeral() const override { return mount_->IsEphemeral(); }
 
-  // Returns whether the path belong to the session.
-  // TODO(dlunev): remove it once recovery logic is embedded into storage code.
   bool OwnsMountPoint(const base::FilePath& path) const override {
     return mount_->OwnsMountPoint(path);
   }
 
-  // Perform migration of the vault to a different encryption type.
   bool MigrateVault(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
           callback,
@@ -65,74 +61,47 @@ class RealUserSession : public UserSession {
     return mount_->MigrateEncryption(callback, migration_type);
   }
 
-  // Mounts disk backed vault for the given username with the supplied file
-  // system keyset.
   MountStatus MountVault(
       const std::string& username,
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) override;
 
-  // Creates and mounts a ramdisk backed ephemeral session for the given user.
   MountStatus MountEphemeral(const std::string& username) override;
 
-  // Creates and mounts a ramdisk backed ephemeral session for an anonymous
-  // user.
   MountStatus MountGuest() override;
 
-  // Unmounts the session.
   bool Unmount() override;
 
-  // Returns status string of the proxied Mount objest.
-  //
-  // The returned object is a dictionary whose keys describe the mount. Current
-  // keys are: "keysets", "mounted", "owner", "enterprise", and "type".
   base::Value GetStatus() const override;
 
-  // Returns the WebAuthn secret and clears it from memory.
   std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret() override;
 
-  // Returns the WebAuthn secret hash.
   const brillo::SecureBlob& GetWebAuthnSecretHash() const override;
 
-  // Returns the hibernate secret.
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() override;
 
-  // Sets credentials current session can be re-authenticated with.
-  // Returns false in case anything went wrong in setting up new re-auth state.
-  void SetCredentials(const Credentials& credentials) override;
+  void AddCredentials(const Credentials& credentials) override;
 
-  // Sets credentials current session can be re-authenticated with.
-  void SetCredentials(AuthSession* auth_session) override;
+  void TakeCredentialsFrom(AuthSession* auth_session) override;
 
-  // Returns the credential verifier for this session. Returns null if there is
-  // no verifier that has been set.
-  CredentialVerifier* GetCredentialVerifier() const override {
-    return credential_verifier_.get();
-  }
+  bool HasCredentialVerifiers() const override;
 
-  // Removes the credential_verifier if key_label matches the current verifier
-  // label (stored in RealUserSession::key_data_).
+  std::vector<const CredentialVerifier*> GetCredentialVerifiers()
+      const override;
+
   void RemoveCredentialVerifierForKeyLabel(
       const std::string& key_label) override;
 
-  // Checks that the session belongs to the obfuscated_user.
   bool VerifyUser(const std::string& obfuscated_username) const override;
 
-  // Verifies credentials against store re-auth state. Returns true if the
-  // credentials were successfully re-authenticated against the saved re-auth
-  // state.
   bool VerifyCredentials(const Credentials& credentials) const override;
 
-  // Returns key_data of the current session credentials.
   const KeyData& key_data() const override { return key_data_; }
 
-  // Returns PKCS11 token associated with the session.
   Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
 
-  // Returns the name of the user associated with the session.
   std::string GetUsername() const override { return username_; }
 
-  // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek) override;
 
@@ -162,7 +131,8 @@ class RealUserSession : public UserSession {
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;
 
-  std::unique_ptr<CredentialVerifier> credential_verifier_;
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+      label_to_credential_verifier_;
   KeyData key_data_;
 
   // Secret for WebAuthn credentials.
