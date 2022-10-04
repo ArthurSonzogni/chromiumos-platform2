@@ -11,8 +11,8 @@ use std::time::Instant;
 
 use anyhow::{Context, Result};
 use libc::{loff_t, reboot, RB_POWER_OFF};
+use libchromeos::sys::syscall;
 use log::{debug, error, info, warn};
-use sys_util::syscall;
 
 use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
 use crate::crypto::{CryptoMode, CryptoWriter};
@@ -428,8 +428,10 @@ impl SuspendConductor {
             // On success, we shouldn't be executing, so the return code can be
             // ignored because we already know it's a failure.
             let _ = reboot(RB_POWER_OFF);
-            Err(HibernateError::ShutdownError(sys_util::Error::last()))
-                .context("Failed to shut down")
+            Err(HibernateError::ShutdownError(
+                libchromeos::sys::Error::last(),
+            ))
+            .context("Failed to shut down")
         }
     }
 }

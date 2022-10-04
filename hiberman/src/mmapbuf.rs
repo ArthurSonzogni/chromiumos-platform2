@@ -32,7 +32,7 @@ impl MmapBuffer {
         let r = unsafe { libc::mmap(addr as *mut c_void, len as libc::size_t, prot, flags, -1, 0) };
 
         if r == libc::MAP_FAILED {
-            Err(HibernateError::MmapError(sys_util::Error::last()))
+            Err(HibernateError::MmapError(libchromeos::sys::Error::last()))
                 .context("Cannot create MmapBuffer")
         } else {
             Ok(Self {

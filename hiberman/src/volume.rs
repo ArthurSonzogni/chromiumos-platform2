@@ -535,7 +535,8 @@ impl ActiveMount {
                 data_string.as_ptr() as *const c_void,
             );
             if rc < 0 {
-                return Err(sys_util::Error::last()).context("Failed to mount hibernate volume");
+                return Err(libchromeos::sys::Error::last())
+                    .context("Failed to mount hibernate volume");
             }
         }
 
@@ -562,7 +563,7 @@ impl Drop for ActiveMount {
                     warn!(
                         "Failed to unmount {}: {}",
                         path.to_string_lossy(),
-                        sys_util::Error::last()
+                        libchromeos::sys::Error::last()
                     );
                 }
             }

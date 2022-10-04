@@ -34,10 +34,10 @@ pub enum HibernateError {
     DbusError(String),
     /// Failed to copy the FD for the polling context.
     #[error("Failed to fallocate the file: {0}")]
-    FallocateError(sys_util::Error),
+    FallocateError(libchromeos::sys::Error),
     /// Error getting the fiemap
     #[error("Error getting the fiemap: {0}")]
-    FiemapError(sys_util::Error),
+    FiemapError(libchromeos::sys::Error),
     /// First data byte mismatch
     #[error("First data byte mismatch")]
     FirstDataByteMismatch(),
@@ -67,10 +67,10 @@ pub enum HibernateError {
     MetricsSendFailure(String),
     /// Failed to lock process memory.
     #[error("Failed to mlockall: {0}")]
-    MlockallError(sys_util::Error),
+    MlockallError(libchromeos::sys::Error),
     /// Mmap error.
     #[error("mmap error: {0}")]
-    MmapError(sys_util::Error),
+    MmapError(libchromeos::sys::Error),
     /// I/O size error
     #[error("I/O size error: {0}")]
     IoSizeError(String),
@@ -79,7 +79,7 @@ pub enum HibernateError {
     SnapshotError(String),
     /// Snapshot ioctl error.
     #[error("Snapshot ioctl error: {0}: {1}")]
-    SnapshotIoctlError(String, sys_util::Error),
+    SnapshotIoctlError(String, libchromeos::sys::Error),
     /// Mount not found.
     #[error("Mount not found")]
     MountNotFoundError(),
@@ -88,7 +88,7 @@ pub enum HibernateError {
     SwapInfoNotFoundError(),
     /// Failed to shut down
     #[error("Failed to shut down: {0}")]
-    ShutdownError(sys_util::Error),
+    ShutdownError(libchromeos::sys::Error),
     /// End of file
     #[error("End of file")]
     EndOfFile(),
@@ -368,8 +368,10 @@ pub fn lock_process_memory() -> Result<LockedProcessMemory> {
     let rc = unsafe { libc::mlockall(libc::MCL_CURRENT | libc::MCL_FUTURE) };
 
     if rc < 0 {
-        return Err(HibernateError::MlockallError(sys_util::Error::last()))
-            .context("Cannot lock process memory");
+        return Err(HibernateError::MlockallError(
+            libchromeos::sys::Error::last(),
+        ))
+        .context("Cannot lock process memory");
     }
 
     Ok(LockedProcessMemory {})

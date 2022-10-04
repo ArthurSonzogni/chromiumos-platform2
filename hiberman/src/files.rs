@@ -308,8 +308,10 @@ fn preallocate_file<P: AsRef<Path>>(path: P, size: i64) -> Result<File> {
     let rc = unsafe { libc::fallocate64(file.as_raw_fd(), 0, 0, size) as isize };
 
     if rc < 0 {
-        return Err(HibernateError::FallocateError(sys_util::Error::last()))
-            .context("Failed to preallocate via fallocate");
+        return Err(HibernateError::FallocateError(
+            libchromeos::sys::Error::last(),
+        ))
+        .context("Failed to preallocate via fallocate");
     }
 
     Ok(file)

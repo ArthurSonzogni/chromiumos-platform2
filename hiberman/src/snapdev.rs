@@ -11,8 +11,11 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use libc::{self, c_int, c_ulong, c_void, loff_t};
+use libchromeos::sys::{
+    ioctl_io_nr, ioctl_ior_nr, ioctl_iow_nr, ioctl_iowr_nr, ioctl_with_mut_ptr, ioctl_with_ptr,
+    ioctl_with_val,
+};
 use log::{error, info};
-use sys_util::{ioctl_io_nr, ioctl_ior_nr, ioctl_iow_nr, ioctl_iowr_nr};
 
 use crate::hiberutil::HibernateError;
 
@@ -227,7 +230,7 @@ impl SnapshotDevice {
     pub fn set_platform_mode(&mut self, use_platform_mode: bool) -> Result<()> {
         let param_ulong: c_ulong = use_platform_mode as c_ulong;
         unsafe {
-            let rc = sys_util::ioctl_with_val(&self.file, PLATFORM_SUPPORT, param_ulong);
+            let rc = ioctl_with_val(&self.file, PLATFORM_SUPPORT, param_ulong);
             self.evaluate_ioctl_return("PLATFORM_SUPPORT", rc)
         }
     }
@@ -290,7 +293,7 @@ impl SnapshotDevice {
     /// passed, so those guarantees would mostly be concerned with larger
     /// address space layout or memory model side effects.
     unsafe fn simple_ioctl(&mut self, ioctl: c_ulong, name: &str) -> Result<()> {
-        let rc = sys_util::ioctl(&self.file, ioctl);
+        let rc = libchromeos::sys::ioctl(&self.file, ioctl);
         self.evaluate_ioctl_return(name, rc)
     }
 
@@ -305,7 +308,7 @@ impl SnapshotDevice {
         name: &str,
         param: *const c_void,
     ) -> Result<()> {
-        let rc = sys_util::ioctl_with_ptr(&self.file, ioctl, param);
+        let rc = ioctl_with_ptr(&self.file, ioctl, param);
         self.evaluate_ioctl_return(name, rc)
     }
 
@@ -320,7 +323,7 @@ impl SnapshotDevice {
         name: &str,
         param: *mut c_void,
     ) -> Result<()> {
-        let rc = sys_util::ioctl_with_mut_ptr(&self.file, ioctl, param);
+        let rc = ioctl_with_mut_ptr(&self.file, ioctl, param);
         self.evaluate_ioctl_return(name, rc)
     }
 
@@ -328,7 +331,7 @@ impl SnapshotDevice {
         if rc < 0 {
             return Err(HibernateError::SnapshotIoctlError(
                 name.to_string(),
-                sys_util::Error::last(),
+                libchromeos::sys::Error::last(),
             ))
             .context("Failed to execute ioctl on snapshot device");
         }

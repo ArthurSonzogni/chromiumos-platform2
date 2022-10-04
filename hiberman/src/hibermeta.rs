@@ -8,10 +8,10 @@ use std::convert::TryFrom;
 use std::io::{Read, Write};
 
 use anyhow::{Context, Result};
+use libchromeos::rand::{rand_bytes, Source};
 use log::info;
 use openssl::symm::{Cipher, Crypter, Mode};
 use serde::{Deserialize, Serialize};
-use sys_util::rand::{rand_bytes, Source};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use crate::diskfile::BouncedDiskFile;

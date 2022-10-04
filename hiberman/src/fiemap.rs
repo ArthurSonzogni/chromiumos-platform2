@@ -11,8 +11,8 @@ use std::os::unix::io::AsRawFd;
 
 use anyhow::{Context, Result};
 use libc::c_void;
+use libchromeos::sys::ioctl_iowr_nr;
 use log::{debug, error};
-use sys_util::ioctl_iowr_nr;
 
 use crate::hiberutil::HibernateError;
 
@@ -163,7 +163,7 @@ impl Fiemap {
         };
 
         if rc < 0 {
-            return Err(HibernateError::FiemapError(sys_util::Error::last()))
+            return Err(HibernateError::FiemapError(libchromeos::sys::Error::last()))
                 .context("Failed to get fiemap extent count");
         }
 
@@ -215,7 +215,7 @@ impl Fiemap {
         };
 
         if rc < 0 {
-            return Err(HibernateError::FiemapError(sys_util::Error::last()))
+            return Err(HibernateError::FiemapError(libchromeos::sys::Error::last()))
                 .context("Failed to get fiemap");
         }
 
