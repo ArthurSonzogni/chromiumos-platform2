@@ -17,7 +17,6 @@
 #include "typecd/port_manager.h"
 #include "typecd/session_manager_proxy.h"
 #include "typecd/udev_monitor.h"
-#include "typecd/usb_monitor.h"
 
 namespace typecd {
 
@@ -41,7 +40,6 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<UdevMonitor> udev_monitor_;
   std::unique_ptr<PortManager> port_manager_;
-  std::unique_ptr<UsbMonitor> usb_monitor_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosECUtil> cros_ec_util_;
   std::unique_ptr<NotificationManager> notify_mgr_;

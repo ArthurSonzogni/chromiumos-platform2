@@ -19,7 +19,6 @@ constexpr char kPortRegex[] = R"(port(\d+))";
 // TODO(pmalani): Add SOP'' support when the kernel also supports it.
 constexpr char kSOPPrimePlugRegex[] = R"(port(\d+)-plug0)";
 constexpr char kSOPPrimePlugAltModeRegex[] = R"(port(\d+)-plug0.(\d+))";
-constexpr char kUsbFilePathRegex[] = R"(.*usb(\d+)/(\d+)-(\d+).*)";
 
 }  // namespace
 
@@ -41,11 +40,6 @@ bool UdevMonitor::ScanDevices() {
   auto enumerate = udev_->CreateEnumerate();
   if (!enumerate->AddMatchSubsystem(kTypeCSubsystem)) {
     PLOG(ERROR) << "Couldn't add typec to enumerator match.";
-    return false;
-  }
-
-  if (!enumerate->AddMatchSubsystem(kUsbSubsystem)) {
-    PLOG(ERROR) << "Couldn't add usb to enumerator match.";
     return false;
   }
 
@@ -79,12 +73,6 @@ bool UdevMonitor::BeginMonitoring() {
     return false;
   }
 
-  if (!udev_monitor_->FilterAddMatchSubsystemDeviceType(kUsbSubsystem,
-                                                        nullptr)) {
-    PLOG(ERROR) << "Failed to add usb subsystem to udev monitor.";
-    return false;
-  }
-
   if (!udev_monitor_->EnableReceiving()) {
     PLOG(ERROR) << "Failed to enable receiving for udev monitor.";
     return false;
@@ -115,10 +103,6 @@ void UdevMonitor::RemoveTypecObserver(TypecObserver* obs) {
   typec_observer_list_.RemoveObserver(obs);
 }
 
-void UdevMonitor::AddUsbObserver(UsbObserver* obs) {
-  usb_observer_list_.AddObserver(obs);
-}
-
 bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
                                            bool added) {
   auto name = path.BaseName();
@@ -139,11 +123,6 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
                             &port_num) &&
              added)
       observer.OnCableAltModeAdded(path, port_num);
-  }
-
-  for (UsbObserver& observer : usb_observer_list_) {
-    if (RE2::FullMatch(path.value(), kUsbFilePathRegex))
-      observer.OnDeviceAddedOrRemoved(path, added);
   }
 
   return true;

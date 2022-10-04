@@ -22,7 +22,6 @@
 namespace typecd {
 
 constexpr char kTypeCSubsystem[] = "typec";
-constexpr char kUsbSubsystem[] = "usb";
 constexpr char kUdevMonitorName[] = "udev";
 
 // Class to monitor udev events on the Type C subsystem and inform other
@@ -113,22 +112,8 @@ class UdevMonitor {
     virtual void OnPortChanged(int port_num) = 0;
   };
 
-  class UsbObserver : public base::CheckedObserver {
-   public:
-    virtual ~UsbObserver() {}
-    // Callback that is executed when a USB device is connected or
-    // disconnected.
-    //
-    // The |path| argument refers to the sysfs device path of the USB device.
-    // The |added| argument is set to true if the port was added, and false
-    // otherwise.
-    virtual void OnDeviceAddedOrRemoved(const base::FilePath& path,
-                                        bool added) = 0;
-  };
-
   void AddTypecObserver(TypecObserver* obs);
   void RemoveTypecObserver(TypecObserver* obs);
-  void AddUsbObserver(UsbObserver* obs);
 
  private:
   friend class UdevMonitorTest;
@@ -139,9 +124,6 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, CableAndAltModeAddition);
   FRIEND_TEST(UdevMonitorTest, PartnerChanged);
   FRIEND_TEST(UdevMonitorTest, PortChanged);
-  FRIEND_TEST(UdevMonitorTest, UsbDeviceScan);
-  FRIEND_TEST(UdevMonitorTest, UsbDeviceAddRemove);
-  FRIEND_TEST(UdevMonitorTest, InvalidUsbDeviceSyspath);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
@@ -163,7 +145,6 @@ class UdevMonitor {
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
   base::ObserverList<TypecObserver> typec_observer_list_;
-  base::ObserverList<UsbObserver> usb_observer_list_;
 };
 
 }  // namespace typecd

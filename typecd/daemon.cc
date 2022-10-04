@@ -22,7 +22,6 @@ Daemon::Daemon()
     : DBusServiceDaemon(kTypecdServiceName, kObjectServicePath),
       udev_monitor_(new UdevMonitor()),
       port_manager_(new PortManager()),
-      usb_monitor_(new UsbMonitor()),
       weak_factory_(this) {}
 
 Daemon::~Daemon() {}
@@ -40,7 +39,6 @@ int Daemon::OnInit() {
 
   // Set the metrics reporting class.
   port_manager_->SetMetrics(&metrics_);
-  usb_monitor_->SetMetrics(&metrics_);
 
   // Register the session_manager proxy.
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
@@ -70,7 +68,6 @@ int Daemon::OnInit() {
 
   // Add any observers to |udev_monitor_| here.
   udev_monitor_->AddTypecObserver(port_manager_.get());
-  udev_monitor_->AddUsbObserver(usb_monitor_.get());
 
   udev_monitor_->ScanDevices();
   udev_monitor_->BeginMonitoring();

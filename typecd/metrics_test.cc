@@ -4,7 +4,6 @@
 
 #include "typecd/cable.h"
 #include "typecd/partner.h"
-#include "typecd/usb_device.h"
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
@@ -280,39 +279,6 @@ TEST_F(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1) {
   c.SetNumAltModes(0);
 
   EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1, c.GetCableSpeedMetric());
-}
-
-TEST_F(MetricsTest, CheckUsbDeviceSpeed480Version20) {
-  UsbDevice u(1, 1, "1-1", UsbSpeed::k480, UsbVersion::k2_0);
-
-  EXPECT_EQ(UsbDeviceSpeedMetric::k480, u.GetUsbDeviceSpeedMetric());
-}
-
-TEST_F(MetricsTest, CheckUsbDeviceSpeed480Version21) {
-  UsbDevice u(1, 1, "1-1", UsbSpeed::k480, UsbVersion::k2_1);
-
-  EXPECT_EQ(UsbDeviceSpeedMetric::k480Fallback, u.GetUsbDeviceSpeedMetric());
-}
-
-TEST_F(MetricsTest, CheckUsbDeviceSpeed5000) {
-  UsbDevice u(1, 1, "1-1", UsbSpeed::k5000);
-
-  EXPECT_EQ(UsbDeviceSpeedMetric::k5000, u.GetUsbDeviceSpeedMetric());
-}
-
-TEST_F(MetricsTest, CheckUsbDeviceSpeed20000InvalidVersion) {
-  // 20000 Mbps matches with version 3.2, but given version 1.0
-  UsbDevice u(1, 1, "1-1", UsbSpeed::k20000, UsbVersion::k1_0);
-
-  EXPECT_EQ(UsbDeviceSpeedMetric::k20000, u.GetUsbDeviceSpeedMetric());
-}
-
-TEST_F(MetricsTest, CheckUsbDeviceSpeed480InvalidVersion) {
-  // 480 Mbps matches with version 2.x, but given version 1.0
-  UsbDevice u(1, 1, "1-1", UsbSpeed::k480, UsbVersion::k1_0);
-
-  // Report k480Fallback only if USB version is 2.10, otherwise report k480.
-  EXPECT_EQ(UsbDeviceSpeedMetric::k480, u.GetUsbDeviceSpeedMetric());
 }
 
 }  // namespace typecd

@@ -20,7 +20,6 @@ group("all") {
       ":typecd_port_manager_fuzzer",
       ":typecd_session_manager_proxy_fuzzer",
       ":typecd_udev_monitor_fuzzer",
-      ":typecd_usb_monitor_fuzzer",
     ]
   }
 }
@@ -69,8 +68,6 @@ static_library("typecd_common") {
     "power_profile.cc",
     "session_manager_proxy.cc",
     "udev_monitor.cc",
-    "usb_device.cc",
-    "usb_monitor.cc",
     "utils.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -101,7 +98,6 @@ if (use.test) {
       "power_profile_test.cc",
       "test_utils.cc",
       "udev_monitor_test.cc",
-      "usb_monitor_test.cc",
     ]
     configs += [
       ":test_defaults",
@@ -190,15 +186,6 @@ if (use.fuzzer) {
       ":test_defaults",
       "//common-mk/common_fuzzer",
       "//common-mk:test",
-    ]
-    deps = [ ":typecd_common" ]
-  }
-
-  executable("typecd_usb_monitor_fuzzer") {
-    sources = [ "usb_monitor_fuzzer.cc" ]
-    configs += [
-      ":target_defaults",
-      "//common-mk/common_fuzzer",
     ]
     deps = [ ":typecd_common" ]
   }
