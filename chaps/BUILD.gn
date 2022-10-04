@@ -263,6 +263,7 @@ if (use.test || use.fuzzer) {
 
 if (use.test) {
   executable("chaps_test") {
+    run_test = true
     sources = [
       "chaps_metrics_test.cc",
       "chaps_test.cc",
@@ -275,6 +276,7 @@ if (use.test) {
   }
 
   executable("chaps_service_test") {
+    run_test = true
     sources = [ "chaps_service_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -284,6 +286,7 @@ if (use.test) {
   }
 
   executable("slot_manager_test") {
+    run_test = true
     sources = [ "slot_manager_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -293,6 +296,7 @@ if (use.test) {
   }
 
   executable("session_test") {
+    run_test = true
     sources = [ "session_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -302,6 +306,7 @@ if (use.test) {
   }
 
   executable("object_test") {
+    run_test = true
     sources = [ "object_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -311,6 +316,7 @@ if (use.test) {
   }
 
   executable("object_policy_test") {
+    run_test = true
     sources = [ "object_policy_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -320,6 +326,7 @@ if (use.test) {
   }
 
   executable("object_pool_test") {
+    run_test = true
     sources = [ "object_pool_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -329,6 +336,7 @@ if (use.test) {
   }
 
   executable("slot_policy_test") {
+    run_test = true
     sources = [
       "slot_policy_default_test.cc",
       "slot_policy_shared_slot_test.cc",
@@ -341,6 +349,7 @@ if (use.test) {
   }
 
   executable("object_store_test") {
+    run_test = true
     sources = [ "object_store_test.cc" ]
     configs += [ ":target_defaults" ]
     deps = [
@@ -379,6 +388,7 @@ if (use.test) {
   # conditionals in the middle of a target list, we added it at the end.
   if (use.tpm2) {
     executable("tpm2_utility_test") {
+      run_test = true
       sources = [ "tpm2_utility_test.cc" ]
       install_path = "sbin"
       configs += [ ":target_defaults" ]
