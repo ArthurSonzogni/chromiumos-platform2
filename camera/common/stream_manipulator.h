@@ -73,7 +73,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
     // The state of camera effects. Which is enabled/disabled and the
     // configuration parameters to tune it.
-    mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_);
+    mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_) =
+        mojom::EffectsConfig::New();
 
     // Path to DLC. Empty if DLC isn't available / ready.
     base::FilePath dlc_root_path GUARDED_BY(lock_);
