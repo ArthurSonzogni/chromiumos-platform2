@@ -34,12 +34,10 @@ namespace diagnostics {
 //   // Assume `Func()` is the mojo receiver interface in the executor.
 //   void Executor::Func(callback) {
 //     base::SequencedTaskRunnerHandle::Get()->PostTask(
-//         FROM_HERE,
-//         base::BindOnce(&Executor::FuncTask, weak_factory_.GetWeakPtr(),
-//                        std::move(callback)));
+//         FROM_HERE, base::BindOnce(&FuncTask, std::move(callback)));
 //   }
 //
-//   void Executor::FuncTask {
+//   void FuncTask(base::OnceCallback<void(mojom::XXXResultPtr)> callback) {
 //     auto delegate = std::make_unique<DelegateProcess>("seccomp.policy");
 //     auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
 //         std::move(callback), default error params);
@@ -49,7 +47,6 @@ namespace diagnostics {
 //         base::BindOnce(&GetDataCallback, std::move(cb),
 //         std::move(delegate)));
 //   }
-//
 class DelegateProcess : public SandboxedProcess {
  public:
   using SandboxedProcess::SandboxedProcess;

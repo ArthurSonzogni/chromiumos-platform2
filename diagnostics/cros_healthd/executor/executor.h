@@ -58,6 +58,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void GetUEFIPlatformSizeContent(
       GetUEFIPlatformSizeContentCallback callback) override;
   void GetLidAngle(GetLidAngleCallback callback) override;
+  void GetFingerprintFrame(
+      ash::cros_healthd::mojom::FingerprintCaptureType type,
+      GetFingerprintFrameCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If

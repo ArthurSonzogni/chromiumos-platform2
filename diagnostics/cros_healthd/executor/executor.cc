@@ -22,9 +22,11 @@
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
@@ -38,8 +40,15 @@ namespace mojom = ::ash::cros_healthd::mojom;
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 
+// Null capability for delegate process.
+constexpr uint64_t kNullCapability = 0;
+
 // All SECCOMP policies should live in this directory.
 constexpr char kSandboxDirPath[] = "/usr/share/policy/";
+
+// SECCOMP policy for fingerprint related routines.
+constexpr char kFingerprintSeccompPolicyPath[] = "fingerprint-seccomp.policy";
+constexpr char kFingerprintUserAndGroup[] = "healthd_fp";
 
 // SECCOMP policy for ectool pwmgetfanrpm:
 constexpr char kFanSpeedSeccompPolicyPath[] =
@@ -87,6 +96,9 @@ constexpr char kUEFISecureBootVarPath[] =
 // Path to the UEFI platform size file.
 constexpr char kUEFIPlatformSizeFile[] = "/sys/firmware/efi/fw_platform_size";
 
+// Error message when failing to launch delegate.
+constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
+
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
@@ -114,6 +126,34 @@ void ReadTrimFileAndReplyCallback(
   LOG_IF(ERROR, !ReadAndTrimString(file, &content))
       << "Failed to read or trim file: " << file;
   std::move(callback).Run(content);
+}
+
+void GetFingerprintFrameCallback(
+    base::OnceCallback<void(mojom::FingerprintFrameResultPtr,
+                            const std::optional<std::string>&)> callback,
+    std::unique_ptr<DelegateProcess> delegate,
+    mojom::FingerprintFrameResultPtr result,
+    const std::optional<std::string>& err) {
+  delegate.reset();
+  std::move(callback).Run(std::move(result), err);
+}
+
+void GetFingerprintFrameTask(
+    mojom::FingerprintCaptureType type,
+    base::OnceCallback<void(mojom::FingerprintFrameResultPtr,
+                            const std::optional<std::string>&)> callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
+
+  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      std::move(callback), mojom::FingerprintFrameResult::New(),
+      kFailToLaunchDelegate);
+  delegate->remote()->GetFingerprintFrame(
+      type, base::BindOnce(&GetFingerprintFrameCallback, std::move(cb),
+                           std::move(delegate)));
 }
 
 }  // namespace
@@ -432,6 +472,13 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
+                                   GetFingerprintFrameCallback callback) {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&GetFingerprintFrameTask, type, std::move(callback)));
 }
 
 void Executor::RunUntrackedBinary(

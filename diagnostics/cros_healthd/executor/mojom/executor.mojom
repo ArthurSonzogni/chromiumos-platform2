@@ -128,4 +128,16 @@ interface Executor {
   // * |result| - contains the angle between lid and base received from running
   //              the tool.
   GetLidAngle() => (ExecutedProcessResult result);
+
+  // Get fingerprint frame data with specific capture type. We only support
+  // testing related capture type.
+  //
+  // The request:
+  // * |type| - The capture type.
+  //
+  // The response:
+  // * |result| - Fingerprint frame result.
+  // * |err| - Error message if existed.
+  GetFingerprintFrame(FingerprintCaptureType type)
+      => (FingerprintFrameResult result, string? err);
 };

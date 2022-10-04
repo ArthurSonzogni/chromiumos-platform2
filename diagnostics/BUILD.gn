@@ -77,6 +77,7 @@ install_seccomp_policy("diagnostics_seccomp") {
     "cros_healthd/seccomp/${_arch}/ectool_i2cread-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/ectool_motionsense_lid_angle-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/fingerprint-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/iw-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/memtester-seccomp.policy",
     "init/${_arch}/cros_healthd-seccomp.policy",

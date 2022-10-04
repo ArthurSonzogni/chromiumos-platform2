@@ -59,6 +59,11 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (GetUEFIPlatformSizeContentCallback),
               (override));
   MOCK_METHOD(void, GetLidAngle, (GetLidAngleCallback), (override));
+  MOCK_METHOD(void,
+              GetFingerprintFrame,
+              (ash::cros_healthd::mojom::FingerprintCaptureType type,
+               GetFingerprintFrameCallback),
+              (override));
 };
 
 }  // namespace diagnostics
