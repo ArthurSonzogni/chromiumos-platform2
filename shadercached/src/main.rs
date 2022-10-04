@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@ use anyhow::Result;
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus_crossroads::Crossroads;
-use sys_util::{debug, error, info, syslog};
+use libchromeos::sys::{debug, error, info, syslog};
 use tokio::signal::unix::{signal, SignalKind};
 
 #[tokio::main]

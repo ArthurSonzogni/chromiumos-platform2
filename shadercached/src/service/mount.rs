@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,11 +10,11 @@ use crate::shader_cache_mount::*;
 
 use anyhow::{anyhow, Result};
 use dbus::{channel::Sender, nonblock::SyncConnection};
+use libchromeos::sys::{debug, error};
 use std::{
     process::{Command, Stdio},
     sync::Arc,
 };
-use sys_util::{debug, error};
 use system_api::shadercached::ShaderCacheMountStatus;
 
 fn is_mounted(path: &str) -> Result<bool> {

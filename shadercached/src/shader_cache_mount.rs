@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@ use crate::common::*;
 
 use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
+use libchromeos::sys::{debug, info};
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
@@ -13,7 +14,6 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use sys_util::{debug, info};
 use system_api::concierge_service::AddGroupPermissionMesaRequest;
 use tokio::sync::RwLock;
 

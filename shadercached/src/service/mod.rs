@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,10 @@ use mount::*;
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 use dbus::MethodErr;
+use libchromeos::sys::{debug, info, warn};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use sys_util::{debug, info, warn};
 use system_api::concierge_service::{GetVmGpuCachePathRequest, GetVmGpuCachePathResponse};
 use system_api::dlcservice::DlcState;
 use system_api::shadercached::{InstallRequest, UninstallRequest};
