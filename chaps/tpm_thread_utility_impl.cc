@@ -213,18 +213,6 @@ bool TPMThreadUtilityImpl::LoadKey(int slot,
   return result;
 }
 
-bool TPMThreadUtilityImpl::LoadKeyWithParent(
-    int slot,
-    const std::string& key_blob,
-    const brillo::SecureBlob& auth_data,
-    int parent_key_handle,
-    int* key_handle) {
-  bool result;
-  SendRequestAndWaitResult(&TPMUtility::LoadKeyWithParent, &result, slot,
-                           key_blob, auth_data, parent_key_handle, key_handle);
-  return result;
-}
-
 void TPMThreadUtilityImpl::UnloadKeysForSlot(int slot) {
   SendRequestAndWait(&TPMUtility::UnloadKeysForSlot, slot);
 }

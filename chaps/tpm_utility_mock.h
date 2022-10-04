@@ -63,9 +63,6 @@ class TPMUtilityMock : public TPMUtility {
                     int*));
   MOCK_METHOD4(LoadKey,
                bool(int, const std::string&, const brillo::SecureBlob&, int*));
-  MOCK_METHOD5(
-      LoadKeyWithParent,
-      bool(int, const std::string&, const brillo::SecureBlob&, int, int*));
   MOCK_METHOD1(UnloadKeysForSlot, void(int));
   MOCK_METHOD3(Bind, bool(int, const std::string&, std::string*));
   MOCK_METHOD3(Unbind, bool(int, const std::string&, std::string*));

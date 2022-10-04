@@ -125,19 +125,6 @@ class TPM2UtilityTest : public testing::Test {
   NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility_;
 };
 
-TEST(TPM2Utility_DeathTest, LoadKeyParentBadParent) {
-  trunks::TrunksFactoryForTest factory;
-  TPM2UtilityImpl utility(&factory);
-  std::string key_blob;
-  SecureBlob auth_data;
-  int key_handle;
-  int parent_handle = 42;
-  EXPECT_DEATH_IF_SUPPORTED(
-      utility.LoadKeyWithParent(1, key_blob, auth_data, parent_handle,
-                                &key_handle),
-      "Check failed");
-}
-
 TEST_F(TPM2UtilityTest, InitSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
@@ -477,44 +464,6 @@ TEST_F(TPM2UtilityTest, LoadKeyFail) {
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.LoadKey(1, key_blob, auth_data, &key_handle));
-}
-
-TEST_F(TPM2UtilityTest, LoadKeyParentSuccess) {
-  TPM2UtilityImpl utility(factory_.get());
-  std::string key_blob;
-  SecureBlob auth_data;
-  int key_handle;
-  int parent_handle = kStorageRootKey;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.LoadKeyWithParent(1, key_blob, auth_data, parent_handle,
-                                        &key_handle));
-}
-
-TEST_F(TPM2UtilityTest, LoadKeyParentLoadFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  std::string key_blob;
-  SecureBlob auth_data;
-  int key_handle;
-  int parent_handle = kStorageRootKey;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.LoadKeyWithParent(1, key_blob, auth_data, parent_handle,
-                                         &key_handle));
-}
-
-TEST_F(TPM2UtilityTest, LoadKeyParentNameFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  std::string key_blob;
-  SecureBlob auth_data;
-  int key_handle = 32;
-  int parent_handle = kStorageRootKey;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_utility_, GetKeyName(key_handle, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.LoadKeyWithParent(1, key_blob, auth_data, parent_handle,
-                                         &key_handle));
 }
 
 TEST_F(TPM2UtilityTest, UnloadKeysTest) {

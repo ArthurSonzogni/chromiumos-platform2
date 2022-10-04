@@ -512,17 +512,7 @@ bool TPMUtilityImpl::LoadKey(int slot,
                              const SecureBlob& auth_data,
                              int* key_handle) {
   // Use the SRK as the parent. This is the normal case.
-  return LoadKeyWithParent(slot, key_blob, auth_data, srk_, key_handle);
-}
-
-bool TPMUtilityImpl::LoadKeyWithParent(int slot,
-                                       const string& key_blob,
-                                       const SecureBlob& auth_data,
-                                       int parent_key_handle,
-                                       int* key_handle) {
-  // Call the internal function.
-  return LoadKeyWithParentInternal(slot, key_blob, auth_data, parent_key_handle,
-                                   key_handle);
+  return LoadKeyWithParentInternal(slot, key_blob, auth_data, srk_, key_handle);
 }
 
 bool TPMUtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,

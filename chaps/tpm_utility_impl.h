@@ -80,11 +80,6 @@ class TPMUtilityImpl : public TPMUtility {
                const std::string& key_blob,
                const brillo::SecureBlob& auth_data,
                int* key_handle) override;
-  bool LoadKeyWithParent(int slot,
-                         const std::string& key_blob,
-                         const brillo::SecureBlob& auth_data,
-                         int parent_key_handle,
-                         int* key_handle) override;
   void UnloadKeysForSlot(int slot) override;
   bool Bind(int key_handle,
             const std::string& input,

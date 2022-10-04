@@ -168,20 +168,6 @@ class TPMUtility {
                        const brillo::SecureBlob& auth_data,
                        int* key_handle) = 0;
 
-  // Loads a key by blob into the TPM that has a parent key that is not the SRK.
-  //   slot - The slot associated with this key.
-  //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
-  //   auth_data - Authorization data for the key.
-  //   parent_key_handle - The key handle of the parent key.
-  //   key_handle - A handle to the loaded key. This will be valid until keys
-  //                are unloaded for the given slot.
-  // Returns true on success.
-  virtual bool LoadKeyWithParent(int slot,
-                                 const std::string& key_blob,
-                                 const brillo::SecureBlob& auth_data,
-                                 int parent_key_handle,
-                                 int* key_handle) = 0;
-
   // Unloads all keys loaded for a particular slot. All key handles for the
   // given slot will not be valid after this method returns.
   virtual void UnloadKeysForSlot(int slot) = 0;

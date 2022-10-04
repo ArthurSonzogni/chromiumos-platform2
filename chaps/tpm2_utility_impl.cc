@@ -642,15 +642,6 @@ bool TPM2UtilityImpl::LoadKey(int slot,
                                    key_handle);
 }
 
-bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
-                                        const std::string& key_blob,
-                                        const SecureBlob& auth_data,
-                                        int parent_key_handle,
-                                        int* key_handle) {
-  return LoadKeyWithParentInternal(slot, key_blob, auth_data, parent_key_handle,
-                                   key_handle);
-}
-
 void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
   for (const auto& it : slot_handles_[slot]) {
     FlushHandle(it);
