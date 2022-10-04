@@ -43,21 +43,6 @@ class TPMUtility {
   // Return the TPM version, as in TPMVersion::TPM1_2 or TPMVersion::TPM2_0.
   virtual TPMVersion GetTPMVersion() = 0;
 
-  // Authenticates a user by decrypting the user's root key with the user's
-  // authorization key.
-  //   auth_data - The user's authorization data (which is derived from the
-  //               the user's password).
-  //   auth_key_blob - The authorization key blob as provided by the TPM when
-  //                   the key was generated.
-  //   encrypted_root_key - The root key encrypted with the authorization
-  //                          key.
-  //   root_key - Will be populated with the decrypted root key.
-  // Returns true on success.
-  virtual bool Authenticate(const brillo::SecureBlob& auth_data,
-                            const std::string& auth_key_blob,
-                            const std::string& encrypted_root_key,
-                            brillo::SecureBlob* root_key) = 0;
-
   // Provides hardware-generated random data. Returns true on success.
   virtual bool GenerateRandom(int num_bytes, std::string* random_data) = 0;
 

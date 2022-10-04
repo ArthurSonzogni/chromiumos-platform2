@@ -108,29 +108,6 @@ class TestTPMUtility : public ::testing::Test {
   string blob_;
 };
 
-TEST_F(TestTPMUtility, Authenticate) {
-  EXPECT_TRUE(InjectKey());
-  // Setup for authentication.
-  string root = "root_key";
-  string encrypted_root;
-  EXPECT_TRUE(tpm_->Bind(key_, root, &encrypted_root));
-  // Successful authentication.
-  brillo::SecureBlob root2;
-  EXPECT_TRUE(tpm_->Authenticate(auth_, blob_, encrypted_root, &root2));
-  EXPECT_TRUE(root == root2.to_string());
-  tpm_->UnloadKeysForSlot(0);
-  // Change password.
-  unsigned char random[20];
-  RAND_bytes(random, 20);
-  brillo::SecureBlob auth2(std::begin(random), std::end(random));
-  string blob2;
-  tpm_->UnloadKeysForSlot(0);
-  // Authenticate with new password.
-  EXPECT_TRUE(tpm_->Authenticate(auth2, blob2, encrypted_root, &root2));
-  EXPECT_TRUE(root == root2.to_string());
-  tpm_->UnloadKeysForSlot(0);
-}
-
 TEST_F(TestTPMUtility, Random) {
   string r;
   EXPECT_TRUE(tpm_->GenerateRandom(128, &r));
@@ -165,7 +142,6 @@ TEST_F(TestTPMUtility, BadAuthSize) {
   string root("root"), encrypted;
   EXPECT_TRUE(tpm_->Bind(key_, root, &encrypted));
   tpm_->UnloadKeysForSlot(0);
-  EXPECT_FALSE(tpm_->Authenticate(bad, blob_, encrypted, &tmp));
   EXPECT_FALSE(tpm_->GenerateRSAKey(0, size_, e_, bad, &blob_, &key_));
   tpm_->UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_->LoadKey(0, blob_, bad, &key_));

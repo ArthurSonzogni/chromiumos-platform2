@@ -184,40 +184,6 @@ TEST_F(TPM2UtilityTest, IsTPMAvailable) {
   EXPECT_TRUE(utility.IsTPMAvailable());
 }
 
-TEST_F(TPM2UtilityTest, AuthenticateSuccess) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob auth_data;
-  SecureBlob new_root_key;
-  std::string key_blob;
-  std::string encrypted_root;
-  EXPECT_TRUE(
-      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
-}
-
-TEST_F(TPM2UtilityTest, AuthenticateLoadFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob auth_data;
-  SecureBlob new_root_key;
-  std::string key_blob;
-  std::string encrypted_root;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(
-      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
-}
-
-TEST_F(TPM2UtilityTest, AuthenticateUnbindFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob auth_data;
-  SecureBlob new_root_key;
-  std::string key_blob;
-  std::string encrypted_root;
-  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(
-      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
-}
-
 TEST_F(TPM2UtilityTest, GenerateRandomSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int num_bytes = 20;

@@ -109,16 +109,6 @@ bool TPMThreadUtilityImpl::IsTPMAvailable() {
   return result;
 }
 
-bool TPMThreadUtilityImpl::Authenticate(const brillo::SecureBlob& auth_data,
-                                        const std::string& auth_key_blob,
-                                        const std::string& encrypted_root_key,
-                                        brillo::SecureBlob* root_key) {
-  bool result;
-  SendRequestAndWaitResult(&TPMUtility::Authenticate, &result, auth_data,
-                           auth_key_blob, encrypted_root_key, root_key);
-  return result;
-}
-
 bool TPMThreadUtilityImpl::GenerateRandom(int num_bytes,
                                           std::string* random_data) {
   bool result;

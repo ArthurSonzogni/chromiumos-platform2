@@ -35,10 +35,6 @@ class TPMThreadUtilityImpl : public AsyncTPMUtility {
   // These functions need to be called on the TPM thread.
   bool Init() override;
   bool IsTPMAvailable() override;
-  bool Authenticate(const brillo::SecureBlob& auth_data,
-                    const std::string& auth_key_blob,
-                    const std::string& encrypted_root_key,
-                    brillo::SecureBlob* root_key) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
   bool GenerateRSAKey(int slot,
                       int modulus_bits,

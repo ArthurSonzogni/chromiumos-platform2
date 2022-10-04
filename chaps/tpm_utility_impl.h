@@ -40,10 +40,6 @@ class TPMUtilityImpl : public TPMUtility {
   bool Init() override;
   bool IsTPMAvailable() override;
   TPMVersion GetTPMVersion() override;
-  bool Authenticate(const brillo::SecureBlob& auth_data,
-                    const std::string& auth_key_blob,
-                    const std::string& encrypted_root_key,
-                    brillo::SecureBlob* root_key) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
   bool GenerateRSAKey(int slot,
                       int modulus_bits,
@@ -120,6 +116,20 @@ class TPMUtilityImpl : public TPMUtility {
     brillo::SecureBlob auth_data;
   };
 
+  // Authenticates a user by decrypting the user's root key with the user's
+  // authorization key.
+  //   auth_data - The user's authorization data (which is derived from the
+  //               the user's password).
+  //   auth_key_blob - The authorization key blob as provided by the TPM when
+  //                   the key was generated.
+  //   encrypted_root_key - The root key encrypted with the authorization
+  //                          key.
+  //   root_key - Will be populated with the decrypted root key.
+  // Returns true on success.
+  bool Authenticate(const brillo::SecureBlob& auth_data,
+                    const std::string& auth_key_blob,
+                    const std::string& encrypted_root_key,
+                    brillo::SecureBlob* root_key);
   // std::nullopt slot means anonymous slot.
   int CreateHandle(std::optional<int> slot,
                    TSS_HKEY key,

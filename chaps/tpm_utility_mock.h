@@ -26,11 +26,6 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(IsTPMAvailable, bool());
   MOCK_METHOD0(GetTPMVersion, TPMVersion());
-  MOCK_METHOD4(Authenticate,
-               bool(const brillo::SecureBlob&,
-                    const std::string&,
-                    const std::string&,
-                    brillo::SecureBlob*));
   MOCK_METHOD2(GenerateRandom, bool(int, std::string*));
   MOCK_METHOD6(GenerateRSAKey,
                bool(int,

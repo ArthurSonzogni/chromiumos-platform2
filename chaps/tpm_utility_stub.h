@@ -28,13 +28,6 @@ class TPMUtilityStub : public TPMUtility {
 
   TPMVersion GetTPMVersion() override { return TPMVersion::TPM1_2; }
 
-  bool Authenticate(const brillo::SecureBlob& auth_data,
-                    const std::string& auth_key_blob,
-                    const std::string& encrypted_root_key,
-                    brillo::SecureBlob* root_key) override {
-    return false;
-  }
-
   bool GenerateRandom(int num_bytes, std::string* random_data) override {
     return false;
   }
