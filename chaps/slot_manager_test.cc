@@ -44,7 +44,6 @@ namespace chaps {
 namespace {
 
 const char kAuthData[] = "000000";
-const char kNewAuthData[] = "111111";
 const char kDefaultPubExp[] = {1, 0, 1};
 const int kDefaultPubExpSize = 3;
 const char kTokenLabel[] = "test_label";
@@ -94,11 +93,6 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                          Sha1(MakeBlob(kAuthData)), _))
       .WillRepeatedly(
           DoAll(SetArgPointee<3>(MakeBlob("root_key")), Return(true)));
-  EXPECT_CALL(*tpm, ChangeAuthData(Sha1(MakeBlob(kAuthData)),
-                                   Sha1(MakeBlob(kNewAuthData)),
-                                   string("auth_key_blob"), _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<3>(string("new_auth_key_blob")), Return(true)));
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(string("root_key")), Return(true)));
@@ -335,11 +329,6 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
                                        MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
-  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
-      FilePath("some_path"), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
-  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
-                                                 MakeBlob(kAuthData),
-                                                 MakeBlob(kNewAuthData)));
   // Logout with an unknown path.
   EXPECT_FALSE(
       slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path")));
@@ -360,10 +349,6 @@ TEST_F(TestSlotManager, ManyLoadToken) {
     int slot_id = 0;
     EXPECT_TRUE(slot_manager_->LoadToken(
         ic_, FilePath(path), MakeBlob(kAuthData), kTokenLabel, &slot_id));
-    EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
-        FilePath(path), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
-    EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
-        FilePath(path + "_"), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
   }
   for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
@@ -764,69 +749,6 @@ TEST_F(SoftwareOnlyTest, Unload) {
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));
   EXPECT_TRUE(slot_manager_->UnloadToken(ic_, kTestTokenPath));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuth) {
-  InitializeObjectPoolBlobs();
-  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
-  int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
-                                       kTokenLabel, &slot_id));
-  EXPECT_EQ(0, delete_all_num_calls_);
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuthWhileLoaded) {
-  InitializeObjectPoolBlobs();
-  int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
-                                       kTokenLabel, &slot_id));
-  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
-  slot_manager_->UnloadToken(ic_, kTestTokenPath);
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
-                                       kTokenLabel, &slot_id));
-  EXPECT_EQ(0, delete_all_num_calls_);
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuthBeforeInit) {
-  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
-  // At this point we expect the token to still not exist.
-  int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
-                                       kTokenLabel, &slot_id));
-  EXPECT_EQ(0, delete_all_num_calls_);
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
-  InitializeObjectPoolBlobs();
-  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob("bad"), MakeBlob("new")));
-  int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
-                                       kTokenLabel, &slot_id));
-  EXPECT_EQ(0, delete_all_num_calls_);
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptRootKey) {
-  InitializeObjectPoolBlobs();
-  pool_blobs_[kEncryptedRootKey] = "bad";
-  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
-  EXPECT_EQ("bad", pool_blobs_[kEncryptedRootKey]);
-}
-
-TEST_F(SoftwareOnlyTest, ChangeAuthWithWriteErrors) {
-  InitializeObjectPoolBlobs();
-  pool_write_result_ = false;
-  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
-      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
-  pool_write_result_ = true;
-  int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
-                                       kTokenLabel, &slot_id));
-  EXPECT_EQ(0, delete_all_num_calls_);
 }
 
 }  // namespace chaps

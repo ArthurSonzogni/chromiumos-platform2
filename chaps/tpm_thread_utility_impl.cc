@@ -119,17 +119,6 @@ bool TPMThreadUtilityImpl::Authenticate(const brillo::SecureBlob& auth_data,
   return result;
 }
 
-bool TPMThreadUtilityImpl::ChangeAuthData(
-    const brillo::SecureBlob& old_auth_data,
-    const brillo::SecureBlob& new_auth_data,
-    const std::string& old_auth_key_blob,
-    std::string* new_auth_key_blob) {
-  bool result;
-  SendRequestAndWaitResult(&TPMUtility::ChangeAuthData, &result, old_auth_data,
-                           new_auth_data, old_auth_key_blob, new_auth_key_blob);
-  return result;
-}
-
 bool TPMThreadUtilityImpl::GenerateRandom(int num_bytes,
                                           std::string* random_data) {
   bool result;

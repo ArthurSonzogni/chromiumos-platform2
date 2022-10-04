@@ -308,58 +308,6 @@ bool TPMUtilityImpl::Authenticate(const SecureBlob& auth_data,
   return true;
 }
 
-bool TPMUtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
-                                    const SecureBlob& new_auth_data,
-                                    const string& old_auth_key_blob,
-                                    string* new_auth_key_blob) {
-  VLOG(1) << "TPMUtilityImpl::ChangeAuthData enter";
-  int key_handle = 0;
-  if (!LoadKeyWithParentInternal(std::nullopt, old_auth_key_blob, old_auth_data,
-                                 srk_, &key_handle))
-    return false;
-  // Make sure the old auth data is ok.
-  string encrypted, decrypted;
-  if (!Bind(key_handle, "testdata", &encrypted)) {
-    FlushHandle(key_handle);
-    return false;
-  }
-  if (!Unbind(key_handle, encrypted, &decrypted)) {
-    FlushHandle(key_handle);
-    return false;
-  }
-  // Change the secret.
-  TSS_RESULT result = TSS_SUCCESS;
-  ScopedTssPolicy policy(tsp_context_);
-  result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
-                                     TSS_POLICY_USAGE, policy.ptr());
-  if (result != TSS_SUCCESS) {
-    FlushHandle(key_handle);
-    LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
-    return false;
-  }
-  result =
-      Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_SHA1, new_auth_data.size(),
-                            const_cast<BYTE*>(new_auth_data.data()));
-  if (result != TSS_SUCCESS) {
-    FlushHandle(key_handle);
-    LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
-    return false;
-  }
-  result = Tspi_ChangeAuth(GetTssHandle(key_handle), srk_, policy.release());
-  if (result != TSS_SUCCESS) {
-    FlushHandle(key_handle);
-    LOG(ERROR) << "Tspi_ChangeAuth - " << ResultToString(result);
-    return false;
-  }
-  if (!GetKeyBlob(GetTssHandle(key_handle), new_auth_key_blob)) {
-    FlushHandle(key_handle);
-    return false;
-  }
-  VLOG(1) << "TPMUtilityImpl::ChangeAuthData success";
-  FlushHandle(key_handle);
-  return true;
-}
-
 bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
   VLOG(1) << "TPMUtilityImpl::GenerateRandom enter";
   if (!InitSRK())

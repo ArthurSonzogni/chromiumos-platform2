@@ -231,39 +231,6 @@ TEST_F(TPM2UtilityTest, AuthenticateUnbindFail) {
       utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
 }
 
-TEST_F(TPM2UtilityTest, ChangeAuthDataSuccess) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob old_auth;
-  SecureBlob new_auth;
-  std::string old_blob;
-  std::string new_blob;
-  EXPECT_CALL(mock_tpm_utility_, ChangeKeyAuthorizationData(_, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
-}
-
-TEST_F(TPM2UtilityTest, ChangeAuthDataLoadFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob old_auth;
-  SecureBlob new_auth;
-  std::string old_blob;
-  std::string new_blob;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
-}
-
-TEST_F(TPM2UtilityTest, ChangeAuthDataChangeAuthFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob old_auth;
-  SecureBlob new_auth;
-  std::string old_blob;
-  std::string new_blob;
-  EXPECT_CALL(mock_tpm_utility_, ChangeKeyAuthorizationData(_, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
-}
-
 TEST_F(TPM2UtilityTest, GenerateRandomSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int num_bytes = 20;

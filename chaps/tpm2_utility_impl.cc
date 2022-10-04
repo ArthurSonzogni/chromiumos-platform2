@@ -419,39 +419,6 @@ bool TPM2UtilityImpl::Authenticate(const SecureBlob& auth_data,
   return true;
 }
 
-bool TPM2UtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
-                                     const SecureBlob& new_auth_data,
-                                     const std::string& old_auth_key_blob,
-                                     std::string* new_auth_key_blob) {
-  int key_handle = 0;
-  if (new_auth_data.size() > SHA256_DIGEST_SIZE) {
-    LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
-    return false;
-  }
-  if (!LoadKeyWithParentInternal(std::nullopt, old_auth_key_blob, old_auth_data,
-                                 kStorageRootKey, &key_handle)) {
-    LOG(ERROR) << "Error loading key under old authorization data.";
-    return false;
-  }
-  ScopedSession session_scope(factory_, &session_);
-  if (!session_) {
-    FlushHandle(key_handle);
-    return false;
-  }
-  session_->SetEntityAuthorizationValue(old_auth_data.to_string());
-  TPM_RC result = trunks_tpm_utility_->ChangeKeyAuthorizationData(
-      key_handle, new_auth_data.to_string(), session_->GetDelegate(),
-      new_auth_key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error changing authorization data: "
-               << trunks::GetErrorString(result);
-    FlushHandle(key_handle);
-    return false;
-  }
-  FlushHandle(key_handle);
-  return true;
-}
-
 bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
   TPM_RC result =
       trunks_tpm_utility_->GenerateRandom(num_bytes, nullptr, random_data);

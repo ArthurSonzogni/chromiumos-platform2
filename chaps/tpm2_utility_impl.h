@@ -54,10 +54,6 @@ class TPM2UtilityImpl : public TPMUtility {
                     const std::string& auth_key_blob,
                     const std::string& encrypted_root_key,
                     brillo::SecureBlob* root_key) override;
-  bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
-                      const brillo::SecureBlob& new_auth_data,
-                      const std::string& old_auth_key_blob,
-                      std::string* new_auth_key_blob) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
   bool StirRandom(const std::string& entropy_data) override;
   bool GenerateRSAKey(int slot,

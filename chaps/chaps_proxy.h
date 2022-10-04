@@ -47,9 +47,6 @@ class EXPORT_SPEC ChapsProxyImpl : public ChapsInterface {
                  uint64_t* slot_id);
   bool UnloadToken(const brillo::SecureBlob& isolate_credential,
                    const std::string& path);
-  bool ChangeTokenAuthData(const std::string& path,
-                           const brillo::SecureBlob& old_auth_data,
-                           const brillo::SecureBlob& new_auth_data);
   bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
                     uint64_t slot_id,
                     std::string* path);

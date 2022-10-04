@@ -38,9 +38,6 @@ void PrintHelp() {
       " : Loads the token at the given path.\n");
   printf("  --unload --path=<path> : Unloads the token at the given path.\n");
   printf(
-      "  --change_auth --path=<path> --auth=<old_auth> --new_auth=<new_auth>"
-      " : Changes authorization data for the token at the given path.\n");
-  printf(
       "  --set_log_level=<level> : Sets the chapsd logging level.\n"
       "    Levels: \n      2 - Errors Only\n      1 - Warnings and Errors\n"
       "      0 - Normal\n     -1 - Verbose (Logs PKCS #11 calls.)\n"
@@ -87,22 +84,6 @@ int UnloadToken(const string& path) {
     return -1;
   }
   LOG(INFO) << "Sent Event: Logout: " << path;
-  return 0;
-}
-
-// Changes authorization data for a token at the given path.
-int ChangeAuthData(const string& path,
-                   const string& auth_old,
-                   const string& auth_new) {
-  chaps::TokenManagerClient client;
-  if (client.ChangeTokenAuthData(
-          FilePath(path), SecureBlob(auth_old.begin(), auth_old.end()),
-          SecureBlob(auth_new.begin(), auth_new.end())) == false) {
-    LOG(ERROR) << "Sent Event: Change Authorization Data: " << path
-               << " failed";
-    return -1;
-  }
-  LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
   return 0;
 }
 
@@ -154,13 +135,11 @@ int main(int argc, char** argv) {
   bool load =
       (cl->HasSwitch("load") && cl->HasSwitch("path") && cl->HasSwitch("auth"));
   bool unload = cl->HasSwitch("unload") && cl->HasSwitch("path");
-  bool change_auth = (cl->HasSwitch("change_auth") && cl->HasSwitch("path") &&
-                      cl->HasSwitch("auth") && cl->HasSwitch("new_auth"));
   bool set_log_level = cl->HasSwitch("set_log_level");
   bool list = cl->HasSwitch("list");
   int result = 0;
 
-  if (ping + load + unload + change_auth + set_log_level + list != 1) {
+  if (ping + load + unload + set_log_level + list != 1) {
     PrintHelp();
     exit(-1);
   }
@@ -172,10 +151,6 @@ int main(int argc, char** argv) {
       label = cl->GetSwitchValueASCII("label");
     result = LoadToken(cl->GetSwitchValueASCII("path"),
                        cl->GetSwitchValueASCII("auth"), label);
-  } else if (change_auth) {
-    result = ChangeAuthData(cl->GetSwitchValueASCII("path"),
-                            cl->GetSwitchValueASCII("auth"),
-                            cl->GetSwitchValueASCII("new_auth"));
   } else if (unload) {
     result = UnloadToken(cl->GetSwitchValueASCII("path"));
   } else if (set_log_level) {

@@ -31,11 +31,6 @@ class TPMUtilityMock : public TPMUtility {
                     const std::string&,
                     const std::string&,
                     brillo::SecureBlob*));
-  MOCK_METHOD4(ChangeAuthData,
-               bool(const brillo::SecureBlob&,
-                    const brillo::SecureBlob&,
-                    const std::string&,
-                    std::string*));
   MOCK_METHOD2(GenerateRandom, bool(int, std::string*));
   MOCK_METHOD1(StirRandom, bool(const std::string&));
   MOCK_METHOD6(GenerateRSAKey,

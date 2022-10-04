@@ -124,7 +124,6 @@ TEST_F(TestTPMUtility, Authenticate) {
   RAND_bytes(random, 20);
   brillo::SecureBlob auth2(std::begin(random), std::end(random));
   string blob2;
-  EXPECT_TRUE(tpm_->ChangeAuthData(auth_, auth2, blob_, &blob2));
   tpm_->UnloadKeysForSlot(0);
   // Authenticate with new password.
   EXPECT_TRUE(tpm_->Authenticate(auth2, blob2, encrypted_root, &root2));

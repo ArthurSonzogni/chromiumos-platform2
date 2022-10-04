@@ -28,10 +28,6 @@ class TokenManagerClientMock : public TokenManagerClient {
                     int*));
   MOCK_METHOD2(UnloadToken,
                bool(const brillo::SecureBlob&, const base::FilePath&));
-  MOCK_METHOD3(ChangeTokenAuthData,
-               bool(const base::FilePath&,
-                    const brillo::SecureBlob&,
-                    const brillo::SecureBlob&));
   MOCK_METHOD3(GetTokenPath,
                bool(const brillo::SecureBlob&, int, base::FilePath*));
   MOCK_METHOD2(GetTokenList,

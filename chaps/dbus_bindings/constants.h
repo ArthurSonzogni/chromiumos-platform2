@@ -15,7 +15,6 @@ inline constexpr char kOpenIsolateMethod[] = "OpenIsolate";
 inline constexpr char kCloseIsolateMethod[] = "CloseIsolate";
 inline constexpr char kLoadTokenMethod[] = "LoadToken";
 inline constexpr char kUnloadTokenMethod[] = "UnloadToken";
-inline constexpr char kChangeTokenAuthDataMethod[] = "ChangeTokenAuthData";
 inline constexpr char kGetTokenPathMethod[] = "GetTokenPath";
 inline constexpr char kSetLogLevelMethod[] = "SetLogLevel";
 inline constexpr char kGetSlotListMethod[] = "GetSlotList";

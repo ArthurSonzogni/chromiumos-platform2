@@ -58,13 +58,6 @@ class TPMUtility {
                             const std::string& encrypted_root_key,
                             brillo::SecureBlob* root_key) = 0;
 
-  // Changes authorization data for a user's authorization key. Returns true on
-  // success.
-  virtual bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
-                              const brillo::SecureBlob& new_auth_data,
-                              const std::string& old_auth_key_blob,
-                              std::string* new_auth_key_blob) = 0;
-
   // Provides hardware-generated random data. Returns true on success.
   virtual bool GenerateRandom(int num_bytes, std::string* random_data) = 0;
 

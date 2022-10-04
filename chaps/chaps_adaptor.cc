@@ -49,9 +49,6 @@ void ChapsAdaptor::RegisterAsync(
                                     &ChapsAdaptor::LoadToken);
   interface->AddSimpleMethodHandler(kUnloadTokenMethod, base::Unretained(this),
                                     &ChapsAdaptor::UnloadToken);
-  interface->AddSimpleMethodHandler(kChangeTokenAuthDataMethod,
-                                    base::Unretained(this),
-                                    &ChapsAdaptor::ChangeTokenAuthData);
   interface->AddSimpleMethodHandler(kGetTokenPathMethod, base::Unretained(this),
                                     &ChapsAdaptor::GetTokenPath);
   interface->AddSimpleMethodHandler(kSetLogLevelMethod, base::Unretained(this),
@@ -260,17 +257,6 @@ void ChapsAdaptor::UnloadToken(const brillo::SecureVector& isolate_credential,
 
   *result =
       token_manager_->UnloadToken(isolate_credential_blob, FilePath(path));
-}
-
-void ChapsAdaptor::ChangeTokenAuthData(
-    const string& path,
-    const brillo::SecureVector& old_auth_data,
-    const brillo::SecureVector& new_auth_data,
-    bool* result) {
-  VLOG(1) << "CALL: " << __func__;
-  *result = token_manager_->ChangeTokenAuthData(
-      FilePath(path), SecureBlob(old_auth_data.begin(), old_auth_data.end()),
-      SecureBlob(new_auth_data.begin(), new_auth_data.end()));
 }
 
 void ChapsAdaptor::GetTokenPath(const brillo::SecureVector& isolate_credential,

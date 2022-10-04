@@ -35,13 +35,6 @@ class TPMUtilityStub : public TPMUtility {
     return false;
   }
 
-  bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
-                      const brillo::SecureBlob& new_auth_data,
-                      const std::string& old_auth_key_blob,
-                      std::string* new_auth_key_blob) override {
-    return false;
-  }
-
   bool GenerateRandom(int num_bytes, std::string* random_data) override {
     return false;
   }

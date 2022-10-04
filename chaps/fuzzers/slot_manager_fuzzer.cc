@@ -45,7 +45,6 @@ enum class TokenManagerInterfaceRequest {
   kCloseIsolate,
   kLoadToken,
   kUnloadToken,
-  kChangeTokenAuthData,
   kGetTokenPath,
   kMaxValue = kGetTokenPath,
 };
@@ -247,15 +246,6 @@ class SlotManagerFuzzer {
       case TokenManagerInterfaceRequest::kUnloadToken: {
         auto path = tmp_dir_.GetPath();
         slot_manager_->UnloadToken(isolate_credential, path);
-        break;
-      }
-      case TokenManagerInterfaceRequest::kChangeTokenAuthData: {
-        auto path = tmp_dir_.GetPath();
-        auto old_auth_data =
-            brillo::SecureBlob(ConsumeLowEntropyRandomLengthString(10));
-        auto new_auth_data =
-            brillo::SecureBlob(ConsumeLowEntropyRandomLengthString(10));
-        slot_manager_->ChangeTokenAuthData(path, old_auth_data, new_auth_data);
         break;
       }
       case TokenManagerInterfaceRequest::kGetTokenPath: {

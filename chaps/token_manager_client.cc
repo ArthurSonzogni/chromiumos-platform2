@@ -90,18 +90,6 @@ bool TokenManagerClient::UnloadToken(const SecureBlob& isolate_credential,
   return result;
 }
 
-bool TokenManagerClient::ChangeTokenAuthData(const FilePath& path,
-                                             const SecureBlob& old_auth_data,
-                                             const SecureBlob& new_auth_data) {
-  if (!Connect()) {
-    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
-    return false;
-  }
-  bool result =
-      proxy_->ChangeTokenAuthData(path.value(), old_auth_data, new_auth_data);
-  return result;
-}
-
 bool TokenManagerClient::GetTokenPath(const SecureBlob& isolate_credential,
                                       int slot_id,
                                       FilePath* path) {
