@@ -207,15 +207,6 @@ void TPMThreadUtilityImpl::UnloadKeysForSlot(int slot) {
   SendRequestAndWait(&TPMUtility::UnloadKeysForSlot, slot);
 }
 
-bool TPMThreadUtilityImpl::Bind(int key_handle,
-                                const std::string& input,
-                                std::string* output) {
-  bool result;
-  SendRequestAndWaitResult(&TPMUtility::Bind, &result, key_handle, input,
-                           output);
-  return result;
-}
-
 bool TPMThreadUtilityImpl::Unbind(int key_handle,
                                   const std::string& input,
                                   std::string* output) {

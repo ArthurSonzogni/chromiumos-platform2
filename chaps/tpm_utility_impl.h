@@ -77,9 +77,6 @@ class TPMUtilityImpl : public TPMUtility {
                const brillo::SecureBlob& auth_data,
                int* key_handle) override;
   void UnloadKeysForSlot(int slot) override;
-  bool Bind(int key_handle,
-            const std::string& input,
-            std::string* output) override;
   bool Unbind(int key_handle,
               const std::string& input,
               std::string* output) override;
@@ -130,6 +127,17 @@ class TPMUtilityImpl : public TPMUtility {
                     const std::string& auth_key_blob,
                     const std::string& encrypted_root_key,
                     brillo::SecureBlob* root_key);
+  // Performs a 'bind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
+  // effectively performs PKCS #1 v1.5 RSA encryption (using PKCS #1 'type 2'
+  // padding).
+  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey, or
+  //                GenerateKey.
+  //   input - Data to be encrypted. The length of this data must not exceed
+  //           'N - 11' where N is the length in bytes of the RSA key modulus.
+  //   output - The encrypted data. The length will always match the length of
+  //            the RSA key modulus.
+  // Returns true on success.
+  bool Bind(int key_handle, const std::string& input, std::string* output);
   // std::nullopt slot means anonymous slot.
   int CreateHandle(std::optional<int> slot,
                    TSS_HKEY key,

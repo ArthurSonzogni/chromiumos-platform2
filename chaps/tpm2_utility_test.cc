@@ -456,21 +456,6 @@ TEST_F(TPM2UtilityTest, UnloadKeysTest) {
   EXPECT_TRUE(slot2_set.find(key_handle3) != slot2_set.end());
 }
 
-TEST_F(TPM2UtilityTest, BindSuccess) {
-  TPM2UtilityImpl utility(factory_.get());
-  int key_handle = 43;
-  std::string input("input");
-  std::string output;
-
-  trunks::TPMT_PUBLIC public_data;
-  public_data.type = trunks::TPM_ALG_RSA;
-  public_data.parameters.rsa_detail.exponent = 0x10001;
-  public_data.unique.rsa = GetValidRSAPublicKey();
-  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
-      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.Bind(key_handle, input, &output));
-}
-
 TEST_F(TPM2UtilityTest, UnbindSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;

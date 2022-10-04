@@ -91,12 +91,6 @@ class TPMUtilityStub : public TPMUtility {
 
   void UnloadKeysForSlot(int slot) override {}
 
-  bool Bind(int key_handle,
-            const std::string& input,
-            std::string* output) override {
-    return false;
-  }
-
   bool Unbind(int key_handle,
               const std::string& input,
               std::string* output) override {

@@ -157,20 +157,6 @@ class TPMUtility {
   // given slot will not be valid after this method returns.
   virtual void UnloadKeysForSlot(int slot) = 0;
 
-  // Performs a 'bind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
-  // effectively performs PKCS #1 v1.5 RSA encryption (using PKCS #1 'type 2'
-  // padding).
-  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey, or
-  //                GenerateKey.
-  //   input - Data to be encrypted. The length of this data must not exceed
-  //           'N - 11' where N is the length in bytes of the RSA key modulus.
-  //   output - The encrypted data. The length will always match the length of
-  //            the RSA key modulus.
-  // Returns true on success.
-  virtual bool Bind(int key_handle,
-                    const std::string& input,
-                    std::string* output) = 0;
-
   // Performs a 'unbind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
   // padding).

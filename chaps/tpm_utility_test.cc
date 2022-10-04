@@ -72,12 +72,8 @@ class TestTPMUtility : public ::testing::Test {
     string e, n;
     EXPECT_TRUE(tpm_->GetRSAPublicKey(key_, &e, &n));
     EXPECT_EQ(n.length() * 8, size_);
-    string input("input"), encrypted;
-    EXPECT_TRUE(tpm_->Bind(key_, input, &encrypted));
-    string input2;
-    EXPECT_TRUE(tpm_->Unbind(key_, encrypted, &input2));
-    EXPECT_TRUE(input == input2);
     string signature;
+    string input("input");
     EXPECT_TRUE(tpm_->Sign(key_, CKM_RSA_PKCS, "", input, &signature));
   }
 
@@ -139,8 +135,6 @@ TEST_F(TestTPMUtility, BadAuthSize) {
   EXPECT_TRUE(InjectKey());
   brillo::SecureBlob bad(48);
   brillo::SecureBlob tmp;
-  string root("root"), encrypted;
-  EXPECT_TRUE(tpm_->Bind(key_, root, &encrypted));
   tpm_->UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_->GenerateRSAKey(0, size_, e_, bad, &blob_, &key_));
   tpm_->UnloadKeysForSlot(0);
@@ -157,13 +151,8 @@ TEST_F(TestTPMUtility, BadKeyHandle) {
 }
 
 TEST_F(TestTPMUtility, BadInput) {
-  const int max_plain = (size_ / 8) - 11;
-  const int expected_encrypted = (size_ / 8);
   EXPECT_TRUE(InjectKey());
   string out;
-  EXPECT_FALSE(tpm_->Bind(key_, string(max_plain + 1, 'a'), &out));
-  EXPECT_TRUE(tpm_->Bind(key_, string(max_plain, 'a'), &out));
-  EXPECT_EQ(expected_encrypted, out.length());
   EXPECT_FALSE(tpm_->Unbind(key_, out + string(1, 'a'), &out));
   tpm_->UnloadKeysForSlot(0);
 }

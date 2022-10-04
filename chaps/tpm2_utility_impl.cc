@@ -680,35 +680,6 @@ crypto::ScopedRSA TPM2UtilityImpl::KeyToScopedRsa(int key_handle) {
   return NumberToScopedRsa(modulus, exponent);
 }
 
-bool TPM2UtilityImpl::Bind(int key_handle,
-                           const std::string& input,
-                           std::string* output) {
-  CHECK(output);
-
-  crypto::ScopedRSA rsa = KeyToScopedRsa(key_handle);
-  if (!rsa) {
-    LOG(ERROR) << "Failed to convert TPM key to Public RSA object.";
-    return false;
-  }
-
-  if (input.size() > RSA_size(rsa.get()) - 11) {
-    LOG(ERROR) << "Encryption plaintext is longer than RSA modulus.";
-    return false;
-  }
-
-  // RSA encrypt output should be size of the modulus.
-  output->resize(RSA_size(rsa.get()));
-  int rsa_result = RSA_public_encrypt(
-      input.size(), reinterpret_cast<const unsigned char*>(input.data()),
-      reinterpret_cast<unsigned char*>(std::data(*output)), rsa.get(),
-      RSA_PKCS1_PADDING);
-  if (rsa_result == -1) {
-    LOG(ERROR) << "Error performing RSA_public_encrypt.";
-    return false;
-  }
-  return true;
-}
-
 bool TPM2UtilityImpl::Unbind(int key_handle,
                              const std::string& input,
                              std::string* output) {

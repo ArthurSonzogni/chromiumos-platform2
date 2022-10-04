@@ -72,9 +72,6 @@ class TPMThreadUtilityImpl : public AsyncTPMUtility {
                const brillo::SecureBlob& auth_data,
                int* key_handle) override;
   void UnloadKeysForSlot(int slot) override;
-  bool Bind(int key_handle,
-            const std::string& input,
-            std::string* output) override;
   bool Unbind(int key_handle,
               const std::string& input,
               std::string* output) override;
