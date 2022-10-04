@@ -1911,6 +1911,22 @@ def _build_modem(config):
     return result
 
 
+def _build_scheduler_tune(config):
+    """Build the scheduler_tune configuration."""
+    scheduler_tune = config.program.platform.scheduler_tune
+    if not scheduler_tune:
+        return None
+
+    result = {}
+    if scheduler_tune.boost_urgent != 0:
+        _upsert(scheduler_tune.boost_urgent, result, "boost-urgent")
+    _upsert(scheduler_tune.cpuset_nonurgent, result, "cpuset-nonurgent")
+    if scheduler_tune.input_boost != 0:
+        _upsert(scheduler_tune.input_boost, result, "input-boost")
+
+    return result
+
+
 def _sw_config(sw_configs, design_config_id):
     """Returns the correct software config for `design_config_id`.
 
@@ -2076,6 +2092,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_usb(config), result, "typecd")
     _upsert(_build_power(config), result, "power")
     _upsert(_build_resource(config), result, "resource")
+    _upsert(_build_scheduler_tune(config), result, "scheduler-tune")
     if config_files.camera_map:
         camera_file = config_files.camera_map.get(config.hw_design.name, {})
         _upsert(camera_file, result, "camera")

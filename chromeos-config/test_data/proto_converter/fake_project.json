@@ -168,6 +168,11 @@
           "wake-on-dp": "1"
         },
         "regulatory-label": "fake_regulatory_label",
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "typecd": {
           "mode-entry-dp-only": true
         },
@@ -364,6 +369,11 @@
           "wake-on-dp": "1"
         },
         "regulatory-label": "fake_regulatory_label",
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "ash-enabled-features": [
             "CloudGamingDevice"
@@ -620,6 +630,11 @@
             }
           }
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -789,6 +804,11 @@
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "extra-ash-flags": [
@@ -968,6 +988,11 @@
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "extra-ash-flags": [
@@ -1172,6 +1197,11 @@
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -1356,6 +1386,11 @@
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -1528,6 +1563,11 @@
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "ash-enabled-features": [
             "SeamlessRefreshRateSwitching"
@@ -1677,6 +1717,11 @@
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "ash-enabled-features": [
@@ -1828,6 +1873,11 @@
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "ash-enabled-features": [
             "SeamlessRefreshRateSwitching"
@@ -1977,6 +2027,11 @@
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "ash-enabled-features": [
@@ -2139,6 +2194,11 @@
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "ash-enabled-features": [
             "CloudGamingDevice",
@@ -2288,6 +2348,11 @@
           "usb-min-ac-watts": "90",
           "wake-on-dp": "1"
         },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
         "ui": {
           "ash-enabled-features": [
             "SeamlessRefreshRateSwitching"
@@ -2424,6 +2489,11 @@
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "ash-enabled-features": [
@@ -2568,6 +2638,11 @@
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
+        },
+        "scheduler-tune": {
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
         },
         "ui": {
           "ash-enabled-features": [
