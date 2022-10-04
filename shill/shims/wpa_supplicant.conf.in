@@ -9,3 +9,4 @@ disable_scan_offload=1
 # This allows the supplicant to disable PMF for STAs that do not
 # have the required CMAC support.
 pmf=1
+sae_check_mfp=1
