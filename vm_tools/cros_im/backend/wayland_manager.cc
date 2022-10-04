@@ -15,6 +15,10 @@ namespace cros_im {
 
 namespace {
 
+constexpr int kWlSeatVersion = 1;
+constexpr int kTextInputManagerVersion = 1;
+constexpr int kTextInputExtensionVersion = 4;
+
 WaylandManager* g_instance = nullptr;
 
 void on_global(void* data,
@@ -87,18 +91,23 @@ void WaylandManager::OnGlobal(wl_registry* registry,
   if (strcmp(interface, "wl_seat") == 0) {
     // We don't support compositors which advertise multiple seats.
     assert(!wl_seat_);
+    assert(version >= kWlSeatVersion);
     wl_seat_ = reinterpret_cast<wl_seat*>(
-        wl_registry_bind(registry, name, &wl_seat_interface, version));
+        wl_registry_bind(registry, name, &wl_seat_interface, kWlSeatVersion));
     wl_seat_id_ = name;
   } else if (strcmp(interface, "zwp_text_input_manager_v1") == 0) {
-    text_input_manager_ =
-        reinterpret_cast<zwp_text_input_manager_v1*>(wl_registry_bind(
-            registry, name, &zwp_text_input_manager_v1_interface, version));
+    assert(!text_input_manager_);
+    assert(version >= kTextInputManagerVersion);
+    text_input_manager_ = reinterpret_cast<zwp_text_input_manager_v1*>(
+        wl_registry_bind(registry, name, &zwp_text_input_manager_v1_interface,
+                         kTextInputManagerVersion));
     text_input_manager_id_ = name;
   } else if (strcmp(interface, "zcr_text_input_extension_v1") == 0) {
-    text_input_extension_ =
-        reinterpret_cast<zcr_text_input_extension_v1*>(wl_registry_bind(
-            registry, name, &zcr_text_input_extension_v1_interface, version));
+    assert(!text_input_extension_);
+    assert(version >= kTextInputExtensionVersion);
+    text_input_extension_ = reinterpret_cast<zcr_text_input_extension_v1*>(
+        wl_registry_bind(registry, name, &zcr_text_input_extension_v1_interface,
+                         kTextInputExtensionVersion));
     text_input_extension_id_ = name;
   }
 }
