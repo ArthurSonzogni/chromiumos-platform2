@@ -22,8 +22,9 @@ use chrono::Local;
 use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::chromeos;
+use libchromeos::sys::error;
+use libchromeos::sys::unix::{clear_signal_handler, register_signal_handler};
 use regex::Regex;
-use sys_util::{clear_signal_handler, error, register_signal_handler};
 
 // 25 seconds is the default timeout for dbus-send.
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);

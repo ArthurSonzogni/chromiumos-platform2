@@ -5,11 +5,11 @@
 // Provides the command "bt_console" for crosh which manages Bluetooth.
 
 use dbus::blocking::Connection;
+use libchromeos::sys::error;
 use std::fmt::{self, Display};
 use std::io::Write;
 use std::process::{self};
 use std::time::Duration;
-use sys_util::error;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 

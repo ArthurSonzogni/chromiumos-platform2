@@ -14,7 +14,7 @@ pub mod legacy;
 pub mod util;
 
 use dispatcher::Dispatcher;
-use sys_util::error;
+use libchromeos::sys::error;
 
 pub fn setup_dispatcher() -> Dispatcher {
     let mut dispatcher = Dispatcher::new();

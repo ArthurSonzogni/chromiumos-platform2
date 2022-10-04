@@ -16,6 +16,8 @@ use libc::{
 };
 use libchromeos::chromeos::is_dev_mode;
 use libchromeos::panic_handler::install_memfd_handler;
+use libchromeos::sys::{block_signal, error, handle_eintr_errno, unblock_signal};
+use libchromeos::syslog;
 use rustyline::completion::Completer;
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
@@ -23,9 +25,11 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{CompletionType, Config, Context, Editor, Helper};
-use sys_util::{block_signal, error, handle_eintr_errno, syslog, unblock_signal};
 
 const HISTORY_FILENAME: &str = ".crosh_history";
+
+// Program name.
+const IDENT: &str = "crosh";
 
 fn usage(error: bool) {
     let usage_msg = r#"Usage: crosh [options] [-- [args]]
@@ -314,7 +318,7 @@ fn main() -> Result<(), ()> {
     install_memfd_handler();
     let mut args = std::env::args();
 
-    if let Err(e) = syslog::init() {
+    if let Err(e) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
         eprintln!("failed to initialize syslog: {}", e);
         return Err(());
     }

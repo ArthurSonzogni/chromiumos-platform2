@@ -17,7 +17,7 @@ use dbus::arg::{self, OwnedFd, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
 use libc::{c_int, SIGINT};
-use sys_util::{error, pipe};
+use libchromeos::sys::{error, pipe};
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};

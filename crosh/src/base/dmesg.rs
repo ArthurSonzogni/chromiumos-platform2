@@ -11,7 +11,7 @@ use std::io::Write;
 use dbus::arg::{self, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
-use sys_util::error;
+use libchromeos::sys::error;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
