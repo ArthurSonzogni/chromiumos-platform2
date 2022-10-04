@@ -57,4 +57,40 @@ TEST_F(TpmErrorUmaReporterTest, ReportNoFailure) {
   reporter_.Report(data);
 }
 
+TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponse) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+
+  data.command = kFakeCommand;
+  data.response = 0;
+  std::string metrics_name =
+      std::string(kTpm2CommandAndResponsePrefix) + ".Cryptohome";
+  uint32_t metrics_value = (data.command << 16) + (data.response & 0xFFFF);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), true);
+}
+
+TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseUnknownClient) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kUnknown);
+
+  data.command = kFakeCommand;
+  data.response = 0;
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), false);
+}
+
+TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseInvalidValue) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+  // Invalid command should not be reported.
+  data.command = 0x1000;
+  data.response = 0;
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), false);
+  // Invalid response should not be reported.
+  data.command = 0;
+  data.response = 0x10000;
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), false);
+}
+
 }  // namespace hwsec_foundation
