@@ -7,26 +7,16 @@
 # script must be defined either in powerd.conf file for Upstart or
 # powerd.service file for systemd.
 
-# Declare vars that we know are set before we're run.
-: "${UPSTART_RUN:=}"
-: "${LOG_DIR:=}"
-: "${POWER_RUN_DIR:=}"
-: "${PREFS_DIR:=}"
-: "${ROOT_RUN_DIR:=}"
-: "${ROOT_SPOOL_DIR:=}"
-: "${VPD_CACHE_FILE:=}"
-: "${MAX_NITS_PREF:=}"
-
 # For Upstart create dirs and set the proper permissions.
 # For systemd, systemd-tmpfiles handles this using powerd_directories.conf.
 # We use the "UPSTART_RUN" variable, that is only defined by the Upstart conf
 # to distinguish between these situations.
-if [ -n "${UPSTART_RUN}" ]; then
-  mkdir -p "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
-  chown -R power:power "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
-  chmod 755 "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
+if [ -n "${UPSTART_RUN:=}" ]; then
+  mkdir -p ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
+  chown -R power:power ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
+  chmod 755 ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
 
-  mkdir -p "${ROOT_RUN_DIR}" "${ROOT_SPOOL_DIR}"
+  mkdir -p ${ROOT_RUN_DIR} ${ROOT_SPOOL_DIR}
 fi
 
 # Read the real maximum backlight luminance (i.e. not the value reported by

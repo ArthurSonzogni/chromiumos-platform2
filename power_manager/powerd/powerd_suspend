@@ -7,7 +7,6 @@
 # This script is responsible for suspending and resuming the system.  It is run
 # as root by powerd_setuid_helper, which is run by powerd.
 
-# shellcheck source=/dev/null
 . /usr/share/misc/shflags
 
 DEFINE_integer wakeup_count -1 \
@@ -88,8 +87,7 @@ log_wakeup_count() {
 
 log_suspend_stats() {
   log_msg "--- begin ${SUSPEND_STATS_FILE} ---"
-  local tempfile
-  tempfile="$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)"
+  local tempfile="$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)"
   # Omit blank lines and replace tabs with spaces so syslog won't escape them
   # to "#011".
   grep -e '\S' "${SUSPEND_STATS_FILE}" | tr '\t' ' ' >"${tempfile}"
@@ -109,14 +107,15 @@ igb_devices=""
 # (see b/189345571). So in order to enter S0ix, need to unbind its devices while
 # suspending, and rebind again at resume.
 unbind_igb_devices() {
-  if ! /sbin/lsmod | grep -qw "^igb"; then
+  /sbin/lsmod | grep -qw "^igb"
+  if [ $? -ne 0 ]; then
     return
   fi
 
-  for pcidev in $(readlink /sys/class/net/*/device); do
-    pcidev="$(basename "${pcidev}")"
-    pcidrvr="$(readlink /sys/bus/pci/devices/"${pcidev}"/driver)"
-    pcidrvr="$(basename "${pcidrvr}")"
+  for pcidev in `readlink /sys/class/net/*/device`; do
+    pcidev="$(basename ${pcidev})"
+    pcidrvr="$(readlink /sys/bus/pci/devices/${pcidev}/driver)"
+    pcidrvr="$(basename ${pcidrvr})"
 
     if [ "${pcidrvr}" = "igb" ]; then
       log_msg "Temporarily unbinding igb driver from ${pcidev} for suspend"
@@ -138,8 +137,10 @@ has_huawei_modem() {
   lsusb -d 12d1:15bb
 }
 
-# Switch ec_power_modem on or off
-switch_ec_power_modem_operation() {
+# Powers "on" or "off" the built-in modem via EC.
+ec_power_modem() {
+  local op="$1"
+
   case "${op}" in
     on)
       ectool wireless 0x4 0x4
@@ -152,13 +153,8 @@ switch_ec_power_modem_operation() {
       return 1
       ;;
   esac
-}
 
-# Powers "on" or "off" the built-in modem via EC.
-ec_power_modem() {
-  local op="$1"
-
-  if ! switch_ec_power_modem_operation; then
+  if [ $? -eq 0 ]; then
     log_msg "Power ${op} built-in modem"
     return 0
   else
@@ -180,15 +176,14 @@ to_hex() {
 bt_exit_sniff() {
   local file
   for file in /sys/class/bluetooth/hci[0-9]; do
-    local hcidev
-    hcidev="$(basename "${file}")"
+    local hcidev="$(basename "${file}")"
     # The command of "hcitool con" shows something like
     # Connections:
     #    > ACL 04:52:C7:83:95:10 handle 256 state 1 lm MASTER AUTH ENCRYPT
     #    > ACL 04:52:C7:C3:65:B5 handle 512 state 1 lm MASTER AUTH ENCRYPT
 
-    handles="$(hcitool con | awk '/ACL/ {print $5}')"
-    for handle in ${handles}; do
+    handles="$(echo "$(hcitool con)" | awk '/ACL/ {print $5}')"
+    for handle in $handles; do
       lo_byte="$(to_hex $((handle % 256)))"
       hi_byte="$(to_hex $((handle / 256)))"
       log_msg "Exiting Sniff mode for connection handle ${lo_byte} ${hi_byte}"
@@ -242,28 +237,6 @@ order3_available() {
   END { print sum }' /proc/pagetypeinfo
 }
 
-# For hibernate/S4, invoke the hiberman helper process to take us all the way
-# down.
-invoke_hiberman_helper_process() {
-  if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
-    error="Failed to hibernate"
-    /usr/sbin/hiberman hibernate
-
-  else
-    # Echo freeze to /sys/power/state on platforms that support suspend to idle.
-    action='mem'
-    if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
-      action='freeze'
-      unbind_igb_devices
-    fi
-
-    # Suspend. This is piped through cat since we want to determine
-    # the causes of failures -- dash's "echo" command appears to not print
-    # anything in response to write errors.
-    error=$( (printf '%s' "${action}" | cat > /sys/power/state) 2>&1)
-  fi
-}
-
 # When system is suspending, memory compaction and swap are disabled. If
 # memory is fragmented at this time, high order allocation would fail.
 # When memory fragmentation is detected (too few allocatable order 3 pages),
@@ -272,10 +245,9 @@ invoke_hiberman_helper_process() {
 # TODO(crbug.com/827053): Check if compaction before suspending is necessary
 # on newer kernel.
 try_compact_memory() {
-  local order3
-  order3="$(order3_available)"
+  local order3="$(order3_available)"
   log_msg "Available order 3 pages: ${order3}"
-  if uname -r | grep -q "^3\.\|^4\.4\." && [ ! -f "${NO_COMPACT_FILE}" ] && \
+  if uname -r | grep -q "^3\.\|^4\.4\." && [ ! -f ${NO_COMPACT_FILE} ] && \
     [ "${order3}" -le "${COMPACT_ORDER3_THRESHOLD}" ]; then
     log_msg "Compacting memory before suspend"
     echo 1 > /proc/sys/vm/compact_memory
@@ -293,7 +265,7 @@ fi
 
 # Note: Don't change or remove this line without also updating
 # send_metrics_on_resume.
-log_msg "Going to suspend-to-RAM state: args=$*"
+log_msg "Going to suspend-to-RAM state: args=$@"
 
 # Parse command line.
 FLAGS "$@" || exit 1
@@ -311,8 +283,9 @@ cp /sys/class/rtc/rtc0/since_epoch "${SUSPEND_TO_RAM_TIME_FILE}" \
 rm -f "${LAST_RESUME_TIMINGS_FILE}"
 
 # Store the current power status.
-if power_supply_info 2> /dev/null \
-  | grep -Eq '^[[:space:]]+online:[[:space:]]+no$'; then
+power_supply_info 2> /dev/null \
+  | grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
+if [ $? -eq 0 ]; then
   echo OnBattery > "${POWER_STATUS_ON_SUSPEND_FILE}"
 else
   echo OnAC > "${POWER_STATUS_ON_SUSPEND_FILE}"
@@ -364,7 +337,27 @@ else
     /sbin/hwclock -V > /dev/null
   fi
 
-  if invoke_hiberman_helper_process; then
+  # For hibernate/S4, invoke the hiberman helper process to take us all the way
+  # down.
+  if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
+    error="Failed to hibernate"
+    /usr/sbin/hiberman hibernate
+
+  else
+    # Echo freeze to /sys/power/state on platforms that support suspend to idle.
+    action='mem'
+    if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
+      action='freeze'
+      unbind_igb_devices
+    fi
+
+    # Suspend. This is piped through cat since we want to determine
+    # the causes of failures -- dash's "echo" command appears to not print
+    # anything in response to write errors.
+    error=$( (printf '%s' "${action}" | cat > /sys/power/state) 2>&1)
+  fi
+
+  if [ $? -eq 0 ]; then
     # On resume:
     result="${RESULT_SUCCESS}"
 
