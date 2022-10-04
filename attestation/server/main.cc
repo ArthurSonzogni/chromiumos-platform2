@@ -26,6 +26,7 @@
 #include <brillo/userdb_utils.h>
 #include <dbus/attestation/dbus-constants.h>
 #include <libhwsec-foundation/vpd_reader/vpd_reader_impl.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -171,6 +172,10 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kAttestation);
 
   // read whole abe_data_file before we init minijail.
   std::string abe_data_hex = ReadAbeDataFileContents();

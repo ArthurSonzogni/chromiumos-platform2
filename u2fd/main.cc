@@ -6,6 +6,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/vcsid.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <sysexits.h>
 
 #include "u2fd/u2f_daemon.h"
@@ -31,6 +32,10 @@ int main(int argc, char* argv[]) {
     logging::SetMinLogLevel(-1);
 
   LOG(INFO) << "Daemon version " << brillo::kShortVCSID.value_or("<unknown>");
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kU2f);
 
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 

@@ -33,6 +33,7 @@
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/profiling/profiling.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -245,6 +246,9 @@ int main(int argc, char** argv) {
   }
 
   LOG(INFO) << "Starting PKCS #11 services.";
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kChaps);
   // Run as 'chaps'.
   SetProcessUserAndGroup(chaps::kChapsdProcessUser, chaps::kChapsdProcessGroup);
   // Determine SRK authorization data from the command line.

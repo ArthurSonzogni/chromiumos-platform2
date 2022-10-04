@@ -15,6 +15,7 @@
 #include <base/process/launch.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <libhwsec-foundation/profiling/profiling.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
@@ -117,6 +118,10 @@ int main(int argc, char* argv[]) {
 
   // Start code profiling.
   hwsec_foundation::SetUpProfiling();
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kTpmManager);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int flags = brillo::kLogToSyslog;

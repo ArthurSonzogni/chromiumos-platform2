@@ -4,6 +4,7 @@
 
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 
 #include "vtpm/commands/null_command.h"
 #include "vtpm/commands/virtualizer.h"
@@ -17,6 +18,9 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kChaps);
 
   std::unique_ptr<vtpm::Command> vtpm =
       vtpm::Virtualizer::Create(vtpm::Virtualizer::Profile::kGLinux);

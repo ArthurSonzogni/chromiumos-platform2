@@ -17,6 +17,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <openssl/evp.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
@@ -119,6 +120,10 @@ int main(int argc, char** argv) {
   if (disable_error_metrics) {
     cryptohome::DisableErrorMetricsReporting();
   }
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kCryptohome);
 
   // Make sure scrypt parameters are correct.
   hwsec_foundation::AssertProductionScryptParams();

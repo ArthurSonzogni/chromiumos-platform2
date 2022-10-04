@@ -14,6 +14,7 @@
 #include <base/sys_byteorder.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <openssl/sha.h>
 
 #include "trunks/trunks_dbus_proxy.h"
@@ -833,6 +834,10 @@ int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToStderr);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kTrunksSend);
 
   if (cl->HasSwitch(kVerbose)) {
     verbose = 1;

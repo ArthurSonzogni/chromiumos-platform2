@@ -84,6 +84,7 @@ config("vtpmd_config") {
   libs = [
     "tpm_manager",
     "trunks",
+    "hwsec-foundation",
   ]
 }
 

@@ -103,7 +103,10 @@ static_library("libu2fd") {
 executable("u2fd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  libs = [ "policy" ]
+  libs = [
+    "hwsec-foundation",
+    "policy",
+  ]
   deps = [ ":libu2fd" ]
 }
 
