@@ -125,6 +125,7 @@ if (use.test) {
       "enrollment_storage_test.cc",
       "face_auth_service_impl_test.cc",
       "face_service_test.cc",
+      "testing/face_service.cc",
       "testrunner.cc",
       "util/template_test.cc",
     ]

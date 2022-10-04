@@ -36,12 +36,13 @@ AuthenticationSession::Create(
     absl::BitGen& bitgen,
     mojo::PendingReceiver<FaceAuthenticationSession> receiver,
     mojo::PendingRemote<FaceAuthenticationSessionDelegate> delegate,
-    AuthenticationSessionConfigPtr config) {
+    AuthenticationSessionConfigPtr config,
+    Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client) {
   uint64_t session_id = GenerateSessionId(bitgen);
 
   // Using `new` to access private constructor of `AuthenticationSession`.
   std::unique_ptr<AuthenticationSession> session(new AuthenticationSession(
-      session_id, std::move(receiver), std::move(delegate)));
+      session_id, std::move(receiver), std::move(delegate), std::move(client)));
 
   session->delegate_.set_disconnect_handler(
       base::BindOnce(&AuthenticationSession::OnDelegateDisconnect,
@@ -57,10 +58,12 @@ AuthenticationSession::Create(
 AuthenticationSession::AuthenticationSession(
     uint64_t session_id,
     mojo::PendingReceiver<FaceAuthenticationSession> receiver,
-    mojo::PendingRemote<FaceAuthenticationSessionDelegate> delegate)
+    mojo::PendingRemote<FaceAuthenticationSessionDelegate> delegate,
+    Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client)
     : session_id_(session_id),
       receiver_(this, std::move(receiver)),
-      delegate_(std::move(delegate)) {}
+      delegate_(std::move(delegate)),
+      rpc_client_(std::move(client)) {}
 
 void AuthenticationSession::RegisterDisconnectHandler(
     DisconnectCallback disconnect_handler) {

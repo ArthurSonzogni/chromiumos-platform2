@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include <absl/random/random.h>
 #include <absl/status/status.h>
@@ -22,6 +23,8 @@
 
 #include "faced/mock_face_authentication_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/testing/face_service.h"
+#include "faced/testing/status.h"
 
 namespace faced {
 
@@ -59,22 +62,34 @@ TEST(TestSession, TestAuthenticationSessionComplete) {
         EXPECT_EQ(message->status, FaceOperationStatus::OK);
       }));
 
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
   // Create an authentication session.
   mojo::Remote<FaceAuthenticationSession> session_remote;
   mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&mock_delegate);
-  auto session = AuthenticationSession::Create(
-      bitgen, session_remote.BindNewPipeAndPassReceiver(),
-      delegate.BindNewPipeAndPassRemote(),
-      AuthenticationSessionConfig::New(SampleUserHash()));
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<AuthenticationSession> session,
+      AuthenticationSession::Create(
+          bitgen, session_remote.BindNewPipeAndPassReceiver(),
+          delegate.BindNewPipeAndPassRemote(),
+          AuthenticationSessionConfig::New(SampleUserHash()),
+          std::move(client)));
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session.value()->RegisterDisconnectHandler(
+  session->RegisterDisconnectHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client is complete, and run the loop until the service
   // is disconnected.
-  session.value()->NotifyComplete(FaceOperationStatus::OK);
+  session->NotifyComplete(FaceOperationStatus::OK);
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnAuthenticationComplete
@@ -89,22 +104,33 @@ TEST(TestSession, TestAuthenticationSessionError) {
       .WillOnce(Invoke(
           [](SessionError error) { EXPECT_EQ(error, SessionError::UNKNOWN); }));
 
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
   // Create an authentication session.
   mojo::Remote<FaceAuthenticationSession> session_remote;
   mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&mock_delegate);
-  auto session = AuthenticationSession::Create(
-      bitgen, session_remote.BindNewPipeAndPassReceiver(),
-      delegate.BindNewPipeAndPassRemote(),
-      AuthenticationSessionConfig::New(SampleUserHash()));
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<AuthenticationSession> session,
+      AuthenticationSession::Create(
+          bitgen, session_remote.BindNewPipeAndPassReceiver(),
+          delegate.BindNewPipeAndPassRemote(),
+          AuthenticationSessionConfig::New(SampleUserHash()),
+          std::move(client)));
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session.value()->RegisterDisconnectHandler(
+  session->RegisterDisconnectHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client of an internal error, and run the loop until the service
   // is disconnected.
-  session.value()->NotifyError(absl::InternalError(""));
+  session->NotifyError(absl::InternalError(""));
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnAuthenticationError

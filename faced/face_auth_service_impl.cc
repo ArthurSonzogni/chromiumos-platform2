@@ -5,6 +5,7 @@
 #include "faced/face_auth_service_impl.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -34,8 +35,9 @@ using ::chromeos::faceauth::mojom::SessionInfo;
 FaceAuthServiceImpl::FaceAuthServiceImpl(
     mojo::PendingReceiver<FaceAuthenticationService> receiver,
     DisconnectionCallback disconnect_handler,
+    FaceServiceManagerInterface& manager,
     std::optional<base::FilePath> daemon_store_path)
-    : receiver_(this, std::move(receiver)) {
+    : receiver_(this, std::move(receiver)), face_service_manager_(manager) {
   receiver_.set_disconnect_handler(
       base::BindOnce(&FaceAuthServiceImpl::HandleDisconnect,
                      base::Unretained(this), std::move(disconnect_handler)));
@@ -64,10 +66,23 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
     return;
   }
 
+  // Lease a client for communicating with FaceService.
+  absl::StatusOr<Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>>
+      face_service_client = face_service_manager_.LeaseClient();
+
+  // Check the client is valid.
+  if (!face_service_client.ok()) {
+    PostToCurrentSequence(base::BindOnce(
+        std::move(callback),
+        CreateSessionResult::NewError(SessionCreationError::UNKNOWN)));
+    return;
+  }
+
   // Create a new session, and register for callbacks when it is closed.
   absl::StatusOr<std::unique_ptr<EnrollmentSession>> session =
       EnrollmentSession::Create(bitgen_, std::move(receiver),
-                                std::move(delegate), std::move(config));
+                                std::move(delegate), std::move(config),
+                                std::move(face_service_client.value()));
 
   // TODO(b/246196994): handle session creation error propagation
 
@@ -94,10 +109,23 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
     return;
   }
 
+  // Lease a client for communicating with FaceService.
+  absl::StatusOr<Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>>
+      face_service_client = face_service_manager_.LeaseClient();
+
+  // Check the client is valid.
+  if (!face_service_client.ok()) {
+    PostToCurrentSequence(base::BindOnce(
+        std::move(callback),
+        CreateSessionResult::NewError(SessionCreationError::UNKNOWN)));
+    return;
+  }
+
   // Create a new session, and register for callbacks when it is closed.
   absl::StatusOr<std::unique_ptr<AuthenticationSession>> session =
       AuthenticationSession::Create(bitgen_, std::move(receiver),
-                                    std::move(delegate), std::move(config));
+                                    std::move(delegate), std::move(config),
+                                    std::move(face_service_client.value()));
 
   // TODO(b/246196994): handle session creation error propagation
 

@@ -20,7 +20,6 @@
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "dbus_proxies/dbus-proxies.h"
-#include "faced/face_auth_service_impl.h"
 #include "faced/faced_cli/face_enrollment_session_delegate_impl.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/util/blocking_future.h"

@@ -11,9 +11,11 @@
 #include <absl/random/random.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <brillo/grpc/async_grpc_client.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
 
@@ -31,7 +33,8 @@ class EnrollmentSession
           receiver,
       mojo::PendingRemote<
           chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
-      chromeos::faceauth::mojom::EnrollmentSessionConfigPtr config);
+      chromeos::faceauth::mojom::EnrollmentSessionConfigPtr config,
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
 
   ~EnrollmentSession() override = default;
 
@@ -61,7 +64,8 @@ class EnrollmentSession
       mojo::PendingReceiver<chromeos::faceauth::mojom::FaceEnrollmentSession>
           receiver,
       mojo::PendingRemote<
-          chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate);
+          chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
 
   // Handle the disconnection of the session receiver.
   void OnSessionDisconnect();
@@ -74,6 +78,9 @@ class EnrollmentSession
       delegate_;
 
   DisconnectCallback disconnect_callback_;
+
+  // Async gRPC client that uses an internal completion queue.
+  Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;
 
   // Must be last member.
   base::WeakPtrFactory<EnrollmentSession> weak_ptr_factory_{this};

@@ -14,6 +14,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
 
@@ -32,7 +33,8 @@ class AuthenticationSession
       mojo::PendingRemote<
           chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate>
           delegate,
-      chromeos::faceauth::mojom::AuthenticationSessionConfigPtr config);
+      chromeos::faceauth::mojom::AuthenticationSessionConfigPtr config,
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
 
   ~AuthenticationSession() override = default;
 
@@ -63,7 +65,8 @@ class AuthenticationSession
           chromeos::faceauth::mojom::FaceAuthenticationSession> receiver,
       mojo::PendingRemote<
           chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate>
-          delegate);
+          delegate,
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
 
   // Handle the disconnection of the session receiver.
   void OnSessionDisconnect();
@@ -77,6 +80,9 @@ class AuthenticationSession
       delegate_;
 
   DisconnectCallback disconnect_callback_;
+
+  // Async gRPC client that uses an internal completion queue.
+  Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;
 
   // Must be last member.
   base::WeakPtrFactory<AuthenticationSession> weak_ptr_factory_{this};

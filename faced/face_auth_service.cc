@@ -74,12 +74,14 @@ void FaceAuthService::SetupMojoPipeOnThread(
     return;
   }
 
+  face_service_manager_ = FaceServiceManager::Create();
   service_ = std::make_unique<FaceAuthServiceImpl>(
       mojo::PendingReceiver<
           chromeos::faceauth::mojom::FaceAuthenticationService>(
           std::move(mojo_pipe_handle)),
       base::BindOnce(&FaceAuthService::OnConnectionError,
-                     base::Unretained(this)));
+                     base::Unretained(this)),
+      *face_service_manager_);
 
   callback_runner->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), /*success=*/true));

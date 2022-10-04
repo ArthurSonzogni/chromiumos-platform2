@@ -17,6 +17,7 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "faced/face_auth_service_impl.h"
+#include "faced/face_service.h"
 
 namespace faced {
 
@@ -88,6 +89,7 @@ class FaceAuthService : public FaceAuthServiceInterface {
 
   scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
 
+  std::unique_ptr<FaceServiceManagerInterface> face_service_manager_;
   std::unique_ptr<FaceAuthServiceImpl> service_;
 };
 

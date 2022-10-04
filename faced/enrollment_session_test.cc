@@ -5,7 +5,9 @@
 #include "faced/enrollment_session.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <absl/random/random.h>
 #include <absl/status/status.h>
@@ -22,6 +24,8 @@
 
 #include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/testing/face_service.h"
+#include "faced/testing/status.h"
 
 namespace faced {
 
@@ -59,22 +63,34 @@ TEST(TestSession, TestEnrollmentSessionComplete) {
         EXPECT_EQ(message->status, FaceOperationStatus::OK);
       }));
 
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
   // Create an enrollment session.
   mojo::Receiver<FaceEnrollmentSessionDelegate> delegate(&mock_delegate);
   mojo::Remote<FaceEnrollmentSession> session_remote;
-  auto session = EnrollmentSession::Create(
-      bitgen, session_remote.BindNewPipeAndPassReceiver(),
-      delegate.BindNewPipeAndPassRemote(),
-      EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false));
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<EnrollmentSession> session,
+      EnrollmentSession::Create(bitgen,
+                                session_remote.BindNewPipeAndPassReceiver(),
+                                delegate.BindNewPipeAndPassRemote(),
+                                EnrollmentSessionConfig::New(
+                                    SampleUserHash(), /*accessibility=*/false),
+                                std::move(client)));
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session.value()->RegisterDisconnectHandler(
+  session->RegisterDisconnectHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client is complete, and run the loop until the service
   // is disconnected.
-  session.value()->NotifyComplete(FaceOperationStatus::OK);
+  session->NotifyComplete(FaceOperationStatus::OK);
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnEnrollmentComplete
@@ -90,22 +106,34 @@ TEST(TestSession, TestEnrollmentSessionError) {
         EXPECT_EQ(error, SessionError::UNKNOWN);
       }));
 
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
   // Create an enrollment session.
   mojo::Receiver<FaceEnrollmentSessionDelegate> delegate(&mock_delegate);
   mojo::Remote<FaceEnrollmentSession> session_remote;
-  auto session = EnrollmentSession::Create(
-      bitgen, session_remote.BindNewPipeAndPassReceiver(),
-      delegate.BindNewPipeAndPassRemote(),
-      EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false));
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<EnrollmentSession> session,
+      EnrollmentSession::Create(bitgen,
+                                session_remote.BindNewPipeAndPassReceiver(),
+                                delegate.BindNewPipeAndPassRemote(),
+                                EnrollmentSessionConfig::New(
+                                    SampleUserHash(), /*accessibility=*/false),
+                                std::move(client)));
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session.value()->RegisterDisconnectHandler(
+  session->RegisterDisconnectHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client of an internal error, and run the loop until the service
   // is disconnected.
-  session.value()->NotifyError(absl::InternalError(""));
+  session->NotifyError(absl::InternalError(""));
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnEnrollmentError

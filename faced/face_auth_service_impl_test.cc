@@ -16,6 +16,7 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <gmock/gmock-function-mocker.h>
 #include <gmock/gmock-nice-strict.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -25,6 +26,7 @@
 #include "faced/mock_face_authentication_session_delegate.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/testing/face_service.h"
 #include "faced/testing/status.h"
 #include "faced/util/blocking_future.h"
 
@@ -99,9 +101,15 @@ void RunUntil(std::function<bool()> check,
 }  // namespace
 
 TEST(FaceAuthServiceImpl, TestCreateEnrollmentSession) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure());
+                                   base::OnceClosure(), *(service_mgr));
 
   // Create a mock session delegate.
   StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
@@ -125,9 +133,15 @@ TEST(FaceAuthServiceImpl, TestCreateEnrollmentSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestCancelEnrollmentSession) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure());
+                                   base::OnceClosure(), *(service_mgr));
 
   // Create a mock session delegate, that expects a cancellation event to be
   // triggered.
@@ -161,9 +175,15 @@ TEST(FaceAuthServiceImpl, TestCancelEnrollmentSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestCreateAuthenticationSession) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure());
+                                   base::OnceClosure(), *(service_mgr));
 
   // Create a mock session delegate.
   StrictMock<MockFaceAuthenticationSessionDelegate> delegate;
@@ -187,9 +207,15 @@ TEST(FaceAuthServiceImpl, TestCreateAuthenticationSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestNoConcurrentSession) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure());
+                                   base::OnceClosure(), *(service_mgr));
 
   // Create a mock session delegate.
   StrictMock<MockFaceAuthenticationSessionDelegate> delegate;
@@ -232,9 +258,15 @@ TEST(FaceAuthServiceImpl, TestNoConcurrentSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestCancelAuthenticationSession) {
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
+
+  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure());
+                                   base::OnceClosure(), *(service_mgr));
 
   // Create a mock session delegate.
   StrictMock<MockFaceAuthenticationSessionDelegate> delegate;
@@ -265,12 +297,17 @@ TEST(FaceAuthServiceImpl, TestCancelAuthenticationSession) {
 }
 
 TEST(FaceAuthServiceImpl, TestDisconnection) {
-  base::RunLoop second_run_loop;
+  // Create a fake manager.
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
+      FakeFaceServiceManager::Create());
 
+  base::RunLoop second_run_loop;  // Create the service remote and impl.
   mojo::Remote<FaceAuthenticationService> service;
   FaceAuthServiceImpl service_impl(
       service.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&]() { second_run_loop.Quit(); }));
+      base::BindLambdaForTesting([&]() { second_run_loop.Quit(); }),
+      *(service_mgr));
 
   // Create a mock session delegate.
   StrictMock<MockFaceAuthenticationSessionDelegate> delegate;

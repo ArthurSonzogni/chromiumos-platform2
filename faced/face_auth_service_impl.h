@@ -14,6 +14,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "faced/enrollment_storage.h"
+#include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
 
@@ -32,9 +33,12 @@ class FaceAuthServiceImpl
   // `receiver` is the pending receiver of `FaceAuthenticationService`.
   // `disconnect_handler` is the callback invoked when the receiver is
   // disconnected.
+  // `manager` is an implementation of `FaceServiceManagerInterface` which
+  // leases a client to the Face Service gRPC process.
   FaceAuthServiceImpl(
       mojo::PendingReceiver<FaceAuthenticationService> receiver,
       DisconnectionCallback disconnect_handler,
+      FaceServiceManagerInterface& manager,
       std::optional<base::FilePath> daemon_store_path = std::nullopt);
 
   bool has_active_session() { return session_.get() != nullptr; }
@@ -81,6 +85,7 @@ class FaceAuthServiceImpl
   std::unique_ptr<SessionInterface> session_;
 
   EnrollmentStorage enrollment_storage_;
+  FaceServiceManagerInterface& face_service_manager_;
 };
 
 }  // namespace faced

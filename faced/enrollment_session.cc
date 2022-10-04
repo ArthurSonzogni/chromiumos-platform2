@@ -32,12 +32,13 @@ absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
     absl::BitGen& bitgen,
     mojo::PendingReceiver<FaceEnrollmentSession> receiver,
     mojo::PendingRemote<FaceEnrollmentSessionDelegate> delegate,
-    EnrollmentSessionConfigPtr config) {
+    EnrollmentSessionConfigPtr config,
+    Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client) {
   uint64_t session_id = GenerateSessionId(bitgen);
 
   // Using `new` to access private constructor of `EnrollmentSession`.
   std::unique_ptr<EnrollmentSession> session(new EnrollmentSession(
-      session_id, std::move(receiver), std::move(delegate)));
+      session_id, std::move(receiver), std::move(delegate), std::move(client)));
 
   session->delegate_.set_disconnect_handler(
       base::BindOnce(&EnrollmentSession::OnDelegateDisconnect,
@@ -53,10 +54,12 @@ absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
 EnrollmentSession::EnrollmentSession(
     uint64_t session_id,
     mojo::PendingReceiver<FaceEnrollmentSession> receiver,
-    mojo::PendingRemote<FaceEnrollmentSessionDelegate> delegate)
+    mojo::PendingRemote<FaceEnrollmentSessionDelegate> delegate,
+    Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client)
     : session_id_(session_id),
       receiver_(this, std::move(receiver)),
-      delegate_(std::move(delegate)) {}
+      delegate_(std::move(delegate)),
+      rpc_client_(std::move(client)) {}
 
 void EnrollmentSession::RegisterDisconnectHandler(
     DisconnectCallback disconnect_handler) {
