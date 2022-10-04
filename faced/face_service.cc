@@ -13,7 +13,9 @@
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
 
+#include "base/check.h"
 #include "faced/util/status.h"
+#include "faced/util/task.h"
 
 namespace faced {
 
@@ -31,7 +33,8 @@ inline constexpr int kChildSocket = 3;
 constexpr base::StringPiece kFaceServiceApplicationPath =
     "/opt/google/faceauth/face_service";
 
-// Create a pair of sockets.
+}  // namespace
+
 absl::StatusOr<std::pair<base::ScopedFD, base::ScopedFD>> SocketPair() {
   int fds[2];
   int result = socketpair(AF_UNIX, SOCK_STREAM, /*protocol=*/0, fds);
@@ -41,7 +44,7 @@ absl::StatusOr<std::pair<base::ScopedFD, base::ScopedFD>> SocketPair() {
   return {std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1]))};
 }
 
-}  // namespace
+// FaceServiceProcess method definitions below
 
 absl::StatusOr<std::unique_ptr<FaceServiceProcess>>
 FaceServiceProcess::Create() {
@@ -117,7 +120,15 @@ absl::Status FaceServiceProcess::Start() {
   return absl::OkStatus();
 }
 
-absl::Status FaceServiceProcess::Shutdown() {
+absl::StatusOr<std::unique_ptr<FaceServiceClient>>
+FaceServiceProcess::CreateClient() {
+  if (!fd_.is_valid()) {
+    return absl::AlreadyExistsError("Client has already been created.");
+  }
+  return std::make_unique<FaceServiceClient>(std::move(fd_));
+}
+
+absl::Status FaceServiceProcess::ShutDown() {
   fd_.reset();
 
   // Kill the process running in minijail.
@@ -139,6 +150,47 @@ absl::Status FaceServiceProcess::Shutdown() {
   return absl::UnknownError("Error stopping FaceService");
 }
 
+// FaceServiceClient method definitions below
+
+FaceServiceClient::FaceServiceClient(base::ScopedFD fd) {
+  // Create the gRPC channel
+  channel_ = grpc::CreateInsecureChannelFromFd("", fd.release());
+
+  // Create a gRPC client that will be leased through FaceServiceClient
+  rpc_client_ =
+      std::make_unique<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>(
+          CurrentSequence(), faceauth::eora::FaceService::NewStub(channel_));
+}
+
+brillo::AsyncGrpcClient<faceauth::eora::FaceService>*
+FaceServiceClient::GetAsyncClient() {
+  return rpc_client_.get();
+}
+
+void FaceServiceClient::ShutDown() {
+  // Pass ownership of `rpc_client_` to the ShutDown callback.
+  //
+  // We can't delete the client until its async shut down operation
+  // has completed. To avoid forcing our own clients to wait, we pass
+  // ownership of the client to the closure, which will delete the client
+  // when shut down is complete.
+  brillo::AsyncGrpcClient<faceauth::eora::FaceService>* client =
+      rpc_client_.get();
+  client->ShutDown(base::BindOnce(
+      [](std::unique_ptr<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>
+             client) {
+        // Client has been shut down, so it is now safe to clean up.
+        client.reset();
+      },
+      std::move(rpc_client_)));
+}
+
+FaceServiceClient::~FaceServiceClient() {
+  if (rpc_client_) {
+    ShutDown();
+  }
+}
+
 // FaceServiceManager method definitions below
 
 std::unique_ptr<FaceServiceManager> FaceServiceManager::Create() {
@@ -152,6 +204,53 @@ std::unique_ptr<FaceServiceManager> FaceServiceManager::Create() {
   }
 
   return mgr;
+}
+
+absl::StatusOr<Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>>
+FaceServiceManager::LeaseClient() {
+  if (leased_) {
+    return absl::AlreadyExistsError("Client already in use");
+  }
+
+  // Lazily start the process.
+  if (!process_) {
+    absl::StatusOr<std::unique_ptr<FaceServiceProcess>> process =
+        FaceServiceProcess::Create();
+    if (!process.ok()) {
+      return process.status();
+    }
+    process_ = std::move(process.value());
+  }
+
+  // Lazily create a client.
+  if (!client_) {
+    absl::StatusOr<std::unique_ptr<FaceServiceClient>> client =
+        process_->CreateClient();
+    if (!client.ok()) {
+      return client.status();
+    }
+    client_ = std::move(client.value());
+  }
+
+  leased_ = true;
+  return Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>(
+      client_->GetAsyncClient(),
+      base::BindOnce(&FaceServiceManager::OnReleaseClient,
+                     base::Unretained(this)));
+}
+
+void FaceServiceManager::OnReleaseClient() {
+  leased_ = false;
+}
+
+FaceServiceManager::~FaceServiceManager() {
+  CHECK(leased_ == false)
+      << "FaceServiceManager instance destroyed while client remains leased.";
+
+  if (process_) {
+    (void)process_->ShutDown();
+    process_.reset();
+  }
 }
 
 }  // namespace faced
