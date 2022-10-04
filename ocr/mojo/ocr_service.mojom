@@ -13,7 +13,7 @@ module chromeos.ocr.mojom;
 // Enumeration of each of the possible results of performing OCR.
 [Extensible]
 enum OcrResultEnum {
-  SUCCESS = 0,
+  [Default] SUCCESS = 0,
   LANGUAGE_NOT_SUPPORTED_ERROR = 1,
   INPUT_FILE_ERROR = 2,
   OUTPUT_FILE_ERROR = 3,
