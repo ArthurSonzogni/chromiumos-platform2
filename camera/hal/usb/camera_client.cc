@@ -25,6 +25,8 @@
 
 namespace cros {
 
+namespace {
+
 const int kBufferFenceReady = -1;
 
 // We need to compare the aspect ratio from native sensor resolution.
@@ -33,6 +35,12 @@ const int kBufferFenceReady = -1;
 // ratio.
 // 16:9=1.778, 16:10=1.6, 3:2=1.5, 4:3=1.333
 const float kAspectRatioMargin = 0.04;
+
+// Chrome and camera service uses GRALLOC_USAGE_PRIVATE_1 to indicate still
+// capture YUV buffers.
+constexpr uint32_t GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
+
+}  // namespace
 
 CameraClient::CameraClient(int id,
                            const DeviceInfo& device_info,
@@ -659,19 +667,27 @@ void CameraClient::RequestHandler::HandleRequest(
   is_video_recording_ = IsVideoRecording(*metadata);
 
   bool stream_resolution_reconfigure = false;
-  Size new_resolution = default_resolution_;
+  Size new_resolution = stream_on_resolution_;
   if (!use_native_sensor_ratio_) {
     // Decide the stream resolution for this request. If resolution change is
     // needed, we don't switch the resolution back in the end of request.
     // We keep the resolution until next request and see whether we need to
     // change current resolution.
+    // When taking pictures, we always switch to the still capture resolution to
+    // ensure it has the largest FoV. Since BLOB and still YUV buffers can be
+    // requested from camera service for one still capture, we choose the
+    // largest one among them.
+    std::optional<Size> max_still_capture_size;
     for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
       const camera3_stream_t* stream = capture_result.output_buffers[i].stream;
       const Size stream_size(stream->width, stream->height);
-      if (new_resolution < stream_size) {
-        new_resolution = stream_size;
+      if ((stream->format == HAL_PIXEL_FORMAT_BLOB ||
+           stream->usage & GRALLOC_USAGE_STILL_CAPTURE) &&
+          (!max_still_capture_size || *max_still_capture_size < stream_size)) {
+        max_still_capture_size = stream_size;
       }
     }
+    new_resolution = max_still_capture_size.value_or(default_resolution_);
     if (new_resolution != stream_on_resolution_) {
       stream_resolution_reconfigure = true;
     }
