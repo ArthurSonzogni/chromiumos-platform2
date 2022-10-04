@@ -43,6 +43,7 @@ pkg_config("target_defaults_pkg_deps") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libminijail",
     "libmojo",
   ]
 }
@@ -67,6 +68,7 @@ source_set("libfaced") {
     "face_auth_daemon.cc",
     "face_auth_service.cc",
     "face_auth_service_impl.cc",
+    "face_service.cc",
     "session.cc",
     "status_to_string.cc",
     "util/template.h",
