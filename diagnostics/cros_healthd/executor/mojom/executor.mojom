@@ -22,6 +22,28 @@ struct ExecutedProcessResult {
   string err;
 };
 
+// Fingerprint frame result.
+struct FingerprintFrameResult {
+  // Frame data. The length is |width| * |height|.
+  array<uint8> frame;
+  // Frame width.
+  int32 width;
+  // Frame height.
+  int32 height;
+};
+
+// An enumeration of fingerprint capture type.
+//
+// NextMinVersion: 1, NextIndex: 3
+enum FingerprintCaptureType {
+  // Checkerboard test.
+  kCheckerboardTest = 0,
+  // Inverted checkerboard test.
+  kInvertedCheckerboardTest = 1,
+  // Pixel reset value test.
+  kResetTest = 2,
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {

@@ -17,6 +17,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   ~DelegateImpl() override;
 
   // ash::cros_healthd::mojom::Delegate overrides.
+  void GetFingerprintFrame(
+      ash::cros_healthd::mojom::FingerprintCaptureType type,
+      GetFingerprintFrameCallback callback) override;
 };
 
 }  // namespace diagnostics

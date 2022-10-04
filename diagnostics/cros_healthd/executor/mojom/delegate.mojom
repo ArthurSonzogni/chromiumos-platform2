@@ -4,5 +4,18 @@
 
 module ash.cros_healthd.mojom;
 
+import "diagnostics/cros_healthd/executor/mojom/executor.mojom";
+
 interface Delegate {
+  // Get fingerprint frame data with specific capture type. We only support
+  // testing related capture types.
+  //
+  // The request:
+  // * |type| - The capture type.
+  //
+  // The response:
+  // * |result| - Fingerprint frame result.
+  // * |err| - Error message if existed.
+  GetFingerprintFrame(FingerprintCaptureType type)
+      => (FingerprintFrameResult result, string? err);
 };
