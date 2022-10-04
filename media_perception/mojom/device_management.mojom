@@ -8,7 +8,7 @@ module chromeos.media_perception.mojom;
 
 [Extensible]
 enum PixelFormat {
-  FORMAT_UNKNOWN = 0,
+  [Default] FORMAT_UNKNOWN = 0,
   I420 = 1,
   MJPEG = 2,
   NV12 = 3,
@@ -48,7 +48,7 @@ struct VirtualVideoDevice {
 // Full list: https://cs.corp.google.com/chromeos_public/src/third_party/adhd/cras/src/common/cras_audio_format.h
 [Extensible]
 enum SampleFormat {
-  SND_PCM_UNKNOWN_FORMAT = 0,
+  [Default] SND_PCM_UNKNOWN_FORMAT = 0,
 
   // PCM signed 32 bit, little endian.
   SND_PCM_FORMAT_S32_LE = 1,
@@ -80,7 +80,7 @@ struct AudioDevice {
 
 [Extensible]
 enum DeviceType {
-  TYPE_UNKNOWN = 0,
+  [Default] TYPE_UNKNOWN = 0,
   VIDEO = 1 ,
   AUDIO = 2,
   VIRTUAL_VIDEO = 3,

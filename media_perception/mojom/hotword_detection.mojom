@@ -8,7 +8,7 @@ module chromeos.media_perception.mojom;
 
 [Extensible]
 enum HotwordType {
-  HOTWORD_TYPE_UNKNOWN = 0,
+  [Default] HOTWORD_TYPE_UNKNOWN = 0,
   OK_GOOGLE = 1,
 };
 

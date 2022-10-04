@@ -30,7 +30,7 @@ struct NormalizedBoundingBox {
 
 [Extensible]
 enum DistanceUnits {
-  UNITS_UNKNOWN = 0,
+  [Default] UNITS_UNKNOWN = 0,
   METERS = 1,
   PIXELS = 2
 };

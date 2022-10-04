@@ -9,7 +9,7 @@ module chromeos.media_perception.mojom;
 
 [Extensible]
 enum PipelineStatus {
-  UNKNOWN = 0,
+  [Default] UNKNOWN = 0,
 
   // The analytics process is running and the media processing pipeline is
   // started, but not yet receiving input. This is a transitional state
@@ -31,7 +31,7 @@ enum PipelineStatus {
 
 [Extensible]
 enum PipelineErrorType {
-  UNKNOWN = 0,
+  [Default] UNKNOWN = 0,
 
   // Configuration of the pipeline did not validate.
   CONFIGURATION = 1,

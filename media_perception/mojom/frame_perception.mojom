@@ -10,7 +10,7 @@ import "media_perception/mojom/common.mojom";
 
 [Extensible]
 enum EntityType {
-  ENTITY_TYPE_UNKNOWN = 0,
+  [Default] ENTITY_TYPE_UNKNOWN = 0,
   FACE = 1,
   PERSON = 2,
   MOTION_REGION = 3,
@@ -34,7 +34,7 @@ struct Entity {
 
 [Extensible]
 enum FramePerceptionType {
-  FRAME_PERCEPTION_TYPE_UNKNOWN = 0,
+  [Default] FRAME_PERCEPTION_TYPE_UNKNOWN = 0,
   FACE_DETECTION = 1,
   PERSON_DETECTION = 2,
   MOTION_DETECTION = 3,
