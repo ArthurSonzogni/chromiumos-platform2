@@ -239,20 +239,6 @@ const std::vector<std::string> kExtMkfsOpts = {
     "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold",
     "-i" + std::to_string(kExt4BytesPerInode)};
 
-// Used with the |IsUntrustedVMAllowed| function.
-struct UntrustedVMCheckResult {
-  UntrustedVMCheckResult(bool untrusted_vm_allowed, bool skip_host_checks)
-      : untrusted_vm_allowed(untrusted_vm_allowed),
-        skip_host_checks(skip_host_checks) {}
-
-  // Is an untrusted VM allowed on the host.
-  bool untrusted_vm_allowed;
-
-  // Should checking for security patches on the host be skipped while starting
-  // untrusted VMs.
-  bool skip_host_checks;
-};
-
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -619,36 +605,6 @@ bool IsUntrustedVM(bool run_as_untrusted,
     return true;
 
   return false;
-}
-
-// Returns whether an untrusted VM is allowed on the host and whether checking
-// for security patches while starting the untrusted VM should be skipped.
-UntrustedVMCheckResult IsUntrustedVMAllowed(
-    bool run_as_untrusted, KernelVersionAndMajorRevision host_kernel_version) {
-  // For host >= |kMinKernelVersionForUntrustedAndNestedVM| untrusted VMs are
-  // always allowed. But the host still needs to be checked for vulnerabilities,
-  // even in developer mode. This is done because it'd be a huge error to not
-  // have required security patches on these kernels regardless of dev or
-  // production mode.
-  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM) {
-    return UntrustedVMCheckResult(true /* untrusted_vm_allowed */,
-                                  false /* skip_host_checks */);
-  }
-
-  // On lower kernel versions |run_as_untrusted| is only respected in developer
-  // mode. The user wants to start the VM irrespective of the host's kernel
-  // version or security mitigation state. In this mode, allow untrusted VMs
-  // without any restrictions on the host having security mitigations.
-  if (run_as_untrusted && IsDevModeEnabled()) {
-    return UntrustedVMCheckResult(true /* untrusted_vm_allowed */,
-                                  true /* skip_host_checks */);
-  }
-
-  // Lower kernel version are deemed insecure to handle untrusted VMs.
-  // Note: |skip_host_checks| is redundant in this scenario as
-  // |untrusted_vm_allowed| is set to false.
-  return UntrustedVMCheckResult(false /* untrusted_vm_allowed */,
-                                false /* skip_host_checks  */);
 }
 
 // Clears close-on-exec flag for a file descriptor to pass it to a subprocess
@@ -1374,6 +1330,7 @@ bool Service::Init() {
       {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
+      {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -1843,42 +1800,11 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       IsUntrustedVM(request.run_as_untrusted(), image_spec.is_trusted_image,
                     !request.kernel_params().empty(), host_kernel_version_);
   if (is_untrusted_vm) {
-    const auto untrusted_vm_check_result =
-        IsUntrustedVMAllowed(request.run_as_untrusted(), host_kernel_version_);
-    if (!untrusted_vm_check_result.untrusted_vm_allowed) {
-      std::stringstream ss;
-      ss << "Untrusted VMs are not allowed: "
-         << "the host kernel version (" << host_kernel_version_.first << "."
-         << host_kernel_version_.second << ") must be newer than or equal to "
-         << kMinKernelVersionForUntrustedAndNestedVM.first << "."
-         << kMinKernelVersionForUntrustedAndNestedVM.second
-         << ", or the device must be in the developer mode";
-      LOG(ERROR) << ss.str();
-      response.set_failure_reason(ss.str());
+    std::string reason;
+    if (!IsUntrustedVMAllowed(host_kernel_version_, &reason)) {
+      LOG(ERROR) << reason;
+      response.set_failure_reason(reason);
       return response;
-    }
-
-    // For untrusted VMs -
-    // Check if l1tf and mds mitigations are present on the host. Skip the
-    // checks if untrusted VMs are requested in developer mode on insecure
-    // kernels. This is done to support testing by developers.
-    if (!untrusted_vm_check_result.skip_host_checks) {
-      switch (untrusted_vm_utils_->CheckUntrustedVMMitigationStatus()) {
-        // If the host kernel version isn't supported or the host doesn't have
-        // l1tf and mds mitigations then fail to start an untrusted VM.
-        case UntrustedVMUtils::MitigationStatus::VULNERABLE: {
-          LOG(ERROR) << "Host vulnerable against untrusted VM";
-          response.set_failure_reason("Host vulnerable against untrusted VM");
-          return response;
-        }
-
-        // At this point SMT should not be a security issue. As
-        // |kMinKernelVersionForUntrustedAndNestedVM| has security patches to
-        // make nested VMs co-exist securely with SMT.
-        case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED:
-        case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
-          break;
-      }
     }
   }
 
@@ -4852,6 +4778,42 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetVmLaunchAllowed request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetVmLaunchAllowedRequest request;
+  GetVmLaunchAllowedResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Unable to parse GetVmLaunchAllowedRequest from message");
+  }
+
+  bool allowed = true;
+  std::string reason;
+  bool is_untrusted =
+      IsUntrustedVM(request.run_as_untrusted(), request.is_trusted_image(),
+                    request.has_custom_kernel_params(), host_kernel_version_);
+  if (is_untrusted) {
+    allowed = IsUntrustedVMAllowed(host_kernel_version_, &reason);
+  }
+
+  response.set_allowed(allowed);
+  response.set_reason(reason);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
 std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
     dbus::MethodCall* method_call) {
@@ -4993,6 +4955,51 @@ void Service::OnSiblingVmDead(VmId vm_id) {
       FROM_HERE, base::BindOnce(&Service::StopVmInternalAsTask,
                                 weak_ptr_factory_.GetWeakPtr(), vm_id,
                                 VmStopReason::SIBLING_VM_EXITED));
+}
+
+bool Service::IsUntrustedVMAllowed(
+    KernelVersionAndMajorRevision host_kernel_version, std::string* reason) {
+  DCHECK(reason);
+
+  // For host >= |kMinKernelVersionForUntrustedAndNestedVM| untrusted VMs are
+  // always allowed. But the host still needs to be checked for vulnerabilities,
+  // even in developer mode. This is done because it'd be a huge error to not
+  // have required security patches on these kernels regardless of dev or
+  // production mode.
+  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM) {
+    // Check if l1tf and mds mitigations are present on the host.
+    switch (untrusted_vm_utils_->CheckUntrustedVMMitigationStatus()) {
+      // If the host kernel version isn't supported or the host doesn't have
+      // l1tf and mds mitigations then fail to start an untrusted VM.
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE:
+        *reason = "Host vulnerable against untrusted VM";
+        return false;
+
+      // At this point SMT should not be a security issue. As
+      // |kMinKernelVersionForUntrustedAndNestedVM| has security patches to
+      // make nested VMs co-exist securely with SMT.
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED:
+      case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
+        return true;
+    }
+  }
+
+  // On lower kernel versions in developer mode, allow untrusted VMs without
+  // any restrictions on the host having security mitigations.
+  if (IsDevModeEnabled()) {
+    return true;
+  }
+
+  // Lower kernel version are deemed insecure to handle untrusted VMs.
+  std::stringstream ss;
+  ss << "Untrusted VMs are not allowed: "
+     << "the host kernel version (" << host_kernel_version_.first << "."
+     << host_kernel_version_.second << ") must be newer than or equal to "
+     << kMinKernelVersionForUntrustedAndNestedVM.first << "."
+     << kMinKernelVersionForUntrustedAndNestedVM.second
+     << ", or the device must be in the developer mode";
+  *reason = ss.str();
+  return false;
 }
 
 }  // namespace concierge

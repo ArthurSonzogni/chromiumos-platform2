@@ -1311,3 +1311,22 @@ message AddGroupPermissionMesaRequest {
   // The owner of the VM.
   string owner_id = 2;
 }
+
+message GetVmLaunchAllowedRequest {
+  // Request untrusted VM regardless of other arguments.
+  bool run_as_untrusted = 1;
+
+  // The VM disk image is considered trusted.
+  bool is_trusted_image = 2;
+
+  // The VM kernel is started with custom kernel parameters.
+  bool has_custom_kernel_params = 3;
+}
+
+message GetVmLaunchAllowedResponse {
+  // Whether the launch would be allowed.
+  bool allowed = 1;
+
+  // If not allowed, the reason why.
+  string reason = 2;
+}

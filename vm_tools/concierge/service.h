@@ -248,6 +248,9 @@ class Service final {
   std::unique_ptr<dbus::Response> AddGroupPermissionMesa(
       dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> GetVmLaunchAllowed(
+      dbus::MethodCall* method_call);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
@@ -439,6 +442,11 @@ class Service final {
   // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
   // sibling VM process has died on the hypervisor.
   void OnSiblingVmDead(VmId vm_id);
+
+  // Returns whether an untrusted VM is allowed on the host depending on the
+  // kernel version and whether security patches are applied.
+  bool IsUntrustedVMAllowed(KernelVersionAndMajorRevision host_kernel_version,
+                            std::string* reason);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;
