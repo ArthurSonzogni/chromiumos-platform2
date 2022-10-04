@@ -145,8 +145,11 @@ class DlcBase {
   FRIEND_TEST(DlcBaseTest, ReserveInstall);
   FRIEND_TEST(DlcBaseTest, UnReservedInstall);
 
-  // Returns the path to the DLC image given the slot number.
-  base::FilePath GetImagePath(BootSlot::Slot slot) const;
+  // Returns the path to the DLC image given the slot.
+  virtual base::FilePath GetImagePath(BootSlot::Slot slot) const;
+
+  // Returns the virtual path to the DLC image given the slot.
+  virtual base::FilePath GetVirtualImagePath(BootSlot::Slot slot) const;
 
   // Creates the DLC directories and files if they don't exist. This function
   // should be used as fall-through. We should call this even if we presumably
@@ -172,12 +175,16 @@ class DlcBase {
 
   // Mounts the DLC image.
   bool Mount(brillo::ErrorPtr* err);
+  virtual bool MountInternal(std::string* mount_point, brillo::ErrorPtr* err);
 
   // Unmounts the DLC image.
   bool Unmount(brillo::ErrorPtr* err);
 
   // Returns true if the active DLC image is present.
   bool IsActiveImagePresent() const;
+
+  // Deletes DLC and performs related cleanups.
+  bool Delete(brillo::ErrorPtr* err);
 
   // Deletes all directories related to this DLC.
   virtual bool DeleteInternal(brillo::ErrorPtr* err);

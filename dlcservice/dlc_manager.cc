@@ -42,12 +42,7 @@ DlcIdList ToDlcIdList(const DlcMap& dlcs,
 }
 }  // namespace
 
-DlcManager::~DlcManager() {
-  if (cleanup_dangling_task_id_ != MessageLoop::kTaskIdNull) {
-    MessageLoop::current()->CancelTask(cleanup_dangling_task_id_);
-    cleanup_dangling_task_id_ = MessageLoop::kTaskIdNull;
-  }
-}
+DlcManager::~DlcManager() = default;
 
 void DlcManager::Initialize() {
   supported_.clear();

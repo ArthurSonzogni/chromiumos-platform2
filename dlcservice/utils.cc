@@ -311,7 +311,10 @@ bool CopyAndHashFile(const base::FilePath& from,
   sha256->resize(crypto::kSHA256Length);
   hash->Finish(sha256->data(), sha256->size());
 
-  return SetFilePermissions(to, kDlcFilePerms);
+  if (!SetFilePermissions(to, kDlcFilePerms)) {
+    PLOG(WARNING) << "Failed to set permissions.";
+  }
+  return true;
 }
 
 FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,

@@ -5,6 +5,8 @@
 #ifndef DLCSERVICE_LVM_DLC_LVM_H_
 #define DLCSERVICE_LVM_DLC_LVM_H_
 
+#include <string>
+
 #include "dlcservice/dlc.h"
 #include "dlcservice/types.h"
 
@@ -26,6 +28,9 @@ class DlcLvm : public DlcBase {
   // `DlcBase` overrides.
   bool CreateDlc(brillo::ErrorPtr* err) override;
   bool DeleteInternal(brillo::ErrorPtr* err) override;
+  bool MountInternal(std::string* mount_point, brillo::ErrorPtr* err) override;
+
+  base::FilePath GetVirtualImagePath(BootSlot::Slot slot) const override;
 
  private:
   bool CreateDlcLogicalVolumes();

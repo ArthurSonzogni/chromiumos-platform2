@@ -96,6 +96,47 @@ TEST_F(DlcManagerTest, PreloadAllowedDlcTest) {
   CheckDlcState(kThirdDlc, DlcState::INSTALLED);
 }
 
+#if USE_LVM_STATEFUL_PARTITION
+TEST_F(DlcManagerTest, PreloadAllowedDlcLogicalVolumeTest) {
+  // The fourth DLC has pre-loaded flag on.
+  // The fourth DLC has logical-volume flag on.
+  SetUpDlcPreloadedImage(kFourthDlc);
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .Times(2)
+      .WillRepeatedly(Return(false));
+  dlc_manager_->Initialize();
+
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(true, kFourthDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
+  EXPECT_THAT(dlc_manager_->GetInstalled(), ElementsAre());
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, CreateLogicalVolumes(_))
+      .WillOnce(Return(true));
+  // Any path here would work.
+  auto image_path_a =
+      GetDlcImagePath(content_path_, kFourthDlc, kPackage, BootSlot::Slot::A);
+  auto image_path_b =
+      GetDlcImagePath(content_path_, kFourthDlc, kPackage, BootSlot::Slot::B);
+  base::CreateDirectory(image_path_a.DirName());
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+      .WillOnce(Return(image_path_a.value()))
+      .WillOnce(Return(image_path_b.value()));
+
+  bool external_install_needed = false;
+  EXPECT_TRUE(dlc_manager_->Install(CreateInstallRequest(kFourthDlc),
+                                    &external_install_needed, &err_));
+  EXPECT_THAT(dlc_manager_->GetInstalled(), ElementsAre(kFourthDlc));
+  EXPECT_FALSE(
+      dlc_manager_->GetDlc(kFourthDlc, &err_)->GetRoot().value().empty());
+  CheckDlcState(kFourthDlc, DlcState::INSTALLED);
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
+
 TEST_F(DlcManagerTest, PreloadAllowedWithBadPreinstalledDlcTest) {
   // The third DLC has pre-loaded flag on.
   SetUpDlcWithSlots(kThirdDlc);

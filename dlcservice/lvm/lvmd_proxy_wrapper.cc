@@ -66,6 +66,37 @@ bool LvmdProxyWrapper::GetLogicalVolume(const lvmd::VolumeGroup& vg,
   return true;
 }
 
+bool LvmdProxyWrapper::GetLogicalVolume(const std::string& lv_name,
+                                        lvmd::LogicalVolume* lv) {
+  auto stateful_path =
+      SystemState::Get()->boot_slot()->GetStatefulPartitionPath();
+
+  if (stateful_path.empty()) {
+    LOG(ERROR) << "Failed to GetStatefulPartitionPath.";
+    return false;
+  }
+
+  lvmd::PhysicalVolume pv;
+  if (!GetPhysicalVolume(stateful_path.value(), &pv)) {
+    LOG(ERROR) << "Failed to GetPhysicalVolume.";
+    return false;
+  }
+
+  lvmd::VolumeGroup vg;
+  if (!GetVolumeGroup(pv, &vg)) {
+    LOG(ERROR) << "Failed to GetVolumeGroup.";
+    return false;
+  }
+
+  brillo::ErrorPtr err;
+  if (!lvmd_proxy_->GetLogicalVolume(vg, lv_name, lv, &err)) {
+    LOG(ERROR) << "Failed to GetLogicalVolume.";
+    return false;
+  }
+
+  return true;
+}
+
 bool LvmdProxyWrapper::CreateLogicalVolume(
     const lvmd::Thinpool& thinpool,
     const lvmd::LogicalVolumeConfiguration& lv_config,
@@ -162,6 +193,11 @@ bool LvmdProxyWrapper::RemoveLogicalVolumes(
     }
   }
   return ret;
+}
+
+std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {
+  lvmd::LogicalVolume lv;
+  return GetLogicalVolume(lv_name, &lv) ? lv.path() : "";
 }
 
 }  // namespace dlcservice

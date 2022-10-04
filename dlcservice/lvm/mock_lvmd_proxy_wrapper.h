@@ -28,6 +28,10 @@ class MockLvmdProxyWrapper : public LvmdProxyWrapperInterface {
               RemoveLogicalVolumes,
               (const std::vector<std::string>&),
               (override));
+  MOCK_METHOD(std::string,
+              GetLogicalVolumePath,
+              (const std::string&),
+              (override));
 };
 
 }  // namespace dlcservice

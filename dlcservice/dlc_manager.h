@@ -132,20 +132,10 @@ class DlcManager : public DlcManagerInterface {
   void ChangeProgress(double progress) override;
 
  private:
-  FRIEND_TEST(DlcManagerTest, CleanupDanglingDlcs);
-
   // Removes all unsupported/deprecated DLC files and images.
   void CleanupUnsupportedDlcs();
 
-  // Cleans up all DLCs that are dangling based on the ref count.
-  void CleanupDanglingDlcs();
-
-  // Posts the |CleanuupDanglingDlcs| as a delayed task with timeout |timeout|.
-  void PostCleanupDanglingDlcs(const base::TimeDelta& timeout);
-
   DlcMap supported_;
-
-  brillo::MessageLoop::TaskId cleanup_dangling_task_id_;
 
   DlcManager(const DlcManager&) = delete;
   DlcManager& operator=(const DlcManager&) = delete;

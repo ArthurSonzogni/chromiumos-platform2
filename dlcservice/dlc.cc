@@ -208,6 +208,10 @@ FilePath DlcBase::GetImagePath(BootSlot::Slot slot) const {
                    kDlcImageFileName);
 }
 
+FilePath DlcBase::GetVirtualImagePath(BootSlot::Slot slot) const {
+  return GetImagePath(slot);
+}
+
 bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Create content directories.
   for (const auto& path :
@@ -342,9 +346,8 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
   // Before touching the image, we need to mark it as unverified.
   MarkUnverified();
 
-  // TODO(kimjae): When preloaded images are place into unencrypted, this
-  // operation can be a move.
-  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+  FilePath image_path =
+      GetVirtualImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
   if (!CopyAndHashFile(preloaded_image_path_, image_path, manifest_->size(),
                        &image_sha256)) {
@@ -393,7 +396,8 @@ bool DlcBase::FactoryInstallCopier() {
   // Before touching the image, we need to mark it as unverified.
   MarkUnverified();
 
-  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+  FilePath image_path =
+      GetVirtualImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
   if (!CopyAndHashFile(factory_install_image_path_, image_path,
                        manifest_->size(), &image_sha256)) {
@@ -433,6 +437,7 @@ bool DlcBase::Install(ErrorPtr* err) {
       bool active_image_existed = IsActiveImagePresent();
       // Always try to create the DLC files and directories to make sure they
       // all exist before we start the install.
+
       if (!CreateDlc(err)) {
         ErrorPtr tmp_err;
         if (!CancelInstall(*err, &tmp_err))
@@ -586,7 +591,7 @@ bool DlcBase::CancelInstall(const ErrorPtr& err_in, ErrorPtr* err) {
 
   // Consider as not installed even if delete fails below, correct errors
   // will be propagated later and should not block on further installs.
-  if (!DeleteInternal(err)) {
+  if (!Delete(err)) {
     LOG(ERROR) << "Failed during install cancellation for DLC=" << id_;
     return false;
   }
@@ -595,24 +600,7 @@ bool DlcBase::CancelInstall(const ErrorPtr& err_in, ErrorPtr* err) {
 
 bool DlcBase::Mount(ErrorPtr* err) {
   string mount_point;
-  // TODO(kimjae): Make this async as well as the top level DLC operations.
-  if (!SystemState::Get()->image_loader()->LoadDlcImage(
-          id_, package_,
-          SystemState::Get()->active_boot_slot() == BootSlot::Slot::A
-              ? imageloader::kSlotNameA
-              : imageloader::kSlotNameB,
-          &mount_point, nullptr,
-          /*timeout_ms=*/60 * 1000)) {
-    *err =
-        Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
-                              "Imageloader is unavailable for LoadDlcImage().");
-    state_.set_last_error_code(Error::GetErrorCode(*err));
-    return false;
-  }
-  if (mount_point.empty()) {
-    *err = Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
-                                 "Imageloader LoadDlcImage() call failed.");
-    state_.set_last_error_code(Error::GetErrorCode(*err));
+  if (!MountInternal(&mount_point, err)) {
     return false;
   }
   mount_point_ = FilePath(mount_point);
@@ -630,6 +618,30 @@ bool DlcBase::Mount(ErrorPtr* err) {
   }
 
   ChangeState(DlcState::INSTALLED);
+  return true;
+}
+
+bool DlcBase::MountInternal(std::string* mount_point, ErrorPtr* err) {
+  // TODO(kimjae): Make this async as well as the top level DLC operations.
+  if (!SystemState::Get()->image_loader()->LoadDlcImage(
+          id_, package_,
+          SystemState::Get()->active_boot_slot() == BootSlot::Slot::A
+              ? imageloader::kSlotNameA
+              : imageloader::kSlotNameB,
+          mount_point, nullptr,
+          /*timeout_ms=*/60 * 1000)) {
+    *err =
+        Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
+                              "Imageloader is unavailable for LoadDlcImage().");
+    state_.set_last_error_code(Error::GetErrorCode(*err));
+    return false;
+  }
+  if (mount_point->empty()) {
+    *err = Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
+                                 "Imageloader LoadDlcImage() call failed.");
+    state_.set_last_error_code(Error::GetErrorCode(*err));
+    return false;
+  }
   return true;
 }
 
@@ -663,8 +675,7 @@ bool DlcBase::IsActiveImagePresent() const {
   return base::PathExists(GetImagePath(SystemState::Get()->active_boot_slot()));
 }
 
-// Deletes all directories related to this DLC.
-bool DlcBase::DeleteInternal(ErrorPtr* err) {
+bool DlcBase::Delete(brillo::ErrorPtr* err) {
   // If we're deleting the image, we need to set it as unverified.
   MarkUnverified();
 
@@ -673,6 +684,10 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
     return true;
   }
 
+  return DeleteInternal(err);
+}
+
+bool DlcBase::DeleteInternal(ErrorPtr* err) {
   vector<string> undeleted_paths;
   for (const auto& path : GetPathsToDelete(id_)) {
     if (base::PathExists(path)) {
@@ -739,7 +754,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
   }
 
   SetActiveValue(false);
-  return DeleteInternal(err);
+  return Delete(err);
 }
 
 void DlcBase::SetActiveValue(bool active) {
