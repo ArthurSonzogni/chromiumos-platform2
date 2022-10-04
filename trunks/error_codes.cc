@@ -353,6 +353,15 @@ std::string CreateErrorResponse(TPM_RC error_code) {
   return response;
 }
 
+std::string CreateCommand(TPM_CC command_code) {
+  const uint32_t kCommandSize = 10;
+  std::string command;
+  CHECK_EQ(Serialize_TPM_ST(TPM_ST_NO_SESSIONS, &command), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_UINT32(kCommandSize, &command), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_TPM_CC(command_code, &command), TPM_RC_SUCCESS);
+  return command;
+}
+
 TPM_RC GetResponseCode(const std::string& response, TPM_RC& rc) {
   std::string buffer(response);
   TPM_ST tag;
@@ -395,6 +404,10 @@ TPM_RC GetCommandCode(const std::string& command, TPM_CC& cc) {
     return parse_rc;
   }
   return TPM_RC_SUCCESS;
+}
+
+bool IsGenericTpmCommand(TPM_CC command_code) {
+  return TPM_CC_FIRST <= command_code && command_code <= TPM_CC_LAST;
 }
 
 }  // namespace trunks

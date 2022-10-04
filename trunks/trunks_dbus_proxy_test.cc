@@ -13,6 +13,8 @@
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm_error/mock_tpm_error_uma_reporter.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_data.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
@@ -22,6 +24,7 @@
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
+using testing::StrictMock;
 
 namespace {
 
@@ -83,6 +86,7 @@ class TrunksDBusProxyTest : public testing::Test {
   TrunksDBusProxyTest() {
     proxy_.set_init_timeout(base::TimeDelta());
     proxy_.set_init_attempt_delay(base::TimeDelta());
+    proxy_.set_uma_reporter_for_testing(uma_reporter_);
   }
 
   void SetUp() override {
@@ -105,6 +109,8 @@ class TrunksDBusProxyTest : public testing::Test {
  protected:
   scoped_refptr<FakeObjectProxy> object_proxy_ = new FakeObjectProxy();
   scoped_refptr<NiceMock<MockDBusBus>> bus_ = new NiceMock<MockDBusBus>();
+  StrictMock<hwsec_foundation::MockTpmErrorUmaReporter>* uma_reporter_ =
+      new StrictMock<hwsec_foundation::MockTpmErrorUmaReporter>();
   TrunksDBusProxy proxy_{bus_};
 };
 
@@ -139,23 +145,40 @@ TEST_F(TrunksDBusProxyTest, InitRetrySuccess) {
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandSuccess) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  TpmErrorData error_data{TPM_CC_FIRST, TPM_RC_SUCCESS};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(proxy_.Init());
-  set_next_response("response");
+  set_next_response(tpm_response);
   auto callback = [](const std::string& response) {
-    EXPECT_EQ("response", response);
+    std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+    EXPECT_EQ(tpm_response, response);
   };
-  proxy_.SendCommand("command", base::BindOnce(callback));
-  EXPECT_EQ("command", last_command());
+  proxy_.SendCommand(command, base::BindOnce(callback));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitSuccess) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  TpmErrorData error_data{TPM_CC_FIRST, TPM_RC_SUCCESS};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(proxy_.Init());
-  set_next_response("response");
-  EXPECT_EQ("response", proxy_.SendCommandAndWait("command"));
-  EXPECT_EQ("command", last_command());
+  set_next_response(tpm_response);
+  EXPECT_EQ(tpm_response, proxy_.SendCommandAndWait(command));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandFailureInit) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_CONNECTION};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() failed, SAPI_RC_NO_CONNECTION should be returned
   // without sending a command.
   EXPECT_CALL(*bus_, GetServiceOwnerAndBlock(_, _)).WillRepeatedly(Return(""));
@@ -164,22 +187,31 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureInit) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION), response);
   };
-  proxy_.SendCommand("command", base::BindOnce(callback));
+  proxy_.SendCommand(command, base::BindOnce(callback));
   EXPECT_EQ("", last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureInit) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string trunks_response = CreateErrorResponse(SAPI_RC_NO_CONNECTION);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_CONNECTION};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() failed, SAPI_RC_NO_CONNECTION should be returned
   // without sending a command.
   EXPECT_CALL(*bus_, GetServiceOwnerAndBlock(_, _)).WillRepeatedly(Return(""));
   EXPECT_FALSE(proxy_.Init());
   set_next_response("");
   EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION),
-            proxy_.SendCommandAndWait("command"));
+            proxy_.SendCommandAndWait(command));
   EXPECT_EQ("", last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandFailureNoConnection) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_CONNECTION};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() succeeded, but service is later lost, it should return
   // SAPI_RC_NO_CONNECTION in case there was no response.
   EXPECT_TRUE(proxy_.Init());
@@ -188,22 +220,30 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureNoConnection) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION), response);
   };
-  proxy_.SendCommand("command", base::BindOnce(callback));
-  EXPECT_EQ("command", last_command());
+  proxy_.SendCommand(command, base::BindOnce(callback));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureNoConnection) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string trunks_response = CreateErrorResponse(SAPI_RC_NO_CONNECTION);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_CONNECTION};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() succeeded, but service is later lost, it should return
   // SAPI_RC_NO_CONNECTION in case there was no response.
   EXPECT_TRUE(proxy_.Init());
   EXPECT_CALL(*bus_, GetServiceOwnerAndBlock(_, _)).WillRepeatedly(Return(""));
   set_next_response("");
-  EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION),
-            proxy_.SendCommandAndWait("command"));
-  EXPECT_EQ("command", last_command());
+  EXPECT_EQ(trunks_response, proxy_.SendCommandAndWait(command));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandFailureNoResponse) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_RESPONSE_RECEIVED};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() succeeded and the service is ready, it should return
   // an appropriate error code in case there was no response.
   EXPECT_TRUE(proxy_.Init());
@@ -211,46 +251,85 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureNoResponse) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED), response);
   };
-  proxy_.SendCommand("command", base::BindOnce(callback));
-  EXPECT_EQ("command", last_command());
+  proxy_.SendCommand(command, base::BindOnce(callback));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureNoResponse) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string trunks_response =
+      CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_RESPONSE_RECEIVED};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // If Init() succeeded and the service is ready, it should return
   // an appropriate error code in case there was no response.
   EXPECT_TRUE(proxy_.Init());
   set_next_response("");
-  EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED),
-            proxy_.SendCommandAndWait("command"));
-  EXPECT_EQ("command", last_command());
+  EXPECT_EQ(trunks_response, proxy_.SendCommandAndWait(command));
+  EXPECT_EQ(command, last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandFailureWrongThread) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  TpmErrorData error_data{TPM_CC_FIRST, TRUNKS_RC_IPC_ERROR};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // Attempting to send from a wrong thread should return TRUNKS_RC_IPC_ERROR
   // without sending the command.
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
   base::PlatformThreadId fake_id = proxy_.origin_thread_id_for_testing() ^ 1;
   proxy_.set_origin_thread_id_for_testing(fake_id);
-  set_next_response("response");
+  set_next_response(tpm_response);
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(TRUNKS_RC_IPC_ERROR), response);
   };
-  proxy_.SendCommand("command", base::BindOnce(callback));
+  proxy_.SendCommand(command, base::BindOnce(callback));
   EXPECT_EQ("", last_command());
 }
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureWrongThread) {
+  std::string command = CreateCommand(TPM_CC_FIRST);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+  std::string trunks_response = CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
+  TpmErrorData error_data{TPM_CC_FIRST, TRUNKS_RC_IPC_ERROR};
+  EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
+      .WillOnce(Return(true));
   // Attempting to send from a wrong thread should return TRUNKS_RC_IPC_ERROR
   // without sending the command.
   EXPECT_TRUE(proxy_.Init());
   // xor 1 would change the thread id without overflow.
   base::PlatformThreadId fake_id = proxy_.origin_thread_id_for_testing() ^ 1;
   proxy_.set_origin_thread_id_for_testing(fake_id);
-  set_next_response("response");
-  EXPECT_EQ(CreateErrorResponse(TRUNKS_RC_IPC_ERROR),
-            proxy_.SendCommandAndWait("command"));
+  set_next_response(tpm_response);
+  EXPECT_EQ(trunks_response, proxy_.SendCommandAndWait(command));
   EXPECT_EQ("", last_command());
+}
+
+TEST_F(TrunksDBusProxyTest, SendCommandNotGeneric) {
+  std::string command = CreateCommand(TPM_CC_LAST + 1);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+
+  EXPECT_TRUE(proxy_.Init());
+  set_next_response(tpm_response);
+  auto callback = [](const std::string& response) {
+    std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+    EXPECT_EQ(tpm_response, response);
+  };
+  proxy_.SendCommand(command, base::BindOnce(callback));
+  EXPECT_EQ(command, last_command());
+}
+
+TEST_F(TrunksDBusProxyTest, SendCommandAndWaitNotGeneric) {
+  std::string command = CreateCommand(TPM_CC_LAST + 1);
+  std::string tpm_response = CreateErrorResponse(TPM_RC_SUCCESS);
+
+  EXPECT_TRUE(proxy_.Init());
+  set_next_response(tpm_response);
+  EXPECT_EQ(tpm_response, proxy_.SendCommandAndWait(command));
+  EXPECT_EQ(command, last_command());
 }
 
 }  // namespace trunks

@@ -7,8 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include <absl/strings/str_format.h>
 #include <base/bind.h>
 #include <base/logging.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_data.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
@@ -48,7 +51,9 @@ TrunksDBusProxy::TrunksDBusProxy(const std::string& name,
     : dbus_name_(name),
       dbus_path_(path),
       dbus_interface_(interface),
-      bus_(bus) {}
+      bus_(bus),
+      uma_reporter_(
+          std::make_unique<hwsec_foundation::TpmErrorUmaReporterImpl>()) {}
 
 TrunksDBusProxy::~TrunksDBusProxy() {
   if (bus_) {
@@ -99,6 +104,14 @@ bool TrunksDBusProxy::CheckIfServiceReady() {
 
 void TrunksDBusProxy::SendCommand(const std::string& command,
                                   ResponseCallback callback) {
+  ResponseCallback metrics_callback =
+      base::BindOnce(&TrunksDBusProxy::ReportMetricsCallback, GetWeakPtr(),
+                     std::move(callback), command);
+  SendCommandInternal(command, std::move(metrics_callback));
+}
+
+void TrunksDBusProxy::SendCommandInternal(const std::string& command,
+                                          ResponseCallback callback) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     std::move(callback).Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
@@ -134,6 +147,13 @@ void TrunksDBusProxy::OnError(ResponseCallback callback, brillo::Error* error) {
 }
 
 std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
+  std::string response = SendCommandAndWaitInternal(command);
+  ReportMetrics(command, response);
+  return response;
+}
+
+std::string TrunksDBusProxy::SendCommandAndWaitInternal(
+    const std::string& command) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
@@ -167,6 +187,43 @@ std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
     }
     return CreateErrorResponse(error_code);
   }
+}
+
+void TrunksDBusProxy::ReportMetrics(const std::string& command,
+                                    const std::string& response) {
+  TPM_CC cc;
+  TPM_RC parse_rc = GetCommandCode(command, cc);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to parse command code: "
+               << GetErrorString(parse_rc);
+    return;
+  }
+  if (!IsGenericTpmCommand(cc)) {
+    return;
+  }
+  TPM_RC rc;
+  parse_rc = GetResponseCode(response, rc);
+  if (parse_rc != TPM_RC_SUCCESS) {
+    LOG(WARNING) << __func__ << ": failed to parse response code: "
+                 << GetErrorString(parse_rc);
+    rc = TRUNKS_RC_PARSE_ERROR;
+  }
+  // TODO(chingkang): convert the command codes to user-friendly strings.
+  std::string message =
+      absl::StrFormat("command = 0x%x, response = %s", cc, GetErrorString(rc));
+  VLOG(1) << __func__ << ": " << message;
+  TpmErrorData error_data{cc, GetFormatOneError(rc)};
+  if (!uma_reporter_->ReportTpm2CommandAndResponse(error_data)) {
+    LOG(WARNING) << __func__
+                 << ": failed to report tpm2 command and response: " << message;
+  }
+}
+
+void TrunksDBusProxy::ReportMetricsCallback(ResponseCallback callback,
+                                            const std::string& command,
+                                            const std::string& response) {
+  ReportMetrics(command, response);
+  std::move(callback).Run(response);
 }
 
 }  // namespace trunks
