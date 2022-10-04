@@ -408,9 +408,11 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
   }
 
   if (flags->rsn_8021x_wpa3) {
-    return WiFiSecurity::kWpa3Enterprise;
+    return flags->rsn_8021x ? WiFiSecurity::kWpa2Wpa3Enterprise
+                            : WiFiSecurity::kWpa3Enterprise;
   } else if (flags->rsn_8021x) {
-    return WiFiSecurity::kWpa2Enterprise;
+    return flags->wpa_8021x ? WiFiSecurity::kWpaWpa2Enterprise
+                            : WiFiSecurity::kWpa2Enterprise;
   } else if (flags->wpa_8021x) {
     return WiFiSecurity::kWpaEnterprise;
   } else if (flags->rsn_sae) {

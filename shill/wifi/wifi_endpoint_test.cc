@@ -60,15 +60,21 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return props;
   }
 
+  void AddSecurityArgs(KeyValueStore& args,
+                       const std::string& security_protocol,
+                       std::initializer_list<const char*> key_managements) {
+    std::vector<std::string> km_vector;
+    for (auto km : key_managements) {
+      km_vector.push_back(km);
+    }
+    args.Set<KeyValueStore>(security_protocol,
+                            MakeKeyManagementArgs(km_vector));
+  }
+
   KeyValueStore MakeSecurityArgs(const std::string& security_protocol,
                                  const std::string& key_management_method) {
     KeyValueStore args;
-    std::vector<std::string> key_management_method_vector;
-    if (!key_management_method.empty()) {
-      key_management_method_vector = {key_management_method};
-    }
-    args.Set<KeyValueStore>(
-        security_protocol, MakeKeyManagementArgs(key_management_method_vector));
+    AddSecurityArgs(args, security_protocol, {key_management_method.c_str()});
     return args;
   }
 
@@ -251,6 +257,53 @@ TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
 TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
   EXPECT_EQ(WiFiSecurity::kWpa,
             ParseSecurity(MakeSecurityArgs("WPA", "something-psk")));
+}
+
+TEST_F(WiFiEndpointTest, ParseSecurityMixedModes) {
+  KeyValueStore args;
+  AddSecurityArgs(args, "WPA", {"wpa-psk"});
+  AddSecurityArgs(args, "RSN", {"wpa-psk"});
+  EXPECT_EQ(WiFiSecurity::kWpaWpa2, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "WPA", {"wpa-ft-psk"});
+  AddSecurityArgs(args, "RSN", {"wpa-ft-psk"});
+  EXPECT_EQ(WiFiSecurity::kWpaWpa2, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"wpa-psk", "wpa-ft-psk", "sae"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, ParseSecurity(args));
+}
+
+TEST_F(WiFiEndpointTest, ParseSecurityMixedModes802_1x) {
+  KeyValueStore args;
+  AddSecurityArgs(args, "WPA", {"wpa-eap"});
+  AddSecurityArgs(args, "RSN", {"wpa-eap"});
+  EXPECT_EQ(WiFiSecurity::kWpaWpa2Enterprise, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "WPA", {"wpa-ft-eap"});
+  AddSecurityArgs(args, "RSN", {"wpa-ft-eap"});
+  EXPECT_EQ(WiFiSecurity::kWpaWpa2Enterprise, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"wpa-eap", "wpa-ft-eap", "wpa-eap-sha256"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3Enterprise, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"wpa-eap", "wpa-ft-eap", "wpa-eap-suite-b"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3Enterprise, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN",
+                  {"wpa-eap", "wpa-ft-eap", "wpa-eap-suite-b-192"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3Enterprise, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN",
+                  {"wpa-eap", "wpa-ft-eap", "wpa-eap-sha256", "wpa-eap-suite-b",
+                   "wpa-eap-suite-b-192"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3Enterprise, ParseSecurity(args));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
