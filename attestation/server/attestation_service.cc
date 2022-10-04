@@ -170,7 +170,6 @@ const CertificateAuthority kKnownEndorsementCA[] = {
      "e6203d96f539b542347a08e87fc6e248a346d61a505f52add7f768a5203d70b8"
      "68b6ec92ef7a83a4e6d1e1d259018705755d812175489fae83c4ab2957f69a99"
      "9394ac7a243a5c1cd85f92b8648a8e0d23165fdd86fad06990bfd16fb3293379"},
-    /* TODO(ngm): remove by: Aug 30 08:44:33 2020 GMT */
     {"CROS TPM DEV EK ROOT CA",
      "cdc108745dc50dd6a1098c31486fb31578607fd64f64b0d91b994244ca1a9a69"
      "a74c6bccc7f24923e1513e132dc0d9dbcb1b22089299bb6cb669cbf4b704c992"
