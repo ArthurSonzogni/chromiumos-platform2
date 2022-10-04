@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 // Re-export for CrOS.
+pub use crosvm_base as sys;
 pub use crosvm_base::unix::panic_handler;
 
 #[cfg(feature = "chromeos-module")]
