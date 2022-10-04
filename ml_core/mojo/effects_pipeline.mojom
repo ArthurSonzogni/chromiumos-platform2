@@ -12,7 +12,7 @@ module cros.mojom;
 // chromeos/ml/effects_pipeline/effects_config.h
 [Extensible]
 enum CameraEffect{
-  NONE = 0,
+  [Default] NONE = 0,
   BACKGROUND_BLUR = 1,
   BACKGROUND_REPLACE = 2,
   PORTRAIT_RELIGHT = 3,
@@ -21,14 +21,14 @@ enum CameraEffect{
 // Set of GPU APIs available.
 [Extensible]
 enum GpuApi {
-  OPENCL = 0,
+  [Default] OPENCL = 0,
   OPENGL = 1
 };
 
 // Indicates the state of requesting a switch effect.
 [Extensible]
 enum SwitchEffectSuccess {
-  OK = 0,
+  [Default] OK = 0,
   ERROR = 1
 };
 
