@@ -430,16 +430,6 @@ bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
   return true;
 }
 
-bool TPM2UtilityImpl::StirRandom(const std::string& entropy_data) {
-  TPM_RC result = trunks_tpm_utility_->StirRandom(entropy_data, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error seeding TPM random number generator: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  return true;
-}
-
 bool TPM2UtilityImpl::GenerateRSAKey(int slot,
                                      int modulus_bits,
                                      const std::string& public_exponent,

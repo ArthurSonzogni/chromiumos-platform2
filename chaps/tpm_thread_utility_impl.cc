@@ -127,12 +127,6 @@ bool TPMThreadUtilityImpl::GenerateRandom(int num_bytes,
   return result;
 }
 
-bool TPMThreadUtilityImpl::StirRandom(const std::string& entropy_data) {
-  bool result;
-  SendRequestAndWaitResult(&TPMUtility::StirRandom, &result, entropy_data);
-  return result;
-}
-
 bool TPMThreadUtilityImpl::GenerateRSAKey(int slot,
                                           int modulus_bits,
                                           const std::string& public_exponent,

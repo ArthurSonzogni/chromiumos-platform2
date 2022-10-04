@@ -39,8 +39,6 @@ class TPMUtilityStub : public TPMUtility {
     return false;
   }
 
-  bool StirRandom(const std::string& entropy_data) override { return false; }
-
   bool GenerateRSAKey(int slot,
                       int modulus_bits,
                       const std::string& public_exponent,

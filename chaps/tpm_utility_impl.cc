@@ -331,27 +331,6 @@ bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
   return true;
 }
 
-bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
-  VLOG(1) << "TPMUtilityImpl::StirRandom enter";
-  if (!InitSRK())
-    return false;
-  TSS_RESULT result = TSS_SUCCESS;
-  TSS_HTPM tpm;
-  result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
-    return false;
-  }
-  result = Tspi_TPM_StirRandom(tpm, entropy_data.length(),
-                               ConvertStringToByteBuffer(entropy_data.data()));
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_TPM_StirRandom - " << ResultToString(result);
-    return false;
-  }
-  VLOG(1) << "TPMUtilityImpl::StirRandom success";
-  return true;
-}
-
 bool TPMUtilityImpl::GenerateRSAKey(int slot,
                                     int modulus_bits,
                                     const string& public_exponent,

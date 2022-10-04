@@ -61,12 +61,6 @@ class TPMUtility {
   // Provides hardware-generated random data. Returns true on success.
   virtual bool GenerateRandom(int num_bytes, std::string* random_data) = 0;
 
-  // Adds entropy to the hardware random number generator. This is like seeding
-  // the generator except the provided entropy is mixed with existing state and
-  // the resulting random numbers generated are not deterministic. Returns true
-  // on success.
-  virtual bool StirRandom(const std::string& entropy_data) = 0;
-
   // Generates an RSA key pair in the TPM and wraps it with the SRK. The key
   // type will be set to TSS_KEY_TYPE_LEGACY.
   //   slot - The slot associated with this key.

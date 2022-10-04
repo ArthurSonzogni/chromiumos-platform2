@@ -132,7 +132,6 @@ TEST_F(TestTPMUtility, Authenticate) {
 }
 
 TEST_F(TestTPMUtility, Random) {
-  EXPECT_TRUE(tpm_->StirRandom("some_entropy"));
   string r;
   EXPECT_TRUE(tpm_->GenerateRandom(128, &r));
   EXPECT_EQ(128, r.length());

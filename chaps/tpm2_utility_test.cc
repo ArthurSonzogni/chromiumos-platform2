@@ -252,22 +252,6 @@ TEST_F(TPM2UtilityTest, GenerateRandomFail) {
   EXPECT_FALSE(utility.GenerateRandom(num_bytes, &random_data));
 }
 
-TEST_F(TPM2UtilityTest, StirRandomSuccess) {
-  TPM2UtilityImpl utility(factory_.get());
-  std::string entropy_data;
-  EXPECT_CALL(mock_tpm_utility_, StirRandom(entropy_data, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.StirRandom(entropy_data));
-}
-
-TEST_F(TPM2UtilityTest, StirRandomFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  std::string entropy_data;
-  EXPECT_CALL(mock_tpm_utility_, StirRandom(entropy_data, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.StirRandom(entropy_data));
-}
-
 TEST_F(TPM2UtilityTest, GenerateRSAKeySuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;

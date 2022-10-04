@@ -40,7 +40,6 @@ class TPMThreadUtilityImpl : public AsyncTPMUtility {
                     const std::string& encrypted_root_key,
                     brillo::SecureBlob* root_key) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
-  bool StirRandom(const std::string& entropy_data) override;
   bool GenerateRSAKey(int slot,
                       int modulus_bits,
                       const std::string& public_exponent,
