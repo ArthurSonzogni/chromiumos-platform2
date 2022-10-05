@@ -281,6 +281,9 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
@@ -326,6 +329,9 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -373,6 +379,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -395,7 +404,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   task_environment_.RunUntilIdle();
   EXPECT_EQ(overall_status_history_.size(), 1);
   EXPECT_EQ(overall_status_history_[0],
-            RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
+            RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
 
   std::map<std::string, std::map<std::string, std::string>>
       current_calibration_map;
@@ -415,6 +424,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
@@ -456,6 +468,9 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -498,6 +513,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
@@ -662,6 +680,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -696,6 +717,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
@@ -728,6 +752,9 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -761,6 +788,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
@@ -794,6 +824,9 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
   handler->CleanUpState();
+  // Check that only one overall signal is sent.
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {

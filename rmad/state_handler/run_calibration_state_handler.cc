@@ -22,7 +22,8 @@ namespace rmad {
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {
+    : BaseStateHandler(json_store, daemon_callback),
+      current_round_finished_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
@@ -44,7 +45,8 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      vpd_utils_(std::move(vpd_utils)) {
+      vpd_utils_(std::move(vpd_utils)),
+      current_round_finished_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
@@ -74,7 +76,9 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   }
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
-  if (!RetrieveVarsAndCalibrate()) {
+  // TODO(genechang): Refactor to remove current status' dependency on
+  // |RetrieveVarsAndCalibrate|.
+  if (!current_round_finished_ && !RetrieveVarsAndCalibrate()) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
   return RMAD_ERROR_OK;
@@ -82,6 +86,7 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
 
 void RunCalibrationStateHandler::CleanUpState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  current_round_finished_ = false;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -156,19 +161,23 @@ bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
     return false;
   }
 
+  // TODO(genechang): Refactor to remove current status' dependency on
+  // |RetrieveVarsAndCalibrate|.
   running_instruction_ = GetCurrentSetupInstruction(calibration_map_);
   if (running_instruction_ == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
-    SendOverallSignal(RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
+    current_round_finished_ = true;
+    SendOverallSignal(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
     return true;
   }
 
   if (running_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+    current_round_finished_ = true;
     SendOverallSignal(RMAD_CALIBRATION_OVERALL_COMPLETE);
     return true;
   }
 
-  if (setup_instruction_ == running_instruction_) {
+  if (running_instruction_ == setup_instruction_) {
     for (auto [component, status] : calibration_map_[running_instruction_]) {
       if (status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING) {
         CalibrateAndSendProgress(component);
@@ -277,6 +286,8 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
       // signal, we should post the overall signal after everything is done to
       // prevent another call from the state transition from breaking the
       // sequence.
+      current_round_finished_ = true;
+      running_instruction_ = GetCurrentSetupInstruction(calibration_map_);
       sequenced_task_runner_->PostTask(
           FROM_HERE,
           base::BindOnce(&RunCalibrationStateHandler::SendOverallSignal,

@@ -89,6 +89,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
   std::unique_ptr<VpdUtils> vpd_utils_;
+  bool current_round_finished_;
 };
 
 }  // namespace rmad
