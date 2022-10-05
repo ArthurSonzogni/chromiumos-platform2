@@ -60,7 +60,9 @@ const char kGenericServiceNamePrefix[] = "MobileNetwork";
 
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
-
+const char kStorageLastConnectedDefaultAPN[] =
+    "Cellular.LastConnectedDefaultAPN";
+const char kStorageLastConnectedAttachAPN[] = "Cellular.LastConnectedAttachAPN";
 
 bool GetNonEmptyField(const Stringmap& stringmap,
                       const std::string& fieldname,
@@ -190,6 +192,10 @@ CellularService::CellularService(Manager* manager,
                                 &last_good_apn_info_);
   store->RegisterConstStringmap(kCellularLastAttachApnProperty,
                                 &last_attach_apn_info_);
+  store->RegisterConstStringmap(kCellularLastConnectedDefaultApnProperty,
+                                &last_connected_default_apn_info_);
+  store->RegisterConstStringmap(kCellularLastConnectedAttachApnProperty,
+                                &last_connected_attach_apn_info_);
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
   HelpRegisterDerivedBool(kOutOfCreditsProperty,
                           &CellularService::IsOutOfCredits, nullptr);
@@ -333,6 +339,10 @@ bool CellularService::Load(const StoreInterface* storage) {
       cellular() ? cellular()->apn_list() : Stringmaps();
   LoadApn(storage, id, kStorageAPN, apn_list, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, apn_list, &last_good_apn_info_);
+  LoadApn(storage, id, kStorageLastConnectedDefaultAPN, apn_list,
+          &last_connected_default_apn_info_);
+  LoadApn(storage, id, kStorageLastConnectedAttachAPN, apn_list,
+          &last_connected_attach_apn_info_);
 
   const std::string old_username = ppp_username_;
   const std::string old_password = ppp_password_;
@@ -361,6 +371,10 @@ bool CellularService::Save(StoreInterface* storage) {
 
   SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
+  SaveApn(storage, id, GetLastConnectedDefaultApn(),
+          kStorageLastConnectedDefaultAPN);
+  SaveApn(storage, id, GetLastConnectedAttachApn(),
+          kStorageLastConnectedAttachAPN);
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
 
@@ -505,8 +519,11 @@ Stringmap* CellularService::GetLastGoodApn() {
 
 void CellularService::SetLastGoodApn(const Stringmap& apn_info) {
   last_good_apn_info_ = apn_info;
+  last_connected_default_apn_info_ = apn_info;
   adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
+  adaptor()->EmitStringmapChanged(kCellularLastConnectedDefaultApnProperty,
+                                  last_connected_default_apn_info_);
 }
 
 void CellularService::ClearLastGoodApn() {
@@ -532,6 +549,18 @@ void CellularService::ClearLastAttachApn() {
   last_attach_apn_info_.clear();
   adaptor()->EmitStringmapChanged(kCellularLastAttachApnProperty,
                                   last_attach_apn_info_);
+}
+
+void CellularService::SetLastConnectedAttachApn(const Stringmap& apn_info) {
+  last_connected_attach_apn_info_ = apn_info;
+  adaptor()->EmitStringmapChanged(kCellularLastConnectedAttachApnProperty,
+                                  last_connected_attach_apn_info_);
+}
+
+void CellularService::ClearLastConnectedAttachApn() {
+  last_connected_attach_apn_info_.clear();
+  adaptor()->EmitStringmapChanged(kCellularLastConnectedAttachApnProperty,
+                                  last_connected_attach_apn_info_);
 }
 
 void CellularService::NotifySubscriptionStateChanged(
@@ -785,6 +814,20 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   }
   Connect(error, __func__);
   return error->IsSuccess();
+}
+
+Stringmap* CellularService::GetLastConnectedDefaultApn() {
+  Stringmap::iterator it = last_connected_default_apn_info_.find(kApnProperty);
+  if (it == last_connected_default_apn_info_.end() || it->second.empty())
+    return nullptr;
+  return &last_connected_default_apn_info_;
+}
+
+Stringmap* CellularService::GetLastConnectedAttachApn() {
+  Stringmap::iterator it = last_connected_attach_apn_info_.find(kApnProperty);
+  if (it == last_connected_attach_apn_info_.end() || it->second.empty())
+    return nullptr;
+  return &last_connected_attach_apn_info_;
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {

@@ -113,6 +113,8 @@ class CellularService : public Service {
   Stringmap* GetLastAttachApn();
   virtual void SetLastAttachApn(const Stringmap& apn_info);
   virtual void ClearLastAttachApn();
+  virtual void SetLastConnectedAttachApn(const Stringmap& apn_info);
+  virtual void ClearLastConnectedAttachApn();
 
   void NotifySubscriptionStateChanged(SubscriptionState subscription_state);
 
@@ -161,9 +163,11 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, SetAttachApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
+  FRIEND_TEST(CellularServiceTest, LastConnectedAttachApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, LoadResetsPPPAuthFailure);
   FRIEND_TEST(CellularServiceTest, SaveAndLoadApn);
+  FRIEND_TEST(CellularServiceTest, IgnoreUnversionedLastGoodApn);
   FRIEND_TEST(CellularServiceTest, MergeDetailsFromApnList);
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
   FRIEND_TEST(CellularServiceTest, SetAllowRoaming);
@@ -197,6 +201,8 @@ class CellularService : public Service {
   std::string CalculateActivationType(Error* error);
   Stringmap GetApn(Error* error);
   bool SetApn(const Stringmap& value, Error* error);
+  Stringmap* GetLastConnectedDefaultApn();
+  Stringmap* GetLastConnectedAttachApn();
   KeyValueStore GetStorageProperties() const;
   std::string GetDefaultStorageIdentifier() const;
   bool IsOutOfCredits(Error* /*error*/);
@@ -227,6 +233,14 @@ class CellularService : public Service {
   Stringmap last_good_apn_info_;
   // Stores the attach APN used for the initial EPS settings
   Stringmap last_attach_apn_info_;
+  // Similar to |last_good_apn_info_|, but isn't cleared when the connection
+  // fails. This property will be removed after the APN Revamp project is
+  // completely migrated (b/251512775).
+  Stringmap last_connected_default_apn_info_;
+  // The last attach APN used for a successful connection. Persisted when the
+  // service is saved. This property will be removed after the APN Revamp
+  // project is completely migrated (b/251512775).
+  Stringmap last_connected_attach_apn_info_;
   std::string ppp_username_;
   std::string ppp_password_;
   bool allow_roaming_ = false;

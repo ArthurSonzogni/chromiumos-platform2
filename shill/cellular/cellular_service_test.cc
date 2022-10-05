@@ -247,8 +247,14 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
   EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularLastGoodApnProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(
+                             kCellularLastConnectedDefaultApnProperty, _));
   service_->SetLastGoodApn(testapn);
   Stringmap* resultapn = service_->GetLastGoodApn();
+  ASSERT_NE(nullptr, resultapn);
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
+  resultapn = service_->GetLastConnectedDefaultApn();
   ASSERT_NE(nullptr, resultapn);
   EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
   EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
@@ -264,6 +270,46 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   ASSERT_NE(nullptr, service_->GetLastGoodApn());
   EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
   EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
+}
+
+TEST_F(CellularServiceTest, LastConnectedAttachApn) {
+  static const char kApn[] = "TheAPN";
+  static const char kUsername[] = "commander.data";
+  service_->set_profile(profile_);
+  Stringmap testapn;
+  testapn[kApnProperty] = kApn;
+  testapn[kApnUsernameProperty] = kUsername;
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularLastConnectedAttachApnProperty, _));
+  service_->SetLastConnectedAttachApn(testapn);
+  Stringmap* resultapn = service_->GetLastConnectedAttachApn();
+  ASSERT_NE(nullptr, resultapn);
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
+  ASSERT_TRUE(service_->Save(&storage_));
+
+  // Clear the LastConnectedAttachAPN.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularLastConnectedAttachApnProperty, _));
+  service_->ClearLastConnectedAttachApn();
+  ASSERT_EQ(nullptr, service_->GetLastConnectedAttachApn());
+
+  // Load the LastConnectedAttachAPN.
+  ASSERT_TRUE(service_->Load(&storage_));
+  resultapn = service_->GetLastConnectedAttachApn();
+  ASSERT_NE(nullptr, resultapn);
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
+
+  // Clear the LastConnectedAttachAPN again and save.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularLastConnectedAttachApnProperty, _));
+  service_->ClearLastConnectedAttachApn();
+  ASSERT_EQ(nullptr, service_->GetLastConnectedAttachApn());
+  ASSERT_TRUE(service_->Save(&storage_));
+
+  // Load the LastConnectedAttachAPN.
+  ASSERT_EQ(nullptr, service_->GetLastConnectedAttachApn());
 }
 
 TEST_F(CellularServiceTest, IsAutoConnectable) {
@@ -449,14 +495,34 @@ TEST_F(CellularServiceTest, IgnoreUnversionedLastGoodApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularLastGoodApnProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(
+                             kCellularLastConnectedDefaultApnProperty, _));
   service_->SetLastGoodApn(testapn);
   ASSERT_TRUE(service_->Save(&storage_));
+  EXPECT_NE(nullptr, service_->GetLastGoodApn());
+  EXPECT_NE(nullptr, service_->GetLastConnectedDefaultApn());
 
-  // Now clear the LastGoodAPN and try to load it. It should be ignored.
+  // Clear the LastGoodAPN. The LastConnectedDefaultAPN should be unaffected.
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularLastGoodApnProperty, _));
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kCellularLastConnectedDefaultApnProperty, _))
+      .Times(0);
   service_->ClearLastGoodApn();
+  EXPECT_EQ(nullptr, service_->GetLastGoodApn());
+  EXPECT_NE(nullptr, service_->GetLastConnectedDefaultApn());
+
+  // Force the LastConnectedDefaultAPN to be cleared.
+  service_->GetLastConnectedDefaultApn()->clear();
+
+  // Load the LastGoodAPN and LastConnectedDefaultAPN. The LastGoodAPN should be
+  // ignored.
   ASSERT_TRUE(service_->Load(&storage_));
-  Stringmap* resultapn = service_->GetLastGoodApn();
-  EXPECT_EQ(nullptr, resultapn);
+  EXPECT_EQ(nullptr, service_->GetLastGoodApn());
+  Stringmap* resultapn = service_->GetLastConnectedDefaultApn();
+  EXPECT_NE(nullptr, resultapn);
+  EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
+  EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);
 }
 
 TEST_F(CellularServiceTest, MergeDetailsFromApnList) {

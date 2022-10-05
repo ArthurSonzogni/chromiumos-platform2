@@ -1999,6 +1999,16 @@ void CellularCapability3gpp::Handle3gppRegistrationChange(
   cellular()->serving_operator_info()->UpdateOperatorName(
       updated_operator_name);
 
+  CellularServiceRefPtr service = cellular()->service();
+  if (service && IsRegistered()) {
+    if (last_attach_apn_.empty()) {
+      // The NULL APN was used to attach.
+      service->ClearLastConnectedAttachApn();
+    } else {
+      service->SetLastConnectedAttachApn(last_attach_apn_);
+    }
+  }
+
   cellular()->HandleNewRegistrationState();
 
   // A finished callback does not qualify as a canceled callback.

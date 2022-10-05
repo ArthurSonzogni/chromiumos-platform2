@@ -168,6 +168,10 @@ const char kActivationStateProperty[] = "Cellular.ActivationState";
 const char kActivationTypeProperty[] = "Cellular.ActivationType";
 const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
 const char kCellularApnProperty[] = "Cellular.APN";
+const char kCellularLastConnectedDefaultApnProperty[] =
+    "Cellular.LastConnectedDefaultApnProperty";
+const char kCellularLastConnectedAttachApnProperty[] =
+    "Cellular.LastConnectedAttachApnProperty";
 const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
 const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
