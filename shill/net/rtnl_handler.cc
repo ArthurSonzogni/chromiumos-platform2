@@ -352,7 +352,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
               // EEXIST for create requests and ENOENT, ESRCH, ENODEV,
               // EADDRNOTAVAIL for delete requests do not really indicate an
               // error condition.
-              VLOG(3) << error_msg;
+              VLOG(2) << error_msg;
             } else {
               LOG(ERROR) << error_msg;
             }
