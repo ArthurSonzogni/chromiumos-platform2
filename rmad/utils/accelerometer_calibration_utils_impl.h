@@ -19,6 +19,10 @@ class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
   explicit AccelerometerCalibrationUtilsImpl(
       const std::string& location,
       const std::string& name = "cros-ec-accel");
+  explicit AccelerometerCalibrationUtilsImpl(
+      const std::string& location,
+      const std::string& name,
+      std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
   ~AccelerometerCalibrationUtilsImpl() override = default;
 
   void Calibrate(CalibrationProgressCallback progress_callback,

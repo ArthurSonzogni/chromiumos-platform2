@@ -60,6 +60,7 @@ if (use.test) {
 
   source_set("libutils_test") {
     sources = [
+      "accelerometer_calibration_utils_test.cc",
       "cbi_utils_test.cc",
       "cmd_utils_test.cc",
       "component_utils_test.cc",
