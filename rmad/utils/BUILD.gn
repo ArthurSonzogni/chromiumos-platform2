@@ -67,6 +67,7 @@ if (use.test) {
       "cros_config_utils_test.cc",
       "dbus_utils_test.cc",
       "flashrom_utils_test.cc",
+      "gyroscope_calibration_utils_test.cc",
       "iio_ec_sensor_utils_test.cc",
       "iio_sensor_probe_utils_test.cc",
       "json_store_test.cc",

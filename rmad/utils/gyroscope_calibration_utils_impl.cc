@@ -51,9 +51,20 @@ GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
   iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
 }
 
+GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
+    const std::string& location,
+    const std::string& name,
+    std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils)
+    : SensorCalibrationUtils(location, name),
+      iio_ec_sensor_utils_(std::move(iio_ec_sensor_utils)) {}
+
 void GyroscopeCalibrationUtilsImpl::Calibrate(
     CalibrationProgressCallback progress_callback,
     CalibrationResultCallback result_callback) {
+  CHECK(iio_ec_sensor_utils_);
+  CHECK_EQ(GetLocation(), iio_ec_sensor_utils_->GetLocation());
+  CHECK_EQ(GetName(), iio_ec_sensor_utils_->GetName());
+
   std::vector<double> avg_data;
   std::vector<double> original_calibbias;
   std::map<std::string, int> calibbias;
