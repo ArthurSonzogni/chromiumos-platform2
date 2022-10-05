@@ -333,12 +333,12 @@ void WiFi::Stop(const EnabledStateChangedCallback& callback) {
 
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
-  SLOG(this, 3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
+  SLOG(this, 2) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
                 << (supplicant_interface_proxy_.get() ? "is set."
                                                       : "is not set.");
-  SLOG(this, 3) << "WiFi " << link_name() << " pending_service_ "
+  SLOG(this, 2) << "WiFi " << link_name() << " pending_service_ "
                 << (pending_service_.get() ? "is set." : "is not set.");
-  SLOG(this, 3) << "WiFi " << link_name() << " has "
+  SLOG(this, 2) << "WiFi " << link_name() << " has "
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 
   callback.Run(Error(Error::kSuccess));
@@ -864,13 +864,13 @@ std::string WiFi::AppendBgscan(WiFiService* service,
     // with pre-set parameters. Otherwise, use extended scan intervals.
     method = kDefaultBgscanMethod;
     if (service->GetEndpointCount() <= 1) {
-      SLOG(3) << "Background scan intervals extended -- single "
+      SLOG(2) << "Background scan intervals extended -- single "
               << "Endpoint for Service.";
       short_interval = kSingleEndpointBgscanShortIntervalSeconds;
       scan_interval = kSingleEndpointBgscanIntervalSeconds;
     }
   } else if (method == WPASupplicant::kNetworkBgscanMethodNone) {
-    SLOG(3) << "Background scan disabled -- chose None method.";
+    SLOG(2) << "Background scan disabled -- chose None method.";
   } else {
     // If the background scan method was explicitly specified, honor the
     // configured background scan interval.
@@ -1028,7 +1028,7 @@ bool WiFi::SetInterworkingSelectEnabled(const bool& enabled,
 }
 
 void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
-  SLOG(this, 3) << "WiFi " << link_name()
+  SLOG(this, 2) << "WiFi " << link_name()
                 << " supplicant updated AssocStatusCode to " << new_assoc_status
                 << " (was " << supplicant_assoc_status_ << ")";
   if (supplicant_auth_status_ != IEEE_80211::kStatusCodeSuccessful) {
@@ -1041,7 +1041,7 @@ void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
 }
 
 void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
-  SLOG(this, 3) << "WiFi " << link_name()
+  SLOG(this, 2) << "WiFi " << link_name()
                 << " supplicant updated AuthStatusCode to " << new_auth_status
                 << " (was " << supplicant_auth_status_ << ")";
   if (supplicant_assoc_status_ != IEEE_80211::kStatusCodeSuccessful) {
@@ -1838,7 +1838,7 @@ void WiFi::OnGetReg(const Nl80211Message& nl80211_message) {
   std::string country_code;
   if (!nl80211_message.const_attributes()->GetStringAttributeValue(
           NL80211_ATTR_REG_ALPHA2, &country_code)) {
-    SLOG(this, 3) << "Regulatory message had no NL80211_ATTR_REG_ALPHA2";
+    SLOG(this, 2) << "Regulatory message had no NL80211_ATTR_REG_ALPHA2";
     return;  // If no alpha2 value present, ignore it.
   }
   HandleCountryChange(country_code);
@@ -1869,12 +1869,12 @@ void WiFi::OnRegChange(const Nl80211Message& nl80211_message) {
   uint32_t initiator;
   if (!nl80211_message.const_attributes()->GetU32AttributeValue(
           NL80211_ATTR_REG_INITIATOR, &initiator)) {
-    SLOG(this, 3) << "No NL80211_ATTR_REG_INITIATOR in command "
+    SLOG(this, 2) << "No NL80211_ATTR_REG_INITIATOR in command "
                   << nl80211_message.command_string();
     return;
   }
   if (initiator == NL80211_REGDOM_SET_BY_USER) {
-    SLOG(this, 3) << "Ignoring regulatory domain change initiated by user.";
+    SLOG(this, 2) << "Ignoring regulatory domain change initiated by user.";
     return;
   }
 
@@ -1894,7 +1894,7 @@ void WiFi::HandleCountryChange(std::string country_code) {
     LOG(WARNING) << "Unsupported NL80211_ATTR_REG_ALPHA2 attribute: "
                  << country_code;
   } else {
-    SLOG(this, 3) << base::StringPrintf(
+    SLOG(this, 2) << base::StringPrintf(
         "Regulatory domain change message received with alpha2 %s (metric val: "
         "%d)",
         country_code.c_str(), reg_dom_val);
@@ -2379,7 +2379,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       new_state != WPASupplicant::kInterfaceStateDisconnected) {
     // The state has been changed from disconnect to something else, clearing
     // out disconnect reason to avoid confusion about future disconnects.
-    SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
+    SLOG(this, 2) << "WiFi clearing DisconnectReason for " << link_name();
     supplicant_disconnect_reason_ = IEEE_80211::kReasonCodeInvalid;
   }
 
@@ -2852,7 +2852,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   interface_index());
   if (!freqs.empty()) {
-    SLOG(this, 3) << __func__ << ": "
+    SLOG(this, 2) << __func__ << ": "
                   << "Scanning on specific channels";
     trigger_scan.attributes()->CreateNl80211Attribute(
         NL80211_ATTR_SCAN_FREQUENCIES, NetlinkMessage::MessageContext());
@@ -3936,7 +3936,7 @@ void WiFi::OnIPv4ConfiguredWithDHCPLease() {
   if (!wake_on_wifi_) {
     return;
   }
-  SLOG(this, 3) << __func__ << ": "
+  SLOG(this, 2) << __func__ << ": "
                 << "IPv4 DHCP lease obtained";
   wake_on_wifi_->OnConnectedAndReachable(
       network()->TimeToNextDHCPLeaseRenewal());
@@ -3949,7 +3949,7 @@ void WiFi::OnIPv6ConfiguredWithSLAACAddress() {
   if (!wake_on_wifi_) {
     return;
   }
-  SLOG(this, 3) << __func__ << ": "
+  SLOG(this, 2) << __func__ << ": "
                 << "IPv6 configuration obtained through SLAAC";
   wake_on_wifi_->OnConnectedAndReachable(std::nullopt);
 }

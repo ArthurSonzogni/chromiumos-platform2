@@ -316,15 +316,15 @@ void Service::AutoConnect() {
   if (!IsAutoConnectable(&reason)) {
     if (reason == kAutoConnTechnologyNotAutoConnectable ||
         reason == kAutoConnConnected) {
-      SLOG(this, 3) << "Suppressed autoconnect to " << log_name()
+      SLOG(this, 2) << "Suppressed autoconnect to " << log_name()
                     << " Reason: " << reason;
     } else if (reason == kAutoConnBusy ||
                reason == kAutoConnMediumUnavailable) {
       SLOG(this, 1) << "Suppressed autoconnect to " << log_name()
                     << " Reason: " << reason;
     } else {
-      LOG(INFO) << "Suppressed autoconnect to " << log_name()
-                << " Reason: " << reason;
+      SLOG(2) << "Suppressed autoconnect to " << log_name()
+              << " Reason: " << reason;
     }
     return;
   }

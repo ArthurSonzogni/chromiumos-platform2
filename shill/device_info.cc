@@ -987,7 +987,6 @@ void DeviceInfo::FlushAddresses(int interface_index,
 
 bool DeviceInfo::HasOtherAddress(int interface_index,
                                  const IPAddress& this_address) const {
-  SLOG(3) << __func__ << "(" << interface_index << ")";
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
@@ -1104,7 +1103,6 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
                                     int* vendor_id,
                                     int* product_id,
                                     int* subsystem_id) const {
-  SLOG(3) << __func__ << "(" << interface_index << ")";
   const Info* info = GetInfo(interface_index);
   if (!info) {
     LOG(ERROR) << "No DeviceInfo for interface index " << interface_index;

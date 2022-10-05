@@ -49,9 +49,11 @@ class ServiceUnderTest : public Service {
     disconnectable_ = disconnectable;
   }
 
+  int connect_calls() const { return connect_calls_; }
+
  protected:
   // Inherited from Service.
-  void OnConnect(Error* error) override {}
+  void OnConnect(Error* error) override;
   void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
   bool IsDisconnectable(Error* error) const override;
 
@@ -61,7 +63,8 @@ class ServiceUnderTest : public Service {
   std::vector<std::string> strings_;
   KeyValueStore key_value_store_;
 
-  bool disconnectable_;
+  bool disconnectable_ = true;
+  int connect_calls_ = 0;
 };
 
 }  // namespace shill

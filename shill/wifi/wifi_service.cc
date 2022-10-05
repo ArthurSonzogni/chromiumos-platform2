@@ -617,7 +617,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
   if (storage->GetCryptedString(id, kStorageDeprecatedPassphrase,
                                 kStorageCredentialPassphrase, &passphrase)) {
     if (SetPassphraseInternal(passphrase, Service::kReasonCredentialsLoaded)) {
-      SLOG(this, 3) << "Loaded passphrase in WiFiService::Load.";
+      SLOG(this, 2) << "Loaded passphrase in WiFiService::Load.";
     }
   }
 

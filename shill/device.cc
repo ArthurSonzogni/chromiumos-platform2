@@ -838,8 +838,7 @@ void Device::SetEnabledNonPersistent(bool enable,
   SetEnabledChecked(enable, false, callback);
 }
 
-void Device::SetEnabledPersistent(bool enable,
-                                  const ResultCallback& callback) {
+void Device::SetEnabledPersistent(bool enable, const ResultCallback& callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
   SetEnabledChecked(enable, true, callback);
 }
@@ -912,11 +911,11 @@ void Device::SetEnabledUnchecked(bool enable,
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
     }
-    SLOG(this, 3) << "Device " << link_name_ << " ipconfig "
-                  << (network_->ipconfig() ? "is set." : "is not set.");
-    SLOG(this, 3) << "Device " << link_name_ << " ip6config "
-                  << (network_->ip6config() ? "is set." : "is not set.");
-    SLOG(this, 3) << "Device " << link_name_ << " selected_service_ "
+    SLOG(this, 2) << "Device " << link_name_ << " ipconfig "
+                  << (network_->ipconfig() ? "is set," : "is not set,")
+                  << " ip6config "
+                  << (network_->ip6config() ? "is set," : "is not set,")
+                  << " selected_service_ "
                   << (selected_service_ ? "is set." : "is not set.");
     Stop(chained_callback);
   }

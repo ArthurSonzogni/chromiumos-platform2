@@ -252,7 +252,7 @@ void WiFiProvider::Stop() {
   while (!services_.empty()) {
     WiFiServiceRefPtr service = services_.back();
     ForgetService(service);
-    SLOG(3) << "WiFiProvider deregistering service " << service->log_name();
+    SLOG(2) << "WiFiProvider deregistering service " << service->log_name();
     manager_->DeregisterService(service);
   }
   service_by_endpoint_.clear();
@@ -943,7 +943,7 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
   // Get the WiFiPhy object at phy_index, or create a new WiFiPhy if there isn't
   // one.
   if (!base::Contains(wifi_phys_, phy_index)) {
-    SLOG(3) << "Adding a new phy object at index: " << phy_index;
+    SLOG(2) << "Adding a new phy object at index: " << phy_index;
     wifi_phys_[phy_index] = std::make_unique<WiFiPhy>(phy_index);
   }
   // Forward the message to the WiFiPhy object.
@@ -978,7 +978,7 @@ void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
   // This is needed because the WiFi driver may not broadcast an
   // NL80211_CMD_NEW_WIPHY when a new phy comes online.
   if (!base::Contains(wifi_phys_, phy_index)) {
-    SLOG(3) << "Recieved command " << nl80211_message.command_string()
+    SLOG(2) << "Recieved command " << nl80211_message.command_string()
             << " for unknown phy at index " << phy_index
             << " requesting phy info";
     GetPhyInfo(phy_index);
@@ -999,7 +999,7 @@ void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
   CHECK(base::Contains(wifi_phys_, phy_index))
       << "Tried to register WiFi device " << device->link_name()
       << " to phy_index: " << phy_index << " but the phy does not exist";
-  SLOG(3) << "Registering WiFi device " << device->link_name()
+  SLOG(2) << "Registering WiFi device " << device->link_name()
           << " to phy_index: " << phy_index;
   wifi_phys_[phy_index]->AddWiFiDevice(device);
 }
@@ -1007,7 +1007,7 @@ void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
 void WiFiProvider::DeregisterDeviceFromPhy(WiFiConstRefPtr device,
                                            uint32_t phy_index) {
   CHECK(device);
-  SLOG(3) << "Deregistering WiFi device " << device->link_name()
+  SLOG(2) << "Deregistering WiFi device " << device->link_name()
           << " from phy_index: " << phy_index;
   if (base::Contains(wifi_phys_, phy_index)) {
     wifi_phys_[phy_index]->DeleteWiFiDevice(device);

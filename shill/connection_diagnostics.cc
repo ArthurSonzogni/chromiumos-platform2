@@ -181,8 +181,6 @@ bool ConnectionDiagnostics::Start(const std::string& url_string) {
 }
 
 void ConnectionDiagnostics::Stop() {
-  SLOG(3) << __func__;
-
   running_ = false;
   num_dns_attempts_ = 0;
   diagnostic_events_.clear();
@@ -236,8 +234,6 @@ void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
     const std::vector<std::string>& dns_list) {
-  SLOG(3) << __func__;
-
   Error e;
   if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
     LOG(ERROR) << iface_name_ << ": could not start DNS on -- " << e.message();
@@ -249,14 +245,12 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 
   AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultSuccess,
                       base::StringPrintf("Attempt #%d", num_dns_attempts_));
-  SLOG(3) << __func__ << ": looking up " << target_url_->host() << " (attempt "
+  SLOG(2) << __func__ << ": looking up " << target_url_->host() << " (attempt "
           << num_dns_attempts_ << ")";
   ++num_dns_attempts_;
 }
 
 void ConnectionDiagnostics::PingDNSServers() {
-  SLOG(3) << __func__;
-
   if (dns_list_.empty()) {
     LOG(ERROR) << iface_name_ << ": no DNS servers for network connection on "
                << iface_name_;
@@ -298,7 +292,7 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
     }
 
-    SLOG(3) << __func__ << ": pinging DNS server at "
+    SLOG(2) << __func__ << ": pinging DNS server at "
             << dns_server_ip_addr.ToString();
   }
 
@@ -317,7 +311,7 @@ void ConnectionDiagnostics::PingDNSServers() {
 }
 
 void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   RoutingTableEntry entry;
   route_query_callback_.Reset(
@@ -346,7 +340,7 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
 }
 
 void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   if (address.family() != IPAddress::kFamilyIPv4) {
     // We only perform ARP table lookups for IPv4 addresses.
@@ -379,7 +373,7 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
 }
 
 void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   if (address.family() != IPAddress::kFamilyIPv6) {
     // We only perform neighbor table lookups for IPv6 addresses.
@@ -408,7 +402,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
 }
 
 void ConnectionDiagnostics::CheckIpCollision() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   if (!device_info_->GetMacAddress(iface_index_, &mac_address_)) {
     LOG(ERROR) << iface_name_ << ": could not get local MAC address";
@@ -454,7 +448,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
 }
 
 void ConnectionDiagnostics::PingHost(const IPAddress& address) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   Type event_type =
       address.Equals(gateway_) ? kTypePingGateway : kTypePingTargetServer;
@@ -477,7 +471,7 @@ void ConnectionDiagnostics::PingHost(const IPAddress& address) {
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
     int dns_server_index, const std::vector<base::TimeDelta>& result) {
-  SLOG(3) << __func__ << "(DNS server index " << dns_server_index << ")";
+  SLOG(2) << __func__ << "(DNS server index " << dns_server_index << ")";
 
   if (!id_to_pending_dns_server_icmp_session_.erase(dns_server_index)) {
     // This should not happen, since we expect exactly one callback for each
@@ -496,7 +490,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     pingable_dns_servers_.push_back(dns_list_[dns_server_index]);
   }
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
-    SLOG(3) << __func__ << ": not yet finished pinging all DNS servers";
+    SLOG(2) << __func__ << ": not yet finished pinging all DNS servers";
     return;
   }
 
@@ -538,14 +532,14 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
         base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
                        weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
   } else {
-    SLOG(3) << __func__ << ": max DNS resolution attempts reached";
+    SLOG(2) << __func__ << ": max DNS resolution attempts reached";
     ReportResultAndStop(kIssueDNSServerNoResponse);
   }
 }
 
 void ConnectionDiagnostics::OnDNSResolutionComplete(const Error& error,
                                                     const IPAddress& address) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   if (error.IsSuccess()) {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
@@ -570,7 +564,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
     Type ping_event_type,
     const IPAddress& address_pinged,
     const std::vector<base::TimeDelta>& result) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   auto message = base::StringPrintf("Destination: %s,  Latencies: ",
                                     address_pinged.ToString().c_str());
@@ -620,7 +614,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
 }
 
 void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
-  SLOG(3) << __func__ << "(fd " << fd << ")";
+  SLOG(2) << __func__ << "(fd " << fd << ")";
 
   ArpPacket packet;
   ByteString sender;
@@ -637,7 +631,7 @@ void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
 }
 
 void ConnectionDiagnostics::OnArpRequestTimeout() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultFailure,
                       "No IP collision found");
@@ -656,7 +650,7 @@ void ConnectionDiagnostics::OnArpRequestTimeout() {
 
 void ConnectionDiagnostics::OnNeighborMsgReceived(
     const IPAddress& address_queried, const RTNLMessage& msg) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   DCHECK(msg.type() == RTNLMessage::kTypeNeighbor);
   const RTNLMessage::NeighborStatus& neighbor = msg.neighbor_status();
@@ -698,7 +692,7 @@ void ConnectionDiagnostics::OnNeighborMsgReceived(
 
 void ConnectionDiagnostics::OnNeighborTableRequestTimeout(
     const IPAddress& address_queried) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   AddEventWithMessage(
       kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
@@ -710,10 +704,10 @@ void ConnectionDiagnostics::OnNeighborTableRequestTimeout(
 
 void ConnectionDiagnostics::OnRouteQueryResponse(
     int interface_index, const RoutingTableEntry& entry) {
-  SLOG(3) << __func__ << "(interface " << interface_index << ")";
+  SLOG(2) << __func__ << "(interface " << interface_index << ")";
 
   if (interface_index != iface_index_) {
-    SLOG(3) << __func__
+    SLOG(2) << __func__
             << ": route query response not meant for this interface";
     return;
   }
@@ -747,7 +741,7 @@ void ConnectionDiagnostics::OnRouteQueryResponse(
 }
 
 void ConnectionDiagnostics::OnRouteQueryTimeout() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
 
   AddEvent(kTypeFindRoute, kPhaseEnd, kResultFailure);
   ReportResultAndStop(kIssueRouting);

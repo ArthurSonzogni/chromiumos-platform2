@@ -1131,11 +1131,8 @@ TEST_F(ServiceTest, SkipAutoConnectAfterRecentBadPassphraseFailure) {
 
   service_->set_failed_time_for_testing(base::Time::Now());
   service_->set_previous_error_for_testing(kErrorBadPassphrase);
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       HasSubstr("Suppressed autoconnect to")))
-      .Times(1);
   service_->AutoConnect();
+  EXPECT_EQ(0, service_->connect_calls());
 }
 
 TEST_F(ServiceTest, ConfigureBadProperty) {

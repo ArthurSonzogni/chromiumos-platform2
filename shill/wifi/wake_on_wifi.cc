@@ -415,14 +415,14 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &unused_flag) &&
       !base::Contains(trigs, kWakeTriggerDisconnect)) {
-    SLOG(3) << __func__
+    SLOG(2) << __func__
             << ": Wake on disconnect trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                             &unused_list) &&
       !base::Contains(trigs, kWakeTriggerSSID)) {
-    SLOG(3) << __func__ << ": Wake on SSID trigger not expected but found";
+    SLOG(2) << __func__ << ": Wake on SSID trigger not expected but found";
     return false;
   }
   // Check that each expected trigger is present in |msg| with matching
@@ -438,7 +438,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (!wake_on_disconnect) {
-          SLOG(3) << __func__ << ": Wake on disconnect flag not set.";
+          SLOG(2) << __func__ << ": Wake on disconnect flag not set.";
           return false;
         }
         break;
@@ -463,7 +463,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (interval != net_detect_scan_period_seconds * 1000) {
-          SLOG(3) << __func__ << ": Net Detect scan period mismatch";
+          SLOG(2) << __func__ << ": Net Detect scan period mismatch";
           return false;
         }
         AttributeListConstRefPtr ssids;
@@ -505,7 +505,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           ssid_iter.Advance();
         }
         if (ssid_mismatch_found || ssid_num_mismatch) {
-          SLOG(3) << __func__ << ": Net Detect SSID mismatch";
+          SLOG(2) << __func__ << ": Net Detect SSID mismatch";
           return false;
         }
         break;
@@ -568,7 +568,7 @@ void WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse(
 }
 
 void WakeOnWiFi::RequestWakeOnWiFiSettings() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   Error e;
   GetWakeOnWiFiMessage get_wowlan_msg;
   CHECK(wiphy_index_received_);
@@ -587,7 +587,7 @@ void WakeOnWiFi::RequestWakeOnWiFiSettings() {
 
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message& nl80211_message) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
                               net_detect_scan_period_seconds_,
                               wake_on_allowed_ssids_)) {
@@ -604,7 +604,7 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
 }
 
 void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   if (!wiphy_index_received_) {
     LOG(ERROR) << "Interface index not yet received";
     return;
@@ -643,7 +643,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
 }
 
 void WakeOnWiFi::DisableWakeOnWiFi() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   Error error;
   SetWakeOnWiFiMessage disable_wowlan_msg;
   CHECK(wiphy_index_received_);
@@ -674,12 +674,12 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
 }
 
 void WakeOnWiFi::RetrySetWakeOnWiFiConnections() {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   if (num_set_wake_on_wifi_retries_ < kMaxSetWakeOnWiFiRetries) {
     ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_wifi_retries_;
   } else {
-    SLOG(3) << __func__ << ": max retry attempts reached";
+    SLOG(2) << __func__ << ": max retry attempts reached";
     num_set_wake_on_wifi_retries_ = 0;
     RunSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
@@ -760,19 +760,19 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
             << "Wakeup reason not meant for this interface";
     return;
   }
-  SLOG(3) << __func__ << ": "
+  SLOG(2) << __func__ << ": "
           << "Parsing wakeup reason";
   AttributeListConstRefPtr triggers;
   if (!wakeup_reason_msg.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Wakeup reason: Not wake on WiFi related";
     return;
   }
   bool wake_flag;
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &wake_flag)) {
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Wakeup reason: Disconnect";
     last_wake_reason_ = kWakeTriggerDisconnect;
     record_wake_reason_callback_.Run(GetLastWakeReason(nullptr));
@@ -787,14 +787,14 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
     // on the detection of that network. In these cases, we will not parse the
     // net detect results; we return after parsing and reporting the actual
     // wakeup reason above.
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Wakeup reason: SSID";
     last_wake_reason_ = kWakeTriggerSSID;
     record_wake_reason_callback_.Run(GetLastWakeReason(nullptr));
     last_ssid_match_freqs_ = ParseWakeOnSSIDResults(results_list);
     return;
   }
-  SLOG(3) << __func__ << ": "
+  SLOG(2) << __func__ << ": "
           << "Wakeup reason: Not supported";
 }
 
@@ -958,7 +958,7 @@ void WakeOnWiFi::BeforeSuspendActions(
   wake_on_wifi_triggers_.clear();
   if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
     if (is_connected) {
-      SLOG(3) << __func__ << ": "
+      SLOG(2) << __func__ << ": "
               << "Enabling wake on disconnect";
       wake_on_wifi_triggers_.insert(kWakeTriggerDisconnect);
       wake_on_wifi_triggers_.erase(kWakeTriggerSSID);
@@ -977,18 +977,18 @@ void WakeOnWiFi::BeforeSuspendActions(
       dhcp_lease_renewal_timer_->Stop();
       wake_on_wifi_triggers_.erase(kWakeTriggerDisconnect);
       if (!wake_on_allowed_ssids_.empty()) {
-        SLOG(3) << __func__ << ": "
+        SLOG(2) << __func__ << ": "
                 << "Enabling wake on SSID";
         wake_on_wifi_triggers_.insert(kWakeTriggerSSID);
       }
       int num_extra_ssids =
           wake_on_allowed_ssids_.size() - wake_on_wifi_max_ssids_;
       if (num_extra_ssids > 0 || force_wake_to_scan_timer_) {
-        SLOG(3) << __func__ << ": "
+        SLOG(2) << __func__ << ": "
                 << "Starting wake to scan timer - "
                 << (num_extra_ssids > 0 ? "extra SSIDs" : "forced");
         if (num_extra_ssids > 0) {
-          SLOG(3) << __func__ << ": " << num_extra_ssids << " extra SSIDs.";
+          SLOG(2) << __func__ << ": " << num_extra_ssids << " extra SSIDs.";
         }
         // Start wake to scan timer in case the only SSIDs available for
         // auto-connect during suspend are the ones that we do not program our
@@ -1027,7 +1027,7 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
   WiFi::FreqSet freqs;
   AttributeIdIterator results_iter(*results_list);
   if (results_iter.AtEnd()) {
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Wake on SSID results not available";
     return freqs;
   }
@@ -1048,7 +1048,7 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
                  << "No SSID available for result #" << results_iter.GetId();
       continue;
     }
-    SLOG(3) << "SSID " << ssid_num << ": "
+    SLOG(2) << "SSID " << ssid_num << ": "
             << std::string(ssid_bytestring.GetConstData(),
                            ssid_bytestring.GetConstData() +
                                ssid_bytestring.GetLength());
@@ -1064,7 +1064,7 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
         }
       }
     } else {
-      SLOG(3) << __func__ << ": "
+      SLOG(2) << __func__ << ": "
               << "No frequencies available for result #"
               << results_iter.GetId();
     }
@@ -1075,9 +1075,9 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
 
 void WakeOnWiFi::InitiateScanInDarkResume(
     InitiateScanCallback initiate_scan_callback, const WiFi::FreqSet& freqs) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   if (!freqs.empty() && freqs.size() <= kMaxFreqsForDarkResumeScanRetries) {
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Allowing up to " << kMaxDarkResumeScanRetries
             << " retries for passive scan on " << freqs.size()
             << " frequencies";
@@ -1088,12 +1088,12 @@ void WakeOnWiFi::InitiateScanInDarkResume(
 
 void WakeOnWiFi::OnConnectedAndReachable(
     std::optional<base::TimeDelta> time_to_next_lease_renewal) {
-  SLOG(3) << __func__;
+  SLOG(2) << __func__;
   if (WakeOnWiFiDisabled()) {
-    SLOG(3) << "Wake on WiFi not enabled";
+    SLOG(2) << "Wake on WiFi not enabled";
   }
   if (!in_dark_resume_) {
-    SLOG(3) << "Not in dark resume";
+    SLOG(2) << "Not in dark resume";
     return;
   }
   BeforeSuspendActions(true, time_to_next_lease_renewal, base::Closure());
@@ -1114,7 +1114,7 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     const std::vector<ByteString>& allowed_ssids,
     base::OnceClosure remove_supplicant_networks_callback,
     InitiateScanCallback initiate_scan_callback) {
-  SLOG(3) << __func__ << ": "
+  SLOG(2) << __func__ << ": "
           << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
   if (WakeOnWiFiDisabled()) {
     // The scan is not triggered by us, ignore.
@@ -1125,7 +1125,7 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
   }
   if (dark_resume_scan_retries_left_) {
     --dark_resume_scan_retries_left_;
-    SLOG(3) << __func__ << ": "
+    SLOG(2) << __func__ << ": "
             << "Retrying dark resume scan (" << dark_resume_scan_retries_left_
             << " tries left)";
     // Note: a scan triggered by supplicant in dark resume might cause a
