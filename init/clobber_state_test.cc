@@ -698,6 +698,7 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
       "unencrypted/preserve/update_engine/prefs/rollback-version",
       "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
       "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -730,6 +731,7 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
       "unencrypted/preserve/update_engine/prefs/rollback-version",
       "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
       "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -763,6 +765,7 @@ TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
       "unencrypted/preserve/update_engine/prefs/rollback-version",
       "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
       "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/last_active_dates",
       "unencrypted/preserve/chromad_migration_skip_oobe",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
@@ -815,6 +818,7 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/preserve/update_engine/prefs/rollback-version",
       "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
       "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",

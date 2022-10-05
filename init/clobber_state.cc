@@ -72,6 +72,12 @@ constexpr char kUpdateEnginePreservePath[] =
     "unencrypted/preserve/update_engine/prefs/";
 constexpr char kChromadMigrationSkipOobePreservePath[] =
     "unencrypted/preserve/chromad_migration_skip_oobe";
+// CrOS Private Computing (go/chromeos-data-pc) will save the device last
+// active dates in different use cases into a file.
+constexpr char kPsmDeviceActiveLocalPrefPath[] =
+    "/var/lib/private_computing/last_active_dates";
+constexpr char kPsmDeviceActivePreservePath[] =
+    "unencrypted/preserve/last_active_dates";
 
 // Size of string for volume group name.
 constexpr int kVolumeGroupNameSize = 16;
@@ -992,6 +998,8 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
                              std::string(kLastPingDate));
     stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
                              std::string(kLastRollcallDate));
+    // Preserve the device last active dates to Private Set Computing (psm).
+    stateful_paths.push_back(kPsmDeviceActivePreservePath);
 
     // For the Chromad to cloud migration, we store a flag file to indicate that
     // some OOBE screens should be skipped after the device is powerwashed.
@@ -1286,6 +1294,12 @@ int ClobberState::Run() {
                      preserve_path.Append(kLastPingDate));
       base::CopyFile(prefs_path.Append(kLastRollcallDate),
                      preserve_path.Append(kLastRollcallDate));
+
+      // Preserve the psm device active dates when the device is powerwashed.
+      base::FilePath psm_local_pref_file(kPsmDeviceActiveLocalPrefPath);
+      base::FilePath psm_preserved_pref_file(
+          stateful_.Append(kPsmDeviceActivePreservePath));
+      base::CopyFile(psm_local_pref_file, psm_preserved_pref_file);
     }
   }
 
