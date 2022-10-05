@@ -122,10 +122,13 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
     ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
         .WillByDefault(SaveArg<0>(&on_mkbp_event_));
 
+    auto mock_metrics = std::make_unique<metrics::MockBiodMetrics>();
+    // Keep a pointer to metrics to manipulate it later.
+    mock_metrics_ = mock_metrics.get();
+
     auto cros_fp_biometrics_manager = std::make_unique<CrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
-        std::make_unique<metrics::MockBiodMetrics>(),
-        std::move(mock_record_manager));
+        std::move(mock_metrics), std::move(mock_record_manager));
     cros_fp_biometrics_manager_ = cros_fp_biometrics_manager.get();
 
     // Register OnAuthScanDone and OnSessionFailed callbacks which are actually
@@ -150,6 +153,7 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
 
  protected:
   std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
+  metrics::MockBiodMetrics* mock_metrics_;
   MockCrosFpRecordManager* mock_record_manager_;
   MockCrosFpDevice* mock_cros_dev_;
   CrosFpBiometricsManager* cros_fp_biometrics_manager_;
@@ -632,6 +636,10 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessAfterLowCoverage) {
 
   // Always allow setting FP mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*mock_metrics_,
+              SendPartialAttemptsBeforeSuccess(kMaxPartialAttempts / 2))
+      .Times(1);
 
   // Pretend that we have some records loaded.
   cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);

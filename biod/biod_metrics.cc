@@ -50,6 +50,8 @@ constexpr char kRecordFormatVersionMetric[] =
     "Fingerprint.Unlock.RecordFormatVersion";
 constexpr char kNumDeadPixels[] = "Fingerprint.Sensor.NumDeadPixels";
 constexpr char kUploadTemplateSuccess[] = "Fingerprint.UploadTemplate.Success";
+constexpr char kPartialAttemptsBeforeSuccess[] =
+    "Fingerprint.Unlock.PartialAttemptsBeforeSuccess";
 
 // See
 // https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histograms/README.md#count-histograms_choosing-number-of-buckets
@@ -196,6 +198,12 @@ bool BiodMetrics::SendUploadTemplateResult(int ec_result) {
       metrics::kUploadTemplateSuccess, ec_result, min_ec_result_code,
       metrics::kMaxEcResultCode,
       metrics::kMaxEcResultCode - min_ec_result_code + 1);
+}
+
+bool BiodMetrics::SendPartialAttemptsBeforeSuccess(int partial_attempts) {
+  // kMaxPartialAttempts = 20.
+  return metrics_lib_->SendEnumToUMA(metrics::kPartialAttemptsBeforeSuccess,
+                                     partial_attempts, 21);
 }
 
 }  // namespace biod

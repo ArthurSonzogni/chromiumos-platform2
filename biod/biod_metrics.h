@@ -79,6 +79,7 @@ class BiodMetricsInterface {
   virtual bool SendRecordFormatVersion(int version) = 0;
   virtual bool SendDeadPixelCount(int num_dead_pixels) = 0;
   virtual bool SendUploadTemplateResult(int ec_result) = 0;
+  virtual bool SendPartialAttemptsBeforeSuccess(int partial_attempts) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -128,6 +129,11 @@ class BiodMetrics : public BiodMetricsInterface {
 
   // Return code of FP_TEMPLATE EC command
   bool SendUploadTemplateResult(int ec_result) override;
+
+  // We allow up to 20 attempts without reporting error if the match result is
+  // EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE. This counts how many partial attempts
+  // is actually used before each successful match.
+  bool SendPartialAttemptsBeforeSuccess(int partial_attempts) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

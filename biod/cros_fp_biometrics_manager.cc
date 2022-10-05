@@ -727,6 +727,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
           matched_record_meta->user_id,
           std::vector<std::string>({matched_record_meta->record_id}));
       result.set_scan_result(ScanResult::SCAN_RESULT_SUCCESS);
+      biod_metrics_->SendPartialAttemptsBeforeSuccess(attempt);
     } else {
       LOG(ERROR) << "Failed to check Secure Secret for " << match_idx;
       matched_record_meta = std::nullopt;

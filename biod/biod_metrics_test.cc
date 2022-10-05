@@ -255,5 +255,12 @@ TEST_F(BiodMetricsTest, SendUploadTemplateResult) {
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
 }
 
+TEST_F(BiodMetricsTest, SendPartialAttemptsBeforeSuccess) {
+  const int partial_attempts = 2;
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendEnumToUMA(_, partial_attempts, _))
+      .Times(1);
+  biod_metrics_.SendPartialAttemptsBeforeSuccess(partial_attempts);
+}
+
 }  // namespace
 }  // namespace biod
