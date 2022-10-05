@@ -10,10 +10,9 @@ chunked_transfer = "1"
 getopts = "0.2.18"
 httparse = "1.3.4"
 libc = "0.2.44"
-libchromeos = "0.1.0"
+libchromeos = { path = "../libchromeos-rs/" } # provided by ebuild
 rusb = "0.8.1"
 sync = "0.1.99"
-sys_util = "0.1.0"
 tiny_http = "0.8.0"
 
 [profile.release]
@@ -23,12 +22,11 @@ overflow-checks = true
 opt-level = 's'
 
 [patch.crates-io] # ignored by ebuild
+audio_streams = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild
+base_event_token_derive = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/base_event_token_derive-0.1.0/" } # ignored by ebuild
 crosvm-base = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/crosvm-base-0.1.0/" } # ignored by ebuild
 data_model = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/data_model-0.1.0/" } # ignored by ebuild
-libchromeos = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/libchromeos-0.1.0/" } # ignored by ebuild
 sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild
-sys_util = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util-0.1.0/" } # ignored by ebuild
-sys_util_core = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sys_util_core-0.1.0/" } # ignored by ebuild
 # tiny_http has ChromeOS specific patches.
 # Run "sudo emerge dev-rust/tiny_http" in the chroot for this path to exist.
 tiny_http = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/tiny_http-0.8.0/" } # ignored by ebuild

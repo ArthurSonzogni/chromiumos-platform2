@@ -8,7 +8,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Cursor, Read, Write};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use sys_util::{debug, error};
+use libchromeos::sys::{debug, error};
 use tiny_http::{Header, Method};
 
 use crate::io_adapters::{ChunkedWriter, CompleteReader, LoggingReader};

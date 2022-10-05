@@ -18,9 +18,9 @@ use std::os::unix::net::UnixListener;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
-use sys_util::{
-    debug, error, info, register_signal_handler, syslog, EventFd, PollContext, PollToken,
-};
+use libchromeos::deprecated::{EventFd, PollContext, PollToken};
+use libchromeos::sys::unix::register_signal_handler;
+use libchromeos::sys::{debug, error, info, syslog};
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;
@@ -32,12 +32,12 @@ use crate::usb_connector::{UnplugDetector, UsbConnector};
 pub enum Error {
     CreateSocket(io::Error),
     CreateUsbConnector(usb_connector::Error),
-    EventFd(sys_util::Error),
+    EventFd(libchromeos::sys::Error),
     ParseArgs(arguments::Error),
-    PollEvents(sys_util::Error),
-    RegisterHandler(sys_util::Error),
+    PollEvents(libchromeos::sys::Error),
+    RegisterHandler(libchromeos::sys::Error),
     Syslog(syslog::Error),
-    SysUtil(sys_util::Error),
+    SysUtil(libchromeos::sys::Error),
 }
 
 impl std::error::Error for Error {}
@@ -84,7 +84,7 @@ extern "C" fn sigint_handler(_: c_int) {
 
 /// Registers a SIGINT handler that, when triggered, will write to `shutdown_fd`
 /// to notify any listeners of a pending shutdown.
-fn add_sigint_handler(shutdown_fd: EventFd) -> sys_util::Result<()> {
+fn add_sigint_handler(shutdown_fd: EventFd) -> libchromeos::sys::Result<()> {
     // Leak our copy of the fd to ensure SHUTDOWN_FD remains valid until ippusb_bridge closes, so
     // that we aren't inadvertently writing to an invalid FD in the SIGINT handler. The FD will be
     // reclaimed by the OS once our process has stopped.

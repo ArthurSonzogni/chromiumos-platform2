@@ -11,9 +11,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::vec::Vec;
 
+use libchromeos::deprecated::{EventFd, PollContext};
+use libchromeos::sys::{debug, error, info};
 use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
 use sync::{Condvar, Mutex};
-use sys_util::{debug, error, info, EventFd, PollContext};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
 const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
@@ -35,7 +36,7 @@ pub enum Error {
     NoDevice,
     NoFreeInterface,
     NotIppUsb,
-    Poll(sys_util::Error),
+    Poll(libchromeos::sys::Error),
 }
 
 impl std::error::Error for Error {}
