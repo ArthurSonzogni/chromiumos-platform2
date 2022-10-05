@@ -340,7 +340,7 @@ void CrosGtkIMContext::BackendObserver::SetPreeditRegion(
   if (region_start < surrounding_start || region_end > surrounding_end) {
     g_warning(
         "Not enough surrounding text to handle SetPreeditRegion(%d, %d). "
-        "Surrounding text is %lu bytes with cursor at %d.",
+        "Surrounding text is %zu bytes with cursor at %d.",
         byte_index, byte_length, context_->surrounding_.size(),
         context_->surrounding_cursor_pos_);
     return;
