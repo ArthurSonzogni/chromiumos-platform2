@@ -9,8 +9,10 @@
 
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "biod/biometrics_manager.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
 
@@ -78,12 +80,12 @@ class AuthStackManager {
 
   // The callbacks should remain valid as long as this object is valid.
 
-  // TODO(b/251087877): The empty signature for the callback is temporary,
-  // change it when we add the actual enroll implementation.
   // This is a repeating callback because it is set by the AuthStack dbus
   // wrapper, which registers to this callback once and emit a dbus signal on
   // every enroll scan done.
-  using EnrollScanDoneCallback = base::RepeatingCallback<void()>;
+  using EnrollStatus = BiometricsManager::EnrollStatus;
+  using EnrollScanDoneCallback = base::RepeatingCallback<void(
+      ScanResult, const EnrollStatus&, brillo::Blob auth_nonce)>;
   virtual void SetEnrollScanDoneHandler(
       const EnrollScanDoneCallback& on_enroll_scan_done) = 0;
 

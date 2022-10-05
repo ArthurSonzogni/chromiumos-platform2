@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include "biod/utils.h"
-
 #include <string>
+
+#include <base/logging.h>
+#include <libec/ec_command.h>
+
+#include "biod/utils.h"
 
 namespace biod {
 
@@ -23,6 +25,23 @@ void LogOnSignalConnected(const std::string& interface_name,
   if (!success)
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;
+}
+
+std::string EnrollResultToString(int result) {
+  switch (result) {
+    case EC_MKBP_FP_ERR_ENROLL_OK:
+      return "Success";
+    case EC_MKBP_FP_ERR_ENROLL_LOW_QUALITY:
+      return "Low quality";
+    case EC_MKBP_FP_ERR_ENROLL_IMMOBILE:
+      return "Same area";
+    case EC_MKBP_FP_ERR_ENROLL_LOW_COVERAGE:
+      return "Low coverage";
+    case EC_MKBP_FP_ERR_ENROLL_INTERNAL:
+      return "Internal error";
+    default:
+      return "Unknown enrollment result";
+  }
 }
 
 }  // namespace biod

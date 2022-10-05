@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 
@@ -24,6 +25,19 @@ class BiodMetrics;
 
 class CrosFpAuthStackManager : public AuthStackManager {
  public:
+  // Current state of CrosFpAuthStackManager. We maintain a state machine
+  // because some operations can only be processed in some states.
+  enum class State {
+    // Initial state, neither any session is pending nor we're expecting
+    // Create/AuthenticateCredential commands to come.
+    kNone,
+    // An EnrollSession is ongoing.
+    kEnroll,
+    // An EnrollSession is completed successfully and we're expecting a
+    // CreateCredential command.
+    kEnrollDone,
+  };
+
   CrosFpAuthStackManager(
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
@@ -62,10 +76,34 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void KillMcuSession();
   void OnTaskComplete();
 
+  void OnEnrollScanDone(ScanResult result,
+                        const AuthStackManager::EnrollStatus& enroll_status,
+                        brillo::Blob auth_nonce);
+  void OnSessionFailed();
+
+  bool RequestEnrollImage();
+  bool RequestEnrollFingerUp();
+  void DoEnrollImageEvent(uint32_t event);
+  void DoEnrollFingerUpEvent(uint32_t event);
+
+  std::string CurrentStateToString();
+  // Whether current state is waiting for a next session action.
+  bool IsActiveState();
+  bool CanStartEnroll();
+
   BiodMetricsInterface* biod_metrics_ = nullptr;
   std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;
 
   SessionAction next_session_action_;
+
+  // This vector contains RecordIds of templates loaded into the MCU.
+  std::vector<std::string> loaded_records_;
+
+  AuthStackManager::EnrollScanDoneCallback on_enroll_scan_done_;
+  AuthStackManager::AuthScanDoneCallback on_auth_scan_done_;
+  AuthStackManager::SessionFailedCallback on_session_failed_;
+
+  State state_ = State::kNone;
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 

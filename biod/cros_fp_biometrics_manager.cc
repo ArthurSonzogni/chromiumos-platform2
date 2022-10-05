@@ -59,23 +59,6 @@ std::string MatchResultToString(int result) {
   }
 }
 
-std::string EnrollResultToString(int result) {
-  switch (result) {
-    case EC_MKBP_FP_ERR_ENROLL_OK:
-      return "Success";
-    case EC_MKBP_FP_ERR_ENROLL_LOW_QUALITY:
-      return "Low quality";
-    case EC_MKBP_FP_ERR_ENROLL_IMMOBILE:
-      return "Same area";
-    case EC_MKBP_FP_ERR_ENROLL_LOW_COVERAGE:
-      return "Low coverage";
-    case EC_MKBP_FP_ERR_ENROLL_INTERNAL:
-      return "Internal error";
-    default:
-      return "Unknown enrollment result";
-  }
-}
-
 };  // namespace
 
 namespace biod {

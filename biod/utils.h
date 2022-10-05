@@ -36,6 +36,14 @@ std::string LogSafeID(const std::string& id);
 void LogOnSignalConnected(const std::string& interface_name,
                           const std::string& signal_name,
                           bool success);
+
+/**
+ * @brief Convert fingerprint enroll result to a description string.
+ *
+ * @param result An EC result code representing an enroll result.
+ * @return std::string The description string of |result|.
+ */
+std::string EnrollResultToString(int result);
 }  // namespace biod
 
 #endif  // BIOD_UTILS_H_
