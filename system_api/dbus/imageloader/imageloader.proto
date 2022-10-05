@@ -16,4 +16,7 @@ message LoadDlcRequest {
 
   // The path of the DLC image.
   string path = 2;
+
+  // The package of the DLC. Empty will default to `package`.
+  string package = 3;
 }

@@ -127,6 +127,8 @@ int main(int argc, char** argv) {
                 "Specifies the name of the component when using --mount.");
   DEFINE_string(mount_dlc, "",
                 "Specifies the ID of the DLC when using --mount.");
+  DEFINE_string(mount_dlc_package, "package",
+                "Specifies the package of the DLC when using --mount.");
   DEFINE_string(dlc_path, "",
                 "Specifies the path of the DLC to use when using --mount.");
   DEFINE_string(mount_point, "",
@@ -242,6 +244,7 @@ int main(int argc, char** argv) {
       imageloader::LoadDlcRequest request;
       request.set_id(FLAGS_mount_dlc);
       request.set_path(FLAGS_dlc_path);
+      request.set_package(FLAGS_mount_dlc_package);
 
       // Access the ImageLoaderImpl directly to avoid needless dbus
       // dependencies, which may not be available at early boot.

@@ -36,6 +36,8 @@ constexpr char kLatestVersionFile[] = "latest-version";
 constexpr int kMaximumLatestVersionSize = 4096;
 // Maximum ID length.
 constexpr size_t kMaxIdLength = 40;
+// Default DLC package name.
+constexpr char kDefaultPackage[] = "package";
 
 // |mount_base_path| is the subfolder where all components are mounted.
 // For example "/mnt/imageloader."
@@ -123,11 +125,15 @@ std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
 
 std::string ImageLoaderImpl::LoadDlc(const LoadDlcRequest& request,
                                      HelperProcessProxy* proxy) {
-  if (!IsIdValid(request.id())) {
+  auto package = request.package();
+  if (package.empty())
+    package = kDefaultPackage;
+
+  if (!IsIdValid(request.id()) || !IsIdValid(request.package())) {
     return kBadResult;
   }
 
-  Dlc dlc(request.id(), "package", config_.mount_path);
+  Dlc dlc(request.id(), request.package(), config_.mount_path);
   return dlc.Mount(proxy, base::FilePath(request.path()))
              ? dlc.GetMountPoint().value()
              : kBadResult;
