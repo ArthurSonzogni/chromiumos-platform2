@@ -6,13 +6,21 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":permission_broker" ]
+  deps = [
+    ":install_minijail_conf",
+    ":permission_broker",
+  ]
   if (use.test) {
     deps += [ ":permission_broker_test" ]
   }
   if (use.fuzzer) {
     deps += [ ":port_tracker_fuzzer" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/permission_broker.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 pkg_config("target_defaults_deps") {
