@@ -21,8 +21,8 @@ enum CameraEffect{
 // Set of GPU APIs available.
 [Extensible]
 enum GpuApi {
-  [Default] OPENCL = 0,
-  OPENGL = 1
+  OPENCL = 0,
+  [Default] OPENGL = 1
 };
 
 // Indicates the state of requesting a switch effect.
