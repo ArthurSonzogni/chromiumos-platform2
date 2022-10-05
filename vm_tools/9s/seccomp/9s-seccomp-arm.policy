@@ -70,7 +70,9 @@ futex_time64: 1
 bind: 1
 rmdir: 1
 fchmod: 1
+fchmodat: 1
 fchown: 1
+fchownat: 1
 fchown32: 1
 mremap: 1
 fstatat64: 1
