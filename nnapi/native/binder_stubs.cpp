@@ -19,8 +19,9 @@
 #include <base/notreached.h>
 
 AStatus* AStatus_newOk() {
-  NOTIMPLEMENTED() << "AStatus_newOk shouldn't get called";
-  IMMEDIATE_CRASH();
+  // This method is called by getInterfaceVersion and getInterfaceHash within
+  // Bn classes which are final and not overridden by the aidl adapter, so we
+  // just return nullptr which is handled as OK in ScopedAStatus.
   return nullptr;
 }
 

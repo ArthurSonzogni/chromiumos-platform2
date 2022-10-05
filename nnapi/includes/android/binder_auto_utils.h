@@ -1,4 +1,4 @@
-// This code is taken from 
+// This code is taken from
 // src/aosp/frameworks/native/libs/binder/ndk/include_cpp/android/
 //
 // This file provides the pieces of the Binder framework
@@ -43,6 +43,7 @@
 #include <android/binder_ibinder.h>
 #include <android/binder_parcel.h>
 #include <android/binder_status.h>
+#include <utils/Errors.h>
 
 #include <assert.h>
 
@@ -245,8 +246,10 @@ class ScopedAParcel : public impl::ScopedAResource<AParcel*, AParcel_delete, nul
 // Heavily modified to not use the binder status interface
 class ScopedAStatus {
    public:
-    ScopedAStatus(binder_exception_t status=STATUS_OK) : status_(status) {}
-    ScopedAStatus(AStatus*) : status_(STATUS_OK) {}
+    ScopedAStatus(binder_exception_t exceptionCode, int32_t errorCode)
+        : exception_(exceptionCode), error_code_(errorCode) {}
+    ScopedAStatus(AStatus*) {}
+    ScopedAStatus() = default;
     ~ScopedAStatus() {}
     ScopedAStatus(ScopedAStatus&&) = default;
     ScopedAStatus& operator=(ScopedAStatus&&) = default;
@@ -255,44 +258,56 @@ class ScopedAStatus {
     AStatus** getR() { return nullptr; }
     void set(AStatus *) {  }
 
-    bool isOk() const { return status_ == STATUS_OK; }
-    binder_exception_t getExceptionCode() const { return status_; }
-    int32_t getServiceSpecificError() const { return status_; }
-    binder_status_t getStatus() const { return status_; }
+    bool isOk() const { return exception_ == EX_NONE; }
+    binder_exception_t getExceptionCode() const { return exception_; }
+    int32_t getServiceSpecificError() const {
+      return exception_ == EX_SERVICE_SPECIFIC ? error_code_ : android::OK;
+    }
+    binder_status_t getStatus() const {
+      return exception_ == EX_TRANSACTION_FAILED ? error_code_ : STATUS_OK;
+    }
     const char* getMessage() const { return ""; }
     std::string getDescription() const { return ""; }
 
     /**
      * Convenience methods for creating scoped statuses.
      */
-    static ScopedAStatus ok() { return ScopedAStatus(STATUS_OK); }
+    static ScopedAStatus ok() { return ScopedAStatus(); }
     static ScopedAStatus fromExceptionCode(binder_exception_t exception) {
-        return ScopedAStatus(exception);
+      if (exception == EX_TRANSACTION_FAILED) {
+        return ScopedAStatus(exception, STATUS_FAILED_TRANSACTION);
+      }
+      return ScopedAStatus(exception, android::OK);
     }
     static ScopedAStatus fromExceptionCodeWithMessage(binder_exception_t exception,
                                                       const char* /*message*/) {
-        return ScopedAStatus(exception);
+      return fromExceptionCode(exception);
     }
     static ScopedAStatus fromServiceSpecificError(int32_t serviceSpecific) {
-        return ScopedAStatus(serviceSpecific);
+      return ScopedAStatus(EX_SERVICE_SPECIFIC, serviceSpecific);
     }
     static ScopedAStatus fromServiceSpecificErrorWithMessage(int32_t serviceSpecific,
                                                              const char* /*message*/) {
-        return ScopedAStatus(serviceSpecific);
+      return fromServiceSpecificError(serviceSpecific);
     }
     static ScopedAStatus fromStatus(binder_status_t status) {
-        return ScopedAStatus(status);
+      ScopedAStatus ret;
+      ret.exception_ = (status == STATUS_OK) ? EX_NONE : EX_TRANSACTION_FAILED;
+      ret.error_code_ = status;
+      return ret;
     }
-    private:
-    binder_status_t status_;
+  private:
+    binder_exception_t exception_ = EX_NONE;
+    int32_t error_code_ = android::OK;
 };
 
 /**
  * Convenience wrapper. See AIBinder_DeathRecipient.
  */
 class ScopedAIBinder_DeathRecipient
-    : public impl::ScopedAResource<AIBinder_DeathRecipient*, /*AIBinder_DeathRecipient_delete*/ nullptr, nullptr> 
-    {
+    : public impl::ScopedAResource<AIBinder_DeathRecipient*,
+                                   /*AIBinder_DeathRecipient_delete*/ nullptr,
+                                   nullptr> {
    public:
     /**
      * Takes ownership of a.
