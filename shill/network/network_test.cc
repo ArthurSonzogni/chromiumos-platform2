@@ -312,7 +312,8 @@ class NetworkStartTest : public NetworkTest {
       ConfigureStaticIPv4Config();
     }
     if (test_opts.link_protocol_ipv4) {
-      network_->set_link_protocol_ipv4_properties(ipv4_link_protocol_props_);
+      network_->set_link_protocol_ipv4_properties(
+          std::make_unique<IPConfig::Properties>(ipv4_link_protocol_props_));
     }
     Network::StartOptions start_opts{
         .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})

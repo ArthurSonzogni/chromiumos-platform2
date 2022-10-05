@@ -1345,13 +1345,14 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       // workaround for b/230336493.
       IPAddress link_local_mask("fe80::", 10);
       if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
-        network()->set_ipv6_static_properties(ipv6_props);
+        network()->set_ipv6_static_properties(
+            std::make_unique<IPConfig::Properties>(ipv6_props));
       }
 
       ipv6_configured = true;
     }
 
-    std::optional<IPConfig::Properties> static_ipv4_props = std::nullopt;
+    std::unique_ptr<IPConfig::Properties> static_ipv4_props;
     std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
 
     if (bearer && bearer->ipv4_config_method() ==
@@ -1359,7 +1360,8 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       SLOG(this, 2) << "Assign static IPv4 configuration from bearer.";
       // Override the MTU with a given limit for a specific serving operator
       // if the network doesn't report something lower.
-      static_ipv4_props = *bearer->ipv4_config_properties();
+      static_ipv4_props = std::make_unique<IPConfig::Properties>(
+          *bearer->ipv4_config_properties());
       if (serving_operator_info_ &&
           serving_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
           (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
@@ -1380,7 +1382,7 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     };
     SelectService(service_);
     SetServiceState(Service::kStateConfiguring);
-    network()->set_link_protocol_ipv4_properties(static_ipv4_props);
+    network()->set_link_protocol_ipv4_properties(std::move(static_ipv4_props));
     network()->Start(opts);
 
     return;

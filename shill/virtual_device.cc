@@ -62,7 +62,8 @@ void VirtualDevice::Stop(const EnabledStateChangedCallback& callback) {
 
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
   SLOG(2) << __func__ << " on " << link_name();
-  network()->set_link_protocol_ipv4_properties(properties);
+  network()->set_link_protocol_ipv4_properties(
+      std::make_unique<IPConfig::Properties>(properties));
   network()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,

@@ -134,8 +134,8 @@ class Network {
   // Sets IPv4 properties specific to technology. Currently this is used by
   // cellular and VPN.
   void set_link_protocol_ipv4_properties(
-      std::optional<IPConfig::Properties> props) {
-    link_protocol_ipv4_properties_ = props;
+      std::unique_ptr<IPConfig::Properties> props) {
+    link_protocol_ipv4_properties_ = std::move(props);
   }
 
   int interface_index() const { return interface_index_; }
@@ -178,8 +178,8 @@ class Network {
   // Invalidate the IPv6 config kept in shill and wait for the new config from
   // the kernel.
   mockable void InvalidateIPv6Config();
-  void set_ipv6_static_properties(const IPConfig::Properties& props) {
-    ipv6_static_properties_ = props;
+  void set_ipv6_static_properties(std::unique_ptr<IPConfig::Properties> props) {
+    ipv6_static_properties_ = std::move(props);
   }
   // Called by DeviceInfo.
   void EnableIPv6Privacy();
@@ -338,7 +338,7 @@ class Network {
   // cellular and VPN. Assume that when this field is not empty, it must have
   // valid values to set up the connection (e.g., at least address and prefix
   // len).
-  std::optional<IPConfig::Properties> link_protocol_ipv4_properties_;
+  std::unique_ptr<IPConfig::Properties> link_protocol_ipv4_properties_;
 
   // TODO(b/227563210): We currently use ip6config() for IPv6 network properties
   // from SLAAC and this separated |ipv6_static_properties_| for static
@@ -347,7 +347,7 @@ class Network {
   // VPN). Will come back to rework after the Device-Network refactor. Note that
   // in the current implementation this variable will not be reset by Network
   // class itself.
-  std::optional<IPConfig::Properties> ipv6_static_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv6_static_properties_;
 
   // The static NetworkConfig from the associated Service.
   NetworkConfig static_network_config_;
