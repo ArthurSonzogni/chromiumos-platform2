@@ -58,8 +58,7 @@ extern "C" {
 #include "shill/mock_process_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/network/mock_dhcp_controller.h"
-#include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_network.h"
 #include "shill/ppp_device.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
 #include "shill/service.h"
@@ -72,10 +71,14 @@ using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
+using testing::Eq;
+using testing::Field;
 using testing::Invoke;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::NiceMock;
+using testing::Optional;
+using testing::Pointee;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
@@ -89,6 +92,7 @@ namespace {
 RpcIdentifier kTestBearerPath("/org/freedesktop/ModemManager1/Bearer/0");
 constexpr char kUid[] = "uid";
 constexpr char kIccid[] = "1234567890000";
+constexpr int kInterfaceIndex = 3;
 }  // namespace
 
 class MockPPPDevice : public PPPDevice {
@@ -175,14 +179,19 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void SetUp() override {
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
-    device_ = new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress, 3,
-                           GetParam(), kDBusService, kDBusPath);
+    device_ =
+        new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                     kInterfaceIndex, GetParam(), kDBusService, kDBusPath);
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
-    device_->network()->set_dhcp_provider_for_testing(&dhcp_provider_);
     device_->process_manager_ = &process_manager_;
+
+    auto network = std::make_unique<MockNetwork>(
+        kInterfaceIndex, kTestDeviceName, Technology::kCellular);
+    network_ = network.get();
+    device_->set_network_for_testing(std::move(network));
 
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
     ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
@@ -202,7 +211,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->network()->Stop();
     device_->set_state_for_testing(Cellular::State::kDisabled);
     GetCapability3gpp()->ReleaseProxies();
-    device_->network()->set_dhcp_provider_for_testing(nullptr);
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
@@ -322,8 +330,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void StartPPP(int pid) {
     EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
         .WillOnce(Return(pid));
+    EXPECT_CALL(*network_, Start(_)).Times(0);
     device_->StartPPP("fake_serial_device");
-    EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
     EXPECT_FALSE(device_->selected_service());
     EXPECT_FALSE(device_->is_ppp_authenticating_);
     EXPECT_NE(nullptr, device_->ppp_task_);
@@ -424,13 +432,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void CallSetSimProperties(
       const std::vector<Cellular::SimProperties>& properties, size_t primary) {
     device_->SetSimProperties(properties, static_cast<int>(primary));
-  }
-
-  std::unique_ptr<MockDHCPController> CreateMockDHCPController() {
-    auto controller = std::make_unique<MockDHCPController>(&control_interface_,
-                                                           kTestDeviceName);
-    ON_CALL(*controller, ReleaseIP(_)).WillByDefault(Return(true));
-    return controller;
   }
 
   static IPConfig::Properties GetExpectedIPPropsFromPPPConfig(
@@ -612,7 +613,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   NiceMock<MockProcessManager> process_manager_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
-  MockDHCPProvider dhcp_provider_;
   std::string dhcp_hostname_;
 
   bool create_gsm_card_proxy_from_factory_;
@@ -627,6 +627,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   MockMobileOperatorInfo* mock_home_provider_info_;
   MockMobileOperatorInfo* mock_serving_operator_info_;
   CellularRefPtr device_;
+  MockNetwork* network_ = nullptr;  // owned by |device_|
   CellularServiceProvider cellular_service_provider_{&manager_};
   FakeStore profile_storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;
@@ -1223,7 +1224,7 @@ class TestRpcTaskDelegate : public RpcTaskDelegate,
 };
 
 TEST_P(CellularTest, LinkEventUpWithPPP) {
-  // If PPP is running, don't run DHCP as well.
+  // If PPP is running, don't start Network as well.
   TestRpcTaskDelegate task_delegate;
   base::OnceCallback<void(pid_t, int)> death_callback;
   auto mock_task = std::make_unique<NiceMock<MockExternalTask>>(
@@ -1232,20 +1233,15 @@ TEST_P(CellularTest, LinkEventUpWithPPP) {
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
   device_->ppp_task_ = std::move(mock_task);
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _)).Times(0);
+  EXPECT_CALL(*network_, Start(_)).Times(0);
   device_->LinkEvent(IFF_UP, 0);
 }
 
 TEST_P(CellularTest, LinkEventUpWithoutPPP) {
-  // If PPP is not running, fire up DHCP.
+  // If PPP is not running, start Network.
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _))
-      .WillOnce(InvokeWithoutArgs([this]() {
-        auto controller = CreateMockDHCPController();
-        EXPECT_CALL(*controller, RequestIP());
-        EXPECT_CALL(*controller, ReleaseIP(_)).Times(AnyNumber());
-        return controller;
-      }));
+  EXPECT_CALL(*network_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
   device_->LinkEvent(IFF_UP, 0);
 }
 
@@ -1266,7 +1262,6 @@ TEST_P(CellularTest, StartPPPAlreadyStarted) {
 TEST_P(CellularTest, StartPPPAfterEthernetUp) {
   CellularService* service(SetService());
   device_->set_state_for_testing(Cellular::State::kLinked);
-  device_->set_dhcp_controller_for_testing(CreateMockDHCPController());
   device_->SelectService(service);
   const int kPID = 234;
   EXPECT_EQ(nullptr, device_->ppp_task_);
@@ -1521,13 +1516,9 @@ TEST_P(CellularTest, OnPPPDiedCleanupDevice) {
 }
 
 TEST_P(CellularTest, DropConnection) {
-  auto dhcp_controller = CreateMockDHCPController();
-  auto* dhcp_controller_ptr = dhcp_controller.get();
-  device_->set_dhcp_controller_for_testing(std::move(dhcp_controller));
-  EXPECT_CALL(*dhcp_controller_ptr, ReleaseIP(_));
+  EXPECT_CALL(*network_, Stop());
   device_->DropConnection();
-  Mock::VerifyAndClearExpectations(dhcp_controller_ptr);  // verify before dtor
-  EXPECT_FALSE(device_->ipconfig());
+  Mock::VerifyAndClearExpectations(network_);  // verify before dtor
 }
 
 TEST_P(CellularTest, DropConnectionPPP) {
@@ -1875,12 +1866,8 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
-  EXPECT_CALL(dhcp_provider_, CreateController(kTestDeviceName, _, _))
-      .WillOnce(InvokeWithoutArgs([this]() {
-        auto controller = CreateMockDHCPController();
-        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
-        return controller;
-      }));
+  EXPECT_CALL(*network_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());
@@ -1901,8 +1888,8 @@ TEST_P(CellularTest, EstablishLinkPPP) {
   const int kPID = 123;
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
       .WillOnce(Return(kPID));
+  EXPECT_CALL(*network_, Start(_)).Times(0);
   device_->EstablishLink();
-  EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
   EXPECT_FALSE(device_->selected_service());
   EXPECT_FALSE(device_->is_ppp_authenticating_);
   EXPECT_NE(nullptr, device_->ppp_task_);
@@ -1919,18 +1906,19 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   const int32_t kSubnetPrefix = 16;
   const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 
-  auto ipconfig_properties = std::make_unique<IPConfig::Properties>();
-  ipconfig_properties->address_family = kAddressFamily;
-  ipconfig_properties->address = kAddress;
-  ipconfig_properties->gateway = kGateway;
-  ipconfig_properties->subnet_prefix = kSubnetPrefix;
-  ipconfig_properties->dns_servers =
+  IPConfig::Properties ipconfig_properties;
+  ipconfig_properties.address_family = kAddressFamily;
+  ipconfig_properties.address = kAddress;
+  ipconfig_properties.gateway = kGateway;
+  ipconfig_properties.subnet_prefix = kSubnetPrefix;
+  ipconfig_properties.dns_servers =
       std::vector<std::string>{kDNS[0], kDNS[1], kDNS[2]};
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
-  bearer->set_ipv4_config_properties(std::move(ipconfig_properties));
+  bearer->set_ipv4_config_properties(
+      std::make_unique<IPConfig::Properties>(ipconfig_properties));
   SetCapability3gppActiveBearer(std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
@@ -1940,17 +1928,12 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*network_,
+              set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
+  EXPECT_CALL(*network_,
+              Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());
-  ASSERT_NE(nullptr, device_->ipconfig());
-  EXPECT_EQ(kAddressFamily, device_->ipconfig()->properties().address_family);
-  EXPECT_EQ(kAddress, device_->ipconfig()->properties().address);
-  EXPECT_EQ(kGateway, device_->ipconfig()->properties().gateway);
-  EXPECT_EQ(kSubnetPrefix, device_->ipconfig()->properties().subnet_prefix);
-  ASSERT_EQ(3, device_->ipconfig()->properties().dns_servers.size());
-  EXPECT_EQ(kDNS[0], device_->ipconfig()->properties().dns_servers[0]);
-  EXPECT_EQ(kDNS[1], device_->ipconfig()->properties().dns_servers[1]);
-  EXPECT_EQ(kDNS[2], device_->ipconfig()->properties().dns_servers[2]);
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 

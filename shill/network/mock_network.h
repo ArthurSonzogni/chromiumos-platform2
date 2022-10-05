@@ -5,6 +5,7 @@
 #ifndef SHILL_NETWORK_MOCK_NETWORK_H_
 #define SHILL_NETWORK_MOCK_NETWORK_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,9 +29,16 @@ class MockNetwork : public Network {
   MockNetwork& operator=(const MockNetwork&) = delete;
   ~MockNetwork() override = default;
 
+  MOCK_METHOD(void, Start, (const StartOptions&), (override));
   MOCK_METHOD(void, Stop, (), (override));
 
   MOCK_METHOD(bool, IsConnected, (), (const, override));
+
+  MOCK_METHOD(void,
+              set_link_protocol_ipv4_properties,
+              (std::unique_ptr<IPConfig::Properties>),
+              (override));
+
   MOCK_METHOD(void,
               OnStaticIPConfigChanged,
               (const NetworkConfig&),

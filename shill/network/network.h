@@ -122,7 +122,7 @@ class Network {
   virtual ~Network();
 
   // Starts the network with the given |options|.
-  void Start(const StartOptions& options);
+  mockable void Start(const StartOptions& options);
   // Stops the network connection. OnNetworkStopped() will be called when
   // cleaning up the network state is finished.
   mockable void Stop();
@@ -133,7 +133,7 @@ class Network {
 
   // Sets IPv4 properties specific to technology. Currently this is used by
   // cellular and VPN.
-  void set_link_protocol_ipv4_properties(
+  mockable void set_link_protocol_ipv4_properties(
       std::unique_ptr<IPConfig::Properties> props) {
     link_protocol_ipv4_properties_ = std::move(props);
   }
