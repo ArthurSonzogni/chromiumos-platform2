@@ -8,10 +8,11 @@ use std::process;
 use std::result;
 
 use getopts::Options;
+use libchromeos::deprecated::{PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
+use libchromeos::sys::block_signal;
 use libchromeos::syslog;
 use log::warn;
-use sys_util::{self, block_signal, PollContext, PollToken};
 
 use chunnel::forwarder::{ForwarderError, ForwarderSession};
 use chunnel::stream::{StreamSocket, StreamSocketError};
@@ -22,13 +23,13 @@ const IDENT: &str = "chunnel";
 #[remain::sorted]
 #[derive(Debug)]
 enum Error {
-    BlockSigpipe(sys_util::signal::Error),
+    BlockSigpipe(libchromeos::sys::unix::signal::Error),
     ConnectSocket(StreamSocketError),
     Forward(ForwarderError),
-    PollContextDelete(sys_util::Error),
-    PollContextNew(sys_util::Error),
-    PollWait(sys_util::Error),
-    Syslog(syslog::Error),
+    PollContextDelete(libchromeos::sys::Error),
+    PollContextNew(libchromeos::sys::Error),
+    PollWait(libchromeos::sys::Error),
+    Syslog(libchromeos::syslog::Error),
 }
 
 type Result<T> = result::Result<T, Error>;

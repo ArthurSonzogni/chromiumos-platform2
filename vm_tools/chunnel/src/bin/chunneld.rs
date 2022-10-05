@@ -18,12 +18,13 @@ use std::time::Duration;
 use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
+use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::panic_handler::install_memfd_handler;
+use libchromeos::sys::unix::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
+use libchromeos::sys::{block_signal, pipe};
 use libchromeos::syslog;
 use log::{error, warn};
 use protobuf::{self, Message as ProtoMessage, ProtobufError};
-use sys_util::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
-use sys_util::{self, block_signal, pipe, EventFd, PollContext, PollToken};
 
 use chunnel::forwarder::ForwarderSession;
 use system_api::chunneld_service::*;
@@ -60,29 +61,29 @@ const IDENT: &str = "chunneld";
 #[derive(Debug)]
 enum Error {
     BindVsock(io::Error),
-    BlockSigpipe(sys_util::signal::Error),
+    BlockSigpipe(libchromeos::sys::signal::Error),
     ConnectChunnelFailure(String),
     CreateProtobusService(dbus::Error),
     DBusGetSystemBus(DBusError),
     DBusMessageSend(DBusError),
     DBusProcessMessage(DBusError),
-    EventFdClone(sys_util::Error),
-    EventFdNew(sys_util::Error),
+    EventFdClone(libchromeos::sys::Error),
+    EventFdNew(libchromeos::sys::Error),
     IncorrectCid(VsockCid),
-    LifelinePipe(sys_util::Error),
+    LifelinePipe(libchromeos::sys::Error),
     NoListenerForPort(u16),
     NoSessionForTag(SessionTag),
-    PollContextAdd(sys_util::Error),
-    PollContextDelete(sys_util::Error),
-    PollContextNew(sys_util::Error),
-    PollWait(sys_util::Error),
+    PollContextAdd(libchromeos::sys::Error),
+    PollContextDelete(libchromeos::sys::Error),
+    PollContextNew(libchromeos::sys::Error),
+    PollWait(libchromeos::sys::Error),
     ProtobufDeserialize(ProtobufError),
     ProtobufSerialize(ProtobufError),
     SetVsockNonblocking(io::Error),
     Syslog(syslog::Error),
     TcpAccept(io::Error),
     TcpListenerPort(io::Error),
-    UpdateEventRead(sys_util::Error),
+    UpdateEventRead(libchromeos::sys::Error),
     VsockAccept(io::Error),
     VsockAcceptTimeout,
     VsockListenerPort(io::Error),
