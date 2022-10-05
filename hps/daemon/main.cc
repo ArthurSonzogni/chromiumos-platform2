@@ -31,6 +31,10 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
+  DEFINE_int32(fake_feature0_score, 127,
+               "Feature 0 score reported by test fake");
+  DEFINE_int32(fake_feature1_score, -128,
+               "Feature 1 score reported by test fake");
   DEFINE_int64(version, -1, "Override MCU firmware version");
   DEFINE_string(version_file, "", "MCU firmware version file");
   DEFINE_string(mcu_fw_image, "", "MCU firmware file");
@@ -64,6 +68,14 @@ int main(int argc, char* argv[]) {
     auto fake = std::make_unique<hps::FakeDev>();
     fake->SkipBoot();
     fake->SetVersion(version);
+    CHECK(FLAGS_fake_feature0_score <= INT8_MAX);
+    CHECK(FLAGS_fake_feature0_score >= INT8_MIN);
+    fake->SetF0Result(static_cast<int8_t>(FLAGS_fake_feature0_score),
+                      /* valid */ true);
+    CHECK(FLAGS_fake_feature1_score <= INT8_MAX);
+    CHECK(FLAGS_fake_feature1_score >= INT8_MIN);
+    fake->SetF1Result(static_cast<int8_t>(FLAGS_fake_feature1_score),
+                      /* valid */ true);
     dev = std::move(fake);
   } else {
     dev = hps::I2CDev::Create(FLAGS_bus, addr, FLAGS_hps_dev);
