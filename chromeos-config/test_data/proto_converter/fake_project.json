@@ -551,21 +551,11 @@
         },
         "resource": {
           "ac": {
-            "default-power-preferences": {
-              "governor": {
-                "ondemand": {
-                  "powersave-bias": 0,
-                  "sampling-rate-ms": 2
-                }
-              }
-            }
-          },
-          "dc": {
             "arcvm-gaming-power-preferences": {
               "governor": {
                 "ondemand": {
                   "powersave-bias": 0,
-                  "sampling-rate-ms": 64
+                  "sampling-rate-ms": 2
                 }
               }
             },
@@ -599,6 +589,33 @@
                   "powersave-bias": 400,
                   "sampling-rate-ms": 16
                 }
+              }
+            }
+          },
+          "dc": {
+            "arcvm-gaming-power-preferences": {
+              "governor": {
+                "conservative": {}
+              }
+            },
+            "borealis-gaming-power-preferences": {
+              "governor": {
+                "performance": {}
+              }
+            },
+            "default-power-preferences": {
+              "governor": {
+                "powersave": {}
+              }
+            },
+            "fullscreen-power-preferences": {
+              "governor": {
+                "schedutil": {}
+              }
+            },
+            "web-rtc-power-preferences": {
+              "governor": {
+                "userspace": {}
               }
             }
           }

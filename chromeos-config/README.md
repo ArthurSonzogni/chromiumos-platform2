@@ -932,13 +932,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -948,13 +973,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -964,13 +1014,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -980,13 +1055,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -996,13 +1096,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### dc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1021,13 +1146,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1037,13 +1187,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1053,13 +1228,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1069,13 +1269,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1085,13 +1310,38 @@ In the tables below,
 ### governor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
 | ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### ondemand
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | powersave-bias | integer |  | False |  | False |  |
 | sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

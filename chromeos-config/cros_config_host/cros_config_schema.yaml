@@ -298,6 +298,8 @@ typeDefs:
         type: object
         oneOf:
           - properties:
+              conservative:
+                type: object
               ondemand:
                 type: object
                 properties:
@@ -305,6 +307,14 @@ typeDefs:
                     type: integer
                   sampling-rate-ms:
                     type: integer
+              performance:
+                type: object
+              powersave:
+                type: object
+              schedutil:
+                type: object
+              userspace:
+                type: object
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
       https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
