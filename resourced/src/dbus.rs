@@ -13,7 +13,8 @@ use std::time::Duration;
 use anyhow::Result;
 use dbus::ffidisp::{Connection, WatchEvent};
 use dbus_tree::{MTFn, MethodErr, MethodResult};
-use sys_util::{error, warn, PollContext, PollToken, TimerFd, WatchingEvents};
+use libchromeos::deprecated::{PollContext, PollToken, TimerFd, WatchingEvents};
+use libchromeos::sys::{error, warn};
 
 use crate::common;
 use crate::memory;

@@ -9,8 +9,8 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
+use libchromeos::sys::error;
 use once_cell::sync::Lazy;
-use sys_util::error;
 
 use crate::power;
 

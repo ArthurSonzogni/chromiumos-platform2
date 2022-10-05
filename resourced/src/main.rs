@@ -16,11 +16,14 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 use libchromeos::panic_handler::install_memfd_handler;
-use sys_util::{info, syslog};
+use libchromeos::sys::info;
+use libchromeos::syslog;
+
+const IDENT: &str = "resourced";
 
 fn main() -> Result<()> {
     install_memfd_handler();
-    if let Err(e) = syslog::init() {
+    if let Err(e) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
         bail!("Failed to initiailize syslog: {}", e);
     }
 
