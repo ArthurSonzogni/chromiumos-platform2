@@ -32,45 +32,44 @@ MetadataLogger::~MetadataLogger() {
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, uint8_t value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  entry.SetIntKey(key, value);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  entry.Set(key, value);
 }
 
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, int32_t value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  entry.SetIntKey(key, value);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  entry.Set(key, value);
 }
 
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, float value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  entry.SetDoubleKey(key, value);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  entry.Set(key, value);
 }
 
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, int64_t value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
   // JSON does not support int64, so let's use double instead.
-  entry.SetDoubleKey(key, value);
+  entry.Set(key, static_cast<double>(value));
 }
 
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, double value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  entry.SetDoubleKey(key, value);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  entry.Set(key, value);
 }
 
 template <>
 void MetadataLogger::Log(int frame_number, std::string key, Rational value) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  entry.SetDoubleKey(key,
-                     static_cast<double>(value.numerator) / value.denominator);
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  entry.Set(key, static_cast<double>(value.numerator) / value.denominator);
 }
 
 template <>
@@ -78,12 +77,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const uint8_t> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(static_cast<int>(v));
+    value_list.Append(static_cast<int>(v));
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -91,12 +90,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const int32_t> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(v);
+    value_list.Append(v);
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -104,12 +103,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const float> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(static_cast<double>(v));
+    value_list.Append(static_cast<double>(v));
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -117,12 +116,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const int64_t> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(static_cast<double>(v));
+    value_list.Append(static_cast<double>(v));
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -130,12 +129,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const double> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(v);
+    value_list.Append(v);
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -143,12 +142,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const Rational> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(static_cast<double>(v.numerator) / v.denominator);
+    value_list.Append(static_cast<double>(v.numerator) / v.denominator);
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 template <>
@@ -156,12 +155,12 @@ void MetadataLogger::Log(int frame_number,
                          std::string key,
                          base::span<const camera_metadata_rational_t> values) {
   base::AutoLock lock(frame_metadata_lock_);
-  base::Value& entry = GetOrCreateEntryLocked(frame_number);
-  std::vector<base::Value> value_list;
+  base::Value::Dict& entry = GetOrCreateEntryLocked(frame_number);
+  base::Value::List value_list;
   for (const auto& v : values) {
-    value_list.emplace_back(static_cast<double>(v.numerator) / v.denominator);
+    value_list.Append(static_cast<double>(v.numerator) / v.denominator);
   }
-  entry.SetKey(key, base::Value(std::move(value_list)));
+  entry.Set(key, std::move(value_list));
 }
 
 bool MetadataLogger::DumpMetadata() {
@@ -191,14 +190,14 @@ void MetadataLogger::Clear() {
   frame_metadata_.clear();
 }
 
-base::Value& MetadataLogger::GetOrCreateEntryLocked(int frame_number) {
+base::Value::Dict& MetadataLogger::GetOrCreateEntryLocked(int frame_number) {
   frame_metadata_lock_.AssertAcquired();
   if (frame_metadata_.count(frame_number) == 0) {
     if (frame_metadata_.size() == options_.ring_buffer_capacity) {
       frame_metadata_.erase(frame_metadata_.begin());
     }
-    base::Value entry(base::Value::Type::DICTIONARY);
-    entry.SetIntKey(kKeyFrameNumber, frame_number);
+    base::Value::Dict entry;
+    entry.Set(kKeyFrameNumber, frame_number);
     frame_metadata_.insert({frame_number, std::move(entry)});
   }
   return frame_metadata_[frame_number];

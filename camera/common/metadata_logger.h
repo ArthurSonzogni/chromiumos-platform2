@@ -67,11 +67,12 @@ class CROS_CAMERA_EXPORT MetadataLogger {
   void Clear();
 
  private:
-  base::Value& GetOrCreateEntryLocked(int frame_number);
+  base::Value::Dict& GetOrCreateEntryLocked(int frame_number);
 
   Options options_;
   base::Lock frame_metadata_lock_;
-  std::map<int, base::Value> frame_metadata_ GUARDED_BY(frame_metadata_lock_);
+  std::map<int, base::Value::Dict> frame_metadata_
+      GUARDED_BY(frame_metadata_lock_);
 };
 
 // Template specializations don't always get exported, so we need to be explicit
