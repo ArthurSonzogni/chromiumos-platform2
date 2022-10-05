@@ -572,11 +572,43 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | battery-health | [battery-health](#battery_health) |  | False |  | False |  |
+| fingerprint | [fingerprint](#fingerprint) |  | False |  | False |  |
 
 ### battery-health
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | percent-battery-wear-allowed | integer |  | False |  | False | Upper bound for the battery's wear percentage. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. Maximum value: 0x64. |
+
+### fingerprint
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| detect-zones | array - [detect-zones](#detect_zones) |  | True |  | False | Rrectangles [x1, y1, x2, y2].
+ |
+| max-dead-pixels | integer |  | True |  | False | The maximum allowed number of dead pixels on the fingerprint sensor.  Minimum value: 0x0. |
+| max-dead-pixels-in-detect-zone | integer |  | True |  | False | The maximum allowed number of dead pixels in the detection zone.  Minimum value: 0x0. |
+| max-pixel-dev | integer |  | True |  | False | The maximum deviation from the median for a pixel.  Minimum value: 0x0. |
+| pixel-median | [pixel-median](#pixel_median) |  | True |  | False | Range constraints of the pixel median value of the checkerboards.  |
+| routine-enable | boolean |  | True |  | False | Enable fingerprint diagnostic routine or not.  |
+
+### detect-zones
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| x1 | integer |  | True |  | False | `x1` should be smaller than `x2`.  Minimum value: 0x0. |
+| x2 | integer |  | True |  | False | `x1` should be smaller than `x2`.  Minimum value: 0x0. |
+| y1 | integer |  | True |  | False | `y1` should be smaller than `y2`.  Minimum value: 0x0. |
+| y2 | integer |  | True |  | False | `y1` should be smaller than `y2`.  Minimum value: 0x0. |
+
+### pixel-median
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cb-type1-lower | integer |  | True |  | False | Checkerboard type1 lower bound.  |
+| cb-type1-upper | integer |  | True |  | False | Checkerboard type1 upper bound.  |
+| cb-type2-lower | integer |  | True |  | False | Checkerboard type2 lower bound.  |
+| cb-type2-upper | integer |  | True |  | False | Checkerboard type2 upper bound.  |
+| icb-type1-lower | integer |  | True |  | False | Inverted checkerboard type1 lower bound.  |
+| icb-type1-upper | integer |  | True |  | False | Inverted checkerboard type1 upper bound.  |
+| icb-type2-lower | integer |  | True |  | False | Inverted checkerboard type2 lower bound.  |
+| icb-type2-upper | integer |  | True |  | False | Inverted checkerboard type2 upper bound.  |
 
 ### cross-device
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

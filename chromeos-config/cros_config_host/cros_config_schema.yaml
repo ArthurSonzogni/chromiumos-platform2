@@ -1243,6 +1243,122 @@ properties:
                           minimum: 0
                           maximum: 100
                       additionalProperties: false
+                    fingerprint:
+                      type: object
+                      properties:
+                        routine-enable:
+                          type: boolean
+                          description: |
+                            Enable fingerprint diagnostic routine or not.
+                        max-dead-pixels:
+                          type: integer
+                          description: |
+                            The maximum allowed number of dead pixels on the
+                            fingerprint sensor.
+                          minimum: 0
+                        max-dead-pixels-in-detect-zone:
+                          type: integer
+                          description: |
+                            The maximum allowed number of dead pixels in the
+                            detection zone.
+                          minimum: 0
+                        max-pixel-dev:
+                          type: integer
+                          description: |
+                            The maximum deviation from the median for a pixel.
+                          minimum: 0
+                        pixel-median:
+                          type: object
+                          description: |
+                            Range constraints of the pixel median value of the
+                            checkerboards.
+                          properties:
+                            cb-type1-lower:
+                              type: integer
+                              description: |
+                                Checkerboard type1 lower bound.
+                            cb-type1-upper:
+                              type: integer
+                              description: |
+                                Checkerboard type1 upper bound.
+                            cb-type2-lower:
+                              type: integer
+                              description: |
+                                Checkerboard type2 lower bound.
+                            cb-type2-upper:
+                              type: integer
+                              description: |
+                                Checkerboard type2 upper bound.
+                            icb-type1-lower:
+                              type: integer
+                              description: |
+                                Inverted checkerboard type1 lower bound.
+                            icb-type1-upper:
+                              type: integer
+                              description: |
+                                Inverted checkerboard type1 upper bound.
+                            icb-type2-lower:
+                              type: integer
+                              description: |
+                                Inverted checkerboard type2 lower bound.
+                            icb-type2-upper:
+                              type: integer
+                              description: |
+                                Inverted checkerboard type2 upper bound.
+                          required:
+                            - cb-type1-lower
+                            - cb-type1-upper
+                            - cb-type2-lower
+                            - cb-type2-upper
+                            - icb-type1-lower
+                            - icb-type1-upper
+                            - icb-type2-lower
+                            - icb-type2-upper
+                          additionalProperties: false
+                        detect-zones:
+                          type: array
+                          description: |
+                            A list of rectangles [x1, y1, x2, y2] defining the
+                            finger detection zones on the sensor.
+                          items:
+                            type: object
+                            description: |
+                              Rrectangles [x1, y1, x2, y2].
+                            properties:
+                              x1:
+                                type: integer
+                                description: |
+                                  `x1` should be smaller than `x2`.
+                                minimum: 0
+                              y1:
+                                type: integer
+                                description: |
+                                  `y1` should be smaller than `y2`.
+                                minimum: 0
+                              x2:
+                                type: integer
+                                description: |
+                                  `x1` should be smaller than `x2`.
+                                minimum: 0
+                              y2:
+                                type: integer
+                                description: |
+                                  `y1` should be smaller than `y2`.
+                                minimum: 0
+                            required:
+                              - x1
+                              - y1
+                              - x2
+                              - y2
+                            additionalProperties: false
+                      required:
+                        - routine-enable
+                        - max-dead-pixels
+                        - max-dead-pixels-in-detect-zone
+                        - max-pixel-dev
+                        - pixel-median
+                        - detect-zones
+                      additionalProperties: false
                   additionalProperties: false
               additionalProperties: false
             scheduler-tune:
