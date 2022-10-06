@@ -95,10 +95,17 @@ class UserSession {
   // the newly taken ones will be overwritten.
   virtual void TakeCredentialsFrom(AuthSession* auth_session) = 0;
 
-  // Returns a bool indicating if this session has any credential verifiers.
-  virtual bool HasCredentialVerifiers() const = 0;
+  // Adds a new credential verifier to this session. Note that verifiers are
+  // stored by label with new verifiers replacing old ones with the same label.
+  virtual void AddCredentialVerifier(
+      std::unique_ptr<CredentialVerifier> verifier) = 0;
 
-  // Returns the credential verifiers for this session.
+  // Returns a bool indicating if this session has any credential verifiers
+  // (0-arg) or if it has a verifier with a specific label (1-arg).
+  virtual bool HasCredentialVerifier() const = 0;
+  virtual bool HasCredentialVerifier(const std::string& label) const = 0;
+
+  // Returns all the credential verifiers for this session.
   virtual std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const = 0;
 
