@@ -16,9 +16,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  cflags = [
-    "-Wconversion",
-  ]
+  cflags = [ "-Wconversion" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -36,7 +34,7 @@ static_library("libpatchpanel-client_test") {
   sources = libpatchpanel_client_sources
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
-    "protobuf",
+    "protobuf-lite",
     "system_api",
   ]
 }
@@ -44,7 +42,7 @@ static_library("libpatchpanel-client_test") {
 shared_library("libpatchpanel-client") {
   sources = libpatchpanel_client_sources
   configs += [ ":target_defaults" ]
-  all_dependent_pkg_deps = [ "protobuf" ]
+  all_dependent_pkg_deps = [ "protobuf-lite" ]
   libs = [ "system_api" ]
 }
 
