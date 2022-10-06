@@ -4543,6 +4543,102 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 }
 
+TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
+  PrepareArguments();
+  SetupMount("foo@example.com");
+  // Setup
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  start_auth_session_req_->set_intent(user_data_auth::AUTH_INTENT_VERIFY_ONLY);
+
+  KeyData key_data;
+  key_data.set_label(kFakeLabel);
+  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+
+  // Add persistent auth factors.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  std::vector<int> vk_indicies = {0};
+  EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
+      .WillOnce([key_data](const std::string&, int) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        vk->SetKeyData(key_data);
+        vk->SetTPMKey(SecureBlob("fake tpm key"));
+        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        return vk;
+      });
+  EXPECT_CALL(auth_block_utility_, GetSupportedIntentsFromState(_))
+      .WillOnce(Return(base::flat_set<AuthIntent>(
+          {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
+  // Add a verifier as well.
+  ScryptVerifier verifier(kFakeLabel);
+  EXPECT_CALL(*session_, GetCredentialVerifier())
+      .WillRepeatedly(Return(&verifier));
+
+  user_data_auth::StartAuthSessionReply start_auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&start_auth_session_reply)));
+  }
+
+  EXPECT_EQ(start_auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_THAT(start_auth_session_reply.auth_factors().size(), 1);
+  // We should only find one factor, not two. There's a persistent factor and a
+  // verifier but they have the same label.
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
+              kFakeLabel);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+}
+
+TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
+  PrepareArguments();
+  SetupMount("foo@example.com");
+  // Setup
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  start_auth_session_req_->set_intent(user_data_auth::AUTH_INTENT_VERIFY_ONLY);
+  start_auth_session_req_->set_flags(
+      user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  ScryptVerifier verifier("password-verifier-label");
+  EXPECT_CALL(*session_, GetCredentialVerifier())
+      .WillRepeatedly(Return(&verifier));
+
+  user_data_auth::StartAuthSessionReply start_auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&start_auth_session_reply)));
+  }
+
+  EXPECT_EQ(start_auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_THAT(start_auth_session_reply.auth_factors().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
+              "password-verifier-label");
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+}
+
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(false));
 

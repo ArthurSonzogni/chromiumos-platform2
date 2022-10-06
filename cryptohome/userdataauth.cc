@@ -4059,19 +4059,57 @@ void UserDataAuth::StartAuthSession(
       auth_session->key_label_data().begin(),
       auth_session->key_label_data().end());
   *(reply.mutable_key_label_data()) = proto_key_map;
+
+  // Discover any available auth factors from the AuthSession.
+  std::set<std::string> listed_auth_factor_labels;
   for (const auto& label_and_factor : auth_session->label_to_auth_factor()) {
     const std::unique_ptr<AuthFactor>& auth_factor = label_and_factor.second;
     std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
         auth_factor->metadata(), auth_factor->type(), auth_factor->label());
     if (proto_factor.has_value()) {
+      // Only output one factor per label.
+      auto [unused, was_inserted] =
+          listed_auth_factor_labels.insert(auth_factor->label());
+      if (!was_inserted) {
+        continue;
+      }
+
       auto supported_intents =
           auth_block_utility_->GetSupportedIntentsFromState(
               auth_factor->auth_block_state());
-      // Only populate reply with AuthFactors that support some form of
+      // Only populate reply with AuthFactors that support the intended form of
       // authentication.
-      if (supported_intents.contains(AuthIntent::kDecrypt) ||
-          supported_intents.contains(AuthIntent::kVerifyOnly)) {
+      if ((request.intent() == user_data_auth::AUTH_INTENT_DECRYPT &&
+           supported_intents.contains(AuthIntent::kDecrypt)) ||
+          (request.intent() == user_data_auth::AUTH_INTENT_VERIFY_ONLY &&
+           (supported_intents.contains(AuthIntent::kVerifyOnly) ||
+            supported_intents.contains(AuthIntent::kDecrypt)))) {
         *reply.add_auth_factors() = std::move(proto_factor.value());
+      }
+    }
+  }
+
+  // The associated UserSession (if there is one) may also have some factors of
+  // its own, via verifiers. However, these are only available if the request is
+  // for a verify-only session.
+  //
+  // This is done after the persistent factors are looked up because if a
+  // persistent factor also has a verifier then we only want output from the
+  // persistent factor data.
+  if (request.intent() == user_data_auth::AUTH_INTENT_VERIFY_ONLY) {
+    if (UserSession* user_session =
+            sessions_->Find(request.account_id().account_id())) {
+      if (CredentialVerifier* verifier =
+              user_session->GetCredentialVerifier()) {
+        if (auto proto_factor = GetAuthFactorProto(
+                verifier->auth_factor_metadata(), verifier->auth_factor_type(),
+                verifier->auth_factor_label())) {
+          auto [unused, was_inserted] =
+              listed_auth_factor_labels.insert(verifier->auth_factor_label());
+          if (was_inserted) {
+            *reply.add_auth_factors() = std::move(*proto_factor);
+          }
+        }
       }
     }
   }
