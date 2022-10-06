@@ -6,7 +6,9 @@
 #include <unistd.h>
 
 #include <cstdlib>
+#include <utility>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -43,43 +45,56 @@ int main(int argc, char** argv) {
   // The parent and child processes will each keep one end of this message pipe
   // and use it to bootstrap a Mojo connection to each other.
   mojo::PlatformChannel channel;
+  auto healthd_endpoint = channel.TakeLocalEndpoint();
+  auto executor_endpoint = channel.TakeRemoteEndpoint();
 
   // The root-level parent process will continue on as the executor, and the
   // child will become the sandboxed cros_healthd daemon.
   pid_t pid = fork();
 
-  if (pid == -1)
-    LOG(FATAL) << "Failed to fork.";
+  if (pid == -1) {
+    PLOG(FATAL) << "Failed to fork";
+    return EXIT_FAILURE;
+  }
 
-  if (pid != 0) {
-    // Parent process:
-    if (getuid() != 0)
-      LOG(FATAL) << "Executor must run as root";
+  if (pid == 0) {
+    // Child process.
+    CHECK_EQ(getuid(), 0) << "Executor must run as root";
+
+    // Enter a new process group so it won't be killed by upstart on stopping.
+    // Let the mojo disconnect handler handle the lifecycle of executor process.
+    if (setpgid(0, 0) < 0) {
+      PLOG(FATAL) << "Failed to set pgid";
+      return EXIT_FAILURE;
+    }
 
     // Put the root-level executor in a light sandbox.
     diagnostics::NewMountNamespace();
 
     // Run the root-level executor.
-    return diagnostics::ExecutorDaemon(channel.TakeLocalEndpoint()).Run();
-  } else {
-    auto udev = brillo::Udev::Create();
-    if (!udev) {
-      LOG(FATAL) << "Failed to initialize udev object.";
-      return -1;
-    }
-
-    auto udev_monitor = udev->CreateMonitorFromNetlink("udev");
-    if (!udev_monitor) {
-      LOG(FATAL) << "Failed to create udev monitor.";
-      return -1;
-    }
-
-    // Sandbox the child process.
-    diagnostics::ConfigureAndEnterMinijail();
-
-    // Run the cros_healthd daemon.
-    auto service = diagnostics::CrosHealthd(channel.TakeRemoteEndpoint(),
-                                            std::move(udev_monitor));
-    return service.Run();
+    healthd_endpoint.reset();
+    return diagnostics::ExecutorDaemon(std::move(executor_endpoint)).Run();
   }
+
+  // Parent process.
+  auto udev = brillo::Udev::Create();
+  if (!udev) {
+    LOG(FATAL) << "Failed to initialize udev object.";
+    return EXIT_FAILURE;
+  }
+
+  auto udev_monitor = udev->CreateMonitorFromNetlink("udev");
+  if (!udev_monitor) {
+    LOG(FATAL) << "Failed to create udev monitor.";
+    return EXIT_FAILURE;
+  }
+
+  // Sandbox the Healthd process.
+  diagnostics::ConfigureAndEnterMinijail();
+
+  // Run the cros_healthd daemon.
+  executor_endpoint.reset();
+  auto service = diagnostics::CrosHealthd(std::move(healthd_endpoint),
+                                          std::move(udev_monitor));
+  return service.Run();
 }

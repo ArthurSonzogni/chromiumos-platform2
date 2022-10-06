@@ -101,6 +101,14 @@ std::unique_ptr<Context> Context::Create(
   // connected.
   context->executor_.Bind(
       SendInvitationAndConnectToExecutor(std::move(executor_endpoint)));
+  context->executor_.set_disconnect_handler(base::BindOnce([]() {
+    LOG(ERROR) << "The executor disconnected unexpectedly which should not "
+                  "happen. It could have crashed.";
+    // Exit immediately without any clean up because this should not happen in
+    // normal case. Don't use LOG(FATAL) to prevent a crashdump disturb the real
+    // crash in the executor.
+    std::exit(EXIT_FAILURE);
+  }));
 
   // Create others.
   context->cros_config_ = std::make_unique<brillo::CrosConfig>();

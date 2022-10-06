@@ -123,11 +123,11 @@ bool IsValidWirelessInterfaceName(const std::string& interface_name) {
 
 Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-    mojo::PendingReceiver<mojom::Executor> receiver)
+    mojo::PendingReceiver<mojom::Executor> receiver,
+    base::OnceClosure on_disconnect)
     : mojo_task_runner_(mojo_task_runner),
       receiver_{this /* impl */, std::move(receiver)} {
-  receiver_.set_disconnect_handler(
-      base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
+  receiver_.set_disconnect_handler(std::move(on_disconnect));
 }
 
 void Executor::GetFanSpeed(GetFanSpeedCallback callback) {

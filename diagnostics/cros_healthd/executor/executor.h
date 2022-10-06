@@ -33,7 +33,8 @@ namespace mojom = chromeos::cros_healthd::mojom;
 class Executor final : public mojom::Executor {
  public:
   Executor(const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-           mojo::PendingReceiver<mojom::Executor> receiver);
+           mojo::PendingReceiver<mojom::Executor> receiver,
+           base::OnceClosure on_disconnect);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
 
