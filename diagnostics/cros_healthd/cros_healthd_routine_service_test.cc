@@ -74,7 +74,9 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
       mojo_ipc::DiagnosticRoutineEnum::kArcPing,
       mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
-      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor};
+      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
+      mojo_ipc::DiagnosticRoutineEnum::kFingerprint,
+      mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive};
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {

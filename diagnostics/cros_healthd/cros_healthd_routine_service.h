@@ -123,6 +123,9 @@ class CrosHealthdRoutineService final
       RunArcDnsResolutionRoutineCallback callback) override;
   void RunSensitiveSensorRoutine(
       RunSensitiveSensorRoutineCallback callback) override;
+  void RunFingerprintRoutine(RunFingerprintRoutineCallback callback) override;
+  void RunFingerprintAliveRoutine(
+      RunFingerprintAliveRoutineCallback callback) override;
 
  private:
   void RunRoutine(

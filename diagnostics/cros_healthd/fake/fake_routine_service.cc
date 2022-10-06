@@ -205,4 +205,14 @@ void FakeRoutineService::RunSensitiveSensorRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunFingerprintRoutine(
+    RunFingerprintRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void FakeRoutineService::RunFingerprintAliveRoutine(
+    RunFingerprintAliveRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

@@ -109,6 +109,9 @@ class FakeRoutineService final
       RunArcDnsResolutionRoutineCallback callback) override;
   void RunSensitiveSensorRoutine(
       RunSensitiveSensorRoutineCallback callback) override;
+  void RunFingerprintRoutine(RunFingerprintRoutineCallback callback) override;
+  void RunFingerprintAliveRoutine(
+      RunFingerprintAliveRoutineCallback callback) override;
 };
 
 }  // namespace diagnostics

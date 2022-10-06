@@ -230,6 +230,16 @@ void FakeDiagnosticsService::RunSensitiveSensorRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunFingerprintRoutine(
+    RunFingerprintRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
+void FakeDiagnosticsService::RunFingerprintAliveRoutine(
+    RunFingerprintAliveRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

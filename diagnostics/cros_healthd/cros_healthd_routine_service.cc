@@ -373,6 +373,16 @@ void CrosHealthdRoutineService::RunSensitiveSensorRoutine(
              std::move(callback));
 }
 
+void CrosHealthdRoutineService::RunFingerprintRoutine(
+    RunFingerprintRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void CrosHealthdRoutineService::RunFingerprintAliveRoutine(
+    RunFingerprintAliveRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 void CrosHealthdRoutineService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -484,6 +494,11 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
   if (context_->system_config()->FioSupported()) {
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kDiskRead);
   }
+
+  // TODO(kerker): Use system_config to determine if we support this or not.
+  available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kFingerprint);
+  available_routines_.insert(
+      mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive);
 }
 
 }  // namespace diagnostics
