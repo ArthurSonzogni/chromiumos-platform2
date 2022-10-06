@@ -13,12 +13,14 @@
 #include "text-input-extension-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
+#include "text-input-x11-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 
 namespace {
 
 // Versions supported by sommelier.
 constexpr uint32_t kTextInputManagerVersion = 1;
 constexpr uint32_t kTextInputExtensionVersion = 4;
+constexpr uint32_t kTextInputX11Version = 1;
 
 }  // namespace
 
@@ -44,6 +46,7 @@ struct sl_host_text_input_extension {
 struct sl_host_extended_text_input {
   struct sl_context* ctx;
   struct wl_resource* resource;
+  struct sl_host_text_input* host_text_input;
   struct zcr_extended_text_input_v1* proxy;
 };
 MAP_STRUCTS(zcr_extended_text_input_v1, sl_host_extended_text_input);
@@ -65,12 +68,10 @@ static const struct zwp_text_input_v1_interface sl_text_input_implementation = {
 static void sl_text_input_enter(void* data,
                                 struct zwp_text_input_v1* text_input,
                                 struct wl_surface* surface) {
-  struct sl_host_text_input* host = static_cast<sl_host_text_input*>(
-      zwp_text_input_v1_get_user_data(text_input));
-  struct sl_host_surface* host_surface =
-      static_cast<sl_host_surface*>(wl_surface_get_user_data(surface));
-
-  zwp_text_input_v1_send_enter(host->resource, host_surface->resource);
+  // This is not currently used by cros_im. We can't simply forward the event
+  // as for an x11-hosted cros_im instance the text_input and wl_surface
+  // objects will be on different clients. We could add a corresponding event
+  // to text_input_x11 if needed.
 }
 
 static void sl_text_input_leave(void* data,
@@ -441,4 +442,61 @@ struct sl_global* sl_text_input_extension_global_create(
   return sl_global_create(ctx, &zcr_text_input_extension_v1_interface,
                           kTextInputExtensionVersion, ctx,
                           sl_bind_host_text_input_extension);
+}
+
+static void sl_text_input_x11_activate(wl_client* client,
+                                       wl_resource* resource,
+                                       wl_resource* text_input,
+                                       wl_resource* seat,
+                                       uint32_t x11_window_id) {
+  struct sl_host_text_input* host_text_input =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(text_input));
+  struct sl_host_seat* host_seat =
+      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
+  assert(host_text_input);
+  assert(host_seat);
+
+  struct sl_context* ctx = host_text_input->ctx;
+
+  struct sl_window* window;
+  wl_list_for_each(window, &ctx->windows, link) {
+    if (window->id != x11_window_id)
+      continue;
+    if (!window->host_surface_id)
+      return;
+    struct wl_resource* host_window_resource =
+        wl_client_get_object(ctx->client, window->host_surface_id);
+    if (!host_window_resource)
+      return;
+    sl_host_surface* host_surface = static_cast<sl_host_surface*>(
+        wl_resource_get_user_data(host_window_resource));
+    zwp_text_input_v1_activate(host_text_input->proxy, host_seat->proxy,
+                               host_surface->proxy);
+    return;
+  }
+}
+
+static const struct zcr_text_input_x11_v1_interface
+    sl_text_input_x11_implementation = {
+        sl_text_input_x11_activate,
+};
+
+static void sl_bind_host_text_input_x11(struct wl_client* client,
+                                        void* data,
+                                        uint32_t version,
+                                        uint32_t id) {
+  // This exists only between sommelier and its clients and there is no proxy
+  // to the host. For simplicity we don't use a sl_host_text_input_x11
+  // type as it is not needed.
+  wl_resource* resource =
+      wl_resource_create(client, &zcr_text_input_x11_v1_interface,
+                         std::min(version, kTextInputX11Version), id);
+  wl_resource_set_implementation(resource, &sl_text_input_x11_implementation,
+                                 nullptr, nullptr);
+}
+
+struct sl_global* sl_text_input_x11_global_create(struct sl_context* ctx) {
+  return sl_global_create(ctx, &zcr_text_input_x11_v1_interface,
+                          kTextInputX11Version, ctx,
+                          sl_bind_host_text_input_x11);
 }

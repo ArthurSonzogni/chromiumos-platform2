@@ -688,6 +688,7 @@ void sl_registry_handler(void* data,
     text_input_manager->ctx = ctx;
     text_input_manager->id = id;
     text_input_manager->host_global = sl_text_input_manager_global_create(ctx);
+    text_input_manager->host_x11_global = sl_text_input_x11_global_create(ctx);
     assert(!ctx->text_input_manager);
     ctx->text_input_manager = text_input_manager;
   } else if (strcmp(interface, "zcr_text_input_extension_v1") == 0) {
