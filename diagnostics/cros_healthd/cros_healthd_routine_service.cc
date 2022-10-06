@@ -375,7 +375,9 @@ void CrosHealthdRoutineService::RunSensitiveSensorRoutine(
 
 void CrosHealthdRoutineService::RunFingerprintRoutine(
     RunFingerprintRoutineCallback callback) {
-  NOTIMPLEMENTED();
+  RunRoutine(routine_factory_->MakeFingerprintRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kFingerprint,
+             std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunFingerprintAliveRoutine(
