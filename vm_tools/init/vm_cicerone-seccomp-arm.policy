@@ -58,7 +58,7 @@ lseek: 1
 _llseek: 1
 getresuid32: 1
 exit: 1
-prctl: arg0 == PR_SET_NAME
+prctl: arg0 == PR_SET_NAME || arg0 == PR_CAPBSET_READ
 clock_getres: 1
 clock_getres_time64: 1
 getresgid32: 1
