@@ -5,8 +5,10 @@
 #ifndef CRYPTOHOME_USER_SESSION_MOCK_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_MOCK_USER_SESSION_H_
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -82,21 +84,34 @@ class MockUserSession : public UserSession {
               (const std::string&),
               (override));
 
-  // Use this to manipulate the set of credential verifiers reported by the Has
-  // and Get functions.
-  std::vector<const CredentialVerifier*>& get_credential_verifiers() {
-    return credential_verifiers_;
+  // Implementation of the Add/Has/Get functions for credential verifiers.
+  // Functions are implemented "normally" so that tests don't need to manually
+  // emulate a map using EXPECT_CALL.
+  void AddCredentialVerifier(
+      std::unique_ptr<CredentialVerifier> verifier) override {
+    const std::string& label = verifier->auth_factor_label();
+    label_to_credential_verifier_[label] = std::move(verifier);
   }
-  bool HasCredentialVerifiers() const override {
-    return !credential_verifiers_.empty();
+  bool HasCredentialVerifier() const override {
+    return !label_to_credential_verifier_.empty();
+  }
+  bool HasCredentialVerifier(const std::string& label) const override {
+    return label_to_credential_verifier_.find(label) !=
+           label_to_credential_verifier_.end();
   }
   std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const override {
-    return credential_verifiers_;
+    std::vector<const CredentialVerifier*> verifiers;
+    verifiers.reserve(label_to_credential_verifier_.size());
+    for (const auto& [unused, verifier] : label_to_credential_verifier_) {
+      verifiers.push_back(verifier.get());
+    }
+    return verifiers;
   }
 
  private:
-  std::vector<const CredentialVerifier*> credential_verifiers_;
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+      label_to_credential_verifier_;
 };
 
 }  // namespace cryptohome

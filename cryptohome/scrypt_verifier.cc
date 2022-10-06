@@ -43,7 +43,7 @@ bool ScryptVerifier::Set(const brillo::SecureBlob& secret) {
                 kScryptPFactor, &verifier_);
 }
 
-bool ScryptVerifier::Verify(const brillo::SecureBlob& secret) {
+bool ScryptVerifier::Verify(const brillo::SecureBlob& secret) const {
   brillo::SecureBlob hashed_secret(kScryptOutputSize, 0);
   if (!Scrypt(secret, scrypt_salt_, kScryptNFactor, kScryptRFactor,
               kScryptPFactor, &hashed_secret)) {

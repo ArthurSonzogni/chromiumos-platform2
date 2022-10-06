@@ -26,7 +26,7 @@ class ScryptVerifier final : public CredentialVerifier {
   ScryptVerifier& operator=(const ScryptVerifier&&) = delete;
 
   bool Set(const brillo::SecureBlob& secret) override;
-  bool Verify(const brillo::SecureBlob& secret) override;
+  bool Verify(const brillo::SecureBlob& secret) const override;
 
  private:
   brillo::SecureBlob scrypt_salt_;
