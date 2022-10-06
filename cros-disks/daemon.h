@@ -44,7 +44,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   const bool has_session_manager_;
   Metrics metrics_;
-  Platform platform_;
+  Platform platform_{&metrics_};
   brillo::ProcessReaper process_reaper_;
 
   ArchiveManager archive_manager_{"/media/archive", &platform_, &metrics_,

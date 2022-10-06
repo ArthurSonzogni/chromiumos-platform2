@@ -28,8 +28,7 @@
 
 namespace cros_disks {
 
-Platform::Platform()
-    : mount_group_id_(0), mount_user_id_(0), mount_user_("root") {}
+Platform::Platform(Metrics* const metrics) : metrics_(metrics) {}
 
 bool Platform::GetRealPath(const std::string& path,
                            std::string* real_path) const {
@@ -273,6 +272,9 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path,
     if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
       LOG(WARNING) << "Force-unmounted " << filesystem_type << " "
                    << redact(mount_path);
+      if (metrics_) {
+        // TODO(crbug.com/1360642) Record filesystem type in an UMA histogram.
+      }
       return MOUNT_ERROR_NONE;
     }
   }

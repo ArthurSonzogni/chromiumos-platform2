@@ -16,13 +16,16 @@
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "cros-disks/error_logger.h"
+#include "cros-disks/metrics.h"
+
 namespace cros_disks {
 
 // A class that provides functionalities such as creating and removing
 // directories, and getting user ID and group ID for a username.
 class Platform {
  public:
-  Platform();
+  explicit Platform(Metrics* metrics = nullptr);
   Platform(const Platform&) = delete;
   Platform& operator=(const Platform&) = delete;
 
@@ -148,14 +151,17 @@ class Platform {
   const std::string& mount_user() const { return mount_user_; }
 
  private:
+  // Optional pointer to an object that can record UMA histograms.
+  Metrics* const metrics_;
+
   // Group ID to perform mount operations.
-  gid_t mount_group_id_;
+  gid_t mount_group_id_ = 0;
 
   // User ID to perform mount operations.
-  uid_t mount_user_id_;
+  uid_t mount_user_id_ = 0;
 
   // User ID to perform mount operations.
-  std::string mount_user_;
+  std::string mount_user_ = "root";
 };
 
 }  // namespace cros_disks
