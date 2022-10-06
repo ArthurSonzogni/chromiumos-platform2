@@ -7,14 +7,16 @@
 
 #pragma once
 
-#include <android/binder_interface_utils.h>
-#include <android/binder_parcelable_utils.h>
-#include <android/binder_to_string.h>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+#include <android/binder_interface_utils.h>
+#include <android/binder_parcelable_utils.h>
+#include <android/binder_to_string.h>
+#include <aidl/android/hardware/common/NativeHandle.h>
+#include <aidl/android/hardware/graphics/common/HardwareBufferDescription.h>
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
@@ -26,29 +28,50 @@ namespace graphics {
 namespace common {
 class HardwareBuffer {
  public:
+  typedef std::false_type fixed_size;
   static const char* descriptor;
-  int placeholder;
 
-  binder_status_t readFromParcel(const AParcel*) { return 0; }
-  binder_status_t writeToParcel(AParcel*) const { return 0; }
+  ::aidl::android::hardware::graphics::common::HardwareBufferDescription
+      description;
+  ::aidl::android::hardware::common::NativeHandle handle;
+
+  binder_status_t readFromParcel(const AParcel* /*parcel*/) { return 0; }
+  binder_status_t writeToParcel(AParcel* /*parcel*/) const { return 0; }
 
   inline bool operator!=(const HardwareBuffer& rhs) const {
-    return placeholder != rhs.placeholder;
+    return std::tie(description, handle) !=
+           std::tie(rhs.description, rhs.handle);
   }
   inline bool operator<(const HardwareBuffer& rhs) const {
-    return placeholder < rhs.placeholder;
+    return std::tie(description, handle) <
+           std::tie(rhs.description, rhs.handle);
   }
   inline bool operator<=(const HardwareBuffer& rhs) const {
-    return placeholder <= rhs.placeholder;
+    return std::tie(description, handle) <=
+           std::tie(rhs.description, rhs.handle);
   }
   inline bool operator==(const HardwareBuffer& rhs) const {
-    return placeholder == rhs.placeholder;
+    return std::tie(description, handle) ==
+           std::tie(rhs.description, rhs.handle);
   }
   inline bool operator>(const HardwareBuffer& rhs) const {
-    return placeholder > rhs.placeholder;
+    return std::tie(description, handle) >
+           std::tie(rhs.description, rhs.handle);
   }
   inline bool operator>=(const HardwareBuffer& rhs) const {
-    return placeholder >= rhs.placeholder;
+    return std::tie(description, handle) >=
+           std::tie(rhs.description, rhs.handle);
+  }
+
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
+  inline std::string toString() const {
+    std::ostringstream os;
+    os << "HardwareBuffer{";
+    os << "description: " << ::android::internal::ToString(description);
+    os << ", handle: " << ::android::internal::ToString(handle);
+    os << "}";
+    return os.str();
   }
 };
 }  // namespace common

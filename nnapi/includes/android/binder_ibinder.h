@@ -1,5 +1,5 @@
-// This code is taken from 
-// src/aosp/frameworks/native/libs/binder/ndk/include_cpp/android/
+// This code is taken from
+// src/aosp/frameworks/native/libs/binder/ndk/include_platform/android/
 //
 // This file provides the pieces of the Binder framework
 // that are referenced from within the generated AIDL code.

@@ -312,3 +312,8 @@ void AIBinder_Class_setOnDump(AIBinder_Class*, AIBinder_onDump) {
   NOTIMPLEMENTED() << "AIBinder_Class_setOnDump shouldn't get called";
   IMMEDIATE_CRASH();
 }
+
+binder_status_t AIBinder_ping(AIBinder* /*binder*/) {
+  // Just return OK to not fail the aidl vts tests
+  return STATUS_OK;
+}
