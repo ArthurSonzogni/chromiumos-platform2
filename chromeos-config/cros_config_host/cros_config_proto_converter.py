@@ -1442,6 +1442,7 @@ class _AudioConfigBuilder:
     _SOUND_CARD_INIT_PATH = pathlib.PurePath("/etc/sound_card_init")
     _MODULE_PATH = pathlib.PurePath("/etc/modprobe.d")
     _AUDIO_CONFIG_PATH = "audio"
+    _CRAS_CONFIG_PATH = "cras-config"
     AudioConfigStructure = (
         topology_pb2.HardwareFeatures.Audio.AudioConfigStructure
     )
@@ -1452,6 +1453,7 @@ class _AudioConfigBuilder:
 
         self._files = []
         self._ucm_suffixes = set()
+        self._cras_suffixes = set()
         self._sound_card_init_confs = set()
 
     @property
@@ -1491,18 +1493,27 @@ class _AudioConfigBuilder:
             if device.facing == facing
         )
 
-    def _build_ucm_suffix(self, card_config):
-        ucm_suffix_format = self._program_audio.default_ucm_suffix
-        if card_config.HasField("ucm_suffix"):
-            ucm_suffix_format = card_config.ucm_suffix.value
+    def _build_suffix(self, card_config, config_type="ucm"):
+        if config_type != "ucm" and config_type != "cras":
+            raise Exception("Not supported config type.")
 
-        design_for_ucm = self._design_name
-        if card_config.ucm_config == self.AudioConfigStructure.COMMON:
-            design_for_ucm = ""
+        suffix_format = getattr(
+            self._program_audio, f"default_{config_type}_suffix"
+        )
+        if card_config.HasField(f"{config_type}_suffix"):
+            suffix_format = getattr(card_config, f"{config_type}_suffix").value
+
+        design_name = self._design_name
+        if (
+            getattr(card_config, f"{config_type}_config")
+            == self.AudioConfigStructure.COMMON
+        ):
+            design_name = ""
+
         uf_mics = self._count_mics(self.Camera.FACING_FRONT)
         wf_mics = self._count_mics(self.Camera.FACING_BACK)
         mic_details = [(uf_mics, "uf"), (wf_mics, "wf")]
-        ucm_suffix = ucm_suffix_format.format(
+        suffix = suffix_format.format(
             headset_codec=(
                 topology_pb2.HardwareFeatures.Audio.AudioCodec.Name(
                     self._audio.headphone_codec
@@ -1517,7 +1528,7 @@ class _AudioConfigBuilder:
             ).lower()
             if self._audio.speaker_amp
             else "",
-            design=design_for_ucm,
+            design=design_name,
             camera_count=len(self._hw_features.camera.devices),
             mic_description="".join(
                 f"{position[0]}{position[1]}" if position[0] else ""
@@ -1528,17 +1539,19 @@ class _AudioConfigBuilder:
             world_facing_mic_count=wf_mics,
         )
         return ".".join(
-            [component for component in ucm_suffix.split(".") if component]
+            [component for component in suffix.split(".") if component]
         )
 
     def _build_audio_card(self, card_config):
-        ucm_suffix = self._build_ucm_suffix(card_config)
+        ucm_suffix = self._build_suffix(card_config, "ucm")
+        cras_suffix = self._build_suffix(card_config, "cras")
         card_with_suffix = ".".join([card_config.card_name, ucm_suffix]).strip(
             "."
         )
         card, _, card_suffix = card_config.card_name.partition(".")
         ucm_suffix = ".".join([card_suffix, ucm_suffix]).strip(".")
         self._ucm_suffixes.add(ucm_suffix)
+        self._cras_suffixes.add(cras_suffix)
 
         ucm_config_source_directory = self._build_source_path(
             card_config.ucm_config, "ucm-config"
@@ -1562,15 +1575,27 @@ class _AudioConfigBuilder:
             )
         )
 
+        cras_config_with_suffix = self._CRAS_CONFIG_PATH
+        design_name_with_suffix = self._design_name
+        if cras_suffix:
+            cras_config_with_suffix = (
+                f"{cras_config_with_suffix}.{cras_suffix}"
+            )
+            design_name_with_suffix = (
+                f"{design_name_with_suffix}.{cras_suffix}"
+            )
+
         cras_config_source_path = self._build_source_path(
-            card_config.cras_config, "cras-config"
+            card_config.cras_config, cras_config_with_suffix
         )
         if cras_config_source_path:
             card_settings = f"{card}.card_settings"
             self._files.append(
                 _file(
                     cras_config_source_path / card_settings,
-                    self._CRAS_PATH.joinpath(self._design_name, card_settings),
+                    self._CRAS_PATH.joinpath(
+                        design_name_with_suffix, card_settings
+                    ),
                 )
             )
 
@@ -1619,15 +1644,29 @@ class _AudioConfigBuilder:
         ):
             self._build_audio_card(card_config)
 
+        cras_config_with_suffix = self._CRAS_CONFIG_PATH
+        design_name_with_suffix = self._design_name
+
+        cras_suffix = self._select_from_set(self._cras_suffixes, "cras-suffix")
+        if cras_suffix:
+            design_name_with_suffix = (
+                f"{design_name_with_suffix}.{cras_suffix}"
+            )
+            cras_config_with_suffix = (
+                f"{cras_config_with_suffix}.{cras_suffix}"
+            )
+
         cras_config_source_path = self._build_source_path(
-            self._audio.cras_config, "cras-config"
+            self._audio.cras_config, cras_config_with_suffix
         )
         if cras_config_source_path:
             for filename in ["dsp.ini", "board.ini", "apm.ini"]:
                 self._files.append(
                     _file(
                         cras_config_source_path.joinpath(filename),
-                        self._CRAS_PATH.joinpath(self._design_name, filename),
+                        self._CRAS_PATH.joinpath(
+                            design_name_with_suffix, filename
+                        ),
                     )
                 )
 
@@ -1644,7 +1683,7 @@ class _AudioConfigBuilder:
 
         result = {
             "main": {
-                "cras-config-dir": self._design_name,
+                "cras-config-dir": design_name_with_suffix,
                 "files": self._files,
             }
         }
