@@ -3,12 +3,11 @@
 # found in the LICENSE file.
 
 import shlex
-import subprocess
 import struct
-
-import pytest
+import subprocess
 
 import cros_config_host.identity_table
+import pytest
 
 
 def getvars(output):

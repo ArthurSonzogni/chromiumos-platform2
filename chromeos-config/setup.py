@@ -8,6 +8,7 @@ from __future__ import print_function
 
 from setuptools import setup
 
+
 setup(
     name="cros_config_host",
     version="1",
@@ -23,7 +24,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "{0} = cros_config_host.{0}:main".format(script)
+            f"{script} = cros_config_host.{script}:main"
             for script in (
                 "cros_config_host",
                 "cros_config_merge_backfilled_config",
