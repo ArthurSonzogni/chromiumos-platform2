@@ -7,6 +7,10 @@ import("//secagentd/tools/bpf_gen.gni")
 
 group("all") {
   deps = [ ":secagentd" ]
+
+  if (use.test) {
+    deps += [ ":secagentd_testrunner" ]
+  }
 }
 
 generate_vmlinux("vmlinux_h") {
@@ -45,4 +49,24 @@ executable("secagentd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsecagent" ]
+}
+
+if (use.test) {
+  pkg_config("secagentd_testrunner_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("secagentd_testrunner") {
+    sources = []
+    configs += [
+      "//common-mk:test",
+      ":secagentd_testrunner_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libsecagent",
+      "//common-mk/testrunner",
+    ]
+  }
 }
