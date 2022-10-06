@@ -218,21 +218,18 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     # Attempt to get a valid volume group name.
     vg_name="$(get_volume_group "${STATE_DEV}")"
     if [ -n "${vg_name}" ]; then
+      STATE_DEV="/dev/${vg_name}/unencrypted"
+      DEV_IMAGE="/dev/${vg_name}/dev-image"
       # Check to see if this is a hibernate resume boot. If so, the image that
       # will be resumed has active mounts on the stateful LVs that must not be
-      # modified out from underneath the hibernated kernel. Ask hiberman to
-      # activate the necessary logical volumes and set up dm-snapshots on top of
-      # them to make an RW system while leaving those LVs physically intact.
-      if command -v hiberman >/dev/null 2>&1 && \
-        hiberman resume-init -v \
-          >/run/hibernate/hiber-resume-init.log 2>&1; then
-
-        STATE_DEV="/dev/mapper/unencrypted-rw"
-        DEV_IMAGE="/dev/mapper/dev-image-rw"
-
-      else
-        STATE_DEV="/dev/${vg_name}/unencrypted"
-        DEV_IMAGE="/dev/${vg_name}/dev-image"
+      # modified out from underneath the hibernated kernel.
+      if command -v hiberman >/dev/null 2>&1; then
+        HIBER_STATE_DEV="/dev/mapper/unencrypted-rw"
+        HIBER_DEV_IMAGE="/dev/mapper/dev-image-rw"
+        if [ -e "${HIBER_STATE_DEV}" ] && [ -e "${HIBER_DEV_IMAGE}" ]; then
+          STATE_DEV="${HIBER_STATE_DEV}"
+          DEV_IMAGE="${HIBER_DEV_IMAGE}"
+        fi
       fi
     fi
   fi
