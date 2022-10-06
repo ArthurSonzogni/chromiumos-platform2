@@ -7,8 +7,10 @@
 
 mod clock;
 mod eventfd;
+mod linux;
 mod poll;
 mod scoped_event_macro;
+pub mod syslog;
 mod timerfd;
 
 pub use clock::*;
