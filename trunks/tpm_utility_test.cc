@@ -2604,7 +2604,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesBadSession) {
   int index = 5;
   std::string pcr_value("value");
   std::string policy_digest;
-  EXPECT_CALL(mock_trial_session_, StartUnboundSession(true, false))
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(false, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(

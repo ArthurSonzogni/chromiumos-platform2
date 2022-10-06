@@ -1724,7 +1724,7 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     std::string* policy_digest) {
   CHECK(policy_digest);
   std::unique_ptr<PolicySession> policy_session = factory_.GetTrialSession();
-  TPM_RC result = policy_session->StartUnboundSession(true, false);
+  TPM_RC result = policy_session->StartUnboundSession(false, false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error starting unbound trial session: "
                << GetErrorString(result);
