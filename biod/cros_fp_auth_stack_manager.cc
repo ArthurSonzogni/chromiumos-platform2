@@ -75,8 +75,67 @@ BioSession CrosFpAuthStackManager::StartEnrollSession() {
 
 CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
     const CreateCredentialRequest& request) {
-  NOTREACHED();
   CreateCredentialReply reply;
+
+  if (!CanCreateCredential()) {
+    LOG(ERROR) << "Can't create credential now, current state is: "
+               << CurrentStateToString();
+    reply.set_status(CreateCredentialReply::INCORRECT_STATE);
+    return reply;
+  }
+
+  if (!cros_dev_->SetNonceContext(
+          brillo::BlobFromString(request.gsc_nonce()),
+          brillo::BlobFromString(request.encrypted_label_seed()),
+          brillo::BlobFromString(request.iv()))) {
+    LOG(ERROR) << "Failed to set nonce context";
+    reply.set_status(CreateCredentialReply::SET_NONCE_FAILED);
+    return reply;
+  }
+
+  std::unique_ptr<VendorTemplate> tmpl =
+      cros_dev_->GetTemplate(CrosFpDevice::kLastTemplate);
+  if (!tmpl) {
+    LOG(ERROR) << "Failed to retrieve enrolled finger";
+    reply.set_status(CreateCredentialReply::NO_TEMPLATE);
+    return reply;
+  }
+
+  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> secret_reply =
+      cros_dev_->GetPositiveMatchSecretWithPubkey(
+          CrosFpDevice::kLastTemplate,
+          brillo::BlobFromString(request.pub().x()),
+          brillo::BlobFromString(request.pub().y()));
+  if (!secret_reply.has_value()) {
+    LOG(ERROR) << "Failed to get positive match secret.";
+    reply.set_status(CreateCredentialReply::NO_SECRET);
+    return reply;
+  }
+
+  std::string record_id = BiodStorage::GenerateNewRecordId();
+  // Label and validation value are not used in the new AuthStack flow.
+  BiodStorageInterface::RecordMetadata record{
+      .record_format_version = kRecordFormatVersion,
+      .record_id = record_id,
+      .user_id = std::move(request.user_id()),
+      .label = "",
+      .validation_val = {},
+  };
+
+  if (!record_manager_->CreateRecord(record, std::move(tmpl))) {
+    LOG(ERROR) << "Failed to create record for template.";
+    reply.set_status(CreateCredentialReply::CREATE_RECORD_FAILED);
+    return reply;
+  }
+
+  state_ = State::kNone;
+  reply.set_status(CreateCredentialReply::SUCCESS);
+  reply.set_encrypted_secret(
+      brillo::BlobToString(secret_reply->encrypted_secret));
+  reply.set_iv(brillo::BlobToString(secret_reply->iv));
+  reply.mutable_pub()->set_x(brillo::BlobToString(secret_reply->pk_out_x));
+  reply.mutable_pub()->set_y(brillo::BlobToString(secret_reply->pk_out_y));
+  reply.set_record_id(std::move(record_id));
   return reply;
 }
 
@@ -282,6 +341,10 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
     case State::kEnroll:
       return false;
   }
+}
+
+bool CrosFpAuthStackManager::CanCreateCredential() {
+  return state_ == State::kEnrollDone;
 }
 
 }  // namespace biod

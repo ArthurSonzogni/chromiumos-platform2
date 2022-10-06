@@ -65,6 +65,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void SetSessionFailedHandler(const AuthStackManager::SessionFailedCallback&
                                    on_session_failed) override;
 
+  void SetStateForTest(State state) { state_ = state; }
+
  protected:
   void EndEnrollSession() override;
   void EndAuthSession() override;
@@ -90,6 +92,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   // Whether current state is waiting for a next session action.
   bool IsActiveState();
   bool CanStartEnroll();
+  bool CanCreateCredential();
 
   BiodMetricsInterface* biod_metrics_ = nullptr;
   std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;
