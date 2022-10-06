@@ -231,6 +231,45 @@ std::optional<std::string> SerializeFromTpmSignature(
   }
 }
 
+bool IsContentUnset(trunks::TPM2B_MAX_NV_BUFFER const& nv_contents) {
+  // Consider NV Content unset if it's consisted of all-0s or all-1s.
+  trunks::BYTE zero = trunks::BYTE(0), one = trunks::BYTE(255);
+  for (int i = 0; i < nv_contents.size; ++i) {
+    zero |= nv_contents.buffer[i];
+    one &= nv_contents.buffer[i];
+  }
+  return (zero == trunks::BYTE(0)) || (one == trunks::BYTE(255));
+}
+
+bool IsValidQuotedData(trunks::TPM2B_ATTEST const& quoted_struct) {
+  std::string buffer(quoted_struct.attestation_data,
+                     quoted_struct.attestation_data + quoted_struct.size);
+  trunks::TPMS_ATTEST value;
+  trunks::TPM_RC rc = trunks::Parse_TPMS_ATTEST(&buffer, &value, nullptr);
+  if (rc) {
+    LOG(ERROR) << __func__ << "Failed to call `Parse_TPMS_ATTEST()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  trunks::TPM2B_MAX_NV_BUFFER const& nv_contents =
+      value.attested.nv.nv_contents;
+  if (nv_contents.size > sizeof(nv_contents.buffer)) {
+    LOG(ERROR) << __func__
+               << ": NV Content size is too large: " << nv_contents.size;
+    return false;
+  }
+  if (nv_contents.size == trunks::UINT16(0)) {
+    LOG(ERROR) << __func__ << ": NV Content has size zero.";
+    return false;
+  }
+  if (IsContentUnset(nv_contents)) {
+    LOG(ERROR) << __func__ << ": NV Content unset.";
+    return false;
+  }
+  return true;
+}
+
 // An authorization delegate to manage multiple authorization sessions for a
 // single command.
 class MultipleAuthorizations : public AuthorizationDelegate {
@@ -1123,6 +1162,13 @@ bool TpmUtilityV2::CertifyNV(uint32_t nv_index,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to certify the NVs: "
                << trunks::GetErrorString(result);
+    return false;
+  }
+
+  // Perform Sanity Check:  prevent quoting quoted_data with
+  //                        invalid/unset/empty nvram content
+  if (!IsValidQuotedData(quoted_struct)) {
+    LOG(ERROR) << __func__ << ": Invalid Quoted Data.";
     return false;
   }
 
