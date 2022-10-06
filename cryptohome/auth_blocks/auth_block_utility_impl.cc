@@ -120,7 +120,18 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
 }
 
 bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
-    AuthFactorType auth_factor_type) const {
+    AuthIntent auth_intent, AuthFactorType auth_factor_type) const {
+  // Legacy Fingerprint + WebAuthn is a special case that supports a lightweight
+  // verify.
+  if (auth_intent == AuthIntent::kWebAuthn &&
+      auth_factor_type == AuthFactorType::kLegacyFingerprint) {
+    return true;
+  }
+  // Verify can only be used with verify-only intents, other than the above
+  // special cases.
+  if (auth_intent != AuthIntent::kVerifyOnly) {
+    return false;
+  }
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint:
       return true;

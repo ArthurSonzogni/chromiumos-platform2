@@ -1075,9 +1075,8 @@ bool AuthSession::AuthenticateAuthFactor(
     }
     // We can also attempt lightweight authenticate via the auth block utility.
     // TODO(b/247812443): Unify this with the credential verifier path.
-    if (auth_intent_ == AuthIntent::kVerifyOnly &&
-        auth_block_utility_->IsVerifyWithAuthFactorSupported(
-            *auth_factor_type)) {
+    if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
+            auth_intent_, *auth_factor_type)) {
       if (CryptohomeStatusOr<AuthInput> auth_input =
               CreateAuthInputForAuthentication(request.auth_input(), {});
           auth_input.ok()) {
@@ -2082,6 +2081,12 @@ void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
   // If there was no error then the verify was a success.
   if (error.ok()) {
     const AuthIntent lightweight_intents[] = {AuthIntent::kVerifyOnly};
+    // Verify-only authentication might satisfy the kWebAuthn AuthIntent for the
+    // legacy FP AuthFactorType. In fact, that is the only possible scenario
+    // where we reach here with the kWebAuthn AuthIntent.
+    if (auth_intent_ == AuthIntent::kWebAuthn) {
+      authorized_intents_.insert(AuthIntent::kWebAuthn);
+    }
     SetAuthSessionAsAuthenticated(lightweight_intents);
   }
   // Forward whatever the result was to on_done.

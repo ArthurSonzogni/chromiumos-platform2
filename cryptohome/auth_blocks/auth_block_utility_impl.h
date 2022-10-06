@@ -18,6 +18,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -54,7 +55,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const std::set<AuthFactorType>& configured_factors) const override;
 
   bool IsVerifyWithAuthFactorSupported(
-      AuthFactorType auth_factor_type) const override;
+      AuthIntent auth_intent, AuthFactorType auth_factor_type) const override;
 
   void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
                                  const AuthInput& auth_input,

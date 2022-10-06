@@ -38,7 +38,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (const, override));
   MOCK_METHOD(bool,
               IsVerifyWithAuthFactorSupported,
-              (AuthFactorType),
+              (AuthIntent, AuthFactorType),
               (const, override));
   MOCK_METHOD(void,
               VerifyWithAuthFactorAsync,

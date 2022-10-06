@@ -242,19 +242,23 @@ TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
   MakeAuthBlockUtilityImpl();
 
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kPassword));
+      AuthIntent::kVerifyOnly, AuthFactorType::kPassword));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kPin));
+      AuthIntent::kVerifyOnly, AuthFactorType::kPin));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kCryptohomeRecovery));
+      AuthIntent::kVerifyOnly, AuthFactorType::kCryptohomeRecovery));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kKiosk));
+      AuthIntent::kVerifyOnly, AuthFactorType::kKiosk));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kSmartCard));
+      AuthIntent::kVerifyOnly, AuthFactorType::kSmartCard));
   EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kLegacyFingerprint));
+      AuthIntent::kVerifyOnly, AuthFactorType::kLegacyFingerprint));
+  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthIntent::kWebAuthn, AuthFactorType::kLegacyFingerprint));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthFactorType::kUnspecified));
+      AuthIntent::kDecrypt, AuthFactorType::kLegacyFingerprint));
+  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+      AuthIntent::kVerifyOnly, AuthFactorType::kUnspecified));
 }
 
 TEST_F(AuthBlockUtilityImplTest, VerifyPasswordFailure) {

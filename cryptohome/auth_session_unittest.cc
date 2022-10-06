@@ -3145,8 +3145,9 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
       &user_session_map_, &keyset_management_, &auth_block_utility_,
       &auth_factor_manager_, &user_secret_stash_storage_,
       /*enable_create_backup_vk_with_uss =*/false);
-  EXPECT_CALL(auth_block_utility_, IsVerifyWithAuthFactorSupported(
-                                       AuthFactorType::kLegacyFingerprint))
+  EXPECT_CALL(auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(
+                  AuthIntent::kVerifyOnly, AuthFactorType::kLegacyFingerprint))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
@@ -3676,6 +3677,49 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateAuthFactorWebAuthnIntent) {
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly,
                            AuthIntent::kWebAuthn));
+}
+
+// Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kWebAuthn`
+// scenario, using the legacy fingerprint.
+TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Configure the credential verifier mock to succeed.
+  auto user_session = std::make_unique<MockUserSession>();
+  // Create an AuthSession and add a mock for a successful auth block verify.
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kWebAuthn,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
+      /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_CALL(auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(
+                  AuthIntent::kWebAuthn, AuthFactorType::kLegacyFingerprint))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      auth_block_utility_,
+      VerifyWithAuthFactorAsync(AuthFactorType::kLegacyFingerprint, _, _))
+      .WillOnce([](AuthFactorType, const AuthInput&,
+                   AuthBlockUtility::VerifyCallback callback) {
+        std::move(callback).Run(OkStatus<CryptohomeError>());
+      });
+
+  // Test.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_legacy_fingerprint_input();
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request, authenticate_future.GetCallback()));
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn));
 }
 
 }  // namespace cryptohome

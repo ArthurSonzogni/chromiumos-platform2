@@ -57,12 +57,12 @@ class AuthBlockUtility {
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const = 0;
 
-  // Given an AuthFactorType, returns a boolean indicating if this factor
-  // supports Verify via VerifyWithAuthFactorAsync. Note that (unlike
-  // IsAuthFactorSupported) this is purely an indicator of software support
-  // being present for a particular factor.
+  // Given AuthIntent and AuthFactorType, returns a boolean indicating if this
+  // factor supports Verify via VerifyWithAuthFactorAsync and satisfies the auth
+  // intent. Note that (unlike IsAuthFactorSupported) this is purely an
+  // indicator of software support being present for a particular factor.
   virtual bool IsVerifyWithAuthFactorSupported(
-      AuthFactorType auth_factor_type) const = 0;
+      AuthIntent auth_intent, AuthFactorType auth_factor_type) const = 0;
 
   // If the verify succeeds, |error| will be ok. Otherwise it will contain an
   // error describing the nature of the failure.
