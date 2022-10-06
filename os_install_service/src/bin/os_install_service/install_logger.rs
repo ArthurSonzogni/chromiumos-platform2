@@ -18,8 +18,8 @@ use std::sync::{Arc, Mutex};
 use anyhow::{anyhow, Context, Error};
 use chrono::{DateTime, Local};
 use lazy_static::lazy_static;
+use libchromeos::deprecated::syslog;
 use log::{error, Level, Log, Metadata, Record};
-use sys_util::syslog;
 
 const LOG_NAME: &str = "os_install_service.log";
 
