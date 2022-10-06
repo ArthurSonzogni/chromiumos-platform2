@@ -5,15 +5,15 @@
 #ifndef FACED_TESTING_STATUS_H_
 #define FACED_TESTING_STATUS_H_
 
+#include <algorithm>
+#include <string>
+#include <utility>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/check.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include <algorithm>
-#include <string>
-#include <utility>
 
 namespace faced {
 

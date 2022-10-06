@@ -4,12 +4,13 @@
 
 #include "faced/faced_cli/faced_client.h"
 
-#include <gmock/gmock.h>
-#include <gmock/gmock-nice-strict.h>
-#include <gtest/gtest.h>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "faced/faced_cli/mock_face_authentication_service.h"
 #include "faced/mojom/faceauth.mojom.h"

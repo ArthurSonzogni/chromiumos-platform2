@@ -5,10 +5,10 @@
 #ifndef FACED_UTIL_TASK_H_
 #define FACED_UTIL_TASK_H_
 
+#include <utility>
+
 #include <base/location.h>
 #include <base/threading/sequenced_task_runner_handle.h>
-
-#include <utility>
 
 #include "base/task/sequenced_task_runner.h"
 

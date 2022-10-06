@@ -5,9 +5,9 @@
 #ifndef FACED_STATUS_TO_STRING_H_
 #define FACED_STATUS_TO_STRING_H_
 
-#include <base/strings/string_piece.h>
-
 #include <string>
+
+#include <base/strings/string_piece.h>
 
 #include "faced/mojom/faceauth.mojom.h"
 

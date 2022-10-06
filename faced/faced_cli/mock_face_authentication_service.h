@@ -5,9 +5,9 @@
 #ifndef FACED_FACED_CLI_MOCK_FACE_AUTHENTICATION_SERVICE_H_
 #define FACED_FACED_CLI_MOCK_FACE_AUTHENTICATION_SERVICE_H_
 
-#include <gmock/gmock.h>
-
 #include <utility>
+
+#include <gmock/gmock.h>
 
 #include "faced/mojom/faceauth.mojom.h"
 

@@ -4,6 +4,9 @@
 
 #include "faced/faced_cli/faced_cli.h"
 
+#include <string>
+#include <vector>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <absl/strings/str_format.h>
@@ -15,9 +18,6 @@
 #include <brillo/flag_helper.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-
-#include <string>
-#include <vector>
 
 #include "faced/faced_cli/faced_client.h"
 

@@ -5,10 +5,10 @@
 #ifndef FACED_FACED_CLI_FACE_ENROLLMENT_SESSION_DELEGATE_IMPL_H_
 #define FACED_FACED_CLI_FACE_ENROLLMENT_SESSION_DELEGATE_IMPL_H_
 
+#include <utility>
+
 #include <absl/status/status.h>
 #include <base/memory/ref_counted.h>
-
-#include <utility>
 
 #include "faced/mojom/faceauth.mojom.h"
 

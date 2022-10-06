@@ -5,10 +5,10 @@
 #ifndef FACED_FACED_CLI_FACED_CLI_H_
 #define FACED_FACED_CLI_FACED_CLI_H_
 
-#include <absl/status/statusor.h>
-
 #include <string>
 #include <vector>
+
+#include <absl/status/statusor.h>
 
 namespace faced {
 

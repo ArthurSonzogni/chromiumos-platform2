@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "faced/face_auth_service_impl.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,13 +14,12 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
-#include <gmock/gmock.h>
 #include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "faced/face_auth_service_impl.h"
 #include "faced/mock_face_authentication_session_delegate.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
@@ -242,10 +243,9 @@ TEST(FaceAuthServiceImpl, TestDisconnection) {
   base::RunLoop second_run_loop;
 
   mojo::Remote<FaceAuthenticationService> service;
-  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::BindLambdaForTesting([&]() {
-                                     second_run_loop.Quit();
-                                   }));
+  FaceAuthServiceImpl service_impl(
+      service.BindNewPipeAndPassReceiver(),
+      base::BindLambdaForTesting([&]() { second_run_loop.Quit(); }));
 
   // Create a mock session delegate.
   StrictMock<MockFaceAuthenticationSessionDelegate> delegate;

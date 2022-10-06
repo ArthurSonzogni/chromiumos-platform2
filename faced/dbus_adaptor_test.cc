@@ -2,28 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <utility>
+#include "faced/dbus_adaptor.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 
-#include <base/run_loop.h>
-#include <base/test/task_environment.h>
-#include <base/test/bind.h>
+#include <memory>
+#include <utility>
+
 #include <base/bind.h>
+#include <base/files/scoped_file.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
+#include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
-#include <gmock/gmock.h>
-#include <gmock/gmock-nice-strict.h>
-#include <gtest/gtest.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
-#include <brillo/dbus/mock_dbus_method_response.h>
-#include <base/posix/eintr_wrapper.h>
-#include <base/files/scoped_file.h>
+#include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-#include "faced/dbus_adaptor.h"
 #include "faced/face_auth_service.h"
 
 namespace faced {

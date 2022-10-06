@@ -4,6 +4,10 @@
 
 #include "faced/faced_cli/faced_client.h"
 
+#include <iostream>
+#include <string>
+#include <utility>
+
 #include <absl/status/status.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
@@ -14,10 +18,6 @@
 #include <mojo/public/cpp/platform/platform_channel.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
-
-#include <iostream>
-#include <string>
-#include <utility>
 
 #include "dbus_proxies/dbus-proxies.h"
 #include "faced/face_auth_service_impl.h"

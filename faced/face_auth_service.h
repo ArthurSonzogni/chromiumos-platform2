@@ -10,9 +10,9 @@
 
 #include <absl/status/statusor.h>
 #include <base/files/file_util.h>
+#include <base/memory/weak_ptr.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/memory/weak_ptr.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/system/invitation.h>
 

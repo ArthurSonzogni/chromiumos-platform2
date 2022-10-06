@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "faced/enrollment_session.h"
+
 #include <cstdint>
 #include <string>
 
@@ -12,13 +14,12 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
-#include <gmock/gmock.h>
 #include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
-#include "faced/enrollment_session.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
 

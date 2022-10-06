@@ -4,6 +4,8 @@
 
 #include "faced/enrollment_storage.h"
 
+#include <string>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <absl/strings/str_cat.h>
@@ -13,8 +15,6 @@
 #include <base/files/important_file_writer.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
-
-#include <string>
 
 namespace faced {
 namespace {

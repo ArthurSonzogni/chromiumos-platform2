@@ -5,12 +5,12 @@
 #ifndef FACED_ENROLLMENT_STORAGE_H_
 #define FACED_ENROLLMENT_STORAGE_H_
 
+#include <string>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
-
-#include <string>
 
 namespace faced {
 

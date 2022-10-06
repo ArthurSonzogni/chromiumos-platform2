@@ -5,12 +5,12 @@
 #ifndef FACED_UTIL_STATUS_H_
 #define FACED_UTIL_STATUS_H_
 
+#include <algorithm>
+#include <utility>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/check.h>
-
-#include <algorithm>
-#include <utility>
 
 namespace faced {
 
