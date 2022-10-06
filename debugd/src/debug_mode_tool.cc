@@ -20,6 +20,7 @@ namespace debugd {
 namespace {
 
 const int kFlimflamLogLevelVerbose3 = -3;
+const int kFlimflamLogLevelWiFi = -2;
 const int kFlimflamLogLevelInfo = 0;
 
 const char kSupplicantServiceName[] = "fi.w1.wpa_supplicant1";
@@ -139,10 +140,12 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   auto shill = std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   if (shill) {
     shill->SetDebugTags(flimflam_tags, nullptr);
-    if (flimflam_tags.length()) {
-      shill->SetDebugLevel(kFlimflamLogLevelVerbose3, nullptr);
-    } else {
+    if (flimflam_tags.length() == 0) {
       shill->SetDebugLevel(kFlimflamLogLevelInfo, nullptr);
+    } else if (subsystem == "wifi") {
+      shill->SetDebugLevel(kFlimflamLogLevelWiFi, nullptr);
+    } else {
+      shill->SetDebugLevel(kFlimflamLogLevelVerbose3, nullptr);
     }
   }
 
