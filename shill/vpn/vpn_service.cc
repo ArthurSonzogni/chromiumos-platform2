@@ -17,7 +17,6 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/ppp_device.h"
 #include "shill/profile.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"

@@ -105,7 +105,6 @@ network interface.
     *   [Cellular](cellular.md#Cellular)
     *   [Ethernet class](../ethernet/ethernet.h)
     *   [VirtualDevice class](../virtual_device.h)
-        *   [PPPDevice class](../ppp_device.h)
         *   See also [vpn.md](vpn.md)
     *   [WiFi class](../wifi/wifi.h)
 

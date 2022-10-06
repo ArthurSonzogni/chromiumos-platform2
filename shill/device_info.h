@@ -24,7 +24,6 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
-#include "shill/ppp_device.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 

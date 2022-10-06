@@ -26,7 +26,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
-#include "shill/ppp_device.h"
 #include "shill/rpc_task.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"

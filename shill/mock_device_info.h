@@ -12,7 +12,6 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/ppp_device.h"
 
 namespace shill {
 

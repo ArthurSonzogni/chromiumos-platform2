@@ -390,10 +390,7 @@ static_library("libshill") {
   }
 
   if (use.cellular || use.vpn) {
-    sources += [
-      "ppp_daemon.cc",
-      "ppp_device.cc",
-    ]
+    sources += [ "ppp_daemon.cc" ]
   }
 
   if (use.vpn) {
@@ -794,10 +791,7 @@ if (use.test) {
     }
 
     if (use.cellular || use.vpn) {
-      sources += [
-        "ppp_daemon_test.cc",
-        "ppp_device_test.cc",
-      ]
+      sources += [ "ppp_daemon_test.cc" ]
     }
 
     if (use.vpn) {

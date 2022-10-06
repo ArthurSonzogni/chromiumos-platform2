@@ -60,7 +60,7 @@ extern "C" {
 #include "shill/mock_virtual_device.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
-#include "shill/ppp_device.h"
+#include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
 #include "shill/service.h"
 #include "shill/store/fake_store.h"
@@ -417,7 +417,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   static IPConfig::Properties GetExpectedIPPropsFromPPPConfig(
       std::map<std::string, std::string>& ppp_config) {
-    auto ip_props = PPPDevice::ParseIPConfiguration(ppp_config);
+    auto ip_props = PPPDaemon::ParseIPConfiguration(ppp_config);
     ip_props.blackhole_ipv6 = false;
     ip_props.use_if_addrs = true;
     return ip_props;

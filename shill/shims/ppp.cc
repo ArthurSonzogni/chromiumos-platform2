@@ -36,7 +36,7 @@ extern "C" {
 #include <base/strings/string_number_conversions.h>
 #include <brillo/syslog_logging.h>
 
-#include "shill/ppp_device.h"
+#include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"

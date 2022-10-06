@@ -54,12 +54,12 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
-#include "shill/ppp_device.h"
 #include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
+#include "shill/virtual_device.h"
 
 namespace shill {
 
@@ -1736,7 +1736,7 @@ void Cellular::OnPPPAuthenticating() {
 void Cellular::OnPPPConnected(
     const std::map<std::string, std::string>& params) {
   SLOG(this, 2) << __func__;
-  std::string interface_name = PPPDevice::GetInterfaceName(params);
+  std::string interface_name = PPPDaemon::GetInterfaceName(params);
   DeviceInfo* device_info = manager()->device_info();
   int interface_index = device_info->GetIndex(interface_name);
   if (interface_index < 0) {
@@ -1765,7 +1765,7 @@ void Cellular::OnPPPConnected(
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
 
-  auto properties = PPPDevice::ParseIPConfiguration(params);
+  auto properties = PPPDaemon::ParseIPConfiguration(params);
   properties.use_if_addrs = true;
   ppp_device_->UpdateIPConfig(properties);
 }
@@ -1776,7 +1776,7 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
   if (is_ppp_authenticating_) {
     SetServiceFailure(Service::kFailurePPPAuth);
   } else {
-    SetServiceFailure(PPPDevice::ExitStatusToFailure(exit));
+    SetServiceFailure(PPPDaemon::ExitStatusToFailure(exit));
   }
   Error error;
   Disconnect(&error, __func__);

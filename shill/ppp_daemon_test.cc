@@ -16,10 +16,12 @@
 
 #include "shill/error.h"
 #include "shill/external_task.h"
+#include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -119,6 +121,44 @@ TEST_F(PPPDaemonTest, ErrorPropagated) {
 
   EXPECT_NE(error.type(), Error::kSuccess);
   EXPECT_EQ(nullptr, task);
+}
+
+TEST_F(PPPDaemonTest, GetInterfaceName) {
+  std::map<std::string, std::string> config;
+  config[kPPPInterfaceName] = "ppp0";
+  config["foo"] = "bar";
+  EXPECT_EQ("ppp0", PPPDaemon::GetInterfaceName(config));
+}
+
+TEST_F(PPPDaemonTest, ParseIPConfiguration) {
+  std::map<std::string, std::string> config;
+  config[kPPPInternalIP4Address] = "4.5.6.7";
+  config[kPPPExternalIP4Address] = "33.44.55.66";
+  config[kPPPGatewayAddress] = "192.168.1.1";
+  config[kPPPDNS1] = "1.1.1.1";
+  config[kPPPDNS2] = "2.2.2.2";
+  config[kPPPInterfaceName] = "ppp0";
+  config[kPPPLNSAddress] = "99.88.77.66";
+  config[kPPPMRU] = "1492";
+  config["foo"] = "bar";  // Unrecognized keys don't cause crash.
+  IPConfig::Properties props = PPPDaemon::ParseIPConfiguration(config);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
+  EXPECT_EQ(IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4),
+            props.subnet_prefix);
+  EXPECT_EQ("4.5.6.7", props.address);
+  EXPECT_EQ("33.44.55.66", props.peer_address);
+  EXPECT_EQ("192.168.1.1", props.gateway);
+  ASSERT_EQ(2, props.dns_servers.size());
+  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
+  EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
+  EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
+  EXPECT_EQ(1, props.exclusion_list.size());
+  EXPECT_EQ(1492, props.mtu);
+
+  // No gateway specified.
+  config.erase(kPPPGatewayAddress);
+  IPConfig::Properties props2 = PPPDaemon::ParseIPConfiguration(config);
+  EXPECT_EQ("33.44.55.66", props2.gateway);
 }
 
 }  // namespace shill

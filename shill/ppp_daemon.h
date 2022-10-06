@@ -5,6 +5,7 @@
 #ifndef SHILL_PPP_DAEMON_H_
 #define SHILL_PPP_DAEMON_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -13,12 +14,28 @@
 #include <gtest/gtest_prod.h>
 
 #include "shill/external_task.h"
+#include "shill/service.h"
 
 namespace shill {
 
 class ControlInterface;
 class Error;
 class ProcessManager;
+
+static constexpr char kPPPDNS1[] = "DNS1";
+static constexpr char kPPPDNS2[] = "DNS2";
+static constexpr char kPPPExternalIP4Address[] = "EXTERNAL_IP4_ADDRESS";
+static constexpr char kPPPGatewayAddress[] = "GATEWAY_ADDRESS";
+static constexpr char kPPPInterfaceName[] = "INTERNAL_IFNAME";
+static constexpr char kPPPInternalIP4Address[] = "INTERNAL_IP4_ADDRESS";
+static constexpr char kPPPLNSAddress[] = "LNS_ADDRESS";
+static constexpr char kPPPMRU[] = "MRU";
+static constexpr char kPPPExitStatus[] = "EXIT_STATUS";
+static constexpr char kPPPReasonAuthenticated[] = "authenticated";
+static constexpr char kPPPReasonAuthenticating[] = "authenticating";
+static constexpr char kPPPReasonConnect[] = "connect";
+static constexpr char kPPPReasonDisconnect[] = "disconnect";
+static constexpr char kPPPReasonExit[] = "exit";
 
 // PPPDaemon provides control over the configuration and instantiation of pppd
 // processes.  All pppd instances created through PPPDaemon will use shill's
@@ -84,6 +101,24 @@ class PPPDaemon {
       const std::string& device,
       DeathCallback death_callback,
       Error* error);
+
+  // Return an IPConfig::Properties struct parsed from |configuration|, but
+  // don't set the IPConfig.  This lets the caller tweak or inspect the
+  // Properties first.
+  static IPConfig::Properties ParseIPConfiguration(
+      const std::map<std::string, std::string>& configuration);
+
+  static Service::ConnectFailure ExitStatusToFailure(int exit);
+
+  // Get the failure reason from the dictionary which is received from our PPP
+  // plugin and contains the exit status.
+  static Service::ConnectFailure ParseExitFailure(
+      const std::map<std::string, std::string>& dict);
+
+  // Get the network device name (e.g. "ppp0") from the dictionary of
+  // configuration strings received from our PPP plugin.
+  static std::string GetInterfaceName(
+      const std::map<std::string, std::string>& configuration);
 
  private:
   FRIEND_TEST(PPPDaemonTest, PluginUsed);

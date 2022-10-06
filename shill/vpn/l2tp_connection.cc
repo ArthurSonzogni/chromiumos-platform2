@@ -20,7 +20,6 @@
 #include <libpasswordprovider/password_provider.h>
 
 #include "shill/ppp_daemon.h"
-#include "shill/ppp_device.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -137,7 +136,7 @@ void L2TPConnection::Notify(const std::string& reason,
                 << state();
       return;
     }
-    NotifyFailure(PPPDevice::ParseExitFailure(dict), "pppd disconnected");
+    NotifyFailure(PPPDaemon::ParseExitFailure(dict), "pppd disconnected");
     return;
   }
 
@@ -149,8 +148,8 @@ void L2TPConnection::Notify(const std::string& reason,
     return;
   }
 
-  std::string interface_name = PPPDevice::GetInterfaceName(dict);
-  IPConfig::Properties ip_properties = PPPDevice::ParseIPConfiguration(dict);
+  std::string interface_name = PPPDaemon::GetInterfaceName(dict);
+  IPConfig::Properties ip_properties = PPPDaemon::ParseIPConfiguration(dict);
 
   // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
   // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
