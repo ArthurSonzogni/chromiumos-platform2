@@ -117,6 +117,10 @@ constexpr std::initializer_list<RegInfo> REGISTERS = {
      .name = "kPreviousCrashMessage",
      .readable = true,
      .type = RegType::kString},
+    {.num = HpsReg::kFpgaCrashMessage,
+     .name = "kFpgaCrashMessage",
+     .readable = true,
+     .type = RegType::kString},
 };
 
 std::optional<RegInfo> HpsRegInfo(int reg) {
@@ -276,6 +280,7 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
     case HpsReg::kOptionBytesConfig:
     case HpsReg::kPartIds:
     case HpsReg::kPreviousCrashMessage:
+    case HpsReg::kFpgaCrashMessage:
       return "";
   }
 }

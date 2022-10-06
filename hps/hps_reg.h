@@ -43,6 +43,7 @@ enum class HpsReg : uint8_t {
   kOptionBytesConfig = 20,
   kPartIds = 21,
   kPreviousCrashMessage = 22,
+  kFpgaCrashMessage = 23,
   kMax = 127,
 };
 

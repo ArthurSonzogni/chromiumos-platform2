@@ -196,6 +196,7 @@ std::optional<uint16_t> FakeDev::ReadRegister(HpsReg reg) {
     case HpsReg::kOptionBytesConfig:
     case HpsReg::kPartIds:
     case HpsReg::kPreviousCrashMessage:
+    case HpsReg::kFpgaCrashMessage:
     case HpsReg::kMax:
       break;
   }
@@ -271,6 +272,7 @@ bool FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kOptionBytesConfig:
     case HpsReg::kPartIds:
     case HpsReg::kPreviousCrashMessage:
+    case HpsReg::kFpgaCrashMessage:
     case HpsReg::kMax:
       break;
   }

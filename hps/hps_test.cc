@@ -218,6 +218,8 @@ TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
         EXPECT_CALL(*dev_,
                     ReadStringReg(hps::HpsReg::kPreviousCrashMessage, 256))
             .WillOnce(Return("test"));
+        EXPECT_CALL(*dev_, ReadStringReg(hps::HpsReg::kFpgaCrashMessage, 256))
+            .WillOnce(Return("test"));
 
         hps_->IsRunning();
       },
