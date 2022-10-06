@@ -68,6 +68,7 @@ source_set("libfaced") {
     "face_auth_service.cc",
     "face_auth_service_impl.cc",
     "session.cc",
+    "status_to_string.cc",
   ]
   all_dependent_configs = [ ":target_defaults_pkg_deps" ]
   deps = [
