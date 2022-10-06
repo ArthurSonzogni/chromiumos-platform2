@@ -181,16 +181,6 @@ PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
   return attr;
 }
 
-GtkWindow* GdkWindowToGtkWindow(GdkWindow* window) {
-  if (!window)
-    return nullptr;
-  GtkWidget* widget;
-  gdk_window_get_user_data(window, reinterpret_cast<void**>(&widget));
-  if (!widget || !GTK_IS_WINDOW(widget))
-    return nullptr;
-  return GTK_WINDOW(widget);
-}
-
 }  // namespace
 
 void CrosGtkIMContext::RegisterType(GTypeModule* module) {
@@ -213,17 +203,13 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
     GdkWindow* toplevel = gdk_window_get_effective_toplevel(window);
     g_set_object(&gdk_window_, window);
     g_set_object(&top_level_gdk_window_, toplevel);
-    g_set_object(&top_level_gtk_window_, GdkWindowToGtkWindow(toplevel));
     if (!top_level_gdk_window_)
       g_warning("Top-level GdkWindow was null");
-    if (!top_level_gtk_window_)
-      g_warning("Top-level GtkWindow was null");
     if (pending_activation_)
       Activate();
   } else {
     g_set_object(&gdk_window_, nullptr);
     g_set_object(&top_level_gdk_window_, nullptr);
-    g_set_object(&top_level_gtk_window_, nullptr);
   }
 }
 
@@ -404,7 +390,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
     return;
   }
 
-  if (!context_->gdk_window_ || !context_->top_level_gtk_window_)
+  if (!context_->gdk_window_)
     return;
 
   // TODO(timloh): Chrome appears to only send press events currently.
@@ -423,11 +409,11 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->length = 0;
   event->string = nullptr;
 
+  GdkDisplay* gdk_display = gdk_window_get_display(context_->gdk_window_);
   GdkKeymapKey* keys;
   int n_keys;
-  if (gdk_keymap_get_entries_for_keyval(
-          gdk_keymap_get_for_display(gdk_display_get_default()), keysym, &keys,
-          &n_keys)) {
+  if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_for_display(gdk_display),
+                                        keysym, &keys, &n_keys)) {
     event->hardware_keycode = keys[0].keycode;
     event->group = keys[0].group;
     g_free(keys);
@@ -441,12 +427,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->is_modifier = false;
   event->state = 0;
 
-  gboolean result;
-  g_signal_emit_by_name(context_->top_level_gtk_window_, "key-press-event",
-                        event, &result);
-  if (!result)
-    g_warning("Failed to send key press event.");
-
+  gdk_display_put_event(gdk_display, raw_event);
   gdk_event_free(raw_event);
 }
 
