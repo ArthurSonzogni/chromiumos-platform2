@@ -224,10 +224,10 @@ std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
 }
 
 std::string MaskApnValue(const Stringmap& apn_info, const std::string& value) {
-  // Masking is not needed if LOG_LEVEL >= 3, or the APN is from the modem
-  // or the MODB.
+  // Masking is not needed if LOG_LEVEL >= 3, or the APN is empty, or from the
+  // modem or the MODB.
   bool print_value =
-      SLOG_IS_ON(Cellular, 3) ||
+      SLOG_IS_ON(Cellular, 3) || value.empty() ||
       (base::Contains(apn_info, cellular::kApnSource) &&
        (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
         apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem));
