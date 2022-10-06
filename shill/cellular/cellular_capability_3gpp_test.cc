@@ -941,15 +941,6 @@ TEST_F(CellularCapability3gppTest, SignalPropertiesChanged) {
 
   KeyValueStore modem_signal_property_umts;
   modem_signal_property_umts.Set<double>(
-      CellularCapability3gpp::kRssiProperty,
-      CellularCapability3gpp::kRssiBounds.min_threshold);
-  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_UMTS,
-                                              modem_signal_property_umts);
-  EXPECT_CALL(*service_, SetStrength(0)).Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
-                                   modem_signal_properties_);
-
-  modem_signal_property_umts.Set<double>(
       CellularCapability3gpp::kRscpProperty,
       CellularCapability3gpp::kRscpBounds.min_threshold);
   modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_UMTS,
@@ -982,15 +973,6 @@ TEST_F(CellularCapability3gppTest, SignalPropertiesChanged) {
 
   KeyValueStore modem_signal_property_lte;
   modem_signal_property_lte.Set<double>(
-      CellularCapability3gpp::kRssiProperty,
-      CellularCapability3gpp::kRssiBounds.max_threshold);
-  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
-                                              modem_signal_property_lte);
-  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
-                                   modem_signal_properties_);
-
-  modem_signal_property_lte.Set<double>(
       CellularCapability3gpp::kRsrpProperty,
       CellularCapability3gpp::kRsrpBounds.min_threshold);
   modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_LTE,
@@ -1022,15 +1004,6 @@ TEST_F(CellularCapability3gppTest, SignalPropertiesChanged) {
                                    modem_signal_properties_);
 
   KeyValueStore modem_signal_property_nr5g;
-  modem_signal_property_nr5g.Set<double>(
-      CellularCapability3gpp::kRssiProperty,
-      CellularCapability3gpp::kRssiBounds.max_threshold);
-  modem_signal_properties_.Set<KeyValueStore>(MM_MODEM_SIGNAL_PROPERTY_NR5G,
-                                              modem_signal_property_nr5g);
-  EXPECT_CALL(*service_, SetStrength(100)).Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_SIGNAL,
-                                   modem_signal_properties_);
-
   modem_signal_property_nr5g.Set<double>(
       CellularCapability3gpp::kRsrpProperty,
       CellularCapability3gpp::kRsrpBounds.min_threshold);

@@ -2118,13 +2118,17 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
       auto tech_props = props.GetVariant(signal_property).Get<KeyValueStore>();
       double signal_quality = 0.0;
 
-      if (tech_props.Contains<double>(kRsrpProperty)) {
+      if (tech_props.Contains<double>(kRsrpProperty) &&
+          (signal_property == MM_MODEM_SIGNAL_PROPERTY_NR5G ||
+           signal_property == MM_MODEM_SIGNAL_PROPERTY_LTE)) {
         signal_quality = tech_props.Get<double>(kRsrpProperty);
         scaled_quality = kRsrpBounds.GetAsPercentage(signal_quality);
-      } else if (tech_props.Contains<double>(kRscpProperty)) {
+      } else if (tech_props.Contains<double>(kRscpProperty) &&
+                 (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS)) {
         signal_quality = tech_props.Get<double>(kRscpProperty);
         scaled_quality = kRscpBounds.GetAsPercentage(signal_quality);
-      } else if (tech_props.Contains<double>(kRssiProperty)) {
+      } else if (tech_props.Contains<double>(kRssiProperty) &&
+                 (signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM)) {
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
       } else {
