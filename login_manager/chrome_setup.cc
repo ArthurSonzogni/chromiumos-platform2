@@ -506,12 +506,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("reven_branding"))
     builder->AddArg("--reven-branding");
 
-  // Enable mojo service manager.
-  if (builder->UseFlagIsSet("mojo_service_manager")) {
-    builder->AddArg("--disable-mojo-broker");
-    builder->AddArg("--ash-use-cros-mojo-service-manager");
-    builder->AddArg("--cros-healthd-uses-service-manager");
-  }
+  // In ash, we use mojo service manager as the mojo broker so disable it here.
+  builder->AddArg("--disable-mojo-broker");
+  builder->AddArg("--ash-use-cros-mojo-service-manager");
+  builder->AddArg("--cros-healthd-uses-service-manager");
 
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
