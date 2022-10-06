@@ -354,7 +354,6 @@ KeysetManagement::AddInitialKeysetImpl(
   if (vk_intent.backup) {
     vk.reset(vault_keyset_factory_->NewBackup(platform_, crypto_));
   }
-  vk->Initialize(platform_, crypto_);
   vk->SetLegacyIndex(kInitialKeysetIndex);
   vk->SetKeyData(key_data);
   vk->CreateFromFileSystemKeyset(file_system_keyset);
