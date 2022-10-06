@@ -67,7 +67,9 @@ constexpr struct {
     {"arc_dns_resolution",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcDnsResolution},
     {"sensitive_sensor",
-     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSensitiveSensor}};
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSensitiveSensor},
+    {"fingerprint",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprint}};
 
 }  // namespace diagnostics
 

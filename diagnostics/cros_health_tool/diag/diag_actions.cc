@@ -289,6 +289,11 @@ bool DiagActions::ActionRunSensitiveSensorRoutine() {
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunFingerprintRoutine() {
+  auto response = adapter_->RunFingerprintRoutine();
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;
