@@ -14,12 +14,14 @@
 #include "shill/cellular/cellular_service.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/tethering_manager.h"
 
 namespace shill {
 
 class Error;
 class KeyValueStore;
 class Manager;
+class Network;
 
 class CellularServiceProvider : public ProviderInterface {
  public:
@@ -66,6 +68,26 @@ class CellularServiceProvider : public ProviderInterface {
 
   void set_profile_for_testing(ProfileRefPtr profile) { profile_ = profile; }
 
+  // Checks if sharing the Cellular connection in a tethering session with
+  // client devices is allowed and supported for the current carrier and modem.
+  void TetheringEntitlementCheck(
+      base::OnceCallback<void(TetheringManager::EntitlementStatus result)>
+          callback);
+
+  // Returns the Network object to use for sharing the Cellular connection in a
+  // tethering session, creating and connecting a new Network if necessary for
+  // the current carrier and modem.
+  void AcquireTetheringNetwork(
+      base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
+          callback);
+
+  // Notifies that a tethering session has stopped and that the Network object
+  // obtained with AcquireTetheringNetwork() is not used for tethering anymore.
+  // If that Network had been created specially for tethering, it is destroyed
+  // and the underlying connection is torn down.
+  void ReleaseTetheringNetwork(
+      Network* network, base::OnceCallback<void(bool is_success)> callback);
+
  private:
   friend class CellularServiceProviderTest;
 
@@ -77,6 +99,10 @@ class CellularServiceProvider : public ProviderInterface {
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
 
+  void OnTetheringNetworkReady(
+      base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
+          callback);
+
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)
   // profile when CreateServicesFromProfile is called. This prevents confusing
@@ -84,6 +110,8 @@ class CellularServiceProvider : public ProviderInterface {
   // user profile. The SIM card itself can provide access security with a PIN.
   ProfileRefPtr profile_;
   std::vector<CellularServiceRefPtr> services_;
+
+  base::WeakPtrFactory<CellularServiceProvider> weak_factory_{this};
 };
 
 }  // namespace shill

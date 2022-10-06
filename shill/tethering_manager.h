@@ -39,6 +39,11 @@ class TetheringManager {
 
   static const char* EntitlementStatusName(EntitlementStatus status);
 
+  enum class SetEnabledResult {
+    kSuccess,
+    kFailure,
+  };
+
   enum class WiFiBand : uint8_t {
     kLowBand,
     kHighBand,

@@ -6,16 +6,17 @@
 
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/logging.h>
 
 #include "shill/cellular/cellular_service.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/store/store_interface.h"
-
-#include <base/check.h>
-#include <base/check_op.h>
-#include <base/logging.h>
 
 namespace shill {
 
@@ -339,6 +340,58 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
     return;
   }
   services_.erase(iter);
+}
+
+void CellularServiceProvider::TetheringEntitlementCheck(
+    base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
+  // TODO(b/249151422) Check if:
+  //   - a modem is present,
+  //   - a SIM card is active,
+  //   - tethering is supported for the current carrier and modem,
+  //   - a remote entitlement check is necessary, and send a request
+  //   accordingly.
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback),
+                                TetheringManager::EntitlementStatus::kReady));
+}
+
+void CellularServiceProvider::AcquireTetheringNetwork(
+    base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
+        callback) {
+  // For now assume that the main data network is always used for tethering.
+  // TODO(b/249151422) Implement tethering network selection logic and supports:
+  //   - switching the main data connection to a different APN for tethering,
+  //   - or bringing up a new separate APN connection only for tethering.
+  manager_->dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CellularServiceProvider::OnTetheringNetworkReady,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void CellularServiceProvider::OnTetheringNetworkReady(
+    base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
+        callback) {
+  // Even when reusing the main data connection, make sure that the Network
+  // object passed back to the caller is obtained at same time as when the
+  // caller's callback is triggered and no sooner. This avoid returning a
+  // pointer that could be invalidated by the time the callback is triggered
+  // (network disconnection).
+  // TODO(b/249151422) Return the Network of the main data connection for the
+  // current Service.
+  std::move(callback).Run(TetheringManager::SetEnabledResult::kFailure,
+                          nullptr);
+}
+
+void CellularServiceProvider::ReleaseTetheringNetwork(
+    Network* network, base::OnceCallback<void(bool is_success)> callback) {
+  // Always assume for now that the tethering upstream network was the main data
+  // network, i.e there is nothing to do.
+  // TODO(b/249151422) Switch back to original data APN if the main data network
+  // was switched to a different APN for tethering.
+  // TODO(b/249151422) Tear down the tethering APN if a separate APN connection
+  // was brought up for tethering.
+  manager_->dispatcher()->PostTask(FROM_HERE,
+                                   base::BindOnce(std::move(callback), true));
 }
 
 }  // namespace shill
