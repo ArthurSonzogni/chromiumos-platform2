@@ -5,6 +5,8 @@
 #include "faced/faced_cli/faced_client.h"
 
 #include <absl/status/status.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/strings/string_piece.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <chromeos/dbus/service_constants.h>
@@ -23,38 +25,15 @@
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/util/blocking_future.h"
 #include "faced/util/status.h"
-#include "faced/util/task.h"
 
 namespace faced {
 namespace {
 
 using ::brillo::cryptohome::home::SanitizeUserName;
-using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
 using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
 using ::chromeos::faceauth::mojom::FaceAuthenticationService;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
-
-// Upon disconnection of FaceAuthenticationService remote, print out that a
-// disconnection occurred.
-void OnDisconnect() {
-  std::cout << "FaceAuthenticationService disconnected.\n";
-}
-
-// TODO(b/247034576): Handle enrollment
-void CreateEnrollmentComplete(EnrollmentComplete enrollment_complete,
-                              CreateSessionResultPtr result) {
-  // Check if session creation failed.
-  if (!result->is_session_info()) {
-    PostToCurrentSequence(base::BindOnce(
-        std::move(enrollment_complete),
-        absl::InternalError("Failed to create an enrollment session.")));
-  }
-
-  std::cout << "Successfully created enrollment.\n";
-  PostToCurrentSequence(
-      base::BindOnce(std::move(enrollment_complete), absl::OkStatus()));
-}
 
 }  // namespace
 
@@ -104,35 +83,44 @@ absl::Status ConnectAndDisconnectFromFaced() {
   return absl::OkStatus();
 }
 
-void EnrollWithRemoteService(std::string_view user,
-                             mojo::Remote<FaceAuthenticationService>& service,
-                             EnrollmentComplete enrollment_complete) {
-  mojo::Remote<FaceEnrollmentSession> session_remote;
-  FaceEnrollmentSessionDelegateImpl delegate_impl;
-  mojo::Receiver<FaceEnrollmentSessionDelegate> receiver(&delegate_impl);
-
-  service->CreateEnrollmentSession(
-      EnrollmentSessionConfig::New(SanitizeUserName(std::string(user)),
-                                   /*accessibility=*/false),
-      session_remote.BindNewPipeAndPassReceiver(),
-      receiver.BindNewPipeAndPassRemote(),
-      base::BindOnce(&CreateEnrollmentComplete,
-                     std::move(enrollment_complete)));
-}
-
-absl::Status Enroll(std::string_view user) {
+absl::Status Enroll(base::StringPiece user) {
   FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
 
-  mojo::Remote<FaceAuthenticationService> service(
-      mojo::PendingRemote<FaceAuthenticationService>(std::move(connection.pipe),
-                                                     /*version=*/0));
-  service.set_disconnect_handler(base::BindOnce(&OnDisconnect));
+  mojo::Remote<FaceAuthenticationService> service =
+      mojo::Remote<FaceAuthenticationService>(
+          mojo::PendingRemote<FaceAuthenticationService>(
+              std::move(connection.pipe),
+              /*version=*/0));
 
   BlockingFuture<absl::Status> final_status;
-  EnrollWithRemoteService(user, service, final_status.PromiseCallback());
+  Enroller enroller(service, final_status.PromiseCallback());
+  enroller.Run(user);
   final_status.Wait();
 
   return final_status.value();
+}
+
+Enroller::Enroller(mojo::Remote<FaceAuthenticationService>& service,
+                   EnrollmentCompleteCallback enrollment_complete)
+    : service_(service),
+      delegate_(base::MakeRefCounted<FaceEnrollmentSessionDelegateImpl>(
+          std::move(enrollment_complete))),
+      receiver_(
+          mojo::Receiver<FaceEnrollmentSessionDelegate>(delegate_.get())) {
+  service_.set_disconnect_handler(base::BindOnce(
+      &FaceEnrollmentSessionDelegateImpl::OnFaceAuthenticationServiceDisconnect,
+      delegate_));
+}
+
+void Enroller::Run(base::StringPiece user) {
+  service_->CreateEnrollmentSession(
+      EnrollmentSessionConfig::New(SanitizeUserName(std::string(user)),
+                                   /*accessibility=*/false),
+      session_remote_.BindNewPipeAndPassReceiver(),
+      receiver_.BindNewPipeAndPassRemote(),
+      base::BindOnce(
+          &FaceEnrollmentSessionDelegateImpl::CreateEnrollmentSessionComplete,
+          delegate_));
 }
 
 }  // namespace faced
