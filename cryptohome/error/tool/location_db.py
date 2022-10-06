@@ -307,6 +307,7 @@ class AuthorManager:
         (2900, "dlunev@chromium.org"),
         (3100, "hardikgoyal@google.com"),
         (3300, "sherrilin@google.com"),
+        (3500, "lziest@google.com"),
     ]
 
     # Default starting value for committers who are not listed.
