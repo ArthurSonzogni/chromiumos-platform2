@@ -100,6 +100,7 @@ static_library("storage") {
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
+    "//missive/health:health_module",
     "//missive/proto:libmissiveprotopipelineid",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
