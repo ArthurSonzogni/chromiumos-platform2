@@ -26,6 +26,7 @@ static void sl_registry_bind(struct wl_client* client,
       break;
   }
 
+  assert(sl_client_supports_interface(host->ctx, client, global->interface));
   assert(&global->link != &host->ctx->globals);
   assert(version != 0);
   assert(global->version >= version);
@@ -106,9 +107,11 @@ static void sl_display_get_registry(struct wl_client* client,
                                  sl_destroy_host_registry);
 
   wl_list_for_each(global, &ctx->globals, link) {
-    wl_resource_post_event(host_registry->resource, WL_REGISTRY_GLOBAL,
-                           global->name, global->interface->name,
-                           global->version);
+    if (sl_client_supports_interface(ctx, client, global->interface)) {
+      wl_resource_post_event(host_registry->resource, WL_REGISTRY_GLOBAL,
+                             global->name, global->interface->name,
+                             global->version);
+    }
   }
 }
 
@@ -128,7 +131,8 @@ static enum wl_iterator_result sl_set_implementation(
   return WL_ITERATOR_CONTINUE;
 }
 
-void sl_set_display_implementation(struct sl_context* ctx) {
+void sl_set_display_implementation(struct sl_context* ctx,
+                                   struct wl_client* client) {
   // Find display resource and set implementation.
-  wl_client_for_each_resource(ctx->client, sl_set_implementation, ctx);
+  wl_client_for_each_resource(client, sl_set_implementation, ctx);
 }

@@ -451,8 +451,8 @@ struct sl_global* sl_text_input_x11_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_pointer_constraints_global_create(struct sl_context* ctx);
 
-void sl_set_display_implementation(struct sl_context* ctx);
-
+void sl_set_display_implementation(struct sl_context* ctx,
+                                   struct wl_client* client);
 
 struct sl_sync_point* sl_sync_point_create(int fd);
 void sl_sync_point_destroy(struct sl_sync_point* sync_point);
@@ -498,6 +498,10 @@ int sl_shm_format_for_drm_format(uint32_t drm_format);
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);
 #endif
+
+bool sl_client_supports_interface(const sl_context* ctx,
+                                  const wl_client* client,
+                                  const wl_interface* interface);
 
 #define sl_array_for_each(pos, array)                                   \
   for (pos = static_cast<decltype(pos)>((array)->data);                 \

@@ -88,6 +88,11 @@ struct sl_data_source {
 #define MIN_AURA_SHELL_VERSION 6
 #define MAX_AURA_SHELL_VERSION 38
 
+int sl_open_wayland_socket(const char* socket_name,
+                           struct sockaddr_un* addr,
+                           int* lock_fd,
+                           int* sock_fd);
+
 int sl_shm_format_for_drm_format(uint32_t drm_format) {
   switch (drm_format) {
     case WL_DRM_FORMAT_NV12:
@@ -483,13 +488,34 @@ void sl_host_seat_removed(struct sl_host_seat* host) {
     host->seat->ctx->default_seat = NULL;
 }
 
+bool sl_client_supports_interface(const sl_context* ctx,
+                                  const wl_client* client,
+                                  const wl_interface* interface) {
+  if (ctx->client == client) {
+    return true;
+  }
+  // Clients created for IME support only receive the minimal set of required
+  // interfaces.
+  const char* name = interface->name;
+  return strcmp(name, "wl_seat") == 0 ||
+         strcmp(name, "zwp_text_input_manager_v1") == 0 ||
+         strcmp(name, "zcr_text_input_extension_v1") == 0 ||
+         strcmp(name, "zcr_text_input_x11_v1") == 0;
+}
+
 static void sl_global_destroy(struct sl_global* global) {
   TRACE_EVENT("other", "sl_global_destroy");
   struct sl_host_registry* registry;
 
-  wl_list_for_each(registry, &global->ctx->registries, link)
+  wl_list_for_each(registry, &global->ctx->registries, link) {
+    if (sl_client_supports_interface(global->ctx,
+                                     wl_resource_get_client(registry->resource),
+                                     global->interface)) {
       wl_resource_post_event(registry->resource, WL_REGISTRY_GLOBAL_REMOVE,
                              global->name);
+    }
+  }
+
   wl_list_remove(&global->link);
   free(global);
 }
@@ -3107,6 +3133,16 @@ static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
       sl_output_send_host_output_state(output);
 }
 
+// Extra connections are made to XWayland-hosting instances for IME support.
+static void sl_extra_client_created_notify(struct wl_listener* listener,
+                                           void* data) {
+  sl_context* ctx =
+      wl_container_of(listener, ctx, extra_client_created_listener);
+  wl_client* client = static_cast<wl_client*>(data);
+
+  sl_set_display_implementation(ctx, client);
+}
+
 static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   TRACE_EVENT("surface", "sl_handle_display_ready_event");
   struct sl_context* ctx = (struct sl_context*)data;
@@ -3150,6 +3186,25 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   // needed for DPI to be set correctly.
   sl_calculate_scale_for_xwayland(ctx);
   wl_display_flush_clients(ctx->host_display);
+
+  // Open wayland socket so cros_im can provide IME support to X11 apps.
+  // This depends on the display number, which is only available once Xwayland
+  // initialization is complete (now), so we can't create this earlier to use
+  // it for the wayland connection with Xwayland.
+  char* socket_name = sl_xasprintf("DISPLAY-%s-wl", display_name);
+  struct sockaddr_un addr;
+  int lock_fd;
+  int sock_fd;
+  int rv = sl_open_wayland_socket(socket_name, &addr, &lock_fd, &sock_fd);
+  if (rv >= 0) {
+    wl_display_add_socket_fd(ctx->host_display, sock_fd);
+    ctx->extra_client_created_listener.notify = sl_extra_client_created_notify;
+    wl_display_add_client_created_listener(ctx->host_display,
+                                           &ctx->extra_client_created_listener);
+  } else {
+    fprintf(stderr, "warning: unable to open wayland socket for cros_im.\n");
+  }
+  free(socket_name);
 
   putenv(sl_xasprintf("XCURSOR_SIZE=%d",
                       static_cast<int>(XCURSOR_SIZE_BASE * ctx->scale + 0.5)));
@@ -3881,7 +3936,7 @@ int real_main(int argc, char** argv) {
 
   // Replace the core display implementation. This is needed in order to
   // implement sync handler properly.
-  sl_set_display_implementation(&ctx);
+  sl_set_display_implementation(&ctx, ctx.client);
 
   if (ctx.runprog || ctx.xwayland) {
     ctx.sigchld_event_source.reset(

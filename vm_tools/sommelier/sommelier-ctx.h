@@ -102,6 +102,9 @@ struct sl_context {
   struct gbm_device* gbm;
   int xwayland;
   pid_t xwayland_pid;
+  // XWayland-hosting sommelier instances allow additional connections for IME
+  // support.
+  wl_listener extra_client_created_listener;
   pid_t child_pid;
   pid_t peer_pid;
   struct xkb_context* xkb_context;
