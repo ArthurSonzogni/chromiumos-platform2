@@ -29,7 +29,6 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   MockControl control;
   MockMetrics metrics;
   MockManager manager(&control, nullptr, &metrics);
-  scoped_refptr<PPPDevice> device = new PPPDevice(&manager, "test0", 0);
 
   std::map<std::string, std::string> config;
   config[kPPPInternalIP4Address] = "4.5.6.7";
@@ -41,7 +40,7 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   config[kPPPLNSAddress] = "99.88.77.66";
   config[kPPPMRU] = "1492";
   config["foo"] = "bar";  // Unrecognized keys don't cause crash.
-  IPConfig::Properties props = device->ParseIPConfiguration(config);
+  IPConfig::Properties props = PPPDevice::ParseIPConfiguration(config);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ(IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4),
             props.subnet_prefix);
@@ -57,7 +56,7 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
 
   // No gateway specified.
   config.erase(kPPPGatewayAddress);
-  IPConfig::Properties props2 = device->ParseIPConfiguration(config);
+  IPConfig::Properties props2 = PPPDevice::ParseIPConfiguration(config);
   EXPECT_EQ("33.44.55.66", props2.gateway);
 }
 

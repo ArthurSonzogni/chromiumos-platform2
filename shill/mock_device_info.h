@@ -68,7 +68,7 @@ class MockDeviceInfo : public DeviceInfo {
       CreateXFRMInterface,
       (const std::string&, int, int, LinkReadyCallback, base::OnceClosure),
       (override));
-  MOCK_METHOD(PPPDevice*,
+  MOCK_METHOD(VirtualDevice*,
               CreatePPPDevice,
               (Manager*, const std::string&, int),
               (override));

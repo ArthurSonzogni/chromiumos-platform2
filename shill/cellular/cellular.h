@@ -708,7 +708,7 @@ class Cellular : public Device,
   bool explicit_disconnect_ = false;
 
   std::unique_ptr<ExternalTask> ppp_task_;
-  PPPDeviceRefPtr ppp_device_;
+  VirtualDeviceRefPtr ppp_device_;
   bool is_ppp_authenticating_ = false;
 
   std::unique_ptr<NetlinkSockDiag> socket_destroyer_;

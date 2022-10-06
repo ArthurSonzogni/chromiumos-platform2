@@ -28,7 +28,13 @@ class MockVirtualDevice : public VirtualDevice {
   MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
   MOCK_METHOD(void, DropConnection, (), (override));
   MOCK_METHOD(void, ResetConnection, (), (override));
+  MOCK_METHOD(void, SelectService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(void, SetServiceState, (Service::ConnectState), (override));
+  MOCK_METHOD(void, SetServiceFailure, (Service::ConnectFailure), (override));
+  MOCK_METHOD(void,
+              SetServiceFailureSilent,
+              (Service::ConnectFailure),
+              (override));
   MOCK_METHOD(void, SetEnabled, (bool), (override));
 };
 

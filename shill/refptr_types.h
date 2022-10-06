@@ -21,10 +21,6 @@ class Ethernet;
 using EthernetConstRefPtr = scoped_refptr<const Ethernet>;
 using EthernetRefPtr = scoped_refptr<Ethernet>;
 
-class PPPDevice;
-using PPPDeviceConstRefPtr = scoped_refptr<const PPPDevice>;
-using PPPDeviceRefPtr = scoped_refptr<PPPDevice>;
-
 class VirtualDevice;
 using VirtualDeviceConstRefPtr = scoped_refptr<const VirtualDevice>;
 using VirtualDeviceRefPtr = scoped_refptr<VirtualDevice>;

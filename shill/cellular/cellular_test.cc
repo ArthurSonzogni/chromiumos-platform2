@@ -57,6 +57,7 @@ extern "C" {
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_virtual_device.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
 #include "shill/ppp_device.h"
@@ -94,26 +95,6 @@ constexpr char kUid[] = "uid";
 constexpr char kIccid[] = "1234567890000";
 constexpr int kInterfaceIndex = 3;
 }  // namespace
-
-class MockPPPDevice : public PPPDevice {
- public:
-  MockPPPDevice(Manager* manager, const std::string& ifname, int ifindex)
-      : PPPDevice(manager, ifname, ifindex) {}
-  MockPPPDevice(const MockPPPDevice&) = delete;
-  MockPPPDevice& operator=(const MockPPPDevice&) = delete;
-  ~MockPPPDevice() = default;
-
-  MOCK_METHOD(void, DropConnection, (), (override));
-  MOCK_METHOD(void, SelectService, (const ServiceRefPtr&), (override));
-  MOCK_METHOD(void, SetServiceState, (Service::ConnectState), (override));
-  MOCK_METHOD(void, SetServiceFailure, (Service::ConnectFailure), (override));
-  MOCK_METHOD(void,
-              SetServiceFailureSilent,
-              (Service::ConnectFailure),
-              (override));
-  MOCK_METHOD(void, SetEnabled, (bool), (override));
-  MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
-};
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:
@@ -341,15 +322,15 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void FakeUpConnectedPPP() {
     const char ifname[] = "fake-ppp-device";
     const int ifindex = 1;
-    auto mock_ppp_device =
-        base::MakeRefCounted<MockPPPDevice>(&manager_, ifname, ifindex);
+    auto mock_ppp_device = base::MakeRefCounted<MockVirtualDevice>(
+        &manager_, ifname, ifindex, Technology::kPPP);
     device_->ppp_device_ = mock_ppp_device;
     device_->set_state_for_testing(Cellular::State::kConnected);
   }
 
   void ExpectPPPStopped() {
     auto mock_ppp_device =
-        static_cast<MockPPPDevice*>(device_->ppp_device_.get());
+        static_cast<MockVirtualDevice*>(device_->ppp_device_.get());
     EXPECT_CALL(*mock_ppp_device, DropConnection());
   }
 
@@ -1300,7 +1281,8 @@ TEST_P(CellularTest, Notify) {
   // Normal connect.
   const std::string ifname1 = "fake-device";
   const int ifindex1 = 1;
-  auto ppp_device1 = new MockPPPDevice(&manager_, ifname1, ifindex1);
+  auto ppp_device1 =
+      new MockVirtualDevice(&manager_, ifname1, ifindex1, Technology::kPPP);
   std::map<std::string, std::string> ppp_config;
   ppp_config[kPPPInterfaceName] = ifname1;
   EXPECT_CALL(device_info_, GetIndex(ifname1)).WillOnce(Return(ifindex1));
@@ -1336,7 +1318,8 @@ TEST_P(CellularTest, Notify) {
   // probably an unlikely case.
   const std::string ifname2 = "fake-device2";
   const int ifindex2 = 2;
-  auto ppp_device2 = new MockPPPDevice(&manager_, ifname2, ifindex2);
+  auto ppp_device2 =
+      new MockVirtualDevice(&manager_, ifname2, ifindex2, Technology::kPPP);
   std::map<std::string, std::string> ppp_config2;
   ppp_config2[kPPPInterfaceName] = ifname2;
   EXPECT_CALL(device_info_, GetIndex(ifname2)).WillOnce(Return(ifindex2));
@@ -1459,7 +1442,8 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
 
   const std::string ifname = "ppp0";
   const int ifindex = 1;
-  auto ppp_device = new MockPPPDevice(&manager_, ifname, ifindex);
+  auto ppp_device =
+      new MockVirtualDevice(&manager_, ifname, ifindex, Technology::kPPP);
   std::map<std::string, std::string> ppp_config;
   ppp_config[kPPPInterfaceName] = ifname;
   EXPECT_CALL(device_info_, GetIndex("ppp0")).WillOnce(Return(ifindex));
@@ -1522,8 +1506,8 @@ TEST_P(CellularTest, DropConnection) {
 }
 
 TEST_P(CellularTest, DropConnectionPPP) {
-  scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(&manager_, "ppp0", 123));
+  scoped_refptr<MockVirtualDevice> ppp_device(
+      new MockVirtualDevice(&manager_, "ppp0", 123, Technology::kPPP));
   // Calling device_->DropConnection() explicitly will trigger
   // DestroyCapability() which also triggers a (redundant and harmless)
   // ppp_device->DropConnection() call.
@@ -1549,8 +1533,8 @@ TEST_P(CellularTest, ChangeServiceState) {
 
 TEST_P(CellularTest, ChangeServiceStatePPP) {
   MockCellularService* service(SetMockService());
-  scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(&manager_, "ppp0", 123));
+  scoped_refptr<MockVirtualDevice> ppp_device(
+      new MockVirtualDevice(&manager_, "ppp0", 123, Technology::kPPP));
   EXPECT_CALL(*ppp_device, SetServiceState(_));
   EXPECT_CALL(*ppp_device, SetServiceFailure(_));
   EXPECT_CALL(*ppp_device, SetServiceFailureSilent(_));

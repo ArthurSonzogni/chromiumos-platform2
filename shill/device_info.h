@@ -151,9 +151,9 @@ class DeviceInfo {
                                    LinkReadyCallback link_ready_callback,
                                    base::OnceClosure failure_callback);
 
-  virtual PPPDevice* CreatePPPDevice(Manager* manager,
-                                     const std::string& ifname,
-                                     int ifindex);
+  virtual VirtualDevice* CreatePPPDevice(Manager* manager,
+                                         const std::string& ifname,
+                                         int ifindex);
 
   virtual bool DeleteInterface(int interface_index) const;
   virtual void AddVirtualInterfaceReadyCallback(

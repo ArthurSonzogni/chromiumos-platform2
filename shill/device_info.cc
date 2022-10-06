@@ -1285,11 +1285,11 @@ bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
   return true;
 }
 
-PPPDevice* DeviceInfo::CreatePPPDevice(Manager* manager,
-                                       const std::string& ifname,
-                                       int ifindex) {
+VirtualDevice* DeviceInfo::CreatePPPDevice(Manager* manager,
+                                           const std::string& ifname,
+                                           int ifindex) {
 #if !defined(DISABLE_CELLULAR) || !defined(DISABLE_VPN)
-  return new PPPDevice(manager, ifname, ifindex);
+  return new VirtualDevice(manager, ifname, ifindex, Technology::kPPP);
 #else
   return nullptr;
 #endif
