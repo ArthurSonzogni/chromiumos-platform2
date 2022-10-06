@@ -585,6 +585,18 @@ message VmStoppedSignal {
   VmStopReason reason = 4;
 }
 
+// Message used in the signal for when a VM is stopping.
+message VmStoppingSignal {
+  // The name of the VM which is stopping.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+
+  // The virtual socket context id assigned to the VM that is stopping.
+  int64 cid = 3;
+}
+
 // Information that must be included with every SuspendVm dbus message.
 message SuspendVmRequest {
   // The name of the VM to be stopped.
