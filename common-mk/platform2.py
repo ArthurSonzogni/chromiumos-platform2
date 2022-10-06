@@ -107,7 +107,6 @@ _IUSE = [
     "metrics_uploader",
     "ml_benchmark_drivers",
     "mojo",
-    "mojo_service_manager",
     "mount_oop",
     "msan",
     "mtd",
