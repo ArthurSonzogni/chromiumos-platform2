@@ -23,6 +23,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
@@ -277,7 +278,8 @@ void DlpAdaptor::RequestFileAccess(
                      std::move(inodes), request.process_id(),
                      std::move(local_fd), std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
-                     base::Unretained(this), std::move(callbacks.second)));
+                     base::Unretained(this), std::move(callbacks.second)),
+      /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
 std::vector<uint8_t> DlpAdaptor::GetFilesSources(
@@ -367,7 +369,8 @@ void DlpAdaptor::CheckFilesTransfer(
                      base::Unretained(this), std::move(transferred_files),
                      std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
-                     base::Unretained(this), std::move(callbacks.second)));
+                     base::Unretained(this), std::move(callbacks.second)),
+      /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
 void DlpAdaptor::InitDatabase(const base::FilePath database_path,
