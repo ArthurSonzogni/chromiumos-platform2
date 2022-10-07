@@ -1188,7 +1188,7 @@ class EnumsXmlDB:
 
     ENUM_START_MARKER_TEMPLATE = '<enum name="%s">'
     ENUM_STOP_MARKER = "</enum>"
-    ERROR_LOCATION_COMMENTS = """<!--
+    GENERATED_COMMENTS = """
   This enum is intended to be populated automatically by
   platform2/cryptohome/error/tool/location_db.py. It populates all values
   found in the cryptohome code base.
@@ -1198,9 +1198,18 @@ class EnumsXmlDB:
   next time. However, the label, and all changes to the label field may be
   overwritten by the tool. Furthermore, removal of <int> may be added back
   if that bucket is still observed in the field.
-
+"""
+    ERROR_LOCATION_COMMENTS = f"""<!--{GENERATED_COMMENTS}
   The labels are the Cryptohome Error Location enum defined in
   platform2/cryptohome/error/locations.h
+  -->
+
+"""
+
+    ERROR_LOCATION_WITH_TPM_COMMENTS = f"""<!--{GENERATED_COMMENTS}
+  The labels are the composites of Cryptohome Error Location enum defined in
+  platform2/cryptohome/error/locations.h
+  and respective TPM error code.
   -->
 
 """
@@ -1215,6 +1224,8 @@ class EnumsXmlDB:
         self.enums_xml_path = enums_xml_path
         # Standard location values used by Cryptohome.Error.AllLocations
         self.error_locs = []
+        # Composite values used by Cryptohome.Error.LeafErrorWithTPM
+        self.leaf_with_tpm_locs = []
 
     def _capture_int_val_in_dom(
         self, xml_path: str, enum_name: str
@@ -1257,6 +1268,9 @@ class EnumsXmlDB:
 
         self.error_locs = self._capture_int_val_in_dom(
             self.enums_xml_path, "CryptohomeErrorLocation"
+        )
+        self.leaf_with_tpm_locs = self._capture_int_val_in_dom(
+            self.enums_xml_path, "CryptohomeErrorLocationWithTPMError"
         )
 
     def _update_enum_in_enums_xml(
@@ -1354,6 +1368,26 @@ class EnumsXmlDB:
             "CryptohomeErrorLocation",
             values_to_write,
             EnumsXmlDB.ERROR_LOCATION_COMMENTS,
+        )
+
+    def update_enums_xml_with_leaf_and_tpm_loc(
+        self, values_to_write: List[Tuple[int, str]]
+    ) -> bool:
+        """Updates enums.xml with the given leaf+tpm composite locations.
+
+        Args:
+            values_to_write: A list of leaf+tpm composite locations
+            to write, each is a tuple. The first element of the tuple is the
+            value and the second element is the label.
+
+        Returns:
+            True for success.
+        """
+
+        return self._update_enum_in_enums_xml(
+            "CryptohomeErrorLocationWithTPMError",
+            values_to_write,
+            EnumsXmlDB.ERROR_LOCATION_WITH_TPM_COMMENTS,
         )
 
 
@@ -1591,6 +1625,53 @@ class DBTool:
                 "update_enums_xml_with_error_loc failed."
             )
 
+    def _decode_leaf_and_tpm_loc(self, val: int) -> str:
+        """Decode a leaf+tpm composite value into textual representation"""
+
+        leaf_part = (val >> 16) & 0xFFFF
+        tpm_part = val & 0xFFFF
+
+        leaf_repr = (
+            self.db.value_to_symbol[leaf_part]
+            if leaf_part in self.db.value_to_symbol
+            else ("Unknown Loc %d" % leaf_part)
+        )
+        tpm_repr = TPMErrorDecoder.decode(tpm_part)
+
+        return "%s - %s" % (leaf_repr, tpm_repr)
+
+    def update_enums_xml_with_leaf_and_tpm_loc(
+        self, chromium_src_path: str
+    ) -> None:
+        """Updates the enums.xml with the composite location symbols used.
+
+        This method will read the list of leaf+tpm composite locations that
+        are actually encountered in the field from the stdin and ensure that
+        they're in enums.xml.
+
+        Args:
+            chromium_src_path: Path to Chromium source code.
+        """
+
+        enums_db = self._load_enums_xml(chromium_src_path)
+
+        inputs = self._read_stdin_ints()
+
+        # Load the DB and grab all values.
+        self._load_full_db()
+        result_loc_values = sorted(
+            set(inputs) | set(enums_db.leaf_with_tpm_locs)
+        )
+        result_locs = [
+            (x, self._decode_leaf_and_tpm_loc(x)) for x in result_loc_values
+        ]
+        # Write all valid output to enums.xml
+        if not enums_db.update_enums_xml_with_leaf_and_tpm_loc(result_locs):
+            logging.error(
+                "Failed to update enums.xml, call to "
+                "update_enums_xml_with_leaf_and_tpm_loc failed."
+            )
+
 
 class DBToolCommandLine:
     """This class handles the command line operations for the tool."""
@@ -1651,6 +1732,16 @@ class DBToolCommandLine:
         )
 
         self.parser.add_argument(
+            "--update-enums-xml-with-leaf-and-tpm-loc",
+            help=(
+                "Update the enums.xml with values from the Cryptohome.Error."
+                "LeafErrorWithTPM UMA, will need to supply chromium source "
+                "directory"
+            ),
+            action="store_true",
+        )
+
+        self.parser.add_argument(
             "--chromium-src",
             help="Path to Chromium source code",
             default="~/chromium/src",
@@ -1697,6 +1788,10 @@ class DBToolCommandLine:
             self.db_tool.decode_stack(self.args.decode)
         elif self.args.update_enums_xml_with_error_loc:
             self.db_tool.update_enums_xml_with_error_loc(self.args.chromium_src)
+        elif self.args.update_enums_xml_with_leaf_and_tpm_loc:
+            self.db_tool.update_enums_xml_with_leaf_and_tpm_loc(
+                self.args.chromium_src
+            )
         else:
             logging.error("No action specified, please see --help")
             return 1
