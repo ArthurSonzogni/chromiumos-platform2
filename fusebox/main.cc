@@ -84,6 +84,9 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
         base::BindOnce(&HandleDBusSignalConnected));
 
     dbus::MethodCall method(kFuseBoxServiceInterface, kListStoragesMethod);
+    dbus::MessageWriter writer(&method);
+    ListStoragesRequestProto request_proto;
+    writer.AppendProtoAsArrayOfBytes(request_proto);
     CallFuseBoxServerMethod(&method,
                             base::BindOnce(&FuseBoxClient::ListStoragesResponse,
                                            weak_ptr_factory_.GetWeakPtr()));
