@@ -17,7 +17,6 @@
 
 #include "cryptohome/bootlockbox/tpm_nvspace.h"
 #include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
-#include "cryptohome/platform.h"
 
 using ::hwsec_foundation::Sha256;
 
@@ -162,16 +161,13 @@ bool NVRamBootLockbox::Load() {
     return false;
   }
 
-  brillo::Blob data;
-  if (!Platform().ReadFile(boot_lockbox_filepath_, &data)) {
-    LOG(ERROR) << "Failed to read boot lockbox file.";
-    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
+  std::string contents;
+  if (!base::ReadFileToString(boot_lockbox_filepath_, &contents)) {
+    LOG(ERROR) << "Failed to read input file.";
     return false;
   }
 
-  brillo::Blob digest_blob = Sha256(data);
-  std::string digest(digest_blob.begin(), digest_blob.end());
-
+  std::string digest = crypto::SHA256HashString(contents);
   if (digest != root_digest_) {
     LOG(ERROR) << "The nvram boot lockbox file verification failed.";
     nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
@@ -179,7 +175,7 @@ bool NVRamBootLockbox::Load() {
   }
 
   SerializedKeyValueMap message;
-  if (!message.ParseFromArray(data.data(), data.size())) {
+  if (!message.ParseFromString(contents)) {
     LOG(ERROR) << "Failed to parse boot lockbox file.";
     nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return false;

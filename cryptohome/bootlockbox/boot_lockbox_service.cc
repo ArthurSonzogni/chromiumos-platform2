@@ -11,8 +11,6 @@
 
 #include "cryptohome/bootlockbox/tpm_nvspace.h"
 #include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
-#include "cryptohome/crypto.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 
