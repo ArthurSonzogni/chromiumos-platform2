@@ -403,7 +403,7 @@ class AuthSession final {
   // Process the completion of a verify-only authentication attempt. The
   // |on_done| callback will be called after the results of the verification are
   // processed. Designed to be used in conjunction with
-  // VerifyWithAuthFactorAsync as the VerifyCallback.
+  // VerifyWithAuthFactorAsync as the CryptohomeStatusCallback.
   void CompleteVerifyOnlyAuthentication(StatusCallback on_done,
                                         CryptohomeStatus error);
 

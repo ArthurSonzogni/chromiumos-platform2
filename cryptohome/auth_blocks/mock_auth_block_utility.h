@@ -40,11 +40,31 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               IsVerifyWithAuthFactorSupported,
               (AuthIntent, AuthFactorType),
               (const, override));
+  MOCK_METHOD(bool,
+              IsPrepareAuthFactorRequired,
+              (AuthFactorType),
+              (const, override));
   MOCK_METHOD(void,
               VerifyWithAuthFactorAsync,
               (AuthFactorType auth_factor_type,
                const AuthInput& auth_input,
-               VerifyCallback callback),
+               CryptohomeStatusCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              PrepareAuthFactorForAuth,
+              (AuthFactorType auth_factor_type,
+               const std::string& username,
+               CryptohomeStatusCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              PrepareAuthFactorForAdd,
+              (AuthFactorType auth_factor_type,
+               const std::string& username,
+               CryptohomeStatusCallback callback),
+              (override));
+  MOCK_METHOD(CryptohomeStatus,
+              StopAuthFactor,
+              (AuthFactorType auth_factor_type),
               (override));
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,

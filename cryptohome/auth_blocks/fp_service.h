@@ -84,11 +84,6 @@ class FingerprintAuthBlockService {
   std::string user_;
   // The number of attempts left in the current auth session.
   int attempts_left_ = 0;
-
-  // TODO(b/246576446): remove the following two lines once AuthBlockUtility
-  // has the functions to set up fingerprint service state.
-  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintSuccess);
-  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintFailure);
 };
 
 }  // namespace cryptohome

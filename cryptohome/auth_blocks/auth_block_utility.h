@@ -57,6 +57,12 @@ class AuthBlockUtility {
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const = 0;
 
+  // Given an AuthFactorType, returns a boolean indicating if this factor
+  // should call PrepareAuthFactor before AuthenticateAuthFactor
+  // or AddAuthFactor.
+  virtual bool IsPrepareAuthFactorRequired(
+      AuthFactorType auth_factor_type) const = 0;
+
   // Given AuthIntent and AuthFactorType, returns a boolean indicating if this
   // factor supports Verify via VerifyWithAuthFactorAsync and satisfies the auth
   // intent. Note that (unlike IsAuthFactorSupported) this is purely an
@@ -64,15 +70,32 @@ class AuthBlockUtility {
   virtual bool IsVerifyWithAuthFactorSupported(
       AuthIntent auth_intent, AuthFactorType auth_factor_type) const = 0;
 
-  // If the verify succeeds, |error| will be ok. Otherwise it will contain an
-  // error describing the nature of the failure.
-  using VerifyCallback = base::OnceCallback<void(CryptohomeStatus error)>;
+  // If the verify/prepare succeeds, |error| will be ok. Otherwise it will
+  // contain an error describing the nature of the failure.
+  using CryptohomeStatusCallback =
+      base::OnceCallback<void(CryptohomeStatus error)>;
+
+  // Given an AuthFactorType, attempt to prepare an auth factor for
+  // authentication. Returns through the asynchronous |callback|.
+  virtual void PrepareAuthFactorForAuth(AuthFactorType auth_factor_type,
+                                        const std::string& username,
+                                        CryptohomeStatusCallback callback) = 0;
+
+  // Given an AuthFactorType, attempt to prepare an auth factor for add.
+  // Returns through the asynchronous |callback|.
+  virtual void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
+                                       const std::string& username,
+                                       CryptohomeStatusCallback callback) = 0;
 
   // Given an AuthFactorType, attempt to verify the given input against it.
-  // Returns through the asynchronous verify_callback.
+  // Returns through the asynchronous |callback|.
   virtual void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
                                          const AuthInput& auth_input,
-                                         VerifyCallback callback) = 0;
+                                         CryptohomeStatusCallback callback) = 0;
+
+  // Given an AuthFactorType, stop an auth factor's pending async Prepare or
+  // Verify.
+  virtual CryptohomeStatus StopAuthFactor(AuthFactorType auth_factor_type) = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from

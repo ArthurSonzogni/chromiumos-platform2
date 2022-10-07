@@ -145,10 +145,25 @@ bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
   }
 }
 
+bool AuthBlockUtilityImpl::IsPrepareAuthFactorRequired(
+    AuthFactorType auth_factor_type) const {
+  switch (auth_factor_type) {
+    case AuthFactorType::kLegacyFingerprint:
+      return true;
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified:
+      return false;
+  }
+}
+
 void AuthBlockUtilityImpl::VerifyWithAuthFactorAsync(
     AuthFactorType auth_factor_type,
     const AuthInput& auth_input,
-    VerifyCallback callback) {
+    CryptohomeStatusCallback callback) {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {
       // The auth input does not matter for legacy fingerprint verification.
@@ -173,6 +188,71 @@ void AuthBlockUtilityImpl::VerifyWithAuthFactorAsync(
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
       std::move(callback).Run(std::move(status));
       return;
+    }
+  }
+}
+
+void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
+    AuthFactorType auth_factor_type,
+    const std::string& username,
+    CryptohomeStatusCallback callback) {
+  switch (auth_factor_type) {
+    case AuthFactorType::kLegacyFingerprint: {
+      CryptohomeStatus status = fp_service_->Start(username);
+      if (!status.ok()) {
+        std::move(callback).Run(std::move(status));
+        return;
+      }
+      fp_service_->Scan(std::move(callback));
+      return;
+    }
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified: {
+      // These factors do not require Prepare.
+      CryptohomeStatus status = MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilPrepareInvalidAuthFactorType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+      std::move(callback).Run(std::move(status));
+      return;
+    }
+  }
+}
+
+void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
+    AuthFactorType auth_factor_type,
+    const std::string& username,
+    CryptohomeStatusCallback callback) {
+  // Not implemented for now.
+  CryptohomeStatus status = MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilUnimplementedPrepareForAdd),
+      ErrorActionSet(
+          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(callback).Run(std::move(status));
+}
+
+CryptohomeStatus AuthBlockUtilityImpl::StopAuthFactor(
+    AuthFactorType auth_factor_type) {
+  switch (auth_factor_type) {
+    case AuthFactorType::kLegacyFingerprint: {
+      fp_service_->Terminate();
+      return OkStatus<CryptohomeError>();
+    }
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified: {
+      // These factors are not supported for Stop. No-op.
+      return OkStatus<CryptohomeError>();
     }
   }
 }

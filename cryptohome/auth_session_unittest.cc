@@ -3176,7 +3176,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
       auth_block_utility_,
       VerifyWithAuthFactorAsync(AuthFactorType::kLegacyFingerprint, _, _))
       .WillOnce([](AuthFactorType, const AuthInput&,
-                   AuthBlockUtility::VerifyCallback callback) {
+                   AuthBlockUtility::CryptohomeStatusCallback callback) {
         std::move(callback).Run(OkStatus<CryptohomeError>());
       });
 
@@ -3732,7 +3732,7 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
       auth_block_utility_,
       VerifyWithAuthFactorAsync(AuthFactorType::kLegacyFingerprint, _, _))
       .WillOnce([](AuthFactorType, const AuthInput&,
-                   AuthBlockUtility::VerifyCallback callback) {
+                   AuthBlockUtility::CryptohomeStatusCallback callback) {
         std::move(callback).Run(OkStatus<CryptohomeError>());
       });
 

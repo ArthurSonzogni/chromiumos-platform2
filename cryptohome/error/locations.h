@@ -1261,6 +1261,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceStartConcurrentSession = 717,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceScanCouldNotGetFpManager = 718,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilUnimplementedPrepareForAdd = 719,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
@@ -1301,6 +1303,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 3300
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //// This is a separator block at value 3500
+  //// See location_db.py for more info.
+  //////////////////////////////////////////////////
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilPrepareInvalidAuthFactorType = 3500,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

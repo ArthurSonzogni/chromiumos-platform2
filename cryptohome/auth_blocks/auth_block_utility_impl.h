@@ -54,12 +54,25 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
 
+  bool IsPrepareAuthFactorRequired(
+      AuthFactorType auth_factor_type) const override;
+
   bool IsVerifyWithAuthFactorSupported(
       AuthIntent auth_intent, AuthFactorType auth_factor_type) const override;
 
+  void PrepareAuthFactorForAuth(AuthFactorType auth_factor_type,
+                                const std::string& username,
+                                CryptohomeStatusCallback callback) override;
+
+  void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
+                               const std::string& username,
+                               CryptohomeStatusCallback callback) override;
+
   void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
                                  const AuthInput& auth_input,
-                                 VerifyCallback callback) override;
+                                 CryptohomeStatusCallback callback) override;
+
+  CryptohomeStatus StopAuthFactor(AuthFactorType auth_factor_type) override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
