@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <algorithm>
 #include <assert.h>
@@ -34,6 +35,12 @@ struct sl_host_text_input {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct zwp_text_input_v1* proxy;
+  struct sl_host_surface* active_surface;
+  struct wl_listener surface_destroy_listener;
+
+  void SetActiveSurface(sl_host_surface* surface);
+  void ClearActiveSurface();
+  static void SurfaceDestroyed(wl_listener* listener, void* data);
 };
 MAP_STRUCTS(zwp_text_input_v1, sl_host_text_input);
 
@@ -51,15 +58,87 @@ struct sl_host_extended_text_input {
 };
 MAP_STRUCTS(zcr_extended_text_input_v1, sl_host_extended_text_input);
 
+void sl_host_text_input::SetActiveSurface(sl_host_surface* surface) {
+  ClearActiveSurface();
+  active_surface = surface;
+  wl_resource_add_destroy_listener(surface->resource,
+                                   &surface_destroy_listener);
+}
+
+void sl_host_text_input::ClearActiveSurface() {
+  active_surface = nullptr;
+  // Remove the listener
+  wl_list_remove(&surface_destroy_listener.link);
+  wl_list_init(&surface_destroy_listener.link);
+}
+
+void sl_host_text_input::SurfaceDestroyed(wl_listener* listener, void* data) {
+  struct sl_host_text_input* host;
+  host = wl_container_of(listener, host, surface_destroy_listener);
+  host->ClearActiveSurface();
+}
+
+static void sl_text_input_activate(wl_client* client,
+                                   wl_resource* resource,
+                                   wl_resource* seat,
+                                   wl_resource* surface) {
+  struct sl_host_text_input* host =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
+  struct sl_host_seat* host_seat =
+      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
+  struct sl_host_surface* host_surface =
+      static_cast<sl_host_surface*>(wl_resource_get_user_data(surface));
+
+  host->SetActiveSurface(host_surface);
+  zwp_text_input_v1_activate(host->proxy, host_seat->proxy,
+                             host_surface->proxy);
+}
+
+static void sl_text_input_deactivate(wl_client* client,
+                                     wl_resource* resource,
+                                     wl_resource* seat) {
+  struct sl_host_text_input* host =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
+  struct sl_host_seat* host_seat =
+      static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
+
+  host->ClearActiveSurface();
+
+  zwp_text_input_v1_deactivate(host->proxy, host_seat->proxy);
+}
+
+static void sl_text_input_set_cursor_rectangle(wl_client* client,
+                                               wl_resource* resource,
+                                               int32_t x,
+                                               int32_t y,
+                                               int32_t width,
+                                               int32_t height) {
+  struct sl_host_text_input* host =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
+
+  if (!host->active_surface)
+    return;
+
+  int32_t x1 = x;
+  int32_t y1 = y;
+  int32_t x2 = x + width;
+  int32_t y2 = y + height;
+
+  sl_transform_guest_to_host(host->ctx, host->active_surface, &x1, &y1);
+  sl_transform_guest_to_host(host->ctx, host->active_surface, &x2, &y2);
+
+  zwp_text_input_v1_set_cursor_rectangle(host->proxy, x1, y1, x2 - x1, y2 - y1);
+}
+
 static const struct zwp_text_input_v1_interface sl_text_input_implementation = {
-    ForwardRequest<zwp_text_input_v1_activate>,
-    ForwardRequest<zwp_text_input_v1_deactivate>,
+    sl_text_input_activate,
+    sl_text_input_deactivate,
     ForwardRequest<zwp_text_input_v1_show_input_panel>,
     ForwardRequest<zwp_text_input_v1_hide_input_panel>,
     ForwardRequest<zwp_text_input_v1_reset>,
     ForwardRequest<zwp_text_input_v1_set_surrounding_text>,
     ForwardRequest<zwp_text_input_v1_set_content_type>,
-    ForwardRequest<zwp_text_input_v1_set_cursor_rectangle>,
+    sl_text_input_set_cursor_rectangle,
     ForwardRequest<zwp_text_input_v1_set_preferred_language>,
     ForwardRequest<zwp_text_input_v1_commit_state>,
     ForwardRequest<zwp_text_input_v1_invoke_action>,
@@ -229,6 +308,10 @@ static void sl_text_input_manager_create_text_input(
   text_input_host->ctx = host->ctx;
   text_input_host->proxy =
       zwp_text_input_manager_v1_create_text_input(host->proxy);
+  text_input_host->active_surface = nullptr;
+  wl_list_init(&text_input_host->surface_destroy_listener.link);
+  text_input_host->surface_destroy_listener.notify =
+      sl_host_text_input::SurfaceDestroyed;
   wl_resource_set_implementation(text_input_resource,
                                  &sl_text_input_implementation, text_input_host,
                                  sl_destroy_host_text_input);
@@ -470,6 +553,7 @@ static void sl_text_input_x11_activate(wl_client* client,
       return;
     sl_host_surface* host_surface = static_cast<sl_host_surface*>(
         wl_resource_get_user_data(host_window_resource));
+    host_text_input->SetActiveSurface(host_surface);
     zwp_text_input_v1_activate(host_text_input->proxy, host_seat->proxy,
                                host_surface->proxy);
     return;
