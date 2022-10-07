@@ -5,13 +5,15 @@
 #ifndef FACED_UTIL_BLOCKING_FUTURE_H_
 #define FACED_UTIL_BLOCKING_FUTURE_H_
 
+#include <atomic>
+#include <optional>
+#include <tuple>
+#include <utility>
+
 #include <base/run_loop.h>
 #include <base/sequence_checker.h>
 #include <base/synchronization/waitable_event.h>
-
-#include <atomic>
-#include <optional>
-#include <utility>
+#include <faced/util/template.h>
 
 namespace faced {
 
@@ -23,6 +25,17 @@ namespace faced {
 //   BlockingFuture<std::string> result;
 //   AsyncFunction(/*on_complete=*/result.PromiseCallback());
 //   std::cout << "Got the result: " << result.Wait();
+//
+// Multiple arguments are supported, returning a `std::tuple` instead of
+// a single value, as follows:
+//
+//   BlockingFuture<int, std::string> result;
+//
+//   base::OnceCallback<void(int, std::string)> callback =
+//       result.PromiseCallback();
+//   AsyncFunction(/*on_complete=*/std::move(callback));
+//
+//   std::tuple<int, std::string> = result.Wait();
 //
 // BlockingFuture<void> is also supported, in which case Wait() does not
 // return a value, and `PromiseCallback` returns a closure.
@@ -36,22 +49,28 @@ namespace faced {
 // WARNING: BlockingFuture should only be used in tests, or at the top-level
 // of a program (e.g., in main). Using it when already running inside a loop
 // may lead to deadlocks.
-template <typename T = void>
+template <typename... Args>
 class BlockingFuture {
  public:
+  // The type returned by calls such as `Wait`.
+  //
+  // A simple value `T` if only a single template type is given, or
+  // `std::tuple<Args...>` if multiple template types are given.
+  using value_type = typename TupleOrSingleton<Args...>::type;
+
   // Wait for the callback `PromiseCallback` to be called.
-  T& Wait();
+  value_type& Wait();
 
   // Return a callback that, when called, will save the return value and unblock
   // the thread calling `Wait`.
   //
   // The callback may be freely called on another thread.
-  base::OnceCallback<void(T)> PromiseCallback();
+  base::OnceCallback<void(Args...)> PromiseCallback();
 
   // Return the value. Only valid after `Wait` has been called and
   // returned.
-  const T& value() const;
-  T& value();
+  const value_type& value() const;
+  value_type& value();
 
  private:
   base::RunLoop loop_;
@@ -65,48 +84,48 @@ class BlockingFuture {
   // this variable from another thread are visible to the main thread.
   // Thus, this variable is only safe to read once Run() has
   // successfully quit.
-  std::optional<T> value_;
+  std::optional<value_type> value_;
 };
 
 //
 // Implementation details follow.
 //
 
-template <typename T>
-T& BlockingFuture<T>::Wait() {
+template <typename... Args>
+typename BlockingFuture<Args...>::value_type& BlockingFuture<Args...>::Wait() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   loop_.Run();
   CHECK(value_.has_value());
   return value_.value();
 }
 
-template <typename T>
-base::OnceCallback<void(T)> BlockingFuture<T>::PromiseCallback() {
+template <typename... Args>
+base::OnceCallback<void(Args...)> BlockingFuture<Args...>::PromiseCallback() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return base::BindOnce(
-      [](BlockingFuture* future, T result) {
-        future->value_.emplace(std::move(result));
-
+      [](BlockingFuture* future, Args... result) {
+        future->value_.emplace(std::forward<Args>(result)...);
         future->loop_.Quit();
       },
       base::Unretained(this));
 }
 
-template <typename T>
-T& BlockingFuture<T>::value() {
+template <typename... Args>
+typename BlockingFuture<Args...>::value_type& BlockingFuture<Args...>::value() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(value_.has_value());
   return value_.value();
 }
 
-template <typename T>
-const T& BlockingFuture<T>::value() const {
+template <typename... Args>
+const typename BlockingFuture<Args...>::value_type&
+BlockingFuture<Args...>::value() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(value_.has_value());
   return value_.value();
 }
 
-// Specialisation of BlockingFuture for `void`.
+// Specialisation of BlockingFuture for no arguments.
 //
 // We can avoid having to store any state around, and just using
 // `base::RunLoop::Run()` and `base::RunLoop::QuitClosure()` directly.

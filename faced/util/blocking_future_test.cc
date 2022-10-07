@@ -4,6 +4,9 @@
 
 #include "faced/util/blocking_future.h"
 
+#include <memory>
+#include <string>
+
 #include <base/bind.h>
 #include <base/task/thread_pool.h>
 #include <base/test/bind.h>
@@ -53,6 +56,15 @@ TEST_F(BlockingFutureTest, CallAfterWaitVoid) {
   BlockingFuture<void> future;
   PostToCurrentSequence(future.PromiseCallback());
   future.Wait();
+}
+
+TEST_F(BlockingFutureTest, MultipleArgs) {
+  BlockingFuture<int, std::string, std::unique_ptr<int>> future;
+  PostToCurrentSequence(
+      base::BindOnce(future.PromiseCallback(), 17, "hello", nullptr));
+
+  EXPECT_EQ(future.Wait(), (std::make_tuple(17, "hello", nullptr)));
+  EXPECT_EQ(future.value(), (std::make_tuple(17, "hello", nullptr)));
 }
 
 TEST_F(BlockingFutureTest, CallOnOtherThread) {
