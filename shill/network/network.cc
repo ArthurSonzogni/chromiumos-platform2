@@ -123,8 +123,8 @@ void Network::Start(const Network::StartOptions& opts) {
     if (static_network_config_.ipv4_address_cidr) {
       dhcp_opts.use_arp_gateway = false;
     }
-    set_dhcp_controller(dhcp_provider_->CreateController(
-        interface_name_, dhcp_opts, technology_));
+    dhcp_controller_ = dhcp_provider_->CreateController(interface_name_,
+                                                        dhcp_opts, technology_);
     dhcp_controller_->RegisterCallbacks(
         base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
         base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
@@ -190,7 +190,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
     dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
-    set_dhcp_controller(nullptr);
+    dhcp_controller_ = nullptr;
   }
   if (ipconfig()) {
     set_ipconfig(nullptr);

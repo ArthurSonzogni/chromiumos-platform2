@@ -6,10 +6,12 @@
 #define SHILL_NETWORK_MOCK_NETWORK_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/ipconfig.h"
@@ -51,6 +53,10 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(bool, RenewDHCPLease, (), (override));
   MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
+  MOCK_METHOD(std::optional<base::TimeDelta>,
+              TimeToNextDHCPLeaseRenewal,
+              (),
+              (override));
 
   MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
   MOCK_METHOD(void, OnIPv6AddressChanged, (const IPAddress*), (override));

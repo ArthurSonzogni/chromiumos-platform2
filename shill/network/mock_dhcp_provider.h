@@ -40,15 +40,6 @@ class MockDHCPProvider : public DHCPProvider {
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };
 
-MATCHER_P3(IsDHCPProviderOptions, use_arp_gateway, lease_name, hostname, "") {
-  return arg.use_arp_gateway == use_arp_gateway &&
-         arg.lease_name == lease_name && arg.hostname == hostname;
-}
-
-MATCHER_P(IsDHCPProviderOptionUseARPGateway, use_arp_gateway, "") {
-  return arg.use_arp_gateway == use_arp_gateway;
-}
-
 }  // namespace shill
 
 #endif  // SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_

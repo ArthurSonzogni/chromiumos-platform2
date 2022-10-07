@@ -302,11 +302,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
     selected_service_ = service;
   }
 
-  void set_dhcp_controller_for_testing(
-      std::unique_ptr<DHCPController> dhcp_controller) {
-    network()->set_dhcp_controller(std::move(dhcp_controller));
-  }
-
   void set_network_for_testing(std::unique_ptr<Network> network) {
     network_ = std::move(network);
   }

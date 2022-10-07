@@ -172,7 +172,7 @@ class Network {
   // Calculates the duration till a DHCP lease is due for renewal, and stores
   // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
   // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
-  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
+  mockable std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   // Functions for IPv6.
   // TODO(b/232177767): Move StartIPv6() and StopIPv6() into private section.
@@ -238,9 +238,6 @@ class Network {
   // the purpose of refactor. New code outside Device should not use these.
   IPConfig* ipconfig() const { return ipconfig_.get(); }
   IPConfig* ip6config() const { return ip6config_.get(); }
-  void set_dhcp_controller(std::unique_ptr<DHCPController> controller) {
-    dhcp_controller_ = std::move(controller);
-  }
   void set_ipconfig(std::unique_ptr<IPConfig> config) {
     ipconfig_ = std::move(config);
   }

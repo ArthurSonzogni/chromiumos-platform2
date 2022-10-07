@@ -31,7 +31,9 @@ namespace shill {
 namespace {
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::DoAll;
+using ::testing::Field;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -261,6 +263,42 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   network_->set_link_protocol_ipv6_properties(
       std::make_unique<IPConfig::Properties>());
   network_->Start(Network::StartOptions{});
+}
+
+// Verifies that the DHCP options in Network::Start() is properly used when
+// creating the DHCPController.
+TEST_F(NetworkTest, DHCPOptions) {
+  constexpr char kHostname[] = "hostname";
+  constexpr char kLeaseName[] = "lease-name";
+
+  ON_CALL(dhcp_provider_, CreateController(_, _, _))
+      .WillByDefault(InvokeWithoutArgs([this]() {
+        return std::make_unique<NiceMock<MockDHCPController>>(
+            &control_interface_, kTestIfname);
+      }));
+
+  DHCPProvider::Options opts = {
+      .use_arp_gateway = true,
+      .lease_name = kLeaseName,
+      .hostname = kHostname,
+  };
+  EXPECT_CALL(dhcp_provider_,
+              CreateController(
+                  _,
+                  AllOf(Field(&DHCPProvider::Options::use_arp_gateway, true),
+                        Field(&DHCPProvider::Options::lease_name, kLeaseName),
+                        Field(&DHCPProvider::Options::hostname, kHostname)),
+                  _));
+  network_->Start({.dhcp = opts});
+
+  // When there is static IP, |use_arp_gateway| will be forced to false.
+  EXPECT_CALL(dhcp_provider_,
+              CreateController(
+                  _, Field(&DHCPProvider::Options::use_arp_gateway, false), _));
+  NetworkConfig static_config;
+  static_config.ipv4_address_cidr = "192.168.1.1/24";
+  network_->OnStaticIPConfigChanged(static_config);
+  network_->Start({.dhcp = opts});
 }
 
 TEST_F(NetworkTest, DHCPRenew) {

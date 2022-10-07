@@ -33,7 +33,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -54,8 +53,7 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/network/mock_dhcp_controller.h"
-#include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
@@ -83,18 +81,21 @@
 #include "shill/wifi/wifi_service.h"
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::ByMove;
 using ::testing::ContainsRegex;
 using ::testing::DoAll;
 using ::testing::EndsWith;
+using ::testing::Field;
 using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Optional;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -635,15 +636,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ON_CALL(*supplicant_network_proxy_, SetEnabled(_))
         .WillByDefault(Return(true));
 
-    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
-    EXPECT_CALL(*dhcp_provider(), CreateController(_, _, _))
-        .WillRepeatedly(InvokeWithoutArgs([this]() {
-          auto controller = CreateMockDHCPController();
-          ON_CALL(*controller, RequestIP()).WillByDefault(Return(true));
-          ON_CALL(*controller, TimeToLeaseExpiry())
-              .WillByDefault(Return(base::Minutes(1)));
-          return controller;
-        }));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
     ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
@@ -655,6 +647,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillByDefault(
             Invoke(this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
+
+    auto network = std::make_unique<MockNetwork>(kInterfaceIndex, kDeviceName,
+                                                 Technology::kWiFi);
+    network_ = network.get();
+    wifi_->set_network_for_testing(std::move(network));
 
     // Transfers ownership.
     wifi_->eap_state_handler_.reset(eap_state_handler_);
@@ -681,9 +678,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
-    wifi_->network()->set_dhcp_provider_for_testing(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
+    EXPECT_CALL(manager_, dhcp_hostname())
+        .WillRepeatedly(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
   }
 
@@ -700,7 +698,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(base::DoNothing());
-    wifi_->network()->set_dhcp_provider_for_testing(nullptr);
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
     ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -1118,13 +1115,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void SetIsRoamingInProgress(bool is_roaming_in_progress) {
     wifi_->is_roaming_in_progress_ = is_roaming_in_progress;
   }
-  void SetDHCPController(std::unique_ptr<DHCPController> dhcp_controller) {
-    return wifi_->set_dhcp_controller_for_testing(std::move(dhcp_controller));
-  }
-  std::unique_ptr<MockDHCPController> CreateMockDHCPController() {
-    return std::make_unique<MockDHCPController>(control_interface(),
-                                                kDeviceName);
-  }
   bool SetBgscanMethod(const std::string& method) {
     Error error;
     wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
@@ -1184,7 +1174,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ip_props.address_family = IPAddress::kFamilyIPv4;
     ip_props.gateway = ipv4_gateway_address;
     EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
-    wifi_->set_ipconfig(std::move(ipconfig));
+    network_->set_ipconfig(std::move(ipconfig));
   }
 
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
@@ -1215,7 +1205,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   MockDeviceInfo* device_info() { return &device_info_; }
 
-  MockDHCPProvider* dhcp_provider() { return &dhcp_provider_; }
+  MockNetwork* network() { return network_; }
 
   const WiFiConstRefPtr wifi() const { return wifi_; }
 
@@ -1339,7 +1329,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   bool NeedInterworkingSelect() { return wifi_->need_interworking_select_; }
 
   void TriggerNetworkStart() {
-    // Reset the state and set to completed again to trigger the DHCP acquiring.
+    // Reset the state and set to completed again to trigger Network start.
     wifi_->supplicant_state_ = WPASupplicant::kInterfaceStateDisconnected;
     wifi_->StateChanged(WPASupplicant::kInterfaceStateCompleted);
   }
@@ -1371,6 +1361,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   WiFiRefPtr wifi_;
   NiceMock<MockWiFiProvider> wifi_provider_;
   int bss_counter_;
+  MockNetwork* network_;  // Owned by |wifi_|
 
   // protected fields interspersed between private fields, due to
   // initialization order
@@ -1384,7 +1375,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   MockSupplicantProcessProxy* supplicant_process_proxy_;
   std::unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
-  MockDHCPProvider dhcp_provider_;
   std::string dhcp_hostname_;
 
   // These pointers track mock objects owned by the WiFi device instance
@@ -1680,31 +1670,14 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
 
-  // Selected service that does not have a static IP address.
-  EXPECT_CALL(
-      dhcp_provider_,
-      CreateController(kDeviceName, IsDHCPProviderOptionUseARPGateway(true), _))
-      .WillOnce(Return(ByMove(CreateMockDHCPController())));
+  const auto dhcp_matcher =
+      Optional(AllOf(Field(&DHCPProvider::Options::use_arp_gateway, true),
+                     Field(&DHCPProvider::Options::hostname, dhcp_hostname_)));
+  EXPECT_CALL(*network(),
+              Start(AllOf(Field(&Network::StartOptions::dhcp, dhcp_matcher),
+                          Field(&Network::StartOptions::accept_ra, true))));
   TriggerNetworkStart();
   Mock::VerifyAndClearExpectations(service.get());
-}
-
-TEST_F(WiFiMainTest, StartNetworkNoArpGateway) {
-  StartWiFi();
-
-  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
-  InitiateConnect(service);
-
-  // TODO(b/232177767): Move this test to Network.
-  // Selected service that has a static IP address.
-  NetworkConfig config;
-  config.ipv4_address_cidr = "1.2.3.4/16";
-  wifi()->network()->OnStaticIPConfigChanged(config);
-  EXPECT_CALL(dhcp_provider_,
-              CreateController(kDeviceName,
-                               IsDHCPProviderOptionUseARPGateway(false), _))
-      .WillOnce(Return(ByMove(CreateMockDHCPController())));
-  TriggerNetworkStart();
 }
 
 TEST_F(WiFiMainTest, RemoveNetworkFailed) {
@@ -3018,6 +2991,8 @@ TEST_F(WiFiMainTest, RoamStateChange) {
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociating);
   EXPECT_EQ(Service::kRoamStateAssociating, service->roam_state());
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
+  EXPECT_CALL(*network(), TimeToNextDHCPLeaseRenewal())
+      .WillOnce(Return(base::Minutes(1)));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(Service::kRoamStateConfiguring, service->roam_state());
   // Verify expectations now, because WiFi may report other state changes
@@ -3119,16 +3094,12 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 
   // If we report a "completed" state change on a connected service after
-  // wpa_supplicant has roamed, we should renew our IPConfig.
-  auto dhcp_controller = CreateMockDHCPController();
-  auto* dhcp_controller_ptr = dhcp_controller.get();
-  SetDHCPController(std::move(dhcp_controller));
+  // wpa_supplicant has roamed, we should renew our DHCP lease.
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*dhcp_controller_ptr, TimeToLeaseExpiry())
+  EXPECT_CALL(*network(), TimeToNextDHCPLeaseRenewal())
       .WillOnce(Return(base::Minutes(1)));
-  EXPECT_CALL(*dhcp_controller_ptr, RenewIP());
+  EXPECT_CALL(*network(), RenewDHCPLease());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  Mock::VerifyAndClearExpectations(dhcp_controller_ptr);
   EXPECT_FALSE(GetIsRoamingInProgress());
 }
 
