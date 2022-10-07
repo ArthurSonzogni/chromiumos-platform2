@@ -1186,7 +1186,7 @@ class EnumsXmlDB:
     given new sets of documented error locations.
     """
 
-    ERROR_LOCATION_ENUM_START_MARKER = '<enum name="CryptohomeErrorLocation">'
+    ENUM_START_MARKER_TEMPLATE = '<enum name="%s">'
     ENUM_STOP_MARKER = "</enum>"
     ERROR_LOCATION_COMMENTS = """<!--
   This enum is intended to be populated automatically by
@@ -1204,7 +1204,7 @@ class EnumsXmlDB:
   -->
 
 """
-    ERROR_LOCATION_INT_TEMPLATE = '<int value="%d" label="%s"/>\n'
+    INT_VALUE_TAG_TEMPLATE = '<int value="%d" label="%s"/>\n'
 
     def __init__(self, enums_xml_path: str):
         """Constructor for EnumsXmlDB.
@@ -1213,7 +1213,39 @@ class EnumsXmlDB:
             enums_xml_path: Absolute full path to enums.xml
         """
         self.enums_xml_path = enums_xml_path
+        # Standard location values used by Cryptohome.Error.AllLocations
         self.error_locs = []
+
+    def _capture_int_val_in_dom(
+        self, xml_path: str, enum_name: str
+    ) -> List[int]:
+        """Loads enums.xml and fetch all int values in specified enum."""
+
+        event_stream = pulldom.parse(xml_path)
+        found = False
+        result = []
+        for event, node in event_stream:
+            # Collect values for the specified enum.
+            if (
+                event == "START_ELEMENT"
+                and node.tagName == "enum"
+                and node.hasAttribute("name")
+                and node.getAttribute("name") == enum_name
+            ):
+                # Found a specified enum node.
+                found = True
+            if event == "END_ELEMENT" and node.tagName == "enum":
+                # Went out of scope of found enum node.
+                found = False
+            if (
+                found
+                and event == "START_ELEMENT"
+                and node.tagName == "int"
+                and node.hasAttribute("value")
+            ):
+                # Convert the found enum value as int and append to the result.
+                result.append(int(node.getAttribute("value")))
+        return result
 
     def load_enums_xml(self) -> None:
         """Loads enums.xml file.
@@ -1223,91 +1255,71 @@ class EnumsXmlDB:
         specified in the constructor.
         """
 
-        event_stream = pulldom.parse(self.enums_xml_path)
-        found_error_loc = False
-        result = []
-        for event, node in event_stream:
-            if (
-                event == "START_ELEMENT"
-                and node.tagName == "enum"
-                and node.hasAttribute("name")
-                and node.getAttribute("name") == "CryptohomeErrorLocation"
-            ):
-                # Found the CryptohomeErrorLocation enum node.
-                found_error_loc = True
-            if event == "END_ELEMENT" and node.tagName == "enum":
-                # Went out of scope of CryptohomeErrorLocation enum node.
-                found_error_loc = False
-            if (
-                found_error_loc
-                and event == "START_ELEMENT"
-                and node.tagName == "int"
-                and node.hasAttribute("value")
-            ):
-                # Found a record of error location in enums.xml.
-                result.append(int(node.getAttribute("value")))
-        self.error_locs = result
+        self.error_locs = self._capture_int_val_in_dom(
+            self.enums_xml_path, "CryptohomeErrorLocation"
+        )
 
-    def update_enums_xml_with_error_loc(
-        self, values_to_write: List[Tuple[int, str]]
+    def _update_enum_in_enums_xml(
+        self,
+        enum_name: str,
+        values_to_write: List[Tuple[int, str]],
+        comments: str,
     ) -> bool:
-        """Updates enums.xml with the given error locations.
+        """Update all values for a enum in enums.xml
+
+        Given previously specified enums.xml path, read it and update the
+        values belonging to the specified <enum> tag. This will empty all
+        <values> in the <enum> tag and replace them with contents specified
+        by values_to_write.
 
         Args:
-            values_to_write: A list of error locations
-            to write, each is a tuple. The first element of the tuple is the
-            value and the second element is the label.
+            enum_name: Specifies the <enum> tag to update.
+            values_to_write: Content to place in the <enum> tag. Each
+                element of the list is the value to label mapping for a
+                <value> tag.
+            comments: Comments to add in the <enum> tag.
 
         Returns:
-            True for success.
+            successful: True if successful.
         """
 
         with open(self.enums_xml_path, "r") as f:
             lines = f.readlines()
 
-        # Verify that there's only 1 error location enum in the DB.
-        if (
-            "\n".join(lines).count(EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER)
-            != 1
-        ):
-            logging.error(
-                "Invalid number of CryptohomeErrorLocation <enum> tag"
-                " in enums.xml"
-            )
+        start_marker = EnumsXmlDB.ENUM_START_MARKER_TEMPLATE % enum_name
+        start_marker_found = False
+        start_marker_idx = None
+        # Traverse all lines to find the start marker position and make sure
+        # the lines have only one start marker.
+        for idx, line in enumerate(lines):
+            if line.strip() == start_marker:
+                if start_marker_found:
+                    logging.error(
+                        "Expect only one %s <enum> tag in enums.xml", enum_name
+                    )
+                    return False
+                start_marker_found = True
+                start_marker_idx = idx
+        if not start_marker_found:
+            logging.error("No %s enum tag found in enums.xml", enum_name)
             return False
 
-        idx = 0
-        while idx < len(lines):
-            if (
-                lines[idx].strip()
-                == EnumsXmlDB.ERROR_LOCATION_ENUM_START_MARKER
-            ):
-                break
-            idx += 1
-        if idx == len(lines):
-            logging.error(
-                "No CryptohomeErrorLocation enum tag found in enums.xml"
-            )
-            return False
-
-        result = lines[0 : idx + 1]
-        result.append(EnumsXmlDB.ERROR_LOCATION_COMMENTS)
+        result = lines[0 : start_marker_idx + 1]
+        result.append(comments)
         for value, label in values_to_write:
-            result.append(
-                EnumsXmlDB.ERROR_LOCATION_INT_TEMPLATE % (value, label)
-            )
+            result.append(EnumsXmlDB.INT_VALUE_TAG_TEMPLATE % (value, label))
 
         # Note that we do not have nested <enum> tag for
         # CryptohomeErrorLocation, if that changes, we might need to change
         # this code.
+        idx = start_marker_idx
         while idx < len(lines):
             if lines[idx].strip() == EnumsXmlDB.ENUM_STOP_MARKER:
                 break
             idx += 1
         if idx == len(lines):
             logging.error(
-                "No end of enum tag found for "
-                "CryptohomeErrorLocation in enums.xml"
+                "No end of enum tag found for %s in enums.xml", enum_name
             )
             return False
 
@@ -1323,6 +1335,26 @@ class EnumsXmlDB:
             cwd=enums_xml_dir.parent,
         )
         return True
+
+    def update_enums_xml_with_error_loc(
+        self, values_to_write: List[Tuple[int, str]]
+    ) -> bool:
+        """Updates enums.xml with the given error locations.
+
+        Args:
+            values_to_write: A list of error locations
+            to write, each is a tuple. The first element of the tuple is the
+            value and the second element is the label.
+
+        Returns:
+            True for success.
+        """
+
+        return self._update_enum_in_enums_xml(
+            "CryptohomeErrorLocation",
+            values_to_write,
+            EnumsXmlDB.ERROR_LOCATION_COMMENTS,
+        )
 
 
 class DBTool:
