@@ -427,6 +427,9 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->is_modifier = false;
   event->state = 0;
 
+  gdk_event_set_device(
+      raw_event,
+      gdk_seat_get_keyboard(gdk_display_get_default_seat(gdk_display)));
   gdk_display_put_event(gdk_display, raw_event);
   gdk_event_free(raw_event);
 }
