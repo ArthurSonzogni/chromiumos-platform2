@@ -1505,16 +1505,25 @@ class DBTool:
                 symbol = self.db.symbols[self.db.value_to_symbol[val]]
                 print("%s" % (symbol,))
 
-    def update_enums_xml_with_error_loc(self, chromium_src_path: str) -> None:
-        """Updates the enums.xml with the error location symbols used.
+    def _read_stdin_ints(self) -> List[int]:
+        """Reads a list of int line-by-line from stdin."""
 
-        This method will read the list of error locations that are actually
-        encountered in the field from the stdin and ensure that they're in
-        enums.xml.
+        def is_integer(s: str) -> bool:
+            """Returns True if the input string is a valid int"""
+            try:
+                _ = int(s)
+                return True
+            except Exception:
+                return False
 
-        Args:
-            chromium_src_path: Path to Chromium source code.
-        """
+        inputs = sys.stdin.readlines()
+        inputs = [x.strip() for x in inputs]
+        inputs = [int(x) for x in inputs if is_integer(x)]
+
+        return inputs
+
+    def _load_enums_xml(self, chromium_src_path: str) -> EnumsXmlDB:
+        """Loads the enums.xml into a EnumsXmlDB object."""
 
         # Normalize the path first.
         chromium_src_path = pathlib.Path(chromium_src_path)
@@ -1529,18 +1538,22 @@ class DBTool:
         enums_db = EnumsXmlDB(str(enums_xml_path))
         enums_db.load_enums_xml()
 
-        # Grab the list of values from stdin
-        def is_integer(s):
-            """Returns True if the input string is a valid int"""
-            try:
-                _ = int(s)
-                return True
-            except ValueError:
-                return False
+        return enums_db
 
-        inputs = sys.stdin.readlines()
-        inputs = [x.strip() for x in inputs]
-        inputs = [int(x) for x in inputs if is_integer(x)]
+    def update_enums_xml_with_error_loc(self, chromium_src_path: str) -> None:
+        """Updates the enums.xml with the error location symbols used.
+
+        This method will read the list of error locations that are actually
+        encountered in the field from the stdin and ensure that they're in
+        enums.xml.
+
+        Args:
+            chromium_src_path: Path to Chromium source code.
+        """
+
+        enums_db = self._load_enums_xml(chromium_src_path)
+
+        inputs = self._read_stdin_ints()
 
         # Load the DB and grab all values.
         self._load_full_db()
