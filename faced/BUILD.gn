@@ -84,7 +84,12 @@ source_set("libfaced") {
     "face_service.cc",
     "session.cc",
     "status_to_string.cc",
+    "util/queueing_stream.cc",
     "util/template.h",
+  ]
+  public = [
+    "util/queueing_stream.h",
+    "util/stream.h",
   ]
   all_dependent_configs = [ ":target_defaults_pkg_deps" ]
   deps = [
@@ -147,6 +152,7 @@ if (use.test) {
     sources = [
       "util/blocking_future_test.cc",
       "util/lease_test.cc",
+      "util/queueing_stream_test.cc",
       "util/status_test.cc",
     ]
     configs += [
