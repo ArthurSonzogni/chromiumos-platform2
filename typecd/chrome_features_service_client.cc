@@ -14,8 +14,8 @@
 
 namespace {
 // TODO(b/206518847): See if we can avoid timeouts.
-constexpr int kDbusTimeoutMs = 100;
-constexpr uint32_t kRetrySleepTimeoutMs = 100;
+constexpr int kDbusTimeoutMs = 250;
+constexpr uint32_t kRetrySleepTimeoutMs = 400;
 }  // namespace
 
 namespace typecd {
