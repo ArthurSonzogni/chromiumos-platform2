@@ -36,7 +36,7 @@ void FuzzParseFirmwareManifestV2(const modemfwd::FirmwareManifestV2& input) {
 
   base::WriteFile(file_path, text.data(), text.size());
 
-  std::map<std::string, std::string> dlc_per_variant;
+  std::map<std::string, Dlc> dlc_per_variant;
   std::unique_ptr<FirmwareIndex> index =
       ParseFirmwareManifestV2(file_path, dlc_per_variant);
 }

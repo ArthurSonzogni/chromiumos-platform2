@@ -61,7 +61,7 @@ class DlcManagerHelper : public DlcManager {
  public:
   explicit DlcManagerHelper(
       Metrics* metrics,
-      std::map<std::string, std::string> dlc_per_variant,
+      std::map<std::string, Dlc> dlc_per_variant,
       std::string variant,
       std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy)
       : DlcManager(metrics, dlc_per_variant, variant, std::move(proxy)) {}
@@ -234,10 +234,16 @@ class DlcManagerTest : public ::testing::Test {
       base::MockOnceCallback<void(const std::string&, const brillo::Error*)>>;
 
   void SetUpDefaultDlcManagerHelper() {
-    std::map<std::string, std::string> dlc_per_variant = {
-        {kOtherVariant1, kOtherDlc1},
-        {kDeviceVariant, kDeviceDlc},
-        {kOtherVariant2, kOtherDlc2}};
+    Dlc dlc1;
+    Dlc dlc2;
+    Dlc dlc3;
+    dlc1.set_dlc_id(kOtherDlc1);
+    dlc2.set_dlc_id(kDeviceDlc);
+    dlc3.set_dlc_id(kOtherDlc2);
+    std::map<std::string, Dlc> dlc_per_variant = {
+        {kOtherVariant1, std::move(dlc1)},
+        {kDeviceVariant, std::move(dlc2)},
+        {kOtherVariant2, std::move(dlc3)}};
 
     dlc_manager_ = std::make_unique<DlcManagerHelper>(
         mock_metrics_.get(), dlc_per_variant, kDeviceVariant,
@@ -568,10 +574,16 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoneSuccess) {
 }
 
 TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoDeviceVariant) {
-  std::map<std::string, std::string> dlc_per_variant = {
-      {kOtherVariant1, kOtherDlc1},
-      {kDeviceVariant, kDeviceDlc},
-      {kOtherVariant2, kOtherDlc2}};
+  Dlc dlc1;
+  Dlc dlc2;
+  Dlc dlc3;
+  dlc1.set_dlc_id(kOtherDlc1);
+  dlc2.set_dlc_id(kDeviceDlc);
+  dlc3.set_dlc_id(kOtherDlc2);
+  std::map<std::string, Dlc> dlc_per_variant = {
+      {kOtherVariant1, std::move(dlc1)},
+      {kDeviceVariant, std::move(dlc2)},
+      {kOtherVariant2, std::move(dlc3)}};
 
   dlc_manager_ = std::make_unique<DlcManagerHelper>(
       mock_metrics_.get(), dlc_per_variant, "" /* no variant*/,

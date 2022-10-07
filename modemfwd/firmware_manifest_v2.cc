@@ -21,9 +21,9 @@ namespace {
 
 bool ParseDevice(const Device& device,
                  DeviceFirmwareCache* out_cache,
-                 std::map<std::string, std::string>* dlc_per_variant) {
-  if (!device.variant().empty() && !device.dlc_id().empty())
-    dlc_per_variant->emplace(device.variant(), device.dlc_id());
+                 std::map<std::string, Dlc>* dlc_per_variant) {
+  if (!device.variant().empty() && device.has_dlc())
+    dlc_per_variant->emplace(device.variant(), device.dlc());
   // Sort main firmware entries by version. Ensure the versions are
   // all separate.
   std::map<std::string, std::unique_ptr<FirmwareFileInfo>> main_firmware_infos;
@@ -243,7 +243,7 @@ bool ParseDevice(const Device& device,
 
 std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
     const base::FilePath& manifest,
-    std::map<std::string, std::string>& dlc_per_variant) {
+    std::map<std::string, Dlc>& dlc_per_variant) {
   FirmwareManifestV2 manifest_proto;
   if (!brillo::ReadTextProtobuf(manifest, &manifest_proto))
     return nullptr;

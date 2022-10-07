@@ -32,7 +32,7 @@ const uint16_t kMaxRetriesBeforeFallbackToRootfs = 5;
 
 DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
                        Metrics* metrics,
-                       std::map<std::string, std::string> dlc_per_variant,
+                       std::map<std::string, Dlc> dlc_per_variant,
                        std::string variant)
     : metrics_(metrics),
       variant_(variant),
@@ -48,7 +48,7 @@ DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
 // Constructor for testing
 DlcManager::DlcManager(
     Metrics* metrics,
-    std::map<std::string, std::string> dlc_per_variant,
+    std::map<std::string, Dlc> dlc_per_variant,
     std::string variant,
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy)
     : metrics_(metrics),
@@ -60,12 +60,13 @@ DlcManager::DlcManager(
   dlc_service_proxy_ = std::move(proxy);
 }
 
-void DlcManager::Init(std::map<std::string, std::string> dlc_per_variant) {
+void DlcManager::Init(std::map<std::string, Dlc> dlc_per_variant) {
   for (const auto& it : dlc_per_variant) {
     if (it.first != variant_) {
-      dlcs_to_remove_.emplace(it.second);
+      dlcs_to_remove_.emplace(it.second.dlc_id());
     } else {
-      dlc_id_ = it.second;
+      dlc_id_ = it.second.dlc_id();
+      is_dlc_empty_ = it.second.is_dlc_empty();
     }
   }
 }

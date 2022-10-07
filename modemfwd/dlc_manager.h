@@ -19,6 +19,7 @@
 #include <dlcservice/dbus-proxies.h>
 
 #include "modemfwd/metrics.h"
+#include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
 namespace dbus {
 class Bus;
@@ -48,7 +49,7 @@ class DlcManager {
  public:
   explicit DlcManager(scoped_refptr<dbus::Bus> bus,
                       Metrics* metrics,
-                      std::map<std::string, std::string> dlc_per_variant,
+                      std::map<std::string, Dlc> dlc_per_variant,
                       std::string variant);
 
   virtual ~DlcManager() = default;
@@ -65,18 +66,19 @@ class DlcManager {
   virtual void InstallModemDlc(InstallModemDlcOnceCallback cb);
 
   const virtual std::string& DlcId() { return dlc_id_; }
+  const virtual bool IsDlcEmpty() { return is_dlc_empty_; }
 
  protected:
   // For testing
   DlcManager() = default;
   explicit DlcManager(
       Metrics* metrics,
-      std::map<std::string, std::string> dlc_per_variant,
+      std::map<std::string, Dlc> dlc_per_variant,
       std::string variant,
       std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy);
 
  private:
-  void Init(std::map<std::string, std::string> dlc_per_variant);
+  void Init(std::map<std::string, Dlc> dlc_per_variant);
   void OnServiceAvailable(bool available);
   void InstallDlcTimedout();
   void TryInstall();
@@ -101,6 +103,7 @@ class DlcManager {
   Metrics* metrics_;
   std::set<std::string> dlcs_to_remove_;
   std::string dlc_id_;
+  bool is_dlc_empty_;
   std::string variant_;
   // Since the device might not have internet when modemfwd starts, modemfwd
   // should try to install periodically until Install succeeds. This is only

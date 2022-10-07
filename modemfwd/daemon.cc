@@ -33,6 +33,8 @@
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
 
+#include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
+
 namespace {
 
 const char kManifestName[] = "firmware_manifest.prototxt";
@@ -199,7 +201,7 @@ int Daemon::OnInit() {
 int Daemon::SetupFirmwareDirectory() {
   CHECK(!fw_manifest_dir_path_.empty());
 
-  std::map<std::string, std::string> dlc_per_variant;
+  std::map<std::string, Dlc> dlc_per_variant;
   fw_index_ = ParseFirmwareManifestV2(
       fw_manifest_dir_path_.Append(kManifestName), dlc_per_variant);
   if (!fw_index_) {
@@ -240,6 +242,13 @@ void Daemon::InstallDlcCompleted(const std::string& mount_path,
     LOG(INFO) << "Failed to install DLC. Falling back to rootfs";
     metrics_->SendFwUpdateLocation(
         metrics::FwUpdateLocation::kFallbackToRootFS);
+    CompleteInitialization();
+    return;
+  }
+
+  if (dlc_manager_->IsDlcEmpty()) {
+    LOG(INFO) << "Ignoring DLC contents, loading FW from rootfs";
+    metrics_->SendFwUpdateLocation(metrics::FwUpdateLocation::kRootFS);
   } else {
     fw_manifest_directory_ = CreateFirmwareDirectory(
         std::move(fw_index_), base::FilePath(mount_path), variant_);

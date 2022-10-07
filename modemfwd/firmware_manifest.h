@@ -58,7 +58,7 @@ using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;
 
 std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
     const base::FilePath& manifest,
-    std::map<std::string, std::string>& dlc_per_variant);
+    std::map<std::string, Dlc>& dlc_per_variant);
 
 }  // namespace modemfwd
 

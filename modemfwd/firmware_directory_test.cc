@@ -69,7 +69,7 @@ class FirmwareDirectoryTest : public ::testing::Test {
     base::FilePath manifest_in_dir =
         temp_dir_.GetPath().Append("firmware_manifest.prototxt");
     CHECK(base::CopyFile(manifest, manifest_in_dir));
-    std::map<std::string, std::string> dlc_per_variant;
+    std::map<std::string, Dlc> dlc_per_variant;
     std::unique_ptr<FirmwareIndex> index =
         ParseFirmwareManifestV2(manifest_in_dir, dlc_per_variant);
     ASSERT_EQ(!!index, manifest_is_valid);
