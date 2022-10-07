@@ -59,6 +59,7 @@ pkg_config("target_defaults") {
 
 static_library("libbiod") {
   sources = [
+    "auth_stack_manager_wrapper.cc",
     "biod_config.cc",
     "biod_crypto.cc",
     "biod_metrics.cc",
@@ -162,6 +163,7 @@ if (use.test) {
   }
   executable("biod_test_runner") {
     sources = [
+      "auth_stack_manager_wrapper_test.cc",
       "biod_config_test.cc",
       "biod_crypto_test.cc",
       "biod_metrics_test.cc",
