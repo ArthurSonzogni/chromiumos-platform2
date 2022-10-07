@@ -104,7 +104,6 @@ LEGACYLIST = {
     "mist",
     "ml_benchmark",
     "modem-utilities",
-    "mojo_service_manager",
     "nnapi",
     "ocr",
     "oobe_config",
