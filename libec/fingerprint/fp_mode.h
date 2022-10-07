@@ -30,7 +30,16 @@ class BRILLO_EXPORT FpMode {
     kDontChange,
     kSensorMaintenance,
 
-    kModeInvalid  // must be last item
+    kModeInvalid = 13,
+
+    kCaptureVendorFormat = kCapture,
+    kCaptureSimpleImage = 14,
+    kCapturePattern0 = 15,
+    kCapturePattern1 = 16,
+    kCaptureQualityTest = 17,
+    kCaptureResetTest = 18,
+
+    kMaxValue = kCaptureResetTest,  // must be last item
   };
 
   FpMode() = default;
@@ -51,7 +60,7 @@ class BRILLO_EXPORT FpMode {
 
   // TODO(tomhughes): switch to to_utype template instead of casting
   int EnumVal() const { return static_cast<int>(mode_); }
-  int MaxEnumVal() const { return static_cast<int>(Mode::kModeInvalid); }
+  int MaxEnumVal() const { return static_cast<int>(Mode::kMaxValue); }
 
  private:
   Mode RawValToEnum(uint32_t mode) const;

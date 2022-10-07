@@ -28,7 +28,7 @@ Mode FpMode::RawValToEnum(uint32_t mode) const {
       return Mode::kFingerDown;
     case FP_MODE_FINGER_UP:
       return Mode::kFingerUp;
-    case FP_MODE_CAPTURE:
+    case FP_MODE_CAPTURE:  // Same as Mode::kCaptureVendorFormat.
       return Mode::kCapture;
     case FP_MODE_ENROLL_SESSION:
       return Mode::kEnrollSession;
@@ -44,6 +44,19 @@ Mode FpMode::RawValToEnum(uint32_t mode) const {
       return Mode::kResetSensor;
     case FP_MODE_DONT_CHANGE:
       return Mode::kDontChange;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_SIMPLE_IMAGE
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureSimpleImage;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_PATTERN0 << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCapturePattern0;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_PATTERN1 << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCapturePattern1;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_QUALITY_TEST
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureQualityTest;
+    case (FP_MODE_CAPTURE | FP_CAPTURE_RESET_TEST
+                                << FP_MODE_CAPTURE_TYPE_SHIFT):
+      return Mode::kCaptureResetTest;
     default:
       return Mode::kModeInvalid;
   }
@@ -60,7 +73,7 @@ uint32_t FpMode::EnumToRawVal(Mode mode) const {
       return FP_MODE_FINGER_DOWN;
     case Mode::kFingerUp:
       return FP_MODE_FINGER_UP;
-    case Mode::kCapture:
+    case Mode::kCapture:  // Same as Mode::kCaptureVendorFormat.
       return FP_MODE_CAPTURE;
     case Mode::kEnrollSession:
       return FP_MODE_ENROLL_SESSION;
@@ -78,6 +91,21 @@ uint32_t FpMode::EnumToRawVal(Mode mode) const {
       return FP_MODE_DONT_CHANGE;
     case Mode::kSensorMaintenance:
       return FP_MODE_SENSOR_MAINTENANCE;
+    case Mode::kCaptureSimpleImage:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_SIMPLE_IMAGE
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCapturePattern0:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_PATTERN0
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCapturePattern1:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_PATTERN1
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCaptureQualityTest:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_QUALITY_TEST
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
+    case Mode::kCaptureResetTest:
+      return (FP_MODE_CAPTURE | FP_CAPTURE_RESET_TEST
+                                    << FP_MODE_CAPTURE_TYPE_SHIFT);
   }
 }
 }  // namespace ec

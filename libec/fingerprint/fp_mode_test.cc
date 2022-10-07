@@ -44,10 +44,17 @@ TEST(FpModeTest, EnumVal) {
   EXPECT_EQ(FpMode(Mode::kDontChange).EnumVal(), 11);
   EXPECT_EQ(FpMode(Mode::kSensorMaintenance).EnumVal(), 12);
   EXPECT_EQ(FpMode(Mode::kModeInvalid).EnumVal(), 13);
+  EXPECT_EQ(FpMode(Mode::kCaptureVendorFormat).EnumVal(),
+            FpMode(Mode::kCapture).EnumVal());
+  EXPECT_EQ(FpMode(Mode::kCaptureSimpleImage).EnumVal(), 14);
+  EXPECT_EQ(FpMode(Mode::kCapturePattern0).EnumVal(), 15);
+  EXPECT_EQ(FpMode(Mode::kCapturePattern1).EnumVal(), 16);
+  EXPECT_EQ(FpMode(Mode::kCaptureQualityTest).EnumVal(), 17);
+  EXPECT_EQ(FpMode(Mode::kCaptureResetTest).EnumVal(), 18);
 }
 
 TEST(FpModeTest, MaxEnumVal) {
-  EXPECT_EQ(FpMode().MaxEnumVal(), 13);
+  EXPECT_EQ(FpMode().MaxEnumVal(), 18);
 }
 
 TEST(FpModeTest, RawVal) {
@@ -67,6 +74,14 @@ TEST(FpModeTest, RawVal) {
 
   EXPECT_EQ(FpMode(Mode::kEnrollSessionFingerUp).RawVal(), 0x14);
   EXPECT_EQ(FpMode(Mode::kEnrollSessionEnrollImage).RawVal(), 0x30);
+
+  EXPECT_EQ(FpMode(Mode::kCaptureVendorFormat).RawVal(),
+            FpMode(Mode::kCapture).RawVal());
+  EXPECT_EQ(FpMode(Mode::kCaptureSimpleImage).RawVal(), 0x10000008);
+  EXPECT_EQ(FpMode(Mode::kCapturePattern0).RawVal(), 0x20000008);
+  EXPECT_EQ(FpMode(Mode::kCapturePattern1).RawVal(), 0x30000008);
+  EXPECT_EQ(FpMode(Mode::kCaptureQualityTest).RawVal(), 0x40000008);
+  EXPECT_EQ(FpMode(Mode::kCaptureResetTest).RawVal(), 0x50000008);
 }
 
 }  // namespace ec
