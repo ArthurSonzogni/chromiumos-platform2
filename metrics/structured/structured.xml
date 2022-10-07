@@ -558,6 +558,12 @@
         modem manager, libmbim, libqmi etc.
       </summary>
     </metric>
+    <metric name="gid1" type="int">
+      <summary>
+        The contents of the GID1 file in the SIM card, limited to the
+        first 8 bytes.
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

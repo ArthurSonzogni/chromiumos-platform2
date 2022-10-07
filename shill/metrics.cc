@@ -925,6 +925,21 @@ int64_t Metrics::HashApn(const std::string& uuid,
   return hash;
 }
 
+std::optional<int64_t> Metrics::IntGid1(const std::string& gid1) {
+  // GID1 has no predefined max length defined, so limit it ourselves
+  //   * Input string is in HEX (so 2 chars per byte).
+  //   * Empty string will be reported as 0.
+  //   * Limit the input string to 8 bytes in order to fit it in a
+  //     64bit integer value.
+  //   * The most usual cases are 0, 1 or 2 bytes,
+  int64_t parsed;
+  if (!base::HexStringToInt64(gid1.substr(0, 2 * (sizeof(int64_t))), &parsed)) {
+    LOG(ERROR) << "Failed to parse GID1 as an integer: " << gid1;
+    return std::nullopt;
+  }
+  return parsed;
+}
+
 void Metrics::NotifyDetailedCellularConnectionResult(
     const DetailedCellularConnectionResult& result) {
   int64_t home, serving, detailed_error_hash;
@@ -987,30 +1002,37 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           << " roaming_state:" << result.roaming_state
           << " tech_used:" << result.tech_used
           << " iccid_length:" << result.iccid_length
-          << " sim_type:" << result.sim_type
+          << " sim_type:" << result.sim_type << " gid1:" << result.gid1
           << " modem_state:" << result.modem_state
           << " connect_time:" << connect_time
           << " scan_connect_time:" << scan_connect_time
           << " detailed_error:" << result.detailed_error;
 
-  metrics::structured::events::cellular::CellularConnectionAttempt()
-      .Setconnect_result(static_cast<int64_t>(connect_result))
-      .Setapn_id(HashApn(result.uuid, apn_name, username, password))
-      .Setipv4_config_method(static_cast<int>(result.ipv4_config_method))
-      .Setipv6_config_method(static_cast<int>(result.ipv6_config_method))
-      .Sethome_mccmnc(home)
-      .Setserving_mccmnc(serving)
-      .Setroaming_state(roaming)
-      .Setuse_attach_apn(result.use_attach_apn)
-      .Setapn_source(static_cast<int64_t>(apn_source))
-      .Settech_used(result.tech_used)
-      .Seticcid_length(result.iccid_length)
-      .Setsim_type(result.sim_type)
-      .Setmodem_state(result.modem_state)
-      .Setconnect_time(connect_time)
-      .Setscan_connect_time(scan_connect_time)
-      .Setdetailed_error(detailed_error_hash)
-      .Record();
+  auto event =
+      metrics::structured::events::cellular::CellularConnectionAttempt()
+          .Setconnect_result(static_cast<int64_t>(connect_result))
+          .Setapn_id(HashApn(result.uuid, apn_name, username, password))
+          .Setipv4_config_method(static_cast<int>(result.ipv4_config_method))
+          .Setipv6_config_method(static_cast<int>(result.ipv6_config_method))
+          .Sethome_mccmnc(home)
+          .Setserving_mccmnc(serving)
+          .Setroaming_state(roaming)
+          .Setuse_attach_apn(result.use_attach_apn)
+          .Setapn_source(static_cast<int64_t>(apn_source))
+          .Settech_used(result.tech_used)
+          .Seticcid_length(result.iccid_length)
+          .Setsim_type(result.sim_type)
+          .Setmodem_state(result.modem_state)
+          .Setconnect_time(connect_time)
+          .Setscan_connect_time(scan_connect_time)
+          .Setdetailed_error(detailed_error_hash);
+
+  std::optional<int64_t> gid1 = IntGid1(result.gid1);
+  if (gid1.has_value()) {
+    event.Setgid1(gid1.value());
+  }
+
+  event.Record();
 }
 
 void Metrics::NotifyUserInitiatedConnectionFailureReason(

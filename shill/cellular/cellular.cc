@@ -1108,6 +1108,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.tech_used = tech_used;
   result.iccid_length = iccid_len;
   result.sim_type = sim_type;
+  result.gid1 = home_provider_info_->gid1();
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
   metrics()->NotifyDetailedCellularConnectionResult(result);

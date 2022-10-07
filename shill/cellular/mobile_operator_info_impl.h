@@ -48,6 +48,7 @@ class MobileOperatorInfoImpl {
   const std::string& operator_name() const;
   const std::string& country() const;
   const std::string& mccmnc() const;
+  const std::string& gid1() const;
   const std::vector<std::string>& mccmnc_list() const;
   const std::vector<MobileOperatorInfo::LocalizedName>& operator_name_list()
       const;
@@ -138,6 +139,7 @@ class MobileOperatorInfoImpl {
   // properly whenever an update is either received from the user or the
   // database.
   void HandleMCCMNCUpdate();
+  void HandleGID1Update();
   void HandleOperatorNameUpdate();
   void HandleOnlinePortalUpdate();
   void HandleAPNListUpdate();
@@ -187,6 +189,7 @@ class MobileOperatorInfoImpl {
   std::string operator_name_;
   std::string country_;
   std::string mccmnc_;
+  std::string gid1_;
   std::vector<std::string> mccmnc_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   bool prioritizes_db_operator_name_;

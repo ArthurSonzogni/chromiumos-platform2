@@ -170,6 +170,7 @@ class MobileOperatorInfo {
   virtual const std::string& operator_name() const;
   virtual const std::string& country() const;
   virtual const std::string& mccmnc() const;
+  virtual const std::string& gid1() const;
 
   // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
   // associated mcc/mnc pairs concatenated together.

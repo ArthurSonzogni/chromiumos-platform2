@@ -239,6 +239,11 @@ class MobileOperatorInfoMainTest
     DispatchPendingEventsIfStrict();
   }
 
+  void UpdateGID1(const std::string& gid1) {
+    operator_info_->UpdateGID1(gid1);
+    DispatchPendingEventsIfStrict();
+  }
+
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data) {

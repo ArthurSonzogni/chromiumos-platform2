@@ -196,6 +196,10 @@ const std::string& MobileOperatorInfoImpl::mccmnc() const {
   return mccmnc_;
 }
 
+const std::string& MobileOperatorInfoImpl::gid1() const {
+  return gid1_;
+}
+
 const std::vector<std::string>& MobileOperatorInfoImpl::mccmnc_list() const {
   return mccmnc_list_;
 }
@@ -349,6 +353,7 @@ void MobileOperatorInfoImpl::UpdateGID1(const std::string& gid1) {
 
   SLOG(1) << __func__ << ": " << gid1;
   user_gid1_ = gid1;
+  HandleGID1Update();
   if (raw_apn_filters_types_.count(
           mobile_operator_db::Filter_Type::Filter_Type_GID1)) {
     HandleAPNListUpdate();
@@ -811,6 +816,10 @@ void MobileOperatorInfoImpl::HandleMCCMNCUpdate() {
   } else {
     mccmnc_.clear();
   }
+
+  // Chain the GID1 update processing in case it needs to be cleared
+  // after the mccmnc_ update
+  HandleGID1Update();
 }
 
 void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
@@ -837,6 +846,15 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
 
   operator_name_ =
       operator_name_list_.empty() ? "" : operator_name_list_[0].name;
+}
+
+// The user-specified GID1 will be used exclusively if the user-specified
+// MCCMNC is in use, otherwise unused.
+void MobileOperatorInfoImpl::HandleGID1Update() {
+  if (!mccmnc_.empty() && (mccmnc_ == user_mccmnc_) && !user_gid1_.empty())
+    gid1_ = user_gid1_;
+  else
+    gid1_.clear();
 }
 
 // Warning: Currently, an MCCMNC update by itself does not result in

@@ -96,6 +96,12 @@ const std::string& MobileOperatorInfo::mccmnc() const {
   return result;
 }
 
+const std::string& MobileOperatorInfo::gid1() const {
+  const auto& result = impl_->gid1();
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
+}
+
 const std::vector<std::string>& MobileOperatorInfo::mccmnc_list() const {
   const auto& result = impl_->mccmnc_list();
   if (SLOG_IS_ON(Cellular, 3)) {

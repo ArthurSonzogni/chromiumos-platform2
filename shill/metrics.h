@@ -1492,6 +1492,7 @@ class Metrics : public DefaultServiceObserver {
     uint32_t tech_used;
     uint32_t iccid_length;
     uint32_t sim_type;
+    std::string gid1;
     uint32_t modem_state;
     int interface_index;
   };
@@ -1618,6 +1619,9 @@ class Metrics : public DefaultServiceObserver {
                          const std::string& apn_name,
                          const std::string& username,
                          const std::string& password);
+
+  // Converts GID1 from hex string to int64_t
+  static std::optional<int64_t> IntGid1(const std::string& gid1);
 
   // Notifies this object of the time elapsed between a WiFi service failure
   // after the latest rekey event.
