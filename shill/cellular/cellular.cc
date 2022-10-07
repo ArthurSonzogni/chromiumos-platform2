@@ -1657,7 +1657,8 @@ void Cellular::StartPPP(const std::string& serial_device) {
     Device::DropConnection();  // Don't redirect to PPPDevice.
     service_->SetState(original_state);
   } else {
-    CHECK(!ipconfig());  // Shouldn't have ipconfig without selected_service().
+    // Shouldn't have ipconfig without selected_service().
+    CHECK(!network()->ipconfig());
   }
 
   PPPDaemon::DeathCallback death_callback(

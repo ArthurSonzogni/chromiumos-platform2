@@ -183,17 +183,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // getter should never return nullptr.
   Network* network() const { return network_.get(); }
 
-  // TODO(b/232177767): This group of getters and setters are only exposed for
-  // the purpose of refactor. New code outside Device should not use these.
-  IPConfig* ipconfig() const { return network()->ipconfig(); }
-  IPConfig* ip6config() const { return network()->ip6config(); }
-  void set_ipconfig(std::unique_ptr<IPConfig> config) {
-    network()->set_ipconfig(std::move(config));
-  }
-  void set_ip6config(std::unique_ptr<IPConfig> config) {
-    network()->set_ip6config(std::move(config));
-  }
-
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
   const std::string& UniqueName() const;

@@ -274,11 +274,12 @@ bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
 }
 
 bool Device::IsConnectedViaTether() const {
-  if (!ipconfig())
+  const auto* ipconfig = network_->ipconfig();
+  if (!ipconfig)
     return false;
 
   ByteArray vendor_encapsulated_options =
-      ipconfig()->properties().vendor_encapsulated_options;
+      ipconfig->properties().vendor_encapsulated_options;
   size_t android_vendor_encapsulated_options_len =
       strlen(Tethering::kAndroidVendorEncapsulatedOptions);
 
@@ -780,11 +781,11 @@ RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
 
 RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
   RpcIdentifiers identifiers;
-  if (ipconfig()) {
-    identifiers.push_back(ipconfig()->GetRpcIdentifier());
+  if (network_->ipconfig()) {
+    identifiers.push_back(network_->ipconfig()->GetRpcIdentifier());
   }
-  if (ip6config()) {
-    identifiers.push_back(ip6config()->GetRpcIdentifier());
+  if (network_->ip6config()) {
+    identifiers.push_back(network_->ip6config()->GetRpcIdentifier());
   }
   return identifiers;
 }
@@ -911,10 +912,10 @@ void Device::SetEnabledUnchecked(bool enable,
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
     }
-    SLOG(this, 3) << "Device " << link_name_ << " ipconfig() "
-                  << (ipconfig() ? "is set." : "is not set.");
-    SLOG(this, 3) << "Device " << link_name_ << " ip6config() "
-                  << (ip6config() ? "is set." : "is not set.");
+    SLOG(this, 3) << "Device " << link_name_ << " ipconfig "
+                  << (network_->ipconfig() ? "is set." : "is not set.");
+    SLOG(this, 3) << "Device " << link_name_ << " ip6config "
+                  << (network_->ip6config() ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " selected_service_ "
                   << (selected_service_ ? "is set." : "is not set.");
     Stop(chained_callback);

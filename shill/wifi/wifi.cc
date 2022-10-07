@@ -4027,10 +4027,11 @@ void WiFi::OnNeighborReachabilityEvent(
   if (role == EventSignal::DNS_SERVER) {
     return;
   }
-  if (!(ipconfig() &&
-        ip_address.ToString() == ipconfig()->properties().gateway) &&
-      !(ip6config() &&
-        ip_address.ToString() == ip6config()->properties().gateway)) {
+  const auto* ipconfig = network()->ipconfig();
+  const auto* ip6config = network()->ip6config();
+  if (!(ipconfig && ip_address.ToString() == ipconfig->properties().gateway) &&
+      !(ip6config &&
+        ip_address.ToString() == ip6config->properties().gateway)) {
     LOG(INFO) << "Device " << link_name()
               << ": Ignored neighbor reachability event since gateway address "
                  "does not match.";

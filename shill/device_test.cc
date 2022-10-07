@@ -619,14 +619,14 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
       ByteArray(Tethering::kAndroidVendorEncapsulatedOptions,
                 Tethering::kAndroidVendorEncapsulatedOptions +
                     strlen(Tethering::kAndroidVendorEncapsulatedOptions));
-  device_->ipconfig()->UpdateProperties(properties);
+  network_->ipconfig()->UpdateProperties(properties);
   EXPECT_TRUE(device_->IsConnectedViaTether());
 
   const char kTestVendorEncapsulatedOptions[] = "Some other non-empty value";
   properties.vendor_encapsulated_options = ByteArray(
       kTestVendorEncapsulatedOptions,
       kTestVendorEncapsulatedOptions + sizeof(kTestVendorEncapsulatedOptions));
-  device_->ipconfig()->UpdateProperties(properties);
+  network_->ipconfig()->UpdateProperties(properties);
   EXPECT_FALSE(device_->IsConnectedViaTether());
 }
 
