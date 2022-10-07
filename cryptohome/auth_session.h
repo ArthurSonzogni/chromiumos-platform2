@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -154,6 +155,12 @@ class AuthSession final {
   // provided in the `request`. Note: only USS users are supported currently.
   void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
                         StatusCallback on_done);
+
+  // PrepareAuthFactor prepares an auth factor, e.g. fingerprint auth factor
+  // which is not directly associated with a knowledge factor.
+  void PrepareAuthFactor(
+      const user_data_auth::PrepareAuthFactorRequest& request,
+      StatusCallback on_done);
 
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
@@ -605,6 +612,11 @@ class AuthSession final {
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
   // Switch to enable creation of the backup VaultKeysets together with the USS.
   bool enable_create_backup_vk_with_uss_;
+  // A container to keep all async auth factor types that needs to be stopped
+  // when the AuthSession lifetime ends.
+  // TODO(b/246826331): keep a token that is returned by PrepareAuthFactor
+  // instead of the type.
+  std::set<AuthFactorType> active_auth_factor_types;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};

@@ -48,36 +48,6 @@ constexpr mode_t kAuthFactorFilePermissions = 0600;
 
 constexpr int kFlatbufferAllocatorInitialSize = 4096;
 
-// Note: The string values in this constant must stay stable, as they're used in
-// file names.
-constexpr std::pair<AuthFactorType, const char*> kAuthFactorTypeStrings[] = {
-    {AuthFactorType::kPassword, "password"},
-    {AuthFactorType::kPin, "pin"},
-    {AuthFactorType::kSmartCard, "smart_card"},
-    {AuthFactorType::kCryptohomeRecovery, "cryptohome_recovery"}};
-
-// Converts the auth factor type enum into a string.
-std::string GetAuthFactorTypeString(AuthFactorType type) {
-  for (const auto& type_and_string : kAuthFactorTypeStrings) {
-    if (type_and_string.first == type) {
-      return type_and_string.second;
-    }
-  }
-  return std::string();
-}
-
-// Converts the auth factor type string into an enum. Returns a null optional
-// if the string is unknown.
-std::optional<AuthFactorType> GetAuthFactorTypeFromString(
-    const std::string& type_string) {
-  for (const auto& type_and_string : kAuthFactorTypeStrings) {
-    if (type_and_string.second == type_string) {
-      return type_and_string.first;
-    }
-  }
-  return std::nullopt;
-}
-
 // Checks if the provided `auth_factor_label` is valid and on success returns
 // `AuthFactorPath()`.
 CryptohomeStatusOr<base::FilePath> GetAuthFactorPathFromStringType(
@@ -103,7 +73,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
     const std::string& obfuscated_username,
     const AuthFactorType auth_factor_type,
     const std::string& auth_factor_label) {
-  const std::string type_string = GetAuthFactorTypeString(auth_factor_type);
+  const std::string type_string = AuthFactorTypeToString(auth_factor_type);
   if (type_string.empty()) {
     LOG(ERROR) << "Failed to convert auth factor type "
                << static_cast<int>(auth_factor_type) << " for factor called "
@@ -377,7 +347,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
   std::optional<Blob> flatbuffer = SerializeAuthFactor(auth_factor);
   if (!flatbuffer.has_value()) {
     LOG(ERROR) << "Failed to serialize auth factor " << auth_factor.label()
-               << " of type " << GetAuthFactorTypeString(auth_factor.type());
+               << " of type " << AuthFactorTypeToString(auth_factor.type());
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSerializeFailedInSave),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -388,7 +358,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
   if (!platform_->WriteFileAtomicDurable(file_path.value(), flatbuffer.value(),
                                          kAuthFactorFilePermissions)) {
     LOG(ERROR) << "Failed to persist auth factor " << auth_factor.label()
-               << " of type " << GetAuthFactorTypeString(auth_factor.type())
+               << " of type " << AuthFactorTypeToString(auth_factor.type())
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerWriteFailedInSave),
@@ -416,7 +386,7 @@ AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
   Blob file_contents;
   if (!platform_->ReadFile(file_path.value(), &file_contents)) {
     LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
-               << " of type " << GetAuthFactorTypeString(auth_factor_type)
+               << " of type " << AuthFactorTypeToString(auth_factor_type)
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerReadFailedInLoad),
@@ -429,7 +399,7 @@ AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
   if (!ParseAuthFactorFlatbuffer(file_contents, &auth_block_state,
                                  &auth_factor_metadata)) {
     LOG(ERROR) << "Failed to parse persisted auth factor " << auth_factor_label
-               << " of type " << GetAuthFactorTypeString(auth_factor_type)
+               << " of type " << AuthFactorTypeToString(auth_factor_type)
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerParseFailedInLoad),
@@ -463,7 +433,7 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
     const std::string auth_factor_type_string =
         base_name.RemoveExtension().value();
     const std::optional<AuthFactorType> auth_factor_type =
-        GetAuthFactorTypeFromString(auth_factor_type_string);
+        AuthFactorTypeFromString(auth_factor_type_string);
     if (!auth_factor_type.has_value()) {
       LOG(WARNING) << "Unknown auth factor type: file name = "
                    << base_name.value();
@@ -492,7 +462,7 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
       LOG(WARNING) << "Ignoring duplicate auth factor: label = "
                    << auth_factor_label << " type = " << auth_factor_type_string
                    << " previous type = "
-                   << GetAuthFactorTypeString(previous_type);
+                   << AuthFactorTypeToString(previous_type);
       continue;
     }
 
@@ -522,7 +492,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
   if (!crypto_status.ok()) {
     LOG(WARNING) << "Failed to prepare for removal for auth factor "
                  << auth_factor.label() << " of type "
-                 << GetAuthFactorTypeString(auth_factor.type()) << " for "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username;
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
@@ -535,7 +505,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
   if (!platform_->DeleteFile(file_path.value())) {
     LOG(ERROR) << "Failed to delete from disk auth factor "
                << auth_factor.label() << " of type "
-               << GetAuthFactorTypeString(auth_factor.type()) << " for "
+               << AuthFactorTypeToString(auth_factor.type()) << " for "
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
@@ -558,7 +528,7 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
                      auth_factor_label);
   if (!existing_auth_factor.ok()) {
     LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
-               << " of type " << GetAuthFactorTypeString(auth_factor.type())
+               << " of type " << AuthFactorTypeToString(auth_factor.type())
                << " for " << obfuscated_username << " in Update.";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
@@ -572,7 +542,7 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
       SaveAuthFactor(obfuscated_username, auth_factor);
   if (!save_result.ok()) {
     LOG(ERROR) << "Failed to save auth factor " << auth_factor.label()
-               << " of type " << GetAuthFactorTypeString(auth_factor.type())
+               << " of type " << AuthFactorTypeToString(auth_factor.type())
                << " for " << obfuscated_username << " in Update.";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSaveFailedInUpdate),
@@ -587,7 +557,7 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
   if (!crypto_status.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for auth factor "
                  << auth_factor.label() << " of type "
-                 << GetAuthFactorTypeString(auth_factor.type()) << " for "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username << " in Update.";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(

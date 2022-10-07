@@ -14,6 +14,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
 
@@ -60,6 +61,10 @@ void LoadUserAuthFactorProtos(
 // This returns if a given |auth_factor_type| is PinWeaver backed, and thus
 // needs a reset secret.
 bool NeedsResetSecret(AuthFactorType auth_factor_type);
+
+// Converts to AuthFactorPreparePurpose from the proto enum.
+std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
+    user_data_auth::AuthFactorPreparePurpose purpose);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

@@ -16,6 +16,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_session_proto_utils.h"
 
@@ -324,6 +325,18 @@ void LoadUserAuthFactorProtos(
 
 bool NeedsResetSecret(AuthFactorType auth_factor_type) {
   return auth_factor_type == AuthFactorType::kPin;
+}
+
+std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
+    user_data_auth::AuthFactorPreparePurpose purpose) {
+  switch (purpose) {
+    case user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR:
+      return AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor;
+    case user_data_auth::PURPOSE_ADD_AUTH_FACTOR:
+      return AuthFactorPreparePurpose::kPrepareAddAuthFactor;
+    default:
+      return std::nullopt;
+  }
 }
 
 }  // namespace cryptohome

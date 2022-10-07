@@ -5,6 +5,9 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_TYPE_H_
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_TYPE_H_
 
+#include <optional>
+#include <string>
+
 namespace cryptohome {
 
 enum class AuthFactorType {
@@ -16,6 +19,15 @@ enum class AuthFactorType {
   kLegacyFingerprint,
   kUnspecified,
 };
+
+// Converts the auth factor type enum to a string into an enum. Returns empty
+// strings if the type is unknown.
+std::string AuthFactorTypeToString(AuthFactorType type);
+
+// Converts the auth factor type string into an enum. Returns a null optional
+// if the string is unknown.
+std::optional<AuthFactorType> AuthFactorTypeFromString(
+    const std::string& type_string);
 
 }  // namespace cryptohome
 

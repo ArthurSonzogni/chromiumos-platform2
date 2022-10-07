@@ -29,6 +29,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
@@ -269,6 +270,14 @@ AuthSession::~AuthSession() {
                       auth_session_creation_time_, append_string);
   ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
                       authenticated_time_, append_string);
+  for (auto auth_factor_type : active_auth_factor_types) {
+    auto status = auth_block_utility_->StopAuthFactor(auth_factor_type);
+    if (!status.ok()) {
+      LOG(ERROR) << "Stopping auth factor "
+                 << AuthFactorTypeToString(auth_factor_type)
+                 << " failed: " << status;
+    }
+  }
 }
 
 void AuthSession::AuthSessionTimedOut() {
@@ -1622,6 +1631,54 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   label_to_auth_factor_[auth_factor->label()] = std::move(auth_factor);
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::PrepareAuthFactor(
+    const user_data_auth::PrepareAuthFactorRequest& request,
+    StatusCallback on_done) {
+  std::optional<AuthFactorType> auth_factor_type =
+      AuthFactorTypeFromProto(request.auth_factor_type());
+  if (!auth_factor_type.has_value()) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionInvalidAuthFactorTypeInPrepareAuthFactor),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  std::optional<AuthFactorPreparePurpose> purpose =
+      AuthFactorPreparePurposeFromProto(request.purpose());
+  if (!purpose.has_value()) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidPurposeInPrepareAuthFactor),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  if (auth_block_utility_->IsPrepareAuthFactorRequired(*auth_factor_type)) {
+    switch (*purpose) {
+      case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
+        auth_block_utility_->PrepareAuthFactorForAuth(
+            *auth_factor_type, obfuscated_username_, std::move(on_done));
+        break;
+      }
+      case AuthFactorPreparePurpose::kPrepareAddAuthFactor: {
+        auth_block_utility_->PrepareAuthFactorForAdd(
+            *auth_factor_type, obfuscated_username_, std::move(on_done));
+        break;
+      }
+    }
+
+    // Record the auth factor type so we can stop it later.
+    active_auth_factor_types.emplace(*auth_factor_type);
+  } else {
+    // For auth factor types that do not require PrepareAuthFactor,
+    // simply return a success status.
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+  }
 }
 
 bool AuthSession::GetRecoveryRequest(

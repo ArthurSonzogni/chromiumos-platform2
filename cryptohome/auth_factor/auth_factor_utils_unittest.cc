@@ -18,6 +18,7 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/mock_platform.h"
@@ -441,6 +442,18 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 6,
                 "All types of AuthFactorType are not all included here");
+}
+
+TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
+  EXPECT_EQ(AuthFactorPreparePurposeFromProto(
+                user_data_auth::PURPOSE_ADD_AUTH_FACTOR),
+            AuthFactorPreparePurpose::kPrepareAddAuthFactor);
+  EXPECT_EQ(AuthFactorPreparePurposeFromProto(
+                user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR),
+            AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor);
+  EXPECT_EQ(
+      AuthFactorPreparePurposeFromProto(user_data_auth::PURPOSE_UNSPECIFIED),
+      std::nullopt);
 }
 
 }  // namespace cryptohome
