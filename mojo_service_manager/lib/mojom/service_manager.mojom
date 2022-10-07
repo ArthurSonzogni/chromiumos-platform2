@@ -13,7 +13,7 @@ import "mojo_service_manager/lib/mojom/time.mojom";
 
 // Shares and manages mojo services between all the processes running on
 // ChromeOS. This is provided by the ChromeOS mojo service manager daemon.
-// The argument |service_name| should match the regex ([a-zA-Z0-9._\-]+). It is
+// The argument |service_name| should match the regex ([a-zA-Z0-9]+). It is
 // used for identifying the services and for the ACLs.
 //
 // Next MinVersion: 1
