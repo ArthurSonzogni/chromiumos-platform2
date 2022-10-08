@@ -440,6 +440,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   std::unique_ptr<AuthFactor> added_auth_factor =
       converter_->VaultKeysetToAuthFactor(username_, key_data.label());
+  // Initialize auth_factor_type with kPassword for CredentailVerifier.
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
     auth_factor_type = added_auth_factor->type();
@@ -746,7 +747,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
 void AuthSession::UpdateVaultKeyset(
     std::optional<AuthFactorType> auth_factor_type,
     const KeyData& key_data,
-    AuthInput auth_input,
+    const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptoStatus callback_error,
@@ -772,8 +773,9 @@ void AuthSession::UpdateVaultKeyset(
   user_data_auth::CryptohomeErrorCode error_code =
       static_cast<user_data_auth::CryptohomeErrorCode>(
           keyset_management_->UpdateKeysetWithKeyBlobs(
-              obfuscated_username_, key_data, *vault_keyset_.get(),
-              std::move(*key_blobs.get()), std::move(auth_state)));
+              VaultKeysetIntent{.backup = false}, obfuscated_username_,
+              key_data, *vault_keyset_.get(), std::move(*key_blobs.get()),
+              std::move(auth_state)));
   if (error_code != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset),
@@ -1435,57 +1437,19 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  if (user_secret_stash_) {
-    DCHECK(user_has_configured_auth_factor_);
-
-    // Report timer for how long UpdateAuthFactor operation takes.
-    auto auth_session_performance_timer =
-        std::make_unique<AuthSessionPerformanceTimer>(
-            kAuthSessionUpdateAuthFactorUSSTimer, auth_block_type);
-    auth_session_performance_timer->auth_block_type = auth_block_type;
-
-    auto create_callback = base::BindOnce(
-        &AuthSession::UpdateAuthFactorViaUserSecretStash,
-        weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
-        auth_factor_metadata, auth_input_status.value(),
-        std::move(auth_session_performance_timer), std::move(on_done));
-    auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-        auth_block_type, auth_input_status.value(), std::move(create_callback));
-    return;
-  }
-
-  return UpdateAuthFactorViaVaultKeyset(
-      auth_block_type, auth_factor_type, auth_factor_label,
-      auth_input_status.value(), std::move(on_done));
-}
-
-void AuthSession::UpdateAuthFactorViaVaultKeyset(
-    AuthBlockType auth_block_type,
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
-    const AuthInput& auth_input,
-    StatusCallback on_done) {
-  if (auth_block_type == AuthBlockType::kCryptohomeRecovery) {
-    LOG(ERROR) << "Recovery is not enabled for VaultKeysets.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthSessionInvalidBlockTypeInUpdateAuthFactorViaVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
-
-  // Report timer for how long UpdateAuthFactor operation takes with VK and
-  // record current time for timing for how long UpdateAuthFactor will take.
+  // Report timer for how long UpdateAuthFactor operation takes.
   auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionUpdateAuthFactorVKTimer, auth_block_type);
+      user_secret_stash_
+          ? std::make_unique<AuthSessionPerformanceTimer>(
+                kAuthSessionUpdateAuthFactorUSSTimer, auth_block_type)
+          : std::make_unique<AuthSessionPerformanceTimer>(
+                kAuthSessionUpdateAuthFactorVKTimer, auth_block_type);
+  auth_session_performance_timer->auth_block_type = auth_block_type;
 
   KeyData key_data;
   // AuthFactorMetadata is needed for only smartcards. Since
   // UpdateAuthFactor doesn't operate on smartcards pass an empty metadata,
   // which is not going to be used.
-  AuthFactorMetadata auth_factor_metadata;
   user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
@@ -1495,19 +1459,49 @@ void AuthSession::UpdateAuthFactorViaVaultKeyset(
     return;
   }
 
-  AuthBlock::CreateCallback create_callback = base::BindOnce(
-      &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
-      auth_factor_type, key_data, auth_input,
+  AuthFactorStorageType auth_factor_storage_type =
+      user_secret_stash_ ? AuthFactorStorageType::kUserSecretStash
+                         : AuthFactorStorageType::kVaultKeyset;
+  auto create_callback = GetUpdateAuthFactorCallback(
+      auth_factor_type, auth_factor_label, auth_factor_metadata, key_data,
+      auth_input_status.value(), auth_factor_storage_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
+      auth_block_type, auth_input_status.value(), std::move(create_callback));
+  return;
+}
+
+AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const KeyData& key_data,
+    const AuthInput& auth_input,
+    const AuthFactorStorageType auth_factor_storage_type,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    StatusCallback on_done) {
+  switch (auth_factor_storage_type) {
+    case AuthFactorStorageType::kUserSecretStash:
+      return base::BindOnce(
+          &AuthSession::UpdateAuthFactorViaUserSecretStash,
+          weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
+          auth_factor_metadata, key_data, auth_input,
+          std::move(auth_session_performance_timer), std::move(on_done));
+
+    case AuthFactorStorageType::kVaultKeyset:
+      return base::BindOnce(
+          &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
+          auth_factor_type, key_data, auth_input,
+          std::move(auth_session_performance_timer), std::move(on_done));
+  }
 }
 
 void AuthSession::UpdateAuthFactorViaUserSecretStash(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
+    const KeyData& key_data,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
@@ -1596,6 +1590,24 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
             user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED)
             .Wrap(std::move(encrypted_uss_container).status()));
     return;
+  }
+
+  // Update and persist the backup VaultKeyset. Smartcard is not updatable.
+  if (enable_create_backup_vk_with_uss_ &&
+      (auth_factor_type == AuthFactorType::kPassword ||
+       auth_factor_type == AuthFactorType::kPin)) {
+    user_data_auth::CryptohomeErrorCode error_code =
+        static_cast<user_data_auth::CryptohomeErrorCode>(
+            keyset_management_->UpdateKeysetWithKeyBlobs(
+                VaultKeysetIntent{.backup = true}, obfuscated_username_,
+                key_data, *vault_keyset_.get(), std::move(*key_blobs.get()),
+                std::move(auth_block_state)));
+    if (error_code != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error_code));
+      return;
+    }
   }
 
   // Update/persist the factor.
@@ -2087,7 +2099,10 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   }
 
   // Generate and persist the backup VaultKeyset
-  if (enable_create_backup_vk_with_uss_) {
+  if (enable_create_backup_vk_with_uss_ &&
+      (auth_factor_type == AuthFactorType::kPassword ||
+       auth_factor_type == AuthFactorType::kPin ||
+       auth_factor_type == AuthFactorType::kSmartCard)) {
     // Clobbering is on by default, in case of failure the VaultKeyset with the
     // existing label is overridden. We assume label is unique identifier across
     // all type of VaultKeysets, i.e backup, migrated, regular. So override is
@@ -2104,7 +2119,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
               CRYPTOHOME_ERR_LOC(
                   kLocAuthSessionAddBackupVKFailedInPersistToUSS),
               user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-              .Wrap(std::move(encrypted_uss_container).status()));
+              .Wrap(std::move(status)));
       return;
     }
   }
@@ -2565,7 +2580,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
   }
 
-  if (enable_create_backup_vk_with_uss_) {
+  if (enable_create_backup_vk_with_uss_ &&
+      auth_factor_type == AuthFactorType::kPassword) {
     // Authentication with UserSecretStash just finished. Now load the decrypted
     // backup VaultKeyset from disk so that adding a PIN backup VaultKeyset will
     // be possible when/if needed.

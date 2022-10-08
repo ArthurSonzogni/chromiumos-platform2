@@ -1797,7 +1797,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                  std::make_unique<AuthBlockState>(auth_block_state));
         return true;
       });
-  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _))
+  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   // Set a valid |vault_keyset_| to update.

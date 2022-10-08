@@ -517,7 +517,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->UpdateKeyset(updated_credentials,
+            keyset_management_->UpdateKeyset(VaultKeysetIntent{.backup = false},
+                                             updated_credentials,
                                              *vk_status.value().get()));
 
   // VERIFY
@@ -548,7 +549,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetFail) {
       keyset_management_->GetValidKeyset(users_[0].credentials);
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
-            keyset_management_->UpdateKeyset(updated_credentials,
+            keyset_management_->UpdateKeyset(VaultKeysetIntent{.backup = false},
+                                             updated_credentials,
                                              *vk_status.value().get()));
 
   // VERIFY
@@ -584,8 +586,9 @@ TEST_F(KeysetManagementTest, UpdateKeysetWithKeyBlobsSuccess) {
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             keyset_management_->UpdateKeysetWithKeyBlobs(
-                users_[0].obfuscated, new_data, *vk_status.value().get(),
-                std::move(new_key_blobs), std::move(auth_state_)));
+                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                new_data, *vk_status.value().get(), std::move(new_key_blobs),
+                std::move(auth_state_)));
 
   // VERIFY
   VerifyKeysetIndicies({kInitialKeysetIndex});
@@ -620,8 +623,9 @@ TEST_F(KeysetManagementTest, UpdateKeysetWithKeyBlobsFail) {
   ASSERT_TRUE(vk_status.ok());
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
             keyset_management_->UpdateKeysetWithKeyBlobs(
-                users_[0].obfuscated, new_data, *vk_status.value().get(),
-                std::move(new_key_blobs), std::move(auth_state_)));
+                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+                new_data, *vk_status.value().get(), std::move(new_key_blobs),
+                std::move(auth_state_)));
 
   // VERIFY
   VerifyKeysetIndicies({kInitialKeysetIndex});

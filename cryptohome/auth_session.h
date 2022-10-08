@@ -373,22 +373,13 @@ class AuthSession final {
   // TODO(b/204482221): Make `auth_factor_type` mandatory.
   void UpdateVaultKeyset(std::optional<AuthFactorType> auth_factor_type,
                          const KeyData& key_data,
-                         AuthInput auth_input,
+                         const AuthInput& auth_input,
                          std::unique_ptr<AuthSessionPerformanceTimer>
                              auth_session_performance_timer,
                          StatusCallback on_done,
                          CryptoStatus callback_error,
                          std::unique_ptr<KeyBlobs> key_blobs,
                          std::unique_ptr<AuthBlockState> auth_state);
-
-  // Updates a VaultKeyset identified by the |auth_factor_label|. Converts
-  // AuthFactor parameters into KeyData and calls UpdateVaultKeyset to carry
-  // out the update operation.
-  void UpdateAuthFactorViaVaultKeyset(AuthBlockType auth_block_type,
-                                      AuthFactorType auth_factor_type,
-                                      const std::string& auth_factor_label,
-                                      const AuthInput& auth_input,
-                                      StatusCallback on_done);
 
   // Persists key blocks for a new secret to the USS and onto disk. Upon
   // completion the |on_done| callback will be called. Designed to be used in
@@ -430,8 +421,23 @@ class AuthSession final {
                              auth_session_performance_timer,
                          StatusCallback on_done);
 
+  // Returns the callback function to add and AuthFactor for the right key store
+  // type.
   AuthBlock::CreateCallback GetAddAuthFactorCallback(
       const AuthFactorType& auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const KeyData& key_data,
+      const AuthInput& auth_input,
+      const AuthFactorStorageType auth_factor_storage_type,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      StatusCallback on_done);
+
+  // Returns the callback function to update and AuthFactor for the right key
+  // store type.
+  AuthBlock::CreateCallback GetUpdateAuthFactorCallback(
+      AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const KeyData& key_data,
@@ -530,6 +536,7 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
+      const KeyData& key_data,
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,

@@ -129,7 +129,8 @@ class KeysetManagement {
   // existing credentials is unwrapped. New keyset is updated to have the key
   // data from |new_credentials|, KeyBlobs from |VaultKeyset| and is wrapped by
   // the secret in |new_credentials|.
-  virtual CryptohomeErrorCode UpdateKeyset(const Credentials& new_credentials,
+  virtual CryptohomeErrorCode UpdateKeyset(const VaultKeysetIntent& vk_intent,
+                                           const Credentials& new_credentials,
                                            const VaultKeyset& vault_keyset);
 
   // Removes the keyset identified by |key_data|.  The VaultKeyset backing
@@ -254,6 +255,7 @@ class KeysetManagement {
   // is wrapped by the |key_blobs| passed, which should be derived from the new
   // credentials.
   virtual CryptohomeErrorCode UpdateKeysetWithKeyBlobs(
+      const VaultKeysetIntent& vk_intent,
       const std::string& obfuscated_username_new,
       const KeyData& key_data_new,
       const VaultKeyset& vault_keyset,

@@ -648,7 +648,9 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
 }
 
 CryptohomeErrorCode KeysetManagement::UpdateKeyset(
-    const Credentials& new_credentials, const VaultKeyset& vault_keyset) {
+    const VaultKeysetIntent& vk_intent,
+    const Credentials& new_credentials,
+    const VaultKeyset& vault_keyset) {
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
 
   // Check if there is an existing labeled keyset.
@@ -660,11 +662,12 @@ CryptohomeErrorCode KeysetManagement::UpdateKeyset(
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
-  return AddKeyset(VaultKeysetIntent{.backup = false}, new_credentials,
-                   vault_keyset, true /* we are updating existing keyset */);
+  return AddKeyset(vk_intent, new_credentials, vault_keyset,
+                   true /* we are updating existing keyset */);
 }
 
 CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
+    const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username_new,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset,
@@ -679,10 +682,10 @@ CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
-  return AddKeysetWithKeyBlobs(
-      VaultKeysetIntent{.backup = false}, obfuscated_username_new, key_data_new,
-      vault_keyset, std::move(key_blobs), std::move(auth_state),
-      true /* we are updating existing keyset */);
+  return AddKeysetWithKeyBlobs(vk_intent, obfuscated_username_new, key_data_new,
+                               vault_keyset, std::move(key_blobs),
+                               std::move(auth_state),
+                               true /* we are updating existing keyset */);
 }
 
 CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
