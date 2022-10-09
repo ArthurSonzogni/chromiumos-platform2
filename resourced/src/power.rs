@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use glob::glob;
-use sys_util::info;
+use sys_util::{error, info};
 
 use crate::common;
 use crate::common::{FullscreenVideo, GameMode, RTCAudioActive};
@@ -286,7 +286,8 @@ pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
         + "/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
 
     for entry in glob(&pattern)? {
-        std::fs::write(&entry?, value).context("Failed to set EPP sysfs value!")?;
+        std::fs::write(&entry?, value)
+            .with_context(|| format!("Failed to set EPP sysfs value to {}!", value))?;
     }
 
     Ok(())
@@ -343,7 +344,10 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         if let Some(root) = self.root.to_str() {
             /* TODO(b/233359053): These values should be migrated to chromeos-config */
             if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
-                set_epp(root, "179")?; // Set EPP to 70%
+                // Set EPP to 70%. Not all platforms support hardware EPP.
+                if let Err(err) = set_epp(root, "179") {
+                    error!("Failed to set energy performance preference: {:#}", err);
+                }
             } else if rtc != RTCAudioActive::Active && fullscreen != FullscreenVideo::Active {
                 set_epp(root, "balance_performance")?; // Default EPP
             }

@@ -193,6 +193,17 @@ fn get_fullscreen_video(m: &MethodInfo) -> MethodResult {
     }
 }
 
+fn power_supply_change(m: &MethodInfo) -> MethodResult {
+    let context = m.tree.get_data();
+    match common::update_power_preferences(&*context.power_preferences_manager) {
+        Ok(()) => Ok(vec![m.msg.method_return()]),
+        Err(e) => {
+            error!("{:#}", e);
+            Err(MethodErr::failed("Failed to update power preferences"))
+        }
+    }
+}
+
 fn set_fullscreen_video_with_timeout(m: &MethodInfo) -> MethodResult {
     let (mode_raw, timeout_raw): (u8, u32) = m.msg.read2()?;
     let mode = common::FullscreenVideo::try_from(mode_raw)
@@ -326,6 +337,7 @@ pub fn service_main<P: 'static + power::PowerPreferencesManager>(
                     f.method("GetFullscreenVideo", (), get_fullscreen_video)
                         .outarg::<u8, _>("mode"),
                 )
+                .add_m(f.method("PowerSupplyChange", (), power_supply_change))
                 .add_m(
                     f.method(
                         "SetFullscreenVideoWithTimeout",

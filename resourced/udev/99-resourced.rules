@@ -7,3 +7,7 @@ DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="", \
 
 KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_governor"
+
+ACTION=="change", SUBSYSTEM=="power_supply", \
+  RUN+="/usr/bin/dbus-send --system --dest=org.chromium.ResourceManager \
+  /org/chromium/ResourceManager org.chromium.ResourceManager.PowerSupplyChange"
