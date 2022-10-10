@@ -29,7 +29,7 @@ int Daemon::OnInit() {
   }
 
   if (bpf_plugin_factory_ == nullptr) {
-    bpf_plugin_factory_ = std::make_unique<BpfPluginFactory>();
+    bpf_plugin_factory_ = std::make_unique<PluginFactory>();
   }
 
   if (message_sender_ == nullptr) {
@@ -51,13 +51,19 @@ int Daemon::OnInit() {
 }
 
 int Daemon::CreateAndRunBpfPlugins() {
-  auto plugin = bpf_plugin_factory_->CreateProcessPlugin(message_sender_);
+  auto plugin =
+      bpf_plugin_factory_->Create(Types::Plugin::kProcess, message_sender_);
+
+  if (!plugin) {
+    return EX_SOFTWARE;
+  }
+
   if (plugin->PolicyIsEnabled()) {
     bpf_plugins_.push_back(std::move(plugin));
   }
   for (auto& plugin : bpf_plugins_) {
     // If BPFs fail loading this is a serious error and the daemon should exit.
-    absl::Status result = plugin->LoadAndRun();
+    absl::Status result = plugin->Activate();
     if (!result.ok()) {
       LOG(ERROR) << result.message();
       return EX_SOFTWARE;

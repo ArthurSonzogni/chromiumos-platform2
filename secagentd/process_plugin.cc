@@ -6,12 +6,13 @@
 
 #include "absl/status/status.h"
 #include "base/logging.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/strings/string_tokenizer.h"
 #include "base/strings/stringprintf.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
-#include "secagentd/skeleton_factory.h"
 
 namespace {
 
@@ -30,6 +31,7 @@ std::string SafeTransformArgvEnvp(const char* buf,
   while (t.GetNext()) {
     str.append(base::StringPrintf("'%s' ", t.token().c_str()));
   }
+
   if (str.length() > 0) {
     str.pop_back();
   }
@@ -74,14 +76,15 @@ static void print_process_change_ns(
 }
 
 ProcessPlugin::ProcessPlugin(
-    std::unique_ptr<BpfSkeletonFactoryInterface> factory,
-    scoped_refptr<MessageSender> message_sender)
+    scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+    scoped_refptr<MessageSenderInterface> message_sender)
     : weak_ptr_factory_(this), message_sender_(message_sender) {
-  factory_ = std::move(factory);
   CHECK(message_sender != nullptr);
+  CHECK(bpf_skeleton_factory);
+  factory_ = std::move(bpf_skeleton_factory);
 }
 
-std::string ProcessPlugin::GetPluginName() const {
+std::string ProcessPlugin::GetName() const {
   return "ProcessBPF";
 }
 
@@ -119,7 +122,7 @@ bool ProcessPlugin::PolicyIsEnabled() const {
   // should be loaded.
   return true;
 }
-absl::Status ProcessPlugin::LoadAndRun() {
+absl::Status ProcessPlugin::Activate() {
   if (!PolicyIsEnabled()) {
     return absl::InternalError(
         "Failed to load Process BPF: Device policy forbids it.");
@@ -130,7 +133,8 @@ absl::Status ProcessPlugin::LoadAndRun() {
   callbacks.ring_buffer_read_ready_callback =
       base::BindRepeating(&ProcessPlugin::HandleBpfRingBufferReadReady,
                           weak_ptr_factory_.GetWeakPtr());
-  skeleton_wrapper_ = factory_->Create(std::move(callbacks));
+  skeleton_wrapper_ =
+      factory_->Create(Types::BpfSkeleton::kProcess, std::move(callbacks));
   if (skeleton_wrapper_ == nullptr) {
     return absl::InternalError("Process BPF program loading error.");
   }

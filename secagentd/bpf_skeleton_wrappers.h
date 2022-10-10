@@ -5,12 +5,15 @@
 #ifndef SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 #define SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 
-#include <absl/status/status.h>
-#include <base/callback.h>
-#include <base/files/file_descriptor_watcher_posix.h>
-#include <base/memory/weak_ptr.h>
 #include <memory>
+#include <string>
+#include <utility>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
+#include "base/callback.h"
+#include "base/files/file_descriptor_watcher_posix.h"
 #include "secagentd/bpf/process.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 
@@ -35,29 +38,36 @@ struct BpfCallbacks {
 
 class BpfSkeletonInterface {
  public:
-  BpfSkeletonInterface() = default;
   explicit BpfSkeletonInterface(const BpfSkeletonInterface&) = delete;
   BpfSkeletonInterface& operator=(const BpfSkeletonInterface&) = delete;
   virtual ~BpfSkeletonInterface() = default;
+  // Consume one or more events from a BPF ring buffer, ignoring whether a ring
+  // buffer has notified that data is available for read.
+  virtual int ConsumeEvent() = 0;
+
+ protected:
+  friend class BpfSkeletonFactory;
+  BpfSkeletonInterface() = default;
+
   virtual absl::Status LoadAndAttach() = 0;
 
   // Register callbacks to handle:
   // 1 - When a security event from a ring buffer has been consumed and is
   // available for further processing.
   // 2 - When a ring buffer has data available for reading.
-  void RegisterCallbacks(BpfCallbacks cbs);
-
-  // Consume one or more events from a BPF ring buffer, ignoring whether a ring
-  // buffer has notified that data is available for read.
-  virtual int ConsumeEvent() = 0;
+  virtual void RegisterCallbacks(BpfCallbacks cbs) = 0;
 };
 
 class ProcessBpfSkeleton : public BpfSkeletonInterface {
  public:
   ~ProcessBpfSkeleton() override;
-  absl::Status LoadAndAttach() override;
-  void RegisterCallbacks(BpfCallbacks cbs);
   int ConsumeEvent() override;
+
+ protected:
+  friend class BpfSkeletonFactory;
+
+  absl::Status LoadAndAttach() override;
+  void RegisterCallbacks(BpfCallbacks cbs) override;
 
  private:
   BpfCallbacks callbacks_;
@@ -65,5 +75,6 @@ class ProcessBpfSkeleton : public BpfSkeletonInterface {
   struct ring_buffer* rb_{nullptr};
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
 };
+
 }  //  namespace secagentd
 #endif  // SECAGENTD_BPF_SKELETON_WRAPPERS_H_

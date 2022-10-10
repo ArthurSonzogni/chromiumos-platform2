@@ -17,13 +17,21 @@
 
 namespace secagentd {
 
-class MessageSender : public base::RefCountedThreadSafe<MessageSender> {
+class MessageSenderInterface
+    : public base::RefCountedThreadSafe<MessageSenderInterface> {
+ public:
+  virtual absl::Status InitializeQueues() = 0;
+  virtual absl::Status SendMessage(const bpf::event& event) = 0;
+  virtual ~MessageSenderInterface() = default;
+};
+
+class MessageSender : public MessageSenderInterface {
  public:
   // Initializes a queue for each destination and stores result into queue_map.
-  absl::Status InitializeQueues();
+  absl::Status InitializeQueues() override;
 
   // Creates and enqueues a proto message with given bpf event.
-  absl::Status SendMessage(const bpf::event& event);
+  absl::Status SendMessage(const bpf::event& event) override;
 
  private:
   // Map linking each destination to its corresponding Report_Queue.

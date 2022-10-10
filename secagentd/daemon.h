@@ -28,7 +28,7 @@ namespace secagentd {
 
 class Daemon : public brillo::DBusDaemon {
   struct Inject {
-    std::unique_ptr<BpfPluginFactoryInterface> bpf_plugin_factory_;
+    std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
     scoped_refptr<MessageSender> message_sender_;
   };
 
@@ -52,7 +52,7 @@ class Daemon : public brillo::DBusDaemon {
   base::RepeatingTimer heart_beat_;
   base::RepeatingTimer send_report_;
   scoped_refptr<MessageSender> message_sender_;
-  std::unique_ptr<BpfPluginFactoryInterface> bpf_plugin_factory_;
+  std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> bpf_plugins_;
 };
 };  // namespace secagentd

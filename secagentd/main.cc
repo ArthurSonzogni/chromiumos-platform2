@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include <brillo/flag_helper.h>
-#include <brillo/syslog_logging.h>
+#include "base/logging.h"
+#include "brillo/flag_helper.h"
+#include "brillo/syslog_logging.h"
 #include "secagentd/daemon.h"
 
 int main(int argc, char** argv) {
