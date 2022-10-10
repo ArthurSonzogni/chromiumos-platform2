@@ -336,6 +336,8 @@ void EffectsStreamManipulator::OnOptionsUpdated(
       new_config.effect = mojom::CameraEffect::kBackgroundReplace;
     } else if (tmp == std::string("relight")) {
       new_config.effect = mojom::CameraEffect::kPortraitRelight;
+    } else if (tmp == std::string("blur_relight")) {
+      new_config.effect = mojom::CameraEffect::kBackgroundBlurPortraitRelight;
     } else if (tmp == std::string("none")) {
       new_config.effect = mojom::CameraEffect::kNone;
     } else {

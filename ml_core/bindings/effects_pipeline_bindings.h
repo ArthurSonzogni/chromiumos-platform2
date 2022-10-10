@@ -34,10 +34,15 @@ struct BRILLO_EXPORT EffectsConfig {
   // Maximum number of frames allowed in flight.
   int graph_max_frames_in_flight = 2;
 
+  // Enable mediapipe profiling.
+  // Must be built with --define DRISHTI_PROFILING=1
+  bool enable_profiling = false;
+
   inline bool operator==(const EffectsConfig& rhs) const {
     return effect == rhs.effect && blur_level == rhs.blur_level &&
            segmentation_gpu_api == rhs.segmentation_gpu_api &&
-           graph_max_frames_in_flight == rhs.graph_max_frames_in_flight;
+           graph_max_frames_in_flight == rhs.graph_max_frames_in_flight &&
+           enable_profiling == rhs.enable_profiling;
   }
 
   inline bool operator!=(const EffectsConfig& rhs) const {
