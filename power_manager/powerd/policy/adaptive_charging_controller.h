@@ -173,6 +173,14 @@ class ChargeHistory {
   // window.
   base::TimeDelta GetHoldTimeOnAC();
 
+  // Returns the charging duration that is the `percentile` percentile for the
+  // recorded charge durations. `percentile` should be in the range [0.0, 1.0].
+  // A value of 0.5 means that it will return the minimum charge duration that
+  // is greater than 50% of the other charge durations. 0.0 will return the
+  // shortest duration, and 1.0 will return base::TimeDelta::Max. Any
+  // `percentile` value outside of [0.0, 1.0] will fail a CHECK.
+  base::TimeDelta GetChargeDurationPercentile(double percentile);
+
   // Returns the number of days that have charge history recorded.
   int DaysOfHistory();
 
@@ -626,6 +634,12 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // value in this vector must be larger than `min_probability_` for the
   // prediction to be used to delay charging.
   double min_probability_;
+
+  // The percentile for ChargeHistory::charge_events_ durations to use as the
+  // maximum delay for Adaptive Charging (minus `kFinishChargingDelay`). Used as
+  // a personalized heuristic to make Adaptive Charging less aggressive, thus
+  // making it more likely users will unplug with a full charge if possible.
+  double max_delay_percentile_;
 
   // Whether Adaptive Charging logic was started on AC plug in, or when it was
   // enabled. Currently set to false if the battery was full under these

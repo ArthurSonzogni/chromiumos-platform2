@@ -43,6 +43,8 @@ const int kMaxChargeEvents = 50;
 const int kHeuristicMinDaysHistory = 14;
 const double kHeuristicMinFullOnACRatio = 0.5;
 
+const double kDefaultMaxDelayPercentile = 0.3;
+
 const int64_t kBatterySustainDisabled = -1;
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
@@ -242,6 +244,28 @@ base::TimeDelta ChargeHistory::GetHoldTimeOnAC() {
     hold_duration_on_ac += clock_.GetCurrentBootTime() - hold_charge_ticks_;
 
   return hold_duration_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
+}
+
+base::TimeDelta ChargeHistory::GetChargeDurationPercentile(double percentile) {
+  CHECK(0.0 <= percentile);
+  CHECK(1.0 >= percentile);
+
+  // If there are no charge durations yet or the percentile is 1.0 (100%), don't
+  // limit Adaptive Charging's hold duration.
+  if (charge_events_.empty() || percentile == 1.0)
+    return base::TimeDelta::Max();
+
+  // Copy durations to a separate vector, then use std::nth_element to find the
+  // `percentile` duration.
+  std::vector<base::TimeDelta> durations;
+  for (auto val : charge_events_)
+    durations.push_back(val.second);
+
+  size_t idx = std::min(
+      charge_events_.size() - 1,
+      static_cast<size_t>(std::ceil(percentile * charge_events_.size())));
+  std::nth_element(durations.begin(), durations.begin() + idx, durations.end());
+  return durations[idx];
 }
 
 int ChargeHistory::DaysOfHistory() {
@@ -765,9 +789,11 @@ void AdaptiveChargingController::Init(
   recheck_alarm_interval_ = kDefaultAlarmInterval;
   report_charge_time_ = false;
   hold_percent_ = kDefaultHoldPercent;
+  hold_percent_start_time_ = base::TimeTicks();
   hold_delta_percent_ = 0;
   display_percent_ = kDefaultHoldPercent;
   min_probability_ = kDefaultMinProbability;
+  max_delay_percentile_ = kDefaultMaxDelayPercentile;
   cached_external_power_ = PowerSupplyProperties_ExternalPower_DISCONNECTED;
   is_sustain_set_ = false;
   adaptive_charging_enabled_ = false;
@@ -839,6 +865,13 @@ void AdaptiveChargingController::HandlePolicyChange(
   if (policy.has_adaptive_charging_min_probability() &&
       policy.adaptive_charging_min_probability() != min_probability_) {
     min_probability_ = policy.adaptive_charging_min_probability();
+    restart_adaptive = IsRunning();
+  }
+
+  if (policy.has_adaptive_charging_max_delay_percentile() &&
+      policy.adaptive_charging_max_delay_percentile() !=
+          max_delay_percentile_) {
+    max_delay_percentile_ = policy.adaptive_charging_max_delay_percentile();
     restart_adaptive = IsRunning();
   }
 
@@ -932,9 +965,25 @@ void AdaptiveChargingController::OnPredictionResponse(
     return;
   }
 
+  // Apply the max delay heuristic based on the past charge durations.
+  base::TimeDelta target_delay = base::Hours(hour);
+  base::TimeTicks target_time = clock_.GetCurrentBootTime() + target_delay;
+  if (hour == (result.size() - 1)) {
+    target_delay = base::TimeDelta::Max();
+    target_time = base::TimeTicks::Max();
+  }
+
+  if (hold_percent_start_time_ != base::TimeTicks()) {
+    base::TimeDelta max_delay =
+        charge_history_.GetChargeDurationPercentile(max_delay_percentile_);
+    if (target_time - hold_percent_start_time_ > max_delay) {
+      target_time = hold_percent_start_time_ + max_delay;
+      target_delay = target_time - clock_.GetCurrentBootTime();
+    }
+  }
+
   // If the prediction isn't confident that the AC charger will remain plugged
   // in for the time left to finish charging, stop delaying and start charging.
-  base::TimeDelta target_delay = base::Hours(hour);
   if (target_delay <= kFinishChargingDelay) {
     StopAdaptiveCharging();
     if (hold_percent_start_time_ != base::TimeTicks())
@@ -950,14 +999,13 @@ void AdaptiveChargingController::OnPredictionResponse(
   // charge. The `recheck_alarm_` causes this code to be run again.
   StartRecheckAlarm(recheck_alarm_interval_);
 
-  base::TimeTicks target_time = clock_.GetCurrentBootTime() + target_delay;
   const system::PowerStatus status = power_supply_->GetPowerStatus();
 
   // If the last value in `result` was the largest probability and greater than
   // `min_probability_`, we don't set the `charge_alarm_` yet. It will be set
   // when this is no longer the case when this function is run again via the
   // `recheck_alarm_` or a suspend attempt.
-  if (hour != (result.size() - 1)) {
+  if (target_delay != base::TimeDelta::Max()) {
     // Don't allow the time to start charging, which is
     // `target_full_charge_time_` - `kFinishChargingDelay`, to be pushed out as
     // long as `status.display_battery_percentage` is in the hold range or
@@ -1055,12 +1103,12 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
     // Since we report metrics on how well the ML model does even if Adaptive
     // Charging isn't enabled, we still record this timestamp.
     if (hold_percent_start_time_ == base::TimeTicks())
-      hold_percent_start_time_ = base::TimeTicks::Now();
+      hold_percent_start_time_ = clock_.GetCurrentBootTime();
   }
 
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
       charge_finished_time_ == base::TimeTicks() && report_charge_time_)
-    charge_finished_time_ = base::TimeTicks::Now();
+    charge_finished_time_ = clock_.GetCurrentBootTime();
 }
 
 void AdaptiveChargingController::HandleChargeNow(

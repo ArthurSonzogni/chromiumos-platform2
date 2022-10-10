@@ -429,10 +429,13 @@ TEST_F(AdaptiveChargingControllerTest, TestMaxTimeSustain) {
   Init();
 
   delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+  PowerManagementPolicy policy;
+  // Set the percentile for the max delay heuristic to 1.0, which effectively
+  // disables the heuristic.
+  policy.set_adaptive_charging_max_delay_percentile(1.0);
   // Disable then enable Adaptive Charging to allow the charge delay to go up,
   // since we will already have a target charge time from calling Init and we
   // reached the hold percent (which prevents the charge delay from increasing).
-  PowerManagementPolicy policy;
   policy.set_adaptive_charging_enabled(false);
   adaptive_charging_controller_.HandlePolicyChange(policy);
   policy.set_adaptive_charging_enabled(true);
@@ -1053,6 +1056,52 @@ TEST_F(AdaptiveChargingControllerTest, TestFutureChargeEventDeleted) {
   EXPECT_TRUE(ChargeHistoryFileExists(charge_events_dir_, event_time));
   InitNoHistory();
   EXPECT_FALSE(ChargeHistoryFileExists(charge_events_dir_, event_time));
+}
+
+TEST_F(AdaptiveChargingControllerTest, TestGetChargeDurationPercentile) {
+  InitFullCharge();
+
+  for (int i = 0; i < 15; ++i) {
+    EXPECT_EQ(charge_history_->GetChargeDurationPercentile(
+                  static_cast<double>(i) / 15.0),
+              base::Hours(i + 1));
+  }
+  EXPECT_EQ(charge_history_->GetChargeDurationPercentile(1.0),
+            base::TimeDelta::Max());
+}
+
+TEST_F(AdaptiveChargingControllerTest, TestMaxDelayHeuristic) {
+  Clock* clock = adaptive_charging_controller_.clock();
+  // Set the boot time to a non-zero constant value. This is needed for the
+  // delay equality checking below. We can't set to just base::TimeTicks(),
+  // since some of the AdaptiveChargingController code conditionally checks
+  // that.
+  clock->set_current_boot_time_for_testing(base::TimeTicks() +
+                                           base::Seconds(1));
+  Init();
+  SetHoldCharge();
+
+  // Default heuristic with the 30th percentile for charge durations from Charge
+  // History. For the 15 durations in Charge History, the 30th percentile is
+  // greater than 5 values. This means that the 6th duration (out of 1, 2, ...,
+  // 15 hours) is used. 2 hours is subtracted from that based on the
+  // `kFinishChargingDelay` value.
+  EXPECT_EQ(
+      clock->GetCurrentBootTime() + base::Hours(4) +
+          AdaptiveChargingController::kFinishChargingDelay,
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing());
+
+  // Check that changing `max_delay_percentile_` changes
+  // `target_full_charge_time_`. Also check that max delays are correctly
+  // modified.
+  PowerManagementPolicy policy;
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+  policy.set_adaptive_charging_max_delay_percentile(0.7);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(
+      clock->GetCurrentBootTime() + base::Hours(10) +
+          AdaptiveChargingController::kFinishChargingDelay,
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing());
 }
 
 }  // namespace policy
