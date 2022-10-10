@@ -455,16 +455,15 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         (PressureLevelArcvm::None, 0)
     };
 
-    let arcvm_level = if game_mode == common::GameMode::Arc
-        && raw_arcvm_level > PressureLevelArcvm::Cached
-    {
-        // Do not kill Android apps that are perceptible or foreground, only
-        // those that are cached. Otherwise, the fullscreen Android app or a
-        // service it needs may be killed.
-        PressureLevelArcvm::Cached
-    } else {
-        raw_arcvm_level
-    };
+    let arcvm_level =
+        if game_mode == common::GameMode::Arc && raw_arcvm_level > PressureLevelArcvm::Cached {
+            // Do not kill Android apps that are perceptible or foreground, only
+            // those that are cached. Otherwise, the fullscreen Android app or a
+            // service it needs may be killed.
+            PressureLevelArcvm::Cached
+        } else {
+            raw_arcvm_level
+        };
 
     Ok(PressureStatus {
         chrome_level,
