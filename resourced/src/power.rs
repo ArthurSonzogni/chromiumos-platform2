@@ -17,7 +17,7 @@ use crate::config;
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
 const POWER_SUPPLY_STATUS: &str = "status";
-const ONDEMAND_PATH: &str = "sys/devices/system/cpu/cpufreq/ondemand";
+const GLOBAL_ONDEMAND_PATH: &str = "sys/devices/system/cpu/cpufreq/ondemand";
 
 pub trait PowerSourceProvider {
     /// Returns the current power source of the system.
@@ -151,6 +151,25 @@ pub trait PowerPreferencesManager {
     ) -> Result<()>;
 }
 
+fn write_to_path_patterns(pattern: &str, new_value: &str) -> Result<()> {
+    for entry in glob(pattern)? {
+        let path = entry?;
+        let current_value = read_to_string(&path)
+            .with_context(|| format!("Error reading attribute from {}", path.display()))?;
+        if current_value != new_value {
+            std::fs::write(&path, new_value).with_context(|| {
+                format!(
+                    "Failed to set attribute to {}, new value: {}",
+                    path.display(),
+                    new_value
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Debug)]
 /// Applies [power preferences](config::PowerPreferences) to the system by writing to
 /// the system's sysfs nodes.
@@ -164,38 +183,85 @@ pub struct DirectoryPowerPreferencesManager<C: config::ConfigProvider, P: PowerS
 }
 
 impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
-    fn set_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
-        let path = self.root.join(ONDEMAND_PATH).join(attr);
+    // The global ondemand parameters are in /sys/devices/system/cpu/cpufreq/ondemand/.
+    fn set_global_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
+        let path = self.root.join(GLOBAL_ONDEMAND_PATH).join(attr);
 
-        std::fs::write(&path, value.to_string())
-            .with_context(|| format!("Error writing {} {} to {}", attr, value, path.display()))?;
+        let current_value_str = read_to_string(&path)
+            .with_context(|| format!("Error reading ondemand parameter from {}", path.display()))?;
+        let current_value = current_value_str.parse::<u32>()?;
 
-        info!("Updating ondemand {} to {}", attr, value);
+        // Check current value before writing to avoid permission error when the new value and
+        // current value are the same but resourced didn't own the parameter file.
+        if current_value != value {
+            std::fs::write(&path, value.to_string()).with_context(|| {
+                format!("Error writing {} {} to {}", attr, value, path.display())
+            })?;
+
+            info!("Updating ondemand {} to {}", attr, value);
+        }
 
         Ok(())
     }
 
+    // The per-policy ondemand parameters are in /sys/devices/system/cpu/cpufreq/policy*/ondemand/.
+    fn set_per_policy_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
+        const ONDEMAND_PATTERN: &str = "sys/devices/system/cpu/cpufreq/policy*/ondemand";
+        let pattern = self
+            .root
+            .join(ONDEMAND_PATTERN)
+            .join(attr)
+            .to_str()
+            .context("Cannot convert ondemand path to string")?
+            .to_owned();
+        write_to_path_patterns(&pattern, &value.to_string())
+    }
+
+    fn set_scaling_governor(&self, new_governor: &str) -> Result<()> {
+        const GOVERNOR_PATTERN: &str = "sys/devices/system/cpu/cpufreq/policy*/scaling_governor";
+        let pattern = self
+            .root
+            .join(GOVERNOR_PATTERN)
+            .to_str()
+            .context("Cannot convert scaling_governor path to string")?
+            .to_owned();
+
+        write_to_path_patterns(&pattern, new_governor)
+    }
+
     fn apply_governor_preferences(&self, governor: config::Governor) -> Result<()> {
-        match governor {
-            config::Governor::OndemandGovernor {
-                powersave_bias,
-                sampling_rate,
-            } => {
-                let path = self.root.join(ONDEMAND_PATH);
+        self.set_scaling_governor(governor.to_name())?;
 
-                if !path.exists() {
-                    // We don't support switching the current governor. In theory we could,
-                    // but we would need to figure out how to grant resourced write permissions
-                    // to the new governor's sysfs nodes. Since we currently only support one
-                    // governor in the config, we just print a message.
-                    info!("ondemand governor is not active, not applying preferences.");
-                    return Ok(());
-                }
+        if let config::Governor::Ondemand {
+            powersave_bias,
+            sampling_rate,
+        } = governor
+        {
+            let global_path = self.root.join(GLOBAL_ONDEMAND_PATH);
 
-                self.set_ondemand_governor_value("powersave_bias", powersave_bias)?;
+            // There are 2 use cases now:
+            // 1. on guybrush, the scaling_governor is always ondemand, the ondemand directory is
+            //    chowned to resourced so resourced can set the ondemand parameters.
+            // 2. on herobrine, resourced only changes the scaling_governor, so the permission of
+            //    the new governor's sysfs nodes doesn't matter.
+            // TODO: support changing both the scaling_governor and the governor's parameters.
+
+            // The ondemand tunable could be global (system-wide) or per-policy, depending on the
+            // scaling driver in use [1]. The global ondemand tunable is in
+            // /sys/devices/system/cpu/cpufreq/ondemand. The per-policy ondemand tunable is in
+            // /sys/devices/system/cpu/cpufreq/policy*/ondemand.
+            //
+            // [1]: https://www.kernel.org/doc/html/latest/admin-guide/pm/cpufreq.html
+            if global_path.exists() {
+                self.set_global_ondemand_governor_value("powersave_bias", powersave_bias)?;
 
                 if let Some(sampling_rate) = sampling_rate {
-                    self.set_ondemand_governor_value("sampling_rate", sampling_rate)?;
+                    self.set_global_ondemand_governor_value("sampling_rate", sampling_rate)?;
+                }
+            } else {
+                self.set_per_policy_ondemand_governor_value("powersave_bias", powersave_bias)?;
+                if let Some(sampling_rate) = sampling_rate {
+                    self.set_per_policy_ondemand_governor_value("sampling_rate", sampling_rate)?;
                 }
             }
         }

@@ -492,7 +492,7 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             let actual = provider.read_power_preferences(power_source, preference)?;
 
             let expected = config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 340,
                     sampling_rate: None,
                 }),
@@ -508,7 +508,7 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             let actual = provider.read_power_preferences(power_source, preference)?;
 
             let expected = config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 340,
                     sampling_rate: None,
                 }),
@@ -524,7 +524,7 @@ fn test_config_provider_ondemand_all_types() -> Result<()> {
             let actual = provider.read_power_preferences(power_source, preference)?;
 
             let expected = config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 340,
                     sampling_rate: Some(16000),
                 }),
@@ -669,7 +669,7 @@ impl power::PowerSourceProvider for FakePowerSourceProvider {
     }
 }
 
-fn write_powersave_bias(root: &Path, value: u32) -> Result<()> {
+fn write_global_powersave_bias(root: &Path, value: u32) -> Result<()> {
     let ondemand_path = root.join("sys/devices/system/cpu/cpufreq/ondemand");
     fs::create_dir_all(&ondemand_path)?;
 
@@ -678,7 +678,7 @@ fn write_powersave_bias(root: &Path, value: u32) -> Result<()> {
     Ok(())
 }
 
-fn read_powersave_bias(root: &Path) -> Result<String> {
+fn read_global_powersave_bias(root: &Path) -> Result<String> {
     let powersave_bias_path = root
         .join("sys/devices/system/cpu/cpufreq/ondemand")
         .join("powersave_bias");
@@ -688,7 +688,7 @@ fn read_powersave_bias(root: &Path) -> Result<String> {
     Ok(powersave_bias)
 }
 
-fn write_sampling_rate(root: &Path, value: u32) -> Result<()> {
+fn write_global_sampling_rate(root: &Path, value: u32) -> Result<()> {
     let ondemand_path = root.join("sys/devices/system/cpu/cpufreq/ondemand");
     fs::create_dir_all(&ondemand_path)?;
 
@@ -697,7 +697,7 @@ fn write_sampling_rate(root: &Path, value: u32) -> Result<()> {
     Ok(())
 }
 
-fn read_sampling_rate(root: &Path) -> Result<String> {
+fn read_global_sampling_rate(root: &Path) -> Result<String> {
     let sampling_rate_path = root
         .join("sys/devices/system/cpu/cpufreq/ondemand")
         .join("sampling_rate");
@@ -705,6 +705,86 @@ fn read_sampling_rate(root: &Path) -> Result<String> {
     let sampling_rate = std::fs::read_to_string(sampling_rate_path)?;
 
     Ok(sampling_rate)
+}
+
+// In the following per policy access functions, there are 2 cpufreq policies: policy0 and policy1.
+
+const TEST_CPUFREQ_POLICIES: &[&str] = &[
+    "sys/devices/system/cpu/cpufreq/policy0",
+    "sys/devices/system/cpu/cpufreq/policy1",
+];
+const SCALING_GOVERNOR_FILENAME: &str = "scaling_governor";
+const ONDEMAND_DIRECTORY: &str = "ondemand";
+const POWERSAVE_BIAS_FILENAME: &str = "powersave_bias";
+const SAMPLING_RATE_FILENAME: &str = "sampling_rate";
+
+// Instead of returning an error, crash/assert immediately in a test utility function makes it
+// easier to debug an unittest.
+fn write_per_policy_scaling_governor(root: &Path, governor: config::Governor) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let policy_path = root.join(policy);
+        fs::create_dir_all(&policy_path).unwrap();
+        std::fs::write(
+            policy_path.join(SCALING_GOVERNOR_FILENAME),
+            governor.to_name(),
+        )
+        .unwrap();
+    }
+}
+
+fn check_per_policy_scaling_governor(root: &Path, expected: config::Governor) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
+        let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
+        assert_eq!(scaling_governor, expected.to_name());
+    }
+}
+
+fn write_per_policy_powersave_bias(root: &Path, value: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
+        println!("ondemand_path: {}", ondemand_path.display());
+        fs::create_dir_all(&ondemand_path).unwrap();
+        std::fs::write(
+            ondemand_path.join(POWERSAVE_BIAS_FILENAME),
+            value.to_string(),
+        )
+        .unwrap();
+    }
+}
+
+fn check_per_policy_powersave_bias(root: &Path, expected: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let powersave_bias_path = root
+            .join(policy)
+            .join(ONDEMAND_DIRECTORY)
+            .join(POWERSAVE_BIAS_FILENAME);
+        let powersave_bias = std::fs::read_to_string(powersave_bias_path).unwrap();
+        assert_eq!(powersave_bias, expected.to_string());
+    }
+}
+
+fn write_per_policy_sampling_rate(root: &Path, value: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
+        fs::create_dir_all(&ondemand_path).unwrap();
+        std::fs::write(
+            ondemand_path.join(SAMPLING_RATE_FILENAME),
+            value.to_string(),
+        )
+        .unwrap();
+    }
+}
+
+fn check_per_policy_sampling_rate(root: &Path, expected: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let sampling_rate_path = root
+            .join(policy)
+            .join(ONDEMAND_DIRECTORY)
+            .join(SAMPLING_RATE_FILENAME);
+        let sampling_rate = std::fs::read_to_string(sampling_rate_path).unwrap();
+        assert_eq!(sampling_rate, expected.to_string());
+    }
 }
 
 fn write_epp(root: &Path, value: &str) -> Result<()> {
@@ -737,7 +817,7 @@ fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
     let config_provider = FakeConfigProvider {
         default_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: None,
                 }),
@@ -759,7 +839,7 @@ fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
     )?;
 
     // We shouldn't have written anything.
-    let powersave_bias = read_powersave_bias(root.path());
+    let powersave_bias = read_global_powersave_bias(root.path());
     assert!(powersave_bias.is_err());
 
     Ok(())
@@ -769,8 +849,8 @@ fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
 fn test_power_update_power_preferences_none() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -793,10 +873,10 @@ fn test_power_update_power_preferences_none() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "0");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "2000");
 
     Ok(())
@@ -806,8 +886,8 @@ fn test_power_update_power_preferences_none() -> Result<()> {
 fn test_power_update_power_preferences_default_ac() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -818,7 +898,7 @@ fn test_power_update_power_preferences_default_ac() -> Result<()> {
             assert_eq!(power_source, config::PowerSourceType::AC);
 
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(16000),
                 }),
@@ -839,10 +919,10 @@ fn test_power_update_power_preferences_default_ac() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
 
     Ok(())
@@ -852,8 +932,8 @@ fn test_power_update_power_preferences_default_ac() -> Result<()> {
 fn test_power_update_power_preferences_default_dc() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::DC,
@@ -864,7 +944,7 @@ fn test_power_update_power_preferences_default_dc() -> Result<()> {
             assert_eq!(power_source, config::PowerSourceType::DC);
 
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: None,
                 }),
@@ -885,10 +965,10 @@ fn test_power_update_power_preferences_default_dc() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "2000");
 
     Ok(())
@@ -898,8 +978,8 @@ fn test_power_update_power_preferences_default_dc() -> Result<()> {
 fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -908,7 +988,7 @@ fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
     let config_provider = FakeConfigProvider {
         default_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(4000),
                 }),
@@ -930,10 +1010,10 @@ fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "4000");
 
     Ok(())
@@ -943,8 +1023,8 @@ fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
 fn test_power_update_power_preferences_rtc_active() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -953,7 +1033,7 @@ fn test_power_update_power_preferences_rtc_active() -> Result<()> {
     let config_provider = FakeConfigProvider {
         web_rtc_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(16000),
                 }),
@@ -974,10 +1054,10 @@ fn test_power_update_power_preferences_rtc_active() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
 
     Ok(())
@@ -1034,8 +1114,8 @@ fn test_power_update_power_preferences_epp() -> Result<()> {
 fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -1044,7 +1124,7 @@ fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
     let config_provider = FakeConfigProvider {
         fullscreen_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(16000),
                 }),
@@ -1065,10 +1145,10 @@ fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
         common::GameMode::Off,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
 
     Ok(())
@@ -1078,8 +1158,8 @@ fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
 fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -1088,7 +1168,7 @@ fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
     let config_provider = FakeConfigProvider {
         borealis_gaming_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(16000),
                 }),
@@ -1109,10 +1189,10 @@ fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
         common::GameMode::Borealis,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
 
     Ok(())
@@ -1122,8 +1202,8 @@ fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
 fn test_power_update_power_preferences_arcvm_gaming_active() -> Result<()> {
     let root = tempdir()?;
 
-    write_powersave_bias(root.path(), 0)?;
-    write_sampling_rate(root.path(), 2000)?;
+    write_global_powersave_bias(root.path(), 0)?;
+    write_global_sampling_rate(root.path(), 2000)?;
 
     let power_source_provider = FakePowerSourceProvider {
         power_source: config::PowerSourceType::AC,
@@ -1132,7 +1212,7 @@ fn test_power_update_power_preferences_arcvm_gaming_active() -> Result<()> {
     let config_provider = FakeConfigProvider {
         arcvm_gaming_power_preferences: |_| {
             Ok(Some(config::PowerPreferences {
-                governor: Some(config::Governor::OndemandGovernor {
+                governor: Some(config::Governor::Ondemand {
                     powersave_bias: 200,
                     sampling_rate: Some(16000),
                 }),
@@ -1153,11 +1233,133 @@ fn test_power_update_power_preferences_arcvm_gaming_active() -> Result<()> {
         common::GameMode::Arc,
     )?;
 
-    let powersave_bias = read_powersave_bias(root.path())?;
+    let powersave_bias = read_global_powersave_bias(root.path())?;
     assert_eq!(powersave_bias, "200");
 
-    let sampling_rate = read_sampling_rate(root.path())?;
+    let sampling_rate = read_global_sampling_rate(root.path())?;
     assert_eq!(sampling_rate, "16000");
+
+    Ok(())
+}
+
+#[test]
+fn test_per_policy_ondemand_governor() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let root = temp_dir.path();
+
+    const INIT_POWERSAVE_BIAS: u32 = 0;
+    const INIT_SAMPLING_RATE: u32 = 2000;
+    const CONFIG_POWERSAVE_BIAS: u32 = 200;
+    const CONFIG_SAMPLING_RATE: u32 = 16000;
+
+    let ondemand = config::Governor::Ondemand {
+        powersave_bias: INIT_POWERSAVE_BIAS,
+        sampling_rate: Some(INIT_SAMPLING_RATE),
+    };
+    write_per_policy_scaling_governor(root, ondemand);
+    write_per_policy_powersave_bias(root, INIT_POWERSAVE_BIAS);
+    write_per_policy_sampling_rate(root, INIT_SAMPLING_RATE);
+
+    let power_source_provider = FakePowerSourceProvider {
+        power_source: config::PowerSourceType::AC,
+    };
+
+    let config_provider = FakeConfigProvider {
+        arcvm_gaming_power_preferences: |_| {
+            Ok(Some(config::PowerPreferences {
+                governor: Some(config::Governor::Ondemand {
+                    powersave_bias: CONFIG_POWERSAVE_BIAS,
+                    sampling_rate: Some(CONFIG_SAMPLING_RATE),
+                }),
+            }))
+        },
+        ..Default::default()
+    };
+
+    let manager = power::DirectoryPowerPreferencesManager {
+        root: root.to_path_buf(),
+        config_provider,
+        power_source_provider,
+    };
+
+    manager.update_power_preferences(
+        common::RTCAudioActive::Inactive,
+        common::FullscreenVideo::Inactive,
+        common::GameMode::Arc,
+    )?;
+    check_per_policy_scaling_governor(root, ondemand);
+    check_per_policy_powersave_bias(root, CONFIG_POWERSAVE_BIAS);
+    check_per_policy_sampling_rate(root, CONFIG_SAMPLING_RATE);
+    Ok(())
+}
+
+struct ArcvmGamingConfigProvider {
+    arcvm_gaming_power_preferences: config::PowerPreferences,
+}
+
+impl config::ConfigProvider for ArcvmGamingConfigProvider {
+    fn read_power_preferences(
+        &self,
+        _power_source_type: config::PowerSourceType,
+        power_preference_type: config::PowerPreferencesType,
+    ) -> Result<Option<config::PowerPreferences>> {
+        match power_preference_type {
+            config::PowerPreferencesType::ArcvmGaming => {
+                Ok(Some(self.arcvm_gaming_power_preferences))
+            }
+            _ => bail!("Unexpected power preference type"),
+        }
+    }
+}
+
+#[test]
+fn test_scaling_governors() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let root = temp_dir.path();
+
+    const INIT_POWERSAVE_BIAS: u32 = 0;
+    const INIT_SAMPLING_RATE: u32 = 2000;
+
+    let ondemand = config::Governor::Ondemand {
+        powersave_bias: INIT_POWERSAVE_BIAS,
+        sampling_rate: Some(INIT_SAMPLING_RATE),
+    };
+    write_per_policy_scaling_governor(root, ondemand);
+
+    let governors = [
+        config::Governor::Conservative,
+        config::Governor::Performance,
+        config::Governor::Powersave,
+        config::Governor::Schedutil,
+        config::Governor::Userspace,
+    ];
+
+    for governor in governors {
+        let power_source_provider = FakePowerSourceProvider {
+            power_source: config::PowerSourceType::AC,
+        };
+        // The governor is a variable that we cannot use FakeConfigProvider.
+        // Got the following error when using FakeConfigProvider:
+        // closures can only be coerced to `fn` types if they do not capture any variables
+        let config_provider = ArcvmGamingConfigProvider {
+            arcvm_gaming_power_preferences: config::PowerPreferences {
+                governor: Some(governor),
+            },
+        };
+        let manager = power::DirectoryPowerPreferencesManager {
+            root: root.to_path_buf(),
+            config_provider,
+            power_source_provider,
+        };
+
+        manager.update_power_preferences(
+            common::RTCAudioActive::Inactive,
+            common::FullscreenVideo::Inactive,
+            common::GameMode::Arc,
+        )?;
+
+        check_per_policy_scaling_governor(root, governor);
+    }
 
     Ok(())
 }

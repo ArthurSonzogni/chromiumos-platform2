@@ -21,15 +21,36 @@ pub trait ConfigProvider {
 
 /* TODO: Can we use `rust-protobuf` to generate all the structs? */
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Governor {
-    OndemandGovernor {
+    Conservative,
+    Ondemand {
         powersave_bias: u32,
         sampling_rate: Option<u32>,
     },
+    Performance,
+    Powersave,
+    Schedutil,
+    Userspace,
 }
 
-#[derive(Debug, PartialEq)]
+impl Governor {
+    pub fn to_name(self) -> &'static str {
+        match self {
+            Governor::Conservative => "conservative",
+            Governor::Ondemand {
+                powersave_bias: _,
+                sampling_rate: _,
+            } => "ondemand",
+            Governor::Performance => "performance",
+            Governor::Powersave => "powersave",
+            Governor::Schedutil => "schedutil",
+            Governor::Userspace => "userspace",
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PowerPreferences {
     pub governor: Option<Governor>,
     /* TODO: Add Intel EPP settings */
@@ -104,7 +125,7 @@ fn parse_ondemand_governor(path: &Path) -> Result<Governor> {
         None
     };
 
-    Ok(Governor::OndemandGovernor {
+    Ok(Governor::Ondemand {
         powersave_bias,
         sampling_rate,
     })
@@ -127,10 +148,14 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
         bail!("Multiple governors detected in {}", path.display());
     }
 
-    if first_dir.file_name() == "ondemand" {
-        Ok(Some(parse_ondemand_governor(&first_dir.path())?))
-    } else {
-        bail!("Unknown governor {:?}!", first_dir.file_name())
+    match first_dir.file_name().to_str() {
+        Some("conservative") => Ok(Some(Governor::Conservative)),
+        Some("ondemand") => Ok(Some(parse_ondemand_governor(&first_dir.path())?)),
+        Some("performance") => Ok(Some(Governor::Performance)),
+        Some("powersave") => Ok(Some(Governor::Powersave)),
+        Some("schedutil") => Ok(Some(Governor::Schedutil)),
+        Some("userspace") => Ok(Some(Governor::Userspace)),
+        _ => bail!("Unknown governor {:?}!", first_dir.file_name()),
     }
 }
 
@@ -140,7 +165,8 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  *     * web-rtc-power-preferences/governor/
  *       * ondemand/
  *         * powersave-bias
- *     * fullscreen-power-preferences/governor/..
+ *     * fullscreen-power-preferences/governor/
+ *       * schedutil/
  *     * borealis-gaming-power-preferences/governor/..
  *     * arcvm-gaming-power-preferences/governor/..
  *     * default-power-preferences/governor/..
