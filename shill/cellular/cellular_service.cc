@@ -793,6 +793,7 @@ KeyValueStore CellularService::GetStorageProperties() const {
   properties.Set<std::string>(kStorageIccid, iccid_);
   return properties;
 }
+
 std::string CellularService::GetDefaultStorageIdentifier() const {
   if (iccid_.empty()) {
     LOG(ERROR) << "CellularService created with empty ICCID.";
