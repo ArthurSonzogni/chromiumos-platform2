@@ -1036,57 +1036,57 @@ bool AuthSession::AuthenticateAuthFactor(
   auto label_to_auth_factor_iter =
       label_to_auth_factor_.find(request.auth_factor_label());
 
-  {
-    std::optional<AuthFactorType> auth_factor_type =
-        DetermineFactorTypeFromAuthInput(request.auth_input());
-    if (!auth_factor_type.has_value()) {
-      LOG(ERROR) << "Unexpected AuthInput type.";
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-      return false;
-    }
+  std::optional<AuthFactorType> request_auth_factor_type =
+      DetermineFactorTypeFromAuthInput(request.auth_input());
+  if (!request_auth_factor_type.has_value()) {
+    LOG(ERROR) << "Unexpected AuthInput type.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return false;
+  }
 
-    // Ensure that if a label is supplied, the requested type matches what we
-    // have on disk for the user.
-    // Note that if we cannot find a stored AuthFactor then this test is
-    // skipped. This can happen in the case of ephemeral users now, later with
-    // legacy fingerprint check for verification intent.
-    if (label_to_auth_factor_iter != label_to_auth_factor_.end() &&
-        auth_factor_type != label_to_auth_factor_iter->second->type()) {
-      LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-      return false;
-    }
-    // If suitable, attempt lightweight authentication via a credential
-    // verifier.
-    if (auth_intent_ == AuthIntent::kVerifyOnly &&
-        IsCredentialVerifierSupported(auth_factor_type.value()) &&
-        AuthenticateViaCredentialVerifier(request.auth_input())) {
-      CompleteVerifyOnlyAuthentication(std::move(on_done),
-                                       OkStatus<CryptohomeError>());
+  // Ensure that if a label is supplied, the requested type matches what we have
+  // on disk for the user.
+  // Note that if we cannot find a stored AuthFactor then this test is skipped.
+  // This can happen in the case of ephemeral users now, later with legacy
+  // fingerprint check for verification intent.
+  // TODO(b/243808147): Don't special-case kiosk, after the factor loading code
+  // is fixed to not backfill missing types.
+  if (label_to_auth_factor_iter != label_to_auth_factor_.end() &&
+      request_auth_factor_type != label_to_auth_factor_iter->second->type() &&
+      request_auth_factor_type != AuthFactorType::kKiosk) {
+    LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return false;
+  }
+  // If suitable, attempt lightweight authentication via a credential verifier.
+  if (auth_intent_ == AuthIntent::kVerifyOnly &&
+      IsCredentialVerifierSupported(*request_auth_factor_type) &&
+      AuthenticateViaCredentialVerifier(request.auth_input())) {
+    CompleteVerifyOnlyAuthentication(std::move(on_done),
+                                     OkStatus<CryptohomeError>());
+    return true;
+  }
+  // We can also attempt lightweight authenticate via the auth block utility.
+  // TODO(b/247812443): Unify this with the credential verifier path.
+  if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
+          auth_intent_, *request_auth_factor_type)) {
+    if (CryptohomeStatusOr<AuthInput> auth_input =
+            CreateAuthInputForAuthentication(request.auth_input(), {});
+        auth_input.ok()) {
+      auto verify_callback =
+          base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
+                         weak_factory_.GetWeakPtr(), std::move(on_done));
+      auth_block_utility_->VerifyWithAuthFactorAsync(
+          *request_auth_factor_type, *auth_input, std::move(verify_callback));
       return true;
-    }
-    // We can also attempt lightweight authenticate via the auth block utility.
-    // TODO(b/247812443): Unify this with the credential verifier path.
-    if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
-            auth_intent_, *auth_factor_type)) {
-      if (CryptohomeStatusOr<AuthInput> auth_input =
-              CreateAuthInputForAuthentication(request.auth_input(), {});
-          auth_input.ok()) {
-        auto verify_callback =
-            base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
-                           weak_factory_.GetWeakPtr(), std::move(on_done));
-        auth_block_utility_->VerifyWithAuthFactorAsync(
-            *auth_factor_type, *auth_input, std::move(verify_callback));
-        return true;
-      }
     }
   }
 
@@ -1148,8 +1148,10 @@ bool AuthSession::AuthenticateAuthFactor(
       std::make_unique<AuthSessionPerformanceTimer>(
           kAuthSessionAuthenticateAuthFactorVKTimer);
 
+  // Note that we pass the request's type and label instead of the AuthFactor's
+  // one, because legacy VKs could not contain these fields.
   return AuthenticateViaVaultKeyset(
-      auth_factor.type(), request.auth_factor_label(),
+      *request_auth_factor_type, request.auth_factor_label(),
       auth_input_status.value(), std::move(auth_session_performance_timer),
       std::move(on_done));
 }
