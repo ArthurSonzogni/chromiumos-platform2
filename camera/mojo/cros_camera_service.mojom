@@ -146,7 +146,7 @@ interface CameraHalServer {
 
   // Turn ON/OFF and configure specified effect.
   [MinVersion=10]
-  SetCameraEffect@7(EffectsConfig config) => (SwitchEffectSuccess success);
+  SetCameraEffect@7(EffectsConfig config) => (SetEffectResult success);
 
   // Check if particular effect is ON/OFF.
   [MinVersion=10]

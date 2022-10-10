@@ -23,26 +23,19 @@ namespace cros {
 // chromeos/ml/effects_pipeline/effects_pipeline.h
 struct BRILLO_EXPORT EffectsConfig {
   // Name of the effect. Used to identify which effect object to instantiate
-  mojom::CameraEffect effect = mojom::CameraEffect::NONE;
+  mojom::CameraEffect effect = mojom::CameraEffect::kNone;
 
-  // The scale where the input image is blurred. If specified, the value must be
-  // greater than 0.05. If not specified, the blur is at the resolution of the
-  // input mask
-  float blur_scale = 0.25;
-
-  // Number of blur samples in one direction. Approximately how many pixels in
-  // each direction to include to create the blur
-  uint8_t blur_samples = 4;
+  // How much blur to apply for the background blur effect.
+  mojom::BlurLevel blur_level = mojom::BlurLevel::kMedium;
 
   // Select which GPU API to use to perform the segmentation inference
-  mojom::GpuApi segmentation_gpu_api = mojom::GpuApi::OPENGL;
+  mojom::GpuApi segmentation_gpu_api = mojom::GpuApi::kOpenGL;
 
   // Maximum number of frames allowed in flight.
   int graph_max_frames_in_flight = 2;
 
   inline bool operator==(const EffectsConfig& rhs) const {
-    return effect == rhs.effect && blur_samples == rhs.blur_samples &&
-           blur_scale == rhs.blur_scale &&
+    return effect == rhs.effect && blur_level == rhs.blur_level &&
            segmentation_gpu_api == rhs.segmentation_gpu_api &&
            graph_max_frames_in_flight == rhs.graph_max_frames_in_flight;
   }

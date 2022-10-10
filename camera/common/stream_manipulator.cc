@@ -144,8 +144,7 @@ EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
   return EffectsConfig{
       .effect = effects_config_->effect,
-      .blur_scale = effects_config_->blur_scale,
-      .blur_samples = effects_config_->blur_samples,
+      .blur_level = effects_config_->blur_level,
       .segmentation_gpu_api = effects_config_->segmentation_gpu_api,
       .graph_max_frames_in_flight = effects_config_->graph_max_frames_in_flight,
   };

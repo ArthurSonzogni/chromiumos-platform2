@@ -43,8 +43,7 @@ bool GetStringFromKey(const base::Value& obj,
 }
 
 constexpr char kEffectKey[] = "effect";
-constexpr char kBlurScaleKey[] = "blur_scale";
-constexpr char kBlurSamplesKey[] = "blur_samples";
+constexpr char kBlurLevelKey[] = "blur_level";
 
 constexpr uint8_t kMaxNumBuffers = 8;
 
@@ -319,17 +318,26 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   std::string tmp;
   if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
     if (tmp == std::string("blur")) {
-      new_config.effect = mojom::CameraEffect::BACKGROUND_BLUR;
-      LoadIfExist(json_values, kBlurScaleKey, &new_config.blur_scale);
-      int blur_samples_tmp;
-      LoadIfExist(json_values, kBlurSamplesKey, &blur_samples_tmp);
-      new_config.blur_samples = static_cast<uint8_t>(blur_samples_tmp);
+      new_config.effect = mojom::CameraEffect::kBackgroundBlur;
+      std::string blur_level;
+      GetStringFromKey(json_values, kBlurLevelKey, &blur_level);
+      if (blur_level == "lowest") {
+        new_config.blur_level = mojom::BlurLevel::kLowest;
+      } else if (blur_level == "light") {
+        new_config.blur_level = mojom::BlurLevel::kLight;
+      } else if (blur_level == "medium") {
+        new_config.blur_level = mojom::BlurLevel::kMedium;
+      } else if (blur_level == "heavy") {
+        new_config.blur_level = mojom::BlurLevel::kHeavy;
+      } else if (blur_level == "maximum") {
+        new_config.blur_level = mojom::BlurLevel::kMaximum;
+      }
     } else if (tmp == std::string("replace")) {
-      new_config.effect = mojom::CameraEffect::BACKGROUND_REPLACE;
+      new_config.effect = mojom::CameraEffect::kBackgroundReplace;
     } else if (tmp == std::string("relight")) {
-      new_config.effect = mojom::CameraEffect::PORTRAIT_RELIGHT;
+      new_config.effect = mojom::CameraEffect::kPortraitRelight;
     } else if (tmp == std::string("none")) {
-      new_config.effect = mojom::CameraEffect::NONE;
+      new_config.effect = mojom::CameraEffect::kNone;
     } else {
       LOGF(WARNING) << "Unknown Effect: " << tmp;
       return;

@@ -122,7 +122,7 @@ class CameraHalAdapter {
 
   bool IsCameraEffectSupported(mojom::CameraEffect effect);
 
-  mojom::SwitchEffectSuccess SetCameraEffect(mojom::EffectsConfigPtr config);
+  mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
 
   bool IsCameraEffectEnabled(mojom::CameraEffect effect);
 
