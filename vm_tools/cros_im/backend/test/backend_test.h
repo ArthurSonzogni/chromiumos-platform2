@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "backend/test/backend_test_utils.h"
 #include "backend/test/event.h"
 #include "backend/test/request.h"
 
@@ -80,6 +81,20 @@ class BackendTest {
   }
 
   template <int text_input_id = 0>
+  void Unignore(Request::RequestType type) {
+    Request request(text_input_id, type);
+    for (auto it = ignored_requests_.begin(); it != ignored_requests_.end();
+         ++it) {
+      if (request.RequestMatches(**it)) {
+        ignored_requests_.erase(it);
+        return;
+      }
+    }
+
+    FAILED() << "Couldn't find request to unignore: " << request;
+  }
+
+  template <int text_input_id = 0>
   void Expect(Request::RequestType type) {
     actions_.emplace(std::make_unique<Request>(text_input_id, type));
   }
@@ -110,6 +125,14 @@ class BackendTest {
   void ExpectSetContentType(uint32_t hints, uint32_t purpose) {
     actions_.emplace(
         std::make_unique<SetContentTypeRequest>(text_input_id, hints, purpose));
+  }
+
+  template <int text_input_id = 0>
+  void ExpectSetSurroundingText(const std::string& text,
+                                uint32_t cursor,
+                                uint32_t anchor) {
+    actions_.emplace(std::make_unique<SetSurroundingTextRequest>(
+        text_input_id, text, cursor, anchor));
   }
 
   template <int text_input_id = 0>

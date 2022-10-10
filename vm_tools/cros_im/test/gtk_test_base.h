@@ -79,9 +79,31 @@ class GtkTestBase : public ::testing::Test {
   }
 
   template <typename T>
+  static void RunUntilWidgetFocused(T* widget) {
+    // focus-in-event isn't hooked up to gtkmm, so manually set up the signal.
+    gulong handler_id = g_signal_connect(widget->gobj(), "focus-in-event",
+                                         G_CALLBACK(OnFocusInEvent), nullptr);
+    Gtk::Main::run();
+    g_signal_handler_disconnect(widget->gobj(), handler_id);
+  }
+
+  static gboolean OnFocusInEvent(GtkTextView* self,
+                                 GdkEventFocus event,
+                                 gpointer user_data) {
+    Gtk::Main::quit();
+    // Don't consume the event.
+    return false;
+  }
+
+  template <typename T>
   void MoveBufferCursor(T* text_widget_, int index) {
     auto buffer = text_widget_->get_buffer();
     buffer->place_cursor(buffer->get_iter_at_offset(index));
+  }
+
+  void RunUntilIdle() {
+    while (main_.events_pending())
+      main_.iteration();
   }
 
   Gtk::Main main_;
@@ -113,7 +135,14 @@ class GtkSimpleTextViewTest : public GtkTestBase {
     RunAndExpectWidgetPreeditChangeTo(&text_view_, expect);
   }
 
+  void RunUntilFocused() { RunUntilWidgetFocused(&text_view_); }
+
+  // `index` is in characters, not bytes.
   void MoveCursor(int index) { MoveBufferCursor(&text_view_, index); }
+
+  void SetText(const std::string& text) {
+    text_view_.get_buffer()->set_text(text);
+  }
 
   Gtk::Window window_;
   Gtk::TextView text_view_;

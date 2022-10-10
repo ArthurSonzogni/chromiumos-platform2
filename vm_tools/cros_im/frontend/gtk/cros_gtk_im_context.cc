@@ -279,6 +279,8 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   backend_->SetCursorLocation(offset_x - top_level_x + area->x,
                               offset_y - top_level_y + area->y, area->width,
                               area->height);
+
+  UpdateSurrounding();
 }
 
 void CrosGtkIMContext::SetSurrounding(const char* text,
@@ -475,9 +477,10 @@ void CrosGtkIMContext::Activate() {
   if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
     backend_->ShowInputPanel();
 
-  // TODO(timloh): Work out when else we need to call this.
-  if (RetrieveSurrounding())
-    backend_->SetSurrounding(surrounding_.c_str(), surrounding_cursor_pos_);
+  // Apps should be calling set_cursor_location on focus, which would result in
+  // us updating surrounding text, but to support apps that don't do that we
+  // also explicitly update surrounding text here.
+  UpdateSurrounding();
 }
 
 bool CrosGtkIMContext::RetrieveSurrounding() {
@@ -487,6 +490,15 @@ bool CrosGtkIMContext::RetrieveSurrounding() {
   if (!result)
     g_warning("Failed to retrieve surrounding text.");
   return result;
+}
+
+void CrosGtkIMContext::UpdateSurrounding() {
+  if (!RetrieveSurrounding())
+    return;
+
+  // TODO(b/232048905): Surrounding text longer than 4000 characters currently
+  // causes a crash.
+  backend_->SetSurrounding(surrounding_.c_str(), surrounding_cursor_pos_);
 }
 
 }  // namespace gtk

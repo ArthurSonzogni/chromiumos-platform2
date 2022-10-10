@@ -55,6 +55,22 @@ class SetContentTypeRequest : public Request {
   uint32_t purpose_;
 };
 
+class SetSurroundingTextRequest : public Request {
+ public:
+  SetSurroundingTextRequest(int text_input_id,
+                            const std::string& text,
+                            uint32_t cursor,
+                            uint32_t anchor);
+  ~SetSurroundingTextRequest() override;
+  bool RequestMatches(const Request& actual) const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  std::string text_;
+  uint32_t cursor_;
+  uint32_t anchor_;
+};
+
 }  // namespace test
 }  // namespace cros_im
 

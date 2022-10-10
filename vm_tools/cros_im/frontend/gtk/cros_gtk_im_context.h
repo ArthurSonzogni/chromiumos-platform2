@@ -69,7 +69,12 @@ class CrosGtkIMContext : public GtkIMContext {
 
   void Activate();
 
+  // Retrieves the current surrounding text. On success, returns true and
+  // populates surrounding_ and surrounding_cursor_pos_.
   bool RetrieveSurrounding();
+  // Retrieves and then sends the surrounding text to the backend. The text may
+  // be trimmed if it is too long.
+  void UpdateSurrounding();
 
   bool is_x11_;
 
