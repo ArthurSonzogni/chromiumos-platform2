@@ -268,13 +268,17 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   if (!gdk_window_)
     return;
 
-  // TODO(timloh): This is wrong for X11 apps. We might need to subtract the
-  // top_level_gdk_window_'s origin.
   int offset_x = 0, offset_y = 0;
   gdk_window_get_origin(gdk_window_, &offset_x, &offset_y);
 
-  backend_->SetCursorLocation(offset_x + area->x, offset_y + area->y,
-                              area->width, area->height);
+  // When running directly under Wayland, these are usually (always?) zero,
+  // but typically non-zero when running under X11.
+  int top_level_x = 0, top_level_y = 0;
+  gdk_window_get_origin(top_level_gdk_window_, &top_level_x, &top_level_y);
+
+  backend_->SetCursorLocation(offset_x - top_level_x + area->x,
+                              offset_y - top_level_y + area->y, area->width,
+                              area->height);
 }
 
 void CrosGtkIMContext::SetSurrounding(const char* text,
