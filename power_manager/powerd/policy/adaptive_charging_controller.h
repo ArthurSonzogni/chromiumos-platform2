@@ -434,6 +434,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
             system::DBusWrapperInterface* dbus_wrapper,
             PrefsInterface* prefs);
 
+  Clock* clock() { return &clock_; }
+
   void set_recheck_alarm_for_testing(
       std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm) {
     recheck_alarm_ = std::move(alarm);
@@ -540,6 +542,9 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   policy::BacklightController* backlight_controller_;  // non-owned
 
   PrefsInterface* prefs_;  // non-owned
+
+  // Used for unittesting purposes.
+  Clock clock_;
 
   ChargeHistory charge_history_;
 

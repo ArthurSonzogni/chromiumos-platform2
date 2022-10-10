@@ -925,9 +925,10 @@ void AdaptiveChargingController::OnPredictionResponse(
     // If charging was delayed already, treat this as an unplug prediction for
     // `kFinishChargingDelay` time from now.
     if (hold_percent_start_time_ != base::TimeTicks())
-      target_full_charge_time_ = base::TimeTicks::Now() + kFinishChargingDelay;
+      target_full_charge_time_ =
+          clock_.GetCurrentBootTime() + kFinishChargingDelay;
     else
-      target_full_charge_time_ = base::TimeTicks::Now();
+      target_full_charge_time_ = clock_.GetCurrentBootTime();
     return;
   }
 
@@ -937,9 +938,10 @@ void AdaptiveChargingController::OnPredictionResponse(
   if (target_delay <= kFinishChargingDelay) {
     StopAdaptiveCharging();
     if (hold_percent_start_time_ != base::TimeTicks())
-      target_full_charge_time_ = base::TimeTicks::Now() + kFinishChargingDelay;
+      target_full_charge_time_ =
+          clock_.GetCurrentBootTime() + kFinishChargingDelay;
     else
-      target_full_charge_time_ = base::TimeTicks::Now() + target_delay;
+      target_full_charge_time_ = clock_.GetCurrentBootTime() + target_delay;
 
     return;
   }
@@ -948,7 +950,7 @@ void AdaptiveChargingController::OnPredictionResponse(
   // charge. The `recheck_alarm_` causes this code to be run again.
   StartRecheckAlarm(recheck_alarm_interval_);
 
-  base::TimeTicks target_time = base::TimeTicks::Now() + target_delay;
+  base::TimeTicks target_time = clock_.GetCurrentBootTime() + target_delay;
   const system::PowerStatus status = power_supply_->GetPowerStatus();
 
   // If the last value in `result` was the largest probability and greater than
@@ -1165,7 +1167,7 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
   // platform2/system_api/dbus/power_manager/user_charging_event.proto
   auto& features = *proto.mutable_features();
 
-  const base::Time now = base::Time::Now();
+  const base::Time now = clock_.GetCurrentWallTime();
   int minutes;
   base::Time::Exploded now_exploded;
   now.LocalExplode(&now_exploded);
@@ -1212,7 +1214,7 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
 void AdaptiveChargingController::StopAdaptiveCharging() {
   if (state_ == AdaptiveChargingState::ACTIVE) {
     state_ = AdaptiveChargingState::INACTIVE;
-    hold_percent_end_time_ = base::TimeTicks::Now();
+    hold_percent_end_time_ = clock_.GetCurrentBootTime();
   }
 
   recheck_alarm_->Stop();
@@ -1247,7 +1249,7 @@ void AdaptiveChargingController::StartChargeAlarm(base::TimeDelta delay) {
       base::BindRepeating(&AdaptiveChargingController::StopAdaptiveCharging,
                           base::Unretained(this)));
   target_full_charge_time_ =
-      base::TimeTicks::Now() + delay + kFinishChargingDelay;
+      clock_.GetCurrentBootTime() + delay + kFinishChargingDelay;
 }
 
 void AdaptiveChargingController::OnRecheckAlarmFired() {
