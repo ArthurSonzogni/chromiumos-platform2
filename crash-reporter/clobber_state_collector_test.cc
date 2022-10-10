@@ -133,6 +133,9 @@ TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
       {"Failed to create directory or subvolume "
        "\"/var/lib/metrics/structured/chromium\": Input/output error",
        "sig=Input/output error"},
+      {"\tFailed to create directory or subvolume \"/var/log/vmlog\": "
+       "No space left on device",
+       "sig=No space left on device"},
       {"rm_rf(/var/lib/dbus/machine-id): Read-only file system",
        "sig=Read-only file system"},
       {"/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"

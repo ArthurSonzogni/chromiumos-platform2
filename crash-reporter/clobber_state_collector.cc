@@ -30,6 +30,8 @@ std::string filter_signature(const std::vector<std::string>& lines) {
       "Bad message",
       // This typically indicates the storage media is failing.
       "Input/output error",
+      // The disk is too full to create the necessary directories on stateful.
+      "No space left on device",
       // Particularly bad filesystem corruption results in it being remounted
       // read only.
       "Read-only file system",
