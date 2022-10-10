@@ -9,6 +9,8 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
+option go_package = "chromiumos/tast/local/bundles/cros/feedback/proto";
+
 package userfeedback;
 
 // Data present in all kinds of feedbacks, regardless of source (Web, Android,
@@ -19,11 +21,11 @@ message CommonData {
   // Description of the problem entered by user.
   optional string description = 2;
   optional string description_translated = 4;
-  optional string source_description_language = 5 [ default = "en" ];
-  optional string ui_language = 6 [ default = "en_US" ];
+  optional string source_description_language = 5 [default = "en"];
+  optional string ui_language = 6 [default = "en_US"];
 
   optional string user_email = 3;
-  
+
   // Unique identifier of feedback report. If set than only one report
   // with the same identifier is stored in the system.
   // If you are not sure how to use it leave it not set.

@@ -8,6 +8,8 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
+option go_package = "chromiumos/tast/local/bundles/cros/feedback/proto";
+
 package userfeedback;
 
 // 2D Dimensions.

@@ -8,6 +8,8 @@ package userfeedback;
 
 option optimize_for = LITE_RUNTIME;
 
+option go_package = "chromiumos/tast/local/bundles/cros/feedback/proto";
+
 // Data present in Web related feedbacks
 
 import "annotations.proto";

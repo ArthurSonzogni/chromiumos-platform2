@@ -8,9 +8,11 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
+option go_package = "chromiumos/tast/local/bundles/cros/feedback/proto";
+
 package userfeedback;
 
-import "common.proto";
+import "common_data.proto";
 import "chrome.proto";
 import "dom.proto";
 import "math.proto";
@@ -40,7 +42,7 @@ message PostedScreenshot {
 
 // Contains data about possible errors on the client side.
 // Describes number of attempts to send feedback and possible error codes/
-// exceptions which occured.
+// exceptions which occurred.
 message ExtensionErrors {
 
   required int32 number_of_attempts = 1;
