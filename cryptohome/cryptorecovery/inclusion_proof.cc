@@ -8,12 +8,20 @@
 #include <vector>
 
 #include <absl/strings/numbers.h>
+#include <base/base64.h>
+#include <base/base64url.h>
+#include <base/big_endian.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
-#include "base/strings/string_number_conversions.h"
 #include <brillo/data_encoding.h>
-#include <brillo/strings/string_utils.h>
 #include <brillo/secure_blob.h>
+#include <brillo/strings/string_utils.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <openssl/ec.h>
+#include <openssl/x509.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
@@ -24,12 +32,27 @@ namespace {
 
 constexpr char kSigSplit[] = "\n\n";
 constexpr char kNewline[] = "\n";
+constexpr char kSigPrefix[] = "— ";
+constexpr char kSigNameSplit[] = " ";
+// Hard-coded development ledger info, including the public key, name and key
+// hash. It mirrors the value from the server.
+constexpr char kDevLedgerName[] = "ChromeOSLedgerOwnerPrototype";
+constexpr uint32_t kDevLedgerPublicKeyHash = 2517252912;
+constexpr char kDevLedgerPublicKey[] =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUL2cKW4wHEdyWDjjJktxkijFOKJZ8rflR-Sfb-"
+    "ToowJtLyNOBh6wj0anP4kP4llXK4HMZoJDKy9texKJl2UOog==";
+
 constexpr int kLeafHashPrefix = 0;
 constexpr int kNodeHashPrefix = 1;
 // The number of checkpoint note fields should be 2: the signaute and the text.
 constexpr int kCheckpointNoteSize = 2;
 // The number of checkpoint fields should be 3: origin, size, hash.
 constexpr int kCheckpointSize = 3;
+// Signature hash is defined as the first 4 bytes from signature string from the
+// server.
+constexpr int kSignatureHashSize = 4;
+// This value is reflecting to the value from the server side.
+constexpr int kMaxSignatureNumber = 100;
 
 // Checkpoint represents a minimal log checkpoint (STH).
 struct Checkpoint {
@@ -71,8 +94,104 @@ brillo::Blob HashChildren(const brillo::Blob& left, const brillo::Blob& right) {
   return hwsec_foundation::Sha256(brillo::CombineBlobs({prefix, left, right}));
 }
 
-bool VerifySignature(std::string signature) {
-  // TODO(b:232747549): Verify the signature.
+bool VerifySignature(const std::string& text, const std::string& signatures) {
+  int num_sig = 0;
+  base::StringTokenizer tokenizer(signatures, kNewline);
+  tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
+
+  while (tokenizer.GetNext()) {
+    std::string signature_line = tokenizer.token();
+    // Verify that the signature indeed ends with kNewline.
+    if (!tokenizer.GetNext() || tokenizer.token() != kNewline) {
+      LOG(ERROR) << "Failed to pull out one signature";
+      return false;
+    }
+    num_sig++;
+
+    // Avoid spending forever parsing a note with many signatures.
+    if (num_sig > kMaxSignatureNumber)
+      return false;
+
+    if (!base::StartsWith(signature_line, kSigPrefix,
+                          base::CompareCase::SENSITIVE)) {
+      LOG(ERROR) << "No signature prefix is found.";
+      return false;
+    }
+
+    // The ledger's name (signature_tokens[0]) could be parsed out with
+    // separator of kSigNameSplit. And the signature and the key hash
+    // (signature_tokens[1]) is located after kSigNameSplit.
+    std::vector<std::string> signature_tokens = base::SplitString(
+        signature_line.substr(strlen(kSigPrefix), signature_line.length()),
+        kSigNameSplit, base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    if (signature_tokens.size() != 2) {
+      LOG(ERROR) << "No signature name split is found.";
+      return false;
+    }
+    std::string signature_str;
+    if (!brillo::data_encoding::Base64Decode(signature_tokens[1],
+                                             &signature_str)) {
+      LOG(ERROR) << "Failed to convert base64 string to string.";
+      return false;
+    }
+
+    // Determine which ledger public key to use, dev or prod, based on the
+    // ledger's name and key hash.
+    if (signature_str.length() < kSignatureHashSize) {
+      LOG(ERROR) << "The length of the signature is not long enough.";
+      return false;
+    }
+    uint32_t key_hash;
+    base::ReadBigEndian(
+        reinterpret_cast<const uint8_t*>(
+            signature_str.substr(0, kSignatureHashSize).c_str()),
+        &key_hash);
+    // For the moment, we would only allow logging at the dev ledger.
+    // TODO(b:232747549): Add explicit methods to verify either dev or prod
+    // ledger signatures.
+    if (key_hash != kDevLedgerPublicKeyHash ||
+        signature_tokens[0] != kDevLedgerName) {
+      LOG(ERROR) << "Unknown ledger key hash or name.";
+      return false;
+    }
+
+    // Impoty Public key of PKIX, ASN.1 DER form to EC_KEY.
+    std::string ledger_public_key_decoded;
+    if (!base::Base64UrlDecode(kDevLedgerPublicKey,
+                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                               &ledger_public_key_decoded)) {
+      LOG(ERROR) << "Failed at decoding from url base64.";
+      return false;
+    }
+
+    const unsigned char* asn1_ptr = reinterpret_cast<const unsigned char*>(
+        ledger_public_key_decoded.c_str());
+    crypto::ScopedEC_KEY public_key(
+        d2i_EC_PUBKEY(nullptr, &asn1_ptr, ledger_public_key_decoded.length()));
+    if (!public_key.get() || !EC_KEY_check_key(public_key.get())) {
+      LOG(ERROR) << "Failed to decode ECC public key.";
+      return false;
+    }
+
+    brillo::SecureBlob signature_hash =
+        hwsec_foundation::Sha256(brillo::SecureBlob(text + kSigSplit[0]));
+    signature_str = signature_str.substr(kSignatureHashSize);
+
+    // Verify the signature and the hash.
+    if (ECDSA_verify(
+            0,
+            reinterpret_cast<const unsigned char*>(signature_hash.char_data()),
+            signature_hash.size(),
+            reinterpret_cast<const unsigned char*>(signature_str.c_str()),
+            signature_str.length(), public_key.get()) != 1) {
+      return false;
+    }
+  }
+
+  // Note had no verifiable signatures.
+  if (num_sig == 0)
+    return false;
+
   return true;
 }
 
@@ -84,14 +203,15 @@ bool VerifySignature(std::string signature) {
 // The signatures on the note will include the log signature if no error is
 // returned, plus any signatures from otherVerifiers that were found.
 bool ParseCheckPoint(std::string checkpoint_note_str, Checkpoint* check_point) {
-  std::vector<std::string> checkpoint_note_fields =
-      brillo::string_utils::Split(checkpoint_note_str, kSigSplit);
+  std::vector<std::string> checkpoint_note_fields = brillo::string_utils::Split(
+      checkpoint_note_str, kSigSplit, /*trim_whitespaces=*/false,
+      /*purge_empty_strings=*/false);
   if (checkpoint_note_fields.size() != kCheckpointNoteSize) {
     LOG(ERROR) << "Checkpoint note is not valid.";
     return false;
   }
 
-  if (!VerifySignature(checkpoint_note_fields[1])) {
+  if (!VerifySignature(checkpoint_note_fields[0], checkpoint_note_fields[1])) {
     LOG(ERROR) << "Failed to verify the signature of the checkpoint note.";
     return false;
   }
