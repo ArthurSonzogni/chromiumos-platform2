@@ -318,18 +318,21 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
 
 bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     const UpdateDeviceInfoState& device_info) {
-  if (!vpd_utils_->SetSerialNumber(device_info.serial_number())) {
+  if (device_info.serial_number() != device_info.original_serial_number() &&
+      !vpd_utils_->SetSerialNumber(device_info.serial_number())) {
     LOG(ERROR) << "Failed to save |serial number| to vpd cache.";
     return false;
   }
 
-  if (!vpd_utils_->SetRegion(
+  if (device_info.region_index() != device_info.original_region_index() &&
+      !vpd_utils_->SetRegion(
           device_info.region_list(device_info.region_index()))) {
     LOG(ERROR) << "Failed to save region to vpd cache.";
     return false;
   }
 
   if (rmad_config_.has_cbi &&
+      device_info.sku_index() != device_info.original_sku_index() &&
       !cbi_utils_->SetSkuId(device_info.sku_list(device_info.sku_index()))) {
     LOG(ERROR) << "Failed to write sku to cbi.";
     return false;
@@ -348,13 +351,17 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   //                 other platforms, e.g. configure this in Boxster?
   const bool use_legacy = true;
   // We need to set the custom-label-tag when the model has it.
-  if (!device_info.whitelabel_list().empty() &&
+  if (device_info.whitelabel_index() !=
+          device_info.original_whitelabel_index() &&
+      !device_info.whitelabel_list().empty() &&
       !vpd_utils_->SetCustomLabelTag(custom_label_tag, use_legacy)) {
     LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";
     return false;
   }
 
   if (rmad_config_.has_cbi &&
+      device_info.dram_part_number() !=
+          device_info.original_dram_part_number() &&
       !cbi_utils_->SetDramPartNum(device_info.dram_part_number())) {
     LOG(ERROR) << "Failed to write dram part number to cbi.";
     return false;
