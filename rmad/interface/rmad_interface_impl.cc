@@ -546,7 +546,7 @@ void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
   if (device_list->empty()) {
     // No detected external storage.
     SaveLogReply reply;
-    reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
+    reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
     ReplyCallback(std::move(callback), reply);
     return;
   }

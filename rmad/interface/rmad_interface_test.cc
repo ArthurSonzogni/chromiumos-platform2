@@ -1195,6 +1195,33 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
   EXPECT_EQ(state_it->second.save_log_count, 1);
 }
 
+TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  auto callback = [](const SaveLogReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_USB_NOT_FOUND, reply.error());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.SaveLog(base::BindOnce(callback));
+
+  std::map<int, StateMetricsData> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  auto state_it = state_metrics.find(static_cast<int>(RmadState::kWelcome));
+  EXPECT_NE(state_it, state_metrics.end());
+  EXPECT_EQ(state_it->second.save_log_count, 0);
+}
+
 TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
