@@ -13,6 +13,7 @@ group("all") {
     ":faced_cli",
     ":install_dbus_conf",
     ":install_init_conf",
+    "camera:all",
     "faced_cli:all",
   ]
   if (use.test) {
@@ -78,6 +79,7 @@ source_set("libfaced") {
     ":face_auth_mojo_bindings",
     ":libfaced_dbus_adaptor",
     ":libfaced_dbus_proxy",
+    "camera",
   ]
 }
 
