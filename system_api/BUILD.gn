@@ -49,6 +49,7 @@ group("all") {
     ":system_api-power_manager-goprotos",
     ":system_api-power_manager-protos",
     ":system_api-privacy_screen-protos",
+    ":system_api-private_computing-protos",
     ":system_api-protos",
     ":system_api-rmad-protos",
     ":system_api-runtime_probe-goprotos",
@@ -659,4 +660,11 @@ goproto_library("system_api-arc-goprotos") {
   proto_in_dir = "dbus/arc"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/arc.proto" ]
+}
+
+proto_library("system_api-private_computing-protos") {
+  proto_in_dir = "dbus/private_computing"
+  proto_out_dir = "include/private_computing/proto_bindings"
+  sources = [ "${proto_in_dir}/private_computing_service.proto" ]
+  standalone = true
 }
