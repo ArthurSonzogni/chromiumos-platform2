@@ -111,7 +111,7 @@ interface CameraHalDispatcher {
 
 // The CrOS camera HAL v3 Mojo server.
 //
-// Next method ID: 9
+// Next method ID: 7
 interface CameraHalServer {
   // A caller calls CreateChannel to create a new Mojo channel to the camera
   // HAL v3 adapter.  Upon successfully binding of |camera_module_receiver|, the
@@ -140,17 +140,9 @@ interface CameraHalServer {
   [MinVersion=9]
   GetAutoFramingSupported@5() => (bool supported);
 
-  // Check if particular effect is supported.
-  [MinVersion=10]
-  IsCameraEffectSupported@6(CameraEffect effect) => (bool supported);
-
   // Turn ON/OFF and configure specified effect.
   [MinVersion=10]
-  SetCameraEffect@7(EffectsConfig config) => (SetEffectResult success);
-
-  // Check if particular effect is ON/OFF.
-  [MinVersion=10]
-  IsCameraEffectEnabled@8(CameraEffect effect) => (bool is_enabled);
+  SetCameraEffect@6(EffectsConfig config) => (SetEffectResult result);
 };
 
 // CameraHalServerCallbacks is an interface for CameraHalServer to notify

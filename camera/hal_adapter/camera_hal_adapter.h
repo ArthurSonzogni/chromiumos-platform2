@@ -120,11 +120,7 @@ class CameraHalAdapter {
 
   void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
 
-  bool IsCameraEffectSupported(mojom::CameraEffect effect);
-
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
-
-  bool IsCameraEffectEnabled(mojom::CameraEffect effect);
 
  protected:
   // Convert the unified public |camera_id| into the corresponding camera

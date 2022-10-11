@@ -316,16 +316,6 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
   return mojom::SetEffectResult::kOk;
 }
 
-bool CameraHalAdapter::IsCameraEffectEnabled(mojom::CameraEffect effect) {
-  return stream_manipulator_runtime_options_.IsEffectEnabled(effect);
-}
-
-bool CameraHalAdapter::IsCameraEffectSupported(mojom::CameraEffect effect) {
-  // TODO(shafron): determine what is a reasonable check for
-  // an effect being supported
-  return true;
-}
-
 int32_t CameraHalAdapter::GetNumberOfCameras() {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());

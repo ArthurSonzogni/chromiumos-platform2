@@ -84,18 +84,9 @@ class CameraHalServerImpl final {
     void GetAutoFramingSupported(
         mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) final;
 
-    void IsCameraEffectSupported(
-        mojom::CameraEffect effect,
-        mojom::CameraHalServer::IsCameraEffectSupportedCallback callback) final;
-
     void SetCameraEffect(
         mojom::EffectsConfigPtr config,
         mojom::CameraHalServer::SetCameraEffectCallback callback) final;
-
-    void IsCameraEffectEnabled(
-        mojom::CameraEffect effect,
-        mojom::CameraHalServer::IsCameraEffectEnabledCallback callback) final;
-
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
                                     mojom::CameraClientType type);
