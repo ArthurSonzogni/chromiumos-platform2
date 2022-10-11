@@ -54,6 +54,7 @@ if (use.test) {
       "gpu_test.cc",
       "input_device_test.cc",
       "memory_test.cc",
+      "mipi_camera_test.cc",
       "sequence_test.cc",
       "sysfs_test.cc",
       "tcpc_test.cc",

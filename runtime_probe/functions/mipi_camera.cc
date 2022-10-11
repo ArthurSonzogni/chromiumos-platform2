@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/containers/span.h>
 #include <base/notreached.h>
@@ -13,18 +15,29 @@
 
 namespace runtime_probe {
 
-MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
+std::optional<std::vector<cros::PlatformCameraInfo>>
+MipiCameraFunction::GetPlatformCameraInfo() const {
   auto device_config = cros::DeviceConfig::Create();
+  if (!device_config.has_value()) {
+    LOG(ERROR) << "Failed to get camera device config.";
+    return std::nullopt;
+  }
+
+  auto camera_info = device_config->GetPlatformCameraInfo();
+  return std::vector<cros::PlatformCameraInfo>(camera_info.begin(),
+                                               camera_info.end());
+}
+
+MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
   MipiCameraFunction::DataType results;
 
-  if (!device_config) {
-    LOG(ERROR) << "Failed to get camera device config.";
+  auto cameras = GetPlatformCameraInfo();
+  if (!cameras) {
+    LOG(ERROR) << "Failed to get MIPI camera list.";
     return results;
   }
 
-  base::span<const cros::PlatformCameraInfo> cameras =
-      device_config->GetPlatformCameraInfo();
-  for (const auto& camera : cameras) {
+  for (const auto& camera : *cameras) {
     base::Value::Dict node;
     if (camera.eeprom) {
       node.Set("name", camera.sysfs_name);
