@@ -92,6 +92,8 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferRightSide);
   FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferLeftSide);
   FRIEND_TEST(MetricsTest, CheckPartnerLocationNoPreference);
+  FRIEND_TEST(MetricsTest, CheckPowerSourceLocation);
+  FRIEND_TEST(MetricsTest, CheckPowerSourceLocationNoChoice);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,
@@ -129,6 +131,10 @@ class PortManager : public UdevMonitor::TypecObserver,
   // PartnerLocationMetric.
   PartnerLocationMetric GetPartnerLocationMetric(int port_num, bool is_hotplug);
 
+  // Convenience function used by ReportMetrics to get the right enum for
+  // PowerSourceLocationMetric.
+  PowerSourceLocationMetric GetPowerSourceLocationMetric(int port_num);
+
   // The central function which contains the main mode entry logic. This decides
   // which partner mode we select, based on partner/cable characteristics as
   // well as host properties and any other device specific policy we choose to
@@ -163,6 +169,11 @@ class PortManager : public UdevMonitor::TypecObserver,
   // access. When it is false, we should *not* trigger a switch to TBT mode
   // (if applicable) even if the |user_active_| state is true.
   bool peripheral_data_access_;
+
+  // Variable used to keep track of the port that has previously been used for
+  // connecting a power source. This is used to check if the port used for
+  // charging the system has changed during the session.
+  int port_num_previously_sink;
 
   // Pointer to the metrics reporting class. NOTE: THis is owned by the parent
   // Daemon, and not PortManager.

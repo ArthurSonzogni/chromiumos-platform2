@@ -49,6 +49,7 @@ PortManager::PortManager()
       features_client_(nullptr),
       user_active_(false),
       peripheral_data_access_(true),
+      port_num_previously_sink(-1),
       metrics_(nullptr) {}
 
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
@@ -460,9 +461,13 @@ void PortManager::ReportMetrics(int port_num, bool is_hotplug) {
   auto port = it->second.get();
   port->EnqueueMetricsTask(metrics_, GetModeEntrySupported());
 
-  if (port->GetPanel() != Panel::kUnknown)
+  if (port->GetPanel() != Panel::kUnknown) {
     metrics_->ReportPartnerLocation(
         GetPartnerLocationMetric(port_num, is_hotplug));
+    if (port->GetPowerRole() == PowerRole::kSink)
+      metrics_->ReportPowerSourceLocation(
+          GetPowerSourceLocationMetric(port_num));
+  }
 }
 
 PartnerLocationMetric PortManager::GetPartnerLocationMetric(int port_num,
@@ -536,6 +541,62 @@ PartnerLocationMetric PortManager::GetPartnerLocationMetric(int port_num,
   }
 
 end:
+  return ret;
+}
+
+PowerSourceLocationMetric PortManager::GetPowerSourceLocationMetric(
+    int port_num) {
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING)
+        << "Port location metric reporting attempted for non-existent port "
+        << port_num;
+    return PowerSourceLocationMetric::kOther;
+  }
+  auto port = it->second.get();
+
+  Panel panel = port->GetPanel();
+  int num_ports_on_left = 0;
+  int num_ports_on_right = 0;
+  Panel panel_prev = Panel::kUnknown;
+
+  for (auto it = ports_.begin(); it != ports_.end(); it++) {
+    auto port_to_check = it->second.get();
+    if (port_to_check->GetPanel() == Panel::kLeft) {
+      num_ports_on_left++;
+    } else if (port_to_check->GetPanel() == Panel::kRight) {
+      num_ports_on_right++;
+    }
+  }
+
+  it = ports_.find(port_num_previously_sink);
+  if (it != ports_.end()) {
+    auto port_prev = it->second.get();
+    panel_prev = port_prev->GetPanel();
+  }
+
+  PowerSourceLocationMetric ret = PowerSourceLocationMetric::kOther;
+  if (panel == Panel::kLeft) {
+    if (num_ports_on_right == 0)
+      ret = PowerSourceLocationMetric::kUserHasNoChoice;
+    else if (panel_prev == Panel::kUnknown)
+      ret = PowerSourceLocationMetric::kLeftFirst;
+    else if (panel_prev == Panel::kRight)
+      ret = PowerSourceLocationMetric::kLeftSwitched;
+    else if (panel_prev == Panel::kLeft)
+      ret = PowerSourceLocationMetric::kLeftConstant;
+  } else if (panel == Panel::kRight) {
+    if (num_ports_on_left == 0)
+      ret = PowerSourceLocationMetric::kUserHasNoChoice;
+    else if (panel_prev == Panel::kUnknown)
+      ret = PowerSourceLocationMetric::kRightFirst;
+    else if (panel_prev == Panel::kLeft)
+      ret = PowerSourceLocationMetric::kRightSwitched;
+    else if (panel_prev == Panel::kRight)
+      ret = PowerSourceLocationMetric::kRightConstant;
+  }
+
+  port_num_previously_sink = port_num;
   return ret;
 }
 

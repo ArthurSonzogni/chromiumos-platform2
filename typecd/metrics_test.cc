@@ -384,4 +384,63 @@ TEST_F(MetricsTest, CheckPartnerLocationNoPreference) {
             port_manager->GetPartnerLocationMetric(3, true));
 }
 
+TEST_F(MetricsTest, CheckPowerSourceLocation) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Vell
+  auto port0 = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  auto port1 = std::make_unique<MockPort>(base::FilePath("port1"), 1);
+  auto port2 = std::make_unique<MockPort>(base::FilePath("port2"), 2);
+  auto port3 = std::make_unique<MockPort>(base::FilePath("port3"), 3);
+  EXPECT_CALL(*port0, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port1, GetPanel())
+      .WillRepeatedly(testing::Return(Panel::kRight));
+  EXPECT_CALL(*port2, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  EXPECT_CALL(*port3, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(2, std::move(port2)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(3, std::move(port3)));
+
+  EXPECT_EQ(PowerSourceLocationMetric::kRightFirst,
+            port_manager->GetPowerSourceLocationMetric(0));
+  port_manager->port_num_previously_sink = 0;
+  EXPECT_EQ(PowerSourceLocationMetric::kRightConstant,
+            port_manager->GetPowerSourceLocationMetric(1));
+  port_manager->port_num_previously_sink = 1;
+  EXPECT_EQ(PowerSourceLocationMetric::kLeftSwitched,
+            port_manager->GetPowerSourceLocationMetric(2));
+  port_manager->port_num_previously_sink = 2;
+  EXPECT_EQ(PowerSourceLocationMetric::kLeftConstant,
+            port_manager->GetPowerSourceLocationMetric(3));
+  port_manager->port_num_previously_sink = 3;
+  EXPECT_EQ(PowerSourceLocationMetric::kRightSwitched,
+            port_manager->GetPowerSourceLocationMetric(0));
+}
+
+TEST_F(MetricsTest, CheckPowerSourceLocationNoChoice) {
+  auto port_manager = std::make_unique<PortManager>();
+
+  // Primus
+  auto port0 = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  auto port1 = std::make_unique<MockPort>(base::FilePath("port1"), 1);
+  EXPECT_CALL(*port0, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  EXPECT_CALL(*port1, GetPanel()).WillRepeatedly(testing::Return(Panel::kLeft));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port0)));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(1, std::move(port1)));
+
+  EXPECT_EQ(PowerSourceLocationMetric::kUserHasNoChoice,
+            port_manager->GetPowerSourceLocationMetric(0));
+  port_manager->port_num_previously_sink = 0;
+  EXPECT_EQ(PowerSourceLocationMetric::kUserHasNoChoice,
+            port_manager->GetPowerSourceLocationMetric(1));
+}
+
 }  // namespace typecd
