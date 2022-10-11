@@ -59,7 +59,7 @@ class HookState {
 
   // Waits for the event specified in InstallHook() and invokes |callbacks| in
   // the caller process. Returns true if all callbacks succeeded.
-  bool WaitForHookAndRun(std::vector<HookOnceCallback> callbacks,
+  bool WaitForHookAndRun(std::vector<HookCallback> callbacks,
                          pid_t container_pid);
 
  private:
@@ -123,15 +123,15 @@ bool MountExternal(const std::string& src,
 bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags);
 
 // Creates a callback that will fork(2)+execve(2) the program specified by args.
-HookOnceCallback CreateExecveCallback(base::FilePath filename,
-                                      std::vector<std::string> args,
-                                      base::ScopedFD stdin_fd,
-                                      base::ScopedFD stdout_fd,
-                                      base::ScopedFD stderr_fd);
+HookCallback CreateExecveCallback(base::FilePath filename,
+                                  std::vector<std::string> args,
+                                  base::ScopedFD stdin_fd,
+                                  base::ScopedFD stdout_fd,
+                                  base::ScopedFD stderr_fd);
 
 // Wraps a callback to be run in a subset of the container's namespaces.
-HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,
-                                                std::vector<int> nstypes);
+HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
+                                            std::vector<int> nstypes);
 
 // Similar to base::CreateDirectory, but allows specifying the created
 // directories' mode and owner.

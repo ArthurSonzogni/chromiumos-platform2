@@ -68,7 +68,7 @@ std::string GetNamespaceNameForType(int nstype) {
 
 // Helper function that runs |callback| in all the namespaces identified by
 // |nstypes|.
-bool RunInNamespacesHelper(HookOnceCallback callback,
+bool RunInNamespacesHelper(HookCallback callback,
                            std::vector<int> nstypes,
                            pid_t container_pid) {
   pid_t child = fork();
@@ -254,7 +254,7 @@ bool HookState::InstallHook(struct minijail* j, minijail_hook_event_t event) {
   return true;
 }
 
-bool HookState::WaitForHookAndRun(std::vector<HookOnceCallback> callbacks,
+bool HookState::WaitForHookAndRun(std::vector<HookCallback> callbacks,
                                   pid_t container_pid) {
   if (!installed_) {
     LOG(ERROR) << "Failed to wait for hook: not installed";
@@ -562,18 +562,18 @@ bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags) {
   return true;
 }
 
-HookOnceCallback CreateExecveCallback(base::FilePath filename,
-                                      std::vector<std::string> args,
-                                      base::ScopedFD stdin_fd,
-                                      base::ScopedFD stdout_fd,
-                                      base::ScopedFD stderr_fd) {
+HookCallback CreateExecveCallback(base::FilePath filename,
+                                  std::vector<std::string> args,
+                                  base::ScopedFD stdin_fd,
+                                  base::ScopedFD stdout_fd,
+                                  base::ScopedFD stderr_fd) {
   return base::BindOnce(&ExecveCallbackHelper, filename, args,
                         std::move(stdin_fd), std::move(stdout_fd),
                         std::move(stderr_fd));
 }
 
-HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,
-                                                std::vector<int> nstypes) {
+HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
+                                            std::vector<int> nstypes) {
   return base::BindOnce(&RunInNamespacesHelper, std::move(callback),
                         std::move(nstypes));
 }

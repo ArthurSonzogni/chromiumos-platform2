@@ -229,7 +229,7 @@ struct container_config {
 
   // A list of hooks that will be called upon minijail reaching various states
   // of execution.
-  std::map<minijail_hook_event_t, std::vector<libcontainer::HookOnceCallback>>
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
       hooks;
 };
 
@@ -251,7 +251,7 @@ struct container {
   std::string name;
 
   std::vector<std::pair<libcontainer::HookState,
-                        std::vector<libcontainer::HookOnceCallback>>>
+                        std::vector<libcontainer::HookCallback>>>
       hook_states;
 };
 
@@ -1215,9 +1215,9 @@ void container_config_set_pre_execve_hook(struct container_config* c,
 
 void container_config_add_hook(struct container_config* c,
                                minijail_hook_event_t event,
-                               libcontainer::HookOnceCallback callback) {
+                               libcontainer::HookCallback callback) {
   auto it = c->hooks.insert(
-      std::make_pair(event, std::vector<libcontainer::HookOnceCallback>()));
+      std::make_pair(event, std::vector<libcontainer::HookCallback>()));
   it.first->second.emplace_back(std::move(callback));
 }
 
@@ -1348,14 +1348,14 @@ int container_start(struct container* c, struct container_config* config) {
     return -1;
 
   // Must be root to modify device cgroup or mknod.
-  std::map<minijail_hook_event_t, std::vector<libcontainer::HookOnceCallback>>
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
       hook_callbacks;
   if (getuid() == 0) {
     if (!config->devices.empty()) {
       // Create the devices in the mount namespace.
       auto it = hook_callbacks.insert(
           std::make_pair(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
-                         std::vector<libcontainer::HookOnceCallback>()));
+                         std::vector<libcontainer::HookCallback>()));
       it.first->second.emplace_back(
           libcontainer::AdaptCallbackToRunInNamespaces(
               base::BindOnce(&CreateDeviceNodes, base::Unretained(c),
@@ -1492,7 +1492,7 @@ int container_start(struct container* c, struct container_config* config) {
   // container_config object in the correct order.
   for (auto& config_hook : config->hooks) {
     auto it = hook_callbacks.insert(std::make_pair(
-        config_hook.first, std::vector<libcontainer::HookOnceCallback>()));
+        config_hook.first, std::vector<libcontainer::HookCallback>()));
     it.first->second.insert(it.first->second.end(),
                             std::make_move_iterator(config_hook.second.begin()),
                             std::make_move_iterator(config_hook.second.end()));

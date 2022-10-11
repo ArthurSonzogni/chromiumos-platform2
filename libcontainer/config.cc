@@ -14,7 +14,7 @@
 // libcontainer::Config.
 extern void container_config_add_hook(struct container_config* c,
                                       minijail_hook_event_t event,
-                                      libcontainer::HookOnceCallback callback);
+                                      libcontainer::HookCallback callback);
 
 namespace libcontainer {
 
@@ -29,7 +29,7 @@ Config::~Config() {
 }
 
 void Config::AddHook(minijail_hook_event_t event,
-                     libcontainer::HookOnceCallback callback) {
+                     libcontainer::HookCallback callback) {
   container_config_add_hook(config_, event, std::move(callback));
 }
 

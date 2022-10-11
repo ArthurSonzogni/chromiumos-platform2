@@ -18,7 +18,7 @@ namespace libcontainer {
 // A hook that can be run at different stages of the container startup. The PID
 // parameter is the pid of the container's init process in the outer namespace.
 // The hook should return true on success.
-using HookOnceCallback = base::OnceCallback<bool(pid_t)>;
+using HookCallback = base::OnceCallback<bool(pid_t)>;
 
 class BRILLO_EXPORT Config {
  public:
@@ -33,7 +33,7 @@ class BRILLO_EXPORT Config {
   // Runs |callback| when |event| is reached. If |callback| fails,
   // container_start() will fail and tear down the container.
   void AddHook(minijail_hook_event_t event,
-               libcontainer::HookOnceCallback callback);
+               libcontainer::HookCallback callback);
 
  private:
   container_config* const config_;
