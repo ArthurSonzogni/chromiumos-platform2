@@ -221,16 +221,25 @@ AuthSession::AuthSession(
   converter_ =
       std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
 
+  // Try to determine if a user exists in two ways: they have a persistent
+  // homedir, or they have an active mount. The latter can happen if the user is
+  // ephemeral, in which case there will be no persistent directory but the user
+  // still "exists" so long as they remain active.
+  bool persistent_user_exists =
+      keyset_management_->UserExists(obfuscated_username_);
+  UserSession* user_session = user_session_map_->Find(username_);
+  bool user_is_active = user_session && user_session->IsActive();
+  user_exists_ = persistent_user_exists || user_is_active;
+
   // Decide on USS vs VaultKeyset based on what is on the disk for the user.
   // If at least one non-backup VK exists, don't take USS path even if the
   // experiment is enabled.
-  user_exists_ = keyset_management_->UserExists(obfuscated_username_);
+  //
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
   std::map<std::string, std::unique_ptr<AuthFactor>>
       label_to_auth_factor_for_backup_vks;
-
-  if (user_exists_) {
+  if (persistent_user_exists) {
     converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
         username_, label_to_auth_factor_, label_to_auth_factor_for_backup_vks,
         &key_label_data_);

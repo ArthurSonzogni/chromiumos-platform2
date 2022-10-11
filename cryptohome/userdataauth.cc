@@ -4043,7 +4043,7 @@ void UserDataAuth::StartAuthSession(
 
   if (!auth_session->user_has_configured_credential() &&
       !auth_session->user_has_configured_auth_factor() &&
-      auth_session->user_exists()) {
+      (auth_session->user_exists() && !auth_session->ephemeral_user())) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(

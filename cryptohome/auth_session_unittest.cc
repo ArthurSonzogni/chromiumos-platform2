@@ -967,6 +967,35 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
+// Test if AuthSession reports the correct attributes on an already-existing
+// ephemeral user.
+TEST_F(AuthSessionTest, ExistingEphemeralUser) {
+  // Setup.
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags =
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+
+  // Setting the expectation that there is no persistent user but there is an
+  // active ephemeral one.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
+  user_session_map_.Add(kFakeUsername, std::move(user_session));
+
+  // Test.
+  AuthSession auth_session(
+      kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
+      &crypto_, &platform_, &user_session_map_, &keyset_management_,
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
+      /*enable_create_backup_vk_with_uss =*/false);
+
+  // Verify.
+  EXPECT_TRUE(auth_session.user_exists());
+}
+
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   // Setup.
