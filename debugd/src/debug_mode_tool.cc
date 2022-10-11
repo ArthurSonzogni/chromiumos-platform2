@@ -88,9 +88,9 @@ constexpr char kAth10kDisable[] = "0x0";
 // Realtek wifi.
 constexpr char kRtw88DebugFlag[] =
     "/sys/module/rtw88_core/parameters/debug_mask";
-// Full debugging: see below file for details on each bit:
+// Enable all debug logs except COEX: see below file for details on each bit:
 // drivers/net/wireless/realtek/rtw88/debug.h
-constexpr char kRtw88Enable[] = "0xFFFFFFFF";
+constexpr char kRtw88Enable[] = "0xFFFFFFBF";
 // Default debugging: none
 constexpr char kRtw88Disable[] = "0x0";
 
