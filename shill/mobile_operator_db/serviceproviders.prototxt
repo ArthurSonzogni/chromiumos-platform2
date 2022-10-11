@@ -12830,6 +12830,49 @@ mno {
       }
     }
   }
+  # Legacy T-Mobile Google Fi rules using IMSI prefix matching (only covering 310260)
+  mvno {
+    mvno_filter {
+      type : IMSI
+      regex : "31026097[0-9]{7}"
+    }
+    data {
+      uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
+      roaming_filter {
+        type : MCCMNC
+        regex : ".*"
+      }
+      localized_name {
+        name : "Google Fi"
+      }
+      mccmnc : "310260"
+      mobile_apn {
+        apn : "h2g2"
+      }
+    }
+  }
+  # New T-Mobile Google Fi rules using GID1 matching (both 310260 and 310240)
+  mvno {
+    mvno_filter {
+      type : GID1
+      regex : "4276"
+    }
+    data {
+      uuid : "b11cf8a3-29ec-4376-91e3-85c7488dba5b"
+      roaming_filter {
+        type : MCCMNC
+        regex : ".*"
+      }
+      localized_name {
+        name : "Google Fi"
+      }
+      mccmnc : "310260"
+      mccmnc : "310240"
+      mobile_apn {
+        apn : "h2g2"
+      }
+    }
+  }
 }
 
 mno {
@@ -13423,26 +13466,6 @@ mno {
 
 # ##############################################################################
 # International MVNOs.
-
-mvno {
-  mvno_filter {
-    type : IMSI
-    regex : "31026097[0-9]{7}"
-  }
-  data {
-    uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
-    roaming_filter {
-      type : MCCMNC
-      regex : ".*"
-    }
-    localized_name {
-      name : "Google Fi"
-    }
-    mobile_apn {
-      apn : "h2g2"
-    }
-  }
-}
 
 mvno {
   mvno_filter {
