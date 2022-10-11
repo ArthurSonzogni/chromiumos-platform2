@@ -77,30 +77,27 @@ const char kBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";                               // %
 const char kBatteryRemainingAtBootName[] = "Power.BatteryRemainingAtBoot";  // %
 
-const char kAdaptiveChargingMinutesDeltaActiveName[] =
-    "Power.AdaptiveChargingMinutesDelta.Active";
-const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[] =
-    "Power.AdaptiveChargingMinutesDelta.HeuristicDisabled";
-const char kAdaptiveChargingMinutesDeltaUserCanceledName[] =
-    "Power.AdaptiveChargingMinutesDelta.UserCanceled";
-const char kAdaptiveChargingMinutesDeltaUserDisabledName[] =
-    "Power.AdaptiveChargingMinutesDelta.UserDisabled";
-const char kAdaptiveChargingMinutesDeltaShutdownName[] =
-    "Power.AdaptiveChargingMinutesDelta.Shutdown";
-const char kAdaptiveChargingMinutesDeltaNotSupportedName[] =
-    "Power.AdaptiveChargingMinutesDelta.NotSupported";
+const char kAdaptiveChargingMinutesDeltaName[] =
+    "Power.AdaptiveChargingMinutesDelta";
 
-const char kAdaptiveChargingMinutesDeltaLateSuffix[] = ".Late";
-const char kAdaptiveChargingMinutesDeltaEarlySuffix[] = ".Early";
+const char kAdaptiveChargingStateActiveSuffix[] = ".Active";
+const char kAdaptiveChargingStateHeuristicDisabledSuffix[] =
+    ".HeuristicDisabled";
+const char kAdaptiveChargingStateUserCanceledSuffix[] = ".UserCanceled";
+const char kAdaptiveChargingStateUserDisabledSuffix[] = ".UserDisabled";
+const char kAdaptiveChargingStateShutdownSuffix[] = ".Shutdown";
+const char kAdaptiveChargingStateNotSupportedSuffix[] = ".NotSupported";
 
-// Sets the range to 0 to 12 hours. If our prediction is too late, the
-// `kAdaptiveChargingMinutesDeltaLateSuffix` is appended to the name. For
-// accurate and too early predictions, we append the
-// `kAdaptiveChargingMinutesDeltaEarlySuffix`. We use the suffixes since UMA
+const char kAdaptiveChargingLateSuffix[] = ".Late";
+const char kAdaptiveChargingEarlySuffix[] = ".Early";
+
+// Sets the range to 0 to 12 hours. For would be negative values,
+// `kAdaptiveChargingLateSuffix` is appended to the metric name. Otherwise,
+// `kAdaptiveChargingEarlySuffix` is appended. We use the suffixes since UMA
 // doesn't support negative numbers. If too many reports hit the 12 hour limit,
 // the max should be increased.
-const int kAdaptiveChargingMinutesDeltaMin = 0;
-const int kAdaptiveChargingMinutesDeltaMax = 12 * 60;
+const int kAdaptiveChargingDeltaMin = 0;
+const int kAdaptiveChargingDeltaMax = 12 * 60;
 
 const char kAdaptiveChargingBatteryPercentageOnUnplugName[] =
     "Power.AdaptiveChargingBatteryPercentageOnUnplug";  // %

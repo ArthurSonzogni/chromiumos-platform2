@@ -576,27 +576,27 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     const base::TimeTicks& charge_finished_time,
     double display_battery_percentage) {
   base::TimeTicks now = clock_.GetCurrentBootTime();
-  std::string metric_name;
+  std::string metric_name = kAdaptiveChargingMinutesDeltaName;
 
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
     case AdaptiveChargingState::INACTIVE:
-      metric_name = kAdaptiveChargingMinutesDeltaActiveName;
+      metric_name += kAdaptiveChargingStateActiveSuffix;
       break;
     case AdaptiveChargingState::HEURISTIC_DISABLED:
-      metric_name = kAdaptiveChargingMinutesDeltaHeuristicDisabledName;
+      metric_name += kAdaptiveChargingStateHeuristicDisabledSuffix;
       break;
     case AdaptiveChargingState::USER_CANCELED:
-      metric_name = kAdaptiveChargingMinutesDeltaUserCanceledName;
+      metric_name += kAdaptiveChargingStateUserCanceledSuffix;
       break;
     case AdaptiveChargingState::USER_DISABLED:
-      metric_name = kAdaptiveChargingMinutesDeltaUserDisabledName;
+      metric_name += kAdaptiveChargingStateUserDisabledSuffix;
       break;
     case AdaptiveChargingState::SHUTDOWN:
-      metric_name = kAdaptiveChargingMinutesDeltaShutdownName;
+      metric_name += kAdaptiveChargingStateShutdownSuffix;
       break;
     case AdaptiveChargingState::NOT_SUPPORTED:
-      metric_name = kAdaptiveChargingMinutesDeltaNotSupportedName;
+      metric_name += kAdaptiveChargingStateNotSupportedSuffix;
       break;
     default:
       LOG(ERROR) << "Invalid Adaptive Charging State for reporting to UMA: "
@@ -605,14 +605,14 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
 
   base::TimeDelta delta = now - target_time;
   if (delta.is_negative()) {
-    metric_name += kAdaptiveChargingMinutesDeltaLateSuffix;
+    metric_name += kAdaptiveChargingLateSuffix;
     delta = delta.magnitude();
   } else {
-    metric_name += kAdaptiveChargingMinutesDeltaEarlySuffix;
+    metric_name += kAdaptiveChargingEarlySuffix;
   }
 
-  SendMetric(metric_name, delta.InMinutes(), kAdaptiveChargingMinutesDeltaMin,
-             kAdaptiveChargingMinutesDeltaMax, kDefaultBuckets);
+  SendMetric(metric_name, delta.InMinutes(), kAdaptiveChargingDeltaMin,
+             kAdaptiveChargingDeltaMax, kDefaultBuckets);
   SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
                  lround(display_battery_percentage), kMaxPercent);
   if (charge_finished_time != base::TimeTicks()) {

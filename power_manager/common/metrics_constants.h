@@ -75,16 +75,18 @@ extern const char kBatteryRemainingAtEndOfSessionName[];
 extern const char kBatteryRemainingAtStartOfSessionName[];
 extern const char kBatteryRemainingAtBootName[];
 
-extern const char kAdaptiveChargingMinutesDeltaActiveName[];
-extern const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[];
-extern const char kAdaptiveChargingMinutesDeltaUserCanceledName[];
-extern const char kAdaptiveChargingMinutesDeltaUserDisabledName[];
-extern const char kAdaptiveChargingMinutesDeltaShutdownName[];
-extern const char kAdaptiveChargingMinutesDeltaNotSupportedName[];
-extern const char kAdaptiveChargingMinutesDeltaLateSuffix[];
-extern const char kAdaptiveChargingMinutesDeltaEarlySuffix[];
-extern const int kAdaptiveChargingMinutesDeltaMin;
-extern const int kAdaptiveChargingMinutesDeltaMax;
+extern const char kAdaptiveChargingMinutesDeltaName[];
+
+extern const char kAdaptiveChargingStateActiveSuffix[];
+extern const char kAdaptiveChargingStateHeuristicDisabledSuffix[];
+extern const char kAdaptiveChargingStateUserCanceledSuffix[];
+extern const char kAdaptiveChargingStateUserDisabledSuffix[];
+extern const char kAdaptiveChargingStateShutdownSuffix[];
+extern const char kAdaptiveChargingStateNotSupportedSuffix[];
+extern const char kAdaptiveChargingLateSuffix[];
+extern const char kAdaptiveChargingEarlySuffix[];
+extern const int kAdaptiveChargingDeltaMin;
+extern const int kAdaptiveChargingDeltaMax;
 
 extern const char kAdaptiveChargingBatteryPercentageOnUnplugName[];
 
