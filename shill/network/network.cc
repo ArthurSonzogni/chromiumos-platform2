@@ -209,6 +209,12 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   if (ipconfig_changed) {
     event_handler_->OnIPConfigsPropertyUpdated();
   }
+  if (current_ipconfig_) {
+    current_ipconfig_ = nullptr;
+    if (!current_ipconfig_change_handler_.is_null()) {
+      current_ipconfig_change_handler_.Run();
+    }
+  }
   state_ = State::kIdle;
   connection_ = nullptr;
   if (should_trigger_callback) {

@@ -909,6 +909,60 @@ TEST_F(NetworkStartTest, Stop) {
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kNone);
 }
 
+// Verifies that 1) the handler set by RegisterCurrentIPConfigChangeHandler() is
+// invoked properly, and 2) GetCurrentIPConfig returns the correct IPConfig
+// object.
+TEST_F(NetworkStartTest, CurrentIPConfigChangeHandler) {
+  class MockHandler {
+   public:
+    MOCK_METHOD(void, OnCurrentIPChange, (), ());
+  } handler;
+
+  network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
+      &MockHandler::OnCurrentIPChange, base::Unretained(&handler)));
+
+  EXPECT_EQ(network_->GetCurrentIPConfig(), nullptr);
+
+  // No trigger on nullptr -> nullptr
+  EXPECT_CALL(handler, OnCurrentIPChange()).Times(0);
+  network_->Stop();
+
+  // Start the network.
+  EXPECT_CALL(handler, OnCurrentIPChange()).Times(0);
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+
+  // Trigger on nullptr -> ipv4.
+  EXPECT_CALL(handler, OnCurrentIPChange());
+  TriggerDHCPUpdateCallback();
+  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  Mock::VerifyAndClearExpectations(&handler);
+
+  // No trigger on ipv4 -> ipv4
+  EXPECT_CALL(handler, OnCurrentIPChange()).Times(0);
+  TriggerSLAACUpdate();
+  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  Mock::VerifyAndClearExpectations(&handler);
+
+  // Trigger on ipv4 -> ipv6.
+  EXPECT_CALL(handler, OnCurrentIPChange());
+  TriggerDHCPFailureCallback();
+  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ip6config());
+  Mock::VerifyAndClearExpectations(&handler);
+
+  // Trigger on ipv6 -> ipv4.
+  EXPECT_CALL(handler, OnCurrentIPChange());
+  ConfigureStaticIPv4Config();
+  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  Mock::VerifyAndClearExpectations(&handler);
+
+  // Trigger on ipv4 -> nullptr.
+  EXPECT_CALL(handler, OnCurrentIPChange());
+  network_->Stop();
+  EXPECT_EQ(network_->GetCurrentIPConfig(), nullptr);
+}
+
 }  // namespace
 
 }  // namespace
