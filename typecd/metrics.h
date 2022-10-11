@@ -92,6 +92,31 @@ enum class PartnerLocationMetric {
   kMaxValue = kRightColdplugged,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PowerSourceLocationMetric {
+  kOther = 0,
+  // All ports are only on one side.
+  kUserHasNoChoice = 1,
+  // The first power connection during the session to a port on the left side.
+  kLeftFirst = 2,
+  // Power source connected to a port on the left side while previously also
+  // used a port on the left side for power. (during same session)
+  kLeftConstant = 3,
+  // Power source connected to a port on the left side while previously used a
+  // port on the right side for power. (during same session)
+  kLeftSwitched = 4,
+  // The first power connection during the session to a port on the right side.
+  kRightFirst = 5,
+  // Power source connected to a port on the right side while previously also
+  // used a port on the right side for power. (during same session)
+  kRightConstant = 6,
+  // Power source connected to a port on the right side while previously used a
+  // port on the left side for power. (during same session)
+  kRightSwitched = 7,
+  kMaxValue = kRightSwitched,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -105,6 +130,7 @@ class Metrics {
   void ReportCableSpeed(CableSpeedMetric speed);
   void ReportWrongCableError(WrongConfigurationMetric value);
   void ReportPartnerLocation(PartnerLocationMetric location);
+  void ReportPowerSourceLocation(PowerSourceLocationMetric location);
 
  private:
   MetricsLibrary metrics_library_;

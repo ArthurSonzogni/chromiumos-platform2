@@ -12,6 +12,8 @@ constexpr char kCableSpeedMetricName[] = "ChromeOS.TypeC.CableSpeed";
 constexpr char kWrongConfigurationMetricName[] =
     "ChromeOS.TypeC.WrongConfiguration";
 constexpr char kPartnerLocationMetricName[] = "ChromeOS.TypeC.PartnerLocation";
+constexpr char kPowerSourceLocationMetricName[] =
+    "ChromeOS.TypeC.PowerSourceLocation";
 }  // namespace
 
 namespace typecd {
@@ -41,6 +43,15 @@ void Metrics::ReportPartnerLocation(PartnerLocationMetric location) {
   if (!metrics_library_.SendEnumToUMA(kPartnerLocationMetricName, location)) {
     LOG(WARNING) << "Failed to send partner location sample to UMA, location: "
                  << static_cast<int>(location);
+  }
+}
+
+void Metrics::ReportPowerSourceLocation(PowerSourceLocationMetric location) {
+  if (!metrics_library_.SendEnumToUMA(kPowerSourceLocationMetricName,
+                                      location)) {
+    LOG(WARNING)
+        << "Failed to send power source location sample to UMA, location: "
+        << static_cast<int>(location);
   }
 }
 
