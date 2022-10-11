@@ -1236,8 +1236,7 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
         crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
   } else if (auth_block_type == AuthBlockType::kScrypt) {
-    return USE_TPM_INSECURE_FALLBACK ? std::make_unique<ScryptAuthBlock>()
-                                     : nullptr;
+    return std::make_unique<ScryptAuthBlock>();
   }
   return nullptr;
 }

@@ -299,7 +299,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
 
-  LibScryptCompatVaultKeyset new_keyset;
+  VaultKeyset new_keyset;
   new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
   EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */).ok());
@@ -830,7 +830,7 @@ TEST_F(VaultKeysetTest, DecryptTPMReboot) {
 }
 
 TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
-  LibScryptCompatVaultKeyset vk;
+  VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
 
   SerializedVaultKeyset serialized;
