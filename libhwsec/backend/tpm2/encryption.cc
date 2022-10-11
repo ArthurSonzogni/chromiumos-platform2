@@ -44,6 +44,11 @@ StatusOr<SchemaDetail> GetSchemaDetail(
           .schema = trunks::TPM_ALG_NULL,
           .hash_alg = trunks::TPM_ALG_NULL,
       };
+    case EncryptionTpm2::EncryptionOptions::Schema::kRsaesSha1:
+      return SchemaDetail{
+          .schema = trunks::TPM_ALG_RSAES,
+          .hash_alg = trunks::TPM_ALG_SHA1,
+      };
     default:
       return MakeStatus<TPMError>("Unknown options", TPMRetryAction::kNoRetry);
   }

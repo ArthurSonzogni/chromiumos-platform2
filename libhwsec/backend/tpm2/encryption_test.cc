@@ -113,6 +113,49 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
       IsOkAndHolds(brillo::BlobFromString(kFakeOutput)));
 }
 
+TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const std::string kFakeBlob = "fake_blob";
+  const std::string kFakeOutput = "fake_output";
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_RSA,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+
+  ASSERT_OK(key);
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_RSAES,
+                                trunks::TPM_ALG_SHA1, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+          key->GetKey(), brillo::SecureBlob(kFakeBlob),
+          Backend::Encryption::EncryptionOptions{
+              .schema =
+                  Backend::Encryption::EncryptionOptions::Schema::kRsaesSha1,
+          }),
+      IsOkAndHolds(brillo::BlobFromString(kFakeOutput)));
+}
+
 TEST_F(BackendEncryptionTpm2Test, Decrypt) {
   const OperationPolicy kFakePolicy{};
   const std::string kFakeKeyBlob = "fake_key_blob";

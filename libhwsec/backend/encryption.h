@@ -21,6 +21,7 @@ class Encryption {
     enum class Schema {
       kDefault,
       kNull,
+      kRsaesSha1,
     };
     Schema schema = Schema::kDefault;
   };

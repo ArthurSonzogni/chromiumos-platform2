@@ -25,7 +25,8 @@ namespace hwsec {
 
 StatusOr<brillo::Blob> EncryptionTpm1::Encrypt(
     Key key, const brillo::SecureBlob& plaintext, EncryptionOptions options) {
-  if (options.schema != EncryptionOptions::Schema::kDefault) {
+  if (options.schema != EncryptionOptions::Schema::kDefault &&
+      options.schema != EncryptionOptions::Schema::kRsaesSha1) {
     return MakeStatus<TPMError>("Unsupported schema", TPMRetryAction::kNoRetry);
   }
 
@@ -64,7 +65,8 @@ StatusOr<brillo::Blob> EncryptionTpm1::Encrypt(
 
 StatusOr<brillo::SecureBlob> EncryptionTpm1::Decrypt(
     Key key, const brillo::Blob& ciphertext, EncryptionOptions options) {
-  if (options.schema != EncryptionOptions::Schema::kDefault) {
+  if (options.schema != EncryptionOptions::Schema::kDefault &&
+      options.schema != EncryptionOptions::Schema::kRsaesSha1) {
     return MakeStatus<TPMError>("Unsupported schema", TPMRetryAction::kNoRetry);
   }
 
