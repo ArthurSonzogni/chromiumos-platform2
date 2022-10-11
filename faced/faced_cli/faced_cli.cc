@@ -35,6 +35,16 @@ Commands:
   enroll              Enroll a user
     --user=<string>     User to enroll (eg. someone).
 
+  is-enrolled         Checks whether a user is enrolled
+    --user=<string>     User to enroll (eg. someone).
+
+  remove              Unenroll a user
+    --user=<string>     User to unenroll (eg. someone).
+
+  list                List all enrolled users
+
+  clear               Clear all enrollments
+
 Full details of options can be shown using "--help".
 )";
 
@@ -46,6 +56,18 @@ std::optional<Command> ParseCommand(base::StringPiece command) {
   if (command == "enroll") {
     return Command::kEnroll;
   }
+  if (command == "is-enrolled") {
+    return Command::kIsEnrolled;
+  }
+  if (command == "remove") {
+    return Command::kRemoveEnrollment;
+  }
+  if (command == "list") {
+    return Command::kListEnrollments;
+  }
+  if (command == "clear") {
+    return Command::kClearEnrollments;
+  }
   return std::nullopt;
 }
 
@@ -55,6 +77,14 @@ absl::Status RunCommand(const CommandLineArgs& command) {
       return ConnectAndDisconnectFromFaced();
     case Command::kEnroll:
       return Enroll(command.user);
+    case Command::kIsEnrolled:
+      return IsEnrolled(command.user);
+    case Command::kRemoveEnrollment:
+      return RemoveEnrollment(command.user);
+    case Command::kListEnrollments:
+      return ListEnrollments();
+    case Command::kClearEnrollments:
+      return ClearEnrollments();
   }
 }
 
@@ -98,6 +128,34 @@ absl::StatusOr<CommandLineArgs> ParseCommandLine(int argc,
       if (FLAGS_user.empty()) {
         return absl::InvalidArgumentError(
             "No --user argument was provided for 'enroll' command.");
+      }
+      break;
+    case Command::kIsEnrolled:
+      if (FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            "No --user argument was provided for 'is-enrolled' command.");
+      }
+      break;
+    case Command::kRemoveEnrollment:
+      if (FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            "No --user argument was provided for 'remove' command.");
+      }
+      break;
+    case Command::kListEnrollments:
+      if (!FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            absl::StrFormat("--user argument '%s' was provided for 'list' "
+                            "command which does not use this argument.",
+                            FLAGS_user));
+      }
+      break;
+    case Command::kClearEnrollments:
+      if (!FLAGS_user.empty()) {
+        return absl::InvalidArgumentError(
+            absl::StrFormat("--user argument '%s' was provided for 'clear' "
+                            "command which does not use this argument.",
+                            FLAGS_user));
       }
       break;
   }

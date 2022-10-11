@@ -14,8 +14,12 @@ namespace faced {
 
 // Command for the tool to run.
 enum class Command {
-  kConnectToFaced,  // "connect"
-  kEnroll,          // "enroll"
+  kConnectToFaced,    // "connect"
+  kEnroll,            // "enroll"
+  kIsEnrolled,        // "is-enrolled"
+  kRemoveEnrollment,  // "remove"
+  kListEnrollments,   // "list"
+  kClearEnrollments,  // "clear"
 };
 
 // Parsed command line arguments.

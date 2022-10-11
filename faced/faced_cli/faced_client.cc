@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <absl/status/status.h>
 #include <base/memory/scoped_refptr.h>
@@ -29,10 +30,12 @@ namespace faced {
 namespace {
 
 using ::brillo::cryptohome::home::SanitizeUserName;
+using ::chromeos::faceauth::mojom::EnrollmentMetadataPtr;
 using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
 using ::chromeos::faceauth::mojom::FaceAuthenticationService;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::Result;
 
 }  // namespace
 
@@ -71,6 +74,10 @@ absl::StatusOr<FacedConnection> ConnectToFaced() {
         "over DBus");
   }
 
+  connection.service = mojo::Remote<FaceAuthenticationService>(
+      mojo::PendingRemote<FaceAuthenticationService>(std::move(connection.pipe),
+                                                     /*version=*/0));
+
   return connection;
 }
 
@@ -85,18 +92,81 @@ absl::Status ConnectAndDisconnectFromFaced() {
 absl::Status Enroll(base::StringPiece user) {
   FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
 
-  mojo::Remote<FaceAuthenticationService> service =
-      mojo::Remote<FaceAuthenticationService>(
-          mojo::PendingRemote<FaceAuthenticationService>(
-              std::move(connection.pipe),
-              /*version=*/0));
-
   BlockingFuture<absl::Status> final_status;
-  Enroller enroller(service, final_status.PromiseCallback());
+  Enroller enroller(connection.service, final_status.PromiseCallback());
   enroller.Run(user);
   final_status.Wait();
 
   return final_status.value();
+}
+
+absl::Status IsEnrolled(base::StringPiece user) {
+  FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
+
+  BlockingFuture<bool> is_enrolled;
+  connection.service->IsUserEnrolled(std::string(user),
+                                     is_enrolled.PromiseCallback());
+  is_enrolled.Wait();
+
+  if (is_enrolled.value()) {
+    std::cout << "User is enrolled.\n";
+  } else {
+    std::cout << "User is not enrolled.\n";
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status RemoveEnrollment(base::StringPiece user) {
+  FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
+
+  BlockingFuture<Result> remove_enrollment_result;
+  connection.service->RemoveEnrollment(
+      std::string(user), remove_enrollment_result.PromiseCallback());
+  remove_enrollment_result.Wait();
+
+  switch (remove_enrollment_result.value()) {
+    case Result::OK:
+      return absl::OkStatus();
+    case Result::ERROR:
+      return absl::InternalError("Remove enrollment was unsuccessful.");
+  }
+}
+
+absl::Status ListEnrollments() {
+  FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
+
+  BlockingFuture<std::vector<EnrollmentMetadataPtr>> enrollments;
+  connection.service->ListEnrollments(enrollments.PromiseCallback());
+  enrollments.Wait();
+
+  if (enrollments.value().size() == 0) {
+    std::cout << "There are no enrolled users.\n";
+    return absl::OkStatus();
+  }
+
+  std::cout << "List of enrolled users:\n";
+  for (const EnrollmentMetadataPtr& enrollment : enrollments.value()) {
+    std::cout << "\t" << enrollment->hashed_username << "\n";
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status ClearEnrollments() {
+  FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
+
+  BlockingFuture<Result> clear_enrollments_result;
+  connection.service->ClearEnrollments(
+      clear_enrollments_result.PromiseCallback());
+  clear_enrollments_result.Wait();
+
+  switch (clear_enrollments_result.value()) {
+    case Result::OK:
+      return absl::OkStatus();
+    case Result::ERROR:
+      return absl::InternalError("Clear enrollments was unsuccessful.");
+  }
 }
 
 Enroller::Enroller(mojo::Remote<FaceAuthenticationService>& service,

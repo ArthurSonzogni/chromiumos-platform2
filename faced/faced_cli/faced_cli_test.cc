@@ -48,6 +48,32 @@ TEST_F(ParseCommandLineTest, EnrollCommandIsParsedCorrectly) {
   EXPECT_EQ(args.user, "someone");
 }
 
+TEST_F(ParseCommandLineTest, IsEnrolledCommandIsParsedCorrectly) {
+  CommandLineArgs args = faced::ValueOrDie(
+      ParseCommandLine({"faced_cli", "is-enrolled", "--user=someone"}));
+  EXPECT_EQ(args.command, Command::kIsEnrolled);
+  EXPECT_EQ(args.user, "someone");
+}
+
+TEST_F(ParseCommandLineTest, RemoveCommandIsParsedCorrectly) {
+  CommandLineArgs args = faced::ValueOrDie(
+      ParseCommandLine({"faced_cli", "remove", "--user=someone"}));
+  EXPECT_EQ(args.command, Command::kRemoveEnrollment);
+  EXPECT_EQ(args.user, "someone");
+}
+
+TEST_F(ParseCommandLineTest, ListCommandIsParsedCorrectly) {
+  CommandLineArgs args =
+      faced::ValueOrDie(ParseCommandLine({"faced_cli", "list"}));
+  EXPECT_EQ(args.command, Command::kListEnrollments);
+}
+
+TEST_F(ParseCommandLineTest, ClearCommandIsParsedCorrectly) {
+  CommandLineArgs args =
+      faced::ValueOrDie(ParseCommandLine({"faced_cli", "clear"}));
+  EXPECT_EQ(args.command, Command::kClearEnrollments);
+}
+
 TEST_F(ParseCommandLineTest, NoArgs) {
   EXPECT_THAT(ParseCommandLine({"faced_cli"}),
               IsErrorContainingString("Expected exactly one command"));

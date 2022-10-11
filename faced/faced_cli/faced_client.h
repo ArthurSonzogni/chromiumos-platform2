@@ -24,6 +24,9 @@ struct FacedConnection {
 
   // Pipe for Mojo communication
   mojo::ScopedMessagePipeHandle pipe;
+
+  // Remote for interacting with Faced Mojo APIs
+  mojo::Remote<chromeos::faceauth::mojom::FaceAuthenticationService> service;
 };
 
 // Establish Mojo connection to Faced bootstrapped over DBus
@@ -34,6 +37,18 @@ absl::Status ConnectAndDisconnectFromFaced();
 
 // Run an enrollment via Faced for a given user
 absl::Status Enroll(base::StringPiece user);
+
+// Checks whether a user is enrolled.
+absl::Status IsEnrolled(base::StringPiece user);
+
+// Removes a user's enrollment.
+absl::Status RemoveEnrollment(base::StringPiece user);
+
+// Lists saved enrollments.
+absl::Status ListEnrollments();
+
+// Clears all saved enrollments.
+absl::Status ClearEnrollments();
 
 // Internal implementation details (exposed for testing) below.
 
