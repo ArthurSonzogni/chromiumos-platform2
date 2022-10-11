@@ -233,9 +233,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   void ResetDeviceOpsDelegateOnThread();
   void ResetCallbackOpsDelegateOnThread();
 
-  void ProcessCaptureResultOnPostProcessingThread(
-      Camera3CaptureDescriptor result);
-
   // The thread that all the camera3 device ops operate on.
   base::Thread camera_device_ops_thread_;
 
@@ -251,9 +248,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // A thread to apply reprocessing effects
   base::Thread reprocess_effect_thread_;
-
-  // A thread to run StreamManipulator::ProcessCaptureResult() for each SM.
-  base::Thread post_processing_thread_;
 
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;

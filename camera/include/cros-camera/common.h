@@ -1,4 +1,4 @@
-/* Copyright 2016 The ChromiumOS Authors.
+/* Copyright 2016 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
@@ -10,9 +10,7 @@
 #include <time.h>
 
 #include <string>
-#include <vector>
 
-#include <base/containers/span.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -84,11 +82,6 @@ inline base::ScopedFD DupWithCloExec(int fd) {
     return base::ScopedFD();
   }
   return base::ScopedFD(HANDLE_EINTR(fcntl(fd, F_DUPFD_CLOEXEC, 0)));
-}
-
-template <class T>
-inline std::vector<T> CopyToVector(base::span<const T> src) {
-  return std::vector<T>(src.begin(), src.end());
 }
 
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_

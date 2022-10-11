@@ -152,6 +152,11 @@ std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
                                : std::nullopt;
 }
 
+template <class T>
+std::vector<T> CopyToVector(base::span<const T> src) {
+  return std::vector<T>(src.begin(), src.end());
+}
+
 Rect<float> AdjustCropRectToTargetAspectRatio(const Rect<float>& rect,
                                               float target_aspect_ratio) {
   const float aspect_ratio = rect.width / rect.height;
