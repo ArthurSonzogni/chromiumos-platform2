@@ -12250,6 +12250,29 @@ mno {
   }
   mvno {
     mvno_filter {
+      type : GID1
+      regex : "53FF"
+    }
+    data {
+      uuid : "a576607a-4958-11ed-b878-0242ac120002"
+      country : "us"
+      localized_name {
+        name : "ATT NR Broadband"
+      }
+      mccmnc : "310410"
+      mccmnc : "310280"
+      mccmnc : "311180"
+      mccmnc : "310950"
+      mobile_apn {
+        apn : "nrbroadband"
+        ip_type: IPV4V6
+        is_attach_apn : true
+      }
+      mtu : 1430
+    }
+  }
+  mvno {
+    mvno_filter {
       type : IMSI
       range {
         start: 310170828243211
