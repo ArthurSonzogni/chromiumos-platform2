@@ -79,6 +79,8 @@ const char kBatteryRemainingAtBootName[] = "Power.BatteryRemainingAtBoot";  // %
 
 const char kAdaptiveChargingMinutesDeltaName[] =
     "Power.AdaptiveChargingMinutesDelta";
+const char kAdaptiveChargingDelayDeltaName[] =
+    "Power.AdaptiveChargingDelayDelta";
 
 const char kAdaptiveChargingStateActiveSuffix[] = ".Active";
 const char kAdaptiveChargingStateHeuristicDisabledSuffix[] =

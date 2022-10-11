@@ -577,26 +577,28 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     double display_battery_percentage) {
   base::TimeTicks now = clock_.GetCurrentBootTime();
   std::string metric_name = kAdaptiveChargingMinutesDeltaName;
+  std::string state_suffix = "";
+  std::string time_suffix = "";
 
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
     case AdaptiveChargingState::INACTIVE:
-      metric_name += kAdaptiveChargingStateActiveSuffix;
+      state_suffix = kAdaptiveChargingStateActiveSuffix;
       break;
     case AdaptiveChargingState::HEURISTIC_DISABLED:
-      metric_name += kAdaptiveChargingStateHeuristicDisabledSuffix;
+      state_suffix = kAdaptiveChargingStateHeuristicDisabledSuffix;
       break;
     case AdaptiveChargingState::USER_CANCELED:
-      metric_name += kAdaptiveChargingStateUserCanceledSuffix;
+      state_suffix = kAdaptiveChargingStateUserCanceledSuffix;
       break;
     case AdaptiveChargingState::USER_DISABLED:
-      metric_name += kAdaptiveChargingStateUserDisabledSuffix;
+      state_suffix = kAdaptiveChargingStateUserDisabledSuffix;
       break;
     case AdaptiveChargingState::SHUTDOWN:
-      metric_name += kAdaptiveChargingStateShutdownSuffix;
+      state_suffix = kAdaptiveChargingStateShutdownSuffix;
       break;
     case AdaptiveChargingState::NOT_SUPPORTED:
-      metric_name += kAdaptiveChargingStateNotSupportedSuffix;
+      state_suffix = kAdaptiveChargingStateNotSupportedSuffix;
       break;
     default:
       LOG(ERROR) << "Invalid Adaptive Charging State for reporting to UMA: "
@@ -605,14 +607,16 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
 
   base::TimeDelta delta = now - target_time;
   if (delta.is_negative()) {
-    metric_name += kAdaptiveChargingLateSuffix;
+    time_suffix = kAdaptiveChargingLateSuffix;
     delta = delta.magnitude();
   } else {
-    metric_name += kAdaptiveChargingEarlySuffix;
+    time_suffix = kAdaptiveChargingEarlySuffix;
   }
 
-  SendMetric(metric_name, delta.InMinutes(), kAdaptiveChargingDeltaMin,
-             kAdaptiveChargingDeltaMax, kDefaultBuckets);
+  SendMetric(metric_name + state_suffix + time_suffix, delta.InMinutes(),
+             kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax,
+             kDefaultBuckets);
+
   SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
                  lround(display_battery_percentage), kMaxPercent);
   if (charge_finished_time != base::TimeTicks()) {
@@ -635,6 +639,27 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   SendMetric(kAdaptiveChargingMinutesAvailableName, available_time.InMinutes(),
              kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
              kAdaptiveChargingMinutesBuckets);
+
+  metric_name = kAdaptiveChargingDelayDeltaName;
+
+  // Compute the available time minus the time reserved for charging first. If
+  // this is negative, the available hold time is 0.
+  delta =
+      available_time - policy::AdaptiveChargingController::kFinishChargingDelay;
+  if (delta.is_negative())
+    delta = base::TimeDelta();
+
+  delta -= delay_time;
+  if (delta.is_negative()) {
+    time_suffix = kAdaptiveChargingLateSuffix;
+    delta = delta.magnitude();
+  } else {
+    time_suffix = kAdaptiveChargingEarlySuffix;
+  }
+
+  SendMetric(metric_name + state_suffix + time_suffix, delta.InMinutes(),
+             kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax,
+             kDefaultBuckets);
 }
 
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {

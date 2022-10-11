@@ -76,6 +76,7 @@ extern const char kBatteryRemainingAtStartOfSessionName[];
 extern const char kBatteryRemainingAtBootName[];
 
 extern const char kAdaptiveChargingMinutesDeltaName[];
+extern const char kAdaptiveChargingDelayDeltaName[];
 
 extern const char kAdaptiveChargingStateActiveSuffix[];
 extern const char kAdaptiveChargingStateHeuristicDisabledSuffix[];
