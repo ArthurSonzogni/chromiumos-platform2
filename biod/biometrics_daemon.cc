@@ -10,7 +10,11 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "biod/auth_stack_manager_wrapper.h"
+#include "biod/biometrics_manager_wrapper.h"
+#include "biod/cros_fp_auth_stack_manager.h"
 #include "biod/cros_fp_biometrics_manager.h"
+#include "biod/pairing_key_storage_impl.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
 
@@ -21,7 +25,16 @@ using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 
 namespace {
+
+#ifdef FP_LOGIN
+constexpr bool kInstantiateCrosFpAuthStackManager = true;
+#else
+constexpr bool kInstantiateCrosFpAuthStackManager = false;
+#endif
+
 constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
+constexpr char kBiodLibPath[] = "/var/lib/biod";
+
 }  // namespace
 
 BiometricsDaemon::BiometricsDaemon() {
@@ -37,36 +50,64 @@ BiometricsDaemon::BiometricsDaemon() {
   object_manager_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 
-  ObjectPath cros_fp_bio_path = ObjectPath(base::StringPrintf(
-      "%s/%s", kBiodServicePath, kCrosFpBiometricsManagerName));
-
   biod_metrics_ = std::make_unique<BiodMetrics>();
   auto cros_fp_device = CrosFpDevice::Create(
       biod_metrics_.get(), std::make_unique<ec::EcCommandFactory>());
   CHECK(cros_fp_device) << "Failed to initialize CrosFpDevice.";
   auto power_button_filter = PowerButtonFilter::Create(bus_);
   CHECK(power_button_filter) << "Failed to initialize PowerButtonFilter.";
-  // Sets the root path to /run/daemon-store/biod/, which is bound to
-  // /home/root/<user_id>/biod/.
-  auto biod_storage = std::make_unique<BiodStorage>(
-      base::FilePath(kBiodDaemonStorePath), biod::kCrosFpBiometricsManagerName);
 
   session_state_manager_ =
       std::make_unique<SessionStateManager>(bus_.get(), biod_metrics_.get());
 
-  auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
-      std::move(power_button_filter), std::move(cros_fp_device),
-      biod_metrics_.get(),
-      std::make_unique<CrosFpRecordManager>(std::move(biod_storage)));
-  if (cros_fp_bio) {
-    biometrics_managers_.emplace_back(
-        std::make_unique<BiometricsManagerWrapper>(
-            std::move(cros_fp_bio), object_manager_.get(),
-            session_state_manager_.get(), cros_fp_bio_path,
-            sequencer->GetHandler(
-                "Failed to register CrosFpBiometricsManager object", true)));
+  if (kInstantiateCrosFpAuthStackManager) {
+    ObjectPath cros_fp_manager_path = ObjectPath(base::StringPrintf(
+        "%s/%s", kBiodServicePath, kCrosFpAuthStackManagerName));
+    auto biod_storage = std::make_unique<BiodStorage>(
+        base::FilePath(kBiodLibPath), biod::kCrosFpAuthStackManagerName);
+    // Access is always allowed in BiodLibPath.
+    biod_storage->set_allow_access(true);
+    auto pk_storage = std::make_unique<PairingKeyStorageImpl>(
+        kBiodLibPath, kCrosFpAuthStackManagerName);
+
+    auto cros_fp_manager = std::make_unique<CrosFpAuthStackManager>(
+        std::move(power_button_filter), std::move(cros_fp_device),
+        biod_metrics_.get(),
+        std::make_unique<CrosFpRecordManager>(std::move(biod_storage)),
+        std::move(pk_storage));
+    if (cros_fp_manager && cros_fp_manager->Initialize()) {
+      auth_stack_managers_.emplace_back(
+          std::make_unique<AuthStackManagerWrapper>(
+              std::move(cros_fp_manager), object_manager_.get(),
+              session_state_manager_.get(), cros_fp_manager_path,
+              sequencer->GetHandler(
+                  "Failed to register CrosFpAuthStackManager object", true)));
+    } else {
+      LOG(INFO) << "No CrosFpAuthStackManager detected.";
+    }
   } else {
-    LOG(INFO) << "No CrosFpBiometricsManager detected.";
+    ObjectPath cros_fp_bio_path = ObjectPath(base::StringPrintf(
+        "%s/%s", kBiodServicePath, kCrosFpBiometricsManagerName));
+    // Sets the root path to /run/daemon-store/biod/, which is bound to
+    // /home/root/<user_id>/biod/.
+    auto biod_storage =
+        std::make_unique<BiodStorage>(base::FilePath(kBiodDaemonStorePath),
+                                      biod::kCrosFpBiometricsManagerName);
+
+    auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
+        std::move(power_button_filter), std::move(cros_fp_device),
+        biod_metrics_.get(),
+        std::make_unique<CrosFpRecordManager>(std::move(biod_storage)));
+    if (cros_fp_bio) {
+      biometrics_managers_.emplace_back(
+          std::make_unique<BiometricsManagerWrapper>(
+              std::move(cros_fp_bio), object_manager_.get(),
+              session_state_manager_.get(), cros_fp_bio_path,
+              sequencer->GetHandler(
+                  "Failed to register CrosFpBiometricsManager object", true)));
+    } else {
+      LOG(INFO) << "No CrosFpBiometricsManager detected.";
+    }
   }
 
   CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
