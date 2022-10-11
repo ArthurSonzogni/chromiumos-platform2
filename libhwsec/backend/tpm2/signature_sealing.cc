@@ -161,12 +161,10 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
           "Failed to restrict policy to logical disjunction of PCRs");
 
   // Start a TPM authorization session.
-  std::unique_ptr<trunks::HmacSession> session =
-      context.factory.GetHmacSession();
-
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->StartSession(session.get())))
-      .WithStatus<TPMError>("Failed to start hmac session");
+  ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
+                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                       SessionSecuritySetting::kSaltAndEncrypted),
+                   _.WithStatus<TPMError>("Failed to start hmac session"));
 
   // Update the policy with an empty signature that refers to the public key.
   trunks::TPMT_SIGNATURE signature;
@@ -179,7 +177,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicySigned(
                       key_data.key_handle, key_name, /*nonce=*/std::string(),
                       /*cp_hash=*/std::string(), /*policy_ref=*/std::string(),
-                      /*expiration=*/0, signature, session->GetDelegate())))
+                      /*expiration=*/0, signature, hmac_session.GetDelegate())))
       .WithStatus<TPMError>(
           "Failed to restrict policy to signature with the public key");
 
@@ -199,7 +197,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->SealData(
           unsealed_data.to_string(), result_policy_digest, /*auth_value=*/"",
-          /*require_admin_with_policy=*/true, session->GetDelegate(),
+          /*require_admin_with_policy=*/true, hmac_session.GetDelegate(),
           &sealed_value)))
       .WithStatus<TPMError>("Failed to seal secret data");
 
@@ -357,12 +355,10 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   // Start a TPM authorization session.
-  std::unique_ptr<trunks::HmacSession> session =
-      context.factory.GetHmacSession();
-
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->StartSession(session.get())))
-      .WithStatus<TPMError>("Failed to start hmac session");
+  ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
+                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                       SessionSecuritySetting::kSaltAndEncrypted),
+                   _.WithStatus<TPMError>("Failed to start hmac session"));
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(ScopedKey key,
@@ -391,7 +387,7 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
       MakeStatus<TPM2Error>(challenge_data.session->PolicySigned(
           key_data.key_handle, key_name, challenge_data.session_nonce,
           /*cp_hash=*/std::string(), /*policy_ref=*/std::string(),
-          /*expiration=*/0, signature, session->GetDelegate())))
+          /*expiration=*/0, signature, hmac_session.GetDelegate())))
       .WithStatus<TPMError>(
           "Failed to restrict policy to signature with the public key");
 

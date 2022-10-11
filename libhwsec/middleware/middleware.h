@@ -214,6 +214,9 @@ class Middleware {
   static bool ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
     if constexpr (std::is_same_v<Arg, Key>) {
       auto* key_mgr = backend->Get<Backend::KeyManagement>();
+      if (key_mgr == nullptr) {
+        return false;
+      }
       if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
         LOG(WARNING) << "Failed to reload key parameter: "
                      << status.err_status();
@@ -222,6 +225,18 @@ class Middleware {
       return true;
     }
     return false;
+  }
+
+  static bool FlushInvalidSessions(hwsec::Backend* backend) {
+    auto* session_mgr = backend->Get<Backend::SessionManagement>();
+    if (session_mgr == nullptr) {
+      return false;
+    }
+    if (Status status = session_mgr->FlushInvalidSessions(); !status.ok()) {
+      LOG(WARNING) << "Failed to flush invalid sessions: " << status.status();
+      return false;
+    }
+    return true;
   }
 
   template <auto Func, typename... Args>
@@ -252,14 +267,20 @@ class Middleware {
         case TPMRetryAction::kCommunication:
           RetryDelayHandler(&retry_data);
           break;
-        case TPMRetryAction::kLater:
+        case TPMRetryAction::kLater: {
+          bool shall_retry = false;
+          // Flush the invalid sessions.
+          shall_retry |= FlushInvalidSessions(middleware->backend_.get());
           // fold expression with || operator.
-          if (!(ReloadKeyHandler(middleware->backend_.get(), args) || ...)) {
-            // Don't continue retry if all reload operations failed.
+          shall_retry |=
+              (ReloadKeyHandler(middleware->backend_.get(), args) || ...);
+          // Don't continue retry if all reload/flush operations failed.
+          if (!shall_retry) {
             return result;
           }
           RetryDelayHandler(&retry_data);
           break;
+        }
         default:
           return result;
       }

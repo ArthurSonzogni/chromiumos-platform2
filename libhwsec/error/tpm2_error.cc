@@ -59,6 +59,7 @@ TPMRetryAction TPM2Error::ToTPMRetryAction() const {
     case trunks::TPM_RC_REFERENCE_H4:
     case trunks::TPM_RC_REFERENCE_H5:
     case trunks::TPM_RC_REFERENCE_H6:
+    case trunks::SAPI_RC_BAD_PARAMETER:
       status = TPMRetryAction::kLater;
       break;
     // The TPM is defending itself against possible dictionary attacks.

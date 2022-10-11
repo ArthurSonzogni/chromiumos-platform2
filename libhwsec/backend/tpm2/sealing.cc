@@ -58,11 +58,10 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
     use_only_policy_authorization = true;
   }
 
-  std::unique_ptr<trunks::HmacSession> session =
-      context.factory.GetHmacSession();
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(session->StartUnboundSession(true, true)))
-      .WithStatus<TPMError>("Failed to start hmac session");
+  ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
+                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                       SessionSecuritySetting::kSaltAndEncrypted),
+                   _.WithStatus<TPMError>("Failed to start hmac session"));
 
   std::string auth_value;
   if (policy.permission.auth_value.has_value()) {
@@ -81,7 +80,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->SealData(
           plaintext, policy_digest, auth_value, use_only_policy_authorization,
-          session->GetDelegate(), &sealed_str)))
+          hmac_session.GetDelegate(), &sealed_str)))
       .WithStatus<TPMError>("Failed to seal data to PCR with authorization");
 
   return BlobFromString(sealed_str);
@@ -100,10 +99,10 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
     const brillo::Blob& sealed_data,
     UnsealOptions options) {
   // Use unsalted session here, to unseal faster.
-  ASSIGN_OR_RETURN(
-      ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(policy, false, false),
-      _.WithStatus<TPMError>("Failed to get session for policy"));
+  ASSIGN_OR_RETURN(ConfigTpm2::TrunksSession session,
+                   backend_.GetConfigTpm2().GetTrunksSession(
+                       policy, SessionSecuritySetting::kNoEncrypted),
+                   _.WithStatus<TPMError>("Failed to get session for policy"));
 
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 

@@ -208,15 +208,15 @@ ConfigTpm2::GetTrunksPolicySession(
 }
 
 StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
-    const OperationPolicy& policy, bool salted, bool enable_encryption) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
+    const OperationPolicy& policy, SessionSecuritySetting setting) {
   if (policy.device_configs.any()) {
+    SessionSecurityDetail detail = ToSessionSecurityDetail(setting);
     std::vector<std::string> no_extra_policy_digest = {};
-    ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
-                     GetTrunksPolicySession(policy, no_extra_policy_digest,
-                                            salted, enable_encryption),
-                     _.WithStatus<TPMError>("Failed to get policy session"));
+    ASSIGN_OR_RETURN(
+        std::unique_ptr<trunks::PolicySession> session,
+        GetTrunksPolicySession(policy, no_extra_policy_digest, detail.salted,
+                               detail.enable_encryption),
+        _.WithStatus<TPMError>("Failed to get policy session"));
 
     trunks::AuthorizationDelegate* delegate = session->GetDelegate();
     return TrunksSession{
@@ -224,23 +224,21 @@ StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
         .delegate = delegate,
     };
   } else {
-    std::unique_ptr<trunks::HmacSession> hmac_session =
-        context.factory.GetHmacSession();
-
-    RETURN_IF_ERROR(MakeStatus<TPM2Error>(hmac_session->StartUnboundSession(
-                        salted, enable_encryption)))
-        .WithStatus<TPMError>("Failed to start hmac session");
+    ASSIGN_OR_RETURN(
+        trunks::HmacSession & hmac_session,
+        backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(setting),
+        _.WithStatus<TPMError>("Failed to get hmac session"));
 
     if (policy.permission.auth_value.has_value()) {
       std::string auth_value = policy.permission.auth_value.value().to_string();
-      hmac_session->SetEntityAuthorizationValue(auth_value);
+      hmac_session.SetEntityAuthorizationValue(auth_value);
       brillo::SecureClearContainer(auth_value);
     }
 
-    trunks::AuthorizationDelegate* delegate = hmac_session->GetDelegate();
     return TrunksSession{
-        .session = std::move(hmac_session),
-        .delegate = delegate,
+        // The hmac session doesn't owned by the return value.
+        .session = nullptr,
+        .delegate = hmac_session.GetDelegate(),
     };
   }
 }

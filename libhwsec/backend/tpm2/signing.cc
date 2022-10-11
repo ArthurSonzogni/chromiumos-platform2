@@ -40,10 +40,10 @@ StatusOr<brillo::Blob> SigningTpm2::Sign(const OperationPolicy& policy,
                                   TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(
-      ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(policy, true, false),
-      _.WithStatus<TPMError>("Failed to get session for policy"));
+  ASSIGN_OR_RETURN(ConfigTpm2::TrunksSession session,
+                   backend_.GetConfigTpm2().GetTrunksSession(
+                       policy, SessionSecuritySetting::kSaltAndEncrypted),
+                   _.WithStatus<TPMError>("Failed to get session for policy"));
 
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 

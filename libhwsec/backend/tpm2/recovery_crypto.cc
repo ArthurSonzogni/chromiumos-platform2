@@ -182,12 +182,10 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm2::EncryptEccPrivateKey(
       .WithStatus<TPMError>("Failed to get policy digest");
 
   // Create the TPM session.
-  std::unique_ptr<trunks::HmacSession> hmac_session =
-      context.factory.GetHmacSession();
-
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
-                      context.tpm_utility->StartSession(hmac_session.get())))
-      .WithStatus<TPMError>("Failed to start hmac session");
+  ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
+                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                       SessionSecuritySetting::kSaltAndEncrypted),
+                   _.WithStatus<TPMError>("Failed to start hmac session"));
 
   // Encrypt its own private key via the TPM2_Import command.
   std::string encrypted_own_priv_key_string;
@@ -196,7 +194,7 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm2::EncryptEccPrivateKey(
           trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, tpm_curve_id,
           pub_point_x.to_string(), pub_point_y.to_string(),
           own_priv_key.to_string(), result_policy_digest,
-          hmac_session->GetDelegate(), &encrypted_own_priv_key_string)))
+          hmac_session.GetDelegate(), &encrypted_own_priv_key_string)))
       .WithStatus<TPMError>("Failed to import its own private key into TPM");
 
   return EncryptEccPrivateKeyResponse{

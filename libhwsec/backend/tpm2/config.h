@@ -17,6 +17,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/tpm2/session_management.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -36,10 +37,14 @@ class ConfigTpm2 : public Backend::Config,
   StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
 
   using PcrMap = std::map<uint32_t, std::string>;
+
   struct TrunksSession {
-    using InnerSession = std::variant<std::unique_ptr<trunks::HmacSession>,
-                                      std::unique_ptr<trunks::PolicySession>>;
+    using InnerSession = std::unique_ptr<trunks::PolicySession>;
+
+    // The inner session should not be used directly in most of the case, and it
+    // may not contain anything.
     InnerSession session;
+
     trunks::AuthorizationDelegate* delegate;
   };
 
@@ -69,8 +74,7 @@ class ConfigTpm2 : public Backend::Config,
 
   // Creates a unified session from |policy|.
   StatusOr<TrunksSession> GetTrunksSession(const OperationPolicy& policy,
-                                           bool salted,
-                                           bool enable_encryption);
+                                           SessionSecuritySetting setting);
 
   // Creates the PCR value for PinWeaver digest.
   StatusOr<PcrValue> ToPcrValue(const DeviceConfigSettings& settings);
