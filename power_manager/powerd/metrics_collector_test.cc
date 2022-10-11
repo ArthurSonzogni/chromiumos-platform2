@@ -82,8 +82,8 @@ class MetricsCollectorTest : public Test {
         collector_.clock_.GetCurrentBootTime() + interval);
   }
 
-  base::TimeTicks GetCurrentTime() {
-    return collector_.clock_.GetCurrentTime();
+  base::TimeTicks GetCurrentBootTime() {
+    return collector_.clock_.GetCurrentBootTime();
   }
 
   // Adds expectations to ignore all metrics sent by HandleSessionStateChange()
@@ -880,7 +880,7 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
         kAdaptiveChargingMinutesDelayName,
         kAdaptiveChargingMinutesAvailableName,
     };
-    base::TimeTicks now = GetCurrentTime();
+    base::TimeTicks now = GetCurrentBootTime();
 
     ExpectMetric(metric_name, (now - target_time).magnitude().InMinutes(),
                  kAdaptiveChargingMinutesDeltaMin,
@@ -909,7 +909,7 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
         kAdaptiveChargingMinutesDelayName,
         kAdaptiveChargingMinutesAvailableName,
     };
-    base::TimeTicks now = GetCurrentTime();
+    base::TimeTicks now = GetCurrentBootTime();
     base::TimeTicks target_time = now - base::Minutes(60);
     base::TimeTicks hold_start_time = target_time - base::Hours(5);
     base::TimeTicks hold_end_time = target_time - base::Hours(2);
@@ -925,7 +925,7 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
 
     // Test that the suffix for `metric_name` changes when `target_time` is
     // after `now`. Other metrics should be unaffected.
-    now = GetCurrentTime();
+    now = GetCurrentBootTime();
     target_time = now + base::Minutes(60);
     SetExpectedMetrics(metric_name + kAdaptiveChargingMinutesDeltaLateSuffix,
                        target_time, hold_start_time, hold_end_time,

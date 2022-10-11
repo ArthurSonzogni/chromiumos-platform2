@@ -575,7 +575,7 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     const base::TimeTicks& hold_end_time,
     const base::TimeTicks& charge_finished_time,
     double display_battery_percentage) {
-  base::TimeTicks now = clock_.GetCurrentTime();
+  base::TimeTicks now = clock_.GetCurrentBootTime();
   std::string metric_name;
 
   switch (state) {
