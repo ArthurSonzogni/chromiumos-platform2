@@ -20,7 +20,7 @@
 #include <base/threading/thread.h>
 #include <unordered_map>
 
-#include "faced/camera/face_cli_camera_service_interface.h"
+#include "faced/camera/camera_service.h"
 #include "faced/proto/face_service.pb.h"
 
 namespace faced {
@@ -40,10 +40,9 @@ bool IsFormatEqual(const cros_cam_format_info_t& fmt1,
                    const cros_cam_format_info_t& fmt2);
 
 // Abstract interface for the class that processes incoming frames.
-class CameraFrameProcessor
-    : public base::RefCountedThreadSafe<CameraFrameProcessor> {
+class FrameProcessor : public base::RefCountedThreadSafe<FrameProcessor> {
  public:
-  virtual ~CameraFrameProcessor() = default;
+  virtual ~FrameProcessor() = default;
 
   // Overriden function to process frames.
   //
@@ -62,7 +61,7 @@ class CameraFrameProcessor
                             ProcessFrameDoneCallback done) = 0;
 
  private:
-  friend class base::RefCountedThreadSafe<CameraFrameProcessor>;
+  friend class base::RefCountedThreadSafe<FrameProcessor>;
 };
 
 // CameraClient communicates with cros-camera-service to extract camera frames
@@ -90,7 +89,7 @@ class CameraClient {
   //
   // CameraClient has ownership of `camera_service`
   static absl::StatusOr<std::unique_ptr<CameraClient>> Create(
-      std::unique_ptr<FaceCliCameraServiceInterface> camera_service);
+      std::unique_ptr<CameraService> camera_service);
 
   // CameraClient is not copyable
   CameraClient(const CameraClient&) = delete;
@@ -104,7 +103,7 @@ class CameraClient {
   // The frame_processor `ProcessFrame` implementation should return quickly,
   // performing any long-running actions asynchronously
   void CaptureFrames(const CaptureFramesConfig& config,
-                     const scoped_refptr<CameraFrameProcessor>& frame_processor,
+                     const scoped_refptr<FrameProcessor>& frame_processor,
                      StopCaptureCallback capture_complete);
 
   // Checks if a particular camera id and format info is available
@@ -123,10 +122,9 @@ class CameraClient {
 
  private:
   // CameraClient can only be constructed via CameraClient::Create()
-  explicit CameraClient(
-      std::unique_ptr<FaceCliCameraServiceInterface> camera_service)
+  explicit CameraClient(std::unique_ptr<CameraService> camera_service)
       : task_runner_(base::SequencedTaskRunnerHandle::Get()),
-        camera_service_connector_(std::move(camera_service)) {}
+        camera_service_(std::move(camera_service)) {}
 
   // Gets and prints the details of each camera
   absl::Status ProbeAndPrintCameraInfo();
@@ -174,8 +172,7 @@ class CameraClient {
                      // called from the CameraHAL's thread
   StopCaptureCallback capture_complete_;
 
-  std::unique_ptr<FaceCliCameraServiceInterface> camera_service_connector_ =
-      nullptr;
+  std::unique_ptr<CameraService> camera_service_ = nullptr;
 };
 
 }  // namespace faced

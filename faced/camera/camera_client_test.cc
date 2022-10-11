@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/face_cli_camera_service_interface.h"
+#include "faced/camera/camera_service.h"
 #include "faced/camera/test_utils.h"
 #include "faced/proto/face_service.pb.h"
 #include "faced/testing/status.h"
@@ -63,7 +63,7 @@ TEST(CameraClientTest, Create1) {
   // Required for threading in tests
   base::test::TaskEnvironment task_environment;
 
-  testing::FakeCameraServiceConnector fake_camera_service_connector;
+  testing::FakeCameraService fake_camera_service_connector;
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
                                               /*is_removed=*/false);
@@ -71,9 +71,8 @@ TEST(CameraClientTest, Create1) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(
-          std::make_unique<testing::FakeCameraServiceConnector>(
-              fake_camera_service_connector)));
+      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+          fake_camera_service_connector)));
 
   // Check that formats are available
   for (const cros_cam_format_info_t& format_info :
@@ -111,7 +110,7 @@ TEST(CameraClientTest, Create2) {
   // Required for threading in tests
   base::test::TaskEnvironment task_environment;
 
-  testing::FakeCameraServiceConnector fake_camera_service_connector;
+  testing::FakeCameraService fake_camera_service_connector;
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
                                               /*is_removed=*/true);
@@ -119,9 +118,8 @@ TEST(CameraClientTest, Create2) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(
-          std::make_unique<testing::FakeCameraServiceConnector>(
-              fake_camera_service_connector)));
+      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+          fake_camera_service_connector)));
 
   // Check that formats are unavailable
   for (const cros_cam_format_info_t& format_info :
@@ -145,7 +143,7 @@ TEST(CameraClientTest, Create3) {
   // Required for threading in tests
   base::test::TaskEnvironment task_environment;
 
-  testing::FakeCameraServiceConnector fake_camera_service_connector;
+  testing::FakeCameraService fake_camera_service_connector;
 
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
@@ -158,9 +156,8 @@ TEST(CameraClientTest, Create3) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(
-          std::make_unique<testing::FakeCameraServiceConnector>(
-              fake_camera_service_connector)));
+      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+          fake_camera_service_connector)));
 
   // Check that formats from the first camera info (is_removed = false) are
   // available
@@ -204,7 +201,7 @@ TEST(CameraClientTest, Create4) {
   // Required for threading in tests
   base::test::TaskEnvironment task_environment;
 
-  testing::FakeCameraServiceConnector fake_camera_service_connector;
+  testing::FakeCameraService fake_camera_service_connector;
 
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
@@ -215,9 +212,8 @@ TEST(CameraClientTest, Create4) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(
-          std::make_unique<testing::FakeCameraServiceConnector>(
-              fake_camera_service_connector)));
+      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+          fake_camera_service_connector)));
 
   // Check that formats are unavailable
   for (const cros_cam_format_info_t& format_info :
@@ -235,11 +231,11 @@ TEST(CameraClientTest, Create4) {
   EXPECT_EQ(max_resolution_format, std::nullopt);
 }
 
-// Simple subclass of CameraFrameProcessor that processes a certain number of
+// Simple subclass of FrameProcessor that processes a certain number of
 // frames then stops.
-class SimpleCameraFrameProcessor : public CameraFrameProcessor {
+class SimpleFrameProcessor : public FrameProcessor {
  public:
-  explicit SimpleCameraFrameProcessor(int num_frames_to_process)
+  explicit SimpleFrameProcessor(int num_frames_to_process)
       : num_frames_to_process_(num_frames_to_process) {}
 
   // Increments the frame counter and calls processing_complete_ when the
@@ -264,13 +260,13 @@ class SimpleCameraFrameProcessor : public CameraFrameProcessor {
   int num_frames_to_process_ = 0;
 };
 
-// Tests CameraClient::CaptureFrames() with a custom CameraFrameProcessor
+// Tests CameraClient::CaptureFrames() with a custom FrameProcessor
 TEST(CameraClientTest, CaptureFrames) {
   // Required for threading in tests
   base::test::TaskEnvironment task_environment{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  testing::FakeCameraServiceConnector fake_camera_service_connector;
+  testing::FakeCameraService fake_camera_service_connector;
 
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   const int frames_available = 10;
@@ -286,13 +282,12 @@ TEST(CameraClientTest, CaptureFrames) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(
-          std::make_unique<testing::FakeCameraServiceConnector>(
-              fake_camera_service_connector)));
+      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+          fake_camera_service_connector)));
 
   BlockingFuture<absl::Status> status;
   auto frame_processor =
-      base::MakeRefCounted<SimpleCameraFrameProcessor>(frames_to_process);
+      base::MakeRefCounted<SimpleFrameProcessor>(frames_to_process);
   camera_client->CaptureFrames(
       {.camera_id = 0, .format = yuv_camera_set.format_infos[0]},
       frame_processor, status.PromiseCallback());

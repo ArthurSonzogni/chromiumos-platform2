@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FACED_CAMERA_FACED_CAMERA_SERVICE_INTERFACE_H_
-#define FACED_CAMERA_FACED_CAMERA_SERVICE_INTERFACE_H_
+#ifndef FACED_CAMERA_CAMERA_SERVICE_H_
+#define FACED_CAMERA_CAMERA_SERVICE_H_
 
 #include "cros-camera/camera_service_connector.h"
 
@@ -11,9 +11,9 @@ namespace faced {
 
 // This abstract interface enables testing of the camera service within face_cli
 // without modifying code within platform2/camera
-class FaceCliCameraServiceInterface {
+class CameraService {
  public:
-  virtual ~FaceCliCameraServiceInterface() = default;
+  virtual ~CameraService() = default;
 
   // Initializes the connection to camera HAL dispatcher and registers the
   // camera HAL client. Must be called before any other functions.
@@ -37,4 +37,4 @@ class FaceCliCameraServiceInterface {
   virtual int StopCapture(int id) = 0;
 };
 }  // namespace faced
-#endif  // FACED_CAMERA_FACED_CAMERA_SERVICE_INTERFACE_H_
+#endif  // FACED_CAMERA_CAMERA_SERVICE_H_

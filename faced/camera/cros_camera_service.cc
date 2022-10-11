@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "faced/camera/face_cli_camera_service.h"
+#include "faced/camera/cros_camera_service.h"
 
 #include <memory>
 #include <string>
@@ -18,12 +18,12 @@ namespace faced {
 
 constexpr int kApiVersion = 1;
 
-std::unique_ptr<FaceCliCameraService> FaceCliCameraService::Create(
+std::unique_ptr<CrosCameraService> CrosCameraService::Create(
     base::StringPiece token_path_string) {
-  return base::WrapUnique(new FaceCliCameraService(token_path_string));
+  return base::WrapUnique(new CrosCameraService(token_path_string));
 }
 
-int FaceCliCameraService::Init() {
+int CrosCameraService::Init() {
   base::FilePath token_path(token_path_string_);
   std::string token_string;
 
@@ -38,23 +38,22 @@ int FaceCliCameraService::Init() {
   return cros_cam_init(&option);
 }
 
-int FaceCliCameraService::Exit() {
+int CrosCameraService::Exit() {
   return cros_cam_exit();
 }
 
-int FaceCliCameraService::GetCameraInfo(cros_cam_get_cam_info_cb_t callback,
-                                        void* context) {
+int CrosCameraService::GetCameraInfo(cros_cam_get_cam_info_cb_t callback,
+                                     void* context) {
   return cros_cam_get_cam_info(callback, context);
 }
 
-int FaceCliCameraService::StartCapture(
-    const cros_cam_capture_request_t* request,
-    cros_cam_capture_cb_t callback,
-    void* context) {
+int CrosCameraService::StartCapture(const cros_cam_capture_request_t* request,
+                                    cros_cam_capture_cb_t callback,
+                                    void* context) {
   return cros_cam_start_capture(request, callback, context);
 }
 
-int FaceCliCameraService::StopCapture(int id) {
+int CrosCameraService::StopCapture(int id) {
   return cros_cam_stop_capture(id);
 }
 }  // namespace faced

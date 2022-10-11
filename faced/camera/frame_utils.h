@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FACED_CAMERA_CAMERA_FRAME_UTILS_H_
-#define FACED_CAMERA_CAMERA_FRAME_UTILS_H_
+#ifndef FACED_CAMERA_FRAME_UTILS_H_
+#define FACED_CAMERA_FRAME_UTILS_H_
 
 #include <memory>
 #include <string>
@@ -27,4 +27,4 @@ std::string GetTightlyPackedPayload(int height,
 
 }  // namespace faced
 
-#endif  // FACED_CAMERA_CAMERA_FRAME_UTILS_H_
+#endif  // FACED_CAMERA_FRAME_UTILS_H_

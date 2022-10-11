@@ -12,7 +12,7 @@
 #include <base/task/thread_pool.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/face_cli_camera_service_interface.h"
+#include "faced/camera/camera_service.h"
 
 namespace faced::testing {
 constexpr cros_cam_format_info_t kYuvHighDefCamera = {
@@ -37,11 +37,11 @@ struct CameraSet {
 CameraSet YuvCameraSet();
 CameraSet MjpgCameraSet();
 
-// FakeCameraServiceConnector provides fake data for tests
+// FakeCameraService provides fake data for tests
 
-class FakeCameraServiceConnector : public FaceCliCameraServiceInterface {
+class FakeCameraService : public CameraService {
  public:
-  FakeCameraServiceConnector() = default;
+  FakeCameraService() = default;
 
   // Helper function to add test camera infos
   void AddCameraInfo(cros_cam_info_t cam_info, bool is_removed);

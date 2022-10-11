@@ -68,27 +68,27 @@ CameraSet MjpgCameraSet() {
   return mjpg_camera_set;
 }
 
-void FakeCameraServiceConnector::AddCameraInfo(cros_cam_info_t cam_info,
-                                               bool is_removed) {
+void FakeCameraService::AddCameraInfo(cros_cam_info_t cam_info,
+                                      bool is_removed) {
   camera_infos_.push_back(cam_info);
   camera_is_removed_.push_back(is_removed);
 }
 
-void FakeCameraServiceConnector::AddResult(cros_cam_capture_result_t result) {
+void FakeCameraService::AddResult(cros_cam_capture_result_t result) {
   results_.push_back(result);
 }
 
-int FakeCameraServiceConnector::Init() {
+int FakeCameraService::Init() {
   ops_runner_ = base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
   return 0;
 }
 
-int FakeCameraServiceConnector::Exit() {
+int FakeCameraService::Exit() {
   return 0;
 }
 
-int FakeCameraServiceConnector::GetCameraInfo(
-    cros_cam_get_cam_info_cb_t callback, void* context) {
+int FakeCameraService::GetCameraInfo(cros_cam_get_cam_info_cb_t callback,
+                                     void* context) {
   for (int i = 0; i < camera_infos_.size(); i++) {
     if ((*callback)(context, &camera_infos_[i], camera_is_removed_[i]) != 0) {
       return 1;
@@ -98,27 +98,25 @@ int FakeCameraServiceConnector::GetCameraInfo(
   return 0;
 }
 
-int FakeCameraServiceConnector::StartCapture(
-    const cros_cam_capture_request_t* request,
-    cros_cam_capture_cb_t callback,
-    void* context) {
+int FakeCameraService::StartCapture(const cros_cam_capture_request_t* request,
+                                    cros_cam_capture_cb_t callback,
+                                    void* context) {
   camera_id_ = request->id;
   ops_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(&FakeCameraServiceConnector::StartCaptureCallback,
+      base::BindOnce(&FakeCameraService::StartCaptureCallback,
                      base::Unretained(this), request, callback, context));
   return 0;
 }
 
-int FakeCameraServiceConnector::StopCapture(int id) {
-  ops_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&FakeCameraServiceConnector::StopCaptureCallback,
-                     base::Unretained(this)));
+int FakeCameraService::StopCapture(int id) {
+  ops_runner_->PostTask(FROM_HERE,
+                        base::BindOnce(&FakeCameraService::StopCaptureCallback,
+                                       base::Unretained(this)));
   return 0;
 }
 
-void FakeCameraServiceConnector::StartCaptureCallback(
+void FakeCameraService::StartCaptureCallback(
     const cros_cam_capture_request_t* request,
     cros_cam_capture_cb_t callback,
     void* context) {
@@ -141,12 +139,12 @@ void FakeCameraServiceConnector::StartCaptureCallback(
   // Simulate 30fps
   ops_runner_->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&FakeCameraServiceConnector::StartCaptureCallback,
+      base::BindOnce(&FakeCameraService::StartCaptureCallback,
                      base::Unretained(this), request, callback, context),
       base::Milliseconds(33));
 }
 
-void FakeCameraServiceConnector::StopCaptureCallback() {
+void FakeCameraService::StopCaptureCallback() {
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
   results_.clear();
 }

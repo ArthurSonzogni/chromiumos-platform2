@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "faced/camera/camera_frame_utils.h"
+#include "faced/camera/frame_utils.h"
 
 #include <string>
 #include <vector>

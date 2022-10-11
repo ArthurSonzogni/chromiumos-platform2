@@ -2,24 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FACED_CAMERA_FACED_CAMERA_SERVICE_H_
-#define FACED_CAMERA_FACED_CAMERA_SERVICE_H_
+#ifndef FACED_CAMERA_CROS_CAMERA_SERVICE_H_
+#define FACED_CAMERA_CROS_CAMERA_SERVICE_H_
 
 #include <memory>
 #include <string>
 
 #include <base/strings/string_piece.h>
 
-#include "faced/camera/face_cli_camera_service_interface.h"
+#include "faced/camera/camera_service.h"
 
 namespace faced {
 
-// FaceCliCameraService is a simple wrapper around cros::CameraServiceConnector
-class FaceCliCameraService final : public FaceCliCameraServiceInterface {
+// CrosCameraService is a simple wrapper around cros::CameraServiceConnector
+class CrosCameraService final : public CameraService {
  public:
-  // Creates an instance of FaceCliCameraServiceConnector using a given
+  // Creates an instance of CrosCameraServiceConnector using a given
   // permission token
-  static std::unique_ptr<FaceCliCameraService> Create(
+  static std::unique_ptr<CrosCameraService> Create(
       base::StringPiece token_path_string);
 
   // Initializes the connection to camera HAL dispatcher and registers the
@@ -44,7 +44,7 @@ class FaceCliCameraService final : public FaceCliCameraServiceInterface {
   int StopCapture(int id) override;
 
  private:
-  explicit FaceCliCameraService(base::StringPiece token_path_string)
+  explicit CrosCameraService(base::StringPiece token_path_string)
       : token_path_string_(token_path_string) {}
 
   const std::string token_path_string_;
@@ -52,4 +52,4 @@ class FaceCliCameraService final : public FaceCliCameraServiceInterface {
 
 }  // namespace faced
 
-#endif  // FACED_CAMERA_FACED_CAMERA_SERVICE_H_
+#endif  // FACED_CAMERA_CROS_CAMERA_SERVICE_H_

@@ -19,8 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/camera_frame_utils.h"
-#include "faced/camera/face_cli_camera_service.h"
+#include "faced/camera/cros_camera_service.h"
+#include "faced/camera/frame_utils.h"
 #include "faced/util/status.h"
 
 namespace faced {
@@ -49,11 +49,11 @@ bool IsFormatEqual(const cros_cam_format_info_t& fmt1,
 
 absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
     base::StringPiece token_path_string) {
-  return CameraClient::Create(FaceCliCameraService::Create(token_path_string));
+  return CameraClient::Create(CrosCameraService::Create(token_path_string));
 }
 
 absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
-    std::unique_ptr<FaceCliCameraServiceInterface> camera_service) {
+    std::unique_ptr<CameraService> camera_service) {
   // Establishes a connection with the cros camera service
   if (camera_service->Init() != 0) {
     return absl::UnavailableError("Failed to initialise camera client");
@@ -73,8 +73,8 @@ absl::Status CameraClient::ProbeAndPrintCameraInfo() {
   // synchronously before returning a result, so there are no multithreaded
   // implications. Additionally, GetCameraInfo registers a callback so that
   // future updates can be called asynchronously
-  if (camera_service_connector_->GetCameraInfo(
-          &CameraClient::GetCamInfoCallback, this) != 0) {
+  if (camera_service_->GetCameraInfo(&CameraClient::GetCamInfoCallback, this) !=
+      0) {
     return absl::NotFoundError("Failed to get camera info");
   }
 
@@ -123,7 +123,7 @@ int CameraClient::GotCameraInfo(const cros_cam_info_t* info, int is_removed) {
 
 void CameraClient::CaptureFrames(
     const CaptureFramesConfig& config,
-    const scoped_refptr<CameraFrameProcessor>& frame_processor,
+    const scoped_refptr<FrameProcessor>& frame_processor,
     StopCaptureCallback capture_complete) {
   camera_id_ = config.camera_id;
   // Perform a copy since cros_cam_capture_request_t::format needs to be
@@ -132,8 +132,8 @@ void CameraClient::CaptureFrames(
 
   // Create a cancelable callback which can be cancelled to stop any future
   // frames from being processed
-  process_frame_callback_.Reset(base::BindRepeating(
-      &CameraFrameProcessor::ProcessFrame, frame_processor));
+  process_frame_callback_.Reset(
+      base::BindRepeating(&FrameProcessor::ProcessFrame, frame_processor));
 
   capture_complete_ = std::move(capture_complete);
 
@@ -163,7 +163,7 @@ void CameraClient::CaptureFrames(
       .format = &format_,
   };
 
-  int ret = camera_service_connector_->StartCapture(
+  int ret = camera_service_->StartCapture(
       &request, &CameraClient::OnCaptureResultAvailable, this);
   if (ret != 0) {
     task_runner_->PostTask(
