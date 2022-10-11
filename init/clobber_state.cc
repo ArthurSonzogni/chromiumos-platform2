@@ -825,8 +825,8 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   // We call BLKZEROOUT in chunks 5% (1/20th) of the disk size so that we can
   // update progress as we go. Round up the chunk size to a multiple of 128MiB.
   // BLKZEROOUT requires that its arguments are aligned to at least 512 bytes.
-  const uint64_t zero_block_size =
-      base::bits::AlignUp(to_write / 20, 128 * 1024 * 1024);
+  const uint64_t zero_block_size = base::bits::AlignUp(
+      static_cast<uint64_t>(to_write / 20), uint64_t{128 * 1024 * 1024});
   while (total_written < to_write) {
     uint64_t write_size = std::min(zero_block_size, to_write - total_written);
     uint64_t range[2] = {total_written, write_size};
