@@ -51,14 +51,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   else
     biod_data = data_provider.ConsumeRemainingBytes<uint8_t>();
 
-  biod::BiodStorage biod_storage = biod::BiodStorage("BiometricsManager");
+  base::FilePath root_path("/tmp/biod_storage_fuzzing_data/biod");
+
+  biod::BiodStorage biod_storage =
+      biod::BiodStorage(root_path, "BiometricsManager");
   biod_storage.set_allow_access(true);
 
   RecordMetadata record_metadata = {version, id, user_id, label,
                                     validation_val};
 
-  base::FilePath root_path("/tmp/biod_storage_fuzzing_data");
-  biod_storage.SetRootPathForTesting(root_path);
   bool status =
       biod_storage.WriteRecord(record_metadata, base::Value(biod_data));
   if (status) {

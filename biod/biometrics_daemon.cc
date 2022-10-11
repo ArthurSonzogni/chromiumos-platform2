@@ -20,6 +20,10 @@ using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 
+namespace {
+constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
+}  // namespace
+
 BiometricsDaemon::BiometricsDaemon() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -42,8 +46,10 @@ BiometricsDaemon::BiometricsDaemon() {
   CHECK(cros_fp_device) << "Failed to initialize CrosFpDevice.";
   auto power_button_filter = PowerButtonFilter::Create(bus_);
   CHECK(power_button_filter) << "Failed to initialize PowerButtonFilter.";
-  auto biod_storage =
-      std::make_unique<BiodStorage>(biod::kCrosFpBiometricsManagerName);
+  // Sets the root path to /run/daemon-store/biod/, which is bound to
+  // /home/root/<user_id>/biod/.
+  auto biod_storage = std::make_unique<BiodStorage>(
+      base::FilePath(kBiodDaemonStorePath), biod::kCrosFpBiometricsManagerName);
 
   session_state_manager_ =
       std::make_unique<SessionStateManager>(bus_.get(), biod_metrics_.get());

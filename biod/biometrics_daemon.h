@@ -11,6 +11,7 @@
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 
+#include "biod/auth_stack_manager_wrapper.h"
 #include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/session_state_manager.h"
@@ -32,10 +33,12 @@ class BiometricsDaemon {
   std::unique_ptr<BiodMetricsInterface> biod_metrics_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
-  // BiometricsManagerWrapper holds raw pointers to SessionStateManager and
-  // ExportedObjectManager so it must be placed after them to make sure that
-  // pointers remain valid (destruction order is correct).
+  // BiometricsManagerWrappers and AuthStackManagers hold raw pointers to
+  // SessionStateManager and ExportedObjectManager so it must be placed after
+  // them to make sure that pointers remain valid (destruction order is
+  // correct).
   std::vector<std::unique_ptr<BiometricsManagerWrapper>> biometrics_managers_;
+  std::vector<std::unique_ptr<AuthStackManagerWrapper>> auth_stack_managers_;
 };
 }  // namespace biod
 

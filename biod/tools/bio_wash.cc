@@ -31,6 +31,7 @@ namespace {
 static constexpr base::TimeDelta kTimeout = base::Seconds(30);
 
 constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
+constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
 
 bool IsFingerprintSupported() {
   brillo::CrosConfig cros_config;
@@ -46,8 +47,8 @@ int DoBioWash(const bool factory_init = false) {
   // events for BioWash.
   auto bus = base::MakeRefCounted<dbus::Bus>(options);
   auto biod_metrics = std::make_unique<biod::BiodMetrics>();
-  auto biod_storage =
-      std::make_unique<biod::BiodStorage>(biod::kCrosFpBiometricsManagerName);
+  auto biod_storage = std::make_unique<biod::BiodStorage>(
+      base::FilePath(kBiodDaemonStorePath), biod::kCrosFpBiometricsManagerName);
   // Add all the possible BiometricsManagers available.
   auto cros_fp_bio = std::make_unique<biod::CrosFpBiometricsManager>(
       biod::PowerButtonFilter::Create(bus),

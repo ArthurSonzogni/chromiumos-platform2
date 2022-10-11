@@ -102,7 +102,6 @@ class BiodStorageInterface {
 
   virtual ~BiodStorageInterface() = default;
 
-  virtual void SetRootPathForTesting(const base::FilePath& root_path) = 0;
   virtual base::FilePath GetRecordFilename(
       const BiodStorageInterface::RecordMetadata& record_metadata) = 0;
   virtual bool WriteRecord(
@@ -122,13 +121,9 @@ class BiodStorageInterface {
 class BiodStorage : public BiodStorageInterface {
  public:
   // Constructor sets the file path to be
-  // /run/daemon-store/biod/<user_id>/<biometrics_manager_name>/<record_id>,
-  // which is bound to
-  // /home/root/<user_id>/biod/<biometrics_manager_name>/<record_id>.
-  explicit BiodStorage(const std::string& biometrics_manager_name);
-
-  // Set root path to a different path for testing purpose only.
-  void SetRootPathForTesting(const base::FilePath& root_path) override;
+  // <root_path>/<biometrics_manager_name>/<record_id>.
+  BiodStorage(const base::FilePath& root_path,
+              const std::string& biometrics_manager_name);
 
   /**
    * Get the file name for a given record. Intended to be used for testing.

@@ -23,10 +23,6 @@ class MockBiodStorage : public BiodStorageInterface {
   MockBiodStorage() = default;
   ~MockBiodStorage() override = default;
 
-  MOCK_METHOD(void,
-              SetRootPathForTesting,
-              (const base::FilePath& root_path),
-              (override));
   MOCK_METHOD(base::FilePath,
               GetRecordFilename,
               (const BiodStorageInterface::RecordMetadata& record_metadata),

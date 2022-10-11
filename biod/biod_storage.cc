@@ -34,9 +34,7 @@ namespace biod {
 using base::FilePath;
 
 namespace {
-constexpr char kDaemonStorePath[] = "/run/daemon-store";
 constexpr char kRecordFileName[] = "Record";
-constexpr char kBiod[] = "biod";
 
 // Members of the JSON file.
 constexpr char kBioManagerMember[] = "biomanager";
@@ -47,14 +45,11 @@ constexpr char kValidationVal[] = "match_validation_value";
 constexpr char kVersionMember[] = "version";
 }  // namespace
 
-BiodStorage::BiodStorage(const std::string& biometrics_manager_name)
-    : root_path_(kDaemonStorePath),
+BiodStorage::BiodStorage(const base::FilePath& root_path,
+                         const std::string& biometrics_manager_name)
+    : root_path_(root_path),
       biometrics_manager_name_(biometrics_manager_name),
       allow_access_(false) {}
-
-void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
-  root_path_ = root_path;
-}
 
 bool BiodStorage::WriteRecord(
     const BiodStorageInterface::RecordMetadata& record_metadata,
@@ -162,7 +157,7 @@ std::vector<BiodStorageInterface::Record> BiodStorage::ReadRecordsForSingleUser(
   }
 
   FilePath biod_path =
-      root_path_.Append(kBiod).Append(user_id).Append(biometrics_manager_name_);
+      root_path_.Append(user_id).Append(biometrics_manager_name_);
   base::FileEnumerator enum_records(biod_path, false,
                                     base::FileEnumerator::FILES, "Record*");
   for (FilePath record_path = enum_records.Next(); !record_path.empty();
@@ -185,8 +180,7 @@ std::optional<BiodStorageInterface::Record> BiodStorage::ReadSingleRecord(
     return std::nullopt;
   }
 
-  base::FilePath record_path = root_path_.Append(kBiod)
-                                   .Append(user_id)
+  base::FilePath record_path = root_path_.Append(user_id)
                                    .Append(biometrics_manager_name_)
                                    .Append(kRecordFileName + record_id);
 
@@ -308,8 +302,7 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
     return false;
   }
 
-  FilePath record_storage_filename = root_path_.Append(kBiod)
-                                         .Append(user_id)
+  FilePath record_storage_filename = root_path_.Append(user_id)
                                          .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
 
@@ -337,8 +330,7 @@ std::string BiodStorage::GenerateNewRecordId() {
 base::FilePath BiodStorage::GetRecordFilename(
     const BiodStorageInterface::RecordMetadata& record_metadata) {
   std::vector<FilePath> paths = {
-      FilePath(kBiod), FilePath(record_metadata.user_id),
-      FilePath(biometrics_manager_name_),
+      FilePath(record_metadata.user_id), FilePath(biometrics_manager_name_),
       FilePath(kRecordFileName + record_metadata.record_id)};
 
   FilePath record_storage_filename = root_path_;

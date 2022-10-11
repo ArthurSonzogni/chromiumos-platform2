@@ -88,11 +88,13 @@ class BiodStorageBaseTest : public ::testing::Test {
  public:
   BiodStorageBaseTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    root_path_ = temp_dir_.GetPath().AppendASCII("biod_storage_unittest_root");
-    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
+    root_path_ = temp_dir_.GetPath()
+                     .AppendASCII("biod_storage_unittest_root")
+                     .AppendASCII("biod");
+    biod_storage_ =
+        std::make_unique<BiodStorage>(root_path_, kBiometricsManagerName);
     // Since there is no session manager, allow accesses by default.
     biod_storage_->set_allow_access(true);
-    biod_storage_->SetRootPathForTesting(root_path_);
   }
   BiodStorageBaseTest(const BiodStorageBaseTest&) = delete;
   BiodStorageBaseTest& operator=(const BiodStorageBaseTest&) = delete;
@@ -241,8 +243,7 @@ TEST_F(BiodStorageBaseTest, WriteRecord_CheckUmask) {
       kData1};
 
   const base::FilePath kRecordStorageFilename =
-      root_path_.Append("biod")
-          .Append(record.metadata.user_id)
+      root_path_.Append(record.metadata.user_id)
           .Append(kBiometricsManagerName)
           .Append("Record" + record.metadata.record_id);
 
@@ -335,12 +336,13 @@ class BiodStorageInvalidRecordTest : public ::testing::Test {
  public:
   BiodStorageInvalidRecordTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    root_path_ = temp_dir_.GetPath().AppendASCII(
-        "biod_storage_invalid_record_test_root");
-    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
+    root_path_ = temp_dir_.GetPath()
+                     .AppendASCII("biod_storage_invalid_record_test_root")
+                     .AppendASCII("biod");
+    biod_storage_ =
+        std::make_unique<BiodStorage>(root_path_, kBiometricsManagerName);
     // Since there is no session manager, allow accesses by default.
     biod_storage_->set_allow_access(true);
-    biod_storage_->SetRootPathForTesting(root_path_);
 
     Record record = {
         {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
@@ -525,12 +527,13 @@ class BiodStorageMemlockTest
  public:
   BiodStorageMemlockTest() : params_(GetParam()) {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    root_path_ =
-        temp_dir_.GetPath().AppendASCII("biod_storage_memlock_test_root");
-    biod_storage_ = std::make_unique<BiodStorage>(kBiometricsManagerName);
+    root_path_ = temp_dir_.GetPath()
+                     .AppendASCII("biod_storage_memlock_test_root")
+                     .AppendASCII("biod");
+    biod_storage_ =
+        std::make_unique<BiodStorage>(root_path_, kBiometricsManagerName);
     // Since there is no session manager, allow accesses by default.
     biod_storage_->set_allow_access(true);
-    biod_storage_->SetRootPathForTesting(root_path_);
 
     Record record = {
         {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
