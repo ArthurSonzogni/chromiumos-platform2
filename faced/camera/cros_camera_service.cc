@@ -56,4 +56,5 @@ int CrosCameraService::StartCapture(const cros_cam_capture_request_t* request,
 int CrosCameraService::StopCapture(int id) {
   return cros_cam_stop_capture(id);
 }
+
 }  // namespace faced

@@ -9,8 +9,7 @@
 
 namespace faced {
 
-// This abstract interface enables testing of the camera service within face_cli
-// without modifying code within platform2/camera
+// Interface for fetching camera frames from a video source.
 class CameraService {
  public:
   virtual ~CameraService() = default;
@@ -36,5 +35,7 @@ class CameraService {
   // underway.
   virtual int StopCapture(int id) = 0;
 };
+
 }  // namespace faced
+
 #endif  // FACED_CAMERA_CAMERA_SERVICE_H_

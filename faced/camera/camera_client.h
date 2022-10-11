@@ -66,10 +66,12 @@ class CameraClient {
  public:
   // Config struct for setting parameters for capture
   struct CaptureFramesConfig {
-    int32_t camera_id;  // Camera id for capture
-    cros_cam_format_info_t
-        format;  // Requested format for capture. Format
-                 // encapsulates resolution, file type and fps.
+    // Camera id for capture
+    int32_t camera_id;
+
+    // Requested format for capture.
+    // Contains resolution, file type and FPS.
+    cros_cam_format_info_t format;
   };
 
   // Construct CameraClient using the given camera service.
@@ -155,13 +157,15 @@ class CameraClient {
       std::unique_ptr<Frame>, FrameProcessor::ProcessFrameDoneCallback)>
       process_frame_callback_;
 
-  scoped_refptr<base::SequencedTaskRunner>
-      task_runner_;  // Task runner to call the process frame callback. This
-                     // needs to be specified because the process frame is
-                     // called from the CameraHAL's thread
+  // Task runner to call `process_frame_callback_` on.
+  //
+  // Required because the process frame callback is called from the
+  // CameraHAL's thread.
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
   StopCaptureCallback capture_complete_;
 
-  std::unique_ptr<CameraService> camera_service_ = nullptr;
+  std::unique_ptr<CameraService> camera_service_;
 };
 
 }  // namespace faced
