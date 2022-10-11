@@ -23,7 +23,7 @@
 #include "faced/camera/face_cli_camera_service.h"
 #include "faced/util/status.h"
 
-namespace faceauth {
+namespace faced {
 
 std::string FourccToString(uint32_t fourcc) {
   uint32_t fourcc_processing = fourcc;
@@ -275,4 +275,4 @@ CameraClient::GetMaxSupportedResolutionFormat(
   return res;
 }
 
-}  // namespace faceauth
+}  // namespace faced

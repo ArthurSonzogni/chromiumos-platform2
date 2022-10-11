@@ -7,7 +7,7 @@
 
 #include "cros-camera/camera_service_connector.h"
 
-namespace faceauth {
+namespace faced {
 
 // This abstract interface enables testing of the camera service within face_cli
 // without modifying code within platform2/camera
@@ -36,5 +36,5 @@ class FaceCliCameraServiceInterface {
   // underway.
   virtual int StopCapture(int id) = 0;
 };
-}  // namespace faceauth
+}  // namespace faced
 #endif  // FACED_CAMERA_FACED_CAMERA_SERVICE_INTERFACE_H_

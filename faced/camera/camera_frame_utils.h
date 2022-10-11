@@ -11,7 +11,7 @@
 #include "cros-camera/camera_service_connector.h"
 #include "faced/proto/face_service.pb.h"
 
-namespace faceauth {
+namespace faced {
 
 // Generates an eora::CameraFrame protocol buffer type from a CrOS camera frame
 std::unique_ptr<eora::CameraFrame> CameraFrameProtoFromCrosFrame(
@@ -25,6 +25,6 @@ std::string GetTightlyPackedPayload(int height,
                                     const cros_cam_plane_t_& plane_y,
                                     const cros_cam_plane_t_& plane_uv);
 
-}  // namespace faceauth
+}  // namespace faced
 
 #endif  // FACED_CAMERA_CAMERA_FRAME_UTILS_H_

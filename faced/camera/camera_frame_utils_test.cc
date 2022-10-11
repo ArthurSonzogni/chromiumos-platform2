@@ -10,7 +10,7 @@
 #include <base/strings/strcat.h>
 #include <gtest/gtest.h>
 
-namespace faceauth {
+namespace faced {
 namespace {
 
 // A test case where a padded image has its padding removed.
@@ -144,4 +144,4 @@ TEST(GetTightlyPackedPayload, LuminanceIsTightlyPackedChromaIsPadded) {
 }
 
 }  // namespace
-}  // namespace faceauth
+}  // namespace faced

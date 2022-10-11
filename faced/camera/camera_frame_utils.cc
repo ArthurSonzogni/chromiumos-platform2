@@ -14,7 +14,7 @@
 #include "faced/camera/camera_client.h"
 #include "faced/proto/face_service.pb.h"
 
-namespace faceauth {
+namespace faced {
 namespace {
 
 // Stride is unused if the stride value is 0 or equal to width
@@ -105,4 +105,4 @@ std::unique_ptr<eora::CameraFrame> CameraFrameProtoFromCrosFrame(
   return camera_frame;
 }
 
-}  // namespace faceauth
+}  // namespace faced

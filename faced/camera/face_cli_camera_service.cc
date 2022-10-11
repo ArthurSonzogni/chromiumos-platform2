@@ -14,7 +14,7 @@
 
 #include "cros-camera/camera_service_connector.h"
 
-namespace faceauth {
+namespace faced {
 
 constexpr int kApiVersion = 1;
 
@@ -57,4 +57,4 @@ int FaceCliCameraService::StartCapture(
 int FaceCliCameraService::StopCapture(int id) {
   return cros_cam_stop_capture(id);
 }
-}  // namespace faceauth
+}  // namespace faced

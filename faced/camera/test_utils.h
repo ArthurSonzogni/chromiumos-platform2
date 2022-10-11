@@ -14,7 +14,7 @@
 
 #include "faced/camera/face_cli_camera_service_interface.h"
 
-namespace faceauth::testing {
+namespace faced::testing {
 constexpr cros_cam_format_info_t kYuvHighDefCamera = {
     .fourcc = V4L2_PIX_FMT_NV12, .width = 1920, .height = 1080, .fps = 30};
 constexpr cros_cam_format_info_t kYuvStdDefCamera = {
@@ -85,6 +85,6 @@ class FakeCameraServiceConnector : public FaceCliCameraServiceInterface {
   // Runner for getting camera images
   scoped_refptr<base::SequencedTaskRunner> ops_runner_;
 };
-}  // namespace faceauth::testing
+}  // namespace faced::testing
 
 #endif  // FACED_CAMERA_TEST_UTILS_H_

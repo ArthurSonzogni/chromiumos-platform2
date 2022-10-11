@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace faceauth::testing {
+namespace faced::testing {
 
 CameraSet YuvCameraSet() {
   CameraSet yuv_camera_set;
@@ -151,4 +151,4 @@ void FakeCameraServiceConnector::StopCaptureCallback() {
   results_.clear();
 }
 
-}  // namespace faceauth::testing
+}  // namespace faced::testing

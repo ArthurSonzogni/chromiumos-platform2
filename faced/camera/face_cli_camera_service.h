@@ -12,7 +12,7 @@
 
 #include "faced/camera/face_cli_camera_service_interface.h"
 
-namespace faceauth {
+namespace faced {
 
 // FaceCliCameraService is a simple wrapper around cros::CameraServiceConnector
 class FaceCliCameraService final : public FaceCliCameraServiceInterface {
@@ -50,6 +50,6 @@ class FaceCliCameraService final : public FaceCliCameraServiceInterface {
   const std::string token_path_string_;
 };
 
-}  // namespace faceauth
+}  // namespace faced
 
 #endif  // FACED_CAMERA_FACED_CAMERA_SERVICE_H_

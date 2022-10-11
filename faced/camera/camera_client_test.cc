@@ -20,7 +20,7 @@
 #include "faced/util/blocking_future.h"
 #include "faced/util/task.h"
 
-namespace faceauth {
+namespace faced {
 namespace {
 
 // All camera formats are supported
@@ -301,4 +301,4 @@ TEST(CameraClientTest, CaptureFrames) {
   ASSERT_EQ(frame_processor->FramesProcessed(), frames_to_process);
 }
 }  // namespace
-}  // namespace faceauth
+}  // namespace faced

@@ -23,7 +23,7 @@
 #include "faced/camera/face_cli_camera_service_interface.h"
 #include "faced/proto/face_service.pb.h"
 
-namespace faceauth {
+namespace faced {
 
 const char kTokenPath[] = "/run/camera_tokens/testing/token";
 using StopCaptureCallback = base::OnceCallback<void(absl::Status)>;
@@ -178,6 +178,6 @@ class CameraClient {
       nullptr;
 };
 
-}  // namespace faceauth
+}  // namespace faced
 
 #endif  // FACED_CAMERA_CAMERA_CLIENT_H_
