@@ -19,15 +19,7 @@ class BackendTpm2;
 
 class MockSessionManagement : public SessionManagement {
  public:
-  MOCK_METHOD(StatusOr<ScopedSession>,
-              CreateSession,
-              (const OperationPolicy& policy, CreateSessionOptions options),
-              (override));
-  MOCK_METHOD(Status, Flush, (Session session), (override));
-  MOCK_METHOD(StatusOr<ScopedSession>,
-              SideLoadSession,
-              (uint32_t session_handle),
-              (override));
+  MOCK_METHOD(Status, FlushInvalidSessions, (), (override));
 };
 
 }  // namespace hwsec

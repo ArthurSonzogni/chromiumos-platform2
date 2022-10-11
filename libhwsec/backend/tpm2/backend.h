@@ -19,6 +19,7 @@
 #include "libhwsec/backend/tpm2/random.h"
 #include "libhwsec/backend/tpm2/recovery_crypto.h"
 #include "libhwsec/backend/tpm2/sealing.h"
+#include "libhwsec/backend/tpm2/session_management.h"
 #include "libhwsec/backend/tpm2/signature_sealing.h"
 #include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/state.h"
@@ -59,6 +60,9 @@ class BackendTpm2 : public Backend {
   EncryptionTpm2& GetEncryptionTpm2() { return encryption_; }
   SigningTpm2& GetSigningTpm2() { return signing_; }
   KeyManagementTpm2& GetKeyManagementTpm2() { return key_management_; }
+  SessionManagementTpm2& GetSessionManagementTpm2() {
+    return session_management_;
+  }
   ConfigTpm2& GetConfigTpm2() { return config_; }
   RandomTpm2& GetRandomTpm2() { return random_; }
   PinWeaverTpm2& GetPinWeaverTpm2() { return pinweaver_; }
@@ -83,7 +87,9 @@ class BackendTpm2 : public Backend {
   Encryption* GetEncryption() override { return &encryption_; }
   Signing* GetSigning() override { return &signing_; }
   KeyManagement* GetKeyManagement() override { return &key_management_; }
-  SessionManagement* GetSessionManagement() override { return nullptr; }
+  SessionManagement* GetSessionManagement() override {
+    return &session_management_;
+  }
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
@@ -103,6 +109,7 @@ class BackendTpm2 : public Backend {
   EncryptionTpm2 encryption_{*this};
   SigningTpm2 signing_{*this};
   KeyManagementTpm2 key_management_{*this};
+  SessionManagementTpm2 session_management_{*this};
   ConfigTpm2 config_{*this};
   RandomTpm2 random_{*this};
   PinWeaverTpm2 pinweaver_{*this};

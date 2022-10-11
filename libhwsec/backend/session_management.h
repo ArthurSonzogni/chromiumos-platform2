@@ -18,18 +18,8 @@ class BackendTpm2;
 // SessionManagement provide the functions to manager session.
 class SessionManagement {
  public:
-  struct CreateSessionOptions {};
-
-  // Creates a session with |policy| and optional |options|.
-  virtual StatusOr<ScopedSession> CreateSession(
-      const OperationPolicy& policy, CreateSessionOptions options) = 0;
-
-  // Flushes the |session| to reclaim the resource.
-  virtual Status Flush(Session session) = 0;
-
-  // Loads the session with raw |session_handle|.
-  // TODO(174816474): deprecated legacy APIs.
-  virtual StatusOr<ScopedSession> SideLoadSession(uint32_t session_handle) = 0;
+  // Flushes all invalid sessions to reclaim the resource.
+  virtual Status FlushInvalidSessions() = 0;
 
  protected:
   SessionManagement() = default;
