@@ -118,6 +118,9 @@ pub async fn main() -> Result<()> {
         panic!("Lost connection to D-Bus: {}", err);
     });
 
+    // For sending signals, we still have to use existing object with correct
+    // service name.
+    let c_send = c.clone();
     let mount_points_clone3 = mount_points.clone();
     // |msg_match| should remain in this scope to serve
     let msg_match = c_listen
@@ -127,7 +130,7 @@ pub async fn main() -> Result<()> {
             tokio::spawn(handle_dlc_state_changed(
                 raw_bytes,
                 mount_points_clone3.clone(),
-                c_listen.clone(),
+                c_send.clone(),
             ));
             true
         });
