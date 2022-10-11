@@ -164,16 +164,16 @@ void MetadataLogger::Log(int frame_number,
 }
 
 bool MetadataLogger::DumpMetadata() {
-  std::vector<base::Value> metadata_to_dump;
+  base::Value::List metadata_to_dump;
   {
     base::AutoLock lock(frame_metadata_lock_);
     for (const auto& entry : frame_metadata_) {
-      metadata_to_dump.emplace_back(entry.second.Clone());
+      metadata_to_dump.Append(entry.second.Clone());
     }
   }
   std::string json_string;
   if (!base::JSONWriter::WriteWithOptions(
-          base::Value(metadata_to_dump), base::JSONWriter::OPTIONS_PRETTY_PRINT,
+          metadata_to_dump, base::JSONWriter::OPTIONS_PRETTY_PRINT,
           &json_string)) {
     LOGF(WARNING) << "Can't jsonify frame metadata";
     return false;
