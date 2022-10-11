@@ -903,6 +903,7 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
         kAdaptiveChargingMinutesDelayName,
         kAdaptiveChargingMinutesAvailableName,
         delay_delta_name,
+        kAdaptiveChargingMinutesFullOnACName + state_suffix,
     };
 
     ExpectMetric(
@@ -924,6 +925,10 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
         delay_delta_name,
         (available_time - charging_delay - delay_time).magnitude().InMinutes(),
         kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax, kDefaultBuckets);
+    ExpectMetric(kAdaptiveChargingMinutesFullOnACName + state_suffix,
+                 (now - charge_finished_time).InMinutes(),
+                 kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
+                 kAdaptiveChargingMinutesBuckets);
   }
 
   void TestMetricsForState(AdaptiveChargingState state,

@@ -81,6 +81,8 @@ const char kAdaptiveChargingMinutesDeltaName[] =
     "Power.AdaptiveChargingMinutesDelta";
 const char kAdaptiveChargingDelayDeltaName[] =
     "Power.AdaptiveChargingDelayDelta";
+const char kAdaptiveChargingMinutesFullOnACName[] =
+    "power.AdaptiveChargingMinutesFullOnAC";
 
 const char kAdaptiveChargingStateActiveSuffix[] = ".Active";
 const char kAdaptiveChargingStateHeuristicDisabledSuffix[] =

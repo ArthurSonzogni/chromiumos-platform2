@@ -660,6 +660,14 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   SendMetric(metric_name + state_suffix + time_suffix, delta.InMinutes(),
              kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax,
              kDefaultBuckets);
+
+  metric_name = kAdaptiveChargingMinutesFullOnACName;
+  delta = charge_finished_time == base::TimeTicks()
+              ? base::TimeDelta()
+              : now - charge_finished_time;
+  SendMetric(metric_name + state_suffix, delta.InMinutes(),
+             kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
+             kAdaptiveChargingMinutesBuckets);
 }
 
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
