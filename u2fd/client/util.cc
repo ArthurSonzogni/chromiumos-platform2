@@ -261,5 +261,28 @@ std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
   return signed_data;
 }
 
+std::optional<brillo::Blob> ParseSerialNumberFromCert(
+    const brillo::Blob& cert_template) {
+  crypto::ScopedOpenSSL<X509, X509_free> cert = ParseX509(cert_template);
+  if (!cert) {
+    LOG(ERROR) << "Failed to parse X509 cert.";
+    return std::nullopt;
+  }
+
+  unsigned char* serial_number_buffer = nullptr;
+  size_t length = i2d_ASN1_INTEGER(X509_get_serialNumber(cert.get()),
+                                   &serial_number_buffer);
+  crypto::ScopedOpenSSLBytes scoped_serial_number_buffer(serial_number_buffer);
+  if (length <= 0) {
+    LOG(ERROR) << "Failed to encode certificate serial number.";
+    return std::nullopt;
+  }
+
+  brillo::Blob serial_number;
+  serial_number.assign(serial_number_buffer, serial_number_buffer + length);
+
+  return serial_number;
+}
+
 }  // namespace util
 }  // namespace u2f

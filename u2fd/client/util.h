@@ -123,6 +123,9 @@ BuildU2fRegisterResponseSignedData(const std::vector<uint8_t>& app_id,
                                    const std::vector<uint8_t>& pub_key,
                                    const std::vector<uint8_t>& key_handle);
 
+std::optional<brillo::Blob> U2F_CLIENT_EXPORT
+ParseSerialNumberFromCert(const brillo::Blob& cert_template);
+
 }  // namespace util
 }  // namespace u2f
 
