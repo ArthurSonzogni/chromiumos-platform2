@@ -123,11 +123,11 @@ bool MountExternal(const std::string& src,
 bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags);
 
 // Creates a callback that will fork(2)+execve(2) the program specified by args.
-HookCallback CreateExecveCallback(base::FilePath filename,
-                                  std::vector<std::string> args,
-                                  base::ScopedFD stdin_fd,
-                                  base::ScopedFD stdout_fd,
-                                  base::ScopedFD stderr_fd);
+HookOnceCallback CreateExecveCallback(base::FilePath filename,
+                                      std::vector<std::string> args,
+                                      base::ScopedFD stdin_fd,
+                                      base::ScopedFD stdout_fd,
+                                      base::ScopedFD stderr_fd);
 
 // Wraps a callback to be run in a subset of the container's namespaces.
 HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,

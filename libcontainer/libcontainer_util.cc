@@ -562,14 +562,14 @@ bool Pipe2(base::ScopedFD* read_pipe, base::ScopedFD* write_pipe, int flags) {
   return true;
 }
 
-HookCallback CreateExecveCallback(base::FilePath filename,
-                                  std::vector<std::string> args,
-                                  base::ScopedFD stdin_fd,
-                                  base::ScopedFD stdout_fd,
-                                  base::ScopedFD stderr_fd) {
-  return base::Bind(
-      &ExecveCallbackHelper, filename, args, base::Passed(std::move(stdin_fd)),
-      base::Passed(std::move(stdout_fd)), base::Passed(std::move(stderr_fd)));
+HookOnceCallback CreateExecveCallback(base::FilePath filename,
+                                      std::vector<std::string> args,
+                                      base::ScopedFD stdin_fd,
+                                      base::ScopedFD stdout_fd,
+                                      base::ScopedFD stderr_fd) {
+  return base::BindOnce(&ExecveCallbackHelper, filename, args,
+                        std::move(stdin_fd), std::move(stdout_fd),
+                        std::move(stderr_fd));
 }
 
 HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,

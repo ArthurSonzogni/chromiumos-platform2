@@ -229,7 +229,7 @@ struct container_config {
 
   // A list of hooks that will be called upon minijail reaching various states
   // of execution.
-  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookOnceCallback>>
       hooks;
 };
 
@@ -1215,9 +1215,9 @@ void container_config_set_pre_execve_hook(struct container_config* c,
 
 void container_config_add_hook(struct container_config* c,
                                minijail_hook_event_t event,
-                               libcontainer::HookCallback callback) {
+                               libcontainer::HookOnceCallback callback) {
   auto it = c->hooks.insert(
-      std::make_pair(event, std::vector<libcontainer::HookCallback>()));
+      std::make_pair(event, std::vector<libcontainer::HookOnceCallback>()));
   it.first->second.emplace_back(std::move(callback));
 }
 
@@ -1297,8 +1297,7 @@ void container_destroy(struct container* c) {
   delete c;
 }
 
-int container_start(struct container* c,
-                    const struct container_config* config) {
+int container_start(struct container* c, struct container_config* config) {
   if (!c) {
     errno = EINVAL;
     return -1;
@@ -1491,11 +1490,12 @@ int container_start(struct container* c,
 
   // Now that all pre-requisite hooks are installed, copy the ones in the
   // container_config object in the correct order.
-  for (const auto& config_hook : config->hooks) {
+  for (auto& config_hook : config->hooks) {
     auto it = hook_callbacks.insert(std::make_pair(
         config_hook.first, std::vector<libcontainer::HookOnceCallback>()));
-    it.first->second.insert(it.first->second.end(), config_hook.second.begin(),
-                            config_hook.second.end());
+    it.first->second.insert(it.first->second.end(),
+                            std::make_move_iterator(config_hook.second.begin()),
+                            std::make_move_iterator(config_hook.second.end()));
   }
 
   c->hook_states.clear();
