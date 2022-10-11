@@ -46,16 +46,17 @@ requests.
 ```
 void OnSomeRpc(
     std::unique_ptr<SomeRpcRequest> request,
-    const base::Callback<void(grpc::Status, std::unique_ptr<SomeRpcResponse>)>&
-            response_callback) {
-  // Call |response_callback.Run(status, response)| when you have a response!
+    base::OnceCallback<void(grpc::Status, std::unique_ptr<SomeRpcResponse>)>
+        response_callback) {
+  // Call |std::move(response_callback).Run(status, response)| when you have a
+  // response!
 }
 
 std::string listening_address  = ...;
 AsyncGrpcServer<SomeService::AsyncService> server(
     message_loop.task_runner(), listening_address);
 server.RegisterHandler(&SomeService::AsyncService::RequestSomeRpc,
-                       base::Bind(&onSomeRpc));
+                       base::BindRepeating(&onSomeRpc));
 server.Start();
 ```
 
