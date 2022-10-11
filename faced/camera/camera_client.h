@@ -25,7 +25,6 @@
 
 namespace faced {
 
-const char kTokenPath[] = "/run/camera_tokens/testing/token";
 using StopCaptureCallback = base::OnceCallback<void(absl::Status)>;
 using ProcessFrameDoneCallback =
     base::OnceCallback<void(std::optional<absl::Status>)>;
@@ -74,16 +73,6 @@ class CameraClient {
         format;  // Requested format for capture. Format
                  // encapsulates resolution, file type and fps.
   };
-
-  // Factory method: creates and returns a CameraClient using a path to a
-  // permission token to access the cros camera service
-  //
-  // Once created, the CameraClient will have probed the cros camera service for
-  // information about available cameras and be ready to capture frames.
-  //
-  // On success, the returned pointer is guaranteed to be non-null.
-  static absl::StatusOr<std::unique_ptr<CameraClient>> Create(
-      base::StringPiece token_path_string);
 
   // Construct CameraClient using the given camera service.
   //

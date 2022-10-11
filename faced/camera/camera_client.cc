@@ -49,11 +49,6 @@ bool IsFormatEqual(const cros_cam_format_info_t& fmt1,
 }
 
 absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
-    base::StringPiece token_path_string) {
-  return CameraClient::Create(CrosCameraService::Create(token_path_string));
-}
-
-absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
     std::unique_ptr<CameraService> camera_service) {
   // Establishes a connection with the cros camera service
   if (camera_service->Init() != 0) {

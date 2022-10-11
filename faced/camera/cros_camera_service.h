@@ -17,10 +17,9 @@ namespace faced {
 // CrosCameraService is a simple wrapper around cros::CameraServiceConnector
 class CrosCameraService final : public CameraService {
  public:
-  // Creates an instance of CrosCameraServiceConnector using a given
-  // permission token
+  // Creates an instance of CrosCameraService using a given permission token.
   static std::unique_ptr<CrosCameraService> Create(
-      base::StringPiece token_path_string);
+      base::StringPiece token_path_string = kDefaultCameraToken);
 
   // Initializes the connection to camera HAL dispatcher and registers the
   // camera HAL client. Must be called before any other functions.
@@ -42,6 +41,13 @@ class CrosCameraService final : public CameraService {
   // Stops capturing. Waits for the ongoing capture callback if there is any
   // underway.
   int StopCapture(int id) override;
+
+  // The default camera permission token to hand to the CameraHAL.
+  //
+  // TODO(b/253130377): Stop using the test-only token, and organise
+  // for `faced` to have a legitimate token.
+  static constexpr base::StringPiece kDefaultCameraToken =
+      "/run/camera_tokens/testing/token";
 
  private:
   explicit CrosCameraService(base::StringPiece token_path_string)
