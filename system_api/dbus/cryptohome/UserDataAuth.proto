@@ -1670,6 +1670,23 @@ message PrepareAuthFactorReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
+message TerminateAuthFactorRequest {
+  // The id of a running AuthSession.
+  bytes auth_session_id = 1;
+  // The type of the asynchronous AuthFactor, of which any pending preparation
+  // will be stopped.
+  AuthFactorType auth_factor_type = 2;
+}
+
+message TerminateAuthFactorReply {
+  CryptohomeErrorCode error = 1;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+}
+
 // Fingerprint scan results.
 enum FingerprintScanResult {
   FINGERPRINT_SCAN_RESULT_SUCCESS = 0;
