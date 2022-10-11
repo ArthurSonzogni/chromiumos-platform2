@@ -83,6 +83,13 @@ class SHILL_EXPORT IPAddress {
   // Returns the name of an address family.
   static std::string GetAddressFamilyName(Family family);
 
+  // Returns an IPAddress that has the IP address and prefix specified by
+  // |address_string|. If the string neither has the appropriate format for
+  // IPv4 nor IPv6, this funcition will creates an IP address object whose
+  // family is unknown for an error. IP address format should be CIDR
+  // (e.g. "192.144.30.54/32").
+  static IPAddress CreateFromPrefixString(const std::string& address_string);
+
   // Getters and Setters
   Family family() const { return family_; }
   void set_family(Family family) { family_ = family; }

@@ -175,6 +175,73 @@ TEST_F(IPAddressTest, SetAddressAndPrefixFromString) {
   EXPECT_TRUE(kAddress1.Equals(address.address()));
 }
 
+TEST_F(IPAddressTest, CreateFromPrefixString) {
+  // Makes the error message to know which string returns false in loop.
+  auto error = [](const std::string& address) {
+    return "input address is " + address;
+  };
+
+  // Tests for strings like IPv4 (e.g. 192.168.10.10/0, 192.168.10.10/-1).
+  const std::string kIPv4String(kV4String1);
+
+  // Checks if CreateFromPrefixString() returns true by valid strings for IPv4.
+  const ByteString kIPv4Address(kV4Address1, sizeof(kV4Address1));
+  for (int prefix = 0; prefix < 33; prefix++) {
+    const std::string address = kIPv4String + "/" + std::to_string(prefix);
+    IPAddress ipv4_address = IPAddress::CreateFromPrefixString(address);
+    EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_address.family()) << error(address);
+    EXPECT_EQ(prefix, ipv4_address.prefix()) << error(address);
+    EXPECT_TRUE(kIPv4Address.Equals(ipv4_address.address())) << error(address);
+  }
+  // Checks if CreateFromPrefixString() returns false by invalid strings for
+  // IPv4.
+  const std::vector<std::string> ipv4_invalid_cases = {"",
+                                                       "192.168.10/10",
+                                                       kIPv4String,
+                                                       kIPv4String + "/",
+                                                       kIPv4String + "/10x",
+                                                       kIPv4String + "/33",
+                                                       kIPv4String + "/-1"};
+  for (const auto& address : ipv4_invalid_cases) {
+    IPAddress ipv4_address = IPAddress::CreateFromPrefixString(address);
+    EXPECT_EQ(IPAddress::kFamilyUnknown, ipv4_address.family())
+        << error(address);
+    EXPECT_EQ(0, ipv4_address.prefix()) << error(address);
+    EXPECT_TRUE(ipv4_address.address().IsZero()) << error(address);
+  }
+
+  // Tests for strings like IPv6
+  // (e.g. fe80::1aa9:5ff:7ebf:14c5/0, fe80::1aa9:5ff:7ebf:14c5/-1).
+  const std::string kIPv6String(kV6String1);
+
+  // Checks if CreateFromPrefixString() returns true by valid strings for IPv6.
+  const ByteString kIPv6Address(kV6Address1, sizeof(kV6Address1));
+  for (int prefix = 0; prefix < 129; prefix++) {
+    const std::string address = kIPv6String + "/" + std::to_string(prefix);
+    IPAddress ipv6_address = IPAddress::CreateFromPrefixString(address);
+    EXPECT_EQ(IPAddress::kFamilyIPv6, ipv6_address.family()) << error(address);
+    EXPECT_EQ(prefix, ipv6_address.prefix()) << error(address);
+    EXPECT_TRUE(kIPv6Address.Equals(ipv6_address.address())) << error(address);
+  }
+  // Checks if CreateFromPrefixString() returns false by invalid strings for
+  // IPv6.
+  const std::vector<std::string> ipv6_invalid_cases = {
+      "",
+      "1980:0:1000:1b02:1aa9:5ff:7ebf/64",
+      kIPv6String,
+      kIPv6String + "/",
+      kIPv6String + "/64x",
+      kIPv6String + "/129",
+      kIPv6String + "/-1"};
+  for (const auto& address : ipv6_invalid_cases) {
+    IPAddress ipv6_address = IPAddress::CreateFromPrefixString(address);
+    EXPECT_EQ(IPAddress::kFamilyUnknown, ipv6_address.family())
+        << error(address);
+    EXPECT_EQ(0, ipv6_address.prefix()) << error(address);
+    EXPECT_TRUE(ipv6_address.address().IsZero()) << error(address);
+  }
+}
+
 TEST_F(IPAddressTest, HasSameAddressAs) {
   const std::string kString1(kV4String1);
   IPAddress address0(IPAddress::kFamilyIPv4);
