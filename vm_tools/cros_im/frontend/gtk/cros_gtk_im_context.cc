@@ -496,9 +496,21 @@ void CrosGtkIMContext::UpdateSurrounding() {
   if (!RetrieveSurrounding())
     return;
 
-  // TODO(b/232048905): Surrounding text longer than 4000 characters currently
-  // causes a crash.
-  backend_->SetSurrounding(surrounding_.c_str(), surrounding_cursor_pos_);
+  size_t length = surrounding_.length();
+
+  // There is a maximum length to Wayland messages and sending a message that
+  // is too long will result in a crash. The actual limit appears to be around
+  // 4075 bytes, but we give a bit of leeway here and match the limit Lacros
+  // uses.
+  constexpr size_t kMaxSurroundingTextByteLength = 4000;
+
+  if (length <= kMaxSurroundingTextByteLength) {
+    backend_->SetSurrounding(surrounding_.c_str(), surrounding_cursor_pos_);
+    return;
+  }
+
+  // TODO(b/232048905): Send a substring of the surrounding text instead of
+  // doing nothing.
 }
 
 }  // namespace gtk
