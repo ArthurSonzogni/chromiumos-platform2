@@ -30,6 +30,11 @@ interface FaceAuthenticationService {
     => (CreateSessionResult result);
 };
 
+struct EnrollmentMetadata {
+  // A hashed username identifying a user on the system.
+  string hashed_username;
+};
+
 // CreateSessionResult contains |session_info| on successful binding of the
 // remote interface and |error| when unable to create a session.
 union CreateSessionResult {

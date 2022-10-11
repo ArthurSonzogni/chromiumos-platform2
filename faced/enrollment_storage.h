@@ -6,11 +6,14 @@
 #define FACED_ENROLLMENT_STORAGE_H_
 
 #include <string>
+#include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+
+#include "faced/mojom/faceauth.mojom.h"
 
 namespace faced {
 
@@ -33,9 +36,35 @@ class EnrollmentStorage {
   // Reads an enrollment for a specified user.
   absl::StatusOr<std::string> ReadEnrollment(base::StringPiece user_id);
 
+  // Returns a list of the EnrollmentMetadatas associated with the enrollments
+  // that have currently been saved, sorted by username.
+  //
+  // Instead of storing state of what enrollments have been saved,
+  // ListEnrollments checks for the existence of saved enrollment files.
+  std::vector<chromeos::faceauth::mojom::EnrollmentMetadataPtr>
+  ListEnrollments();
+
+  // Delete the enrollment of a given user.
+  //
+  // If an enrollment doesn't exist, returns failure.
+  absl::Status RemoveEnrollment(base::StringPiece user_id);
+
+  // Delete all enrollments.
+  //
+  // ClearEnrollments will make a best effort to delete all enrollments even if
+  // any one of its operations fails. In the event of failing to delete an
+  // enrollment, ClearEnrollments will report an error.
+  absl::Status ClearEnrollments();
+
+  // Return true if the given user has been enrolled.
+  bool IsUserEnrolled(base::StringPiece user_id);
+
  private:
   // Returns the filepath to load and save an enrollment given a user_id.
   base::FilePath GetEnrollmentFilePath(base::StringPiece user_id);
+
+  // Returns the filepath where faced user enrollments are saved.
+  base::FilePath GetFacedFilePath();
 
   base::FilePath root_path_;
 };
