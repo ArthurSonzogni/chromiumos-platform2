@@ -25,10 +25,6 @@
 
 namespace faced {
 
-using StopCaptureCallback = base::OnceCallback<void(absl::Status)>;
-using ProcessFrameDoneCallback =
-    base::OnceCallback<void(std::optional<absl::Status>)>;
-
 // Converts a fourcc (four character code) to a Drm format name string
 //
 // For example, FourccToString(0x43724f53) is "CrOS".
@@ -56,6 +52,8 @@ class FrameProcessor : public base::RefCountedThreadSafe<FrameProcessor> {
   //
   // If a second frame arrives from the camera prior to this function returning,
   // `done`, then that frame will be dropped.
+  using ProcessFrameDoneCallback =
+      base::OnceCallback<void(std::optional<absl::Status>)>;
   virtual void ProcessFrame(std::unique_ptr<Frame> frame,
                             ProcessFrameDoneCallback done) = 0;
 
@@ -91,6 +89,7 @@ class CameraClient {
   //
   // The frame_processor `ProcessFrame` implementation should return quickly,
   // performing any long-running actions asynchronously
+  using StopCaptureCallback = base::OnceCallback<void(absl::Status)>;
   void CaptureFrames(const CaptureFramesConfig& config,
                      const scoped_refptr<FrameProcessor>& frame_processor,
                      StopCaptureCallback capture_complete);
@@ -151,10 +150,11 @@ class CameraClient {
       false;  // If there is a pending process frame request, any frames
               // received from the camera will be dropped
 
-  // Callback called when a frame is received
-  base::CancelableRepeatingCallback<void(std::unique_ptr<Frame>,
-                                         ProcessFrameDoneCallback)>
+  // Called each time a frame is received.
+  base::CancelableRepeatingCallback<void(
+      std::unique_ptr<Frame>, FrameProcessor::ProcessFrameDoneCallback)>
       process_frame_callback_;
+
   scoped_refptr<base::SequencedTaskRunner>
       task_runner_;  // Task runner to call the process frame callback. This
                      // needs to be specified because the process frame is

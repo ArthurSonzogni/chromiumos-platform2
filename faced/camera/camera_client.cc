@@ -183,7 +183,7 @@ int CameraClient::OnCaptureResultAvailable(
   CHECK_NE(frame, nullptr);
 
   base::RepeatingCallback<void(std::unique_ptr<Frame>,
-                               ProcessFrameDoneCallback)>
+                               FrameProcessor::ProcessFrameDoneCallback)>
       callback = client->process_frame_callback_.callback();
 
   // If callback has been cancelled, then return -1 to inform the CameraHAL to
