@@ -19,7 +19,7 @@
 #include "libhwsec-foundation/da_reset/da_resetter.h"
 #include "libhwsec-foundation/tpm_error/auth_failure_analysis.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
-#include "libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h"
+#include "libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h"
 
 namespace {
 
@@ -175,7 +175,7 @@ extern "C" int HandleAuthFailure(const struct TpmErrorData* data) {
 
   LogAuthFailureCommand(*data);
 
-  hwsec_foundation::TpmErrorUmaReporter reporter;
+  hwsec_foundation::TpmErrorUmaReporterImpl reporter;
 
   reporter.Report(*data);
 

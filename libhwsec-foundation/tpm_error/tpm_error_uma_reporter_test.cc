@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h"
+#include "libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -26,7 +26,7 @@ class TpmErrorUmaReporterTest : public ::testing::Test {
 
  protected:
   StrictMock<MetricsLibraryMock> mock_metrics_library_;
-  TpmErrorUmaReporter reporter_{&mock_metrics_library_};
+  TpmErrorUmaReporterImpl reporter_{&mock_metrics_library_};
 };
 
 TEST_F(TpmErrorUmaReporterTest, ReportTpm1AuthFail) {
