@@ -337,7 +337,7 @@ class ModemQrtrTest : public testing::Test {
       ModemReceiveData(kQrtrSwitchSlotResp.begin(), kQrtrSwitchSlotResp.end(),
                        kUimPort);
       EXPECT_EQ(modem_->qmi_disabled_, true);
-      executor_.FastForwardBy(ModemQrtr::kSwitchSlotDelay);
+      executor_.FastForwardBy(kSimRefreshDelay);
       EXPECT_EQ(modem_->qmi_disabled_, false);
     }
     ModemReceiveData(kQrtrResetResp.begin(), kQrtrResetResp.end(), kUimPort);

@@ -714,7 +714,7 @@ int ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
   // Sending QMI messages immediately after switch slot leads to QMI errors
   // since slot switching takes time. If channel reacquisition fails despite
   // this delay, we retry after kInitRetryDelay.
-  DisableQmi(kSwitchSlotDelay);
+  DisableQmi(kSimRefreshDelay);
   return kQmiSuccess;
 }
 

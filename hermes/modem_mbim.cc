@@ -960,7 +960,15 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
   }
   LOG(INFO) << "Sim switch was successful to:"
             << slot_mappings[kExecutorIndex]->slot;
-  modem_mbim->ProcessMbimResult(kModemSuccess);
+  // Modem's tend to behave unreliably after a slot switch, and multiple retries
+  // of subsequent messages may be required. To avoid this, return success 3s
+  // after the modem indicates that a slot switch finished. ProcessMbimResult
+  // executes the callback that indicates SetDeviceSlotMappings is complete.
+  modem_mbim->executor_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&ModemMbim::ProcessMbimResult,
+                     modem_mbim->weak_factory_.GetWeakPtr(), kModemSuccess),
+      kSimRefreshDelay);
 }
 
 /* static */

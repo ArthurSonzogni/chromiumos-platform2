@@ -63,10 +63,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
     const uint8_t logical_slot_;
   };
 
-  // Delay between SwitchSlot and the next QMI message. Allows the modem to
-  // power on the new slot, and for the eUICC to boot. If this delay is
-  // insufficient, we retry after kInitRetryDelay
-  static constexpr auto kSwitchSlotDelay = base::Seconds(3);
   ModemQrtr(std::unique_ptr<SocketInterface> socket,
             Logger* logger,
             Executor* executor,
