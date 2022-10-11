@@ -58,9 +58,6 @@ class ScopeLogger {
     kNumScopes
   };
 
-  using ScopeEnableChangedCallback = base::Callback<void(bool)>;
-  using ScopeEnableChangedCallbacks = std::vector<ScopeEnableChangedCallback>;
-
   // Returns a singleton of this class.
   static ScopeLogger* GetInstance();
 
@@ -99,8 +96,8 @@ class ScopeLogger {
   void EnableScopesByName(const std::string& expression);
 
   // Register for log scope enable/disable state changes for |scope|.
-  void RegisterScopeEnableChangedCallback(Scope scope,
-                                          ScopeEnableChangedCallback callback);
+  void RegisterScopeEnableChangedCallback(
+      Scope scope, base::RepeatingCallback<void(bool)> callback);
 
   // Sets the verbose level for all scopes to |verbose_level|.
   void set_verbose_level(int verbose_level) { verbose_level_ = verbose_level; }
@@ -132,7 +129,8 @@ class ScopeLogger {
   int verbose_level_;
 
   // Hooks to notify interested parties of changes to log scopes.
-  ScopeEnableChangedCallbacks log_scope_callbacks_[kNumScopes];
+  std::vector<base::RepeatingCallback<void(bool)>>
+      log_scope_callbacks_[kNumScopes];
 };
 
 }  // namespace shill

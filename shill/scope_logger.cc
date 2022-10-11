@@ -113,7 +113,7 @@ void ScopeLogger::EnableScopesByName(const std::string& expression) {
 }
 
 void ScopeLogger::RegisterScopeEnableChangedCallback(
-    Scope scope, ScopeEnableChangedCallback callback) {
+    Scope scope, base::RepeatingCallback<void(bool)> callback) {
   CHECK_GE(scope, 0);
   CHECK_LT(scope, kNumScopes);
   log_scope_callbacks_[scope].push_back(callback);

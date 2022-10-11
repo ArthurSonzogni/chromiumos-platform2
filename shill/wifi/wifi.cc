@@ -237,8 +237,8 @@ WiFi::WiFi(Manager* manager,
     wake_on_wifi_->InitPropertyStore(store);
   }
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
-      ScopeLogger::kWiFi, base::Bind(&WiFi::OnWiFiDebugScopeChanged,
-                                     weak_ptr_factory_.GetWeakPtr()));
+      ScopeLogger::kWiFi, base::BindRepeating(&WiFi::OnWiFiDebugScopeChanged,
+                                              weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
   netlink_handler_ = base::BindRepeating(&WiFi::HandleNetlinkBroadcast,
                                          weak_ptr_factory_.GetWeakPtr());
