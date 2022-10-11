@@ -24,9 +24,9 @@ AsyncEventSequencer::Handler AsyncEventSequencer::GetHandler(
   CHECK(!started_) << "Cannot create handlers after OnAllTasksCompletedCall()";
   int unique_registration_id = ++registration_counter_;
   outstanding_registrations_.insert(unique_registration_id);
-  return base::Bind(&AsyncEventSequencer::HandleFinish, this,
-                    unique_registration_id, descriptive_message,
-                    failure_is_fatal);
+  return base::BindOnce(&AsyncEventSequencer::HandleFinish, this,
+                        unique_registration_id, descriptive_message,
+                        failure_is_fatal);
 }
 
 AsyncEventSequencer::ExportHandler AsyncEventSequencer::GetExportHandler(
@@ -35,8 +35,8 @@ AsyncEventSequencer::ExportHandler AsyncEventSequencer::GetExportHandler(
     const std::string& descriptive_message,
     bool failure_is_fatal) {
   auto finish_handler = GetHandler(descriptive_message, failure_is_fatal);
-  return base::BindRepeating(&AsyncEventSequencer::HandleDBusMethodExported,
-                             this, finish_handler, interface_name, method_name);
+  return base::BindOnce(&AsyncEventSequencer::HandleDBusMethodExported, this,
+                        std::move(finish_handler), interface_name, method_name);
 }
 
 void AsyncEventSequencer::OnAllTasksCompletedCall(CompletionAction action) {
@@ -73,7 +73,7 @@ void AsyncEventSequencer::HandleFinish(int registration_number,
 }
 
 void AsyncEventSequencer::HandleDBusMethodExported(
-    const AsyncEventSequencer::Handler& finish_handler,
+    AsyncEventSequencer::Handler finish_handler,
     const std::string& expected_interface_name,
     const std::string& expected_method_name,
     const std::string& actual_interface_name,
@@ -85,7 +85,7 @@ void AsyncEventSequencer::HandleDBusMethodExported(
   CHECK_EQ(expected_interface_name, actual_interface_name)
       << "Exported method DBus interface '" << actual_interface_name << "' "
       << "but expected '" << expected_interface_name << "'";
-  finish_handler.Run(success);
+  std::move(finish_handler).Run(success);
 }
 
 void AsyncEventSequencer::RetireRegistration(int registration_number) {

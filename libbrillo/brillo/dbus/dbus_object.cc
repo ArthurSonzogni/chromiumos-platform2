@@ -74,7 +74,7 @@ void DBusInterface::ExportAsync(
     auto method_handler = base::BindRepeating(&DBusInterface::HandleMethodCall,
                                               base::Unretained(this));
     exported_object->ExportMethod(interface_name_, method_name, method_handler,
-                                  export_handler);
+                                  std::move(export_handler));
   }
 
   std::vector<AsyncEventSequencer::CompletionAction> actions;
@@ -142,7 +142,7 @@ void DBusInterface::UnexportAsync(
     auto export_handler = sequencer->GetExportHandler(
         interface_name_, method_name, export_error, true);
     exported_object->UnexportMethod(interface_name_, method_name,
-                                    export_handler);
+                                    std::move(export_handler));
   }
 
   sequencer->OnAllTasksCompletedCall(std::move(completion_callback));

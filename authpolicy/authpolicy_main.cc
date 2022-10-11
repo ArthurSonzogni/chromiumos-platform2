@@ -54,16 +54,15 @@ class Daemon : public brillo::DBusServiceDaemon {
     authpolicy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
         base::BindOnce(&Daemon::OnAuthPolicyRegistered,
-                       weak_ptr_factory_.GetWeakPtr(), handler));
+                       weak_ptr_factory_.GetWeakPtr(), std::move(handler)));
   }
 
  private:
   void OnAuthPolicyRegistered(
-      const brillo::dbus_utils::AsyncEventSequencer::Handler& handler,
-      bool success) {
+      brillo::dbus_utils::AsyncEventSequencer::Handler handler, bool success) {
     // If it wasn't successful, the sequencer handler should print an error and
     // exit.
-    handler.Run(success);
+    std::move(handler).Run(success);
     CHECK(success);
     LOG(INFO) << "authpolicyd started";
 

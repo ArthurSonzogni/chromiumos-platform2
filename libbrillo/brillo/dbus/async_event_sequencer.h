@@ -36,11 +36,11 @@ namespace dbus_utils {
 class BRILLO_EXPORT AsyncEventSequencer
     : public base::RefCounted<AsyncEventSequencer> {
  public:
-  using Handler = base::Callback<void(bool success)>;
+  using Handler = base::OnceCallback<void(bool success)>;
   using ExportHandler =
-      base::RepeatingCallback<void(const std::string& interface_name,
-                                   const std::string& method_name,
-                                   bool success)>;
+      base::OnceCallback<void(const std::string& interface_name,
+                              const std::string& method_name,
+                              bool success)>;
   using CompletionAction = base::OnceCallback<void(bool all_succeeded)>;
   using CompletionTask = base::OnceClosure;
 
@@ -84,7 +84,7 @@ class BRILLO_EXPORT AsyncEventSequencer
                                    bool success);
   // Similar to HandleFinish.
   BRILLO_PRIVATE void HandleDBusMethodExported(
-      const Handler& finish_handler,
+      Handler finish_handler,
       const std::string& expected_interface_name,
       const std::string& expected_method_name,
       const std::string& actual_interface_name,
