@@ -21,7 +21,7 @@
 #include <unordered_map>
 
 #include "faced/camera/camera_service.h"
-#include "faced/proto/face_service.pb.h"
+#include "faced/camera/frame.h"
 
 namespace faced {
 
@@ -57,7 +57,7 @@ class FrameProcessor : public base::RefCountedThreadSafe<FrameProcessor> {
   //
   // If a second frame arrives from the camera prior to this function returning,
   // `done`, then that frame will be dropped.
-  virtual void ProcessFrame(std::unique_ptr<eora::CameraFrame> frame,
+  virtual void ProcessFrame(std::unique_ptr<Frame> frame,
                             ProcessFrameDoneCallback done) = 0;
 
  private:
@@ -163,7 +163,7 @@ class CameraClient {
               // received from the camera will be dropped
 
   // Callback called when a frame is received
-  base::CancelableRepeatingCallback<void(std::unique_ptr<eora::CameraFrame>,
+  base::CancelableRepeatingCallback<void(std::unique_ptr<Frame>,
                                          ProcessFrameDoneCallback)>
       process_frame_callback_;
   scoped_refptr<base::SequencedTaskRunner>

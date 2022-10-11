@@ -19,7 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/cros_camera_service.h"
+#include "faced/camera/camera_service.h"
+#include "faced/camera/frame.h"
 #include "faced/camera/frame_utils.h"
 #include "faced/util/status.h"
 
@@ -186,7 +187,7 @@ int CameraClient::OnCaptureResultAvailable(
   const cros_cam_frame_t* frame = result->frame;
   CHECK_NE(frame, nullptr);
 
-  base::RepeatingCallback<void(std::unique_ptr<eora::CameraFrame>,
+  base::RepeatingCallback<void(std::unique_ptr<Frame>,
                                ProcessFrameDoneCallback)>
       callback = client->process_frame_callback_.callback();
 
@@ -206,7 +207,7 @@ int CameraClient::OnCaptureResultAvailable(
   client->pending_request_ = true;
   client->task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(callback, CameraFrameProtoFromCrosFrame(*frame),
+      base::BindOnce(callback, FrameFromCrosFrame(*frame),
                      base::BindOnce(&CameraClient::CompletedProcessFrame,
                                     base::Unretained(client))));
   return 0;

@@ -9,15 +9,16 @@
 #include <string>
 
 #include "cros-camera/camera_service_connector.h"
-#include "faced/proto/face_service.pb.h"
+#include "faced/camera/frame.h"
 
 namespace faced {
 
-// Generates an eora::CameraFrame protocol buffer type from a CrOS camera frame
-std::unique_ptr<eora::CameraFrame> CameraFrameProtoFromCrosFrame(
-    const cros_cam_frame_t& frame);
+// Generates a Frame object from a CrOS camera frame.
+std::unique_ptr<Frame> FrameFromCrosFrame(const cros_cam_frame_t& frame);
 
+//
 // Internal implementation details (exposed for testing) below.
+//
 
 // Returns a tightly packed YUV payload with any padding removed
 std::string GetTightlyPackedPayload(int height,

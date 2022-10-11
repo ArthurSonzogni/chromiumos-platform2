@@ -11,8 +11,7 @@
 #include <base/strings/string_piece.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/camera_client.h"
-#include "faced/proto/face_service.pb.h"
+#include "faced/camera/frame.h"
 
 namespace faced {
 namespace {
@@ -82,27 +81,32 @@ std::string GetTightlyPackedPayload(int height,
   return payload;
 }
 
-std::unique_ptr<eora::CameraFrame> CameraFrameProtoFromCrosFrame(
-    const cros_cam_frame_t& frame) {
-  auto camera_frame = std::make_unique<eora::CameraFrame>();
-  camera_frame->set_height(frame.format.height);
-  camera_frame->set_width(frame.format.width);
+std::unique_ptr<Frame> FrameFromCrosFrame(const cros_cam_frame_t& frame) {
+  CHECK_GE(frame.format.height, 0);
+  CHECK_GE(frame.format.width, 0);
 
+  // Create the frame.
+  auto result = std::make_unique<Frame>(Frame{
+      .height = static_cast<uint32_t>(frame.format.height),
+      .width = static_cast<uint32_t>(frame.format.width),
+  });
+
+  // Copy and process the payload.
   switch (frame.format.fourcc) {
     case V4L2_PIX_FMT_NV12:
-      camera_frame->set_type(eora::FrameType::YUV_NV12);
-      camera_frame->set_payload(
+      result->format = Frame::Format::kYuvNv12;
+      result->data =
           GetTightlyPackedPayload(frame.format.height, frame.format.width,
-                                  frame.planes[0], frame.planes[1]));
+                                  frame.planes[0], frame.planes[1]);
       break;
     case V4L2_PIX_FMT_MJPEG:
-      camera_frame->set_type(eora::FrameType::MJPG);
-      camera_frame->set_payload(std::string(
-          reinterpret_cast<char*>(frame.planes[0].data), frame.planes[0].size));
+      result->format = Frame::Format::kMjpeg;
+      result->data = std::string(reinterpret_cast<char*>(frame.planes[0].data),
+                                 frame.planes[0].size);
       break;
   }
 
-  return camera_frame;
+  return result;
 }
 
 }  // namespace faced

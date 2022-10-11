@@ -15,7 +15,6 @@
 
 #include "faced/camera/camera_service.h"
 #include "faced/camera/test_utils.h"
-#include "faced/proto/face_service.pb.h"
 #include "faced/testing/status.h"
 #include "faced/util/blocking_future.h"
 #include "faced/util/task.h"
@@ -240,7 +239,7 @@ class SimpleFrameProcessor : public FrameProcessor {
 
   // Increments the frame counter and calls processing_complete_ when the
   // requested number of frames have been processed.
-  void ProcessFrame(std::unique_ptr<eora::CameraFrame> frame,
+  void ProcessFrame(std::unique_ptr<Frame> frame,
                     ProcessFrameDoneCallback done) override {
     num_frames_processed_++;
 
