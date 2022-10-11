@@ -92,6 +92,7 @@ _IUSE = [
     "feedback",
     "floss",
     "force_breakpad",
+    "fp_login",
     "fp_on_power_button",
     "fsverity",
     "ftdi_tpm",
