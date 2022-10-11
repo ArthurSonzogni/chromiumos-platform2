@@ -40,6 +40,7 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
@@ -49,6 +50,7 @@
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
@@ -5040,6 +5042,79 @@ void UserDataAuth::ListAuthFactors(
   }
 
   // Successfully completed, send the response with OK.
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
+void UserDataAuth::GetAuthFactorExtendedInfo(
+    user_data_auth::GetAuthFactorExtendedInfoRequest request,
+    base::OnceCallback<
+        void(const user_data_auth::GetAuthFactorExtendedInfoReply&)> on_done) {
+  AssertOnMountThread();
+
+  user_data_auth::GetAuthFactorExtendedInfoReply reply;
+
+  // Compute the account_id and obfuscated user name from the request.
+  AccountIdentifier account_id = request.account_id();
+  std::string obfuscated_username = SanitizeUserName(GetAccountId(account_id));
+  user_data_auth::AuthFactor auth_factor_proto;
+  if (LoadUserAuthFactorByLabel(
+          auth_factor_manager_, *auth_block_utility_, obfuscated_username,
+          request.auth_factor_label(), &auth_factor_proto)) {
+    *reply.mutable_auth_factor() = std::move(auth_factor_proto);
+  }
+  std::optional<AuthFactorType> type =
+      AuthFactorTypeFromProto(reply.auth_factor().type());
+  if (!type) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthFactorExtendedInfoTypeFailure),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return;
+  }
+  switch (*type) {
+    case AuthFactorType::kCryptohomeRecovery: {
+      if (!request.has_recovery_info_request()) {
+        ReplyWithError(
+            std::move(on_done), reply,
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocUserDataAuthFactorExtendedInfoRecoveryIdFailure),
+                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                user_data_auth::CryptohomeErrorCode::
+                    CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+          cryptorecovery::RecoveryCryptoImpl::Create(recovery_crypto_,
+                                                     platform_);
+      if (!recovery) {
+        ReplyWithError(
+            std::move(on_done), reply,
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocUserDataAuthRecoveryObjectFailureGetRecoveryId),
+                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                user_data_auth::CryptohomeErrorCode::
+                    CRYPTOHOME_ERROR_RECOVERY_FATAL));
+        return;
+      }
+      std::vector<std::string> recovery_ids = recovery->GetLastRecoveryIds(
+          account_id, request.recovery_info_request().max_depth());
+      user_data_auth::RecoveryExtendedInfoReply recovery_reply;
+      for (const std::string& recovery_id : recovery_ids) {
+        recovery_reply.add_recovery_ids(recovery_id);
+      }
+      *reply.mutable_recovery_info_reply() = std::move(recovery_reply);
+      break;
+    }
+    default: {
+      LOG(WARNING) << AuthFactorTypeToString(*type)
+                   << " factor type does not support extended info.";
+    }
+  }
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 
@@ -38,6 +39,8 @@ namespace cryptorecovery {
 namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
+constexpr int kMaxRecoveryIdDepth = 10;
+constexpr int kRecoveryIdDepth = 5;
 const char kCorruptedRecoveryIdContainer[] = "Corrupted RecoveryId container";
 const char kFakeDeviceId[] = "fake device id";
 const char kFakeGaiaAccessToken[] = "fake access token";
@@ -511,6 +514,63 @@ TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(new_recovery_id.empty());
   EXPECT_NE(recovery_id, new_recovery_id);
+}
+
+TEST_F(RecoveryCryptoTest, NoRecoveryId) {
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+
+  // Try to load recovery_id before generating it.
+  std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_THAT(recovery_id, testing::IsEmpty());
+  std::vector<std::string> recovery_ids_history =
+      recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
+  // EXPECT_TRUE(recovery_ids_history.empty());
+  EXPECT_THAT(recovery_ids_history, testing::IsEmpty());
+}
+
+TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+
+  std::vector<std::string> recovery_id;
+  // Generate an initial recovery_id and re-compute it a few times.
+  for (int i = 0; i < kMaxRecoveryIdDepth; i++) {
+    EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+    std::string current_recovery_id =
+        recovery_->LoadStoredRecoveryId(account_id);
+    EXPECT_FALSE(current_recovery_id.empty());
+    recovery_id.push_back(current_recovery_id);
+  }
+
+  std::vector<std::string> recovery_ids_history =
+      recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
+  // GetLastRecoveryIds orders recovery_ids from the latest to the oldest
+  // so reversing it will match the order from recovery_id vector above.
+  std::reverse(recovery_ids_history.begin(), recovery_ids_history.end());
+  EXPECT_EQ(recovery_id, recovery_ids_history);
+}
+
+TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShortenThanRequested) {
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+
+  std::vector<std::string> recovery_id;
+  // Generate an initial recovery_id and re-compute it a few times.
+  for (int i = 0; i < kRecoveryIdDepth; i++) {
+    EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+    std::string current_recovery_id =
+        recovery_->LoadStoredRecoveryId(account_id);
+    EXPECT_FALSE(current_recovery_id.empty());
+    recovery_id.push_back(current_recovery_id);
+  }
+
+  std::vector<std::string> recovery_ids_history =
+      recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
+  EXPECT_EQ(recovery_ids_history.size(), kRecoveryIdDepth);
+  // Reverse recovery_id_depth to simplify comparison with recovery_id
+  std::reverse(recovery_ids_history.begin(), recovery_ids_history.end());
+  EXPECT_EQ(recovery_id, recovery_ids_history);
 }
 
 TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {

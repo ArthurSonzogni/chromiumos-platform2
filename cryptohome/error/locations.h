@@ -1263,6 +1263,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceScanCouldNotGetFpManager = 718,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnimplementedPrepareForAdd = 719,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthFactorExtendedInfoTypeFailure = 720,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthFactorExtendedInfoRecoveryIdFailure = 721,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthRecoveryObjectFailureGetRecoveryId = 722,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

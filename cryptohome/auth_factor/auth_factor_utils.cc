@@ -323,6 +323,33 @@ void LoadUserAuthFactorProtos(
   }
 }
 
+bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
+                               const AuthBlockUtility& auth_block_utility,
+                               const std::string& obfuscated_username,
+                               const std::string& factor_label,
+                               user_data_auth::AuthFactor* out_auth_factor) {
+  for (const auto& [label, auth_factor_type] :
+       manager->ListAuthFactors(obfuscated_username)) {
+    if (label == factor_label) {
+      CryptohomeStatusOr<std::unique_ptr<AuthFactor>> owned_auth_factor =
+          manager->LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+      if (!owned_auth_factor.ok() || *owned_auth_factor == nullptr) {
+        return false;
+      }
+
+      AuthFactor& auth_factor = **owned_auth_factor;
+      auto auth_factor_proto = GetAuthFactorProto(
+          auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+      if (!auth_factor_proto) {
+        return false;
+      }
+      *out_auth_factor = std::move(*auth_factor_proto);
+      return true;
+    }
+  }
+  return false;
+}
+
 bool NeedsResetSecret(AuthFactorType auth_factor_type) {
   return auth_factor_type == AuthFactorType::kPin;
 }

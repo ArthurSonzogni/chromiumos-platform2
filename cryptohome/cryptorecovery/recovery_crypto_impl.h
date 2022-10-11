@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <cryptohome/platform.h>
@@ -66,6 +67,10 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // cryptohome.
   bool GenerateRecoveryIdToFile(const base::FilePath& recovery_id_path) const;
   bool GenerateRecoveryId(const AccountIdentifier& account_id) const;
+  // Returns a vector of last |max_depth| Recovery ids. The current recovery_id
+  // is returned as the first entry.
+  std::vector<std::string> GetLastRecoveryIds(
+      const AccountIdentifier& account_id, int max_depth) const;
 
  private:
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
@@ -93,6 +98,8 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool PersistRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       const CryptoRecoveryIdContainer& recovery_id_pb) const;
+  std::vector<std::string> GetLastRecoveryIdsFromFile(
+      const base::FilePath& recovery_id_path, int max_depth) const;
 
   hwsec_foundation::EllipticCurve ec_;
   hwsec::RecoveryCryptoFrontend* const hwsec_backend_;

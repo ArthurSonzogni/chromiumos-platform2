@@ -1085,6 +1085,50 @@ void RecoveryCryptoImpl::GenerateRecoveryIdProto(
   }
 }
 
+std::vector<std::string> RecoveryCryptoImpl::GetLastRecoveryIdsFromFile(
+    const base::FilePath& recovery_id_path, int max_depth) const {
+  DCHECK_GE(max_depth, 1);
+  std::vector<std::string> recovery_id_list;
+  CryptoRecoveryIdContainer recovery_id_pb;
+  if (!LoadPersistedRecoveryIdContainer(recovery_id_path, &recovery_id_pb)) {
+    LOG(ERROR) << "Unable to load stored recovery_id container.";
+    return recovery_id_list;
+  }
+  if (!recovery_id_pb.has_seed() || !recovery_id_pb.has_increment()) {
+    LOG(ERROR) << "Recovery_id container does not contain valid fields.";
+    return recovery_id_list;
+  }
+
+  int increment = recovery_id_pb.increment();
+  brillo::SecureBlob recovery_id_seed = brillo::SecureBlob(
+      recovery_id_pb.seed().begin(), recovery_id_pb.seed().end());
+  for (int counter = 1; counter <= max_depth && increment - counter >= 0;
+       counter++) {
+    crypto::ScopedBIGNUM seed_bn =
+        hwsec_foundation::SecureBlobToBigNum(recovery_id_seed);
+    if (BN_add_word(seed_bn.get(), increment - counter) < 0) {
+      LOG(ERROR) << "Unable to increment the recovery_id's seed.";
+      return recovery_id_list;
+    }
+
+    brillo::SecureBlob recovery_id_blob;
+    if (!hwsec_foundation::BigNumToSecureBlob(*seed_bn, kRecoveryIdSeedLength,
+                                              &recovery_id_blob)) {
+      LOG(ERROR) << "Recovery_id cannot be converted to a valid blob.";
+      return recovery_id_list;
+    }
+    recovery_id_blob = hwsec_foundation::Sha256(recovery_id_blob);
+    recovery_id_list.push_back(
+        hwsec_foundation::SecureBlobToHex(recovery_id_blob));
+  }
+  return recovery_id_list;
+}
+
+std::vector<std::string> RecoveryCryptoImpl::GetLastRecoveryIds(
+    const AccountIdentifier& account_id, int max_depth) const {
+  return GetLastRecoveryIdsFromFile(GetRecoveryIdPath(account_id), max_depth);
+}
+
 bool RecoveryCryptoImpl::RotateRecoveryId(
     CryptoRecoveryIdContainer* recovery_id_pb) const {
   if (!recovery_id_pb->has_seed()) {

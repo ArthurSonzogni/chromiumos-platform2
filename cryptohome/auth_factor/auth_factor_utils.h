@@ -58,6 +58,14 @@ void LoadUserAuthFactorProtos(
     google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
         out_auth_factors);
 
+// Gets AuthFactor for a given user and label. Returns false if the
+// corresponding AuthFactor does not exist.
+bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
+                               const AuthBlockUtility& auth_block_utility,
+                               const std::string& obfuscated_username,
+                               const std::string& factor_label,
+                               user_data_auth::AuthFactor* out_auth_factor);
+
 // This returns if a given |auth_factor_type| is PinWeaver backed, and thus
 // needs a reset secret.
 bool NeedsResetSecret(AuthFactorType auth_factor_type);
