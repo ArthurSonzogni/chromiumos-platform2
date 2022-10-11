@@ -19,7 +19,6 @@ pkg_config("target_defaults") {
     "libmojo",
     "libsync",
     "libyuv",
-    "perfetto",
     "protobuf",
     "re2",
     "system_api",
