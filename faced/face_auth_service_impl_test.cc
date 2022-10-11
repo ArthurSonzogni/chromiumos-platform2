@@ -7,8 +7,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -23,6 +25,8 @@
 #include "faced/mock_face_authentication_session_delegate.h"
 #include "faced/mock_face_enrollment_session_delegate.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/testing/status.h"
+#include "faced/util/blocking_future.h"
 
 namespace faced {
 
@@ -30,7 +34,13 @@ namespace {
 
 constexpr char kUserName[] = "someone@example.com";
 
+constexpr char kUserId1[] = "0000000000000000000000000000000000000001";
+constexpr char kData1[] = "Hello, world1!";
+constexpr char kUserId2[] = "0000000000000000000000000000000000000002";
+constexpr char kData2[] = "Hello, world2!";
+
 using ::testing::_;
+using ::testing::ElementsAre;
 using ::testing::Invoke;
 using ::testing::StrictMock;
 
@@ -39,6 +49,7 @@ using ::chromeos::faceauth::mojom::AuthenticationSessionConfig;
 using ::chromeos::faceauth::mojom::AuthenticationUpdateMessagePtr;
 using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
 using ::chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr;
+using ::chromeos::faceauth::mojom::EnrollmentMetadataPtr;
 using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
 using ::chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr;
 using ::chromeos::faceauth::mojom::FaceAuthenticationService;
@@ -46,6 +57,7 @@ using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
 using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::Result;
 using ::chromeos::faceauth::mojom::SessionCreationError;
 using ::chromeos::faceauth::mojom::SessionError;
 using ::chromeos::faceauth::mojom::SessionInfo;
@@ -54,6 +66,19 @@ using ::brillo::cryptohome::home::SanitizeUserName;
 
 std::string SampleUserHash() {
   return SanitizeUserName(kUserName);
+}
+
+// Create an EnrollmentStorage object backed by a temporary directory.
+struct TestStorage {
+  base::ScopedTempDir temp_dir;
+  std::unique_ptr<EnrollmentStorage> enrollments;
+};
+TestStorage CreateTestStorage() {
+  TestStorage result;
+  CHECK(result.temp_dir.CreateUniqueTempDir());
+  result.enrollments =
+      std::make_unique<EnrollmentStorage>(result.temp_dir.GetPath());
+  return result;
 }
 
 void RunUntil(std::function<bool()> check,
@@ -274,6 +299,119 @@ TEST(FaceAuthServiceImpl, TestDisconnection) {
 
   // Ensure the service indicates a session is inactive.
   EXPECT_FALSE(service_impl.has_active_session());
+}
+
+TEST(FaceAuthServiceImpl, TestIsUserEnrolledForEnrolledAndNotEnrolledUsers) {
+  TestStorage storage = CreateTestStorage();
+
+  // Enroll one user
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId1, kData1));
+
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(),
+                                   storage.temp_dir.GetPath());
+
+  // Check that kUserId1 is enrolled
+  BlockingFuture<bool> is_user_enrolled_1;
+  service->IsUserEnrolled(kUserId1, is_user_enrolled_1.PromiseCallback());
+  is_user_enrolled_1.Wait();
+
+  EXPECT_TRUE(is_user_enrolled_1.value());
+
+  // Check that kUserId2 is not enrolled
+  BlockingFuture<bool> is_user_enrolled_2;
+  service->IsUserEnrolled(kUserId2, is_user_enrolled_2.PromiseCallback());
+  is_user_enrolled_2.Wait();
+
+  EXPECT_FALSE(is_user_enrolled_2.value());
+}
+
+TEST(FaceAuthServiceImpl, TestListEnrollments) {
+  TestStorage storage = CreateTestStorage();
+
+  // Enroll two users
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId1, kData1));
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId2, kData2));
+
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(),
+                                   storage.temp_dir.GetPath());
+
+  BlockingFuture<std::vector<EnrollmentMetadataPtr>> enrollments;
+  service->ListEnrollments(enrollments.PromiseCallback());
+  enrollments.Wait();
+
+  std::vector<std::string> users;
+  for (const EnrollmentMetadataPtr& enrollment : enrollments.value()) {
+    users.push_back(enrollment->hashed_username);
+  }
+
+  // Check that both kUserId1 and kUserId2 are enrolled.
+  EXPECT_THAT(users, ElementsAre(kUserId1, kUserId2));
+}
+
+TEST(FaceAuthServiceImpl, TestRemoveEnrollmentDeletesEnrollment) {
+  TestStorage storage = CreateTestStorage();
+
+  // Enroll one user
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId1, kData1));
+
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(),
+                                   storage.temp_dir.GetPath());
+
+  // Remove enrollment for kUserId1 via the FaceAuthenticationService API
+  BlockingFuture<Result> remove_enrollment_result;
+  service->RemoveEnrollment(kUserId1,
+                            remove_enrollment_result.PromiseCallback());
+  remove_enrollment_result.Wait();
+
+  // Verify that the enrollment for kUserId1 has been removed.
+  EXPECT_EQ(remove_enrollment_result.value(), Result::OK);
+  EXPECT_EQ(storage.enrollments->ListEnrollments().size(), 0);
+}
+
+TEST(FaceAuthServiceImpl, TestRemoveEnrollmentFailureForNotEnrolledUser) {
+  TestStorage storage = CreateTestStorage();
+
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(),
+                                   storage.temp_dir.GetPath());
+
+  // Verify that RemoveEnrollment for kUserId1 which is not enrolled results in
+  // an error result.
+  BlockingFuture<Result> remove_enrollment_result;
+  service->RemoveEnrollment(kUserId1,
+                            remove_enrollment_result.PromiseCallback());
+  remove_enrollment_result.Wait();
+
+  EXPECT_EQ(remove_enrollment_result.value(), Result::ERROR);
+}
+
+TEST(FaceAuthServiceImpl, TestClearEnrollmentsDeletesEnrollments) {
+  TestStorage storage = CreateTestStorage();
+
+  // Enroll two users
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId1, kData1));
+  FACE_ASSERT_OK(storage.enrollments->WriteEnrollment(kUserId2, kData2));
+
+  mojo::Remote<FaceAuthenticationService> service;
+  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
+                                   base::OnceClosure(),
+                                   storage.temp_dir.GetPath());
+
+  // Verify that ClearEnrollments removes enrollments for both kUserId1 and
+  // kUserId2.
+  BlockingFuture<Result> clear_enrollments_result;
+  service->ClearEnrollments(clear_enrollments_result.PromiseCallback());
+  clear_enrollments_result.Wait();
+
+  EXPECT_EQ(clear_enrollments_result.value(), Result::OK);
+  EXPECT_EQ(storage.enrollments->ListEnrollments().size(), 0);
 }
 
 }  // namespace faced

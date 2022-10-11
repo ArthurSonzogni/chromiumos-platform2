@@ -5,6 +5,7 @@
 #ifndef FACED_FACED_CLI_MOCK_FACE_AUTHENTICATION_SERVICE_H_
 #define FACED_FACED_CLI_MOCK_FACE_AUTHENTICATION_SERVICE_H_
 
+#include <string>
 #include <utility>
 
 #include <gmock/gmock.h>
@@ -41,6 +42,17 @@ class MockFaceAuthService
            chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate>,
        CreateEnrollmentSessionCallback),
       (override));
+
+  MOCK_METHOD(void, ListEnrollments, (ListEnrollmentsCallback), (override));
+  MOCK_METHOD(void,
+              RemoveEnrollment,
+              (const std::string&, RemoveEnrollmentCallback),
+              (override));
+  MOCK_METHOD(void, ClearEnrollments, (ClearEnrollmentsCallback), (override));
+  MOCK_METHOD(void,
+              IsUserEnrolled,
+              (const std::string&, IsUserEnrolledCallback),
+              (override));
 
  private:
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationService>

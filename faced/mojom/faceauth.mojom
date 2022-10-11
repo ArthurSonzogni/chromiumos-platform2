@@ -28,11 +28,44 @@ interface FaceAuthenticationService {
     pending_receiver<FaceAuthenticationSession> session,
     pending_remote<FaceAuthenticationSessionDelegate> delegate)
     => (CreateSessionResult result);
+
+  // Manage stored enrollments.
+  //
+  // The following APIs take and return sanitized user names. That is,
+  // usernames are strings of hex characters return from
+  // `libbrillo::cryptohome::home::SanitizeUserName()`.
+  //
+
+  // List all enrollments in the system.
+  //
+  // Cannot be called when the active session is anything other than None.
+  ListEnrollments() => (array<EnrollmentMetadata> enrollments);
+
+  // Delete the enrollment of a given user.
+  RemoveEnrollment(string hashed_username) => (Result result);
+
+  // Delete all enrollments.
+  //
+  // ClearEnrollments will make a best effort to delete all enrollments even if
+  // any one of its operations fails. In the event of failing to delete an
+  // enrollment, ClearEnrollments will report an error.
+  ClearEnrollments() => (Result result);
+
+  // Return true if the given user is a valid username and is currently
+  // enrolled.
+  IsUserEnrolled(string hashed_username) => (bool enrolled);
 };
 
 struct EnrollmentMetadata {
   // A hashed username identifying a user on the system.
   string hashed_username;
+};
+
+// Result status of a request.
+[Extensible]
+enum Result {
+  OK = 0,
+  [Default] ERROR = 1,
 };
 
 // CreateSessionResult contains |session_info| on successful binding of the

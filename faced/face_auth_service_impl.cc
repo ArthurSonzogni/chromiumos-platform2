@@ -5,9 +5,12 @@
 #include "faced/face_auth_service_impl.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
+#include <brillo/cryptohome.h>
 
 #include "faced/authentication_session.h"
 #include "faced/enrollment_session.h"
@@ -15,6 +18,7 @@
 
 namespace faced {
 
+using ::brillo::cryptohome::home::IsSanitizedUserName;
 using ::chromeos::faceauth::mojom::AuthenticationSessionConfigPtr;
 using ::chromeos::faceauth::mojom::CreateSessionResult;
 using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
@@ -23,16 +27,22 @@ using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
 using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSession;
 using ::chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate;
+using ::chromeos::faceauth::mojom::Result;
 using ::chromeos::faceauth::mojom::SessionCreationError;
 using ::chromeos::faceauth::mojom::SessionInfo;
 
 FaceAuthServiceImpl::FaceAuthServiceImpl(
     mojo::PendingReceiver<FaceAuthenticationService> receiver,
-    DisconnectionCallback disconnect_handler)
+    DisconnectionCallback disconnect_handler,
+    std::optional<base::FilePath> daemon_store_path)
     : receiver_(this, std::move(receiver)) {
   receiver_.set_disconnect_handler(
       base::BindOnce(&FaceAuthServiceImpl::HandleDisconnect,
                      base::Unretained(this), std::move(disconnect_handler)));
+
+  if (daemon_store_path) {
+    enrollment_storage_ = EnrollmentStorage(daemon_store_path.value());
+  }
 }
 
 void FaceAuthServiceImpl::HandleDisconnect(base::OnceClosure callback) {
@@ -99,6 +109,47 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
   CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
       SessionInfo::New(session_->session_id())));
   PostToCurrentSequence(base::BindOnce(std::move(callback), std::move(result)));
+}
+
+void FaceAuthServiceImpl::ListEnrollments(ListEnrollmentsCallback callback) {
+  PostToCurrentSequence(base::BindOnce(std::move(callback),
+                                       enrollment_storage_.ListEnrollments()));
+}
+
+void FaceAuthServiceImpl::RemoveEnrollment(const std::string& hashed_username,
+                                           RemoveEnrollmentCallback callback) {
+  if (!IsSanitizedUserName(hashed_username)) {
+    PostToCurrentSequence(base::BindOnce(std::move(callback), Result::ERROR));
+    return;
+  }
+
+  if (!enrollment_storage_.RemoveEnrollment(hashed_username).ok()) {
+    PostToCurrentSequence(base::BindOnce(std::move(callback), Result::ERROR));
+    return;
+  }
+
+  PostToCurrentSequence(base::BindOnce(std::move(callback), Result::OK));
+}
+
+void FaceAuthServiceImpl::ClearEnrollments(ClearEnrollmentsCallback callback) {
+  if (enrollment_storage_.ClearEnrollments().ok()) {
+    PostToCurrentSequence(base::BindOnce(std::move(callback), Result::OK));
+    return;
+  }
+
+  PostToCurrentSequence(base::BindOnce(std::move(callback), Result::ERROR));
+}
+
+void FaceAuthServiceImpl::IsUserEnrolled(const std::string& hashed_username,
+                                         IsUserEnrolledCallback callback) {
+  if (!IsSanitizedUserName(hashed_username)) {
+    PostToCurrentSequence(base::BindOnce(std::move(callback), false));
+    return;
+  }
+
+  PostToCurrentSequence(
+      base::BindOnce(std::move(callback),
+                     enrollment_storage_.IsUserEnrolled(hashed_username)));
 }
 
 }  // namespace faced
