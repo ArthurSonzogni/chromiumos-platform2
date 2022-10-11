@@ -249,6 +249,10 @@ provide a complete folder contents listing.
 
 ## fwupd_state
 
+## fwupd_version
+
+The fwupd client and daemon versions.
+
 ## hammerd
 
 ## hardware_class

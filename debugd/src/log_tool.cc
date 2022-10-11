@@ -244,6 +244,7 @@ const std::array kCommandLogs {
   Log{kCommand, "fwupd_state",
     "/usr/bin/fwupdmgr get-devices --json | sed '/\"Serial\" :/d'",
     kRoot, kRoot},
+  Log{kCommand, "fwupd_version", "/usr/bin/fwupdmgr --version", kRoot, kRoot},
   Log{kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
   Log{kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
