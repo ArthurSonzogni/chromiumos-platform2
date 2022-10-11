@@ -23,7 +23,7 @@ namespace {
 
 // Fills a FileImage proto with contents from bpf image_info.
 void FillImage(const secagentd::bpf::image_info& image,
-               reporting::FileImage* proto) {
+               cros_xdr::reporting::FileImage* proto) {
   proto->set_pathname(std::string(image.pathname));
   proto->set_mnt_ns(image.mnt_ns);
   proto->set_inode_device_id(image.inode_device_id);
@@ -35,7 +35,7 @@ void FillImage(const secagentd::bpf::image_info& image,
 
 // Fills a Namespaces proto with contents from bpf namespace_info.
 void FillNamespaces(const secagentd::bpf::namespace_info& namespaces,
-                    reporting::Namespaces* proto) {
+                    cros_xdr::reporting::Namespaces* proto) {
   proto->set_cgroup_ns(namespaces.cgroup_ns);
   proto->set_pid_ns(namespaces.pid_ns);
   proto->set_user_ns(namespaces.user_ns);
@@ -46,9 +46,10 @@ void FillNamespaces(const secagentd::bpf::namespace_info& namespaces,
 }
 
 // Creates a ProcessExec proto from the contents of a bpf event.
-std::unique_ptr<reporting::ProcessExecEvent> FillProcessExecEvent(
+std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExecEvent(
     const secagentd::bpf::process_start& event) {
-  auto process_start = std::make_unique<reporting::ProcessExecEvent>();
+  auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  auto process_start = process_event->mutable_process_exec();
 
   // Fill process fields.
   auto process = process_start->mutable_process();
@@ -67,19 +68,20 @@ std::unique_ptr<reporting::ProcessExecEvent> FillProcessExecEvent(
   FillNamespaces(event.spawn_namespace,
                  process_start->mutable_spawn_namespaces());
 
-  return process_start;
+  return process_event;
 }
 
 // Creates a ProcessExit proto from the contents of a bpf event.
-std::unique_ptr<reporting::ProcessTerminateEvent> FillProcessExitEvent(
+std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExitEvent(
     const secagentd::bpf::process_exit& event) {
-  auto process_exit = std::make_unique<reporting::ProcessTerminateEvent>();
+  auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  auto process_exit = process_event->mutable_process_terminate();
 
   // Fill process fields.
   auto process = process_exit->mutable_process();
   process->set_canonical_pid(event.ppid);
 
-  return process_exit;
+  return process_event;
 }
 
 void EnqueueCallback(secagentd::bpf::process_event_type type,
