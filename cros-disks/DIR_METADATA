@@ -6,8 +6,11 @@
 # For the schema of this file, see Metadata message:
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
-monorail {
-  component: "Platform>Apps>FileManager"
+buganizer {
+  component_id: 167289
+}
+buganizer_public {
+  component_id: 1258625
 }
 
 chromeos {
