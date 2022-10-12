@@ -291,5 +291,45 @@ any persistent users present.
     - It is a failure and indicating another auth retry is possible, Chrome
     should repeat from Step 2 PrepareAuthFactor for another attempt.
     - It is a failure and indicating fingerprint retry limit has been reached,
-    Chrome should abort the AuthSession.
+    Chrome should not further attempt fingerprint auth in the same AuthSession.
 4.  `InvalidateAuthSession`
+
+### Chrome wants to do fingerprint WebAuthn
+
+1.  `StartAuthSession` - Chrome initiates an AuthSession with AuthIntent
+    WebAuthn.
+2.  `PrepareAuthFactor`
+    - An fingerprint sensor session is started to collect a fingerprint press.
+    - The fingerprint session is ended after a fingerprint image is captured.
+3.  `AuthenticateAuthFactor`
+    - It is a success, the fingerprint is matched and WebAuthn is fulfilled.
+    - It is a failure and indicating another auth retry is possible, Chrome
+    should repeat from Step 2 PrepareAuthFactor for another attempt.
+    - It is a failure and indicating fingerprint retry limit has been reached,
+    Chrome should not further attempt fingerprint auth in the same AuthSession.
+4.  `TerminateAuthFactor`
+    - The completion of PrepareAuthFactor (receiving error or successful
+    result) should ensure no further signals will be emitted and fingerprint
+    sensor session ended. However, in case Chrome wants to abort the session
+    early, TerminateAuthFactor has to be called. Also, it's a good idea to
+    always call TerminateAuthFactor when the WebAuthn dialog is destructed.
+5.  `InvalidateAuthSession`
+    - Now the prepared WebAuthn secret resides outside the auth session, so
+    it's safe for Chrome to call InvalidateAuthSession here. In the future
+    when we move WebAuthn secret into auth session, Chrome shouldn't process
+    this step, but return the auth session ID to u2fd in a successful response
+    of WebAuthn verification, then let u2fd do the InvalidateAuthSession.
+
+### Chrome wants to do PIN/password WebAuthn
+
+1.  `StartAuthSession` - Chrome initiates an AuthSession with AuthIntent
+    WebAuthn.
+2.  `AuthenticateAuthFactor`
+    - It is a success, WebAuthn is fulfilled.
+    - It is a failure, retry using password or PIN if not locked out yet.
+3.  `InvalidateAuthSession`
+    - Now the prepared WebAuthn secret resides outside the auth session, so
+    it's safe for Chrome to call InvalidateAuthSession here. In the future
+    when we move WebAuthn secret into auth session, Chrome shouldn't process
+    this step, but return the auth session ID to u2fd in a successful response
+    of WebAuthn verification, then let u2fd do the InvalidateAuthSession.
