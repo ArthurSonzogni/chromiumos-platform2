@@ -718,9 +718,9 @@ debugd_poll() (
     # The mk_fifo command already showed a warning.
     return 1
   fi
-  debugd "${methodbase}Start" "$@" 2>&1 >"${fifo}" &
+  { debugd "${methodbase}Start" "$@" >"${fifo}"; } 2>&1 &
 
-  read pid < "${fifo}"
+  read -r pid < "${fifo}"
 
   # Background cat and block with `wait` to give debugd a chance to flush
   # output on trapped signal.

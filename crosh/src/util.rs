@@ -226,8 +226,11 @@ mod tests {
     fn test_generate_output_file_path() {
         // Set the user id hash env variable to a random value because it is necessary for output path generation.
         env::set_var(CROS_USER_ID_HASH, "useridhashfortesting");
-        let expected_path_re =
-            Regex::new(r"^/home/user/.+/MyFiles/Downloads/packet_capture_\d{4}-\d{2}-\d{2}_\d{2}.\d{2}.\d{2}_.{6}\.pcap$").unwrap();
+        let expected_path_re = Regex::new(concat!(
+            r"^/home/user/.+/MyFiles/Downloads/",
+            r"packet_capture_\d{4}-\d{2}-\d{2}_\d{2}.\d{2}.\d{2}_.{6}\.pcap$"
+        ))
+        .unwrap();
         let result_output_path = generate_output_file_path("packet_capture", "pcap").unwrap();
         assert!(expected_path_re.is_match(&result_output_path));
     }
