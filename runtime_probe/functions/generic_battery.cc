@@ -39,7 +39,7 @@ constexpr auto kBatteryKeys = base::MakeFixedFlatSet<base::StringPiece>(
 constexpr auto kBatteryOptionalKeys = base::MakeFixedFlatSet<base::StringPiece>(
     {"capacity", "capacity_level", "charge_full", "charge_full_design",
      "charge_now", "current_now", "cycle_count", "present", "serial_number",
-     "status", "voltage_min_design", "voltage_now"});
+     "status", "voltage_min_design"});
 
 std::optional<base::Value::Dict> ProbeBatteryFromSysfs(
     const base::FilePath& battery_path) {
