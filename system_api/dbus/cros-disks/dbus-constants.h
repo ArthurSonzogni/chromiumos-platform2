@@ -95,12 +95,10 @@ enum FormatErrorType {
   FORMAT_ERROR_INVALID_CHARACTER = 11,
 };
 
-// TODO(crbug.com/1368408): After both Chrome and cros-disks use these enum
-// values, make these error values contiguous so that they can be directly
-// reported via UMA. See
-// https://source.chromium.org/chromium/chromium/src/+/main:chromeos/ash/components/dbus/cros_disks/cros_disks_client.h?q=MountError.
+// Mount or unmount error code.
 //
-// The *_EX values are used during the transition.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum MountErrorType {
   MOUNT_ERROR_NONE = 0,
   MOUNT_ERROR_UNKNOWN = 1,
@@ -122,31 +120,31 @@ enum MountErrorType {
 
   // Either the FUSE mounter needs a password, or the provided password is
   // incorrect.
-  MOUNT_ERROR_NEED_PASSWORD_EX = 17,
-  MOUNT_ERROR_NEED_PASSWORD = 117,
+  MOUNT_ERROR_NEED_PASSWORD = 17,
+  MOUNT_ERROR_NEED_PASSWORD_EX = 117,
 
   // The FUSE mounter is currently launching, and it hasn't daemonized yet.
-  MOUNT_ERROR_IN_PROGRESS_EX = 18,
-  MOUNT_ERROR_IN_PROGRESS = 118,
+  MOUNT_ERROR_IN_PROGRESS = 18,
+  MOUNT_ERROR_IN_PROGRESS_EX = 118,
 
   // The FUSE mounter was cancelled (killed) while it was launching.
-  MOUNT_ERROR_CANCELLED_EX = 19,
-  MOUNT_ERROR_CANCELLED = 119,
+  MOUNT_ERROR_CANCELLED = 19,
+  MOUNT_ERROR_CANCELLED_EX = 119,
 
   // The device is busy.
   MOUNT_ERROR_BUSY = 20,
 
-  MOUNT_ERROR_INVALID_DEVICE_PATH_EX = 13,
-  MOUNT_ERROR_INVALID_DEVICE_PATH = 100,
+  MOUNT_ERROR_INVALID_DEVICE_PATH = 13,
+  MOUNT_ERROR_INVALID_DEVICE_PATH_EX = 100,
 
-  MOUNT_ERROR_UNKNOWN_FILESYSTEM_EX = 14,
-  MOUNT_ERROR_UNKNOWN_FILESYSTEM = 101,
+  MOUNT_ERROR_UNKNOWN_FILESYSTEM = 14,
+  MOUNT_ERROR_UNKNOWN_FILESYSTEM_EX = 101,
 
-  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM_EX = 15,
-  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 102,
+  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 15,
+  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM_EX = 102,
 
-  MOUNT_ERROR_INVALID_ARCHIVE_EX = 16,
-  MOUNT_ERROR_INVALID_ARCHIVE = 201,
+  MOUNT_ERROR_INVALID_ARCHIVE = 16,
+  MOUNT_ERROR_INVALID_ARCHIVE_EX = 201,
 };
 
 // MountSourceType enum values are solely used by Chrome/CrosDisks in
