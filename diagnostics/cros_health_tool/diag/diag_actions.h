@@ -90,6 +90,7 @@ class DiagActions final {
   bool ActionRunArcDnsResolutionRoutine();
   bool ActionRunSensitiveSensorRoutine();
   bool ActionRunFingerprintRoutine();
+  bool ActionRunFingerprintAliveRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

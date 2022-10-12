@@ -69,7 +69,9 @@ constexpr struct {
     {"sensitive_sensor",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSensitiveSensor},
     {"fingerprint",
-     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprint}};
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprint},
+    {"fingerprint_alive",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprintAlive}};
 
 }  // namespace diagnostics
 

@@ -267,7 +267,7 @@ int diag_main(int argc, char** argv) {
         routine_result = actions.ActionRunFingerprintRoutine();
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive:
-        routine_result = EXIT_FAILURE;
+        routine_result = actions.ActionRunFingerprintAliveRoutine();
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
