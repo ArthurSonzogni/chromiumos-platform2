@@ -176,6 +176,18 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
   cmd_.result = data.cmd.result;
   response_ = data.resp;
 
+  // Log errors returned from the EC. INVALID_COMMAND and INVALID_VERSION are
+  // commonly used to probe the EC thus more-or-less expected.
+  if (cmd_.result == EC_RES_INVALID_COMMAND ||
+      cmd_.result == EC_RES_INVALID_VERSION) {
+    LOG(INFO) << "cros_ec does not support cmd=" << cmd_.command
+              << " ver=" << cmd_.version;
+  } else if (cmd_.result != EC_RES_SUCCESS &&
+             cmd_.result != EC_RES_IN_PROGRESS) {
+    LOG(WARNING) << "cros_ec returned error=" << cmd_.result
+                 << " for cmd=" << cmd_.command;
+  }
+
   // Check size in addition to result code to guard against bugs in the
   // command implementation. See ec_command_test.cc for details and example test
   // cases.
