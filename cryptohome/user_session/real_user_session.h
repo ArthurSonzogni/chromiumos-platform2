@@ -8,12 +8,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_session.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
@@ -82,8 +82,6 @@ class RealUserSession : public UserSession {
 
   void AddCredentials(const Credentials& credentials) override;
 
-  void TakeCredentialsFrom(AuthSession* auth_session) override;
-
   void AddCredentialVerifier(
       std::unique_ptr<CredentialVerifier> verifier) override;
 
@@ -101,6 +99,9 @@ class RealUserSession : public UserSession {
   bool VerifyCredentials(const Credentials& credentials) const override;
 
   const KeyData& key_data() const override { return key_data_; }
+  void set_key_data(KeyData key_data) override {
+    key_data_ = std::move(key_data);
+  }
 
   Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
 

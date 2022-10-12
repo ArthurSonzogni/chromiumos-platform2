@@ -15,7 +15,6 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/auth_session.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
@@ -65,14 +64,12 @@ class MockUserSession : public UserSession {
               (),
               (override));
   MOCK_METHOD(void, AddCredentials, (const Credentials&), (override));
-  MOCK_METHOD(void, TakeCredentialsFrom, (AuthSession*), (override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
   MOCK_METHOD(void,
               RemoveCredentialVerifierForKeyLabel,
               (const std::string&),
               (override));
-  MOCK_METHOD(const KeyData&, key_data, (), (const, override));
   MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (override));
   MOCK_METHOD(std::string, GetUsername, (), (const, override));
   MOCK_METHOD(void,
@@ -83,6 +80,12 @@ class MockUserSession : public UserSession {
               ResetApplicationContainer,
               (const std::string&),
               (override));
+
+  // Implementation of key_data getter and setter.
+  const KeyData& key_data() const override { return key_data_; }
+  void set_key_data(KeyData key_data) override {
+    key_data_ = std::move(key_data);
+  }
 
   // Implementation of the Add/Has/Get functions for credential verifiers.
   // Functions are implemented "normally" so that tests don't need to manually
@@ -110,6 +113,7 @@ class MockUserSession : public UserSession {
   }
 
  private:
+  KeyData key_data_;
   std::map<std::string, std::unique_ptr<CredentialVerifier>>
       label_to_credential_verifier_;
 };
