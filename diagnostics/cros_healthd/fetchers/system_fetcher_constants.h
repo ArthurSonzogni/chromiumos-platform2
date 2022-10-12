@@ -18,6 +18,7 @@ inline constexpr char kFileNameModelName[] = "model_name";
 inline constexpr char kFileNameRegion[] = "region";
 inline constexpr char kFileNameSerialNumber[] = "serial_number";
 inline constexpr char kFileNameSkuNumber[] = "sku_number";
+inline constexpr char kFileNameOemName[] = "oem_name";
 
 // Relative path to DMI information.
 inline constexpr char kRelativePathDmiInfo[] = "sys/class/dmi/id";

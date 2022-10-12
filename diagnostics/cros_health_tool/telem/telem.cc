@@ -1161,6 +1161,7 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
     SET_DICT(activate_date, vpd_info, out_vpd_info);
     SET_DICT(sku_number, vpd_info, out_vpd_info);
     SET_DICT(model_name, vpd_info, out_vpd_info);
+    SET_DICT(oem_name, vpd_info, out_vpd_info);
   }
 
   const auto& dmi_info = system_info->dmi_info;

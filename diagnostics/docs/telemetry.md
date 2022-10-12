@@ -1062,6 +1062,7 @@ event --help`.
 | activate_date | string? | The date the device was first activated. (Runtime RW VPD field)<br />Format: YYYY-WW. |
 | sku_number | string? | The product SKU number. (Optional RO VPD field. b/35512367) |
 | model_name | string? | The product model name. (Optional RO VPD field. b/35512367) |
+| oem_name | string? | OEM name of the device. (Optional RO VPD field) |
 
 
 ###  TPM

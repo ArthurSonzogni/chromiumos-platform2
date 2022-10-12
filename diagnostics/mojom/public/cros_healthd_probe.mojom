@@ -902,7 +902,7 @@ enum BootMode {
 // Note that all the fields (include required fields) are not guaranteed to be
 // exist in some situation. (e.g. in a early stage device)
 //
-// NextMinVersion: 1, NextIndex: 6
+// NextMinVersion: 2, NextIndex: 7
 [Stable, RenamedFrom="chromeos.cros_healthd.mojom.VpdInfo"]
 struct VpdInfo {
   // A unique identifier of the device. (Required RO VPD field)
@@ -920,6 +920,8 @@ struct VpdInfo {
   string? sku_number@4;
   // The product model name. (Optional RO VPD field. b/35512367)
   string? model_name@5;
+  // OEM name of the device. (Optional RO VPD field)
+  [MinVersion=1] string? oem_name@6;
 };
 
 // DMI (a.k.a. SMBIOS) is only supported on x86 platform. These info can be used

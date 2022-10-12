@@ -61,6 +61,7 @@ class SystemUtilsTest : public BaseFileTest {
     vpd_info->region = "us";
     vpd_info->serial_number = "8607G03EDF";
     vpd_info->sku_number = "ABCD&^A";
+    vpd_info->oem_name = "FooOEM-VPD";
     auto& dmi_info = expected_system_info_->dmi_info;
     dmi_info = mojom::DmiInfo::New();
     dmi_info->bios_vendor = "Google";
@@ -113,6 +114,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile({ro, kFileNameRegion}, vpd_info->region);
     SetMockFile({ro, kFileNameSerialNumber}, vpd_info->serial_number);
     SetMockFile({ro, kFileNameSkuNumber}, vpd_info->sku_number);
+    SetMockFile({ro, kFileNameOemName}, vpd_info->oem_name);
   }
 
   void SetDmiInfo(const mojom::DmiInfoPtr& dmi_info) {
@@ -310,6 +312,7 @@ TEST_MISSING_FIELD(vpd_info, region);
 TEST_MISSING_FIELD(vpd_info, mfg_date);
 TEST_MISSING_FIELD(vpd_info, serial_number);
 TEST_MISSING_FIELD(vpd_info, model_name);
+TEST_MISSING_FIELD(vpd_info, oem_name);
 
 TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
   expected_system_info_->dmi_info = nullptr;

@@ -127,6 +127,7 @@ bool State::FetchCachedVpdInfo() {
   ReadAndTrimString(ro_path, kFileNameModelName, &vpd_info->model_name);
   ReadAndTrimString(ro_path, kFileNameRegion, &vpd_info->region);
   ReadAndTrimString(ro_path, kFileNameSerialNumber, &vpd_info->serial_number);
+  ReadAndTrimString(ro_path, kFileNameOemName, &vpd_info->oem_name);
   if (context_->system_config()->HasSkuNumber() &&
       !ReadAndTrimString(ro_path, kFileNameSkuNumber, &vpd_info->sku_number)) {
     SetError(mojom::ErrorType::kFileReadError,
