@@ -2262,8 +2262,10 @@ void AuthSession::AddAuthFactor(
 
   // Report timer for how long AddAuthFactor operation takes.
   auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionAddAuthFactorVKTimer);
+      user_secret_stash_ ? std::make_unique<AuthSessionPerformanceTimer>(
+                               kAuthSessionAddAuthFactorUSSTimer)
+                         : std::make_unique<AuthSessionPerformanceTimer>(
+                               kAuthSessionAddAuthFactorVKTimer);
 
   AddAuthFactorImpl(auth_factor_type, auth_factor_label, auth_factor_metadata,
                     auth_input_status.value(),
