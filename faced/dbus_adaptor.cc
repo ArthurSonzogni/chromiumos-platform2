@@ -28,13 +28,6 @@ void DBusAdaptor::RegisterAsync(
 void DBusAdaptor::BootstrapMojoConnection(
     BootstrapMojoConnectionCallback response,
     const base::ScopedFD& file_handle) {
-  if (mojo_service_bind_attempted_) {
-    brillo::ErrorPtr err = brillo::Error::Create(
-        FROM_HERE, "faced", "INTERNAL", "Mojo service already instantiated");
-    std::move(response)->ReplyWithError(err.get());
-    return;
-  }
-
   // Duplicate the input file handle.
   //
   // libbrillo's D-Bus wrappers currently don't support passing us a
@@ -64,8 +57,6 @@ void DBusAdaptor::BootstrapMojoConnection(
       base::BindOnce(&DBusAdaptor::OnBootstrapMojoConnectionResponse,
                      weak_ptr_factory_.GetWeakPtr(), std::move(response)),
       base::WrapRefCounted(bus->GetDBusTaskRunner()));
-
-  mojo_service_bind_attempted_ = true;
 }
 
 void DBusAdaptor::OnBootstrapMojoConnectionResponse(

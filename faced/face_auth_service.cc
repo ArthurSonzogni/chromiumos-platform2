@@ -39,14 +39,6 @@ absl::StatusOr<std::unique_ptr<FaceAuthService>> FaceAuthService::Create() {
   return result;
 }
 
-void FaceAuthService::SetCriticalErrorCallback(
-    CriticalErrorCallback error_callback,
-    scoped_refptr<base::TaskRunner> task_runner) {
-  DCHECK(task_runner);
-  error_callback_ = std::move(error_callback);
-  error_task_runner_ = std::move(task_runner);
-}
-
 void FaceAuthService::ReceiveMojoInvitation(
     base::ScopedFD fd,
     ReceiveOnIpcThreadCallback callback,
@@ -74,14 +66,22 @@ void FaceAuthService::SetupMojoPipeOnThread(
     return;
   }
 
-  face_service_manager_ = FaceServiceManager::Create();
-  service_ = std::make_unique<FaceAuthServiceImpl>(
-      mojo::PendingReceiver<
-          chromeos::faceauth::mojom::FaceAuthenticationService>(
-          std::move(mojo_pipe_handle)),
-      base::BindOnce(&FaceAuthService::OnConnectionError,
-                     base::Unretained(this)),
-      *face_service_manager_);
+  if (!face_service_manager_) {
+    face_service_manager_ = FaceServiceManager::Create();
+  }
+
+  if (!service_) {
+    service_ = std::make_unique<FaceAuthServiceImpl>(
+        mojo::PendingReceiver<
+            chromeos::faceauth::mojom::FaceAuthenticationService>(
+            std::move(mojo_pipe_handle)),
+        base::BindOnce(&FaceAuthService::OnDisconnect, base::Unretained(this)),
+        *face_service_manager_);
+  } else {
+    service_->Clone(mojo::PendingReceiver<
+                    chromeos::faceauth::mojom::FaceAuthenticationService>(
+        std::move(mojo_pipe_handle)));
+  }
 
   callback_runner->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), /*success=*/true));
@@ -89,10 +89,8 @@ void FaceAuthService::SetupMojoPipeOnThread(
   LOG(INFO) << "Mojo connection bootstrapped.";
 }
 
-void FaceAuthService::OnConnectionError() {
-  error_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(std::move(error_callback_),
-                                "Lost mojo connection to primary broker"));
+void FaceAuthService::OnDisconnect() {
+  LOG(INFO) << "Lost mojo connection to primary broker";
 }
 
 }  // namespace faced

@@ -189,51 +189,6 @@ TEST(FaceAuthServiceImpl, TestSuccessfulCancelEnrollmentSession) {
   EXPECT_FALSE(service_impl.has_active_session());
 }
 
-TEST(FaceAuthServiceImpl, TestFailingCancelEnrollmentSession) {
-  // Create a fake manager and set the expected gRPC service calls.
-  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
-                            FakeFaceServiceManager::Create());
-  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
-      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
-  EXPECT_CALL(*(service_mgr->mock_service()), AbortEnrollment)
-      .WillOnce(GrpcReplyOk(AbortEnrollmentFailureResponse()));
-
-  // Create the service remote and impl.
-  mojo::Remote<FaceAuthenticationService> service;
-  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(), *(service_mgr));
-
-  // Create a mock session delegate, that expects a cancellation event to be
-  // triggered.
-  StrictMock<MockFaceEnrollmentSessionDelegate> delegate;
-  EXPECT_CALL(delegate, OnEnrollmentError(_)).Times(1);
-
-  // Request the service to begin an enrollment session.
-  base::RunLoop run_loop;
-  mojo::Remote<FaceEnrollmentSession> session_remote;
-  mojo::Receiver<FaceEnrollmentSessionDelegate> receiver(&delegate);
-  service->CreateEnrollmentSession(
-      EnrollmentSessionConfig::New(SampleUserHash(), /*accessibility=*/false),
-      session_remote.BindNewPipeAndPassReceiver(),
-      receiver.BindNewPipeAndPassRemote(),
-      base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
-        EXPECT_TRUE(result->is_session_info());
-        run_loop.Quit();
-      }));
-  run_loop.Run();
-
-  // Ensure the service indicates a session is active.
-  EXPECT_TRUE(service_impl.has_active_session());
-
-  // Cancel the session by disconnecting `session_remote`.
-  session_remote.reset();
-
-  // Wait for `service_impl` to report that there is no longer an active
-  // session.
-  RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
-  EXPECT_FALSE(service_impl.has_active_session());
-}
-
 TEST(FaceAuthServiceImpl, TestCreateAuthenticationSession) {
   // Create a fake manager.
   FACE_ASSERT_OK_AND_ASSIGN(
@@ -317,46 +272,7 @@ TEST(FaceAuthServiceImpl, TestNoConcurrentSession) {
   second_run_loop.Run();
 }
 
-TEST(FaceAuthServiceImpl, TestCancelAuthenticationSession) {
-  // Create a fake manager.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
-      FakeFaceServiceManager::Create());
-
-  // Create the service remote and impl.
-  mojo::Remote<FaceAuthenticationService> service;
-  FaceAuthServiceImpl service_impl(service.BindNewPipeAndPassReceiver(),
-                                   base::OnceClosure(), *(service_mgr));
-
-  // Create a mock session delegate.
-  StrictMock<MockFaceAuthenticationSessionDelegate> delegate;
-  EXPECT_CALL(delegate, OnAuthenticationCancelled()).Times(1);
-
-  // Request the service to begin an authentication session.
-  base::RunLoop run_loop;
-  mojo::Remote<FaceAuthenticationSession> session_remote;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> receiver(&delegate);
-  service->CreateAuthenticationSession(
-      AuthenticationSessionConfig::New(SampleUserHash()),
-      session_remote.BindNewPipeAndPassReceiver(),
-      receiver.BindNewPipeAndPassRemote(),
-      base::BindLambdaForTesting([&](CreateSessionResultPtr result) {
-        EXPECT_TRUE(result->is_session_info());
-        run_loop.Quit();
-      }));
-  run_loop.Run();
-
-  // Ensure the service indicates a session is active.
-  EXPECT_TRUE(service_impl.has_active_session());
-
-  // Cancel the session by disconnecting `session_remote`.
-  session_remote.reset();
-  RunUntil([&service_impl]() { return !service_impl.has_active_session(); });
-
-  EXPECT_FALSE(service_impl.has_active_session());
-}
-
-TEST(FaceAuthServiceImpl, TestDisconnection) {
+TEST(FaceAuthServiceImpl, TestSessionMaintainedOnDisconnection) {
   // Create a fake manager.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<FaceServiceManagerInterface> service_mgr,
@@ -391,13 +307,13 @@ TEST(FaceAuthServiceImpl, TestDisconnection) {
   // Ensure the service indicates a session is active.
   EXPECT_TRUE(service_impl.has_active_session());
 
-  // End the session by disconnecting `service`.
+  // Disconnect from the FaceAuthService interface.
   service.reset();
 
   second_run_loop.Run();
 
-  // Ensure the service indicates a session is inactive.
-  EXPECT_FALSE(service_impl.has_active_session());
+  // Ensure the service indicates a session remains active.
+  EXPECT_TRUE(service_impl.has_active_session());
 }
 
 TEST(FaceAuthServiceImpl, TestIsUserEnrolledForEnrolledAndNotEnrolledUsers) {

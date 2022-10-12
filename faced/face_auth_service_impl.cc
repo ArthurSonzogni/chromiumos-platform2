@@ -43,6 +43,8 @@ FaceAuthServiceImpl::FaceAuthServiceImpl(
   receiver_.set_disconnect_handler(
       base::BindOnce(&FaceAuthServiceImpl::HandleDisconnect,
                      base::Unretained(this), std::move(disconnect_handler)));
+  receiver_set_.set_disconnect_handler(base::BindRepeating(
+      []() { LOG(INFO) << "FaceAuthenticationService connection closed."; }));
 
   if (daemon_store_path) {
     enrollment_storage_ = EnrollmentStorage(daemon_store_path.value());
@@ -50,9 +52,13 @@ FaceAuthServiceImpl::FaceAuthServiceImpl(
 }
 
 void FaceAuthServiceImpl::HandleDisconnect(base::OnceClosure callback) {
-  ClearSession();
   receiver_.reset();
   PostToCurrentSequence(std::move(callback));
+}
+
+void FaceAuthServiceImpl::Clone(
+    mojo::PendingReceiver<FaceAuthenticationService> receiver) {
+  receiver_set_.Add(this, std::move(receiver));
 }
 
 void FaceAuthServiceImpl::CreateEnrollmentSession(

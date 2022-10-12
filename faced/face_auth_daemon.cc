@@ -34,10 +34,6 @@ int FaceAuthDaemon::OnInit() {
   }
 
   face_auth_service_ = std::move(face_auth_service.value());
-  face_auth_service_->SetCriticalErrorCallback(
-      base::BindOnce(&FaceAuthDaemon::ShutdownOnConnectionError,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::SequencedTaskRunnerHandle::Get());
 
   int return_code = DBusServiceDaemon::OnInit();
   if (return_code != EXIT_SUCCESS) {
@@ -53,11 +49,6 @@ void FaceAuthDaemon::RegisterDBusObjectsAsync(
   adaptor_ = std::make_unique<DBusAdaptor>(bus_, *face_auth_service_.get());
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
-}
-
-void FaceAuthDaemon::ShutdownOnConnectionError(std::string error_message) {
-  LOG(ERROR) << "Shutting down due to error: " << error_message;
-  Quit();
 }
 
 }  // namespace faced

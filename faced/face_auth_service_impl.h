@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "faced/enrollment_storage.h"
 #include "faced/face_service.h"
@@ -61,6 +62,9 @@ class FaceAuthServiceImpl
           delegate,
       CreateAuthenticationSessionCallback callback) override;
 
+  void Clone(mojo::PendingReceiver<
+             chromeos::faceauth::mojom::FaceAuthenticationService> receiver);
+
   void ListEnrollments(ListEnrollmentsCallback callback) override;
 
   void RemoveEnrollment(const std::string& hashed_username,
@@ -83,8 +87,13 @@ class FaceAuthServiceImpl
   // Called with the result of session start.
   void CompleteSessionStart(StartSessionCallback callback, absl::Status status);
 
+  // Primordial receiver bootstrapped over D-Bus. Once opened, is never closed.
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationService>
       receiver_;
+
+  // Additional receivers.
+  mojo::ReceiverSet<chromeos::faceauth::mojom::FaceAuthenticationService>
+      receiver_set_;
 
   absl::BitGen bitgen_;
 

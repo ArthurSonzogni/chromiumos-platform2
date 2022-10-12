@@ -33,8 +33,6 @@ class FaceAuthDaemon : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  void ShutdownOnConnectionError(std::string error_message);
-
   std::unique_ptr<DBusAdaptor> adaptor_;
 
   std::unique_ptr<FaceAuthServiceInterface> face_auth_service_;

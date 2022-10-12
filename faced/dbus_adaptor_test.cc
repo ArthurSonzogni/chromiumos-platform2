@@ -47,12 +47,6 @@ class MockFaceAuthService : public FaceAuthServiceInterface {
                ReceiveOnIpcThreadCallback callback,
                scoped_refptr<base::TaskRunner> callback_runner),
               (override));
-
-  MOCK_METHOD(void,
-              SetCriticalErrorCallback,
-              (CriticalErrorCallback error_callback,
-               scoped_refptr<base::TaskRunner> task_runner),
-              (override));
 };
 
 base::ScopedFD CreateFakeFd() {

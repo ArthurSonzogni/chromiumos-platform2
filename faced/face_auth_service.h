@@ -39,14 +39,6 @@ class FaceAuthServiceInterface {
       base::ScopedFD fd,
       ReceiveOnIpcThreadCallback callback,
       scoped_refptr<base::TaskRunner> callback_runner) = 0;
-
-  // Set a callback that will be called if a critical error is encountered.
-  //
-  // Only one callback may be registered at a time. If a previous callback
-  // has already been registered, the last callback will replace it.
-  virtual void SetCriticalErrorCallback(
-      CriticalErrorCallback error_callback,
-      scoped_refptr<base::TaskRunner> task_runner) = 0;
 };
 
 // Entrypoint to the Mojo IPC for face auth service implementation
@@ -64,18 +56,14 @@ class FaceAuthService : public FaceAuthServiceInterface {
       ReceiveOnIpcThreadCallback callback,
       scoped_refptr<base::TaskRunner> callback_runner) override;
 
-  void SetCriticalErrorCallback(
-      CriticalErrorCallback error_callback,
-      scoped_refptr<base::TaskRunner> task_runner) override;
-
  private:
   FaceAuthService();
   void SetupMojoPipeOnThread(mojo::IncomingInvitation invitation,
                              ReceiveOnIpcThreadCallback callback,
                              scoped_refptr<base::TaskRunner> callback_runner);
 
-  // Responds to Mojo disconnection
-  void OnConnectionError();
+  // Responds to Mojo broker disconnection
+  void OnDisconnect();
 
   CriticalErrorCallback error_callback_;
   scoped_refptr<base::TaskRunner> error_task_runner_;

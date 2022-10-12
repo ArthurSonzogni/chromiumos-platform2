@@ -48,10 +48,6 @@ class DBusAdaptor : public org::chromium::FaceAuthDaemonInterface,
 
   brillo::dbus_utils::DBusObject dbus_object_;
 
-  // Whether binding of the Mojo service was attempted. This flag is needed for
-  // detecting repeated Mojo bootstrapping attempts.
-  bool mojo_service_bind_attempted_ = false;
-
   FaceAuthServiceInterface& face_auth_service_;
 
   base::WeakPtrFactory<DBusAdaptor> weak_ptr_factory_{this};
