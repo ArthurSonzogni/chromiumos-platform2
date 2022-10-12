@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/timer/timer.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -21,7 +22,10 @@ class SwapManagementDBusAdaptor
     : public org::chromium::SwapManagementAdaptor,
       public org::chromium::SwapManagementInterface {
  public:
-  explicit SwapManagementDBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit SwapManagementDBusAdaptor(
+      scoped_refptr<dbus::Bus> bus,
+      std::unique_ptr<base::OneShotTimer> shutdown_timer);
+  ~SwapManagementDBusAdaptor();
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
@@ -45,6 +49,10 @@ class SwapManagementDBusAdaptor
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SwapTool> swap_tool_;
+
+  std::unique_ptr<base::OneShotTimer> shutdown_timer_;
+
+  void ResetShutdownTimer();
 };
 
 }  // namespace swap_management

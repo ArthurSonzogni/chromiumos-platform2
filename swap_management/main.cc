@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -22,20 +23,27 @@ namespace {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(swap_management::kSwapManagementServiceName) {}
+  Daemon() : DBusServiceDaemon(swap_management::kSwapManagementServiceName) {
+    daemon_shutdown_timer_ = std::make_unique<base::OneShotTimer>();
+    daemon_shutdown_timer_->Start(
+        FROM_HERE, base::Seconds(30),
+        base::BindOnce(&Daemon::Quit, weak_factory_.GetWeakPtr()));
+  }
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new swap_management::SwapManagementDBusAdaptor(bus_));
+    adaptor_.reset(new swap_management::SwapManagementDBusAdaptor(
+        bus_, std::move(daemon_shutdown_timer_)));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
   }
 
  private:
   std::unique_ptr<swap_management::SwapManagementDBusAdaptor> adaptor_;
+  std::unique_ptr<base::OneShotTimer> daemon_shutdown_timer_;
   base::WeakPtrFactory<Daemon> weak_factory_{this};
 };
 }  // namespace
