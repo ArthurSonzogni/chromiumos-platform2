@@ -149,6 +149,9 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the fingerprint routine. See
   // diagnostics/routines/fingerprint for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeFingerprintRoutine() = 0;
+  // Constructs a new instance of the fingerprint alive routine. See
+  // diagnostics/routines/fingerprint_alive for details on the routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeFingerprintAliveRoutine() = 0;
 };
 
 }  // namespace diagnostics

@@ -80,6 +80,7 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeArcDnsResolutionRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeSensitiveSensorRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeFingerprintRoutine() override;
+  std::unique_ptr<DiagnosticRoutine> MakeFingerprintAliveRoutine() override;
 
  private:
   // Unowned pointer that should outlive this instance.

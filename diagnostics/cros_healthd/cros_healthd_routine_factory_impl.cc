@@ -27,6 +27,7 @@
 #include "diagnostics/cros_healthd/routines/dns_resolution/dns_resolution.h"
 #include "diagnostics/cros_healthd/routines/dns_resolver_present/dns_resolver_present.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
+#include "diagnostics/cros_healthd/routines/fingerprint_alive/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/floating_point/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/routines/gateway_can_be_pinged/gateway_can_be_pinged.h"
 #include "diagnostics/cros_healthd/routines/has_secure_wifi_connection/has_secure_wifi_connection.h"
@@ -288,6 +289,11 @@ CrosHealthdRoutineFactoryImpl::MakeFingerprintRoutine() {
   // TODO(kerker): Get parameters from cros_config through parameter_fetcher_.
 
   return std::make_unique<FingerprintRoutine>(context_, std::move(params));
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeFingerprintAliveRoutine() {
+  return std::make_unique<FingerprintAliveRoutine>(context_);
 }
 
 }  // namespace diagnostics

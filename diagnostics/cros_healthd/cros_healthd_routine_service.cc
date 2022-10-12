@@ -382,7 +382,9 @@ void CrosHealthdRoutineService::RunFingerprintRoutine(
 
 void CrosHealthdRoutineService::RunFingerprintAliveRoutine(
     RunFingerprintAliveRoutineCallback callback) {
-  NOTIMPLEMENTED();
+  RunRoutine(routine_factory_->MakeFingerprintAliveRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive,
+             std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunRoutine(
