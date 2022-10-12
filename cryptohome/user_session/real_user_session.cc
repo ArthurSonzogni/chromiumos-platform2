@@ -273,15 +273,6 @@ void RealUserSession::AddCredentials(const Credentials& credentials) {
   }
 }
 
-void RealUserSession::TakeCredentialsFrom(AuthSession* auth_session) {
-  if (obfuscated_username_ != auth_session->obfuscated_username()) {
-    NOTREACHED() << "TakeCredentialsFrom auth session username mismatch.";
-    return;
-  }
-
-  key_data_ = auth_session->current_key_data();
-}
-
 void RealUserSession::AddCredentialVerifier(
     std::unique_ptr<CredentialVerifier> verifier) {
   const std::string& label = verifier->auth_factor_label();
