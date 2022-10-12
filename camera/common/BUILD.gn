@@ -68,6 +68,7 @@ pkg_config("pkg_config_base") {
     "libsync",
     "libudev",
     "libyuv",
+    "perfetto",
   ]
 }
 

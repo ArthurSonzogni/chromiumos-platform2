@@ -7,3 +7,14 @@
 #include "cros-camera/tracing.h"
 
 PERFETTO_TRACK_EVENT_STATIC_STORAGE();
+
+namespace cros {
+
+void InitializeCameraTrace() {
+  perfetto::TracingInitArgs args;
+  args.backends |= perfetto::kSystemBackend;
+  perfetto::Tracing::Initialize(args);
+  cros_camera::TrackEvent::Register();
+}
+
+}  // namespace cros

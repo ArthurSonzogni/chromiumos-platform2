@@ -8,9 +8,6 @@ pkg_config("cros_camera_common_pkg_config") {
   pkg_deps = [
     # libchrome is used by nearly all components.
     "libchrome",
-
-    # For event tracing helpers.
-    "perfetto",
   ]
 }
 

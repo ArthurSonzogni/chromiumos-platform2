@@ -16,12 +16,17 @@
 
 // To export the Perfetto symbols (e.g. kCategoryRegistry).
 #define PERFETTO_COMPONENT_EXPORT CROS_CAMERA_EXPORT
+#define PERFETTO_EXPORT_COMPONENT CROS_CAMERA_EXPORT
 
 #define PERFETTO_TRACK_EVENT_NAMESPACE cros_camera
 
 #include <perfetto/perfetto.h>
 
 namespace cros {
+
+// One time initialization to connect to Perfetto system backend and register
+// the camera trace categories.
+void CROS_CAMERA_EXPORT InitializeCameraTrace();
 
 // The camera trace categories.
 constexpr char kCameraTraceCategoryAutoFraming[] = "camera.auto_framing";

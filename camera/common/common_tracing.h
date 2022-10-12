@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_COMMON_TRACING_H_
-#define CAMERA_COMMON_TRACING_H_
+#ifndef CAMERA_COMMON_COMMON_TRACING_H_
+#define CAMERA_COMMON_COMMON_TRACING_H_
 
 #include "cros-camera/tracing.h"
 
@@ -17,4 +17,4 @@
 
 #define TRACE_COMMON_END() TRACE_EVENT_END(kCameraTraceCategoryCommon)
 
-#endif  // CAMERA_COMMON_TRACING_H_
+#endif  // CAMERA_COMMON_COMMON_TRACING_H_

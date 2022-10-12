@@ -14,7 +14,7 @@
 #include <linux/videodev2.h>
 #include <sync/sync.h>
 
-#include "common/tracing.h"
+#include "common/common_tracing.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/exif_utils.h"

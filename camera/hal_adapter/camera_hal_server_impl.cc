@@ -44,19 +44,6 @@
 
 namespace cros {
 
-namespace {
-
-// One time initialization to connect to Perfetto system backend and register
-// the camera trace categories.
-void InitializeCameraTrace() {
-  perfetto::TracingInitArgs args;
-  args.backends |= perfetto::kSystemBackend;
-  perfetto::Tracing::Initialize(args);
-  cros_camera::TrackEvent::Register();
-}
-
-}  // namespace
-
 CameraHalServerImpl::CameraHalServerImpl()
     : mojo_manager_(CameraMojoChannelManager::FromToken(
           CameraMojoChannelManagerToken::CreateInstance())),

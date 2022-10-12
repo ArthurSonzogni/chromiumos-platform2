@@ -15,7 +15,7 @@
 #include <base/posix/safe_strerror.h>
 #include <libyuv.h>
 
-#include "common/tracing.h"
+#include "common/common_tracing.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
