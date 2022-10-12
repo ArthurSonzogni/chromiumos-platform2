@@ -1,0 +1,67 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_dbus_config",
+    ":install_init",
+    ":install_services",
+    ":swap_management",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "libminijail",
+    "protobuf",
+    "system_api",
+  ]
+}
+
+static_library("libswapmanagement") {
+  sources = [
+    "swap_management_dbus_adaptor.cc",
+    "swap_tool.cc",
+  ]
+
+  configs += [ ":target_defaults" ]
+  libs = [
+    "policy",
+    "rootdev",
+  ]
+  deps = [ ":swap-management-adaptors" ]
+}
+
+generate_dbus_adaptors("swap-management-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/swap_management/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.SwapManagement.xml" ]
+}
+
+executable("swap_management") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "/usr/sbin"
+  deps = [ ":libswapmanagement" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "share/org.chromium.SwapManagement.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_services") {
+  sources = [ "share/org.chromium.SwapManagement.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_init") {
+  sources = [ "share/swap_management.conf" ]
+  install_path = "/etc/init"
+}

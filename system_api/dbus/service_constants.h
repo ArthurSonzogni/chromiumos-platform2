@@ -55,6 +55,7 @@
 #include "smbfs/dbus-constants.h"
 #include "smbprovider/dbus-constants.h"
 #include "spaced/dbus-constants.h"
+#include "swap_management/dbus-constants.h"
 #include "update_engine/dbus-constants.h"
 #include "usbguard/dbus-constants.h"
 #include "vm_applications/dbus-constants.h"

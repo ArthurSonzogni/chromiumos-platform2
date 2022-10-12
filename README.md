@@ -155,6 +155,7 @@ copies.
 | [spaced](./spaced/) | Disk space information daemon |
 | [st_flash](./st_flash/) ||
 | [storage_info](./storage_info/) | Helper shell functions for retrieving disk information) |
+| [swap_management](./swap_management/) | Swap management service |
 | [syslog-cat](./syslog-cat/) | Helper command to forward stdout/stderr from process to syslog |
 | [system-proxy](./system-proxy/) | Daemon for web proxy authentication support on ChromeOS |
 | [system_api](./system_api/) | Headers and .proto files etc. to be shared with chromium |
