@@ -29,6 +29,7 @@ namespace org {
 namespace chromium {
 class AttestationProxyMock;
 class debugdProxyMock;
+class PowerManagerProxyMock;
 class TpmManagerProxyMock;
 
 namespace cras {
@@ -62,6 +63,7 @@ class MockContext final : public Context {
   org::chromium::AttestationProxyMock* mock_attestation_proxy() const;
   brillo::FakeCrosConfig* fake_cros_config() const;
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;
+  org::chromium::PowerManagerProxyMock* mock_power_manager_proxy() const;
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
   FakeMojoService* fake_mojo_service() const;

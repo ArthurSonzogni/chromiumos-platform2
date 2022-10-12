@@ -11,6 +11,7 @@
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <fwupd/dbus-proxy-mocks.h>
+#include <power_manager/dbus-proxy-mocks.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
@@ -33,6 +34,8 @@ MockContext::MockContext() {
   network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
   network_diagnostics_adapter_ =
       std::make_unique<MockNetworkDiagnosticsAdapter>();
+  power_manager_proxy_ = std::make_unique<
+      testing::StrictMock<org::chromium::PowerManagerProxyMock>>();
   powerd_adapter_ = std::make_unique<FakePowerdAdapter>();
   system_config_ = std::make_unique<FakeSystemConfig>();
   system_utils_ = std::make_unique<FakeSystemUtilities>();
@@ -71,6 +74,13 @@ brillo::FakeCrosConfig* MockContext::fake_cros_config() const {
 org::chromium::debugdProxyMock* MockContext::mock_debugd_proxy() const {
   return static_cast<testing::StrictMock<org::chromium::debugdProxyMock>*>(
       debugd_proxy_.get());
+}
+
+org::chromium::PowerManagerProxyMock* MockContext::mock_power_manager_proxy()
+    const {
+  return static_cast<
+      testing::StrictMock<org::chromium::PowerManagerProxyMock>*>(
+      power_manager_proxy_.get());
 }
 
 org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {

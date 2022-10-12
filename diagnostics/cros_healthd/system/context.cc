@@ -18,6 +18,7 @@
 #include <debugd/dbus-proxies.h>
 #include <fwupd/dbus-proxies.h>
 #include <mojo/public/cpp/system/invitation.h>
+#include <power_manager/dbus-proxies.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
@@ -86,6 +87,8 @@ std::unique_ptr<Context> Context::Create(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus);
   context->fwupd_proxy_ = std::make_unique<org::freedesktop::fwupdProxy>(
       dbus_bus, kFwupdServiceName);
+  context->power_manager_proxy_ =
+      std::make_unique<org::chromium::PowerManagerProxy>(dbus_bus);
   context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
   context->tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
@@ -148,6 +151,11 @@ brillo::CrosConfigInterface* Context::cros_config() const {
 
 org::chromium::debugdProxyInterface* Context::debugd_proxy() const {
   return debugd_proxy_.get();
+}
+
+org::chromium::PowerManagerProxyInterface* Context::power_manager_proxy()
+    const {
+  return power_manager_proxy_.get();
 }
 
 org::chromium::cras::ControlProxyInterface* Context::cras_proxy() const {

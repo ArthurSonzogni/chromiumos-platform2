@@ -37,6 +37,7 @@ namespace org {
 namespace chromium {
 class AttestationProxyInterface;
 class debugdProxyInterface;
+class PowerManagerProxyInterface;
 class TpmManagerProxyInterface;
 
 namespace cras {
@@ -88,6 +89,9 @@ class Context {
   // cros_healthd calls out to debugd when it needs to collect smart battery
   // metrics like manufacture_date_smart and temperature_smart.
   org::chromium::debugdProxyInterface* debugd_proxy() const;
+  // Use the object returned by power_manager_proxy() to communicate with power
+  // manager daemon through dbus.
+  org::chromium::PowerManagerProxyInterface* power_manager_proxy() const;
   // Use the object returned by cras_proxy() to communicate with cras daemon
   // through dbus.
   org::chromium::cras::ControlProxyInterface* cras_proxy() const;
@@ -159,6 +163,8 @@ class Context {
   std::unique_ptr<MojoService> mojo_service_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
+  std::unique_ptr<org::chromium::PowerManagerProxyInterface>
+      power_manager_proxy_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;
   std::unique_ptr<SystemConfigInterface> system_config_;
   mojo::Remote<ash::cros_healthd::mojom::Executor> executor_;
