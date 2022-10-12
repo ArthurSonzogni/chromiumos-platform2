@@ -67,19 +67,6 @@ class MockPowerdAdapterPowerObserver : public PowerdAdapter::PowerObserver {
   MOCK_METHOD(void, OnPowerSignal, (PowerSignalType));
 };
 
-class MockPowerdAdapterLidObserver : public PowerdAdapter::LidObserver {
- public:
-  enum LidSignalType {
-    LID_CLOSED,
-    LID_OPENED,
-  };
-
-  void OnLidClosedSignal() { OnLidSignal(LID_CLOSED); }
-  void OnLidOpenedSignal() { OnLidSignal(LID_OPENED); }
-
-  MOCK_METHOD(void, OnLidSignal, (LidSignalType));
-};
-
 class BasePowerdAdapterImplTest : public ::testing::Test {
  public:
   BasePowerdAdapterImplTest()
@@ -120,16 +107,6 @@ class BasePowerdAdapterImplTest : public ::testing::Test {
                                   power_manager::kSuspendDoneSignal, _, _))
         .WillOnce(SaveArg<2>(
             &on_signal_callbacks_[power_manager::kSuspendDoneSignal]));
-    EXPECT_CALL(*dbus_object_proxy_,
-                DoConnectToSignal(power_manager::kPowerManagerInterface,
-                                  power_manager::kLidClosedSignal, _, _))
-        .WillOnce(
-            SaveArg<2>(&on_signal_callbacks_[power_manager::kLidClosedSignal]));
-    EXPECT_CALL(*dbus_object_proxy_,
-                DoConnectToSignal(power_manager::kPowerManagerInterface,
-                                  power_manager::kLidOpenedSignal, _, _))
-        .WillOnce(
-            SaveArg<2>(&on_signal_callbacks_[power_manager::kLidOpenedSignal]));
 
     powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus_);
   }
@@ -258,56 +235,6 @@ INSTANTIATE_TEST_SUITE_P(
                         MockPowerdAdapterPowerObserver::DARK_SUSPEND_IMMINENT),
         std::make_tuple(power_manager::kSuspendDoneSignal,
                         MockPowerdAdapterPowerObserver::SUSPEND_DONE)));
-
-// This is a parameterized test with the following parameters:
-// * |signal_name| - signal name which will be invoked;
-// * |expected_received_signal_type| - expected received signal type.
-class PowerdAdapterImplLidTest
-    : public BasePowerdAdapterImplTest,
-      public testing::WithParamInterface<
-          std::tuple<std::string /* signal_name */,
-                     MockPowerdAdapterLidObserver::
-                         LidSignalType /* expected_received_signal_type */>> {
- public:
-  PowerdAdapterImplLidTest() = default;
-  PowerdAdapterImplLidTest(const PowerdAdapterImplLidTest&) = delete;
-  PowerdAdapterImplLidTest& operator=(const PowerdAdapterImplLidTest&) = delete;
-
- protected:
-  // Accessors to individual test parameters from the test parameter tuple
-  // returned by gtest's GetParam():
-
-  const std::string& signal_name() const { return std::get<0>(GetParam()); }
-
-  MockPowerdAdapterLidObserver::LidSignalType expected_received_signal_type()
-      const {
-    return std::get<1>(GetParam());
-  }
-};
-
-TEST_P(PowerdAdapterImplLidTest, OnLidSignal) {
-  StrictMock<MockPowerdAdapterLidObserver> mock_observer;
-  powerd_adapter()->AddLidObserver(&mock_observer);
-
-  dbus::Signal signal(power_manager::kPowerManagerInterface, signal_name());
-
-  // Invoke signal.
-  EXPECT_CALL(mock_observer, OnLidSignal(expected_received_signal_type()));
-  InvokeSignal(signal_name(), &signal);
-
-  // Expect that |mock_observer| will not receive further notifications once
-  // |mock_observer| was removed from powerd adapter.
-  powerd_adapter()->RemoveLidObserver(&mock_observer);
-  InvokeSignal(signal_name(), &signal);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ,
-    PowerdAdapterImplLidTest,
-    testing::Values(std::make_tuple(power_manager::kLidClosedSignal,
-                                    MockPowerdAdapterLidObserver::LID_CLOSED),
-                    std::make_tuple(power_manager::kLidOpenedSignal,
-                                    MockPowerdAdapterLidObserver::LID_OPENED)));
 
 }  // namespace
 }  // namespace diagnostics

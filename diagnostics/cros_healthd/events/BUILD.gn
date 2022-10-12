@@ -10,6 +10,7 @@ pkg_config("libcros_healthd_events_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libmojo",
+    "libpower_manager-client",
     "libusb-1.0",
     "protobuf",
     "system_api",
@@ -38,6 +39,8 @@ if (use.test) {
       "libchrome",
       "libchrome-test",
       "libmojo",
+      "libpower_manager-client",
+      "libpower_manager-client-test",
     ]
   }
 

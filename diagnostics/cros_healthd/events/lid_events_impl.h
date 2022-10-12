@@ -15,13 +15,12 @@
 namespace diagnostics {
 
 // Production implementation of the LidEvents interface.
-class LidEventsImpl final : public LidEvents,
-                            public PowerdAdapter::LidObserver {
+class LidEventsImpl final : public LidEvents {
  public:
   explicit LidEventsImpl(Context* context);
   LidEventsImpl(const LidEventsImpl&) = delete;
   LidEventsImpl& operator=(const LidEventsImpl&) = delete;
-  ~LidEventsImpl() override;
+  ~LidEventsImpl() = default;
 
   // LidEvents overrides:
   void AddObserver(
@@ -29,17 +28,8 @@ class LidEventsImpl final : public LidEvents,
           observer) override;
 
  private:
-  // PowerdAdapter::LidObserver overrides:
-  void OnLidClosedSignal() override;
-  void OnLidOpenedSignal() override;
-
-  // Checks to see if any observers are left. If not, removes this object from
-  // powerd's observers.
-  void StopObservingPowerdIfNecessary();
-
-  // Tracks whether or not this instance has added itself as an observer of
-  // powerd.
-  bool is_observing_powerd_ = false;
+  void OnLidClosedSignal();
+  void OnLidOpenedSignal();
 
   // Each observer in |observers_| will be notified of any lid event in the
   // ash::cros_healthd::mojom::CrosHealthdLidObserver interface. The
@@ -50,6 +40,8 @@ class LidEventsImpl final : public LidEvents,
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
+
+  base::WeakPtrFactory<LidEventsImpl> weak_ptr_factory_;
 };
 
 }  // namespace diagnostics

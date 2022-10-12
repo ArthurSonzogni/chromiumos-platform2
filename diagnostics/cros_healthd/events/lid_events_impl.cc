@@ -4,52 +4,58 @@
 
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 
+#include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <power_manager/dbus-proxies.h>
 
-namespace diagnostics {
+namespace {
 
-LidEventsImpl::LidEventsImpl(Context* context) : context_(context) {
-  DCHECK(context_);
+// Handles the result of an attempt to connect to a D-Bus signal.
+void HandleSignalConnected(const std::string& interface,
+                           const std::string& signal,
+                           bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
+    return;
+  }
+  VLOG(2) << "Successfully connected to D-Bus signal " << interface << "."
+          << signal;
 }
 
-LidEventsImpl::~LidEventsImpl() {
-  if (is_observing_powerd_)
-    context_->powerd_adapter()->RemoveLidObserver(this);
+}  // namespace
+
+namespace diagnostics {
+LidEventsImpl::LidEventsImpl(Context* context)
+    : context_(context), weak_ptr_factory_(this) {
+  DCHECK(context_);
+
+  context_->power_manager_proxy()->RegisterLidClosedSignalHandler(
+      base::BindRepeating(&LidEventsImpl::OnLidClosedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
+  context_->power_manager_proxy()->RegisterLidOpenedSignalHandler(
+      base::BindRepeating(&LidEventsImpl::OnLidOpenedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
 }
 
 void LidEventsImpl::AddObserver(
     mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
         observer) {
-  if (!is_observing_powerd_) {
-    context_->powerd_adapter()->AddLidObserver(this);
-    is_observing_powerd_ = true;
-  }
   observers_.Add(std::move(observer));
 }
 
 void LidEventsImpl::OnLidClosedSignal() {
   for (auto& observer : observers_)
     observer->OnLidClosed();
-
-  StopObservingPowerdIfNecessary();
 }
 
 void LidEventsImpl::OnLidOpenedSignal() {
   for (auto& observer : observers_)
     observer->OnLidOpened();
-
-  StopObservingPowerdIfNecessary();
-}
-
-void LidEventsImpl::StopObservingPowerdIfNecessary() {
-  if (!observers_.empty())
-    return;
-
-  context_->powerd_adapter()->RemoveLidObserver(this);
-  is_observing_powerd_ = false;
 }
 
 }  // namespace diagnostics

@@ -32,8 +32,6 @@ class PowerdAdapterImpl : public PowerdAdapter {
   // PowerdAdapter overrides:
   void AddPowerObserver(PowerObserver* observer) override;
   void RemovePowerObserver(PowerObserver* observer) override;
-  void AddLidObserver(LidObserver* observer) override;
-  void RemoveLidObserver(LidObserver* observer) override;
   std::optional<power_manager::PowerSupplyProperties> GetPowerSupplyProperties()
       override;
 
@@ -50,14 +48,7 @@ class PowerdAdapterImpl : public PowerdAdapter {
   // Handles SuspendDone signals emitted by powerd daemon.
   void HandleSuspendDone(dbus::Signal* signal);
 
-  // Handles LidClosed signals emitted by powerd daemon.
-  void HandleLidClosed(dbus::Signal* signal);
-
-  // Handles LidOpened signals emitted by powerd daemon.
-  void HandleLidOpened(dbus::Signal* signal);
-
   base::ObserverList<PowerObserver> power_observers_;
-  base::ObserverList<LidObserver> lid_observers_;
 
   // Owned by external D-Bus bus passed in constructor.
   dbus::ObjectProxy* bus_proxy_;

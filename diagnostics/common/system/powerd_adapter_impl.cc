@@ -68,16 +68,6 @@ PowerdAdapterImpl::PowerdAdapterImpl(const scoped_refptr<dbus::Bus>& bus)
       base::BindRepeating(&PowerdAdapterImpl::HandleSuspendDone,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&HandleSignalConnected));
-  bus_proxy_->ConnectToSignal(
-      power_manager::kPowerManagerInterface, power_manager::kLidClosedSignal,
-      base::BindRepeating(&PowerdAdapterImpl::HandleLidClosed,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&HandleSignalConnected));
-  bus_proxy_->ConnectToSignal(
-      power_manager::kPowerManagerInterface, power_manager::kLidOpenedSignal,
-      base::BindRepeating(&PowerdAdapterImpl::HandleLidOpened,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&HandleSignalConnected));
 }
 
 PowerdAdapterImpl::~PowerdAdapterImpl() = default;
@@ -90,16 +80,6 @@ void PowerdAdapterImpl::AddPowerObserver(PowerObserver* observer) {
 void PowerdAdapterImpl::RemovePowerObserver(PowerObserver* observer) {
   DCHECK(observer);
   power_observers_.RemoveObserver(observer);
-}
-
-void PowerdAdapterImpl::AddLidObserver(LidObserver* observer) {
-  DCHECK(observer);
-  lid_observers_.AddObserver(observer);
-}
-
-void PowerdAdapterImpl::RemoveLidObserver(LidObserver* observer) {
-  DCHECK(observer);
-  lid_observers_.RemoveObserver(observer);
 }
 
 std::optional<power_manager::PowerSupplyProperties>
@@ -179,16 +159,6 @@ void PowerdAdapterImpl::HandleSuspendDone(dbus::Signal* signal) {
 
   for (auto& observer : power_observers_)
     observer.OnSuspendDoneSignal(proto);
-}
-
-void PowerdAdapterImpl::HandleLidClosed(dbus::Signal* signal) {
-  for (auto& observer : lid_observers_)
-    observer.OnLidClosedSignal();
-}
-
-void PowerdAdapterImpl::HandleLidOpened(dbus::Signal* signal) {
-  for (auto& observer : lid_observers_)
-    observer.OnLidOpenedSignal();
 }
 
 }  // namespace diagnostics

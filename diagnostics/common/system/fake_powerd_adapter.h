@@ -24,13 +24,10 @@ class FakePowerdAdapter : public PowerdAdapter {
   // PowerdAdapter overrides:
   void AddPowerObserver(PowerObserver* observer) override;
   void RemovePowerObserver(PowerObserver* observer) override;
-  void AddLidObserver(LidObserver* observer) override;
-  void RemoveLidObserver(LidObserver* observer) override;
   std::optional<power_manager::PowerSupplyProperties> GetPowerSupplyProperties()
       override;
 
   bool HasPowerObserver(PowerObserver* observer) const;
-  bool HasLidObserver(LidObserver* observer) const;
 
   void EmitPowerSupplyPollSignal(
       const power_manager::PowerSupplyProperties& power_supply) const;
@@ -40,15 +37,12 @@ class FakePowerdAdapter : public PowerdAdapter {
       const power_manager::SuspendImminent& suspend_imminent) const;
   void EmitSuspendDoneSignal(
       const power_manager::SuspendDone& suspend_done) const;
-  void EmitLidClosedSignal() const;
-  void EmitLidOpenedSignal() const;
 
   void SetPowerSupplyProperties(
       std::optional<power_manager::PowerSupplyProperties> properties);
 
  private:
   base::ObserverList<PowerObserver> power_observers_;
-  base::ObserverList<LidObserver> lid_observers_;
   std::optional<power_manager::PowerSupplyProperties> power_supply_properties_;
 };
 

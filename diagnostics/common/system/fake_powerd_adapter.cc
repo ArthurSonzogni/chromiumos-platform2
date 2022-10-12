@@ -20,14 +20,6 @@ void FakePowerdAdapter::RemovePowerObserver(PowerObserver* observer) {
   power_observers_.RemoveObserver(observer);
 }
 
-void FakePowerdAdapter::AddLidObserver(LidObserver* observer) {
-  lid_observers_.AddObserver(observer);
-}
-
-void FakePowerdAdapter::RemoveLidObserver(LidObserver* observer) {
-  lid_observers_.RemoveObserver(observer);
-}
-
 std::optional<power_manager::PowerSupplyProperties>
 FakePowerdAdapter::GetPowerSupplyProperties() {
   return power_supply_properties_;
@@ -35,10 +27,6 @@ FakePowerdAdapter::GetPowerSupplyProperties() {
 
 bool FakePowerdAdapter::HasPowerObserver(PowerObserver* observer) const {
   return power_observers_.HasObserver(observer);
-}
-
-bool FakePowerdAdapter::HasLidObserver(LidObserver* observer) const {
-  return lid_observers_.HasObserver(observer);
 }
 
 void FakePowerdAdapter::EmitPowerSupplyPollSignal(
@@ -66,18 +54,6 @@ void FakePowerdAdapter::EmitSuspendDoneSignal(
     const power_manager::SuspendDone& suspend_done) const {
   for (auto& observer : power_observers_) {
     observer.OnSuspendDoneSignal(suspend_done);
-  }
-}
-
-void FakePowerdAdapter::EmitLidClosedSignal() const {
-  for (auto& observer : lid_observers_) {
-    observer.OnLidClosedSignal();
-  }
-}
-
-void FakePowerdAdapter::EmitLidOpenedSignal() const {
-  for (auto& observer : lid_observers_) {
-    observer.OnLidOpenedSignal();
   }
 }
 

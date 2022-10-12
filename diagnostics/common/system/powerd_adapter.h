@@ -33,22 +33,10 @@ class PowerdAdapter {
         const power_manager::SuspendDone& suspend_done) = 0;
   };
 
-  // Observes lid events.
-  class LidObserver : public base::CheckedObserver {
-   public:
-    virtual ~LidObserver() = default;
-
-    virtual void OnLidClosedSignal() = 0;
-    virtual void OnLidOpenedSignal() = 0;
-  };
-
   virtual ~PowerdAdapter() = default;
 
   virtual void AddPowerObserver(PowerObserver* observer) = 0;
   virtual void RemovePowerObserver(PowerObserver* observer) = 0;
-
-  virtual void AddLidObserver(LidObserver* observer) = 0;
-  virtual void RemoveLidObserver(LidObserver* observer) = 0;
 
   // Returns a PowerSupplyProperties proto from powerd on success. Will return a
   // std::nullopt if the powerd service is not available or the D-Bus response
