@@ -78,6 +78,9 @@ constexpr char kCryptohomeUser[] = "/home/user";
 // Downloads directory for a user.
 constexpr char kDownloadsDir[] = "Downloads";
 
+// MyFiles directory for a user.
+constexpr char kMyFilesDir[] = "MyFiles";
+
 // Base address for the plugin VM subnet.
 constexpr uint32_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
 
@@ -572,6 +575,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   if (!source_name.empty()) {
     base::FilePath source_path = base::FilePath(kCryptohomeUser)
                                      .Append(cryptohome_id)
+                                     .Append(kMyFilesDir)
                                      .Append(kDownloadsDir)
                                      .Append(source_name);
     if (!base::PathExists(source_path)) {
@@ -739,6 +743,7 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
   } else {
     export_disk_path = base::FilePath(kCryptohomeUser)
                            .Append(cryptohome_id)
+                           .Append(kMyFilesDir)
                            .Append(kDownloadsDir)
                            .Append(export_name);
   }
@@ -828,6 +833,7 @@ int ImportDiskImage(dbus::ObjectProxy* proxy,
   } else {
     import_disk_path = base::FilePath(kCryptohomeUser)
                            .Append(cryptohome_id)
+                           .Append(kMyFilesDir)
                            .Append(kDownloadsDir)
                            .Append(import_name);
   }

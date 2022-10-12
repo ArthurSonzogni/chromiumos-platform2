@@ -35,6 +35,7 @@ use crate::proto::system_api::*;
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
 const CRYPTOHOME_USER: &str = "/home/user";
 const DOWNLOADS_DIR: &str = "Downloads";
+const MY_FILES_DIR: &str = "MyFiles";
 const MNT_SHARED_ROOT: &str = "/mnt/shared";
 
 /// Round to disk block size.
@@ -837,6 +838,7 @@ impl Methods {
                         .join(source),
                     None => Path::new(CRYPTOHOME_USER)
                         .join(user_id_hash)
+                        .join(MY_FILES_DIR)
                         .join(DOWNLOADS_DIR)
                         .join(source),
                 };
@@ -924,6 +926,7 @@ impl Methods {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
             None => Path::new(CRYPTOHOME_USER)
                 .join(user_id_hash)
+                .join(MY_FILES_DIR)
                 .join(DOWNLOADS_DIR)
                 .join(name),
         };
@@ -1015,6 +1018,7 @@ impl Methods {
                 .join(import_name),
             None => Path::new(CRYPTOHOME_USER)
                 .join(user_id_hash)
+                .join(MY_FILES_DIR)
                 .join(DOWNLOADS_DIR)
                 .join(import_name),
         };
