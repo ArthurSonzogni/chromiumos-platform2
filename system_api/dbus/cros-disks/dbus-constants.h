@@ -122,16 +122,16 @@ enum MountErrorType {
 
   // Either the FUSE mounter needs a password, or the provided password is
   // incorrect.
-  MOUNT_ERROR_NEED_PASSWORD = 13,
-  MOUNT_ERROR_NEED_PASSWORD_EX = 117,
+  MOUNT_ERROR_NEED_PASSWORD_EX = 13,
+  MOUNT_ERROR_NEED_PASSWORD = 117,
 
   // The FUSE mounter is currently launching, and it hasn't daemonized yet.
-  MOUNT_ERROR_IN_PROGRESS = 14,
-  MOUNT_ERROR_IN_PROGRESS_EX = 118,
+  MOUNT_ERROR_IN_PROGRESS_EX = 14,
+  MOUNT_ERROR_IN_PROGRESS = 118,
 
   // The FUSE mounter was cancelled (killed) while it was launching.
-  MOUNT_ERROR_CANCELLED = 15,
-  MOUNT_ERROR_CANCELLED_EX = 119,
+  MOUNT_ERROR_CANCELLED_EX = 15,
+  MOUNT_ERROR_CANCELLED = 119,
 
   // The device is busy.
   MOUNT_ERROR_BUSY = 20,
