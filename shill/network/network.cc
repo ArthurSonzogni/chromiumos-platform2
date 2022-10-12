@@ -258,9 +258,8 @@ void Network::OnIPv4ConfigUpdated() {
 
 void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
   static_network_config_ = config;
-  if (!ipconfig()) {
-    // This can happen after service is selected but before the Network is
-    // "started" (e.g., by starting DHCP).
+  if (state_ == State::kIdle) {
+    // This can happen after service is selected but before the Network starts.
     return;
   }
 

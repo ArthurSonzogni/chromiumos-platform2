@@ -147,6 +147,7 @@ class NetworkTest : public ::testing::Test {
         &device_info_, &dispatcher_);
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->set_routing_table_for_testing(&routing_table_);
+    EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
     ON_CALL(*network_, CreateConnection()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
       connection_ = ret.get();
@@ -619,6 +620,11 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  // Nothing should happen if IP address is not set.
+  NetworkConfig partial_config;
+  partial_config.dns_servers = {kIPv4StaticNameServer};
+  network_->OnStaticIPConfigChanged(partial_config);
 
   ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv4Static);
   ConfigureStaticIPv4Config();
