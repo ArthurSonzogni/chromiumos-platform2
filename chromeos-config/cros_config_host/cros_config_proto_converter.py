@@ -986,8 +986,14 @@ def _build_intel_config(config, config_files):
     Returns:
         wifi configuration for the intel driver.
     """
-    design_name = config.hw_design.name.lower()
-    return config_files.wifi_sar_map.get(design_name)
+    coreboot_target = (
+        config.sw_config.firmware_build_config.build_targets.coreboot
+        + _calculate_image_name_suffix(config.hw_design_config)
+    )
+    wifi_sar_id = _extract_fw_config_value(
+        config.hw_design_config, config.hw_design_config.hardware_topology.wifi
+    )
+    return config_files.wifi_sar_map.get((coreboot_target, wifi_sar_id))
 
 
 def _build_mtk_config(mtk_config):
@@ -1298,8 +1304,8 @@ def _fw_build_target(payload):
     return None
 
 
-def _calculate_image_name_suffix(config):
-    fw_config = config.hw_design_config.hardware_features.fw_config
+def _calculate_image_name_suffix(hw_design_config):
+    fw_config = hw_design_config.hardware_features.fw_config
     return "".join(
         f"_{customization}"
         for customization in sorted(fw_config.coreboot_customizations)
@@ -1322,7 +1328,7 @@ def _build_firmware(config):
         fw_build_config.build_targets.depthcharge, build_targets, "depthcharge"
     )
 
-    ap_fw_suffix = _calculate_image_name_suffix(config)
+    ap_fw_suffix = _calculate_image_name_suffix(config.hw_design_config)
 
     _upsert(
         fw_build_config.build_targets.coreboot,
@@ -1374,7 +1380,7 @@ def _build_firmware(config):
 
 def _build_fw_signing(config, whitelabel):
     if config.sw_config.firmware and config.device_signer_config:
-        ap_fw_suffix = _calculate_image_name_suffix(config)
+        ap_fw_suffix = _calculate_image_name_suffix(config.hw_design_config)
         hw_design = config.hw_design.name.lower()
         if ap_fw_suffix:
             hw_design += ap_fw_suffix
@@ -2701,17 +2707,15 @@ def _dptf_map(project_name):
     return result
 
 
-def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
-    """Constructs a map from design name to wifi sar config for that design.
+def _wifi_sar_map(configs, output_dir, build_root_dir):
+    """Constructs a map from (design name, sar ID) to wifi sar config.
 
-    Constructs a map from design name to the wifi sar config for that design.
     In the process a wifi sar hex file is generated that the config points at.
     This mapping is only made for the intel wifi where the generated file is
     provided when building coreboot.
 
     Args:
         configs: Source ConfigBundle to process.
-        project_name: Name of project processing for.
         output_dir: Path to the generated output.
         build_root_dir: Path to the config file from portage's perspective.
 
@@ -2724,41 +2728,48 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
     for hw_design in configs.design_list:
         for hw_design_config in hw_design.configs:
             wifi = hw_design_config.hardware_features.wifi
+            sw_config = _sw_config(sw_configs, hw_design_config.id.value)
             if hw_design_config.hardware_features.wifi.HasField("wifi_config"):
                 wifi_config = wifi.wifi_config
             else:
-                wifi_config = _sw_config(
-                    sw_configs, hw_design_config.id.value
-                ).wifi_config
+                wifi_config = sw_config.wifi_config
 
             if wifi_config.HasField("intel_config"):
                 sar_file_content = _create_intel_sar_file_content(
                     wifi_config.intel_config
                 )
-                design_name = hw_design.name.lower()
+                coreboot_target = (
+                    sw_config.firmware_build_config.build_targets.coreboot
+                    + _calculate_image_name_suffix(hw_design_config)
+                )
+                if not coreboot_target:
+                    continue
+
                 wifi_sar_id = _extract_fw_config_value(
                     hw_design_config, hw_design_config.hardware_topology.wifi
                 )
-                output_path = os.path.join(output_dir, "wifi")
+                output_path = os.path.join(output_dir, "wifi", coreboot_target)
                 os.makedirs(output_path, exist_ok=True)
                 filename = f"wifi_sar_{wifi_sar_id}.hex"
                 output_path = os.path.join(output_path, filename)
-                build_path = os.path.join(build_root_dir, "wifi", filename)
+                build_path = os.path.join(
+                    build_root_dir, "wifi", coreboot_target, filename
+                )
                 if os.path.exists(output_path):
                     with open(output_path, "rb") as f:
                         if f.read() != sar_file_content:
                             raise Exception(
-                                f"Project {project_name} has conflicting wifi "
-                                "sar file content under wifi sar id "
-                                "{wifi_sar_id}."
+                                f"Firmware {coreboot_target} has conflicting "
+                                "wifi sar file content under wifi sar id "
+                                f"{wifi_sar_id}."
                             )
                 else:
                     with open(output_path, "wb") as f:
                         f.write(sar_file_content)
                 system_path = os.path.join(
-                    "/firmware/cbfs-rw-raw", design_name, filename
+                    "/firmware/cbfs-rw-raw", coreboot_target, filename
                 )
-                result[design_name] = {
+                result[(coreboot_target, wifi_sar_id)] = {
                     "sar-file": _file_v2(build_path, system_path)
                 }
     return result
@@ -3268,10 +3279,8 @@ def Main(
 
         camera_map = _camera_map(configs, project_name)
         dptf_map = _dptf_map(project_name)
-        wifi_sar_map = _wifi_sar_map(
-            configs, project_name, output_dir, build_root_dir
-        )
 
+    wifi_sar_map = _wifi_sar_map(configs, output_dir, build_root_dir)
     if os.path.exists(TOUCH_PATH):
         touch_fw = _build_touch_file_config(configs, project_name)
     arc_hw_feature_files = _write_arc_hardware_feature_files(

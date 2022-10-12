@@ -658,8 +658,8 @@
         },
         "wifi": {
           "sar-file": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/wifi_sar_6.hex",
-            "system-path": "/firmware/cbfs-rw-raw/project_a/wifi_sar_6.hex"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_sar_6.hex",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_sar_6.hex"
           }
         }
       },
@@ -1597,8 +1597,8 @@
         },
         "wifi": {
           "sar-file": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/wifi_sar_6.hex",
-            "system-path": "/firmware/cbfs-rw-raw/project_wl/wifi_sar_6.hex"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_sar_6.hex",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_sar_6.hex"
           }
         }
       },
@@ -1758,8 +1758,8 @@
         },
         "wifi": {
           "sar-file": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/wifi_sar_6.hex",
-            "system-path": "/firmware/cbfs-rw-raw/project_wl/wifi_sar_6.hex"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_sar_6.hex",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_sar_6.hex"
           }
         }
       },
@@ -1919,8 +1919,8 @@
         },
         "wifi": {
           "sar-file": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/wifi_sar_6.hex",
-            "system-path": "/firmware/cbfs-rw-raw/project_wl/wifi_sar_6.hex"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_sar_6.hex",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_sar_6.hex"
           }
         }
       },
@@ -2080,8 +2080,8 @@
         },
         "wifi": {
           "sar-file": {
-            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/wifi_sar_6.hex",
-            "system-path": "/firmware/cbfs-rw-raw/project_wl/wifi_sar_6.hex"
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_sar_6.hex",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_sar_6.hex"
           }
         }
       },
