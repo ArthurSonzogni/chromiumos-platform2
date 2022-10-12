@@ -1022,26 +1022,62 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     return;
   }
 
+  // |roi_in_active_array| and |crop_in_active_array| are in normalized
+  // coordinates.
   const Rect<float> roi_in_active_array =
       ConvertToParentSpace(region_of_interest_, full_frame_crop_);
   const Rect<float> crop_in_active_array =
       ConvertToParentSpace(active_crop_region_, full_frame_crop_);
 
+  auto normalized_rect_to_active_array_rect =
+      [&](Rect<float> normalized_rect) -> Rect<float> {
+    return Rect<float>(normalized_rect.left *
+                           static_cast<float>(active_array_dimension_.width),
+                       normalized_rect.top *
+                           static_cast<float>(active_array_dimension_.height),
+                       normalized_rect.width *
+                           static_cast<float>(active_array_dimension_.width),
+                       normalized_rect.height *
+                           static_cast<float>(active_array_dimension_.height));
+  };
+
+  auto convert_active_array_rect_to_crop_space =
+      [&](float x1, float y1, float x2,
+          float y2) -> std::optional<Rect<float>> {
+    const Rect<float> raw_rect(x1, y1, std::max(x2 - x1, 1.0f),
+                               std::max(y2 - y1, 1.0f));
+    const Rect<float> clamped_rect = ClampRect(
+        raw_rect,
+        Rect<float>(0.0f, 0.0f,
+                    static_cast<float>(active_array_dimension_.width),
+                    static_cast<float>(active_array_dimension_.height)));
+    if (!clamped_rect.is_valid()) {
+      VLOGF(1) << "Invalid face rectangle: " << raw_rect.ToString();
+      return std::nullopt;
+    }
+    return normalized_rect_to_active_array_rect(
+        ConvertToCropSpace(NormalizeRect(clamped_rect, active_array_dimension_),
+                           crop_in_active_array));
+  };
+
+  // |face_rectangles| stores face bounding boxes in active array coordinates.
   std::vector<Rect<float>> face_rectangles;
   if (options_.debug) {
     // Show the detected faces, aggregated region of interest and the active
     // crop region in debug mode.
     face_rectangles = faces_;
-    face_rectangles.push_back(roi_in_active_array);
-    face_rectangles.push_back(crop_in_active_array);
+    face_rectangles.push_back(
+        normalized_rect_to_active_array_rect(roi_in_active_array));
+    face_rectangles.push_back(
+        normalized_rect_to_active_array_rect(crop_in_active_array));
     if (!result->UpdateMetadata<uint8_t>(
             ANDROID_STATISTICS_FACE_DETECT_MODE,
             (uint8_t[]){ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE})) {
       LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_DETECT_MODE";
     }
   } else {
-    // By default translate the face rectangles in the result metadata to the
-    // crop coordinate space.
+    // By default translate the face rectangles in the result metadata to
+    // the crop coordinate space.
     base::span<const int32_t> raw_face_rectangles =
         result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES);
     if (raw_face_rectangles.empty()) {
@@ -1053,31 +1089,53 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     }
     for (size_t i = 0; i < raw_face_rectangles.size(); i += 4) {
       const int32_t* rect_bound = &raw_face_rectangles[i];
-      const Rect<int32_t> rect(rect_bound[0], rect_bound[1],
-                               rect_bound[2] - rect_bound[0] + 1,
-                               rect_bound[3] - rect_bound[1] + 1);
-      const Rect<int32_t> clamped_rect =
-          ClampRect(rect, Rect<int32_t>(0, 0, active_array_dimension_.width,
-                                        active_array_dimension_.height));
-      if (!clamped_rect.is_valid()) {
-        VLOGF(1) << "Invalid face rectangle: " << rect.ToString();
+      std::optional<Rect<float>> converted_rect =
+          convert_active_array_rect_to_crop_space(
+              static_cast<float>(rect_bound[0]),
+              static_cast<float>(rect_bound[1]),
+              static_cast<float>(rect_bound[2]),
+              static_cast<float>(rect_bound[3]));
+      if (!converted_rect) {
         continue;
       }
-      face_rectangles.push_back(ConvertToCropSpace(
-          NormalizeRect(clamped_rect, active_array_dimension_),
-          crop_in_active_array));
+      face_rectangles.push_back(converted_rect.value());
+    }
+
+    // Convert the coordinates for feature metadata provided by the
+    // FaceDetectionStreamManipulator.
+    if (result->feature_metadata().faces) {
+      for (auto& f : result->feature_metadata().faces.value()) {
+        std::optional<Rect<float>> converted_box =
+            convert_active_array_rect_to_crop_space(
+                f.bounding_box.x1, f.bounding_box.y1, f.bounding_box.x2,
+                f.bounding_box.y2);
+        if (!converted_box) {
+          continue;
+        }
+        f.bounding_box = {.x1 = converted_box->left,
+                          .y1 = converted_box->top,
+                          .x2 = converted_box->right(),
+                          .y2 = converted_box->bottom()};
+        for (auto& l : f.landmarks) {
+          std::optional<Rect<float>> converted_landmark =
+              convert_active_array_rect_to_crop_space(l.x, l.y, l.x, l.y);
+          if (!converted_landmark) {
+            continue;
+          }
+          l.x = converted_landmark->left;
+          l.y = converted_landmark->top;
+        }
+      }
     }
   }
+
+  // Update the face rectangles metadata passed to the camera clients.
   std::vector<int32_t> face_coordinates;
   for (const auto& f : face_rectangles) {
-    face_coordinates.push_back(static_cast<int32_t>(
-        f.left * static_cast<float>(active_array_dimension_.width)));
-    face_coordinates.push_back(static_cast<int32_t>(
-        f.top * static_cast<float>(active_array_dimension_.height)));
-    face_coordinates.push_back(static_cast<int32_t>(
-        f.right() * static_cast<float>(active_array_dimension_.width)));
-    face_coordinates.push_back(static_cast<int32_t>(
-        f.bottom() * static_cast<float>(active_array_dimension_.height)));
+    face_coordinates.push_back(static_cast<int32_t>(f.left));
+    face_coordinates.push_back(static_cast<int32_t>(f.top));
+    face_coordinates.push_back(static_cast<int32_t>(f.right()));
+    face_coordinates.push_back(static_cast<int32_t>(f.bottom()));
   }
   if (!face_coordinates.empty() &&
       !result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,

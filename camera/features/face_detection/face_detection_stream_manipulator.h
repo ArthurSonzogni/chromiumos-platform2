@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
@@ -66,6 +67,8 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
     uint8_t face_detect_mode;
   };
 
+  const camera3_stream_buffer_t* SelectFaceDetectionBuffer(
+      Camera3CaptureDescriptor* result);
   void RecordClientRequestSettings(Camera3CaptureDescriptor* request);
   void RestoreClientRequestSettings(Camera3CaptureDescriptor* result);
   void SetFaceDetectionMode(Camera3CaptureDescriptor* request);
@@ -81,9 +84,6 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   Options options_;
   Size active_array_dimension_;
   uint8_t active_face_detect_mode_ = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-
-  // The YUV stream to run the face detector on.
-  const camera3_stream_t* yuv_stream_ = nullptr;
 
   // Protects |latest_faces_| and |frame_info_| since they can be accessed on
   // different threads.

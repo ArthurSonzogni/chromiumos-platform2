@@ -79,61 +79,6 @@ bool FaceDetectionStreamManipulator::Initialize(
 
 bool FaceDetectionStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  auto is_larger_or_closer_to_native_aspect_ratio =
-      [&](const camera3_stream_t* lhs, const camera3_stream_t* rhs) -> bool {
-    if (lhs->width >= rhs->width && lhs->height >= rhs->height) {
-      return true;
-    }
-    if (lhs->width <= rhs->width && lhs->height <= rhs->height) {
-      return false;
-    }
-    float active_aspect_ratio =
-        static_cast<float>(active_array_dimension_.width) /
-        static_cast<float>(active_array_dimension_.height);
-    float lhs_aspect_ratio =
-        static_cast<float>(lhs->width) / static_cast<float>(lhs->height);
-    float rhs_aspect_ratio =
-        static_cast<float>(rhs->width) / static_cast<float>(rhs->height);
-    return std::abs(lhs_aspect_ratio - active_aspect_ratio) <=
-           std::abs(rhs_aspect_ratio - active_aspect_ratio);
-  };
-
-  yuv_stream_ = nullptr;
-
-  for (auto* s : stream_config->GetStreams()) {
-    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
-      continue;
-    }
-
-    // TODO(jcliang): See if we need to support 10-bit YUV (i.e. with format
-    // HAL_PIXEL_FORMAT_YCBCR_P010);
-    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
-          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
-              GRALLOC_USAGE_HW_CAMERA_ZSL) {
-        // Ignore ZSL streams.
-        continue;
-      }
-
-      // Pick a buffer for AE controller. This is a heuristic and shouldn't
-      // matter for the majority of the time, as for most cases the requested
-      // streams would have the same aspect ratio.
-      if (!yuv_stream_ ||
-          is_larger_or_closer_to_native_aspect_ratio(s, yuv_stream_)) {
-        yuv_stream_ = s;
-      }
-    }
-  }
-
-  if (yuv_stream_) {
-    VLOGF(1) << "YUV stream for CrOS Face Detection processing: "
-             << GetDebugString(yuv_stream_);
-  } else {
-    LOGF(WARNING)
-        << "No YUV stream suitable for CrOS Face Detection processing";
-  }
-
   return true;
 }
 
@@ -193,15 +138,12 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
 
   if (result->frame_number() % options_.fd_frame_interval == 0 &&
       result->num_output_buffers() > 0) {
-    for (auto& buffer : result->GetOutputBuffers()) {
-      if (buffer.stream == yuv_stream_) {
-        std::vector<human_sensing::CrosFace> facessd_faces;
-        face_detector_->DetectAsync(
-            *buffer.buffer, active_array_dimension_,
-            base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
-                           base::Unretained(this), result->frame_number()));
-        break;
-      }
+    const camera3_stream_buffer_t* buffer = SelectFaceDetectionBuffer(result);
+    if (buffer) {
+      face_detector_->DetectAsync(
+          *buffer->buffer, active_array_dimension_,
+          base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
+                         base::Unretained(this), result->frame_number()));
     }
   }
 
@@ -214,16 +156,22 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
       const int base = i * 4;
       // Left
       flattened_faces[base] = std::clamp(
-          f.bounding_box.x1 / active_array_dimension_.width, 0.0f, 1.0f);
+          f.bounding_box.x1 / static_cast<float>(active_array_dimension_.width),
+          0.0f, 1.0f);
       // Top
-      flattened_faces[base + 1] = std::clamp(
-          f.bounding_box.y1 / active_array_dimension_.height, 0.0f, 1.0f);
+      flattened_faces[base + 1] =
+          std::clamp(f.bounding_box.y1 /
+                         static_cast<float>(active_array_dimension_.height),
+                     0.0f, 1.0f);
       // Right
       flattened_faces[base + 2] = std::clamp(
-          f.bounding_box.x2 / active_array_dimension_.width, 0.0f, 1.0f);
+          f.bounding_box.x2 / static_cast<float>(active_array_dimension_.width),
+          0.0f, 1.0f);
       // Bottom
-      flattened_faces[base + 3] = std::clamp(
-          f.bounding_box.y2 / active_array_dimension_.height, 0.0f, 1.0f);
+      flattened_faces[base + 3] =
+          std::clamp(f.bounding_box.y2 /
+                         static_cast<float>(active_array_dimension_.height),
+                     0.0f, 1.0f);
     }
     metadata_logger_.Log(result->frame_number(), kTagFaceRectangles,
                          base::span<const float>(flattened_faces.data(),
@@ -245,6 +193,67 @@ bool FaceDetectionStreamManipulator::Notify(camera3_notify_msg_t* msg) {
 
 bool FaceDetectionStreamManipulator::Flush() {
   return true;
+}
+
+const camera3_stream_buffer_t*
+FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
+    Camera3CaptureDescriptor* result) {
+  auto is_larger_or_closer_to_native_aspect_ratio =
+      [&](const camera3_stream_t* lhs, const camera3_stream_t* rhs) -> bool {
+    if (lhs->width >= rhs->width && lhs->height >= rhs->height) {
+      return true;
+    }
+    if (lhs->width <= rhs->width && lhs->height <= rhs->height) {
+      return false;
+    }
+    float active_aspect_ratio =
+        static_cast<float>(active_array_dimension_.width) /
+        static_cast<float>(active_array_dimension_.height);
+    float lhs_aspect_ratio =
+        static_cast<float>(lhs->width) / static_cast<float>(lhs->height);
+    float rhs_aspect_ratio =
+        static_cast<float>(rhs->width) / static_cast<float>(rhs->height);
+    return std::abs(lhs_aspect_ratio - active_aspect_ratio) <=
+           std::abs(rhs_aspect_ratio - active_aspect_ratio);
+  };
+
+  camera3_stream_buffer_t* ret = nullptr;
+
+  for (auto b : result->GetOutputBuffers()) {
+    const auto* s = b.stream;
+    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
+      continue;
+    }
+
+    // TODO(jcliang): See if we need to support 10-bit YUV (i.e. with format
+    // HAL_PIXEL_FORMAT_YCBCR_P010);
+    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
+          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
+              GRALLOC_USAGE_HW_CAMERA_ZSL) {
+        // Ignore ZSL streams.
+        continue;
+      }
+
+      // Pick a buffer for AE controller. This is a heuristic and shouldn't
+      // matter for the majority of the time, as for most cases the requested
+      // streams would have the same aspect ratio.
+      if (!ret || is_larger_or_closer_to_native_aspect_ratio(s, ret->stream)) {
+        ret = &b;
+      }
+    }
+  }
+
+  if (ret) {
+    VLOGF(1) << "YUV stream for CrOS Face Detection processing: "
+             << GetDebugString(ret->stream);
+  } else {
+    LOGF(WARNING)
+        << "No YUV stream suitable for CrOS Face Detection processing";
+  }
+
+  return ret;
 }
 
 void FaceDetectionStreamManipulator::RecordClientRequestSettings(
