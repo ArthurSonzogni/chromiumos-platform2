@@ -75,7 +75,7 @@ openat: 1
 pipe: 1
 pipe2: 1
 poll: 1
-prctl: arg0 == PR_SET_NAME
+prctl: arg0 == PR_SET_NAME || arg0 == PR_CAPBSET_READ
 pread64: 1
 prlimit64: arg2 == 0 && arg3 != 0
 pwrite64: 1
