@@ -156,6 +156,32 @@ void GetFingerprintFrameTask(
                            std::move(delegate)));
 }
 
+void GetFingerprintInfoCallback(
+    base::OnceCallback<void(mojom::FingerprintInfoResultPtr,
+                            const std::optional<std::string>&)> callback,
+    std::unique_ptr<DelegateProcess> delegate,
+    mojom::FingerprintInfoResultPtr result,
+    const std::optional<std::string>& err) {
+  delegate.reset();
+  std::move(callback).Run(std::move(result), err);
+}
+
+void GetFingerprintInfoTask(
+    base::OnceCallback<void(mojom::FingerprintInfoResultPtr,
+                            const std::optional<std::string>&)> callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
+
+  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      std::move(callback), mojom::FingerprintInfoResult::New(),
+      kFailToLaunchDelegate);
+  delegate->remote()->GetFingerprintInfo(base::BindOnce(
+      &GetFingerprintInfoCallback, std::move(cb), std::move(delegate)));
+}
+
 }  // namespace
 
 // Exported for testing.
@@ -479,6 +505,11 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&GetFingerprintFrameTask, type, std::move(callback)));
+}
+
+void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&GetFingerprintInfoTask, std::move(callback)));
 }
 
 void Executor::RunUntrackedBinary(

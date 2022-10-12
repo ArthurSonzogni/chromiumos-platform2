@@ -64,6 +64,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (ash::cros_healthd::mojom::FingerprintCaptureType type,
                GetFingerprintFrameCallback),
               (override));
+  MOCK_METHOD(void,
+              GetFingerprintInfo,
+              (GetFingerprintInfoCallback),
+              (override));
 };
 
 }  // namespace diagnostics

@@ -61,6 +61,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void GetFingerprintFrame(
       ash::cros_healthd::mojom::FingerprintCaptureType type,
       GetFingerprintFrameCallback callback) override;
+  void GetFingerprintInfo(GetFingerprintInfoCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If
