@@ -122,23 +122,30 @@ enum MountErrorType {
 
   // Either the FUSE mounter needs a password, or the provided password is
   // incorrect.
-  MOUNT_ERROR_NEED_PASSWORD_EX = 13,
+  MOUNT_ERROR_NEED_PASSWORD_EX = 17,
   MOUNT_ERROR_NEED_PASSWORD = 117,
 
   // The FUSE mounter is currently launching, and it hasn't daemonized yet.
-  MOUNT_ERROR_IN_PROGRESS_EX = 14,
+  MOUNT_ERROR_IN_PROGRESS_EX = 18,
   MOUNT_ERROR_IN_PROGRESS = 118,
 
   // The FUSE mounter was cancelled (killed) while it was launching.
-  MOUNT_ERROR_CANCELLED_EX = 15,
+  MOUNT_ERROR_CANCELLED_EX = 19,
   MOUNT_ERROR_CANCELLED = 119,
 
   // The device is busy.
   MOUNT_ERROR_BUSY = 20,
 
+  MOUNT_ERROR_INVALID_DEVICE_PATH_EX = 13,
   MOUNT_ERROR_INVALID_DEVICE_PATH = 100,
+
+  MOUNT_ERROR_UNKNOWN_FILESYSTEM_EX = 14,
   MOUNT_ERROR_UNKNOWN_FILESYSTEM = 101,
+
+  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM_EX = 15,
   MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 102,
+
+  MOUNT_ERROR_INVALID_ARCHIVE_EX = 16,
   MOUNT_ERROR_INVALID_ARCHIVE = 201,
 };
 
