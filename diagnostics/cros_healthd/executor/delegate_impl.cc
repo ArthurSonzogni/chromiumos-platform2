@@ -13,6 +13,7 @@
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode_command.h>
 #include <libec/get_protocol_info_command.h>
+#include <libec/get_version_command.h>
 #include <libec/mkbp_event.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
@@ -120,6 +121,22 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                             "Frame size is not equal to width * height");
     return;
   }
+
+  std::move(callback).Run(std::move(result), std::nullopt);
+}
+
+void DelegateImpl::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
+  auto result = mojom::FingerprintInfoResult::New();
+  auto cros_fd = base::ScopedFD(open(fingerprint::kCrosFpPath, O_RDWR));
+
+  ec::GetVersionCommand version;
+  if (!version.Run(cros_fd.get())) {
+    std::move(callback).Run(std::move(result),
+                            "Failed to get fingerprint version");
+    return;
+  }
+
+  result->rw_fw = version.Image() == EC_IMAGE_RW;
 
   std::move(callback).Run(std::move(result), std::nullopt);
 }

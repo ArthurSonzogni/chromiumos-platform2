@@ -18,4 +18,11 @@ interface Delegate {
   // * |err| - Error message if existed.
   GetFingerprintFrame(FingerprintCaptureType type)
       => (FingerprintFrameResult result, string? err);
+
+  // Get fingerprint information.
+  //
+  // The response:
+  // * |result| - Fingerprint information.
+  // * |err| - Error message if existed.
+  GetFingerprintInfo() => (FingerprintInfoResult result, string? err);
 };

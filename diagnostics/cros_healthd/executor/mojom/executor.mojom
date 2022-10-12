@@ -22,6 +22,12 @@ struct ExecutedProcessResult {
   string err;
 };
 
+// Fingerprint info result.
+struct FingerprintInfoResult {
+  // Whether the firmware copy is RW or not.
+  bool rw_fw;
+};
+
 // Fingerprint frame result.
 struct FingerprintFrameResult {
   // Frame data. The length is |width| * |height|.
