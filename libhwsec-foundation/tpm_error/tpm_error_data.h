@@ -10,6 +10,8 @@
 #if defined(__cplusplus)
 #include <type_traits>
 #include <vector>
+
+#include "libhwsec-foundation/hwsec-foundation_export.h"
 #endif
 
 #if defined(__cplusplus)
@@ -33,8 +35,10 @@ static_assert(std::is_standard_layout<TpmErrorData>::value);
 #endif
 
 #if defined(__cplusplus)
-bool operator==(const struct TpmErrorData& a, const struct TpmErrorData& b);
-bool operator<(const struct TpmErrorData& a, const struct TpmErrorData& b);
+HWSEC_FOUNDATION_EXPORT bool operator==(const struct TpmErrorData& a,
+                                        const struct TpmErrorData& b);
+HWSEC_FOUNDATION_EXPORT bool operator<(const struct TpmErrorData& a,
+                                       const struct TpmErrorData& b);
 
 // Get SHA256 value from vector of TpmErrorData.
 uint32_t GetHashFromTpmDataSet(
