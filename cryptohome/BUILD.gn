@@ -11,8 +11,6 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":bootlockboxd",
-    ":bootlockboxtool",
     ":cryptohome",
     ":cryptohome-namespace-mounter",
     ":cryptohome-path",
@@ -27,7 +25,6 @@ group("all") {
   ]
   if (use.test) {
     deps += [
-      ":boot_lockbox_unittests",
       ":cryptohome_testrunner",
       ":error_location_check",
       ":fake_platform_unittest",
@@ -444,33 +441,6 @@ if (use.test) {
     }
   }
 
-  executable("boot_lockbox_unittests") {
-    sources = [
-      "bootlockbox/boot_lockbox_dbus_adaptor.cc",
-      "bootlockbox/boot_lockbox_service_unittest.cc",
-      "bootlockbox/fake_tpm_nvspace.cc",
-      "bootlockbox/nvram_boot_lockbox_unittest.cc",
-      "bootlockbox/tpm_nvspace_impl_unittest.cc",
-    ]
-    libs = [ "tpm_manager" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-      "libtpm_manager-client",
-      "libtpm_manager-client-test",
-    ]
-    deps = [
-      "libs:libcrostpm",
-      "libs:libnvram-boot-lockbox",
-      "//common-mk/testrunner",
-    ]
-  }
-
   executable("stateful_recovery_unittests") {
     sources = [ "stateful_recovery/stateful_recovery_unittest.cc" ]
     libs = [ "policy" ]
@@ -491,38 +461,6 @@ if (use.test) {
       "libuser_data_auth-client-test",
     ]
   }
-}
-
-executable("bootlockboxtool") {
-  sources = [ "bootlockbox/boot_lockbox_tool.cc" ]
-
-  configs += [ ":target_defaults" ]
-  pkg_deps = [ "libbootlockbox-client" ]
-  deps = [ "libs:libnvram-boot-lockbox" ]
-}
-
-executable("bootlockboxd") {
-  sources = [
-    "bootlockbox/boot_lockbox_dbus_adaptor.cc",
-    "bootlockbox/boot_lockbox_service.cc",
-    "bootlockbox/boot_lockboxd.cc",
-  ]
-
-  configs += [ ":target_defaults" ]
-  pkg_deps = [
-    "libecryptfs",
-    "libmetrics",
-    "vboot_host",
-  ]
-  libs = [
-    "keyutils",
-    "tpm_manager",
-  ]
-  deps = [
-    "libs:bootlockbox-adaptors",
-    "libs:libcrostpm",
-    "libs:libnvram-boot-lockbox",
-  ]
 }
 
 if (use.fuzzer) {

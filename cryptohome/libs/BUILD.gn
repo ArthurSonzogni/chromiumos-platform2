@@ -493,25 +493,6 @@ static_library("libcryptohome") {
   ]
 }
 
-generate_dbus_adaptors("bootlockbox-adaptors") {
-  dbus_service_config = "../dbus_adaptors/dbus-service-config.json"
-  dbus_adaptors_out_dir = "include/dbus_adaptors"
-  sources = [ "../dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
-}
-
-static_library("libnvram-boot-lockbox") {
-  sources = [
-    "../bootlockbox/nvram_boot_lockbox.cc",
-    "../bootlockbox/tpm_nvspace_impl.cc",
-  ]
-  all_dependent_configs = [ ":target_defaults" ]
-  deps = [
-    ":cryptohome-proto",
-    ":libcrosplatform",
-  ]
-  pkg_deps = [ "libbootlockbox-client" ]
-}
-
 # cryptohome <-> cryptohome-namespace-mounter IPC proto.
 proto_library("namespace-mounter-ipc-proto") {
   proto_in_dir = "../cryptohome_namespace_mounter"
