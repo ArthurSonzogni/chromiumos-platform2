@@ -40,14 +40,17 @@ class IMContextBackend {
     virtual void SetPreedit(const std::string& preedit,
                             int cursor,
                             const std::vector<PreeditStyle>& styles) = 0;
-    // |index| is the start relative to the cursor as a UTF-8 byte offset.
+    // |start_offset| is relative to the cursor as a UTF-8 byte offset.
     // |length| is a strictly positive UTF-8 byte count.
     // The current cursor position will inside or on the boundary of the
     // specified range.
-    virtual void SetPreeditRegion(int index,
+    virtual void SetPreeditRegion(int start_offset,
                                   int length,
                                   const std::vector<PreeditStyle>& styles) = 0;
     virtual void Commit(const std::string& text) = 0;
+
+    // Both values are in bytes. |start_offset| is relative to the cursor.
+    virtual void DeleteSurroundingText(int start_offset, int length) = 0;
 
     virtual void KeySym(uint32_t keysym, KeyState state) = 0;
   };
@@ -81,6 +84,7 @@ class IMContextBackend {
   void SetPreeditStyling(uint32_t index, uint32_t length, uint32_t style);
   void SetPreeditCursor(uint32_t cursor);
   void Commit(uint32_t serial, const char* text);
+  void DeleteSurroundingText(int32_t index, uint32_t length);
   void KeySym(uint32_t serial,
               uint32_t time,
               uint32_t sym,
@@ -104,6 +108,11 @@ class IMContextBackend {
   // Pre-edit updates are split across several events.
   int cursor_pos_ = 0;
   std::vector<PreeditStyle> styles_;
+
+  // What we think Chrome considers the index of the cursor is within its
+  // belief of the surrounding text, in bytes. Used to resolve
+  // indices from delete_surrounding_text.
+  int surrounding_cursor_index_ = 0;
 
   bool virtual_keyboard_enabled_;
 };

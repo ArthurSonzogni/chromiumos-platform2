@@ -8,6 +8,7 @@
 #include <gtk/gtk.h>
 #include <gtk/gtkimmodule.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,14 +57,20 @@ class CrosGtkIMContext : public GtkIMContext {
     void SetPreedit(const std::string& preedit,
                     int cursor,
                     const std::vector<PreeditStyle>& styles) override;
-    void SetPreeditRegion(int byte_index,
-                          int byte_length,
+    void SetPreeditRegion(int start_offset,
+                          int length,
                           const std::vector<PreeditStyle>& styles) override;
     void Commit(const std::string& commit) override;
+
+    void DeleteSurroundingText(int start_offset, int length) override;
 
     void KeySym(uint32_t keysym, KeyState state) override;
 
    private:
+    // Returns the deleted text on success, an empty string on failure.
+    std::optional<std::string> DeleteSurroundingTextImpl(int byte_offset,
+                                                         int byte_length);
+
     CrosGtkIMContext* context_;
   };
 

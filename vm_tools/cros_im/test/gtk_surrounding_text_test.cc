@@ -10,6 +10,7 @@ namespace test {
 namespace {
 
 using GtkSetSurroundingTextTest = GtkSimpleTextViewTest;
+using GtkDeleteSurroundingTextTest = GtkSimpleTextViewTest;
 
 }  // namespace
 
@@ -51,6 +52,24 @@ TEST_F(GtkSetSurroundingTextTest, DirectTextChanges) {
   SetText("trams");
   RunUntilIdle();
   SetText("soufflé");
+  RunUntilIdle();
+}
+
+TEST_F(GtkDeleteSurroundingTextTest, Basic) {
+  RunAndExpectTextChangeTo("hello");
+  RunAndExpectTextChangeTo("hell");
+  RunAndExpectTextChangeTo("he");
+  RunAndExpectTextChangeTo("hey");
+  RunAndExpectTextChangeTo("");
+  RunUntilIdle();
+}
+
+TEST_F(GtkDeleteSurroundingTextTest, NonAscii) {
+  RunAndExpectTextChangeTo("三角バラ");
+  RunUntilIdle();
+  MoveCursor(2);
+  RunAndExpectTextChangeTo("三角ラ");
+  RunAndExpectTextChangeTo("");
   RunUntilIdle();
 }
 

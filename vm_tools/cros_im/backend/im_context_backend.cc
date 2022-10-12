@@ -53,7 +53,7 @@ const zwp_text_input_v1_listener IMContextBackend::text_input_listener_ = {
     .preedit_cursor = Fwd<&IMContextBackend::SetPreeditCursor>,
     .commit_string = Fwd<&IMContextBackend::Commit>,
     .cursor_position = DoNothing,
-    .delete_surrounding_text = DoNothing,
+    .delete_surrounding_text = Fwd<&IMContextBackend::DeleteSurroundingText>,
     .keysym = Fwd<&IMContextBackend::KeySym>,
     .language = DoNothing,
     .text_direction = DoNothing,
@@ -139,6 +139,7 @@ void IMContextBackend::Reset() {
 void IMContextBackend::SetSurrounding(const char* text, int cursor_index) {
   if (!text_input_)
     return;
+  surrounding_cursor_index_ = cursor_index;
   zwp_text_input_v1_set_surrounding_text(text_input_, text, cursor_index,
                                          cursor_index);
 }
@@ -195,6 +196,33 @@ void IMContextBackend::SetPreedit(uint32_t serial,
 void IMContextBackend::Commit(uint32_t serial, const char* text) {
   styles_.clear();
   observer_->Commit(text);
+}
+
+void IMContextBackend::DeleteSurroundingText(int32_t index,
+                                             uint32_t length_unsigned) {
+  // TODO(b/252955997): Unlike what is written in the protocol, Chrome's
+  // implementation gives a value relative to it's understanding of the
+  // surrounding text. The API is not conducive to a correct implementation, so
+  // for now we just do something that works in simple cases.
+
+  // Convert from an index relative to the surrounding text to an offset
+  // relative to the cursor.
+  int start = index - surrounding_cursor_index_;
+  int length = length_unsigned;
+
+  // Only support deleting text adjacent to the cursor for now.
+  if (start > 0 || start + length < 0 || length == 0)
+    return;
+
+  observer_->DeleteSurroundingText(start, length);
+
+  // This handles if Chrome sends multiple delete_surrounding_text events
+  // without receiving set_surrounding_text requests. The indices it gives us
+  // assume previous delete_surrounding_text requests have been handled already.
+  // TODO(timloh): Add automated tests for this case. We currently don't support
+  // sending multiple events without running the event loop.
+  if (start < 0)
+    surrounding_cursor_index_ += start;
 }
 
 void IMContextBackend::KeySym(uint32_t serial,

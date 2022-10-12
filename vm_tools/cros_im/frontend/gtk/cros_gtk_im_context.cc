@@ -315,56 +315,15 @@ void CrosGtkIMContext::BackendObserver::SetPreedit(
 }
 
 void CrosGtkIMContext::BackendObserver::SetPreeditRegion(
-    int byte_index, int byte_length, const std::vector<PreeditStyle>& styles) {
-  g_assert(byte_index <= 0 && byte_index + byte_length >= 0);
-
-  if (!context_->preedit_.empty()) {
-    // TODO(timloh): Work out the correct behaviour here. Should we commit the
-    // existing pre-edit text first?
-    g_warning("SetPreeditRegion() called when pre-edit was already present");
+    int start_offset, int length, const std::vector<PreeditStyle>& styles) {
+  std::optional<std::string> text =
+      DeleteSurroundingTextImpl(start_offset, length);
+  if (!text.has_value())
     return;
-  }
 
-  if (!context_->RetrieveSurrounding()) {
-    g_warning("Failed to retrieve surrounding text for SetPreeditRegion().");
-    return;
-  }
-
-  const char* surrounding_start = context_->surrounding_.c_str();
-  const char* surrounding_end =
-      surrounding_start + context_->surrounding_.size();
-  const char* cursor = surrounding_start + context_->surrounding_cursor_pos_;
-  const char* region_start = cursor + byte_index;
-  const char* region_end = region_start + byte_length;
-
-  if (region_start < surrounding_start || region_end > surrounding_end) {
-    g_warning(
-        "Not enough surrounding text to handle SetPreeditRegion(%d, %d). "
-        "Surrounding text is %zu bytes with cursor at %d.",
-        byte_index, byte_length, context_->surrounding_.size(),
-        context_->surrounding_cursor_pos_);
-    return;
-  }
-
-  if (!g_utf8_validate(region_start, byte_length, nullptr)) {
-    g_warning("SetPreeditRegion() cannot set invalid UTF-8 regions.");
-    return;
-  }
-
-  int char_offset = -g_utf8_strlen(region_start, -byte_index);
-  int char_length = g_utf8_strlen(region_start, byte_length);
-
-  context_->preedit_ = std::string(region_start, region_end);
-  context_->preedit_cursor_pos_ = byte_length;
+  context_->preedit_ = std::move(text.value());
+  context_->preedit_cursor_pos_ = length;
   context_->preedit_styles_ = styles;
-
-  gboolean result = false;
-  g_signal_emit_by_name(context_, "delete-surrounding", char_offset,
-                        char_length, &result);
-  if (!result) {
-    g_warning("Failed to delete surrounding text for SetPreeditRegion().");
-    return;
-  }
 
   g_signal_emit_by_name(context_, "preedit-start");
   g_signal_emit_by_name(context_, "preedit-changed");
@@ -379,6 +338,11 @@ void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
     g_signal_emit_by_name(context_, "preedit-end");
   }
   g_signal_emit_by_name(context_, "commit", text.c_str());
+}
+
+void CrosGtkIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
+                                                              int length) {
+  DeleteSurroundingTextImpl(start_offset, length);
 }
 
 void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
@@ -446,6 +410,60 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
       gdk_seat_get_keyboard(gdk_display_get_default_seat(gdk_display)));
   gdk_display_put_event(gdk_display, raw_event);
   gdk_event_free(raw_event);
+}
+
+std::optional<std::string>
+CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
+    int byte_start_offset, int byte_length) {
+  g_assert(byte_start_offset <= 0 && byte_start_offset + byte_length >= 0);
+
+  if (!context_->preedit_.empty()) {
+    // TODO(timloh): Work out the correct behaviour here. Should we commit the
+    // existing pre-edit text first?
+    g_warning(
+        "DeleteSurroundingText() called when pre-edit was already present");
+    return std::nullopt;
+  }
+
+  if (!context_->RetrieveSurrounding()) {
+    g_warning(
+        "Failed to retrieve surrounding text for DeleteSurroundingText().");
+    return std::nullopt;
+  }
+
+  const char* surrounding_start = context_->surrounding_.c_str();
+  const char* surrounding_end =
+      surrounding_start + context_->surrounding_.size();
+  const char* cursor = surrounding_start + context_->surrounding_cursor_pos_;
+  const char* region_start = cursor + byte_start_offset;
+  const char* region_end = region_start + byte_length;
+
+  if (region_start < surrounding_start || region_end > surrounding_end) {
+    g_warning(
+        "Not enough surrounding text to handle DeleteSurroundingText(%d, %d). "
+        "Surrounding text is %zu bytes with cursor at %d.",
+        byte_start_offset, byte_length, context_->surrounding_.size(),
+        context_->surrounding_cursor_pos_);
+    return std::nullopt;
+  }
+
+  if (!g_utf8_validate(region_start, byte_length, nullptr)) {
+    g_warning("DeleteSurroundingText() cannot delete invalid UTF-8 regions.");
+    return std::nullopt;
+  }
+
+  int char_offset = -g_utf8_strlen(region_start, -byte_start_offset);
+  int char_length = g_utf8_strlen(region_start, byte_length);
+
+  gboolean result = false;
+  g_signal_emit_by_name(context_, "delete-surrounding", char_offset,
+                        char_length, &result);
+  if (!result) {
+    g_warning("Failed to delete surrounding text for DeleteSurroundingText().");
+    return std::nullopt;
+  }
+
+  return std::string(region_start, region_end);
 }
 
 void CrosGtkIMContext::Activate() {

@@ -147,6 +147,12 @@ class BackendTest {
   }
 
   template <int text_input_id = 0>
+  void SendDeleteSurroundingText(int index, int length) {
+    actions_.emplace(std::make_unique<DeleteSurroundingTextEvent>(
+        text_input_id, index, length));
+  }
+
+  template <int text_input_id = 0>
   void SendSetPreeditRegion(int index, int length) {
     actions_.emplace(
         std::make_unique<SetPreeditRegionEvent>(text_input_id, index, length));

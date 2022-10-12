@@ -105,5 +105,60 @@ BACKEND_TEST(GtkSetSurroundingTextTest, DirectTextChanges) {
   Expect(Request::kDestroy);
 }
 
+BACKEND_TEST(GtkDeleteSurroundingTextTest, Basic) {
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  Unignore(Request::kSetSurroundingText);
+
+  ExpectSetSurroundingText("", 0, 0);
+  Expect(Request::kActivate);
+  ExpectSetSurroundingText("", 0, 0);
+  ExpectSetSurroundingText("", 0, 0);
+
+  SendCommitString("hello");
+  ExpectSetSurroundingText("hello", 5, 5);
+
+  SendDeleteSurroundingText(4, 1);
+  ExpectSetSurroundingText("hell", 4, 4);
+
+  SendDeleteSurroundingText(2, 2);
+  ExpectSetSurroundingText("he", 2, 2);
+
+  SendCommitString("y");
+  ExpectSetSurroundingText("hey", 3, 3);
+  SendDeleteSurroundingText(0, 3);
+
+  ExpectSetSurroundingText("", 0, 0);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kDestroy);
+}
+
+BACKEND_TEST(GtkDeleteSurroundingTextTest, NonAscii) {
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  Unignore(Request::kSetSurroundingText);
+
+  ExpectSetSurroundingText("", 0, 0);
+  Expect(Request::kActivate);
+  ExpectSetSurroundingText("", 0, 0);
+  ExpectSetSurroundingText("", 0, 0);
+
+  // Each char is 3 bytes
+  SendCommitString("三角バラ");
+  ExpectSetSurroundingText("三角バラ", 12, 12);
+  // Moving the cursor causes a reset
+  ExpectSetSurroundingText("三角バラ", 6, 6);
+  Expect(Request::kReset);
+  ExpectSetSurroundingText("三角バラ", 6, 6);
+
+  SendDeleteSurroundingText(6, 3);
+  ExpectSetSurroundingText("三角ラ", 6, 6);
+
+  SendDeleteSurroundingText(0, 9);
+  ExpectSetSurroundingText("", 0, 0);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kDestroy);
+}
+
 }  // namespace test
 }  // namespace cros_im
