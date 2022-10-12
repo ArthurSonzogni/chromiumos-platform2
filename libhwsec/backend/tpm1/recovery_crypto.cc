@@ -12,6 +12,7 @@
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -31,6 +32,7 @@ using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::ScopedBN_CTX;
 using hwsec_foundation::SecureBlobToBigNum;
+using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
@@ -258,9 +260,14 @@ StatusOr<std::optional<brillo::Blob>> RecoveryCryptoTpm1::SignRequestPayload(
           KeyManagement::AutoReload::kFalse),
       _.WithStatus<TPMError>("Failed to load encrypted RSA private key"));
 
-  ASSIGN_OR_RETURN(brillo::Blob signature,
-                   backend_.GetSigningTpm1().Sign(
-                       OperationPolicy{}, key.GetKey(), request_payload));
+  ASSIGN_OR_RETURN(
+      brillo::Blob signature,
+      backend_.GetSigningTpm1().Sign(
+          key.GetKey(), request_payload,
+          SigningOptions{
+              .digest_algorithm = DigestAlgorithm::kSha256,
+              .rsa_padding_scheme = SigningOptions::RsaPaddingScheme::kPkcs1v15,
+          }));
 
   return signature;
 }

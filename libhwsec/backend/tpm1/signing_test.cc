@@ -13,6 +13,8 @@
 
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
+using hwsec_foundation::error::testing::NotOk;
+using hwsec_foundation::error::testing::NotOkWith;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -73,17 +75,12 @@ TEST_F(BackendSigningTpm1Test, Sign) {
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Signing::Sign>(
-                  kFakePolicy, key->GetKey(), kFakeData),
+                  key->GetKey(), kFakeData, SigningOptions{}),
               IsOkAndHolds(signature));
 }
 
-TEST_F(BackendSigningTpm1Test, SignWithUnsupportedPolicy) {
-  const OperationPolicy kFakePolicy{
-      .permission =
-          Permission{
-              .auth_value = brillo::SecureBlob("auth"),
-          },
-  };
+TEST_F(BackendSigningTpm1Test, SignNotSupported) {
+  const OperationPolicy kFakePolicy{};
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
   const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
   const uint32_t kFakeKeyHandle = 0x1337;
@@ -109,10 +106,13 @@ TEST_F(BackendSigningTpm1Test, SignWithUnsupportedPolicy) {
 
   ASSERT_OK(key);
 
-  auto result = middleware_->CallSync<&Backend::Signing::Sign>(
-      kFakePolicy, key->GetKey(), kFakeData);
-
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::Sign>(
+                  key->GetKey(), kFakeData,
+                  SigningOptions{
+                      .rsa_padding_scheme =
+                          SigningOptions::RsaPaddingScheme::kRsassaPss,
+                  }),
+              NotOkWith("Unsupported mechanism for tpm1.2 key"));
 }
 
 }  // namespace hwsec

@@ -8,6 +8,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
+#include "libhwsec/backend/digest_algorithms.h"
 #include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
@@ -20,20 +21,21 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-namespace {
+StatusOr<brillo::Blob> SigningTpm1::Sign(Key key,
+                                         const brillo::Blob& data,
+                                         const SigningOptions& options) {
+  ASSIGN_OR_RETURN(const brillo::Blob& hashed_data,
+                   DigestData(options.digest_algorithm, data));
+  return RawSign(key, hashed_data, options);
+}
 
-// The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
-constexpr uint8_t kSha256DigestInfo[] = {
-    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
-    0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
-
-}  // namespace
-
-StatusOr<brillo::Blob> SigningTpm1::Sign(const OperationPolicy& policy,
-                                         Key key,
-                                         const brillo::Blob& data) {
-  if (policy.device_configs.any() || policy.permission.auth_value.has_value()) {
-    return MakeStatus<TPMError>("Unsupported operation policy",
+StatusOr<brillo::Blob> SigningTpm1::RawSign(Key key,
+                                            const brillo::Blob& data,
+                                            const SigningOptions& options) {
+  if (options.rsa_padding_scheme.value_or(
+          SigningOptions::RsaPaddingScheme::kPkcs1v15) !=
+      SigningOptions::RsaPaddingScheme::kPkcs1v15) {
+    return MakeStatus<TPMError>("Unsupported mechanism for tpm1.2 key",
                                 TPMRetryAction::kNoRetry);
   }
 
@@ -54,10 +56,10 @@ StatusOr<brillo::Blob> SigningTpm1::Sign(const OperationPolicy& policy,
       .WithStatus<TPMError>("Failed to create hash object");
 
   // Create the DER encoded input.
-  brillo::Blob der_header(std::begin(kSha256DigestInfo),
-                          std::end(kSha256DigestInfo));
-  brillo::Blob der_encoded_input =
-      brillo::CombineBlobs({der_header, Sha256(data)});
+  ASSIGN_OR_RETURN(const brillo::Blob& der_header,
+                   GetDigestAlgorithmEncoding(options.digest_algorithm));
+
+  brillo::Blob der_encoded_input = brillo::CombineBlobs({der_header, data});
 
   RETURN_IF_ERROR(
       MakeStatus<TPM1Error>(overalls.Ospi_Hash_SetHashValue(
@@ -74,9 +76,7 @@ StatusOr<brillo::Blob> SigningTpm1::Sign(const OperationPolicy& policy,
   return brillo::Blob(buffer.value(), buffer.value() + length);
 }
 
-Status SigningTpm1::Verify(const OperationPolicy& policy,
-                           Key key,
-                           const brillo::Blob& signed_data) {
+Status SigningTpm1::Verify(Key key, const brillo::Blob& signed_data) {
   return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
 }
 

@@ -19,15 +19,19 @@ class MockSigning : public Signing {
  public:
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Sign,
-              (const OperationPolicy& policy,
-               Key key,
-               const brillo::Blob& data),
+              (Key key,
+               const brillo::Blob& data,
+               const SigningOptions& options),
+              (override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              RawSign,
+              (Key key,
+               const brillo::Blob& data,
+               const SigningOptions& options),
               (override));
   MOCK_METHOD(Status,
               Verify,
-              (const OperationPolicy& policy,
-               Key key,
-               const brillo::Blob& signed_data),
+              (Key key, const brillo::Blob& signed_data),
               (override));
 };
 

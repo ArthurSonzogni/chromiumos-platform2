@@ -18,12 +18,13 @@ class SigningTpm1 : public Backend::Signing,
                     public Backend::SubClassHelper<BackendTpm1> {
  public:
   using SubClassHelper::SubClassHelper;
-  StatusOr<brillo::Blob> Sign(const OperationPolicy& policy,
-                              Key key,
-                              const brillo::Blob& data) override;
-  Status Verify(const OperationPolicy& policy,
-                Key key,
-                const brillo::Blob& signed_data) override;
+  StatusOr<brillo::Blob> Sign(Key key,
+                              const brillo::Blob& data,
+                              const SigningOptions& options) override;
+  StatusOr<brillo::Blob> RawSign(Key key,
+                                 const brillo::Blob& data,
+                                 const SigningOptions& options) override;
+  Status Verify(Key key, const brillo::Blob& signed_data) override;
 };
 
 }  // namespace hwsec
