@@ -28,7 +28,7 @@ cmd_systrace() (
     debugd SystraceStart "string:${categories}"
     ;;
   xstop)
-    local downloads_dir="/home/${USER}/user/Downloads"
+    local downloads_dir="/home/${USER}/user/MyFiles/Downloads"
     local data_file
     if ! data_file="$(mktemp "${downloads_dir}/systrace.XXXXXX")"; then
       echo "Cannot create data file ${data_file}"

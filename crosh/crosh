@@ -637,7 +637,7 @@ cmd_network_diag() (
     # to this specific use case.
     local timestamp
     timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
-    local downloads_dir="/home/user/${CROS_USER_ID_HASH}/Downloads"
+    local downloads_dir="/home/user/${CROS_USER_ID_HASH}/MyFiles/Downloads"
     local logname="network_diagnostics_${timestamp}.txt"
     local logpath="${downloads_dir}/${logname}"
     rm -f "${logpath}"

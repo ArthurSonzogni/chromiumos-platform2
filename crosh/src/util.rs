@@ -94,7 +94,7 @@ pub fn generate_output_file_path(output_type: &str, file_extension: &str) -> Res
     let user_id_hash = get_user_id_hash()?;
     let random_string: String = thread_rng().sample_iter(&Alphanumeric).take(6).collect();
     Ok(format!(
-        "/home/user/{}/Downloads/{}_{}_{}.{}",
+        "/home/user/{}/MyFiles/Downloads/{}_{}_{}.{}",
         user_id_hash, output_type, formatted_date, random_string, file_extension
     ))
 }
@@ -227,7 +227,7 @@ mod tests {
         // Set the user id hash env variable to a random value because it is necessary for output path generation.
         env::set_var(CROS_USER_ID_HASH, "useridhashfortesting");
         let expected_path_re =
-            Regex::new(r"^/home/user/.+/Downloads/packet_capture_\d{4}-\d{2}-\d{2}_\d{2}.\d{2}.\d{2}_.{6}\.pcap$").unwrap();
+            Regex::new(r"^/home/user/.+/MyFiles/Downloads/packet_capture_\d{4}-\d{2}-\d{2}_\d{2}.\d{2}.\d{2}_.{6}\.pcap$").unwrap();
         let result_output_path = generate_output_file_path("packet_capture", "pcap").unwrap();
         assert!(expected_path_re.is_match(&result_output_path));
     }
