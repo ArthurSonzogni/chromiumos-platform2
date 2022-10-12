@@ -5,10 +5,8 @@
 #ifndef DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
 #define DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
 
-#include <base/observer_list.h>
 #include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
-#include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "diagnostics/common/system/powerd_adapter.h"
 
@@ -22,27 +20,13 @@ class FakePowerdAdapter : public PowerdAdapter {
   ~FakePowerdAdapter() override;
 
   // PowerdAdapter overrides:
-  void AddPowerObserver(PowerObserver* observer) override;
-  void RemovePowerObserver(PowerObserver* observer) override;
   std::optional<power_manager::PowerSupplyProperties> GetPowerSupplyProperties()
       override;
-
-  bool HasPowerObserver(PowerObserver* observer) const;
-
-  void EmitPowerSupplyPollSignal(
-      const power_manager::PowerSupplyProperties& power_supply) const;
-  void EmitSuspendImminentSignal(
-      const power_manager::SuspendImminent& suspend_imminent) const;
-  void EmitDarkSuspendImminentSignal(
-      const power_manager::SuspendImminent& suspend_imminent) const;
-  void EmitSuspendDoneSignal(
-      const power_manager::SuspendDone& suspend_done) const;
 
   void SetPowerSupplyProperties(
       std::optional<power_manager::PowerSupplyProperties> properties);
 
  private:
-  base::ObserverList<PowerObserver> power_observers_;
   std::optional<power_manager::PowerSupplyProperties> power_supply_properties_;
 };
 

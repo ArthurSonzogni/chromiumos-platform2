@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/run_loop.h>
@@ -13,9 +15,9 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <power_manager/dbus-proxy-mocks.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
-#include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -25,7 +27,9 @@ namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
+using ::testing::_;
 using ::testing::Invoke;
+using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 class MockCrosHealthdPowerObserver : public mojo_ipc::CrosHealthdPowerObserver {
@@ -56,44 +60,61 @@ class PowerEventsImplTest : public testing::Test {
   PowerEventsImplTest& operator=(const PowerEventsImplTest&) = delete;
 
   void SetUp() override {
-    // Before any observers have been added, we shouldn't have subscribed to
-    // powerd_adapter.
-    ASSERT_FALSE(fake_adapter()->HasPowerObserver(&power_events_impl_));
+    EXPECT_CALL(*mock_power_manager_proxy(),
+                DoRegisterPowerSupplyPollSignalHandler(_, _))
+        .WillOnce(SaveArg<0>(&power_supply_poll_signal_));
+    EXPECT_CALL(*mock_power_manager_proxy(),
+                DoRegisterSuspendImminentSignalHandler(_, _))
+        .WillOnce(SaveArg<0>(&suspend_imminent_signal));
+    EXPECT_CALL(*mock_power_manager_proxy(),
+                DoRegisterDarkSuspendImminentSignalHandler(_, _))
+        .WillOnce(SaveArg<0>(&dark_suspend_imminent_signal));
+    EXPECT_CALL(*mock_power_manager_proxy(),
+                DoRegisterSuspendDoneSignalHandler(_, _))
+        .WillOnce(SaveArg<0>(&suspend_done_signal_));
+    power_events_impl_ = std::make_unique<PowerEventsImpl>(&mock_context_);
 
     mojo::PendingRemote<mojo_ipc::CrosHealthdPowerObserver> observer;
     mojo::PendingReceiver<mojo_ipc::CrosHealthdPowerObserver> observer_receiver(
         observer.InitWithNewPipeAndPassReceiver());
     observer_ = std::make_unique<StrictMock<MockCrosHealthdPowerObserver>>(
         std::move(observer_receiver));
-    power_events_impl_.AddObserver(std::move(observer));
-    // Now that an observer has been added, we should have subscribed to
-    // powerd_adapter.
-    ASSERT_TRUE(fake_adapter()->HasPowerObserver(&power_events_impl_));
+    power_events_impl_->AddObserver(std::move(observer));
   }
 
-  PowerEventsImpl* power_events_impl() { return &power_events_impl_; }
-
-  FakePowerdAdapter* fake_adapter() {
-    return mock_context_.fake_powerd_adapter();
+  org::chromium::PowerManagerProxyMock* mock_power_manager_proxy() {
+    return mock_context_.mock_power_manager_proxy();
   }
 
   MockCrosHealthdPowerObserver* mock_observer() { return observer_.get(); }
 
-  base::test::TaskEnvironment* task_environment() { return &task_environment_; }
-
-  void DestroyMojoObserver() {
-    observer_.reset();
-
-    // Make sure |power_events_impl_| gets a chance to observe the connection
-    // error.
-    task_environment_.RunUntilIdle();
+  void EmitPowerSupplyPollSignal(
+      const power_manager::PowerSupplyProperties& power_supply) {
+    std::string power_supply_str = power_supply.SerializeAsString();
+    std::vector<uint8_t> signal(power_supply_str.begin(),
+                                power_supply_str.end());
+    power_supply_poll_signal_.Run(signal);
   }
+
+  void EmitSuspendImminentSignal() { suspend_imminent_signal.Run({}); }
+
+  void EmitDarkSuspendImminentSignal() { dark_suspend_imminent_signal.Run({}); }
+
+  void EmitSuspendDoneSignal() { suspend_done_signal_.Run({}); }
 
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   std::unique_ptr<StrictMock<MockCrosHealthdPowerObserver>> observer_;
-  PowerEventsImpl power_events_impl_{&mock_context_};
+  std::unique_ptr<PowerEventsImpl> power_events_impl_;
+  base::RepeatingCallback<void(const std::vector<uint8_t>&)>
+      power_supply_poll_signal_;
+  base::RepeatingCallback<void(const std::vector<uint8_t>&)>
+      suspend_imminent_signal;
+  base::RepeatingCallback<void(const std::vector<uint8_t>&)>
+      dark_suspend_imminent_signal;
+  base::RepeatingCallback<void(const std::vector<uint8_t>&)>
+      suspend_done_signal_;
 };
 
 // Test that we can receive AC inserted events from powerd's AC proto.
@@ -105,7 +126,7 @@ TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromAcProto) {
 
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(power_manager::PowerSupplyProperties::AC);
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
+  EmitPowerSupplyPollSignal(power_supply);
 
   run_loop.Run();
 }
@@ -119,7 +140,7 @@ TEST_F(PowerEventsImplTest, ReceiveAcInsertedEventFromUsbProto) {
 
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(power_manager::PowerSupplyProperties::USB);
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
+  EmitPowerSupplyPollSignal(power_supply);
 
   run_loop.Run();
 }
@@ -134,7 +155,7 @@ TEST_F(PowerEventsImplTest, ReceiveAcRemovedEvent) {
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(
       power_manager::PowerSupplyProperties::DISCONNECTED);
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
+  EmitPowerSupplyPollSignal(power_supply);
 
   run_loop.Run();
 }
@@ -146,8 +167,7 @@ TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromSuspendImminent) {
     run_loop.Quit();
   }));
 
-  power_manager::SuspendImminent suspend_imminent;
-  fake_adapter()->EmitSuspendImminentSignal(suspend_imminent);
+  EmitSuspendImminentSignal();
 
   run_loop.Run();
 }
@@ -160,8 +180,7 @@ TEST_F(PowerEventsImplTest, ReceiveOsSuspendEventFromDarkSuspendImminent) {
     run_loop.Quit();
   }));
 
-  power_manager::SuspendImminent suspend_imminent;
-  fake_adapter()->EmitDarkSuspendImminentSignal(suspend_imminent);
+  EmitDarkSuspendImminentSignal();
 
   run_loop.Run();
 }
@@ -173,8 +192,7 @@ TEST_F(PowerEventsImplTest, ReceiveOsResumeEvent) {
     run_loop.Quit();
   }));
 
-  power_manager::SuspendDone suspend_done;
-  fake_adapter()->EmitSuspendDoneSignal(suspend_done);
+  EmitSuspendDoneSignal();
 
   run_loop.Run();
 }
@@ -182,9 +200,7 @@ TEST_F(PowerEventsImplTest, ReceiveOsResumeEvent) {
 // Test that powerd events without external power are ignored.
 TEST_F(PowerEventsImplTest, IgnorePayloadWithoutExternalPower) {
   power_manager::PowerSupplyProperties power_supply;
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
-
-  task_environment()->RunUntilIdle();
+  EmitPowerSupplyPollSignal(power_supply);
 }
 
 // Test that multiple of the same powerd events in a row are only reported once.
@@ -198,14 +214,12 @@ TEST_F(PowerEventsImplTest, MultipleIdenticalPayloadsReportedOnlyOnce) {
   power_manager::PowerSupplyProperties power_supply;
   power_supply.set_external_power(
       power_manager::PowerSupplyProperties::DISCONNECTED);
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
+  EmitPowerSupplyPollSignal(power_supply);
 
   run_loop.Run();
 
   // A second identical call should be ignored.
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
-
-  task_environment()->RunUntilIdle();
+  EmitPowerSupplyPollSignal(power_supply);
 
   // Changing the type of external power should again be reported.
   base::RunLoop run_loop2;
@@ -214,22 +228,9 @@ TEST_F(PowerEventsImplTest, MultipleIdenticalPayloadsReportedOnlyOnce) {
   }));
 
   power_supply.set_external_power(power_manager::PowerSupplyProperties::AC);
-  fake_adapter()->EmitPowerSupplyPollSignal(power_supply);
+  EmitPowerSupplyPollSignal(power_supply);
 
   run_loop2.Run();
-}
-
-// Test that PowerEvents unsubscribes to PowerdAdapter when PowerEvents loses
-// all of its mojo observers.
-TEST_F(PowerEventsImplTest, UnsubscribeFromPowerdAdapterWhenAllObserversLost) {
-  DestroyMojoObserver();
-
-  // Emit an event, so that PowerEventsImpl has a chance to check for any
-  // remaining mojo observers.
-  power_manager::SuspendDone suspend_done;
-  fake_adapter()->EmitSuspendDoneSignal(suspend_done);
-
-  EXPECT_FALSE(fake_adapter()->HasPowerObserver(power_events_impl()));
 }
 
 }  // namespace

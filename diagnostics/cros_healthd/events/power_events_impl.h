@@ -5,11 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_IMPL_H_
 
+#include <optional>
+#include <vector>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
-#include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
-#include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -18,13 +19,12 @@
 namespace diagnostics {
 
 // Production implementation of the PowerEvents interface.
-class PowerEventsImpl final : public PowerEvents,
-                              public PowerdAdapter::PowerObserver {
+class PowerEventsImpl final : public PowerEvents {
  public:
   explicit PowerEventsImpl(Context* context);
   PowerEventsImpl(const PowerEventsImpl&) = delete;
   PowerEventsImpl& operator=(const PowerEventsImpl&) = delete;
-  ~PowerEventsImpl() override;
+  ~PowerEventsImpl() = default;
 
   // PowerEvents overrides:
   void AddObserver(
@@ -41,27 +41,14 @@ class PowerEventsImpl final : public PowerEvents,
     kAcRemoved,
   };
 
-  // PowerdAdapter::Observer overrides:
-  void OnPowerSupplyPollSignal(
-      const power_manager::PowerSupplyProperties& power_supply) override;
-  void OnSuspendImminentSignal(
-      const power_manager::SuspendImminent& suspend_imminent) override;
-  void OnDarkSuspendImminentSignal(
-      const power_manager::SuspendImminent& suspend_imminent) override;
-  void OnSuspendDoneSignal(
-      const power_manager::SuspendDone& suspend_done) override;
+  void OnPowerSupplyPollSignal(const std::vector<uint8_t>& signal);
+  void OnSuspendImminentSignal(const std::vector<uint8_t>& signal);
+  void OnDarkSuspendImminentSignal(const std::vector<uint8_t>& signal);
+  void OnSuspendDoneSignal(const std::vector<uint8_t>& signal);
 
   // Common response to either a SuspendImminentSignal or
   // DarkSuspendImminentSignal.
   void OnAnySuspendImminentSignal();
-
-  // Checks to see if any observers are left. If not, removes this object from
-  // powerd's observers.
-  void StopObservingPowerdIfNecessary();
-
-  // Tracks whether or not this instance has added itself as an observer of
-  // powerd.
-  bool is_observing_powerd_ = false;
 
   // Most recent external power AC event, from powerd's last
   // PowerSupplyPollSignal (updates every 30 seconds or when something changes
@@ -78,6 +65,8 @@ class PowerEventsImpl final : public PowerEvents,
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
+
+  base::WeakPtrFactory<PowerEventsImpl> weak_ptr_factory_;
 };
 
 }  // namespace diagnostics

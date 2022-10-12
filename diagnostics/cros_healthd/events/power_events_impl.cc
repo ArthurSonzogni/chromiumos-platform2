@@ -4,34 +4,69 @@
 
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <power_manager/dbus-proxies.h>
+
+namespace {
+
+// Handles the result of an attempt to connect to a D-Bus signal.
+void HandleSignalConnected(const std::string& interface,
+                           const std::string& signal,
+                           bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
+    return;
+  }
+  VLOG(2) << "Successfully connected to D-Bus signal " << interface << "."
+          << signal;
+}
+
+}  // namespace
 
 namespace diagnostics {
 
-PowerEventsImpl::PowerEventsImpl(Context* context) : context_(context) {
+PowerEventsImpl::PowerEventsImpl(Context* context)
+    : context_(context), weak_ptr_factory_(this) {
   DCHECK(context_);
-}
 
-PowerEventsImpl::~PowerEventsImpl() {
-  if (is_observing_powerd_)
-    context_->powerd_adapter()->RemovePowerObserver(this);
+  context_->power_manager_proxy()->RegisterPowerSupplyPollSignalHandler(
+      base::BindRepeating(&PowerEventsImpl::OnPowerSupplyPollSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
+  context_->power_manager_proxy()->RegisterSuspendImminentSignalHandler(
+      base::BindRepeating(&PowerEventsImpl::OnSuspendImminentSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
+  context_->power_manager_proxy()->RegisterDarkSuspendImminentSignalHandler(
+      base::BindRepeating(&PowerEventsImpl::OnDarkSuspendImminentSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
+  context_->power_manager_proxy()->RegisterSuspendDoneSignalHandler(
+      base::BindRepeating(&PowerEventsImpl::OnSuspendDoneSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&HandleSignalConnected));
 }
 
 void PowerEventsImpl::AddObserver(
     mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
         observer) {
-  if (!is_observing_powerd_) {
-    context_->powerd_adapter()->AddPowerObserver(this);
-    is_observing_powerd_ = true;
-  }
   observers_.Add(std::move(observer));
 }
 
 void PowerEventsImpl::OnPowerSupplyPollSignal(
-    const power_manager::PowerSupplyProperties& power_supply) {
+    const std::vector<uint8_t>& signal) {
+  power_manager::PowerSupplyProperties power_supply;
+  if (signal.empty() ||
+      !power_supply.ParseFromArray(&signal.front(), signal.size())) {
+    LOG(ERROR) << "Unable to parse PowerSupplyPoll signal";
+    return;
+  }
+
   if (!power_supply.has_external_power())
     return;
 
@@ -68,41 +103,27 @@ void PowerEventsImpl::OnPowerSupplyPollSignal(
         break;
     }
   }
-
-  StopObservingPowerdIfNecessary();
 }
 
 void PowerEventsImpl::OnSuspendImminentSignal(
-    const power_manager::SuspendImminent& suspend_imminent) {
+    const std::vector<uint8_t>& /* signal */) {
   OnAnySuspendImminentSignal();
 }
 
 void PowerEventsImpl::OnDarkSuspendImminentSignal(
-    const power_manager::SuspendImminent& suspend_imminent) {
+    const std::vector<uint8_t>& /* signal */) {
   OnAnySuspendImminentSignal();
 }
 
 void PowerEventsImpl::OnSuspendDoneSignal(
-    const power_manager::SuspendDone& suspend_done) {
+    const std::vector<uint8_t>& /* signal */) {
   for (auto& observer : observers_)
     observer->OnOsResume();
-
-  StopObservingPowerdIfNecessary();
 }
 
 void PowerEventsImpl::OnAnySuspendImminentSignal() {
   for (auto& observer : observers_)
     observer->OnOsSuspend();
-
-  StopObservingPowerdIfNecessary();
-}
-
-void PowerEventsImpl::StopObservingPowerdIfNecessary() {
-  if (!observers_.empty())
-    return;
-
-  context_->powerd_adapter()->RemovePowerObserver(this);
-  is_observing_powerd_ = false;
 }
 
 }  // namespace diagnostics

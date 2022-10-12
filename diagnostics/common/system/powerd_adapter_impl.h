@@ -10,11 +10,8 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/observer_list.h>
 #include <dbus/bus.h>
-#include <dbus/message.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
-#include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "diagnostics/common/system/powerd_adapter.h"
 
@@ -30,26 +27,10 @@ class PowerdAdapterImpl : public PowerdAdapter {
   ~PowerdAdapterImpl() override;
 
   // PowerdAdapter overrides:
-  void AddPowerObserver(PowerObserver* observer) override;
-  void RemovePowerObserver(PowerObserver* observer) override;
   std::optional<power_manager::PowerSupplyProperties> GetPowerSupplyProperties()
       override;
 
  private:
-  // Handles PowerSupplyPoll signals emitted by powerd daemon.
-  void HandlePowerSupplyPoll(dbus::Signal* signal);
-
-  // Handles SuspendImminent signals emitted by powerd daemon.
-  void HandleSuspendImminent(dbus::Signal* signal);
-
-  // Handles DarkSuspendImminent signals emitted by powerd daemon.
-  void HandleDarkSuspendImminent(dbus::Signal* signal);
-
-  // Handles SuspendDone signals emitted by powerd daemon.
-  void HandleSuspendDone(dbus::Signal* signal);
-
-  base::ObserverList<PowerObserver> power_observers_;
-
   // Owned by external D-Bus bus passed in constructor.
   dbus::ObjectProxy* bus_proxy_;
 
