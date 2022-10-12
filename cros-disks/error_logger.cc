@@ -57,7 +57,6 @@ std::ostream& operator<<(std::ostream& out, const MountErrorType error) {
     CROS_DISKS_PRINT(MOUNT_ERROR_UNKNOWN_FILESYSTEM)
     CROS_DISKS_PRINT(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM)
     CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_ARCHIVE)
-    CROS_DISKS_PRINT(MOUNT_ERROR_UNSUPPORTED_ARCHIVE)
   }
   return out << "MOUNT_ERROR_"
              << static_cast<std::underlying_type_t<MountErrorType>>(error);

@@ -140,7 +140,6 @@ enum MountErrorType {
   MOUNT_ERROR_UNKNOWN_FILESYSTEM = 101,
   MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 102,
   MOUNT_ERROR_INVALID_ARCHIVE = 201,
-  MOUNT_ERROR_UNSUPPORTED_ARCHIVE = 202,
 };
 
 // MountSourceType enum values are solely used by Chrome/CrosDisks in
