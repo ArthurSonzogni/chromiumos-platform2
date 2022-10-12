@@ -85,6 +85,14 @@ class FakeStore : public StoreInterface {
                         const std::string& deprecated_key,
                         const std::string& plaintext_key,
                         const std::string& value) override;
+  bool GetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      std::vector<std::map<std::string, std::string>>* value) const override;
+  bool SetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      const std::vector<std::map<std::string, std::string>>& value) override;
   bool GetUint64List(const std::string& group,
                      const std::string& key,
                      std::vector<uint64_t>* value) const override;

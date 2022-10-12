@@ -5,6 +5,7 @@
 #ifndef SHILL_STORE_STORE_INTERFACE_H_
 #define SHILL_STORE_STORE_INTERFACE_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -176,6 +177,22 @@ class StoreInterface {
                                 const std::string& deprecated_key,
                                 const std::string& plaintext_key,
                                 const std::string& value) = 0;
+
+  // Gets a Stringmaps |value| associated with |group|:|key|. Returns true on
+  // success and false on failure (including when |group|:|key| is not present
+  // in the store). It is not an error to pass NULL as |value| to simply test
+  // for the presence of this value.
+  virtual bool GetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      std::vector<std::map<std::string, std::string>>* value) const = 0;
+
+  // Associates |group|:|key| with a Stringmaps |value|. Returns true on
+  // success, false otherwise.
+  virtual bool SetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      const std::vector<std::map<std::string, std::string>>& value) = 0;
 
   // Gets a uint64_t list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present

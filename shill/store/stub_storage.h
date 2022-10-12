@@ -5,6 +5,7 @@
 #ifndef SHILL_STORE_STUB_STORAGE_H_
 #define SHILL_STORE_STUB_STORAGE_H_
 
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -108,6 +109,18 @@ class StubStorage : public StoreInterface {
                         const std::string& deprecated_key,
                         const std::string& plaintext_key,
                         const std::string& value) override {
+    return false;
+  }
+  bool GetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      std::vector<std::map<std::string, std::string>>* value) const override {
+    return false;
+  }
+  bool SetStringmaps(
+      const std::string& group,
+      const std::string& key,
+      const std::vector<std::map<std::string, std::string>>& value) override {
     return false;
   }
   bool GetUint64List(const std::string& group,

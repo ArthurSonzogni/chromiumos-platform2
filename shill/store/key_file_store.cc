@@ -18,11 +18,13 @@
 #include <base/containers/cxx20_erase.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
+#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include <brillo/scoped_umask.h>
 #include <fcntl.h>
 #include <re2/re2.h>
@@ -756,6 +758,77 @@ bool KeyFileStore::DoesGroupMatchProperties(
     }
   }
   return true;
+}
+
+bool KeyFileStore::GetStringmaps(
+    const std::string& group,
+    const std::string& key,
+    std::vector<std::map<std::string, std::string>>* value) const {
+  std::string json;
+  if (!GetString(group, key, &json)) {
+    return false;
+  }
+  JSONStringValueDeserializer deserializer(json);
+  int error_code = 0;
+  std::string error_message;
+  auto maps = deserializer.Deserialize(&error_code, &error_message);
+  if (error_code) {
+    LOG(ERROR) << __func__ << " Failed to parse (" << group << ":" << key
+               << ") as Stringmaps. error: " << error_message;
+    return false;
+  }
+  if (!maps || !maps->is_list()) {
+    LOG(ERROR) << __func__ << " Failed to parse (" << group << ":" << key
+               << ") as Stringmaps. Cannot find Value List.";
+    return false;
+  }
+  std::vector<std::map<std::string, std::string>> read_stringmaps;
+  for (const auto& list_value : maps->GetList()) {
+    if (!list_value.is_dict()) {
+      LOG(ERROR) << __func__ << " Failed to parse (" << group << ":" << key
+                 << ") as Stringmaps. Cannot find Value Dict.";
+      return false;
+    }
+    auto& read_map = read_stringmaps.emplace_back();
+    for (auto dict_value : list_value.GetDict()) {
+      // Keys are always string, but values can be of any type.
+      if (!dict_value.second.is_string()) {
+        LOG(ERROR) << __func__ << " Failed to parse (" << group << ":" << key
+                   << ") as Stringmaps. Invalid data type for Dict value: "
+                   << base::Value::GetTypeName(dict_value.second.type());
+        return false;
+      }
+      read_map[dict_value.first] = std::move(dict_value.second.GetString());
+    }
+  }
+
+  if (value)
+    *value = std::move(read_stringmaps);
+
+  return true;
+}
+
+bool KeyFileStore::SetStringmaps(
+    const std::string& group,
+    const std::string& key,
+    const std::vector<std::map<std::string, std::string>>& value) {
+  base::Value::List json_val;
+  for (auto map_value : value) {
+    base::Value::Dict dict;
+    for (auto pair : map_value) {
+      dict.Set(pair.first, pair.second);
+    }
+    json_val.Append(std::move(dict));
+  }
+  std::string json;
+  JSONStringValueSerializer serializer(&json);
+  if (!serializer.Serialize(json_val)) {
+    LOG(ERROR) << __func__
+               << ": Failed to serialize stringmaps. group:" << group
+               << " key:" << key;
+    return false;
+  }
+  return SetString(group, key, json);
 }
 
 bool KeyFileStore::GetUint64List(const std::string& group,

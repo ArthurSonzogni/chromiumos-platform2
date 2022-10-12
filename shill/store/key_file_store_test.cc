@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <inttypes.h>
 
+#include "shill/data_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/pkcs11_slot_getter.h"
 
@@ -922,6 +923,54 @@ TEST_F(KeyFileStoreTest, SetUint64List) {
       ReadKeyFile());
 }
 
+TEST_F(KeyFileStoreTest, SetAndGetStringmaps) {
+  // Store a Stringmaps and verify that the escaped string used to store the
+  // Stringmaps can be stored inside another Stringmaps.
+  static const char kGroup[] = "group1";
+  static const char kKeyStringmapsEmpty[] = "e";
+  static const char kKeyStringmapsValue[] = "v";
+  static const char kKeyStringmapsInception[] = "v-inception";
+  static const char kMapKey1[] = "key1";
+  static const char kMapKey2[] = "key2";
+  static const char kValueString1[] = "\n\t\\&&%$\\#$5*9(;,.;,.;\n~`.;'\"";
+  static const char kValueString2[] = "%{}};;;.,;}^&\n^\\/\\/%$;,;.\r🤯";
+  static const Stringmaps smaps = {
+      {{kMapKey1, kValueString1}, {kMapKey2, kValueString2}},
+      {{kMapKey2, kValueString1}}};
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetStringmaps(kGroup, kKeyStringmapsEmpty, {}));
+  ASSERT_TRUE(store_->SetStringmaps(kGroup, kKeyStringmapsValue, smaps));
+  ASSERT_TRUE(store_->Close());
+  // Read JSON Stringmaps as a string, and store it inside another Stringmaps
+  ASSERT_TRUE(store_->Open());
+  std::string stringmapsJson;
+  ASSERT_TRUE(store_->GetString(kGroup, kKeyStringmapsValue, &stringmapsJson));
+  static const Stringmaps smaps2 = {{{kMapKey1, stringmapsJson}}};
+  ASSERT_TRUE(store_->SetStringmaps(kGroup, kKeyStringmapsInception, smaps2));
+  ASSERT_TRUE(store_->Close());
+  // Verify the value inside |kKeyStringmapsInception| matches |stringmapsJson|
+  ASSERT_TRUE(store_->Open());
+  Stringmaps smaps_value;
+  ASSERT_TRUE(
+      store_->GetStringmaps(kGroup, kKeyStringmapsInception, &smaps_value));
+  ASSERT_EQ(1, smaps_value.size());
+  ASSERT_EQ(1, smaps_value[0].size());
+  ASSERT_EQ(stringmapsJson, smaps_value[0][kMapKey1]);
+  // Verify the contents of |kKeyStringmapsValue|
+  ASSERT_TRUE(store_->GetStringmaps(kGroup, kKeyStringmapsValue, &smaps_value));
+  ASSERT_EQ(2, smaps_value.size());
+  ASSERT_EQ(2, smaps_value[0].size());
+  ASSERT_EQ(1, smaps_value[1].size());
+  ASSERT_EQ(kValueString1, smaps_value[0][kMapKey1]);
+  ASSERT_EQ(kValueString2, smaps_value[0][kMapKey2]);
+  ASSERT_EQ(kValueString1, smaps_value[1][kMapKey2]);
+  ASSERT_EQ(smaps, smaps_value);
+
+  ASSERT_TRUE(store_->GetStringmaps(kGroup, kKeyStringmapsEmpty, &smaps_value));
+  ASSERT_EQ(0, smaps_value.size());
+  ASSERT_TRUE(store_->Close());
+}
+
 namespace {
 class ReadOnlyKeyFileStore : public KeyFileStore {
  public:
@@ -983,7 +1032,9 @@ TEST_F(KeyFileStoreTest, Combo) {
   static const char kGroupC[] = "triangle";
   static const char kGroupX[] = "pentagon";
   static const char kKeyString[] = "color";
+  static const char kKeyString2[] = "color2";
   static const char kKeyStringList[] = "alternative-colors";
+  static const char kKeyStringmaps[] = "colors-options";
   static const char kKeyInt[] = "area";
   static const char kKeyBool[] = "visible";
   static const char kValueStringA[] = "blue";
@@ -994,22 +1045,30 @@ TEST_F(KeyFileStoreTest, Combo) {
   const int kValueIntB = 10;
   const int kValueIntBNew = 333;
   WriteKeyFile(base::StringPrintf(
-      "[%s]\n"
+      "[%s]\n"  // Group A
       "%s=%s\n"
       "%s=%s;%s\n"
       "%s=%d\n"
-      "[%s]\n"
+      "%s=[{\"%s\":\"%s\",\"%s\":\"%s\"},{\"%s\":\"%s\",\"%s\":\"%s\"}]\n"
+      "[%s]\n"  // Group B
       "%s=%s\n"
       "%s=%s;%s\n"
       "%s=%d\n"
       "%s=true\n"
-      "[%s]\n"
+      "[%s]\n"  // Group C
       "%s=%s\n"
       "%s=false\n",
+      // Group A
       kGroupA, kKeyString, kValueStringA, kKeyStringList, kValueStringB,
-      kValueStringC, kKeyInt, kValueIntA, kGroupB, kKeyString, kValueStringB,
-      kKeyStringList, kValueStringA, kValueStringC, kKeyInt, kValueIntB,
-      kKeyBool, kGroupC, kKeyString, kValueStringC, kKeyBool));
+      kValueStringC, kKeyInt, kValueIntA,
+      // Stringmaps
+      kKeyStringmaps, kKeyString, kValueStringA, kKeyString2, kValueStringB,
+      kKeyString, kValueStringB, kKeyString2, kValueStringC,
+      // Group B
+      kGroupB, kKeyString, kValueStringB, kKeyStringList, kValueStringA,
+      kValueStringC, kKeyInt, kValueIntB, kKeyBool,
+      // Group C
+      kGroupC, kKeyString, kValueStringC, kKeyBool));
   ASSERT_TRUE(store_->Open());
 
   EXPECT_TRUE(store_->ContainsGroup(kGroupA));
@@ -1044,6 +1103,19 @@ TEST_F(KeyFileStoreTest, Combo) {
     EXPECT_EQ(kValueStringB, value[0]);
     EXPECT_EQ(kValueStringC, value[1]);
     EXPECT_FALSE(store_->GetStringList(kGroupC, kKeyStringList, &value));
+  }
+  {
+    shill::Stringmaps value;
+    shill::Stringmap value0 = {{kKeyString, kValueStringA},
+                               {kKeyString2, kValueStringB}};
+    shill::Stringmap value1 = {{kKeyString, kValueStringB},
+                               {kKeyString2, kValueStringC}};
+    EXPECT_FALSE(store_->GetStringmaps(kGroupB, kKeyStringmaps, &value));
+    EXPECT_TRUE(store_->GetStringmaps(kGroupA, kKeyStringmaps, &value));
+    ASSERT_EQ(2, value.size());
+    EXPECT_EQ(value0, value[0]);
+    EXPECT_EQ(value1, value[1]);
+    EXPECT_FALSE(store_->GetStringmaps(kGroupC, kKeyStringmaps, &value));
   }
   {
     int value = 0;

@@ -218,6 +218,20 @@ bool FakeStore::SetCryptedString(const std::string& group,
   return SetString(group, plaintext_key, value);
 }
 
+bool FakeStore::GetStringmaps(
+    const std::string& group,
+    const std::string& key,
+    std::vector<std::map<std::string, std::string>>* value) const {
+  return ReadSetting(group, key, value);
+}
+
+bool FakeStore::SetStringmaps(
+    const std::string& group,
+    const std::string& key,
+    const std::vector<std::map<std::string, std::string>>& value) {
+  return WriteSetting(group, key, value);
+}
+
 bool FakeStore::GetUint64List(const std::string& group,
                               const std::string& key,
                               std::vector<uint64_t>* value) const {
