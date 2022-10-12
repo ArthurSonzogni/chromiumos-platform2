@@ -9,6 +9,7 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
@@ -60,6 +61,13 @@ namespace Types {
 using Plugin = PluginFactoryInterface::PluginType;
 }  // namespace Types
 
+// Support absl format for PluginType.
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+AbslFormatConvert(const PluginFactoryInterface::PluginType& type,
+                  const absl::FormatConversionSpec& conversion_spec,
+                  absl::FormatSink* output_sink);
+
+// Support streaming for PluginType.
 std::ostream& operator<<(std::ostream& out,
                          const PluginFactoryInterface::PluginType& type);
 

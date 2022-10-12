@@ -5,14 +5,13 @@
 #ifndef SECAGENTD_TEST_MOCK_MESSAGE_SENDER_H_
 #define SECAGENTD_TEST_MOCK_MESSAGE_SENDER_H_
 
-#include <memory>
-#include <utility>
-
+#include "gmock/gmock-function-mocker.h"
 #include "secagentd/message_sender.h"
-#include "testing/gmock/include/gmock/gmock.h"
+
 namespace secagentd {
 
 class MockMessageSender : public MessageSenderInterface {
+ public:
   MOCK_METHOD(absl::Status, InitializeQueues, (), (override));
   MOCK_METHOD(absl::Status,
               SendMessage,

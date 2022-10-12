@@ -2,17 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <absl/status/status.h>
-#include <absl/strings/str_format.h>
-#include <gmock/gmock-spec-builders.h>
-#include <gtest/gtest.h>
-#include <optional>
-#include <sstream>
-
+#include "absl/status/status.h"
+#include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
+#include "gtest/gtest.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
-#include "testing/gmock/include/gmock/gmock.h"
 
 namespace secagentd {
 
@@ -20,15 +15,6 @@ using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::TestWithParam;
-
-MATCHER_P(BPF_CBS_EQ, cbs, "BpfCallbacks are equal.") {
-  if (arg.ring_buffer_event_callback == cbs.ring_buffer_event_callback &&
-      arg.ring_buffer_read_ready_callback ==
-          cbs.ring_buffer_read_ready_callback) {
-    return true;
-  }
-  return false;
-}
 
 class BpfSkeletonFactoryTestFixture
     : public ::testing::TestWithParam<Types::BpfSkeleton> {
@@ -74,10 +60,6 @@ INSTANTIATE_TEST_SUITE_P(
     BpfSkeletonFactoryTestFixture,
     ::testing::ValuesIn<Types::BpfSkeleton>({Types::BpfSkeleton::kProcess}),
     [](const ::testing::TestParamInfo<BpfSkeletonFactoryTestFixture::ParamType>&
-           info) {
-      std::stringstream o;
-      o << info.param;
-      return o.str();
-    });
+           info) { return absl::StrFormat("%s", info.param); });
 
 }  // namespace secagentd

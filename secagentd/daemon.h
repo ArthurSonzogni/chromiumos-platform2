@@ -5,14 +5,12 @@
 #ifndef SECAGENTD_DAEMON_H_
 #define SECAGENTD_DAEMON_H_
 
-#include <absl/status/status.h>
-#include <base/memory/weak_ptr.h>
-#include <base/timer/timer.h>
-#include <brillo/daemons/dbus_daemon.h>
 #include <memory>
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
+#include "base/timer/timer.h"
+#include "brillo/daemons/dbus_daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 

@@ -6,11 +6,21 @@
 #define SECAGENTD_TEST_MOCK_BPF_SKELETON_H_
 
 #include <memory>
-#include <utility>
 
+#include "gmock/gmock-function-mocker.h"
+#include "gmock/gmock-generated-matchers.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "testing/gmock/include/gmock/gmock.h"
+
 namespace secagentd {
+
+MATCHER_P(BPF_CBS_EQ, cbs, "BpfCallbacks are equal.") {
+  if (arg.ring_buffer_event_callback == cbs.ring_buffer_event_callback &&
+      arg.ring_buffer_read_ready_callback ==
+          cbs.ring_buffer_read_ready_callback) {
+    return true;
+  }
+  return false;
+}
 
 class MockBpfSkeleton : public BpfSkeletonInterface {
  public:
@@ -21,23 +31,10 @@ class MockBpfSkeleton : public BpfSkeletonInterface {
 
 class MockSkeletonFactory : public BpfSkeletonFactoryInterface {
  public:
-  explicit MockSkeletonFactory(std::unique_ptr<BpfSkeletonInterface> bpf_skel)
-      : bpf_skel_(std::move(bpf_skel)) {}
-
-  MOCK_METHOD(void,
-              MockCreate,
-              (BpfSkeletonType type, const BpfCallbacks& cbs));
-
-  std::unique_ptr<BpfSkeletonInterface> Create(BpfSkeletonType type,
-                                               BpfCallbacks cbs) override {
-    MockCreate(type, cbs);
-    // Make a copy of the callbacks so unit tests can invoke them.
-    cbs_ = cbs;
-    return std::move(bpf_skel_);
-  }
-
-  BpfCallbacks cbs_;
-  std::unique_ptr<BpfSkeletonInterface> bpf_skel_;
+  MOCK_METHOD(std::unique_ptr<BpfSkeletonInterface>,
+              Create,
+              (BpfSkeletonType type, BpfCallbacks cbs),
+              (override));
 };
 }  // namespace secagentd
 

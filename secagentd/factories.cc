@@ -6,17 +6,26 @@
 #include <string>
 #include <utility>
 
+#include "absl/strings/str_format.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 
 namespace secagentd {
 
-std::ostream& operator<<(std::ostream& out, const Types::BpfSkeleton& type) {
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+AbslFormatConvert(const Types::BpfSkeleton& type,
+                  const absl::FormatConversionSpec&,
+                  absl::FormatSink* output_sink) {
   static const absl::flat_hash_map<Types::BpfSkeleton, std::string>
       kTypeToString{{Types::BpfSkeleton::kProcess, "Process"}};
   auto i = kTypeToString.find(type);
-  out << (i != kTypeToString.end() ? i->second : "Unknown");
+  output_sink->Append(i != kTypeToString.end() ? i->second : "Unknown");
+  return {.value = true};
+}
+
+std::ostream& operator<<(std::ostream& out, const Types::BpfSkeleton& type) {
+  out << absl::StreamFormat("%s", type);
   return out;
 }
 
@@ -48,12 +57,20 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
   return rv;
 }
 
-std::ostream& operator<<(std::ostream& out, const Types::Plugin& type) {
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+AbslFormatConvert(const Types::Plugin& type,
+                  const absl::FormatConversionSpec&,
+                  absl::FormatSink* sink) {
   static const absl::flat_hash_map<Types::Plugin, std::string> kTypeToString{
       {Types::Plugin::kProcess, "Process"}, {Types::Plugin::kAgent, "Agent"}};
 
   auto i = kTypeToString.find(type);
-  out << (i != kTypeToString.end() ? i->second : "Unknown");
+  sink->Append(i != kTypeToString.end() ? i->second : "Unknown");
+  return {.value = true};
+}
+
+std::ostream& operator<<(std::ostream& out, const Types::Plugin& type) {
+  out << absl::StreamFormat("%s", type);
   return out;
 }
 
@@ -75,5 +92,4 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
   }
   return rv;
 }
-
 }  // namespace secagentd

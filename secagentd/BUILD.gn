@@ -75,7 +75,10 @@ if (use.test) {
   }
 
   executable("secagentd_testrunner") {
-    sources = [ "test/bpf_skeleton_factory_tests.cc" ]
+    sources = [
+      "test/bpf_skeleton_factory_tests.cc",
+      "test/plugin_tests.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":secagentd_testrunner_config",

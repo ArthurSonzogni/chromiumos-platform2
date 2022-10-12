@@ -12,6 +12,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_format.h"
 #include "base/callback.h"
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "secagentd/bpf/process.h"
@@ -95,6 +96,12 @@ class BpfSkeletonFactoryInterface
 namespace Types {
 using BpfSkeleton = BpfSkeletonFactoryInterface::BpfSkeletonType;
 }  // namespace Types
+
+// Support absl format for BpfSkeletonType.
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+AbslFormatConvert(const BpfSkeletonFactoryInterface::BpfSkeletonType& type,
+                  const absl::FormatConversionSpec& spec,
+                  absl::FormatSink* sink);
 
 std::ostream& operator<<(
     std::ostream& out,
