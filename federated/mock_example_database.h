@@ -43,14 +43,21 @@ class MockExampleDatabase : public ExampleDatabase {
   //   database pointer when you are done with it.
   static std::tuple<std::unique_ptr<sqlite3, decltype(&sqlite3_close)>,
                     Iterator>
-  FakeIterator(int n,
-               const base::Time& start_time = base::Time(),
-               const base::Time& end_time = base::Time());
+  FakeIterator(int n);
 
   MOCK_METHOD(bool, Init, (const std::unordered_set<std::string>&), (override));
   MOCK_METHOD(bool, IsOpen, (), (const, override));
   MOCK_METHOD(bool, Close, (), (override));
   MOCK_METHOD(bool, CheckIntegrity, (), (const, override));
+  MOCK_METHOD(std::optional<MetaRecord>,
+              GetMetaRecord,
+              (const std::string&),
+              (const override));
+  MOCK_METHOD(bool,
+              UpdateMetaRecord,
+              (const std::string&, const MetaRecord&),
+              (const override));
+
   MOCK_METHOD(bool,
               DeleteOutdatedExamples,
               (const base::TimeDelta&),
@@ -59,10 +66,11 @@ class MockExampleDatabase : public ExampleDatabase {
               InsertExample,
               (const std::string&, const ExampleRecord&),
               (override));
-  MOCK_METHOD(Iterator,
-              GetIterator,
-              (const std::string&, const base::Time&, const base::Time&),
-              (const, override));
+  MOCK_METHOD(
+      Iterator,
+      GetIterator,
+      (const std::string&, const base::Time&, const base::Time&, bool, size_t),
+      (const, override));
   MOCK_METHOD(Iterator,
               GetIteratorForTesting,
               (const std::string&),

@@ -9,6 +9,8 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 #include "federated/device_status_monitor.h"
 #include "federated/example_database.h"
@@ -113,7 +115,29 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
     return false;
   }
 
+  if (criteria.task_name().empty()) {
+    LOG(ERROR) << "No valid task_name";
+    return false;
+  }
+
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
+
+  // Initializes `new_meta_record_`, if iterator is created successfully and the
+  // task starts, it keeps the largest seen example id and the associated
+  // example timestamp . If the task succeeds, metatable will be updated with
+  // `new_meta_record_`.
+  // Next time when running this task and if it prevents used examples, example
+  // selection will start from last_used_example_timestamp not inclusive.
+  // This is a precise breakpoint compared to last_contribution_time, because
+  // there may be new examples received during a computation and with timestamp
+  // in between last_used_example_timestamp and last_contribution_time. Such
+  // examples will never be used.
+  typed_context->new_meta_record_.identifier =
+      base::StringPrintf("%s#%s", typed_context->client_name_.c_str(),
+                         criteria.task_name().c_str());
+  typed_context->new_meta_record_.last_used_example_id = -1;
+  typed_context->new_meta_record_.last_used_example_timestamp =
+      base::Time::UnixEpoch();
 
   std::optional<ExampleDatabase::Iterator> example_iterator =
       typed_context->storage_manager_->GetExampleIterator(
@@ -135,8 +159,10 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
   if (context == nullptr)
     return false;
 
+  auto* typed_context = static_cast<FederatedClient::Context*>(context);
+
   const absl::StatusOr<ExampleRecord> record =
-      static_cast<FederatedClient::Context*>(context)->example_iterator_.Next();
+      typed_context->example_iterator_.Next();
 
   if (absl::IsInvalidArgument(record.status())) {
     return false;
@@ -148,6 +174,12 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
     char* const str_data = new char[*size];
     record->serialized_example.copy(str_data, *size);
     *data = str_data;
+
+    if (record->id > typed_context->new_meta_record_.last_used_example_id) {
+      typed_context->new_meta_record_.last_used_example_id = record->id;
+      typed_context->new_meta_record_.last_used_example_timestamp =
+          record->timestamp;
+    }
   } else {
     DCHECK(absl::IsOutOfRange(record.status()));
     *end = true;
@@ -247,6 +279,11 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
     // stopping retry in this case because it's very likely to fail again.
     if (next_retry_delay_ < kMinimalRetryWindow)
       next_retry_delay_ = kMinimalRetryWindow;
+
+    if (result.status == CONTRIBUTED) {
+      context.new_meta_record().timestamp = base::Time::Now();
+      storage_manager->UpdateMetaRecord(context.new_meta_record());
+    }
 
   } else {
     DVLOG(1) << "Failed to checkin with the servce, result.status = "

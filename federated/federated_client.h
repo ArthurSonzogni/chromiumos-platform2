@@ -57,6 +57,8 @@ class FederatedClient {
     Context& operator=(const Context&) = delete;
     ~Context();
 
+    MetaRecord& new_meta_record() { return new_meta_record_; }
+
     // Called by the library to prepare examples according to the criteria.
     static bool PrepareExamples(const char* const criteria_data,
                                 int criteria_data_size,
@@ -82,6 +84,9 @@ class FederatedClient {
 
    private:
     const std::string client_name_;
+    // New meta record that will be updated to Metatable if contribution
+    // succeeds.
+    MetaRecord new_meta_record_;
     // Not owned:
     const DeviceStatusMonitor* const device_status_monitor_;
     const StorageManager* const storage_manager_;

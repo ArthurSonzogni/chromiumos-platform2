@@ -26,9 +26,7 @@ constexpr char kCreateTableSql[] =
 
 std::tuple<std::unique_ptr<sqlite3, decltype(&sqlite3_close)>,
            ExampleDatabase::Iterator>
-MockExampleDatabase::FakeIterator(const int n,
-                                  const base::Time& start_time,
-                                  const base::Time& end_time) {
+MockExampleDatabase::FakeIterator(const int n) {
   // Create in-memory database.
   sqlite3* db;
   const int result = sqlite3_open(":memory:", &db);
@@ -51,8 +49,9 @@ MockExampleDatabase::FakeIterator(const int n,
              SQLITE_OK);
   }
 
-  return std::make_tuple(std::move(db_ptr),
-                         Iterator(db, "fake_client", start_time, end_time));
+  return std::make_tuple(
+      std::move(db_ptr),
+      Iterator(db, "fake_client", base::Time(), base::Time(), false, 0));
 }
 
 }  // namespace federated

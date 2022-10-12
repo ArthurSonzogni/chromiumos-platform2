@@ -199,8 +199,10 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmptyWithTimeRange) {
 
   int count = 0;
   int expected_id = 11;
+  // Start_timestamp is not included, therefore expected_id starts from 11
+  // rather than 10;
   ExampleDatabase::Iterator it = db_->GetIterator(
-      "test_client_1", SecondsAfterEpoch(11), SecondsAfterEpoch(30));
+      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30));
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
     if (!record.ok()) {
@@ -213,6 +215,64 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmptyWithTimeRange) {
               base::StringPrintf("example_%d", expected_id));
     EXPECT_EQ(record->timestamp, SecondsAfterEpoch(expected_id));
     expected_id++;
+    count++;
+  }
+
+  EXPECT_EQ(count, 20);
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DatabaseReadWithLimit) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  int count = 0;
+  int expected_id = 11;
+  // Start_timestamp is not included, therefore expected_id starts from 11
+  // rather than 10;
+  ExampleDatabase::Iterator it = db_->GetIterator(
+      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
+      /*descending=*/false, /*limit=*/10);
+  while (true) {
+    const absl::StatusOr<ExampleRecord> record = it.Next();
+    if (!record.ok()) {
+      EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+      break;
+    }
+
+    EXPECT_EQ(record->id, expected_id);
+    EXPECT_EQ(record->serialized_example,
+              base::StringPrintf("example_%d", expected_id));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(expected_id));
+    expected_id++;
+    count++;
+  }
+
+  EXPECT_EQ(count, 10);
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DatabaseReadOrderDesc) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  int count = 0;
+  int expected_id = 30;
+  // Start_timestamp is not included, therefore expected_id starts from 11
+  // rather than 10;
+  ExampleDatabase::Iterator it = db_->GetIterator(
+      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
+      /*descending=*/true);
+  while (true) {
+    const absl::StatusOr<ExampleRecord> record = it.Next();
+    if (!record.ok()) {
+      EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+      break;
+    }
+
+    EXPECT_EQ(record->id, expected_id);
+    EXPECT_EQ(record->serialized_example,
+              base::StringPrintf("example_%d", expected_id));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(expected_id));
+    expected_id--;
     count++;
   }
 
@@ -332,11 +392,11 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentWithTimeRange) {
       SQLITE_OK);
 
   ExampleDatabase::Iterator it[] = {
-      db_->GetIterator("test_client_1", SecondsAfterEpoch(1),
+      db_->GetIterator("test_client_1", SecondsAfterEpoch(0),
                        SecondsAfterEpoch(30)),
-      db_->GetIterator("test_client_1", SecondsAfterEpoch(51),
+      db_->GetIterator("test_client_1", SecondsAfterEpoch(50),
                        SecondsAfterEpoch(90)),
-      db_->GetIterator("test_client_2", SecondsAfterEpoch(1),
+      db_->GetIterator("test_client_2", SecondsAfterEpoch(0),
                        SecondsAfterEpoch(50)),
   };
   int count[] = {0, 0, 0};
@@ -415,9 +475,9 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentMultipleThread) {
         base::BindOnce(
             [](ExampleDatabase* const db, const std::string& client_name,
                const int start_second, const int end_second, int* const count) {
-              ExampleDatabase::Iterator it =
-                  db->GetIterator(client_name, SecondsAfterEpoch(start_second),
-                                  SecondsAfterEpoch(end_second));
+              ExampleDatabase::Iterator it = db->GetIterator(
+                  client_name, SecondsAfterEpoch(start_second - 1),
+                  SecondsAfterEpoch(end_second));
               while (true) {
                 const absl::StatusOr<ExampleRecord> record = it.Next();
                 if (!record.ok()) {
@@ -541,14 +601,15 @@ TEST_F(ExampleDatabaseTest, CountExamples) {
 TEST_F(ExampleDatabaseTest, CountExamplesWithTimeRange) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(1),
+  // Start_timestamp is not included.
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(0),
                               SecondsAfterEpoch(30)),
             30);
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(10),
                               SecondsAfterEpoch(30)),
             20);
   // The max timestamp in table is 100.
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
+  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(10),
                               SecondsAfterEpoch(200)),
             90);
 }
@@ -644,6 +705,39 @@ TEST_F(ExampleDatabaseTest, DeleteOutdatedExamples) {
   EXPECT_TRUE(absl::IsOutOfRange(record.status()));
 
   EXPECT_TRUE(db.Close());
+}
+
+// Tests meta table can be queried and updated successfully.
+TEST_F(ExampleDatabaseTest, MetaTableTest) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  const std::string identifier = "test_identifier";
+
+  // No record in meta table, gets nullopt.
+  EXPECT_EQ(db_->GetMetaRecord(identifier), std::nullopt);
+
+  // Inserts new record.
+  EXPECT_TRUE(db_->UpdateMetaRecord(
+      identifier, {identifier, 1, SecondsAfterEpoch(1), SecondsAfterEpoch(5)}));
+  auto meta_record = db_->GetMetaRecord(identifier);
+  EXPECT_TRUE(meta_record.has_value());
+  EXPECT_EQ(meta_record.value().last_used_example_id, 1);
+  EXPECT_EQ(meta_record.value().last_used_example_timestamp,
+            SecondsAfterEpoch(1));
+  EXPECT_EQ(meta_record.value().timestamp, SecondsAfterEpoch(5));
+
+  // Updates existing record.
+  EXPECT_TRUE(db_->UpdateMetaRecord(
+      identifier,
+      {identifier, 2, SecondsAfterEpoch(2), SecondsAfterEpoch(100)}));
+  meta_record = db_->GetMetaRecord(identifier);
+  EXPECT_TRUE(meta_record.has_value());
+  EXPECT_EQ(meta_record.value().last_used_example_id, 2);
+  EXPECT_EQ(meta_record.value().last_used_example_timestamp,
+            SecondsAfterEpoch(2));
+  EXPECT_EQ(meta_record.value().timestamp, SecondsAfterEpoch(100));
+
+  EXPECT_TRUE(db_->Close());
 }
 
 }  // namespace federated

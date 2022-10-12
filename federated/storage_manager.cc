@@ -94,6 +94,8 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
 std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     const std::string& client_name,
     const fcp::client::CrosExampleSelectorCriteria& criteria) const {
+  DCHECK(!criteria.task_name().empty());
+
   // This method may be called from different sequence but ExampleDatabase are
   // threadsafe.
   if (example_database_ == nullptr || !example_database_->IsOpen()) {
@@ -101,37 +103,58 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     return std::nullopt;
   }
 
-  if (!criteria.has_start_time() || !criteria.has_end_time()) {
-    LOG(ERROR) << "Client " << client_name << " time range not specified";
-    return std::nullopt;
+  const std::string task_identifier = base::StringPrintf(
+      "%s#%s", client_name.c_str(), criteria.task_name().c_str());
+  bool descending =
+      criteria.order() ==
+      fcp::client::CrosExampleSelectorCriteria::INSERTION_DESCENDING;
+  size_t limit = criteria.max_examples() > 0 ? criteria.max_examples() : 0;
+
+  // Time range default to a {ancient_enough_start, now};
+  base::Time end_timestamp = base::Time::Now();
+  base::Time start_timestamp = end_timestamp - 2 * kExampleTtl;
+
+  if (criteria.reject_used_examples()) {
+    // If descending & limit examples, last_used_example_timestamp may prevent
+    // unused examples.
+    DCHECK(!descending || limit == 0);
+
+    auto meta_record = example_database_->GetMetaRecord(task_identifier);
+    if (meta_record.has_value()) {
+      start_timestamp = meta_record.value().last_used_example_timestamp;
+    } else if (criteria.has_last_successful_contribution_time()) {
+      // This is an approximate and only works when there's no limit.
+      DCHECK_EQ(limit, 0);
+      start_timestamp = base::Time::FromJavaTime(
+          ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
+              criteria.last_successful_contribution_time()));
+    } else {
+      DVLOG(1) << "No valid start_timestamp to rule out used examples, use the "
+                  "default one";
+    }
   }
 
-  // TODO(b/251027462): criteria may contain this info
-  size_t min_example_count = kMinExampleCount;
-
-  const auto start_time = base::Time::FromJavaTime(
-      ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
-          criteria.start_time()));
-  const auto end_time = base::Time::FromJavaTime(
-      ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
-          criteria.end_time()));
-
-  DVLOG(1) << "Client " << client_name << " example time range {" << start_time
-           << ", " << end_time << "}.";
-  if (start_time > end_time || start_time < base::Time::UnixEpoch()) {
-    LOG(ERROR) << "Criteria has invalid start_time and end_time {" << start_time
-               << ", " << end_time << "}";
-    return std::nullopt;
-  }
-
-  if (example_database_->ExampleCount(client_name, start_time, end_time) <
-      min_example_count) {
+  const size_t min_example_count =
+      criteria.min_examples() > 0 ? criteria.min_examples() : kMinExampleCount;
+  if (example_database_->ExampleCount(client_name, start_timestamp,
+                                      end_timestamp) < min_example_count) {
     DVLOG(1) << "Client " << client_name << " "
              << "doesn't meet the minimum example count requirement";
     return std::nullopt;
   }
 
-  return example_database_->GetIterator(client_name, start_time, end_time);
+  return example_database_->GetIterator(client_name, start_timestamp,
+                                        end_timestamp, descending, limit);
+}
+
+bool StorageManager::UpdateMetaRecord(const MetaRecord& meta_record) const {
+  if (example_database_ == nullptr || !example_database_->IsOpen()) {
+    VLOG(1) << "No database connection";
+    return false;
+  }
+  DCHECK(!meta_record.identifier.empty());
+  return example_database_->UpdateMetaRecord(meta_record.identifier,
+                                             meta_record);
 }
 
 void StorageManager::OnSessionStarted() {

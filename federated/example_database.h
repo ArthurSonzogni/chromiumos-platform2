@@ -19,6 +19,16 @@
 
 namespace federated {
 
+// MetaRecord objects stored in the metatable. It records the last used example
+// in the latest successful round of a task (identifier composed of  client_name
+// and task_name).
+struct MetaRecord {
+  std::string identifier;
+  int64_t last_used_example_id;
+  base::Time last_used_example_timestamp;
+  base::Time timestamp;
+};
+
 // Example objects stored in corresponding `client_name` tables.
 // An example represents a training example of federated computation.
 struct ExampleRecord {
@@ -52,7 +62,8 @@ struct ExampleRecord {
 //    db.InsertExample(client_name, example_record);
 //
 // Query examples:
-//    ExampleDatabase::Iterator it = db.GetIterator("client_1");
+//    ExampleDatabase::Iterator it =
+//        db.GetIterator("client_1", start_timestamp, end_timestamp);
 //    while (true) {
 //      const absl::StatusOr<ExampleRecord> result = it.Next();
 //      if (result.ok()) {
@@ -76,10 +87,13 @@ class ExampleDatabase {
   struct Iterator final {
    public:
     Iterator();
+    // Iterator through example within time range (start_time, end_time].
     Iterator(sqlite3* db,
              const std::string& client_name,
              const base::Time& start_time,
-             const base::Time& end_time);
+             const base::Time& end_time,
+             bool descending,
+             size_t limit);
     Iterator(sqlite3* db, const std::string& client_name);
     Iterator(const Iterator& other) = delete;
     Iterator& operator=(const Iterator& other) = delete;
@@ -131,16 +145,28 @@ class ExampleDatabase {
   // timestamp column. Returns true if no error occurred.
   virtual bool DeleteOutdatedExamples(const base::TimeDelta& example_ttl) const;
 
+  // Returns identifier's meta record if meta table has its record, otherwise
+  // returns nullopt;
+  virtual std::optional<MetaRecord> GetMetaRecord(
+      const std::string& identifier) const;
+
+  // Updates the identifier's last_used_example_id to meta table.
+  virtual bool UpdateMetaRecord(const std::string& identifier,
+                                const MetaRecord& new_meta_record) const;
+
   // Returns an iterator through the examples for the given client within the
-  // time range.
+  // time range. Limits examples if `limit` > 0, otherwise iterates through all
+  // examples in the range.
   //
   // WARNING: client names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
-  //          code injection unless the provided names are carefully vetted or
-  //          sanitized.
+  //          code injection unless the provided names are carefully vetted
+  //          or sanitized.
   virtual Iterator GetIterator(const std::string& client_name,
                                const base::Time& start_time,
-                               const base::Time& end_time) const;
+                               const base::Time& end_time,
+                               bool descending = false,
+                               size_t limit = 0) const;
 
   // Similar to GetIterator but without time range, returns an iterator through
   // all examples for the given client.
@@ -205,11 +231,16 @@ class ExampleDatabase {
   int ExampleCountInternal(const std::string& client_name,
                            const std::string& where_clause) const;
 
-  // Returns true if the client's table exists.
-  bool ClientTableExists(const std::string& client_name) const;
+  // Returns true if the given table_name exists.
+  bool TableExists(const std::string& table_name) const;
 
   // Returns true if the client's table is created without error.
   bool CreateClientTable(const std::string& client_name);
+
+  // Returns true if the metatable exists.
+  bool MetaTableExists() const;
+  // Returns true if metatable is created without error.
+  bool CreateMetaTable();
 
   // Executes sql.
   ExecResult ExecSql(const std::string& sql) const;

@@ -7,6 +7,7 @@
 #include <cinttypes>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -23,6 +24,8 @@ namespace federated {
 
 namespace {
 
+constexpr char kMetaTableName[] = "metatable";
+
 // Populates SQL where clause with given start and end time if they are not zero
 // values, returns an empty string (i.e. no-op) otherwise.
 std::string MaybeWhereClause(const base::Time& start_time,
@@ -30,11 +33,11 @@ std::string MaybeWhereClause(const base::Time& start_time,
   if (start_time == base::Time() && end_time == base::Time())
     return std::string();
 
-  DCHECK(start_time <= end_time)
-      << "Invalid time range: start_time must <= end_time";
-  DCHECK(start_time > base::Time::UnixEpoch())
-      << "Invalid time range: start_time must > UnixEpoch()";
-  return base::StringPrintf("WHERE timestamp>=%" PRId64
+  DCHECK(start_time < end_time)
+      << "Invalid time range: start_time must < end_time";
+  DCHECK(start_time >= base::Time::UnixEpoch())
+      << "Invalid time range: start_time must >= UnixEpoch()";
+  return base::StringPrintf("WHERE timestamp>%" PRId64
                             " AND timestamp<=%" PRId64,
                             start_time.ToJavaTime(), end_time.ToJavaTime());
 }
@@ -78,12 +81,12 @@ int IntegrityCheckCallback(void* const /* std::string* const */ data,
   return SQLITE_OK;
 }
 
-// Used in ClientTableExists to extract state code and table_count from SQL
+// Used in TableExists to extract state code and table_count from SQL
 // exec.
-int ClientTableExistsCallback(void* const /* int* const */ data,
-                              const int col_count,
-                              char** const cols,
-                              char** const /* names */) {
+int TableExistsCallback(void* const /* int* const */ data,
+                        const int col_count,
+                        char** const cols,
+                        char** const /* names */) {
   DCHECK(data != nullptr);
   DCHECK(cols != nullptr);
 
@@ -127,15 +130,22 @@ ExampleDatabase::Iterator::Iterator() : stmt_(nullptr) {}
 ExampleDatabase::Iterator::Iterator(sqlite3* const db,
                                     const std::string& client_name,
                                     const base::Time& start_time,
-                                    const base::Time& end_time) {
+                                    const base::Time& end_time,
+                                    bool descending,
+                                    const size_t limit) {
   if (db == nullptr) {
     stmt_ = nullptr;
     return;
   }
 
+  const std::string order = descending ? "DESC" : std::string();
+  const std::string limit_clause =
+      limit > 0 ? base::StringPrintf("LIMIT %zu", limit) : std::string();
+
   const std::string sql_code = base::StringPrintf(
-      "SELECT id, example, timestamp FROM %s %s ORDER BY id;",
-      client_name.c_str(), MaybeWhereClause(start_time, end_time).c_str());
+      "SELECT id, example, timestamp FROM %s %s ORDER BY id %s %s;",
+      client_name.c_str(), MaybeWhereClause(start_time, end_time).c_str(),
+      order.c_str(), limit_clause.c_str());
   const int result =
       sqlite3_prepare_v2(db, sql_code.c_str(), -1, &stmt_, nullptr);
 
@@ -148,8 +158,12 @@ ExampleDatabase::Iterator::Iterator(sqlite3* const db,
 
 ExampleDatabase::Iterator::Iterator(sqlite3* const db,
                                     const std::string& client_name)
-    : ExampleDatabase::Iterator::Iterator(
-          db, client_name, base::Time(), base::Time()) {}
+    : ExampleDatabase::Iterator::Iterator(db,
+                                          client_name,
+                                          base::Time(),
+                                          base::Time(),
+                                          /*descending=*/false,
+                                          /*limit=*/0) {}
 
 ExampleDatabase::Iterator::Iterator(ExampleDatabase::Iterator&& o)
     : stmt_(o.stmt_) {
@@ -243,8 +257,16 @@ bool ExampleDatabase::Init(const std::unordered_set<std::string>& clients) {
     return false;
   }
 
+  // Prepares meta table.
+  if (!TableExists(kMetaTableName) && !CreateMetaTable()) {
+    LOG(ERROR) << "Failed to prepare meta table";
+    Close();
+    return false;
+  }
+
+  // Prepares client tables.
   for (const auto& client : clients) {
-    if ((!ClientTableExists(client) && !CreateClientTable(client))) {
+    if ((!TableExists(client) && !CreateClientTable(client))) {
       LOG(ERROR) << "Failed to prepare table for client " << client;
       Close();
 
@@ -336,11 +358,88 @@ bool ExampleDatabase::DeleteOutdatedExamples(
   return error_count == 0;
 }
 
+std::optional<MetaRecord> ExampleDatabase::GetMetaRecord(
+    const std::string& identifier) const {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to get last used example id in a closed database";
+    return std::nullopt;
+  }
+
+  // Uses prepared stmt instead of a simple ExecSql because stmt returns
+  // SQLITE_DONE explicitly when there are no matching records, while ExecSql
+  // just returns SQLITE_OK anyway.
+  sqlite3_stmt* stmt = nullptr;
+  const std::string sql = base::StringPrintf(
+      "SELECT last_used_example_id, last_used_example_timestamp, timestamp "
+      "FROM %s WHERE identifier = '%s';",
+      kMetaTableName, identifier.c_str());
+  int sqlite_code =
+      sqlite3_prepare_v2(db_.get(), sql.c_str(), -1, &stmt, nullptr);
+
+  if (sqlite_code != SQLITE_OK) {
+    LOG(ERROR) << "Couldn't compile SELECT statement: "
+               << sqlite3_errmsg(db_.get());
+    return std::nullopt;
+  }
+
+  std::optional<MetaRecord> result;
+  sqlite_code = sqlite3_step(stmt);
+  if (sqlite_code == SQLITE_ROW) {
+    MetaRecord record;
+    record.last_used_example_id = sqlite3_column_int64(stmt, 0);
+    record.last_used_example_timestamp =
+        base::Time::FromJavaTime(sqlite3_column_int64(stmt, 1));
+    record.timestamp = base::Time::FromJavaTime(sqlite3_column_int64(stmt, 2));
+    result = std::move(record);
+  } else if (sqlite_code == SQLITE_DONE) {
+    DVLOG(1) << "Metatable doesn't have record for identifier = " << identifier;
+  } else {  // This is unexpected, logs an error.
+    LOG(ERROR) << "Failed to retrieve last_used_example_id for identifier = "
+               << identifier;
+  }
+
+  sqlite3_finalize(stmt);
+
+  return result;
+}
+
+bool ExampleDatabase::UpdateMetaRecord(
+    const std::string& identifier, const MetaRecord& new_meta_record) const {
+  DCHECK_GE(new_meta_record.last_used_example_id, 0);
+  DCHECK_GE(new_meta_record.last_used_example_timestamp,
+            base::Time::UnixEpoch());
+  DCHECK_GE(new_meta_record.timestamp, base::Time::UnixEpoch());
+
+  const std::string sql = base::StringPrintf(
+      "INSERT INTO %s (identifier, last_used_example_id, "
+      "last_used_example_timestamp, timestamp) VALUES("
+      "'%s', %" PRId64 ", %" PRId64 ", %" PRId64
+      ") ON CONFLICT(identifier) DO UPDATE SET "
+      "last_used_example_id=excluded.last_used_example_id, "
+      "last_used_example_timestamp=excluded.last_used_example_timestamp, "
+      "timestamp=excluded.timestamp;",
+      kMetaTableName, identifier.c_str(), new_meta_record.last_used_example_id,
+      new_meta_record.last_used_example_timestamp.ToJavaTime(),
+      new_meta_record.timestamp.ToJavaTime());
+
+  ExecResult result = ExecSql(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to update last_used_example_id for identifier: "
+               << identifier << " with error message:" << result.error_msg;
+    return false;
+  }
+
+  return true;
+}
+
 ExampleDatabase::Iterator ExampleDatabase::GetIterator(
     const std::string& client_name,
     const base::Time& start_time,
-    const base::Time& end_time) const {
-  return Iterator(db_.get(), client_name, start_time, end_time);
+    const base::Time& end_time,
+    bool descending,
+    const size_t limit) const {
+  return Iterator(db_.get(), client_name, start_time, end_time, descending,
+                  limit);
 }
 
 ExampleDatabase::Iterator ExampleDatabase::GetIteratorForTesting(
@@ -398,7 +497,7 @@ void ExampleDatabase::DeleteAllExamples(const std::string& client_name) {
   }
 }
 
-bool ExampleDatabase::ClientTableExists(const std::string& client_name) const {
+bool ExampleDatabase::TableExists(const std::string& table_name) const {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to query table of a closed database";
     return false;
@@ -408,9 +507,8 @@ bool ExampleDatabase::ClientTableExists(const std::string& client_name) const {
   const std::string sql_code = base::StringPrintf(
       "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = "
       "'%s';",
-      client_name.c_str());
-  ExecResult result =
-      ExecSql(sql_code, ClientTableExistsCallback, &table_count);
+      table_name.c_str());
+  ExecResult result = ExecSql(sql_code, TableExistsCallback, &table_count);
 
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query table existence: " << result.error_msg;
@@ -421,7 +519,7 @@ bool ExampleDatabase::ClientTableExists(const std::string& client_name) const {
     return false;
 
   DCHECK(table_count == 1) << "There should be only one table with name '"
-                           << client_name << "'";
+                           << table_name << "'";
 
   return true;
 }
@@ -448,6 +546,32 @@ bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
   return true;
 }
 
+bool ExampleDatabase::MetaTableExists() const {
+  return TableExists(std::string(kMetaTableName));
+}
+
+bool ExampleDatabase::CreateMetaTable() {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to create table in a closed database";
+    return false;
+  }
+
+  const std::string sql = base::StringPrintf(
+      "CREATE TABLE %s ("
+      " identifier                    TEXT PRIMARY KEY NOT NULL,"
+      " last_used_example_id          INTEGER NOT NULL,"
+      " last_used_example_timestamp   INTEGER NOT NULL,"
+      " timestamp                     INTEGER NOT NULL"
+      ")",
+      kMetaTableName);
+  const ExecResult result = ExecSql(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to create table: " << result.error_msg;
+    return false;
+  }
+  return true;
+}
+
 int ExampleDatabase::ExampleCount(const std::string& client_name,
                                   const base::Time& start_time,
                                   const base::Time& end_time) const {
@@ -459,7 +583,8 @@ int ExampleDatabase::ExampleCount(const std::string& client_name,
 
 int ExampleDatabase::ExampleCountForTesting(
     const std::string& client_name) const {
-  return ExampleCountInternal(client_name, /* where_clause = */ std::string());
+  return ExampleCountInternal(client_name, /* where_clause = */
+                              std::string());
 }
 
 int ExampleDatabase::ExampleCountInternal(
@@ -473,7 +598,7 @@ int ExampleDatabase::ExampleCountInternal(
   const ExecResult result =
       ExecSql(base::StringPrintf("SELECT COUNT(*) FROM %s %s;",
                                  client_name.c_str(), where_clause.c_str()),
-              &ExampleCountCallback, &count);
+              ExampleCountCallback, &count);
 
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to count examples: " << result.error_msg;
