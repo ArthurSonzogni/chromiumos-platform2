@@ -156,7 +156,7 @@ fn write_to_path_patterns(pattern: &str, new_value: &str) -> Result<()> {
         let path = entry?;
         let current_value = read_to_string(&path)
             .with_context(|| format!("Error reading attribute from {}", path.display()))?;
-        if current_value != new_value {
+        if current_value.trim_end_matches('\n') != new_value {
             std::fs::write(&path, new_value).with_context(|| {
                 format!(
                     "Failed to set attribute to {}, new value: {}",
