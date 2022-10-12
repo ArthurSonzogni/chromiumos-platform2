@@ -183,15 +183,22 @@ pub async fn unmount_dlc(
     }
 }
 
-pub async fn unmount_all(mount_map: ShaderCacheMountMap) {
+pub async fn unmount_all(mount_map: ShaderCacheMountMap) -> Result<()> {
     let mut mount_map = mount_map.write().await;
+    let mut failed_unmounts: Vec<VmId> = Vec::new();
 
     for (cache_id, cache_metadata) in mount_map.iter_mut() {
         if cache_metadata.mounted {
             debug!("Unmounting: {:?}", cache_id);
             if let Err(e) = unmount(cache_metadata) {
+                failed_unmounts.push(cache_id.clone());
                 error!("Failed to unmount {:?}: {}", cache_id, e);
             }
         }
     }
+
+    if failed_unmounts.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!("Failed to unmount {:?}", failed_unmounts))
 }

@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,6 +14,7 @@ pub const INTERFACE_NAME: &str = SERVICE_NAME;
 pub const MOUNT_SIGNAL_NAME: &str = "ShaderCacheMountStatusChanged";
 pub const INSTALL_METHOD: &str = "Install";
 pub const UNINSTALL_METHOD: &str = "Uninstall";
+pub const PURGE_METHOD: &str = "Purge";
 
 // TODO(b/247385169): get these from system_api c++ header instead
 pub mod dlc_service {
@@ -23,6 +24,7 @@ pub mod dlc_service {
 
     pub const INSTALL_METHOD: &str = "InstallDlc";
     pub const UNINSTALL_METHOD: &str = "Uninstall";
+    pub const GET_INSTALLED_METHOD: &str = "GetInstalled";
 
     pub const DLC_STATE_CHANGED_SIGNAL: &str = "DlcStateChanged";
 }

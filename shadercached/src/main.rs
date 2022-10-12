@@ -96,6 +96,20 @@ pub async fn main() -> Result<()> {
                 }
             },
         );
+
+        let c_clone3 = c.clone();
+        let mount_points_clone3 = mount_points.clone();
+        // Method Uninstall
+        builder.method_with_cr_async(PURGE_METHOD, (), (), move |mut ctx, _, ()| {
+            info!("Received purge request");
+            let handler = handle_purge(mount_points_clone3.clone(), c_clone3.clone());
+            async move {
+                match handler.await {
+                    Ok(result) => ctx.reply(Ok(result)),
+                    Err(e) => ctx.reply(Err(e)),
+                }
+            }
+        });
     });
     cr.insert(PATH_NAME, &[iface_token], ());
 

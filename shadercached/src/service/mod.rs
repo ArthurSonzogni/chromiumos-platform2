@@ -206,7 +206,36 @@ pub async fn handle_dlc_state_changed(
     }
 }
 
+pub async fn handle_purge(
+    mount_map: ShaderCacheMountMap,
+    conn: Arc<SyncConnection>,
+) -> Result<(), MethodErr> {
+    unmount_all(mount_map).await.map_err(to_method_err)?;
+    let dlcservice_proxy = dbus::nonblock::Proxy::new(
+        dlc_service::SERVICE_NAME,
+        dlc_service::PATH_NAME,
+        Duration::from_millis(5000),
+        conn.clone(),
+    );
+    let (installed_ids,): (Vec<String>,) = dlcservice_proxy
+        .method_call(
+            dlc_service::INTERFACE_NAME,
+            dlc_service::GET_INSTALLED_METHOD,
+            (),
+        )
+        .await?;
+    for dlc_id in installed_ids {
+        if let Ok(steam_game_id) = dlc_to_steam_app_id(&dlc_id) {
+            uninstall_shader_cache_dlc(steam_game_id, conn.clone())
+                .await
+                .map_err(to_method_err)?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn clean_up(mount_map: ShaderCacheMountMap) {
     debug!("Unmounting all");
-    unmount_all(mount_map).await;
+    // Ignore unmount_all errors here, clean_up is only called on exit.
+    let _ = unmount_all(mount_map).await;
 }
