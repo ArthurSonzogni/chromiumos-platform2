@@ -62,7 +62,7 @@
 // }
 // int value = status_or.value();
 // ...
-// ASSIGN_OR_RETURN(int value, g()).WithStatus<AnotherErrorType>(args);
+// ASSIGN_OR_RETURN(int value, g(), _.WithStatus<AnotherErrorType>(args));
 //
 // If the code only needs to propagate the error without modification:
 //
@@ -71,12 +71,12 @@
 // if the returned value of the function is not StatusChain, As() use as
 // value.
 //
-// ASSIGN_OR_RETURN(int value, g()).As(42);
+// ASSIGN_OR_RETURN(int value, g(), _.As(42));
 //
 // Log* variant prints the error message and status.ToFullString before
 // returning.
 //
-// ASSIGN_OR_RETURN(int value, g()).LogError() << "some log";
+// ASSIGN_OR_RETURN(int value, g(), _.LogError() << "some log");
 
 #ifdef RETURN_IF_ERROR
 #error "RETURN_IF_ERROR is defined in the scope."
