@@ -673,7 +673,10 @@ fn write_global_powersave_bias(root: &Path, value: u32) -> Result<()> {
     let ondemand_path = root.join("sys/devices/system/cpu/cpufreq/ondemand");
     fs::create_dir_all(&ondemand_path)?;
 
-    std::fs::write(ondemand_path.join("powersave_bias"), value.to_string())?;
+    std::fs::write(
+        ondemand_path.join("powersave_bias"),
+        value.to_string() + "\n",
+    )?;
 
     Ok(())
 }
@@ -683,7 +686,10 @@ fn read_global_powersave_bias(root: &Path) -> Result<String> {
         .join("sys/devices/system/cpu/cpufreq/ondemand")
         .join("powersave_bias");
 
-    let powersave_bias = std::fs::read_to_string(powersave_bias_path)?;
+    let mut powersave_bias = std::fs::read_to_string(powersave_bias_path)?;
+    if powersave_bias.ends_with('\n') {
+        powersave_bias.pop();
+    }
 
     Ok(powersave_bias)
 }
@@ -702,7 +708,10 @@ fn read_global_sampling_rate(root: &Path) -> Result<String> {
         .join("sys/devices/system/cpu/cpufreq/ondemand")
         .join("sampling_rate");
 
-    let sampling_rate = std::fs::read_to_string(sampling_rate_path)?;
+    let mut sampling_rate = std::fs::read_to_string(sampling_rate_path)?;
+    if sampling_rate.ends_with('\n') {
+        sampling_rate.pop();
+    }
 
     Ok(sampling_rate)
 }
@@ -726,7 +735,7 @@ fn write_per_policy_scaling_governor(root: &Path, governor: config::Governor) {
         fs::create_dir_all(&policy_path).unwrap();
         std::fs::write(
             policy_path.join(SCALING_GOVERNOR_FILENAME),
-            governor.to_name(),
+            governor.to_name().to_string() + "\n",
         )
         .unwrap();
     }
@@ -736,7 +745,7 @@ fn check_per_policy_scaling_governor(root: &Path, expected: config::Governor) {
     for policy in TEST_CPUFREQ_POLICIES {
         let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
         let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
-        assert_eq!(scaling_governor, expected.to_name());
+        assert_eq!(scaling_governor.trim_end_matches('\n'), expected.to_name());
     }
 }
 
@@ -747,7 +756,7 @@ fn write_per_policy_powersave_bias(root: &Path, value: u32) {
         fs::create_dir_all(&ondemand_path).unwrap();
         std::fs::write(
             ondemand_path.join(POWERSAVE_BIAS_FILENAME),
-            value.to_string(),
+            value.to_string() + "\n",
         )
         .unwrap();
     }
@@ -760,7 +769,7 @@ fn check_per_policy_powersave_bias(root: &Path, expected: u32) {
             .join(ONDEMAND_DIRECTORY)
             .join(POWERSAVE_BIAS_FILENAME);
         let powersave_bias = std::fs::read_to_string(powersave_bias_path).unwrap();
-        assert_eq!(powersave_bias, expected.to_string());
+        assert_eq!(powersave_bias.trim_end_matches('\n'), expected.to_string());
     }
 }
 

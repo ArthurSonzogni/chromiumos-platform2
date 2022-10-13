@@ -189,7 +189,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
 
         let current_value_str = read_to_string(&path)
             .with_context(|| format!("Error reading ondemand parameter from {}", path.display()))?;
-        let current_value = current_value_str.parse::<u32>()?;
+        let current_value = current_value_str.trim_end_matches('\n').parse::<u32>()?;
 
         // Check current value before writing to avoid permission error when the new value and
         // current value are the same but resourced didn't own the parameter file.
