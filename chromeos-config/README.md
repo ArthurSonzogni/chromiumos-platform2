@@ -583,10 +583,13 @@ In the tables below,
 ### fingerprint-health
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| detect-zones | array - [detect-zones](#detect_zones) |  | True |  | False | Rectangles [x1, y1, x2, y2].  |
+| detect-zones | array - [detect-zones](#detect_zones) |  | False |  | False | Rectangles [x1, y1, x2, y2].  |
 | max-dead-pixels | integer |  | True |  | False | The maximum allowed number of dead pixels on the fingerprint sensor.  Minimum value: 0x0. |
 | max-dead-pixels-in-detect-zone | integer |  | True |  | False | The maximum allowed number of dead pixels in the detection zone.  Minimum value: 0x0. |
+| max-error-reset-pixels | integer |  | True |  | False | The maximum allowed number of error pixels when doing the reset test on the fingerprint sensor.  Minimum value: 0x0. |
 | max-pixel-dev | integer |  | True |  | False | The maximum deviation from the median for a pixel.  Minimum value: 0x0. |
+| max-reset-pixel-dev | integer |  | True |  | False | The maximum deviation from the median for a pixel when doing the reset test.  Minimum value: 0x0. |
+| num-detect-zone | integer |  | True |  | False | The number of detect zone.  Minimum value: 0x0. |
 | pixel-median | [pixel-median](#pixel_median) |  | True |  | False | Range constraints of the pixel median value of the checkerboards.  |
 | routine-enable | boolean |  | True |  | False | Enable fingerprint diagnostic routine or not.  |
 

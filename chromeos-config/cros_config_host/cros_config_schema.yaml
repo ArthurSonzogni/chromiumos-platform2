@@ -1315,6 +1315,11 @@ properties:
                             - icb-type2-lower
                             - icb-type2-upper
                           additionalProperties: false
+                        num-detect-zone:
+                          type: integer
+                          description: |
+                            The number of detect zone.
+                          minimum: 0
                         detect-zones:
                           type: array
                           description: |
@@ -1351,13 +1356,27 @@ properties:
                               - x2
                               - y2
                             additionalProperties: false
+                        max-error-reset-pixels:
+                          type: integer
+                          description: |
+                            The maximum allowed number of error pixels when
+                            doing the reset test on the fingerprint sensor.
+                          minimum: 0
+                        max-reset-pixel-dev:
+                          type: integer
+                          description: |
+                            The maximum deviation from the median for a pixel
+                            when doing the reset test.
+                          minimum: 0
                       required:
                         - routine-enable
                         - max-dead-pixels
                         - max-dead-pixels-in-detect-zone
                         - max-pixel-dev
                         - pixel-median
-                        - detect-zones
+                        - num-detect-zone
+                        - max-error-reset-pixels
+                        - max-reset-pixel-dev
                     nvme-wear-level:
                       type: object
                       properties:
