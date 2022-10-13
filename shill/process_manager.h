@@ -66,6 +66,7 @@ class ProcessManager {
   };
 
   static constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
+  static constexpr pid_t kInvalidPID = -1;
 
   virtual ~ProcessManager();
 
@@ -80,10 +81,10 @@ class ProcessManager {
 
   // Create and start a process for |program| with |arguments|. |environment|
   // variables will be setup in the child process before exec the |program|.
-  // |terminate_with_parent| is used to indicate if child process should
-  // self terminate if the parent process exits.  |exit_callback| will be
-  // invoked when child process exits (not terminated by us).  Return -1
-  // if failed to start the process, otherwise, return the pid of the child
+  // |terminate_with_parent| is used to indicate if child process should self
+  // terminate if the parent process exits.  |exit_callback| will be invoked
+  // when child process exits (not terminated by us).  Return kInvalidPID if
+  // failed to start the process, otherwise, return the pid of the child
   // process.
   virtual pid_t StartProcess(
       const base::Location& spawn_source,

@@ -27,7 +27,7 @@ using testing::DoAll;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrEq;
-using testing::WithArg;
+using testing::WithArgs;
 
 namespace shill {
 
@@ -285,6 +285,7 @@ TEST_F(ProcessManagerTest, UpdateExitCallbackUpdatesCallback) {
 }
 
 TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
+  const pid_t kPid = 456;
   const std::string kProgram = "/usr/bin/dump";
   const std::vector<std::string> kArgs = {"-b", "-g"};
   const std::map<std::string, std::string> kEnv = {
@@ -318,16 +319,19 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   EXPECT_CALL(minijail_,
               RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
                                     IsProcessEnv(kEnv), _, _, _, _))
-      .WillOnce(WithArg<5>([&process_side_stdout_fd](int* stdout_fd) {
-        int fds[2];
-        CHECK(base::CreateLocalNonBlockingPipe(fds));
-        *stdout_fd = fds[0];
-        process_side_stdout_fd.reset(fds[1]);
-        return true;
-      }));
+      .WillOnce(
+          WithArgs<3, 5>([&process_side_stdout_fd](pid_t* pid, int* stdout_fd) {
+            int fds[2];
+            CHECK(base::CreateLocalNonBlockingPipe(fds));
+            *stdout_fd = fds[0];
+            process_side_stdout_fd.reset(fds[1]);
+            *pid = kPid;
+            return true;
+          }));
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithStdout(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
       base::BindLambdaForTesting(callback));
+  ASSERT_NE(actual_pid, ProcessManager::kInvalidPID);
 
   constexpr int kExpectedExitStatus = 123;
   std::string expected_stdout;

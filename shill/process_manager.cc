@@ -108,7 +108,7 @@ pid_t ProcessManager::StartProcess(
       base::BindOnce(&SetupChild, environment, terminate_with_parent));
   if (!process->Start()) {
     LOG(ERROR) << "Failed to start child process for " << program.value();
-    return -1;
+    return kInvalidPID;
   }
 
   // Setup watcher for the child process.
@@ -136,7 +136,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     struct std_file_descriptors std_fds) {
   pid_t pid = StartProcessInMinijailWithPipesInternal(
       spawn_source, program, arguments, environment, minijail_options, std_fds);
-  if (pid == -1) {
+  if (pid == kInvalidPID) {
     return pid;
   }
   watched_processes_[pid].exit_callback = std::move(exit_callback);
@@ -154,7 +154,7 @@ pid_t ProcessManager::StartProcessInMinijailWithStdout(
   pid_t pid = StartProcessInMinijailWithPipesInternal(
       spawn_source, program, arguments, environment, minijail_options,
       {.stdout_fd = &stdout_fd});
-  if (pid == -1) {
+  if (pid == kInvalidPID) {
     return pid;
   }
   auto& watched_process = watched_processes_[pid];
@@ -322,7 +322,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipesInternal(
   if (!minijail_->DropRoot(jail, minijail_options.user.c_str(),
                            minijail_options.group.c_str())) {
     LOG(ERROR) << "Minijail failed to drop root privileges?";
-    return -1;
+    return kInvalidPID;
   }
 
   if (minijail_options.inherit_supplementary_groups) {
@@ -349,7 +349,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipesInternal(
   if (!minijail_->RunEnvPipesAndDestroy(jail, args, env, &pid, std_fds.stdin_fd,
                                         std_fds.stdout_fd, std_fds.stderr_fd)) {
     LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
-    return -1;
+    return kInvalidPID;
   }
 
   CHECK(process_reaper_.WatchForChild(
