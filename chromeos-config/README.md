@@ -438,6 +438,7 @@ In the tables below,
 | proximity-sensor | [proximity-sensor](#proximity_sensor) |  | False |  | False | Defines the proximity sensor settings for devices such as /dev/proximity-wifi and /dev/proximity-wifi-lte typically used for SAR. |
 | regulatory-label | string |  | False |  | False | Base name of the directory containing the regulatory label files to show on this device. |
 | resource | [resource](#resource) |  | False |  | False | Defines settings that configure resourced. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
+| rmad | [rmad](#rmad) |  | False |  | False | ChromeOS Shimless RMA daemon configurations. |
 | scheduler-tune | [scheduler-tune](#scheduler_tune) |  | False |  | False | ChromeOS scheduler's tunable values. |
 | test-label | string |  | False |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  | False |  |
@@ -1382,6 +1383,11 @@ In the tables below,
 ### userspace
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### rmad
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| enabled | boolean |  | False |  | False | Whether enable Shimless RMA. |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

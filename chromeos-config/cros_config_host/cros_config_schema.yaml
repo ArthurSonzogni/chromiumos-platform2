@@ -1391,6 +1391,13 @@ properties:
                       additionalProperties: false
                   additionalProperties: false
               additionalProperties: false
+            rmad:
+              type: object
+              description: ChromeOS Shimless RMA daemon configurations.
+              properties:
+                enabled:
+                  type: boolean
+                  description: Whether enable Shimless RMA.
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.
