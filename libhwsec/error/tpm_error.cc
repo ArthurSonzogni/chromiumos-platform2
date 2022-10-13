@@ -28,12 +28,6 @@ uint32_t HashStringWithMurmurHash3x8632(const std::string& s) {
 
 }  // namespace
 
-// See the comment in "libhwsec-foundation/status/impl/error.h" for why we need
-// these external definitions.
-TPMErrorBase::TPMErrorBase(std::string message) : Error(message) {}
-TPMError::TPMError(std::string error_message, TPMRetryAction action)
-    : TPMErrorBase(error_message), retry_action_(action) {}
-
 int64_t TPMError::CalculateUnifiedErrorCode(const std::string& msg) {
   auto hashed = HashStringWithMurmurHash3x8632(msg);
   int64_t result = ((static_cast<int64_t>(hashed) &

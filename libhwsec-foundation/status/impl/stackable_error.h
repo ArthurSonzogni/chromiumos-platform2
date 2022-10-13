@@ -23,38 +23,6 @@ namespace hwsec_foundation {
 namespace status {
 namespace __impl {
 
-namespace RTTI {
-
-// Check if an error pointer is of a certain type. Uses RTTI and relies on
-// 'one-definition' rule to work correctly.
-template <typename _Dt>
-static bool Is(Error* error) {
-  _Dt* cast = dynamic_cast<_Dt*>(error);
-  return (cast != nullptr);
-}
-
-// Const overload for |Is<_Dt>|
-template <typename _Dt>
-static bool Is(const Error* error) {
-  const _Dt* cast = dynamic_cast<const _Dt*>(error);
-  return (cast != nullptr);
-}
-
-// Converts the pointer a certain type. Uses RTTI and relies on
-// 'one-definition' rule to work correctly. Returns error if casting fails.
-template <typename _Dt>
-static _Dt* Cast(Error* error) {
-  return dynamic_cast<_Dt*>(error);
-}
-
-// Const overload for |Cast<_Dt>|
-template <typename _Dt>
-static const _Dt* Cast(const Error* error) {
-  return dynamic_cast<const _Dt*>(error);
-}
-
-}  // namespace RTTI
-
 // Type trait checkers to determine if the class, intended to use with the
 // status chain, is well-formed.
 // TODO(dlunev): add a trait to verify callability of MakeStatusTrait.
@@ -566,73 +534,6 @@ class [[nodiscard]] StackableError {
     CHECK(!ok()) << " OK object can't be unwrapped.";
     UnwrapInternal();
     return std::move(*this);
-  }
-
-  // Check if the head was created as a down type.
-  template <typename _Dt>
-  bool Is() const noexcept {
-    static_assert(std::is_base_of_v<base_element_type, _Dt> ||
-                      std::is_same_v<base_element_type, _Dt>,
-                  "Supplied type is not derived from the |Base| type.");
-    return RTTI::Is<_Dt>(get());
-  }
-
-  // Returns head as a down type. The validity of the operation MUST be checked
-  // by the prior call to Is<_Dt>.
-  template <typename _Dt>
-  _Dt* Cast() noexcept {
-    static_assert(std::is_base_of_v<base_element_type, _Dt> ||
-                      std::is_same_v<base_element_type, _Dt>,
-                  "Supplied type is not derived from the |Base| type.");
-    return RTTI::Cast<_Dt>(get());
-  }
-
-  // Const overload for |Cast<_Dt>| operation.
-  template <typename _Dt>
-  const _Dt* Cast() const noexcept {
-    static_assert(std::is_base_of_v<base_element_type, _Dt> ||
-                      std::is_same_v<base_element_type, _Dt>,
-                  "Supplied type is not derived from the |Base| type.");
-    return RTTI::Cast<_Dt>(get());
-  }
-
-  // Find returns a pointer to the first object of the specified kind in the
-  // stack.
-  template <typename _Dt>
-  _Dt* Find() noexcept {
-    static_assert(std::is_base_of_v<base_element_type, _Dt> ||
-                      std::is_same_v<base_element_type, _Dt>,
-                  "Supplied type is not derived from the |Base| type.");
-    for (auto error_obj_ptr : range()) {
-      // Use |decltype| to deduce the correct type of the pointer for the
-      // typesafe comparison. See explanation for the typesafe comparison
-      // at |pointer| alias declaration.
-      DCHECK_NE(error_obj_ptr, decltype(error_obj_ptr)())
-          << " |nullptr| in the chain";
-      if (RTTI::Is<_Dt>(error_obj_ptr)) {
-        return RTTI::Cast<_Dt>(error_obj_ptr);
-      }
-    }
-    return nullptr;
-  }
-
-  // Const overload for |Find<_Dt>| operation.
-  template <typename _Dt>
-  const _Dt* Find() const noexcept {
-    static_assert(std::is_base_of_v<base_element_type, _Dt> ||
-                      std::is_same_v<base_element_type, _Dt>,
-                  "Supplied type is not derived from the |Base| type.");
-    for (const auto error_obj_ptr : const_range()) {
-      // Use |decltype| to deduce the correct type of the pointer for the
-      // typesafe comparison. See explanation for the typesafe comparison
-      // at |pointer| alias declaration.
-      DCHECK_NE(error_obj_ptr, decltype(error_obj_ptr)())
-          << " |nullptr| in the chain";
-      if (RTTI::Is<_Dt>(error_obj_ptr)) {
-        return RTTI::Cast<_Dt>(error_obj_ptr);
-      }
-    }
-    return nullptr;
   }
 };
 

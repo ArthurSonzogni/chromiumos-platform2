@@ -131,7 +131,7 @@ class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
   // TPMErrorBase is the base of all TPM-related error in libhwsec.
   using BaseErrorType = TPMErrorBase;
 
-  explicit TPMErrorBase(std::string message);
+  explicit TPMErrorBase(std::string message) : Error(message) {}
   ~TPMErrorBase() override = default;
 
   // Returns what the action should do after this error happen.
@@ -213,7 +213,8 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
     }
   };
 
-  TPMError(std::string error_message, TPMRetryAction action);
+  TPMError(std::string error_message, TPMRetryAction action)
+      : TPMErrorBase(error_message), retry_action_(action) {}
   ~TPMError() override = default;
 
   TPMRetryAction ToTPMRetryAction() const override { return retry_action_; }

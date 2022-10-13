@@ -84,10 +84,8 @@ class Fake3Error : public FakeBaseError {
   void WrapTransform(StatusChain<BaseErrorType>::const_iterator_range range) {
     int new_val = 0;
     for (auto error_obj_ptr : range) {
-      if (Error::Is<Fake1Error>(error_obj_ptr)) {
-        // shouldn't need to cast since iterator should point to FakeBaseError.
-        new_val += error_obj_ptr->val();
-      }
+      // shouldn't need to cast since iterator should point to FakeBaseError.
+      new_val += error_obj_ptr->val();
     }
     set_val(new_val);
   }
@@ -136,37 +134,30 @@ TEST_F(StatusChainTest, CtorAssign) {
   StatusChain<Fake1Error> ptr(new Fake1Error("e1", 1));
   EXPECT_EQ(ptr->val(), 1);
   ptr.WrapInPlace(MakeStatus<Fake2Error>("e2", 2));
-  EXPECT_EQ(ptr.Find<Fake2Error>()->val(), 2);
+  EXPECT_EQ(ptr->val(), 1);
 
   StatusChain<Fake1Error> ctor_type_match = std::move(ptr);
   EXPECT_TRUE(ptr.ok());
   EXPECT_EQ(ctor_type_match->val(), 1);
-  EXPECT_EQ(ctor_type_match.Find<Fake2Error>()->val(), 2);
 
   StatusChain<Fake1Error> assign_type_match;
   assign_type_match = std::move(ctor_type_match);
   EXPECT_TRUE(ctor_type_match.ok());
   EXPECT_EQ(assign_type_match->val(), 1);
-  EXPECT_EQ(assign_type_match.Find<Fake2Error>()->val(), 2);
 
   StatusChain<FakeBaseError> ctor_type_mismatch = std::move(assign_type_match);
   EXPECT_TRUE(assign_type_match.ok());
   EXPECT_EQ(ctor_type_mismatch->val(), 1);
-  EXPECT_EQ(ctor_type_mismatch.Find<Fake2Error>()->val(), 2);
 
   StatusChain<FakeBaseError> assign_type_mismatch;
   assign_type_mismatch =
       MakeStatus<Fake4Error>("e3", 3).Wrap(std::move(ctor_type_mismatch));
   EXPECT_TRUE(ctor_type_mismatch.ok());
   EXPECT_EQ(assign_type_mismatch->val(), 3);
-  EXPECT_EQ(assign_type_mismatch.Find<Fake1Error>()->val(), 1);
-  EXPECT_EQ(assign_type_mismatch.Find<Fake2Error>()->val(), 2);
 
   StatusChain<FakeBaseError> from_release(assign_type_mismatch.release_stack());
   EXPECT_TRUE(assign_type_mismatch.ok());
   EXPECT_EQ(from_release->val(), 3);
-  EXPECT_EQ(from_release.Find<Fake1Error>()->val(), 1);
-  EXPECT_EQ(from_release.Find<Fake2Error>()->val(), 2);
 }
 
 TEST_F(StatusChainTest, PointerAccessSwapReset) {
@@ -179,7 +170,6 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   EXPECT_EQ(ptr2.get()->val(), 1);
   EXPECT_EQ((*ptr2).val(), 1);
   EXPECT_EQ(ptr2.error().val(), 1);
-  EXPECT_EQ(ptr2.Find<Fake2Error>()->val(), 2);
 
   ptr1.reset(new Fake1Error("e3", 3));
   ptr1.WrapInPlace(MakeStatus<Fake2Error>("e4", 4));
@@ -187,33 +177,28 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   EXPECT_EQ(ptr1.get()->val(), 3);
   EXPECT_EQ((*ptr1).val(), 3);
   EXPECT_EQ(ptr1.error().val(), 3);
-  EXPECT_EQ(ptr1.Find<Fake2Error>()->val(), 4);
 
   std::swap(ptr1, ptr2);
   EXPECT_EQ(ptr1->val(), 1);
   EXPECT_EQ(ptr1.get()->val(), 1);
   EXPECT_EQ((*ptr1).val(), 1);
   EXPECT_EQ(ptr1.error().val(), 1);
-  EXPECT_EQ(ptr1.Find<Fake2Error>()->val(), 2);
 
   EXPECT_EQ(ptr2->val(), 3);
   EXPECT_EQ(ptr2.get()->val(), 3);
   EXPECT_EQ((*ptr2).val(), 3);
   EXPECT_EQ(ptr2.error().val(), 3);
-  EXPECT_EQ(ptr2.Find<Fake2Error>()->val(), 4);
 
   ptr1.swap(ptr2);
   EXPECT_EQ(ptr1->val(), 3);
   EXPECT_EQ(ptr1.get()->val(), 3);
   EXPECT_EQ((*ptr1).val(), 3);
   EXPECT_EQ(ptr1.error().val(), 3);
-  EXPECT_EQ(ptr1.Find<Fake2Error>()->val(), 4);
 
   EXPECT_EQ(ptr2->val(), 1);
   EXPECT_EQ(ptr2.get()->val(), 1);
   EXPECT_EQ((*ptr2).val(), 1);
   EXPECT_EQ(ptr2.error().val(), 1);
-  EXPECT_EQ(ptr2.Find<Fake2Error>()->val(), 2);
 
   ptr1.reset();
   EXPECT_TRUE(ptr1.ok());
@@ -223,7 +208,6 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   EXPECT_EQ(ptr2.get()->val(), 5);
   EXPECT_EQ((*ptr2).val(), 5);
   EXPECT_EQ(ptr2.error().val(), 5);
-  EXPECT_EQ(ptr2.Find<Fake2Error>(), nullptr);
 }
 
 TEST_F(StatusChainTest, StackElementAccess) {
@@ -239,13 +223,7 @@ TEST_F(StatusChainTest, StackElementAccess) {
   StatusChain<FakeBaseError> e6 =
       MakeStatus<Fake2Error>("e6", 32).Wrap(std::move(e5));
 
-  EXPECT_FALSE(e6.Is<Fake3Error>());
-  EXPECT_FALSE(e6.Is<Fake1Error>());
-  EXPECT_TRUE(e6.Is<Fake2Error>());
-  EXPECT_EQ(e6.Cast<Fake2Error>()->val(), 32);
-
-  EXPECT_EQ(e6.Find<Fake3Error>(), nullptr);
-  EXPECT_EQ(e6.Find<Fake1Error>()->val(), 16);
+  EXPECT_EQ(e6->val(), 32);
 }
 
 TEST_F(StatusChainTest, WrappingUnwrapping) {
@@ -254,39 +232,39 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
 
   e0 = MakeStatus<Fake1Error>("e0", -1);
   EXPECT_FALSE(e0.IsWrapping());
-  EXPECT_EQ(e0.Cast<Fake1Error>()->val(), -1);
+  EXPECT_EQ(e0->val(), -1);
 
   StatusChain<FakeBaseError> e1 =
       MakeStatus<Fake1Error>("e1", 1).Wrap(std::move(e0));
   EXPECT_FALSE(e0.IsWrapping());
   EXPECT_TRUE(e1.IsWrapping());
-  EXPECT_EQ(e1.Cast<Fake1Error>()->val(), 1);
+  EXPECT_EQ(e1->val(), 1);
 
   StatusChain<FakeBaseError> e2 =
       MakeStatus<Fake1Error>("e2", 2).Wrap(std::move(e1));
   EXPECT_FALSE(e1.IsWrapping());
   EXPECT_TRUE(e2.IsWrapping());
-  EXPECT_EQ(e2.Cast<Fake1Error>()->val(), 2);
+  EXPECT_EQ(e2->val(), 2);
 
   auto e1_unwrap = std::move(e2).Unwrap();
   EXPECT_FALSE(e2.IsWrapping());
   EXPECT_TRUE(e1_unwrap.IsWrapping());
-  EXPECT_EQ(e1_unwrap.Cast<Fake1Error>()->val(), 1);
+  EXPECT_EQ(e1_unwrap->val(), 1);
 
   StatusChain<FakeBaseError> e3 =
       MakeStatus<Fake1Error>("e3", 3).Wrap(std::move(e1_unwrap));
   EXPECT_FALSE(e1_unwrap.IsWrapping());
   EXPECT_TRUE(e3.IsWrapping());
-  EXPECT_EQ(e3.Cast<Fake1Error>()->val(), 3);
+  EXPECT_EQ(e3->val(), 3);
 
   auto e0_unwrap = std::move(e3).Unwrap().Unwrap();
   EXPECT_FALSE(e3.IsWrapping());
   EXPECT_FALSE(e0_unwrap.IsWrapping());
-  EXPECT_EQ(e0_unwrap.Cast<Fake1Error>()->val(), -1);
+  EXPECT_EQ(e0_unwrap->val(), -1);
 
   e0_unwrap.WrapInPlace(MakeStatus<Fake2Error>("e4", 4));
   EXPECT_TRUE(e0_unwrap.IsWrapping());
-  EXPECT_EQ(e0_unwrap.Find<Fake2Error>()->val(), 4);
+  EXPECT_EQ(e0_unwrap->val(), -1);
 
   e0_unwrap.UnwrapInPlace().UnwrapInPlace();
   EXPECT_TRUE(e0_unwrap.ok());
@@ -294,17 +272,20 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
 }
 
 TEST_F(StatusChainTest, RangesAndIterators) {
-  StatusChain<FakeBaseError> e1 = MakeStatus<Fake1Error>("+", 1);
+  StatusChain<FakeBaseError> e1 = MakeStatus<Fake1Error>("e1", 1);
   StatusChain<FakeBaseError> e2 =
-      MakeStatus<FakeBaseError>("-", 2).Wrap(std::move(e1));
+      MakeStatus<FakeBaseError>("e2", 2).Wrap(std::move(e1));
   StatusChain<FakeBaseError> e3 =
-      MakeStatus<Fake1Error>("+", 4).Wrap(std::move(e2));
+      MakeStatus<Fake1Error>("e3", 4).Wrap(std::move(e2));
   StatusChain<FakeBaseError> e4 =
-      MakeStatus<Fake2Error>("-", 8).Wrap(std::move(e3));
+      MakeStatus<Fake2Error>("e4", 8).Wrap(std::move(e3));
   StatusChain<FakeBaseError> e5 =
-      MakeStatus<Fake1Error>("+", 16).Wrap(std::move(e4));
+      MakeStatus<Fake1Error>("e5", 16).Wrap(std::move(e4));
   StatusChain<Fake3Error> e6 =
-      MakeStatus<Fake3Error>("-", 32).Wrap(std::move(e5));
+      MakeStatus<Fake3Error>("e6", 32).Wrap(std::move(e5));
+
+  // The transform above sums all vals.
+  EXPECT_EQ(e6->val(), 1 + 2 + 4 + 8 + 16);
 
   // Check various ways to iterate. In all case val should be a sum of all
   // Fake1Error vals (marked with "+" error message above for clarity).
@@ -312,42 +293,34 @@ TEST_F(StatusChainTest, RangesAndIterators) {
   // Non-const range-for loop.
   int val = 0;
   for (auto error_obj_ptr : e6.range()) {
-    if (Error::Is<Fake1Error>(error_obj_ptr)) {
-      // shouldn't need to cast since iterator should point to FakeBaseError.
-      val += error_obj_ptr->val();
-    }
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    val += error_obj_ptr->val();
   }
-  EXPECT_EQ(val, 1 + 4 + 16);
+  EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
   // const range-for loop.
   val = 0;
   for (const auto error_obj_ptr : e6.const_range()) {
-    if (Error::Is<Fake1Error>(error_obj_ptr)) {
-      // shouldn't need to cast since iterator should point to FakeBaseError.
-      val += error_obj_ptr->val();
-    }
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    val += error_obj_ptr->val();
   }
-  EXPECT_EQ(val, 1 + 4 + 16);
+  EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
   // Manual non-const loop.
   val = 0;
   for (auto it = e6.range().begin(); it != e6.range().end(); ++it) {
-    if (Error::Is<Fake1Error>(*it)) {
-      // shouldn't need to cast since iterator should point to FakeBaseError.
-      val += it->val();
-    }
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    val += it->val();
   }
-  EXPECT_EQ(val, 1 + 4 + 16);
+  EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
   // Manual const loop.
   val = 0;
   for (auto it = e6.const_range().begin(); it != e6.const_range().end(); ++it) {
-    if (Error::Is<Fake1Error>(*it)) {
-      // shouldn't need to cast since iterator should point to FakeBaseError.
-      val += it->val();
-    }
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    val += it->val();
   }
-  EXPECT_EQ(val, 1 + 4 + 16);
+  EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
   // non-const range should be assignable to const one, and so iterator.
   StatusChain<Fake3Error>::const_iterator_range crange = e6.range();
@@ -357,27 +330,24 @@ TEST_F(StatusChainTest, RangesAndIterators) {
 }
 
 TEST_F(StatusChainTest, WrapTransform) {
-  StatusChain<FakeBaseError> e1 = MakeStatus<Fake1Error>("+", 1);
+  StatusChain<FakeBaseError> e1 = MakeStatus<Fake1Error>("e1", 1);
   StatusChain<FakeBaseError> e2 =
-      MakeStatus<FakeBaseError>("-", 2).Wrap(std::move(e1));
+      MakeStatus<FakeBaseError>("e2", 2).Wrap(std::move(e1));
   StatusChain<FakeBaseError> e3 =
-      MakeStatus<Fake1Error>("+", 4).Wrap(std::move(e2));
+      MakeStatus<Fake1Error>("e3", 4).Wrap(std::move(e2));
   StatusChain<FakeBaseError> e4 =
-      MakeStatus<Fake2Error>("-", 8).Wrap(std::move(e3));
+      MakeStatus<Fake2Error>("e4", 8).Wrap(std::move(e3));
   StatusChain<FakeBaseError> e5 =
-      MakeStatus<Fake1Error>("+", 16).Wrap(std::move(e4));
+      MakeStatus<Fake1Error>("e5", 16).Wrap(std::move(e4));
   StatusChain<Fake3Error> e6 =
-      MakeStatus<Fake3Error>("!", 32).Wrap(std::move(e5));
+      MakeStatus<Fake3Error>("e6", 32).Wrap(std::move(e5));
 
-  // The transform above sums all Fake1Error vals (marked with "+" error message
-  // above for clarity).
-  EXPECT_EQ(e6->val(), 1 + 4 + 16);
-  EXPECT_EQ(e6.Find<Fake1Error>()->val(), 16);
+  // The transform above sums all vals.
+  EXPECT_EQ(e6->val(), 1 + 2 + 4 + 8 + 16);
 
   StatusChain<Fake3Error> e7_with_drop =
-      MakeStatus<Fake3Error>("!", 64).Wrap(std::move(e6), WrapTransformOnly);
-  EXPECT_EQ(e7_with_drop->val(), 1 + 4 + 16);
-  EXPECT_EQ(e6.Find<Fake1Error>(), nullptr);
+      MakeStatus<Fake3Error>("e7", 64).Wrap(std::move(e6), WrapTransformOnly);
+  EXPECT_EQ(e7_with_drop->val(), 1 + 2 + 4 + 8 + 16 + 31);
 }
 
 TEST_F(StatusChainTest, OksAndMessages) {

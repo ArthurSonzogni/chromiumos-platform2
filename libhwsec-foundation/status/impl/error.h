@@ -41,14 +41,7 @@ class HWSEC_FOUNDATION_EXPORT Error {
   using BaseErrorType = Error;
 
   Error() = default;
-  // The reason this is not inlined is because we have to force symbol
-  // resolution when attaching a shared library with the object, for otherwise
-  // shared library and its user will generate two different RTTI for inlined
-  // instances of the class, which will prevent use of dynamic_cast for error
-  // polymorphism. Thus, we need to have an incomplete definition of the class
-  // in the header, have a separate compile unit to generate obj artifact, and
-  // mark the class for being put in the exported section.
-  explicit Error(std::string message);
+  explicit Error(std::string message) : message_(message) {}
   Error(const Error&) = default;
   Error& operator=(const Error&) = default;
   Error(Error&&) = default;
@@ -70,35 +63,6 @@ class HWSEC_FOUNDATION_EXPORT Error {
 
   // To string converts the Error to a printable string.
   virtual std::string ToString() const { return message_; }
-
-  // RTTI methods are added as transitional functionality and might be removed
-  // later.
-
-  // Check if an error pointer is of a certain type. Uses RTTI and relies on
-  // 'one-definition' rule to work correctly.
-  template <typename _Dt>
-  static bool Is(Error* error) {
-    return RTTI::Is<_Dt>(error);
-  }
-
-  // Const overload for |Is<_Dt>|
-  template <typename _Dt>
-  static bool Is(const Error* error) {
-    return RTTI::Is<_Dt>(error);
-  }
-
-  // Converts the pointer a certain type. Uses RTTI and relies on
-  // 'one-definition' rule to work correctly. Returns error if casting fails.
-  template <typename _Dt>
-  static _Dt* Cast(Error* error) {
-    return RTTI::Cast<_Dt>(error);
-  }
-
-  // Const overload for |Cast<_Dt>|
-  template <typename _Dt>
-  static const _Dt* Cast(const Error* error) {
-    return RTTI::Cast<_Dt>(error);
-  }
 
  private:
   std::string message_;

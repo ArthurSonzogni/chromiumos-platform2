@@ -58,7 +58,6 @@ shared_library("libhwsec-foundation") {
     "crypto/secure_blob_util.cc",
     "crypto/sha.cc",
     "da_reset/da_resetter.cc",
-    "status/impl/error_linkage.cc",
     "syscaller/syscaller_impl.cc",
     "tpm/tpm_version.cc",
     "tpm_error/auth_failure_analysis.cc",

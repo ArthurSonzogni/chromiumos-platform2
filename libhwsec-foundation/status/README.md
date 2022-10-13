@@ -25,11 +25,8 @@ points:
 
 `StatusChain` object is effectively a unique pointer to an `Error`. It inherits
 `StackablePointer`, and thus manages a stack of `Error` objects. The access to
-the head of the stack can be done through get/operator-\>/operator\*/error(),
-and via casting pair `Is<T>`/`Cast<T>`. The access to the elements of the stack
-can be done either through `Find<T>` method which returns a pointer to the
-object of appropriate type in the stack, or nullptr if not found. Other way it
-to iterate over the stack with `for (auto error_obj_ptr : stack.range())` or
+the head of the stack can be done through get/operator-\>/operator\*/error().
+To iterate over the stack with `for (auto error_obj_ptr : stack.range())` or
 `for (const auto error_obj_ptr : stack.const_range())` for the const view, or
 by using iterators manually, as in
 `for (auto it = stack.range().begin(); it != stack.range().eng(); ++it)`
@@ -71,10 +68,7 @@ class CustomError : public Error {
 
   void WrapTransform(StatusChain<Error>::const_iterator_range range) override {
     for (const auto error_obj_ptr : range) {
-      if (Error::Is<const SomeOtherError>(error)) {
-        const SomeOtherError* cast = Error::Cast<const SomeOtherError>(error);
-        // do smthng with `cast`
-      }
+      // do something with the base error.
     }
   }
 };
