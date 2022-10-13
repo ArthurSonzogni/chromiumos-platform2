@@ -215,6 +215,7 @@ if (use.test) {
       "crypto/rsa_test.cc",
       "crypto/scrypt_test.cc",
       "da_reset/da_resetter_test.cc",
+      "error/testing_helper_test.cc",
       "status/status_chain_test.cc",
       "tpm_error/auth_failure_analysis_test.cc",
       "tpm_error/handle_auth_failure_test.cc",

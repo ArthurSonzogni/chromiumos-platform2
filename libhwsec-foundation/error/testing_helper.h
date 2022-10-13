@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_ERROR_TESTING_HELPER_H_
 #define LIBHWSEC_FOUNDATION_ERROR_TESTING_HELPER_H_
 
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -20,58 +21,74 @@ namespace testing {
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-// Monomorphic implementation of matcher IsOk() for a given type T.
-// T can be StatusChain, StatusChainOr<>, or a reference to either of them.
-template <typename T>
-class MonoIsOkMatcherImpl : public ::testing::MatcherInterface<T> {
- public:
-  using is_gtest_matcher = void;
-  void DescribeTo(std::ostream* os) const override { *os << "is OK"; }
-  void DescribeNegationTo(std::ostream* os) const override {
-    *os << "is not OK";
-  }
-  bool MatchAndExplain(
-      T actual_value, ::testing::MatchResultListener* listener) const override {
-    if (listener->stream() && !actual_value.ok()) {
-      *listener->stream() << actual_value.status();
-    }
-    return actual_value.ok();
-  }
-};
+// Some generic matcher functions for StatusChain/StatusChainOr.
+// For the example usage, please check testing_helper_test.cc
 
-// Implements IsOk() as a polymorphic matcher.
-class IsOkMatcher {
- public:
-  template <typename T>
-  operator ::testing::Matcher<T>() const {  // NOLINT
-    return ::testing::Matcher<T>(new MonoIsOkMatcherImpl<T>());
+MATCHER(IsOk, "") {
+  if (!arg.ok()) {
+    *result_listener << "status: " << arg.status();
+    return false;
   }
-};
+  return true;
+}
 
-// Returns a gMock matcher that matches a Status or StatusOr<> which is OK.
-inline IsOkMatcher IsOk() {
-  return IsOkMatcher();
+MATCHER_P(IsOkAndHolds, m, "") {
+  if (!arg.ok()) {
+    *result_listener << "status: " << arg.status();
+    return false;
+  }
+  if (!(arg.value() == m)) {
+    *result_listener << "value: " << ::testing::PrintToString(arg.value());
+    return false;
+  }
+  return true;
 }
 
 MATCHER(NotOk, "") {
-  return !arg.ok();
+  if (arg.ok()) {
+    *result_listener << "is ok";
+    return false;
+  }
+  return true;
 }
 
-// TODO(dlunev): figure out how to add error type matchers.
+MATCHER_P(NotOkWith, expect_string, "") {
+  if (arg.ok()) {
+    *result_listener << "is ok";
+    return false;
+  }
+  std::string full = arg.status().ToFullString();
+  if (full.find(expect_string) == std::string::npos) {
+    *result_listener << "status: " << full;
+    return false;
+  }
+  return true;
+}
 
-/* A helper function to return generic error object in unittest.
- *
- * Example Usage:
- *
- * using ::hwsec_foundation::error::testing::ReturnError;
- *
- * ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
- *     .WillByDefault(ReturnError<TPMErrorBase>());  // Always success.
- *
- * ON_CALL(tpm, EncryptBlob(_, _, _, _))
- *     .WillByDefault(
- *         ReturnError<TPMError>("fake", TPMRetryAction::kFatal));
- */
+MATCHER_P(NotOkAnd, checker, "") {
+  if (arg.ok()) {
+    *result_listener << "is ok";
+    return false;
+  }
+  if (!checker(arg.status())) {
+    *result_listener << "status: " << arg.status();
+    return false;
+  }
+  return true;
+}
+
+// A helper function to return generic error object in unittest.
+//
+// Example Usage:
+//
+// using ::hwsec_foundation::error::testing::ReturnError;
+//
+// ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
+//     .WillByDefault(ReturnOk<TPMErrorBase>());  // Always success.
+//
+// ON_CALL(tpm, EncryptBlob(_, _, _, _))
+//     .WillByDefault(
+//         ReturnError<TPMError>("fake", TPMRetryAction::kFatal));
 
 template <typename T>
 using remove_cvref_t =
