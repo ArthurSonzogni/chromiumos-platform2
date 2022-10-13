@@ -13,6 +13,8 @@
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
 
+#include "base/command_line.h"
+#include "base/time/time.h"
 #include "biod/biod_system.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
@@ -20,6 +22,12 @@
 #include "biod/updater/update_status.h"
 
 namespace biod {
+
+// Imposes a timeout of duration timeout_time to an input command. Returns the
+// boolean status of the command in addition to the string output.
+bool GetAppOutputAndErrorWithTimeout(const base::CommandLine& cmd_input,
+                                     const base::TimeDelta& delta,
+                                     std::string* output);
 
 // These utilities should be absorbed by CrosFpDevice.
 // This is a temporary holding place until they can be absorbed.

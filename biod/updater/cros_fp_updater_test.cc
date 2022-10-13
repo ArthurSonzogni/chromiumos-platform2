@@ -20,6 +20,9 @@
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/fake_cros_config.h>
 
+#include "base/command_line.h"
+#include "base/process/launch.h"
+#include "base/time/time.h"
 #include "biod/biod_config.h"
 #include "biod/cros_fp_firmware.h"
 #include "biod/mock_biod_system.h"
@@ -537,6 +540,31 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_UpdateRORW) {
   EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
   EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion |
                                UpdateReason::kMismatchRWVersion);
+}
+
+TEST(GetAppOutputAndErrorWithTimeout, SleepFunctionStatusNotOk) {
+  base::CommandLine cmd_sleep{base::FilePath("sleep")};
+  cmd_sleep.AppendArg("2s");
+  std::string cmd_output;
+  base::TimeDelta delta = base::Milliseconds(100);
+  bool status = GetAppOutputAndErrorWithTimeout(cmd_sleep, delta, &cmd_output);
+  std::string expected_cmd_output = "timeout: sending signal QUIT to command";
+  EXPECT_EQ(
+      cmd_output.compare(0, expected_cmd_output.size(), expected_cmd_output),
+      0);
+  EXPECT_FALSE(status);
+  EXPECT_EQ(cmd_sleep.GetProgram().BaseName().value(), "sleep");
+}
+
+TEST(GetAppOutputAndErrorWithTimeout, SleepFunctionStatusOk) {
+  base::CommandLine cmd_sleep{base::FilePath("sleep")};
+  cmd_sleep.AppendArg("0.1s");
+  std::string cmd_output;
+  base::TimeDelta delta = base::Seconds(2);
+  bool status = GetAppOutputAndErrorWithTimeout(cmd_sleep, delta, &cmd_output);
+  EXPECT_TRUE(status);
+  EXPECT_TRUE(cmd_output.empty());
+  EXPECT_EQ(cmd_sleep.GetProgram().BaseName().value(), "sleep");
 }
 
 }  // namespace updater

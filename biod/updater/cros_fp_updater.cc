@@ -73,6 +73,21 @@ bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
 
 namespace biod {
 
+bool GetAppOutputAndErrorWithTimeout(const base::CommandLine& cmd_input,
+                                     const base::TimeDelta& delta,
+                                     std::string* output) {
+  std::string delta_str = std::to_string(delta.InSecondsF());
+  base::CommandLine cmd_timeout{base::FilePath("timeout")};
+  cmd_timeout.AppendSwitchASCII("kill-after", "1s");
+  cmd_timeout.AppendSwitchASCII("signal", "QUIT");
+  cmd_timeout.AppendSwitch("verbose");
+  cmd_timeout.AppendSwitch("preserve-status");
+  cmd_timeout.AppendArg(delta_str);
+  base::CommandLine cmd_input_copy = cmd_input;
+  cmd_input_copy.PrependWrapper(cmd_timeout.GetCommandLineString());
+  return base::GetAppOutputAndError(cmd_input_copy, output);
+}
+
 std::vector<std::string> kNeedResetBoards{kFpBoardDartmonkey, kFpBoardNami,
                                           kFpBoardNocturne};
 
@@ -149,9 +164,9 @@ bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
 
   LOG(INFO) << "Launching '" << cmd.GetCommandLineString() << "'.";
 
-  // TODO(b/130026657): Impose timeout on flashrom.
   std::string cmd_output;
-  bool status = base::GetAppOutputAndError(cmd, &cmd_output);
+  base::TimeDelta timeout_time = base::Minutes(2);
+  bool status = GetAppOutputAndErrorWithTimeout(cmd, timeout_time, &cmd_output);
   const auto lines = base::SplitStringPiece(
       cmd_output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto line : lines) {
