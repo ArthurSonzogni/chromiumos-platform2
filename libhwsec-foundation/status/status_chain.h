@@ -82,7 +82,7 @@ template <typename _Et>
 StatusChain<_Et> OkStatus() {
   static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
                 "Supplied type is not derived from |Error|.");
-  return StatusChain<_Et>(nullptr);
+  return StatusChain<_Et>();
 }
 
 // Return |nullptr| error object in a typed |const StatusChain| container.

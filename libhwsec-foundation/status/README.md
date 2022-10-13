@@ -34,7 +34,7 @@ by using iterators manually, as in
 where `error_obj_ptr == *it`, and `it->something` is equivalent to
 `error_obj_ptr->something`.
 
-The success is marked with either `OkStatus<T>()` (preferred) object or `nullptr`.
+The success is marked with `OkStatus<T>()` object.
 
 ## How to add a new error type?
 

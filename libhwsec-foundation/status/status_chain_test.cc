@@ -124,13 +124,6 @@ TEST_F(StatusChainTest, CtorAssign) {
   assign_ok = std::move(ok);
   EXPECT_TRUE(assign_ok.ok());
 
-  StatusChain<Fake1Error> nullptr_ok = nullptr;
-  EXPECT_TRUE(nullptr_ok.ok());
-
-  StatusChain<Fake1Error> assign_nullptr_ok;
-  assign_nullptr_ok = std::move(nullptr_ok);
-  EXPECT_TRUE(assign_nullptr_ok.ok());
-
   StatusChain<Fake1Error> ptr(new Fake1Error("e1", 1));
   EXPECT_EQ(ptr->val(), 1);
   ptr.WrapInPlace(MakeStatus<Fake2Error>("e2", 2));
@@ -576,8 +569,6 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
   EXPECT_TRUE(result123_status.ok());
 
   EXPECT_EQ(result0.status().ToFullString(), "Fake1: value shouldn't be zero");
-  EXPECT_EQ(*result1, nullptr);
-  EXPECT_NE(*result123, nullptr);
   EXPECT_EQ(**result123, 123);
 
   EXPECT_FALSE(lambda2(0).ok());
@@ -600,8 +591,6 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
 
   EXPECT_EQ(result30.status().ToFullString(),
             "Fake4: lambda1 failed: Fake1: value shouldn't be zero");
-  EXPECT_EQ(*result31, nullptr);
-  EXPECT_NE(*result3123, nullptr);
   EXPECT_EQ(**result3123, 123);
 
   EXPECT_FALSE(lambda4(0).ok());
