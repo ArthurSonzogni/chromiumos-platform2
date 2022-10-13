@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
@@ -72,7 +73,7 @@ bool SmbfsHelper::CanMount(const std::string& source,
 MountErrorType SmbfsHelper::ConfigureSandbox(
     const std::string& source,
     const base::FilePath& /*target_path*/,
-    std::vector<std::string> /*params*/,
+    std::vector<std::string> params,
     SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType || uri.path().empty()) {
@@ -104,6 +105,11 @@ MountErrorType SmbfsHelper::ConfigureSandbox(
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(options);
+
+  // Prepend "--" to the "log-level=value" param (if present) and pass it on.
+  if (std::string level; GetParamValue(params, "log-level", &level)) {
+    sandbox->AddArgument(base::StrCat({"--log-level=", level}));
+  }
 
   return MOUNT_ERROR_NONE;
 }
