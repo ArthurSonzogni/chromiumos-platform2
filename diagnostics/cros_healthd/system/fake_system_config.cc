@@ -45,6 +45,10 @@ bool FakeSystemConfig::SmartCtlSupported() {
   return smart_ctrl_supported_;
 }
 
+bool FakeSystemConfig::FingerprintDiagnosticSupported() {
+  return fingerprint_diagnostic_supported_;
+}
+
 void FakeSystemConfig::SetFioSupported(bool value) {
   fio_supported_ = value;
 }
@@ -91,6 +95,10 @@ void FakeSystemConfig::SetNvmeSelfTestSupported(bool value) {
 
 void FakeSystemConfig::SetSmartCtrlSupported(bool value) {
   smart_ctrl_supported_ = value;
+}
+
+void FakeSystemConfig::SetFingerprintDiagnosticSupported(bool value) {
+  fingerprint_diagnostic_supported_ = value;
 }
 
 void FakeSystemConfig::SetIsWilcoDevice(bool value) {

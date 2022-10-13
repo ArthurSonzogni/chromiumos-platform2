@@ -174,6 +174,15 @@ bool SystemConfig::SmartCtlSupported() {
   return base::PathExists(root_dir_.AppendASCII(kSmartctlToolPath));
 }
 
+bool SystemConfig::FingerprintDiagnosticSupported() {
+  std::string enable;
+  if (!cros_config_->GetString(kFingerprintPropertiesPath,
+                               kFingerprintRoutineEnable, &enable)) {
+    return false;
+  }
+  return enable == "true";
+}
+
 bool SystemConfig::IsWilcoDevice() {
   const auto wilco_devices = GetWilcoBoardNames();
   return std::any_of(wilco_devices.begin(), wilco_devices.end(),

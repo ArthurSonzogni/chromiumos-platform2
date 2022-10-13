@@ -53,6 +53,13 @@ inline const std::list<std::string> GetWilcoBoardNames() {
   return {"sarien", "drallion"};
 }
 
+// Fingerprint diagnostic related constants.
+// The path used to retrieve the fingerprint diagnostic parameters.
+inline constexpr char kFingerprintPropertiesPath[] =
+    "/cros-healthd/routines/fingerprint-diag";
+// The property indicates if the diagnostic is enabled or not.
+inline constexpr char kFingerprintRoutineEnable[] = "routine-enable";
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_CONSTANTS_H_

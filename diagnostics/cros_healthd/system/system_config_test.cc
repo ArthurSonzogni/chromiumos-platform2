@@ -213,6 +213,22 @@ TEST_F(SystemConfigTest, SmartCtlSupportedFalse) {
   ASSERT_FALSE(system_config()->SmartCtlSupported());
 }
 
+TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedTrue) {
+  fake_cros_config()->SetString(kFingerprintPropertiesPath,
+                                kFingerprintRoutineEnable, "true");
+  EXPECT_TRUE(system_config()->FingerprintDiagnosticSupported());
+}
+
+TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedFalse) {
+  fake_cros_config()->SetString(kFingerprintPropertiesPath,
+                                kFingerprintRoutineEnable, "");
+  EXPECT_FALSE(system_config()->FingerprintDiagnosticSupported());
+}
+
+TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedUnset) {
+  EXPECT_FALSE(system_config()->FingerprintDiagnosticSupported());
+}
+
 TEST_F(SystemConfigTest, WilcoDeviceTrue) {
   const auto wilco_board = *GetWilcoBoardNames().begin();
   auto lsb_release = "CHROMEOS_RELEASE_BOARD=" + wilco_board;

@@ -499,10 +499,11 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kDiskRead);
   }
 
-  // TODO(kerker): Use system_config to determine if we support this or not.
-  available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kFingerprint);
-  available_routines_.insert(
-      mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive);
+  if (context_->system_config()->FingerprintDiagnosticSupported()) {
+    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kFingerprint);
+    available_routines_.insert(
+        mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive);
+  }
 }
 
 }  // namespace diagnostics
