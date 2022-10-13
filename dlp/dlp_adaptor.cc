@@ -162,7 +162,8 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
 
   if (!policy_rules_.empty()) {
-    EnsureFanotifyWatcherStarted();
+    // TODO(crbug.com/1374288): Start FanotifyWatcher.
+    LOG(INFO) << "FanotifyWatcher not started.";
   } else {
     fanotify_watcher_.reset();
   }
