@@ -356,9 +356,11 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce([&](uint64_t* offset, auto&&, auto&&,
                       TPM_PUBKEY* tpm_pubkey) {
           *offset = cmk_pubkey_.size();
-          uint8_t* parms_ptr = new uint8_t[sizeof(kFakeParms)];
+          uint8_t* parms_ptr =
+              static_cast<uint8_t*>(malloc(sizeof(kFakeParms)));
           memcpy(parms_ptr, kFakeParms, sizeof(kFakeParms));
-          uint8_t* key_ptr = new uint8_t[fake_modulus_.size()];
+          uint8_t* key_ptr =
+              static_cast<uint8_t*>(malloc(fake_modulus_.size()));
           memcpy(key_ptr, fake_modulus_.data(), fake_modulus_.size());
           *tpm_pubkey = TPM_PUBKEY{
               .algorithmParms =
@@ -775,7 +777,8 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce([&](uint64_t* offset, auto&&, auto&&, TPM_KEY12* tpm_key12) {
           *offset = migrated_cmk_key12_.size();
-          uint8_t* encdata_ptr = new uint8_t[key12_encdata.size()];
+          uint8_t* encdata_ptr =
+              static_cast<uint8_t*>(malloc(key12_encdata.size()));
           memcpy(encdata_ptr, key12_encdata.data(), key12_encdata.size());
           *tpm_key12 = TPM_KEY12{
               .tag = TPM_TAG_KEY12,
@@ -861,9 +864,11 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce([&](uint64_t* offset, auto&&, auto&&,
                       TPM_PUBKEY* tpm_pubkey) {
           *offset = cmk_pubkey_.size();
-          uint8_t* parms_ptr = new uint8_t[sizeof(kFakeParms)];
+          uint8_t* parms_ptr =
+              static_cast<uint8_t*>(malloc(sizeof(kFakeParms)));
           memcpy(parms_ptr, kFakeParms, sizeof(kFakeParms));
-          uint8_t* key_ptr = new uint8_t[fake_modulus_.size()];
+          uint8_t* key_ptr =
+              static_cast<uint8_t*>(malloc(fake_modulus_.size()));
           memcpy(key_ptr, fake_modulus_.data(), fake_modulus_.size());
           *tpm_pubkey = TPM_PUBKEY{
               .algorithmParms =

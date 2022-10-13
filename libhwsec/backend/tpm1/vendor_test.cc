@@ -101,9 +101,9 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerable) {
   SetupSrk();
 
   // These ptrs would be owned by the fake_pub_key.
-  uint8_t* parms_ptr = new uint8_t[sizeof(kFakeParms)];
+  uint8_t* parms_ptr = static_cast<uint8_t*>(malloc(sizeof(kFakeParms)));
   memcpy(parms_ptr, kFakeParms, sizeof(kFakeParms));
-  uint8_t* key_ptr = new uint8_t[sizeof(kVulnerableModulus)];
+  uint8_t* key_ptr = static_cast<uint8_t*>(malloc(sizeof(kVulnerableModulus)));
   memcpy(key_ptr, kVulnerableModulus, sizeof(kVulnerableModulus));
 
   TPM_PUBKEY fake_pub_key{
@@ -128,7 +128,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerable) {
                       SetArgPointee<3>(fake_pub_key), Return(TPM_SUCCESS)));
 
   // This ptr would be owned by the key_parms.
-  uint8_t* exp_ptr = new uint8_t[sizeof(kFakeExponent)];
+  uint8_t* exp_ptr = static_cast<uint8_t*>(malloc(sizeof(kFakeExponent)));
   memcpy(exp_ptr, kFakeExponent, sizeof(kFakeExponent));
 
   TPM_RSA_KEY_PARMS key_parms{
@@ -181,9 +181,9 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableFalse) {
   SetupSrk();
 
   // These ptrs would be owned by the fake_pub_key.
-  uint8_t* parms_ptr = new uint8_t[sizeof(kFakeParms)];
+  uint8_t* parms_ptr = static_cast<uint8_t*>(malloc(sizeof(kFakeParms)));
   memcpy(parms_ptr, kFakeParms, sizeof(kFakeParms));
-  uint8_t* key_ptr = new uint8_t[sizeof(kVulnerableModulus)];
+  uint8_t* key_ptr = static_cast<uint8_t*>(malloc(sizeof(kVulnerableModulus)));
   memcpy(key_ptr, kVulnerableModulus, sizeof(kVulnerableModulus));
 
   TPM_PUBKEY fake_pub_key{

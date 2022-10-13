@@ -422,9 +422,9 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateRsaKeyPair) {
       .With(Args<1, 2>(ElementsAreArray(fake_pubkey)))
       .WillOnce([&](uint64_t* offset, auto&&, auto&&, TPM_PUBKEY* tpm_pubkey) {
         *offset = fake_pubkey.size();
-        uint8_t* parms_ptr = new uint8_t[sizeof(kFakeParms)];
+        uint8_t* parms_ptr = static_cast<uint8_t*>(malloc(sizeof(kFakeParms)));
         memcpy(parms_ptr, kFakeParms, sizeof(kFakeParms));
-        uint8_t* key_ptr = new uint8_t[sizeof(kFakeModulus)];
+        uint8_t* key_ptr = static_cast<uint8_t*>(malloc(sizeof(kFakeModulus)));
         memcpy(key_ptr, kFakeModulus, sizeof(kFakeModulus));
         *tpm_pubkey = TPM_PUBKEY{
             .algorithmParms =

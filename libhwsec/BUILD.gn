@@ -44,7 +44,7 @@ pkg_config("target_defaults") {
 
   defines = [
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    "USE_TPM1=${use.tpm}",
+    "USE_TPM1=${use.tpm}||${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
     "BIOMETRICS_DEV=true",
   ]
@@ -75,7 +75,7 @@ source_set("error_library") {
     sources += [ "error/tpm2_error.cc" ]
     deps += [ ":install_tpm2_error_h" ]
   }
-  if (use.tpm || use.fuzzer) {
+  if (use.tpm || use.fuzzer || use.test) {
     sources += [ "error/tpm1_error.cc" ]
     deps += [ ":install_tpm1_error_h" ]
   }
@@ -221,7 +221,7 @@ source_set("hardware_abstraction_external_library") {
 
   libs = []
 
-  if (use.tpm || use.fuzzer) {
+  if (use.tpm || use.fuzzer || use.test) {
     sources += [ "backend/tpm1/static_utils.cc" ]
     libs += [ "tspi" ]
   }
@@ -249,7 +249,7 @@ source_set("hardware_abstraction_internal_library") {
     "//common-mk:pic",
   ]
 
-  if (use.tpm) {
+  if (use.tpm || use.test) {
     sources += [
       "backend/tpm1/backend.cc",
       "backend/tpm1/config.cc",
@@ -303,10 +303,10 @@ shared_library("libhwsec") {
     ":hardware_abstraction_external_library",
     ":hardware_abstraction_internal_library",
   ]
-  if (use.tpm2 || use.fuzzer) {
+  if (use.tpm2 || use.fuzzer || use.test) {
     all_dependent_configs += [ ":libhwsec_tpm2_config" ]
   }
-  if (use.tpm || use.fuzzer) {
+  if (use.tpm || use.fuzzer || use.test) {
     all_dependent_configs += [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
@@ -376,7 +376,7 @@ if (use.test) {
       ":libhwsec_test",
       "//common-mk/testrunner",
     ]
-    if (use.tpm) {
+    if (use.tpm || use.test) {
       sources += [
         "backend/tpm1/backend_test.cc",
         "backend/tpm1/config_test.cc",
