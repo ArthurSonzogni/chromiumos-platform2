@@ -473,6 +473,14 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
     const AuthBlockType& auth_block_type) const {
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
+      if (!crypto_->le_manager() || !crypto_->cryptohome_keys_manager()) {
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthBlockUtilNullLeManagerInGetAuthBlockWithType),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO);
+      }
       return std::make_unique<PinWeaverAuthBlock>(
           crypto_->le_manager(), crypto_->cryptohome_keys_manager());
 

@@ -1167,6 +1167,9 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
 // TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
 std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
   if (IsLECredential()) {
+    if (!crypto_->le_manager() || !crypto_->cryptohome_keys_manager()) {
+      return nullptr;
+    }
     ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
         crypto_->le_manager(), crypto_->cryptohome_keys_manager());
