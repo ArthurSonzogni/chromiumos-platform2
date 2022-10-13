@@ -26,17 +26,17 @@ message ActiveStatus {
   optional string last_ping_utc_date = 2;
 }
 
-message SaveStatusToPreservedFileRequest {
+message SaveStatusRequest {
   // The list of use case with last ping date.
   repeated ActiveStatus active_status = 1;
 }
 
-message SaveStatusToPreservedFileResponse {
+message SaveStatusResponse {
   // Error message, empty if no error occurred.
   optional string error_message = 1;
 }
 
-message GetStatusFromPreservedFileResponse {
+message GetStatusResponse {
   // This field only has error message, the success value will be
   // in active_status.
   optional string error_message = 1;
