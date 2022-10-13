@@ -108,6 +108,10 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
         << "Found conflicting device in DFU mode";
     auto app_dev = GetAppModeDevice();
     ASSERT_NE(app_dev, nullptr);
+    orig_fw_version_ = app_dev->bcd_device();
+
+    // Backup current firmware
+    EXPECT_TRUE(BackupDeviceFirmware());
 
     LOG(INFO) << base::StringPrintf("APP mode VID:PID=%04x:%04x", app_vid_,
                                     app_pid_);
@@ -117,17 +121,87 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
                                     fw1_version_, fw1_blob_.size());
     LOG(INFO) << base::StringPrintf("Testing firmware #2 version=%04x size=%zu",
                                     fw2_version_, fw2_blob_.size());
-    LOG(INFO) << base::StringPrintf("Device version=%04x",
-                                    app_dev->bcd_device());
+    LOG(INFO) << base::StringPrintf("Device version=%04x", orig_fw_version_);
     LOG(INFO) << base::StringPrintf("Quirks=0x%x", quirks_);
   }
 
   void TearDown() override {
-    // Try restore the device back to a working state. The installed firmware
-    // could be changed after running the tests.
+    // Try restore the device back to the original firmware version.
+    EXPECT_TRUE(RestoreDeviceFirmware());
     EXPECT_TRUE(PutDeviceIntoAppMode());
-
     udev_watcher_thread_.Stop();
+  }
+
+  bool BackupDeviceFirmware() {
+    if (!PutDeviceIntoDfuMode()) {
+      LOG(ERROR) << "Put device into DFU mode failed";
+      return false;
+    }
+    auto dfu_dev = GetDfuModeDevice();
+    if (dfu_dev == nullptr) {
+      LOG(ERROR) << "DFU device is NULL";
+      return false;
+    }
+    if (fw1_version_ == orig_fw_version_) {
+      LOG(INFO) << "fw1 equals to current fw, backup from fw1";
+      ptr_orig_fw_blob_ = &fw1_blob_;
+    } else if (fw2_version_ == orig_fw_version_) {
+      LOG(INFO) << "fw2 equals to current fw, backup from fw2";
+      ptr_orig_fw_blob_ = &fw2_blob_;
+    } else {
+      if (dfu_dev->attributes() & cros::kCanUpload) {
+        orig_fw_blob_ = dfu_dev->Upload();
+        if (orig_fw_blob_.size() == 0) {
+          LOG(ERROR) << "Failed to upload device firmware to host";
+          return false;
+        }
+        LOG(INFO) << base::StringPrintf(
+            "Backup current firmware version=%04x size=%zu", orig_fw_version_,
+            orig_fw_blob_.size());
+        ptr_orig_fw_blob_ = &orig_fw_blob_;
+      } else {
+        LOG(WARNING) << "No backup firmware since device doesn't support "
+                        "upload and the original firmware version doesn't "
+                        "match fw1 or fw2";
+        ptr_orig_fw_blob_ = nullptr;
+        return true;
+      }
+    }
+    return true;
+  }
+
+  bool RestoreDeviceFirmware() {
+    if (!ptr_orig_fw_blob_) {
+      LOG(WARNING) << "No backup firmware to restore the device. "
+                      "Device firmware may be changed!";
+      return true;
+    }
+    LOG(INFO) << base::StringPrintf("Original firmware version=%04x size=%zu",
+                                    orig_fw_version_,
+                                    ptr_orig_fw_blob_->size());
+    if (!g_env->PutDeviceIntoDfuMode()) {
+      LOG(ERROR) << "Failed to put device into DFU mode!";
+      return false;
+    }
+    base::ElapsedTimer timer;
+    {
+      auto dfu_dev = g_env->GetDfuModeDevice();
+      if (dfu_dev == nullptr) {
+        LOG(ERROR) << "DFU device is NULL";
+        return false;
+      }
+      if (!dfu_dev->Download(*ptr_orig_fw_blob_)) {
+        LOG(ERROR) << "Failed to download Firmware";
+        return false;
+      }
+      if (!dfu_dev->Attach()) {
+        LOG(ERROR) << "Failed to attach DFU";
+        return false;
+      }
+    }
+    base::TimeDelta download_time = timer.Elapsed();
+    LOG(INFO) << "Restoring firmware took " << download_time;
+    return true;
   }
 
   std::unique_ptr<UsbDfuDevice> GetAppModeDevice() {
@@ -215,8 +289,10 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
     }
   }
 
+  uint16_t orig_fw_version() const { return orig_fw_version_; }
   uint16_t fw1_version() const { return fw1_version_; }
   uint16_t fw2_version() const { return fw2_version_; }
+  const std::vector<unsigned char>& fw_blob() const { return orig_fw_blob_; }
   const std::vector<unsigned char>& fw1_blob() const { return fw1_blob_; }
   const std::vector<unsigned char>& fw2_blob() const { return fw2_blob_; }
 
@@ -226,10 +302,13 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
   uint16_t dfu_vid_;
   uint16_t dfu_pid_;
 
+  uint16_t orig_fw_version_;
   uint16_t fw1_version_;
   uint16_t fw2_version_;
+  std::vector<unsigned char> orig_fw_blob_;
   std::vector<unsigned char> fw1_blob_;
   std::vector<unsigned char> fw2_blob_;
+  std::vector<unsigned char>* ptr_orig_fw_blob_;
 
   uint32_t quirks_;
 
