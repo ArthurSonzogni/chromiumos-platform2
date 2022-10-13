@@ -233,6 +233,24 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Creates image A and B.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     FilePath image_path = GetImagePath(slot);
+
+    // If resuming from hibernate, space on stateful is limited by the
+    // dm-snapshots set up on top of it. Avoid creating new DLCs during this
+    // transient period.
+    if (SystemState::Get()->resuming_from_hibernate()) {
+      int64_t existing_size;
+      if (!GetFileSize(image_path, &existing_size) ||
+          (existing_size < manifest_->preallocated_size())) {
+        *err = Error::CreateInternal(
+            FROM_HERE, error::kFailedCreationDuringHibernateResume,
+            base::StringPrintf(
+                "Not creating file while resuming from hibernate, DLC=%s",
+                id_.c_str()));
+        state_.set_last_error_code(Error::GetErrorCode(*err));
+        return false;
+      }
+    }
+
     // For reserve requested/reserved DLCs, must allocate the required full
     // preallocated space, not only the actual bits of the DLC image to not
     // re-sparsify the DLC images.
@@ -474,6 +492,15 @@ bool DlcBase::Install(ErrorPtr* err) {
         LOG(INFO) << "Verified existing, but previously not verified DLC="
                   << id_;
         break;
+      }
+
+      // Hibernate resume runs on limited sized dm-snapshots. Avoid generating
+      // lots of writes for stateful DLCs, and avoid possibly changing LVM
+      // metadata for LVM DLCs.
+      if (SystemState::Get()->resuming_from_hibernate()) {
+        LOG(ERROR) << "Not writing while resuming from hibernate for DLC="
+                   << id_;
+        return false;
       }
 
       // Load the factory installed DLC if allowed otherwise clear the image.

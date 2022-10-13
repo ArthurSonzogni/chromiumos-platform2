@@ -100,6 +100,7 @@ class BaseTest : public testing::Test {
   base::FilePath users_path_;
   base::FilePath verification_file_path_;
   base::FilePath mount_path_;
+  base::FilePath resume_in_progress_path_;
 
 #if USE_LVM_STATEFUL_PARTITION
   std::unique_ptr<MockLvmdProxyWrapper> mock_lvmd_proxy_wrapper_;

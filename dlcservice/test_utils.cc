@@ -99,7 +99,8 @@ void BaseTest::SetUp() {
       &mock_state_change_reporter_, std::move(mock_boot_slot_),
       std::move(mock_metrics), std::move(mock_system_properties),
       manifest_path_, preloaded_content_path_, factory_install_path_,
-      content_path_, prefs_path_, users_path_, verification_file_path_, &clock_,
+      content_path_, prefs_path_, users_path_, verification_file_path_,
+      resume_in_progress_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 }
@@ -119,6 +120,8 @@ void BaseTest::SetUpFilesAndDirectories() {
       JoinPaths(scoped_temp_dir_.GetPath(), "verification_file");
   mount_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "mount");
   base::FilePath mount_root_path = JoinPaths(mount_path_, "root");
+  resume_in_progress_path_ =
+      JoinPaths(scoped_temp_dir_.GetPath(), "resume_in_progress");
   base::CreateDirectory(manifest_path_);
   base::CreateDirectory(preloaded_content_path_);
   base::CreateDirectory(factory_install_path_);

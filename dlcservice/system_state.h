@@ -55,6 +55,7 @@ class SystemState {
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
       const base::FilePath& verification_file,
+      const base::FilePath& hibernate_resuming_file,
       base::Clock* clock,
       bool for_test = false);
 
@@ -97,6 +98,9 @@ class SystemState {
   const update_engine::StatusResult& update_engine_status();
   const base::Time& update_engine_status_timestamp();
 
+  // Returns true if the system is resuming from hibernation.
+  bool resuming_from_hibernate();
+
  protected:
   SystemState(
 #if USE_LVM_STATEFUL_PARTITION
@@ -117,6 +121,7 @@ class SystemState {
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
       const base::FilePath& verification_file,
+      const base::FilePath& hibernate_resuming_file,
       base::Clock* clock);
 
  private:
@@ -130,6 +135,7 @@ class SystemState {
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
   bool update_engine_service_available_ = false;
+  bool not_resuming_from_hibernate_ = false;
   StateChangeReporterInterface* state_change_reporter_;
 
   std::unique_ptr<BootSlotInterface> boot_slot_;
@@ -142,6 +148,7 @@ class SystemState {
   base::FilePath prefs_dir_;
   base::FilePath users_dir_;
   base::FilePath verification_file_;
+  base::FilePath hibernate_resuming_file_;
   base::Clock* clock_;
 
   // Keep the last status result we saw.

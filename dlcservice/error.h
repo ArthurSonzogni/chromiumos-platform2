@@ -22,6 +22,7 @@ extern const char kFailedInstallInUpdateEngine[];
 extern const char kFailedInternal[];
 extern const char kFailedToVerifyImage[];
 extern const char kFailedToMountImage[];
+extern const char kFailedCreationDuringHibernateResume[];
 };  // namespace error
 
 class Error {

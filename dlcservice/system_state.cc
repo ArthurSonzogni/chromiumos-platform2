@@ -39,6 +39,7 @@ SystemState::SystemState(
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
     const base::FilePath& verification_file,
+    const base::FilePath& hibernate_resuming_file,
     base::Clock* clock)
     :
 #if USE_LVM_STATEFUL_PARTITION
@@ -57,6 +58,7 @@ SystemState::SystemState(
       prefs_dir_(prefs_dir),
       users_dir_(users_dir),
       verification_file_(verification_file),
+      hibernate_resuming_file_(hibernate_resuming_file),
       clock_(clock) {
 }
 
@@ -80,6 +82,7 @@ void SystemState::Initialize(
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
     const base::FilePath& verification_file,
+    const base::FilePath& hibernate_resuming_file,
     base::Clock* clock,
     bool for_test) {
   if (!for_test)
@@ -92,7 +95,7 @@ void SystemState::Initialize(
       state_change_reporter, std::move(boot_slot), std::move(metrics),
       std::move(system_properties), manifest_dir, preloaded_content_dir,
       factory_install_dir, content_dir, prefs_dir, users_dir, verification_file,
-      clock));
+      hibernate_resuming_file, clock));
 }
 
 // static
@@ -206,6 +209,19 @@ const update_engine::StatusResult& SystemState::update_engine_status() {
 
 const base::Time& SystemState::update_engine_status_timestamp() {
   return last_update_engine_status_timestamp_;
+}
+
+bool SystemState::resuming_from_hibernate() {
+  if (not_resuming_from_hibernate_)
+    return false;
+
+  if (base::PathExists(hibernate_resuming_file_))
+    return true;
+
+  // The system only ever starts as resuming from hibernate, it never
+  // transitions there. Cache a negative result.
+  not_resuming_from_hibernate_ = true;
+  return false;
 }
 
 }  // namespace dlcservice
