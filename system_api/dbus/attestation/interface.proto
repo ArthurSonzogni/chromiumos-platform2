@@ -266,6 +266,17 @@ message EnrollReply {
   optional AttestationStatus status = 1;
 }
 
+// `DEVICE_SETUP_CERTIFICATE` specific request metadata.
+message DeviceSetupCertificateRequestMetadata {
+  // This will eventually be a DUSI. For now, this will be a 36 character GUID.
+  // This will be used as the CN of the Remote Attestation certificate.
+  optional string id = 1;
+
+  // The generated certificate will be bound to this value. This is used to
+  // prevent replay attacks. Currently it is the FIDO credential id.
+  optional string content_binding = 2;
+}
+
 // Create an attestation certificate request to be sent to the Privacy CA.
 // The request is a serialized AttestationCertificateRequest protobuf. The
 // certificate request process generates and certifies a key in the TPM and
@@ -286,6 +297,12 @@ message CreateCertificateRequestRequest {
   optional ACAType aca_type = 4;
   // The key algorithm of certified key.
   optional KeyType key_type = 5;
+  // Certificate profile specific metadata.
+  oneof metadata {
+    // `DEVICE_SETUP_CERTIFICATE` specific request metadata.
+    DeviceSetupCertificateRequestMetadata
+        device_setup_certificate_request_metadata = 6;
+  }
 }
 
 message CreateCertificateRequestReply {
