@@ -265,28 +265,7 @@ CrosHealthdRoutineFactoryImpl::MakeSensitiveSensorRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeFingerprintRoutine() {
-  // Use FPC 1145 spec for default value.
-  FingerprintParameter params;
-  params.max_dead_pixels = 10;
-  params.max_dead_pixels_in_detect_zone = 0;
-  params.max_pixel_dev = 25;
-  params.max_error_reset_pixels = 5;
-  params.max_reset_pixel_dev = 55;
-  params.pixel_median.cb_type1_lower = 185;
-  params.pixel_median.cb_type1_upper = 215;
-  params.pixel_median.cb_type2_lower = 85;
-  params.pixel_median.cb_type2_upper = 115;
-  params.pixel_median.icb_type1_lower = 20;
-  params.pixel_median.icb_type1_upper = 65;
-  params.pixel_median.icb_type2_lower = 160;
-  params.pixel_median.icb_type2_upper = 205;
-  params.detect_zones = {
-      {16, 8, 23, 15},   {16, 24, 23, 31},   {16, 40, 23, 47},
-      {66, 8, 73, 15},   {66, 24, 73, 31},   {66, 40, 73, 47},
-      {118, 8, 125, 15}, {118, 24, 125, 31}, {118, 40, 125, 47},
-      {168, 8, 175, 15}, {168, 24, 175, 31}, {168, 40, 175, 47}};
-
-  // TODO(kerker): Get parameters from cros_config through parameter_fetcher_.
+  auto params = parameter_fetcher_->GetFingerprintParameters();
 
   return std::make_unique<FingerprintRoutine>(context_, std::move(params));
 }
