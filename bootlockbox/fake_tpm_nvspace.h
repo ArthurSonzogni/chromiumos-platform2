@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/tpm_nvspace.h"
 
 namespace cryptohome {
 

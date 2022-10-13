@@ -15,7 +15,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/bootlockbox/boot_lockbox_client.h"
+#include "bootlockbox/boot_lockbox_client.h"
 
 namespace {
 

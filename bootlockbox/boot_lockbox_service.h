@@ -9,8 +9,8 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "cryptohome/bootlockbox/boot_lockbox_dbus_adaptor.h"
-#include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
+#include "bootlockbox/boot_lockbox_dbus_adaptor.h"
+#include "bootlockbox/nvram_boot_lockbox.h"
 
 namespace cryptohome {
 

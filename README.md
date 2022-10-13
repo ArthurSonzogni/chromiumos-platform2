@@ -31,6 +31,7 @@ copies.
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |
 | [biod](./biod/) | Biometrics daemon |
 | [bootid-logger](./bootid-logger/) | Simple command to record the current boot id to the log. |
+| [bootlockbox](./bootlockbox/) | Daemon and client for boot lockbox service.|
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
 | [camera](./camera/) | ChromeOS Camera daemon |
 | [cfm-dfu-notification](./cfm-dfu-notification/) | CFM specific library for DFU notifications |

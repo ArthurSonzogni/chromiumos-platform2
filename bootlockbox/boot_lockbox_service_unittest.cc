@@ -9,10 +9,8 @@
 #include <gtest/gtest.h>
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-#include "cryptohome/bootlockbox/boot_lockbox_dbus_adaptor.h"
-#include "cryptohome/bootlockbox/mock_nvram_boot_lockbox.h"
-
-#include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
+#include "bootlockbox/boot_lockbox_dbus_adaptor.h"
+#include "bootlockbox/mock_nvram_boot_lockbox.h"
 
 #include <base/check.h>
 

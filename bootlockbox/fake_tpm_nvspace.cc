@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "cryptohome/bootlockbox/fake_tpm_nvspace.h"
+#include "bootlockbox/fake_tpm_nvspace.h"
 
 namespace cryptohome {
 

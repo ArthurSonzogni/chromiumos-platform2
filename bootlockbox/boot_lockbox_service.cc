@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/bootlockbox/boot_lockbox_service.h"
+#include "bootlockbox/boot_lockbox_service.h"
 
 #include <sysexits.h>
 
 #include <base/logging.h>
 #include <dbus/dbus-protocol.h>
 
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/tpm_nvspace_impl.h"
 
 namespace cryptohome {
 

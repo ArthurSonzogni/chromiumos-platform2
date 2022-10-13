@@ -15,9 +15,9 @@ generate_dbus_proxies("bootlockbox-proxies") {
 }
 
 proto_library("bootlockbox-proto") {
-  proto_in_dir = "../bootlockbox"
+  proto_in_dir = ".."
   proto_lib_dirs = [ target_gen_dir ]
-  proto_out_dir = "include/cryptohome/bootlockbox"
+  proto_out_dir = "include/bootlockbox"
 
   # shared_library.
   use_pic = true
@@ -34,8 +34,8 @@ pkg_config("bootlockbox_dependent_config") {
 
 shared_library("libbootlockbox-client") {
   sources = [
-    "../bootlockbox/boot_lockbox_client.cc",
-    "../bootlockbox/boot_lockbox_client.h",
+    "../boot_lockbox_client.cc",
+    "../boot_lockbox_client.h",
   ]
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]
   libs = [ "system_api" ]

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/bootlockbox/boot_lockbox_dbus_adaptor.h"
+#include "bootlockbox/boot_lockbox_dbus_adaptor.h"
 
 #include <memory>
 #include <string>
@@ -16,7 +16,6 @@
 #include <dbus/dbus-protocol.h>
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
 
 namespace {
 // Creates a dbus error message.

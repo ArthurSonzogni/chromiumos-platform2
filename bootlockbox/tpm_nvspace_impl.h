@@ -14,7 +14,7 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/tpm_nvspace.h"
 
 namespace cryptohome {
 

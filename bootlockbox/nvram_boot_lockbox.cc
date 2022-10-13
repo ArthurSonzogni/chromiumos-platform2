@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
+#include "bootlockbox/nvram_boot_lockbox.h"
 
 #include <string>
 #include <utility>
@@ -15,8 +15,8 @@
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/tpm_nvspace_impl.h"
 
 using ::hwsec_foundation::Sha256;
 

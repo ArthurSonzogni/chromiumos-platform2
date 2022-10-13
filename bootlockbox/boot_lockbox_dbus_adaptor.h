@@ -8,8 +8,8 @@
 #include <memory>
 #include <vector>
 
+#include "bootlockbox/nvram_boot_lockbox.h"
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-#include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
 
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
 

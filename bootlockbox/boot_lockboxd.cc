@@ -4,7 +4,7 @@
 
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/bootlockbox/boot_lockbox_service.h"
+#include "bootlockbox/boot_lockbox_service.h"
 
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);

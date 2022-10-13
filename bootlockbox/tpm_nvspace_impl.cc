@@ -12,8 +12,8 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/tpm_nvspace_impl.h"
 
 namespace {
 constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);

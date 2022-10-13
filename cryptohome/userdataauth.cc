@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
@@ -43,7 +44,6 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/auth_session_proto_utils.h"
-#include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"

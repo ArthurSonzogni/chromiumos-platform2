@@ -13,8 +13,8 @@
 #include <gtest/gtest_prod.h>
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-#include "cryptohome/bootlockbox/key_value_map.pb.h"
-#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/key_value_map.pb.h"
+#include "bootlockbox/tpm_nvspace.h"
 
 namespace cryptohome {
 

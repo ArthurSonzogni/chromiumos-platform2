@@ -96,9 +96,9 @@ if (use.test) {
 }
 
 generate_dbus_adaptors("bootlockbox-adaptors") {
-  dbus_service_config = "../dbus_adaptors/dbus-service-config.json"
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/dbus_adaptors"
-  sources = [ "../dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
+  sources = [ "dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
 }
 
 static_library("libnvram-boot-lockbox") {
@@ -112,7 +112,7 @@ static_library("libnvram-boot-lockbox") {
 }
 
 install_config("install_init") {
-  sources = [ "bootlockboxd.conf" ]
+  sources = [ "init/bootlockboxd.conf" ]
   install_path = "/etc/init"
 }
 
