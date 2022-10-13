@@ -363,6 +363,11 @@ message GetCertificateRequest {
   // If set to |true|, this request also triggers enrollment process if the
   // device is not enrolled yet.
   optional bool shall_trigger_enrollment = 8;
+  oneof metadata {
+    // `DEVICE_SETUP_CERTIFICATE` specific request metadata.
+    DeviceSetupCertificateRequestMetadata
+        device_setup_certificate_request_metadata = 9;
+  }
 }
 
 message GetCertificateReply {
