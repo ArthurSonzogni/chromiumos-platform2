@@ -420,5 +420,29 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   ExpectFetchSystemInfo();
 }
 
+TEST_F(SystemUtilsTest, TestOemName) {
+  expected_system_info_->os_info->oem_name = "FooOEM";
+  expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->oem_name = "FooOEM";
+  expected_system_info_->vpd_info->oem_name = "";
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->oem_name = std::nullopt;
+  expected_system_info_->vpd_info->oem_name = std::nullopt;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  // Test the fallback logic triggered by missing OEM name in cros-config.
+  expected_system_info_->os_info->oem_name = std::nullopt;
+  expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
+  SetSystemInfo(expected_system_info_);
+  expected_system_info_->os_info->oem_name = "FooOEM-VPD";
+  ExpectFetchSystemInfo();
+}
+
 }  // namespace
 }  // namespace diagnostics

@@ -218,13 +218,16 @@ void State::FetchBootMode(mojom::BootMode& boot_mode) {
 
 bool State::FetchOsInfo() {
   auto os_info = mojom::OsInfo::New();
-  os_info->code_name = context_->system_config()->GetCodeName();
-  os_info->marketing_name = context_->system_config()->GetMarketingName();
-  os_info->oem_name = context_->system_config()->GetOemName();
   if (!FetchOsVersion(os_info->os_version))
     return false;
-  FetchBootMode(os_info->boot_mode);
+  os_info->code_name = context_->system_config()->GetCodeName();
+  os_info->marketing_name = context_->system_config()->GetMarketingName();
+
+  // Note that the following fields, oem_name, efi_platform_size and boot_mode,
+  // may be further modified. See `State::Fetch()`.
+  os_info->oem_name = context_->system_config()->GetOemName();
   os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::kUnknown;
+  FetchBootMode(os_info->boot_mode);
 
   info_->os_info = std::move(os_info);
   return true;
@@ -307,6 +310,11 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
         barrier.Depend(base::BindOnce(&State::HandleEfiPlatformSize,
                                       base::Unretained(state_ptr))));
   }
+
+  // OEM name in cros-config is usually filled after (or right before) launch.
+  // Fallback to VPD (vpd.ro.oem-name) if it’s missing in cros-config.
+  if (!state_ptr->info_->os_info->oem_name.has_value())
+    state_ptr->info_->os_info->oem_name = state_ptr->info_->vpd_info->oem_name;
 }
 
 }  // namespace
