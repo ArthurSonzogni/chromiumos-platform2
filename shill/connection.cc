@@ -244,14 +244,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   }
   bool is_p2p = peer.IsValid();
 
-  if (!SetupExcludedRoutes(properties, gateway)) {
-    return;
-  }
-
-  if (!FixGatewayReachability(local, &peer, &gateway)) {
-    LOG(WARNING) << "Expect limited network connectivity.";
-  }
-
   if (!fixed_ip_params_) {
     if (device_info_->HasOtherAddress(interface_index_, local)) {
       // The address has changed for this interface.  We need to flush
@@ -274,6 +266,14 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast,
                                        peer);
     SetMTU(properties.mtu);
+  }
+
+  if (!SetupExcludedRoutes(properties, gateway)) {
+    return;
+  }
+
+  if (!FixGatewayReachability(local, &peer, &gateway)) {
+    LOG(WARNING) << "Expect limited network connectivity.";
   }
 
   if (gateway.IsValid() && properties.default_route &&
