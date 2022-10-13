@@ -88,6 +88,7 @@ copies.
 | [installer](./installer/) | CrOS installer utility (for AU/recovery/etc...) |
 | [ippusb_bridge](./ippusb_bridge/) | HTTP proxy to IPP-enabled printers |
 | [kerberos](./kerberos/) | Daemon for managing Kerberos tickets |
+| [kexec-lite](./kexec-lite/) | Simple implementation of kexec-tools |
 | [libbrillo](./libbrillo/) | Common platform utility library |
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
