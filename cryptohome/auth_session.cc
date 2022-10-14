@@ -188,7 +188,7 @@ AuthSession::AuthSession(
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage,
     bool enable_create_backup_vk_with_uss)
-    : username_(std::move(username)),
+    : username_(username),
       obfuscated_username_(SanitizeUserName(username_)),
       token_(base::UnguessableToken::Create()),
       serialized_token_(
@@ -199,7 +199,6 @@ AuthSession::AuthSession(
       crypto_(crypto),
       platform_(platform),
       user_session_map_(user_session_map),
-      verifier_forwarder_(username_, user_session_map_),
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
@@ -1840,6 +1839,11 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
   vault_keyset_ = std::make_unique<VaultKeyset>(updated_vault_keyset);
 }
 
+std::map<std::string, std::unique_ptr<CredentialVerifier>>
+AuthSession::TakeCredentialVerifiersMap() {
+  return std::move(label_to_credential_verifier_);
+}
+
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
     const user_data_auth::AuthInput& auth_input_proto,
     const AuthFactorMetadata& auth_factor_metadata) {
@@ -1912,11 +1916,13 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
     const AuthInput& auth_input) {
   if (auto new_verifier = CreateCredentialVerifier(
           auth_factor_type, auth_factor_label, auth_input)) {
-    auto* return_ptr = new_verifier.get();
-    verifier_forwarder_.AddVerifier(std::move(new_verifier));
-    return return_ptr;
+    auto& map_entry = label_to_credential_verifier_[auth_factor_label];
+    map_entry = std::move(new_verifier);
+    return map_entry.get();
   }
-  verifier_forwarder_.RemoveVerifier(auth_factor_label);
+  // If we couldn't create the new verifier, erase the old one. This avoids the
+  // risk of continuing to accept old credentials.
+  label_to_credential_verifier_.erase(auth_factor_label);
   return nullptr;
 }
 
@@ -2365,7 +2371,8 @@ void AuthSession::AddAuthFactorForEphemeral(
     return;
   }
 
-  if (verifier_forwarder_.HasVerifier(auth_factor_label)) {
+  if (label_to_credential_verifier_.find(auth_factor_label) !=
+      label_to_credential_verifier_.end()) {
     // Overriding the verifier for a given label is not supported.
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVerifierAlreadySetInAddFactorForEphemeral),

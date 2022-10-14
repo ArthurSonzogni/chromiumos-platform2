@@ -4230,7 +4230,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     return;
   }
 
-  if (!session->HasCredentialVerifier() ||
+  if (!session->HasCredentialVerifiers() ||
       override_existing_credential_verifier) {
     session->TakeCredentialsFrom(auth_session);
   }

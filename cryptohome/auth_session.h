@@ -177,6 +177,11 @@ class AuthSession final {
   // state before requesting the file system keyset.
   const FileSystemKeyset& file_system_keyset() const;
 
+  // Transfer ownership of all of the currently owned verifiers that can be used
+  // for unlock. Returns a map of label -> verifier.
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+  TakeCredentialVerifiersMap();
+
   // This function returns if the user existed when the auth session started.
   bool user_exists() const { return user_exists_; }
 
@@ -565,10 +570,8 @@ class AuthSession final {
   // The creator of the AuthSession object is responsible for the life of
   // Platform object.
   Platform* const platform_;
-  // The user session map and a verifier forwarder associated with it.
   // Unowned pointer.
   UserSessionMap* const user_session_map_;
-  UserSessionMap::VerifierForwarder verifier_forwarder_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
@@ -579,6 +582,10 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
+  // Verifiers that can be used by UserSession for unlock-only verification.
+  // Maps labels to verifier.
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+      label_to_credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and

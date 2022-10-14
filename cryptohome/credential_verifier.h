@@ -35,7 +35,7 @@ class CredentialVerifier {
   virtual bool Set(const brillo::SecureBlob& secret) = 0;
 
   // Verifies the |secret| against previously Set() state.
-  virtual bool Verify(const brillo::SecureBlob& secret) const = 0;
+  virtual bool Verify(const brillo::SecureBlob& secret) = 0;
 
  protected:
   CredentialVerifier(AuthFactorType auth_factor_type,

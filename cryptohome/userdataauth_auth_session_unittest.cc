@@ -668,6 +668,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, TakeCredentialsFrom(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
@@ -710,6 +711,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, TakeCredentialsFrom(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
@@ -803,6 +805,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, TakeCredentialsFrom(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
@@ -854,6 +857,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, TakeCredentialsFrom(auth_session));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
@@ -889,6 +893,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session2, TakeCredentialsFrom(auth_session2));
   EXPECT_CALL(*user_session2, MountVault(kUsername2, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
   EXPECT_CALL(user_session_factory_, New(_, _, _))
@@ -991,6 +996,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
 
   // Set expectations for credential verifier.
   EXPECT_CALL(*user_session, IsEphemeral()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, TakeCredentialsFrom(auth_session));
   // Set up expectation for add credential callback success.
   user_data_auth::AddCredentialsRequest request;
   user_data_auth::AddCredentialsReply reply;

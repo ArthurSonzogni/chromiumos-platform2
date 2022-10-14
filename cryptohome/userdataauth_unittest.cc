@@ -4574,7 +4574,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
       .WillOnce(Return(base::flat_set<AuthIntent>(
           {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
   // Add a verifier as well.
-  session_->AddCredentialVerifier(std::make_unique<ScryptVerifier>(kFakeLabel));
+  ScryptVerifier verifier(kFakeLabel);
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4611,8 +4612,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
       user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
-  session_->AddCredentialVerifier(
-      std::make_unique<ScryptVerifier>("password-verifier-label"));
+  ScryptVerifier verifier("password-verifier-label");
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4724,8 +4725,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
-  session_->AddCredentialVerifier(
-      std::make_unique<ScryptVerifier>("password-label"));
+  ScryptVerifier verifier("password-label");
+  session_->get_credential_verifiers().push_back(&verifier);
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");

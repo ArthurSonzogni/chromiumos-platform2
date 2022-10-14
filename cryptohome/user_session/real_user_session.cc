@@ -280,21 +280,15 @@ void RealUserSession::TakeCredentialsFrom(AuthSession* auth_session) {
   }
 
   key_data_ = auth_session->current_key_data();
+  // Merge all of the verifiers into the existing map. Note that this will
+  // replace any existing verifiers with the same label.
+  for (auto&& [label, verifier] : auth_session->TakeCredentialVerifiersMap()) {
+    label_to_credential_verifier_[label] = std::move(verifier);
+  }
 }
 
-void RealUserSession::AddCredentialVerifier(
-    std::unique_ptr<CredentialVerifier> verifier) {
-  const std::string& label = verifier->auth_factor_label();
-  label_to_credential_verifier_[label] = std::move(verifier);
-}
-
-bool RealUserSession::HasCredentialVerifier() const {
+bool RealUserSession::HasCredentialVerifiers() const {
   return !label_to_credential_verifier_.empty();
-}
-
-bool RealUserSession::HasCredentialVerifier(const std::string& label) const {
-  return label_to_credential_verifier_.find(label) !=
-         label_to_credential_verifier_.end();
 }
 
 std::vector<const CredentialVerifier*> RealUserSession::GetCredentialVerifiers()

@@ -84,11 +84,7 @@ class RealUserSession : public UserSession {
 
   void TakeCredentialsFrom(AuthSession* auth_session) override;
 
-  void AddCredentialVerifier(
-      std::unique_ptr<CredentialVerifier> verifier) override;
-
-  bool HasCredentialVerifier() const override;
-  bool HasCredentialVerifier(const std::string& label) const override;
+  bool HasCredentialVerifiers() const override;
 
   std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const override;

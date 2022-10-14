@@ -72,52 +72,6 @@ class UserSessionMap final {
   using iterator = iterator_base<UserSession>;
   using const_iterator = iterator_base<const UserSession>;
 
-  // Class used to forward the registration of credential verifier to a specific
-  // user's session, or in the case where that user's session does not (yet)
-  // exist to hold on to them until such a session is added.
-  class VerifierForwarder {
-   public:
-    VerifierForwarder(std::string account_id, UserSessionMap* user_session_map);
-    VerifierForwarder(const VerifierForwarder&) = delete;
-    VerifierForwarder& operator=(const VerifierForwarder&) = delete;
-    ~VerifierForwarder();
-
-    // Reports if a verifier already exists with the given label.
-    bool HasVerifier(const std::string& label);
-
-    // Add a new credential verifier using the verifier's label.
-    void AddVerifier(std::unique_ptr<CredentialVerifier> verifier);
-
-    // Remove the credential verifier with the given label.
-    void RemoveVerifier(const std::string& label);
-
-    // Point the forwarder at a UserSession, resolving all outstanding verifier
-    // registrations to it.
-    void Resolve(UserSession* session);
-
-    // Detach the forwarder from whatever user session it is attached to.
-    //
-    // Note that this does not extract any existing verifiers from whatever
-    // session it is already attached to, and so you cannot use Detach+Resolve
-    // to "move" verifiers between sessions. The expectation is that if a user
-    // session is terminated then any new session would require fresh verifiers.
-    void Detach();
-
-   private:
-    // The account ID this forwarder will forward to.
-    const std::string account_id_;
-    // The user session map this forwarder is associated with. This is used to
-    // remove the forwarder from the map's internal tracking on destruction.
-    UserSessionMap* user_session_map_;
-    // A variant containing either the underlying user session, or a map of
-    // verifiers to be added to the session upon creation. These are stored in a
-    // variant because either the verifiers should be directly forwarded to the
-    // session, or stored here in the forwarder, but never both.
-    using VerifierMap =
-        std::map<std::string, std::unique_ptr<CredentialVerifier>>;
-    std::variant<UserSession*, VerifierMap> forwarding_destination_;
-  };
-
   UserSessionMap() = default;
   UserSessionMap(const UserSessionMap&) = delete;
   UserSessionMap& operator=(const UserSessionMap&) = delete;
@@ -141,12 +95,7 @@ class UserSessionMap final {
   const UserSession* Find(const std::string& account_id) const;
 
  private:
-  // The underlying UserSession storage.
   Storage storage_;
-
-  // Track any live verifier forwarders. The forwarders will add themselves to
-  // this map on construction and remove themselves upon destruction.
-  std::map<std::string, VerifierForwarder*> verifier_forwarders_;
 };
 
 }  // namespace cryptohome
