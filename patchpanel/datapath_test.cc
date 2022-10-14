@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
@@ -122,66 +123,6 @@ class MockFirewall : public Firewall {
                     uint16_t dst_port));
 };
 
-class FakeSystem : public System {
- public:
-  FakeSystem() = default;
-  ~FakeSystem() = default;
-
-  // Capture Ioctls operations and arguments. Always succeeds.
-  int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
-    ioctl_reqs.push_back(request);
-    switch (request) {
-      case SIOCBRADDBR:
-      case SIOCBRDELBR: {
-        ioctl_ifreq_args.push_back({std::string(argp), {}});
-        break;
-      }
-      case SIOCBRADDIF:
-      case TUNSETIFF:
-      case SIOCSIFADDR:
-      case SIOCSIFNETMASK:
-      case SIOCSIFHWADDR:
-      case SIOCGIFFLAGS:
-      case SIOCSIFFLAGS: {
-        struct ifreq ifr;
-        memcpy(&ifr, argp, sizeof(ifr));
-        ioctl_ifreq_args.push_back({std::string(ifr.ifr_name), ifr});
-        break;
-      }
-      case SIOCADDRT:
-      case SIOCDELRT: {
-        struct rtentry route;
-        memcpy(&route, argp, sizeof(route));
-        ioctl_rtentry_args.push_back({"", route});
-        // Copy the string poited by rtentry.rt_dev because Add/DeleteIPv4Route
-        // pass this value to ioctl() on the stack.
-        if (route.rt_dev) {
-          auto& cap = ioctl_rtentry_args.back();
-          cap.first = std::string(route.rt_dev);
-          cap.second.rt_dev = const_cast<char*>(cap.first.c_str());
-        }
-        break;
-      }
-      case TUNSETPERSIST:
-      case TUNSETOWNER: {
-        // ioctl_u32_args.push_back(static_cast<uint32_t>(argp));
-        break;
-      }
-    }
-    return 0;
-  }
-
-  MOCK_METHOD3(SysNetSet,
-               bool(SysNet target,
-                    const std::string& content,
-                    const std::string& iface));
-  MOCK_METHOD1(IfNametoindex, int(const std::string& ifname));
-
-  std::vector<ioctl_req_t> ioctl_reqs;
-  std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;
-  std::vector<std::pair<std::string, struct ifreq>> ioctl_ifreq_args;
-  std::vector<uint32_t> ioctl_u32_args;
-};
 
 void Verify_ip(MockProcessRunner& runner, const std::string& command) {
   auto args = SplitCommand(command);
