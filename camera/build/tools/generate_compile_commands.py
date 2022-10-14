@@ -23,6 +23,7 @@ PLATFORM2_CAMERA_CORE_PACKAGES = [
     "chromeos-base/cros-camera-libs",
     "chromeos-base/cros-camera-tool",
     "media-libs/cros-camera-connector-client",
+    "media-libs/cros-camera-frame-annotator",
     "media-libs/cros-camera-hal-usb",
 ]
 
@@ -225,8 +226,8 @@ def main(argv: list):
         type=str,
         required=True,
         help=(
-            "The board to emerge the camera packages for and copy the compilation "
-            "database from"
+            "The board to emerge the camera packages for and copy the "
+            "compilation database from"
         ),
     )
     parser.add_argument(
