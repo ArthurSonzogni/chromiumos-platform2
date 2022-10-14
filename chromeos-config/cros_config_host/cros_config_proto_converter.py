@@ -1331,6 +1331,7 @@ def _build_firmware(config):
         build_targets,
         "ec_extras",
     )
+    _upsert(fw_build_config.build_targets.ish, build_targets, "ish")
     _upsert(
         fw_build_config.build_targets.libpayload, build_targets, "libpayload"
     )
