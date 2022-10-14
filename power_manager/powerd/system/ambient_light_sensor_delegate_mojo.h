@@ -12,13 +12,16 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/containers/flat_map.h>
+#include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/memory/weak_ptr.h>
-#include <base/observer_list.h>
 #include <base/sequence_checker.h>
-#include <base/stl_util.h>
 #include <iioservice/mojo/sensor.mojom.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "power_manager/common/power_constants.h"
