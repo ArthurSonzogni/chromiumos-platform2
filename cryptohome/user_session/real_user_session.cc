@@ -266,9 +266,11 @@ void RealUserSession::AddCredentials(const Credentials& credentials) {
   key_data_ = credentials.key_data();
 
   // Create a matching passkey-based verifier for the key data.
-  auto& map_entry = label_to_credential_verifier_[key_data_.label()];
-  map_entry = std::make_unique<ScryptVerifier>(key_data_.label());
-  if (!map_entry->Set(credentials.passkey())) {
+  auto verifier =
+      ScryptVerifier::Create(key_data_.label(), credentials.passkey());
+  if (verifier) {
+    label_to_credential_verifier_[key_data_.label()] = std::move(verifier);
+  } else {
     LOG(WARNING) << "CredentialVerifier could not be set";
   }
 }

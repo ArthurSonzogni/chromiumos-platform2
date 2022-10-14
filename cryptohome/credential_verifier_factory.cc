@@ -48,8 +48,9 @@ std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
         LOG(ERROR) << "Cannot construct a password verifier without a password";
         return nullptr;
       }
-      verifier = std::make_unique<ScryptVerifier>(auth_factor_label);
-      if (!verifier->Set(*auth_input.user_input)) {
+      verifier =
+          ScryptVerifier::Create(auth_factor_label, *auth_input.user_input);
+      if (!verifier) {
         LOG(ERROR) << "Credential verifier initialization failed.";
         return nullptr;
       }

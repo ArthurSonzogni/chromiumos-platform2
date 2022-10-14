@@ -10,53 +10,57 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/scrypt_verifier.h"
 
 namespace cryptohome {
 namespace {
 
-constexpr char kLabel[] = "fake-label";
-
-class VerifierTest : public ::testing::Test {
+// Minimal concrete implementation of CredentialVerifier, so that we can test
+// the abstract base class functions.
+class TestVerifier : public CredentialVerifier {
  public:
-  void SetUp() override {
-    password_verifier_ = std::make_unique<ScryptVerifier>(kLabel);
-  }
+  TestVerifier(AuthFactorType auth_factor_type,
+               std::string auth_factor_label,
+               AuthFactorMetadata auth_factor_metadata)
+      : CredentialVerifier(auth_factor_type,
+                           std::move(auth_factor_label),
+                           std::move(auth_factor_metadata)) {}
 
- protected:
-  std::unique_ptr<CredentialVerifier> password_verifier_;
+  bool Verify(const brillo::SecureBlob& secret) const override { return false; }
 };
 
-TEST_F(VerifierTest, AuthFactorType) {
-  EXPECT_EQ(password_verifier_->auth_factor_type(), AuthFactorType::kPassword);
+class CredentialVerifierTest : public ::testing::Test {
+ public:
+  CredentialVerifierTest()
+      : pw_verifier_(AuthFactorType::kPassword,
+                     "password",
+                     {.metadata = PasswordAuthFactorMetadata()}),
+        pin_verifier_(AuthFactorType::kPin,
+                      "pin",
+                      {.metadata = PinAuthFactorMetadata()}) {}
+
+ protected:
+  // A couple of verifiers that we can test with.
+  TestVerifier pw_verifier_;
+  TestVerifier pin_verifier_;
+};
+
+TEST_F(CredentialVerifierTest, AuthFactorType) {
+  EXPECT_EQ(pw_verifier_.auth_factor_type(), AuthFactorType::kPassword);
+  EXPECT_EQ(pin_verifier_.auth_factor_type(), AuthFactorType::kPin);
 }
 
-TEST_F(VerifierTest, AuthFactorLabel) {
-  EXPECT_EQ(password_verifier_->auth_factor_label(), kLabel);
+TEST_F(CredentialVerifierTest, AuthFactorLabel) {
+  EXPECT_EQ(pw_verifier_.auth_factor_label(), "password");
+  EXPECT_EQ(pin_verifier_.auth_factor_label(), "pin");
 }
 
-TEST_F(VerifierTest, AuthFactorMetadata) {
+TEST_F(CredentialVerifierTest, AuthFactorMetadata) {
   EXPECT_TRUE(std::holds_alternative<PasswordAuthFactorMetadata>(
-      password_verifier_->auth_factor_metadata().metadata));
-}
-
-TEST_F(VerifierTest, Ok) {
-  brillo::SecureBlob secret("good");
-  EXPECT_TRUE(password_verifier_->Set(secret));
-  EXPECT_TRUE(password_verifier_->Verify(secret));
-}
-
-TEST_F(VerifierTest, Fail) {
-  brillo::SecureBlob secret("good");
-  brillo::SecureBlob wrong_secret("wrong");
-  EXPECT_TRUE(password_verifier_->Set(secret));
-  EXPECT_FALSE(password_verifier_->Verify(wrong_secret));
-}
-
-TEST_F(VerifierTest, NotSet) {
-  brillo::SecureBlob secret("not set secret");
-  EXPECT_FALSE(password_verifier_->Verify(secret));
+      pw_verifier_.auth_factor_metadata().metadata));
+  EXPECT_TRUE(std::holds_alternative<PinAuthFactorMetadata>(
+      pin_verifier_.auth_factor_metadata().metadata));
 }
 
 }  // namespace

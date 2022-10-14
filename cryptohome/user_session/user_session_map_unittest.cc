@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/scrypt_verifier.h"
+#include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/user_session.h"
 
@@ -34,7 +34,9 @@ constexpr char kUsername2[] = "foo2@bar.com";
 //   auto [verifier, ptr] = MakeTestVerifier("label")
 std::pair<std::unique_ptr<CredentialVerifier>, CredentialVerifier*>
 MakeTestVerifier(std::string label) {
-  auto owned_ptr = std::make_unique<ScryptVerifier>(std::move(label));
+  auto owned_ptr = std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, std::move(label),
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()});
   auto* unowned_ptr = owned_ptr.get();
   return {std::move(owned_ptr), unowned_ptr};
 }

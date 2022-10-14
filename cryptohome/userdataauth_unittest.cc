@@ -44,6 +44,7 @@
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
@@ -58,7 +59,6 @@
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/protobuf_test_utils.h"
-#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
@@ -4574,7 +4574,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
       .WillOnce(Return(base::flat_set<AuthIntent>(
           {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
   // Add a verifier as well.
-  session_->AddCredentialVerifier(std::make_unique<ScryptVerifier>(kFakeLabel));
+  session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, kFakeLabel,
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4611,8 +4613,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
       user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
-  session_->AddCredentialVerifier(
-      std::make_unique<ScryptVerifier>("password-verifier-label"));
+  session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, "password-verifier-label",
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
 
   user_data_auth::StartAuthSessionReply start_auth_session_reply;
   {
@@ -4724,8 +4727,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
-  session_->AddCredentialVerifier(
-      std::make_unique<ScryptVerifier>("password-label"));
+  session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, "password-label",
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()}));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
