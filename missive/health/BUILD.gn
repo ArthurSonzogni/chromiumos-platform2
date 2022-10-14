@@ -34,6 +34,7 @@ static_library("health_module") {
   configs += [ ":target_defaults" ]
 
   deps = [
+    "//missive/proto:libmissiveprotohealth",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/proto:libmissiveprotostatus",
