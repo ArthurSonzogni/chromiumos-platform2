@@ -600,23 +600,25 @@ class WakeOnWiFiTest : public ::testing::Test {
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
       std::optional<base::TimeDelta> time_to_next_lease_renewal) {
-    ResultCallback done_callback(
-        base::Bind(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
-    base::Closure renew_dhcp_lease_callback(base::Bind(
+    ResultOnceCallback done_callback(
+        base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
+    base::OnceClosure renew_dhcp_lease_callback(base::BindOnce(
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));
-    base::Closure remove_supplicant_networks_callback(
-        base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
-                   base::Unretained(this)));
+    base::OnceClosure remove_supplicant_networks_callback(
+        base::BindOnce(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
+                       base::Unretained(this)));
     wake_on_wifi_->OnBeforeSuspend(
-        is_connected, allowed_ssids, done_callback, renew_dhcp_lease_callback,
-        remove_supplicant_networks_callback, time_to_next_lease_renewal);
+        is_connected, allowed_ssids, std::move(done_callback),
+        std::move(renew_dhcp_lease_callback),
+        std::move(remove_supplicant_networks_callback),
+        time_to_next_lease_renewal);
   }
 
   void OnDarkResume(bool is_connected,
                     const std::vector<ByteString>& allowed_ssids) {
-    ResultCallback done_callback(
-        base::Bind(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
-    base::Closure renew_dhcp_lease_callback(base::Bind(
+    ResultOnceCallback done_callback(
+        base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
+    base::OnceClosure renew_dhcp_lease_callback(base::BindOnce(
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));
     WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::BindOnce(
         &WakeOnWiFiTest::InitiateScanCallback, base::Unretained(this)));
@@ -624,8 +626,9 @@ class WakeOnWiFiTest : public ::testing::Test {
         base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                    base::Unretained(this)));
     wake_on_wifi_->OnDarkResume(
-        is_connected, allowed_ssids, done_callback, renew_dhcp_lease_callback,
-        std::move(initiate_scan_callback), remove_supplicant_networks_callback);
+        is_connected, allowed_ssids, std::move(done_callback),
+        std::move(renew_dhcp_lease_callback), std::move(initiate_scan_callback),
+        remove_supplicant_networks_callback);
   }
 
   void OnAfterResume() { wake_on_wifi_->OnAfterResume(); }
@@ -635,12 +638,12 @@ class WakeOnWiFiTest : public ::testing::Test {
       std::optional<base::TimeDelta> time_to_next_lease_renewal) {
     SetDarkResumeActionsTimeOutCallback();
     EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
-    base::Closure remove_supplicant_networks_callback(
-        base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
-                   base::Unretained(this)));
-    wake_on_wifi_->BeforeSuspendActions(is_connected,
-                                        time_to_next_lease_renewal,
-                                        remove_supplicant_networks_callback);
+    base::OnceClosure remove_supplicant_networks_callback(
+        base::BindOnce(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
+                       base::Unretained(this)));
+    wake_on_wifi_->BeforeSuspendActions(
+        is_connected, time_to_next_lease_renewal,
+        std::move(remove_supplicant_networks_callback));
     EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   }
 
@@ -686,8 +689,8 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void SetDarkResumeActionsTimeOutCallback() {
     wake_on_wifi_->dark_resume_actions_timeout_callback_.Reset(
-        base::Bind(&WakeOnWiFiTest::DarkResumeActionsTimeoutCallback,
-                   base::Unretained(this)));
+        base::BindOnce(&WakeOnWiFiTest::DarkResumeActionsTimeoutCallback,
+                       base::Unretained(this)));
   }
 
   bool DarkResumeActionsTimeOutCallbackIsCancelled() {
@@ -768,13 +771,13 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnNoAutoConnectableServicesAfterScan(
       const std::vector<ByteString>& allowed_ssids) {
-    base::Closure remove_supplicant_networks_callback(
-        base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
-                   base::Unretained(this)));
+    base::OnceClosure remove_supplicant_networks_callback(
+        base::BindOnce(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
+                       base::Unretained(this)));
     WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::BindOnce(
         &WakeOnWiFiTest::InitiateScanCallback, base::Unretained(this)));
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
-        allowed_ssids, remove_supplicant_networks_callback,
+        allowed_ssids, std::move(remove_supplicant_networks_callback),
         std::move(initiate_scan_callback));
   }
 
@@ -834,8 +837,8 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void InitiateScanInDarkResume(const WiFi::FreqSet& freqs) {
     wake_on_wifi_->InitiateScanInDarkResume(
-        base::Bind(&WakeOnWiFiTest::InitiateScanCallback,
-                   base::Unretained(this)),
+        base::BindOnce(&WakeOnWiFiTest::InitiateScanCallback,
+                       base::Unretained(this)),
         freqs);
   }
 
@@ -873,8 +876,8 @@ class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
   WakeOnWiFiTestWithDispatcher() : WakeOnWiFiTest() {
     wake_on_wifi_.reset(new WakeOnWiFi(
         &netlink_manager_, &dispatcher_, &metrics_,
-        base::Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                   base::Unretained(this))));
+        base::BindRepeating(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
+                            base::Unretained(this))));
   }
   virtual ~WakeOnWiFiTestWithDispatcher() = default;
 
@@ -887,8 +890,8 @@ class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
   WakeOnWiFiTestWithMockDispatcher() : WakeOnWiFiTest() {
     wake_on_wifi_.reset(new WakeOnWiFi(
         &netlink_manager_, &mock_dispatcher_, &metrics_,
-        base::Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                   base::Unretained(this))));
+        base::BindRepeating(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
+                            base::Unretained(this))));
   }
   virtual ~WakeOnWiFiTestWithMockDispatcher() = default;
 

@@ -191,8 +191,8 @@ WiFi::WiFi(Manager* manager,
   scoped_supplicant_listener_.reset(
       new SupplicantManager::ScopedSupplicantListener(
           manager->supplicant_manager(),
-          base::Bind(&WiFi::OnSupplicantPresence,
-                     weak_ptr_factory_.GetWeakPtr())));
+          base::BindRepeating(&WiFi::OnSupplicantPresence,
+                              weak_ptr_factory_.GetWeakPtr())));
 
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(
@@ -2189,10 +2189,10 @@ void WiFi::ScanDoneTask() {
     // when we query the WiFiProvider this time).
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
         provider_->GetSsidsConfiguredForAutoConnect(),
-        base::Bind(&WiFi::RemoveSupplicantNetworks,
-                   weak_ptr_factory_while_started_.GetWeakPtr()),
-        base::Bind(&WiFi::TriggerPassiveScan,
-                   weak_ptr_factory_while_started_.GetWeakPtr()));
+        base::BindOnce(&WiFi::RemoveSupplicantNetworks,
+                       weak_ptr_factory_while_started_.GetWeakPtr()),
+        base::BindOnce(&WiFi::TriggerPassiveScan,
+                       weak_ptr_factory_while_started_.GetWeakPtr()));
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_);
@@ -2724,10 +2724,10 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      base::Bind(&Device::ForceIPConfigUpdate,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&WiFi::RemoveSupplicantNetworks,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindOnce(&Device::ForceIPConfigUpdate,
+                     weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindOnce(&WiFi::RemoveSupplicantNetworks,
+                     weak_ptr_factory_while_started_.GetWeakPtr()),
       network()->TimeToNextDHCPLeaseRenewal());
 }
 
@@ -2746,10 +2746,10 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
-      base::Bind(&Device::ForceIPConfigUpdate,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&WiFi::InitiateScanInDarkResume,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindOnce(&Device::ForceIPConfigUpdate,
+                     weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindOnce(&WiFi::InitiateScanInDarkResume,
+                     weak_ptr_factory_while_started_.GetWeakPtr()),
       base::Bind(&WiFi::RemoveSupplicantNetworks,
                  weak_ptr_factory_while_started_.GetWeakPtr()));
 }

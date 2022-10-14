@@ -32,7 +32,8 @@ class WakeOnWiFiInterface {
   using InitiateScanCallback = base::OnceCallback<void(const WiFi::FreqSet&)>;
   // Callback used to report the wake reason for the current dark resume to
   // powerd.
-  using RecordWakeReasonCallback = base::Callback<void(const std::string&)>;
+  using RecordWakeReasonCallback =
+      base::RepeatingCallback<void(const std::string&)>;
 
   // Types of triggers that we can program the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger {

@@ -1157,7 +1157,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MOCK_METHOD(void, ReliableLinkCallback, ());
 
   void SetReliableLinkCallback() {
-    wifi_->reliable_link_callback_.Reset(base::Bind(
+    wifi_->reliable_link_callback_.Reset(base::BindOnce(
         &WiFiObjectTest::ReliableLinkCallback, base::Unretained(this)));
   }
 
