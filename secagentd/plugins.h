@@ -34,7 +34,7 @@ class ProcessPlugin : public PluginInterface {
   absl::Status Activate() override;
   std::string GetName() const override;
 
-  void HandleRingBufferEvent(const bpf::event& bpf_event) const;
+  void HandleRingBufferEvent(const bpf::cros_event& bpf_event) const;
   void HandleBpfRingBufferReadReady() const;
 
  private:

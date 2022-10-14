@@ -21,7 +21,7 @@ class MessageSenderInterface
     : public base::RefCountedThreadSafe<MessageSenderInterface> {
  public:
   virtual absl::Status InitializeQueues() = 0;
-  virtual absl::Status SendMessage(const bpf::event& event) = 0;
+  virtual absl::Status SendMessage(const bpf::cros_event& event) = 0;
   virtual ~MessageSenderInterface() = default;
 };
 
@@ -31,7 +31,7 @@ class MessageSender : public MessageSenderInterface {
   absl::Status InitializeQueues() override;
 
   // Creates and enqueues a proto message with given bpf event.
-  absl::Status SendMessage(const bpf::event& event) override;
+  absl::Status SendMessage(const bpf::cros_event& event) override;
 
  private:
   // Map linking each destination to its corresponding Report_Queue.

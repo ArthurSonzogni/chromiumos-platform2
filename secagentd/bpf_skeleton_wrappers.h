@@ -24,7 +24,7 @@ constexpr char kMinCoreBtfDir[] = "/usr/share/btf/secagentd/";
 
 // The following callback definitions must have void return type since they will
 // bind to an object method.
-using BpfEventCb = base::RepeatingCallback<void(const bpf::event&)>;
+using BpfEventCb = base::RepeatingCallback<void(const bpf::cros_event&)>;
 using BpfEventAvailableCb = base::RepeatingCallback<void()>;
 
 // The callbacks a BPF plugins are required to provide.

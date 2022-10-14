@@ -10,11 +10,11 @@
 namespace secagentd {
 
 extern "C" int indirect_c_callback(void* ctx, void* data, size_t size) {
-  if (ctx == nullptr || size < sizeof(bpf::event)) {
+  if (ctx == nullptr || size < sizeof(bpf::cros_event)) {
     return -1;
   }
   auto* f = static_cast<BpfEventCb*>(ctx);
-  f->Run(*static_cast<bpf::event*>(data));
+  f->Run(*static_cast<bpf::cros_event*>(data));
   return 0;
 }
 

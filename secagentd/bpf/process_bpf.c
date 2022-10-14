@@ -20,11 +20,11 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, MAX_STRUCT_SIZE * 1024);
+  __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
 static inline __attribute__((always_inline)) void fill_ns_info(
-    struct namespace_info* ns_info, const struct task_struct* t) {
+    struct cros_namespace_info* ns_info, const struct task_struct* t) {
   ns_info->pid_ns = BPF_CORE_READ(t, nsproxy, pid_ns_for_children, ns.inum);
   ns_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
   ns_info->cgroup_ns = BPF_CORE_READ(t, nsproxy, cgroup_ns, ns.inum);
@@ -35,7 +35,7 @@ static inline __attribute__((always_inline)) void fill_ns_info(
 }
 
 static inline __attribute__((always_inline)) void fill_image_info(
-    struct image_info* image_info,
+    struct cros_image_info* image_info,
     const struct linux_binprm* bprm,
     const struct task_struct* t) {
   // Fill in information from bprm's file inode.
@@ -77,14 +77,15 @@ int BPF_PROG(handle_sched_process_exec,
              pid_t old_pid,
              struct linux_binprm* bprm) {
   // Reserve sample from BPF ringbuf.
-  struct event* event =
-      (struct event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
+  struct cros_event* event =
+      (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (event == NULL) {
     return 0;
   }
   event->type = process_type;
   event->data.process_event.type = process_start_type;
-  struct process_start* p = &(event->data.process_event.data.process_start);
+  struct cros_process_start* p =
+      &(event->data.process_event.data.process_start);
 
   // Read various fields from the task_struct in a relocatable way.
   fill_ns_info(&p->spawn_namespace, current);

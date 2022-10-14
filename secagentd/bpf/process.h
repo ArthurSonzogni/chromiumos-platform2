@@ -15,17 +15,17 @@ namespace secagentd::bpf {
 // amount of memory arguments will be truncated to 512 bytes. If all 512
 // bytes are used the consuming userspace daemon will scrape procfs for the
 // entire command line.
-#define MAX_REDUCED_ARG_SIZE (512)
+#define CROS_MAX_REDUCED_ARG_SIZE (512)
 
 // Although the maximum path size defined in linux/limits.h is larger we
 // truncate path sizes to keep memory usage reasonable. If needed the full path
 // name can be regenerated from the inode in image_info.
-#define MAX_PATH_SIZE (512)
+#define CROS_MAX_PATH_SIZE (512)
 
 // The size of the buffer allocated from the BPF ring buffer. The size must be
 // large enough to hold the largest BPF event structure and must also be of
 // 2^N size.
-#define MAX_STRUCT_SIZE (2048)
+#define CROS_MAX_STRUCT_SIZE (2048)
 
 typedef uint64_t time_ns_t;
 
@@ -38,8 +38,8 @@ typedef uint64_t time_ns_t;
 
 // The image_info struct contains the security metrics
 // of interest for an executable file.
-struct image_info {
-  char pathname[MAX_PATH_SIZE];
+struct cros_image_info {
+  char pathname[CROS_MAX_PATH_SIZE];
   uint64_t mnt_ns;
   uint32_t inode_device_id;
   uint32_t inode;
@@ -49,7 +49,7 @@ struct image_info {
 };
 
 // The namespace_info struct contains the namespace information for a process.
-struct namespace_info {
+struct cros_namespace_info {
   uint64_t cgroup_ns;
   uint64_t pid_ns;
   uint64_t user_ns;
@@ -60,21 +60,21 @@ struct namespace_info {
 };
 
 // This is the process information collected when a process starts.
-struct process_start {
+struct cros_process_start {
   uint32_t pid;                 // The tgid.
   uint32_t ppid;                // The tgid of parent.
   time_ns_t start_time;         // Nanoseconds since boot.
   time_ns_t parent_start_time;  // Nanoseconds since boot.
-  char commandline[MAX_REDUCED_ARG_SIZE];
-  unsigned int commandline_len;  // At most MAX_REDUCED_ARG_SIZE.
+  char commandline[CROS_MAX_REDUCED_ARG_SIZE];
+  unsigned int commandline_len;  // At most CROS_MAX_REDUCED_ARG_SIZE.
   unsigned int uid;
   unsigned int gid;
-  struct image_info image_info;
-  struct namespace_info spawn_namespace;
+  struct cros_image_info image_info;
+  struct cros_namespace_info spawn_namespace;
 };
 
 // This is the process information collected when a process exits.
-struct process_exit {
+struct cros_process_exit {
   // PID and start_time together will form a unique identifier for a process.
   // This unique identifier can be used to retrieve the rest of the process
   // information from a userspace process cache.
@@ -82,18 +82,18 @@ struct process_exit {
   time_ns_t start_time;  // Nanoseconds since boot.
 };
 
-struct process_change_namespace {
+struct cros_process_change_namespace {
   // PID and start_time together will form a unique identifier for a process.
   // This unique identifier can be used to retrieve the rest of the process
   // information from a userspace process cache.
   uint32_t pid;
   time_ns_t start_time;
-  struct namespace_info new_ns;  // The new namespace.
+  struct cros_namespace_info new_ns;  // The new namespace.
 };
 
 // Indicates the type of process event is contained within the
 // event structure.
-enum process_event_type {
+enum cros_process_event_type {
   process_start_type,
   process_exit_type,
   process_change_namespace_type
@@ -101,29 +101,29 @@ enum process_event_type {
 
 // Contains information needed to report process security
 // event telemetry regarding processes.
-struct process_event {
-  enum process_event_type type;
+struct cros_process_event {
+  enum cros_process_event_type type;
   union {
-    struct process_start process_start;
-    struct process_exit process_exit;
-    struct process_change_namespace process_change_namespace;
+    struct cros_process_start process_start;
+    struct cros_process_exit process_exit;
+    struct cros_process_change_namespace process_change_namespace;
   } data;
 };
 
 // The type of security event an event structure contains.
-enum event_type { process_type };
+enum cros_event_type { process_type };
 
 // The security event structure that contains security event information
 // provided by a BPF application.
-struct event {
+struct cros_event {
   union {
-    struct process_event process_event;
+    struct cros_process_event process_event;
   } data;
-  enum event_type type;
+  enum cros_event_type type;
 };
 
 // Ensure that the ring-buffer sample that is allocated is large enough.
-_Static_assert(sizeof(struct event) <= MAX_STRUCT_SIZE,
+_Static_assert(sizeof(struct cros_event) <= CROS_MAX_STRUCT_SIZE,
                "Event structure exceeds maximum size.");
 
 #ifdef __cplusplus

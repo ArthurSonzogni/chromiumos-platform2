@@ -41,7 +41,7 @@ std::string SafeTransformArgvEnvp(const char* buf,
 
 namespace secagentd {
 
-static void print_process_start(const bpf::process_start& process_start) {
+static void print_process_start(const bpf::cros_process_start& process_start) {
   LOG(INFO) << "\n[process_start] ppid: " << process_start.ppid
             << " pid:" << process_start.pid << " uid:" << process_start.uid
             << " gid:" << process_start.gid << " cmdline:"
@@ -65,7 +65,7 @@ static void print_process_start(const bpf::process_start& process_start) {
 }
 
 static void print_process_change_ns(
-    const struct bpf::process_change_namespace& p) {
+    const struct bpf::cros_process_change_namespace& p) {
   LOG(INFO) << "\n[namespace_change]pid:" << p.pid
             << " start_time:" << p.start_time
             << "\n [ns]pid:" << p.new_ns.pid_ns << " mnt:" << p.new_ns.mnt_ns
@@ -87,22 +87,24 @@ std::string ProcessPlugin::GetName() const {
   return "ProcessBPF";
 }
 
-void ProcessPlugin::HandleRingBufferEvent(const bpf::event& bpf_event) const {
+void ProcessPlugin::HandleRingBufferEvent(
+    const bpf::cros_event& bpf_event) const {
   absl::Status status = message_sender_->SendMessage(bpf_event);
   if (status != absl::OkStatus()) {
     LOG(ERROR) << "SendMessage FAILED: Message not sent. status=" << status;
   }
 
   if (bpf_event.type == bpf::process_type) {
-    const bpf::process_event& pe = bpf_event.data.process_event;
+    const bpf::cros_process_event& pe = bpf_event.data.process_event;
     if (pe.type == bpf::process_start_type) {
-      const bpf::process_start& process_start = pe.data.process_start;
+      const bpf::cros_process_start& process_start = pe.data.process_start;
       // TODO(b/241578709): This plugin should immediately send events over to
       // the reporting pipe. The reporting pipe can enforce the event specific
       // caching policy.
       print_process_start(process_start);
     } else if (pe.type == bpf::process_change_namespace_type) {
-      const bpf::process_change_namespace& p = pe.data.process_change_namespace;
+      const bpf::cros_process_change_namespace& p =
+          pe.data.process_change_namespace;
       print_process_change_ns(p);
     } else {
       LOG(ERROR) << "ProcessBPF: unknown BPF process event type.";
@@ -121,6 +123,7 @@ bool ProcessPlugin::PolicyIsEnabled() const {
   // should be loaded.
   return true;
 }
+
 absl::Status ProcessPlugin::Activate() {
   if (!PolicyIsEnabled()) {
     return absl::InternalError(

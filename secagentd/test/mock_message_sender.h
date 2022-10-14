@@ -14,7 +14,10 @@ namespace secagentd {
 
 class MockMessageSender : public MessageSenderInterface {
   MOCK_METHOD(absl::Status, InitializeQueues, (), (override));
-  MOCK_METHOD(absl::Status, SendMessage, (const bpf::event& event), (override));
+  MOCK_METHOD(absl::Status,
+              SendMessage,
+              (const bpf::cros_event& event),
+              (override));
 };
 
 }  // namespace secagentd

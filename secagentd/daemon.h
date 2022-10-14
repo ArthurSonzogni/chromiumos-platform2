@@ -40,7 +40,7 @@ class Daemon : public brillo::DBusDaemon {
  protected:
   int OnInit() override;
   int OnEventLoopStarted() override;
-  void HandleBpfEvents(const bpf::event& bpf_event);
+  void HandleBpfEvents(const bpf::cros_event& bpf_event);
   int CreateAndRunBpfPlugins();
   int CreateAndRunAgentPlugins();
   void HeartBeat();

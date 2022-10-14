@@ -22,7 +22,7 @@
 namespace {
 
 // Fills a FileImage proto with contents from bpf image_info.
-void FillImage(const secagentd::bpf::image_info& image,
+void FillImage(const secagentd::bpf::cros_image_info& image,
                cros_xdr::reporting::FileImage* proto) {
   proto->set_pathname(std::string(image.pathname));
   proto->set_mnt_ns(image.mnt_ns);
@@ -34,7 +34,7 @@ void FillImage(const secagentd::bpf::image_info& image,
 }
 
 // Fills a Namespaces proto with contents from bpf namespace_info.
-void FillNamespaces(const secagentd::bpf::namespace_info& namespaces,
+void FillNamespaces(const secagentd::bpf::cros_namespace_info& namespaces,
                     cros_xdr::reporting::Namespaces* proto) {
   proto->set_cgroup_ns(namespaces.cgroup_ns);
   proto->set_pid_ns(namespaces.pid_ns);
@@ -47,7 +47,7 @@ void FillNamespaces(const secagentd::bpf::namespace_info& namespaces,
 
 // Creates a ProcessExec proto from the contents of a bpf event.
 std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExecEvent(
-    const secagentd::bpf::process_start& event) {
+    const secagentd::bpf::cros_process_start& event) {
   auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
   auto process_start = process_event->mutable_process_exec();
 
@@ -73,7 +73,7 @@ std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExecEvent(
 
 // Creates a ProcessExit proto from the contents of a bpf event.
 std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExitEvent(
-    const secagentd::bpf::process_exit& event) {
+    const secagentd::bpf::cros_process_exit& event) {
   auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
   auto process_exit = process_event->mutable_process_terminate();
 
@@ -84,7 +84,7 @@ std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExitEvent(
   return process_event;
 }
 
-void EnqueueCallback(secagentd::bpf::process_event_type type,
+void EnqueueCallback(secagentd::bpf::cros_process_event_type type,
                      ::reporting::Status status) {
   if (!status.ok()) {
     LOG(ERROR) << type << ", status=" << status;
@@ -116,7 +116,7 @@ absl::Status MessageSender::InitializeQueues() {
   return absl::OkStatus();
 }
 
-absl::Status MessageSender::SendMessage(const bpf::event& event) {
+absl::Status MessageSender::SendMessage(const bpf::cros_event& event) {
   switch (event.type) {
     case bpf::process_type: {
       auto it = queue_map_.find(reporting::CROS_SECURITY_PROCESS);

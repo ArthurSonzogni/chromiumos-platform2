@@ -40,7 +40,7 @@ class BpfSkeletonFactoryTestFixture
     skel_factory = base::MakeRefCounted<BpfSkeletonFactory>(
         BpfSkeletonFactory::SkeletonInjections({.process = std::move(skel)}));
     cbs.ring_buffer_event_callback =
-        base::BindRepeating([](const bpf::event&) {});
+        base::BindRepeating([](const bpf::cros_event&) {});
     cbs.ring_buffer_read_ready_callback = base::BindRepeating([]() {});
   }
   BpfCallbacks cbs;
