@@ -299,36 +299,6 @@ message StartPluginVmRequest {
   NetworkOptions net_options = 8;
 }
 
-// Optional fields for LimitCacheBalloonPolicy configuration.
-message BalloonPolicyOptions {
-  // The maximum amount of page cache the guest should have if ChromeOS is
-  // reclaiming.
-  int64 reclaim_target_cache = 1;
-
-  // The maximum amount of page cache the guest should have if ChromeOS has
-  // critical memory pressure.
-  int64 critical_target_cache = 2;
-
-  // The maximum amount of page cache the guest should have if ChromeOS has
-  // moderate memory pressure.
-  int64 moderate_target_cache = 3;
-
-  // If set, enable responsive balloon sizing. Concierge will listen on a VSOCK
-  // for connections from LMKD in Android. When LMKD is about to kill an app, it
-  // will signal the balloon sizing code, which may deflate the balloon instead
-  // of killing the app.
-  bool responsive = 4;
-
-  // The amount of time LMKD will wait for a response from concierge before
-  // killing an app.
-  int32 responsive_timeout_ms = 5;
-
-  // If an app should not be killed, the balloon will be deflated by
-  // min(app_size, responsive_max_deflate_bytes), so that large apps don't
-  // completely deflate the balloon.
-  int64 responsive_max_deflate_bytes = 6;
-}
-
 // Information that must be included with every StartArcVm request.
 message StartArcVmRequest {
   // The VM that should be started.
@@ -368,9 +338,8 @@ message StartArcVmRequest {
   // How much memory to give ARCVM, in MiB. Optional.
   uint32 memory_mib = 12;
 
-  // How to configure the balloon policy. If set, LimitCacheBalloonPolicy is
-  // used, otherwise BalanceAvailableBalloonPolicy is used.
-  BalloonPolicyOptions balloon_policy = 13;
+  // Deprecated BalloonPolicyOptions. Do not use.
+  reserved 13;
 
   // Whether per-VM core scheduling should be used instead of the default one
   // (per-vCPU core scheduing.) This option is no-op on devices that have
