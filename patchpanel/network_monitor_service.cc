@@ -404,7 +404,7 @@ void NetworkMonitorService::OnShillDevicesChanged(
       continue;
     }
 
-    int ifindex = IfNametoindex(device_props.ifname);
+    int ifindex = device_props.ifindex;
     if (ifindex == 0) {
       PLOG(ERROR) << "Could not obtain interface index for "
                   << device_props.ifname;

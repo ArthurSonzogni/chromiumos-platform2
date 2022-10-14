@@ -225,6 +225,14 @@ class ShillClient {
   // map mainly for keeping track of the shill Device object proxies we have
   // created, to avoid registering the handler on the same object twice.
   std::map<std::string, dbus::ObjectPath> known_device_paths_;
+  // A map used for remembering the interface index of an interface. This
+  // information is necessary when cleaning up the state of various subsystems
+  // in patchpanel that directly references the interface index. However after
+  // receiving the interface removal event (RTM_DELLINK event or shill DBus
+  // event), the interface index cannot be retrieved anymore. A new entry is
+  // only added when a new upstream network interface appears, and entries are
+  // not removed.
+  std::map<std::string, int> if_nametoindex_;
 
   // Called when the shill Device used as the default logical network changes.
   std::vector<DefaultDeviceChangeHandler> default_logical_device_handlers_;

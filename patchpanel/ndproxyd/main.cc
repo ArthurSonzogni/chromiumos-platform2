@@ -20,7 +20,8 @@ void OnSocketReadReady(patchpanel::NDProxy* proxy, int fd) {
 }
 
 void OnGuestIpDiscovery(int if_id, const in6_addr& ip6addr) {
-  std::string ifname = patchpanel::IfIndextoname(if_id);
+  patchpanel::System system;
+  std::string ifname = system.IfIndextoname(if_id);
   std::string ip6_str = patchpanel::IPv6AddressToString(ip6addr);
 
   patchpanel::MinijailedProcessRunner runner;
@@ -59,7 +60,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  int ifid_host = patchpanel::IfNametoindex(args[0]);
+  int ifid_host = system.IfNametoindex(args[0]);
   if (ifid_host == 0) {
     LOG(ERROR) << "Host-bound network interface " << args[0]
                << " does not exist.";
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
     if (i != 0) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
     }
-    ifid_guest = patchpanel::IfNametoindex(args[1]);
+    ifid_guest = system.IfNametoindex(args[1]);
     if (ifid_guest == 0) {
       // Guest bridge doesn't exist yet, try again later.
       continue;

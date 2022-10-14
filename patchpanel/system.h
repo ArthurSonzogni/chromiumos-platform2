@@ -10,7 +10,6 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
-#include <map>
 #include <string>
 
 namespace patchpanel {
@@ -66,27 +65,22 @@ class System {
 
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
-  // Return the interface name of the network interface with index |ifindex|, or
-  // empty string if it fails. This function is equivalent to net_util's
-  // IfIndextoname but can be mocked in unit tests.
-  virtual std::string IfIndextoname(int ifindex);
-  // Return the index of the interface with name |ifname|, or 0 if it fails.
-  // Compared to net_util's IfNametoindex, this function can be mocked in unit
-  // tests and an internal cache to remember the ifindex -> ifname mapping even
-  // after the interface has been removed.
+  // Simple wrappers around if_nametoindex which returns a signed int instead
+  // of an unsigned int to avoid static casts.
+  virtual int IfNametoindex(const char* ifname);
+
+  // Overload that takes a constant reference to a c++ string.
   virtual int IfNametoindex(const std::string& ifname);
 
-  static bool Write(const std::string& path, const std::string& content);
+  // Simple wrapper around if_indextoname which takes as an argument a signed
+  // int instead of an unsigned int to avoid static casts.
+  virtual char* IfIndextoname(int ifindex, char* ifname);
 
- private:
-  // A map used for remembering the interface index of an interface. This
-  // information is necessary when cleaning up the state of various subsystems
-  // in patchpanel that directly references the interface index. However after
-  // receiving the interface removal event (RTM_DELLINK event or shill DBus
-  // event), the interface index cannot be retrieved anymore. A new entry is
-  // only added when a new upstream network interface appears, and entries are
-  // not removed.
-  std::map<std::string, int> if_nametoindex_;
+  // Overload that directly returns a c++ string. Returns an empty string if an
+  // error happens.
+  virtual std::string IfIndextoname(int ifindex);
+
+  static bool Write(const std::string& path, const std::string& content);
 };
 
 }  // namespace patchpanel

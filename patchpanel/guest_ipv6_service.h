@@ -31,7 +31,8 @@ class GuestIPv6Service {
 
   GuestIPv6Service(SubprocessController* nd_proxy,
                    Datapath* datapath,
-                   ShillClient* shill_client);
+                   ShillClient* shill_client,
+                   System* system);
   GuestIPv6Service(const GuestIPv6Service&) = delete;
   GuestIPv6Service& operator=(const GuestIPv6Service&) = delete;
   virtual ~GuestIPv6Service() = default;
@@ -92,6 +93,8 @@ class GuestIPv6Service {
   Datapath* datapath_;
   // Shill Dbus client. Owned by Manager.
   ShillClient* shill_client_;
+  // Owned by Manager
+  System* system_;
 
   std::vector<ForwardEntry> forward_record_;
 

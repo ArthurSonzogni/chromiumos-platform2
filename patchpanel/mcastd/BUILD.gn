@@ -16,9 +16,6 @@ proto_library("patchpanel_ipc_protos") {
 }
 
 executable("mcastd") {
-  cflags = [
-    "-Wconversion",
-  ]
   sources = [
     "../dns/big_endian.cc",
     "../dns/dns_query.cc",
@@ -28,10 +25,11 @@ executable("mcastd") {
     "../multicast_forwarder.cc",
     "../net_util.cc",
     "../socket.cc",
+    "../system.cc",
     "main.cc",
   ]
+  cflags = [ "-Wconversion" ]
   install_path = "bin"
-  deps = [ ":patchpanel_ipc_protos" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -41,4 +39,5 @@ executable("mcastd") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+  deps = [ ":patchpanel_ipc_protos" ]
 }

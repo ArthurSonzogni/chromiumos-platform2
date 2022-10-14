@@ -288,7 +288,7 @@ void Manager::InitialSetup() {
       base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
                           weak_factory_.GetWeakPtr()));
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(
-      nd_proxy_.get(), datapath_.get(), shill_client_.get());
+      nd_proxy_.get(), datapath_.get(), shill_client_.get(), system_.get());
 
   network_monitor_svc_->Start();
   ipv6_svc_->Start();

@@ -265,6 +265,15 @@ ShillClient::Device ShillClient::GetDevice(const dbus::ObjectPath& service_path,
   }
 
   device.ifindex = system_->IfNametoindex(device.ifname);
+  if (device.ifindex > 0) {
+    if_nametoindex_[device.ifname] = device.ifindex;
+  } else {
+    const auto it = if_nametoindex_.find(device.ifname);
+    if (it != if_nametoindex_.end()) {
+      device.ifindex = it->second;
+    }
+  }
+
   device.type = ParseDeviceType(service_type);
   device.service_path = service_path.value();
   return device;

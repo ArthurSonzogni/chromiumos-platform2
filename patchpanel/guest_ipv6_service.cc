@@ -49,8 +49,12 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
                                    Datapath* datapath,
-                                   ShillClient* shill_client)
-    : nd_proxy_(nd_proxy), datapath_(datapath), shill_client_(shill_client) {}
+                                   ShillClient* shill_client,
+                                   System* system)
+    : nd_proxy_(nd_proxy),
+      datapath_(datapath),
+      shill_client_(shill_client),
+      system_(system) {}
 
 void GuestIPv6Service::Start() {
   nd_proxy_->RegisterFeedbackMessageHandler(base::BindRepeating(
@@ -63,13 +67,13 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                                        bool downlink_is_tethering) {
   LOG(INFO) << "Starting IPv6 forwarding between uplink: " << ifname_uplink
             << ", downlink: " << ifname_downlink;
-  int if_id_uplink = IfNametoindex(ifname_uplink);
+  int if_id_uplink = system_->IfNametoindex(ifname_uplink);
   if (if_id_uplink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_uplink;
     return;
   }
   if_cache_[ifname_uplink] = if_id_uplink;
-  int if_id_downlink = IfNametoindex(ifname_downlink);
+  int if_id_downlink = system_->IfNametoindex(ifname_downlink);
   if (if_id_downlink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_downlink;
     return;
@@ -327,7 +331,7 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
     in6_addr ip;
     memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
     std::string ip6_str = IPv6AddressToString(ip);
-    std::string ifname = IfIndextoname(inner_msg.if_id());
+    std::string ifname = system_->IfIndextoname(inner_msg.if_id());
     downstream_neighbors_[ifname].insert(ip6_str);
 
     const auto& uplink = DownlinkToUplink(ifname);

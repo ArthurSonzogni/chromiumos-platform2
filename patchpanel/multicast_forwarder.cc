@@ -23,6 +23,7 @@
 #include "patchpanel/dns/dns_response.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/socket.h"
+#include "patchpanel/system.h"
 
 namespace {
 
@@ -147,7 +148,8 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
     return base::ScopedFD();
   }
 
-  int ifindex = IfNametoindex(ifname);
+  System system;
+  int ifindex = system.IfNametoindex(ifname);
   if (ifindex == 0) {
     PLOG(ERROR) << "Could not obtain interface index of " << ifname << " for "
                 << mcast_addr << ":" << port_;

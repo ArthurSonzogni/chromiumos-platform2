@@ -48,15 +48,6 @@ constexpr const char kSysNetIPv6AcceptRaSuffix[] = "/accept_ra";
 // Enables/Disables IPv6 cross-inteface NDP response.
 constexpr const char kSysNetIPv6ProxyNDPPath[] =
     "/proc/sys/net/ipv6/conf/all/proxy_ndp";
-
-int net_util_IfNametoindex(const std::string& ifname) {
-  return IfNametoindex(ifname);
-}
-
-std::string net_util_IfIndextoname(int ifindex) {
-  return IfIndextoname(ifindex);
-}
-
 }  // namespace
 
 int System::Ioctl(int fd, ioctl_req_t request, const char* argp) {
@@ -117,24 +108,31 @@ bool System::SysNetSet(SysNet target,
   }
 }
 
-std::string System::IfIndextoname(int ifindex) {
-  return net_util_IfIndextoname(ifindex);
+int System::IfNametoindex(const char* ifname) {
+  uint32_t ifindex = if_nametoindex(ifname);
+  if (ifindex > INT_MAX) {
+    errno = EINVAL;
+    return 0;
+  }
+  return static_cast<int>(ifindex);
 }
 
 int System::IfNametoindex(const std::string& ifname) {
-  int ifindex = net_util_IfNametoindex(ifname);
-  if (ifindex > 0) {
-    if_nametoindex_[ifname] = ifindex;
-    // If |ifindex| is not 0, the call succeeded and |ifindex| is a real
-    // interface index value. The cast to int is safe.
-    return ifindex;
+  return IfNametoindex(ifname.c_str());
+}
+
+char* System::IfIndextoname(int ifindex, char* ifname) {
+  if (ifindex < 0) {
+    errno = EINVAL;
+    return nullptr;
   }
+  return if_indextoname(static_cast<uint32_t>(ifindex), ifname);
+}
 
-  const auto it = if_nametoindex_.find(ifname);
-  if (it != if_nametoindex_.end())
-    return it->second;
-
-  return 0;
+std::string System::IfIndextoname(int ifindex) {
+  char ifname[IFNAMSIZ] = {};
+  IfIndextoname(ifindex, ifname);
+  return ifname;
 }
 
 // static
