@@ -762,6 +762,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | backlight | boolean |  | False |  | False | Specifies the existence of backlight. |
+| mcutype | string |  | False |  | False | Type of MCU firmware, if present. |
 | numpad | boolean |  | False |  | False | Specifies the existence of numpad. |
 
 ### modem

@@ -855,6 +855,11 @@ def _build_keyboard(hw_topology):
         result["backlight"] = True
     if keyboard.numeric_pad == topology_pb2.HardwareFeatures.PRESENT:
         result["numpad"] = True
+    if (
+        keyboard.mcu_type
+        == topology_pb2.HardwareFeatures.Keyboard.KEYBOARD_MCU_PRISM
+    ):
+        result["mcutype"] = "prism_rgb_controller"
 
     return result
 

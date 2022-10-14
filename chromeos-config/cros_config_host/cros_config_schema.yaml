@@ -888,6 +888,11 @@ properties:
                 backlight:
                   type: boolean
                   description: Specifies the existence of backlight.
+                mcutype:
+                  description: Type of MCU firmware, if present.
+                  type: string
+                  enum:
+                  - prism_rgb_controller
             name:
               type: string
               pattern: "^[_a-zA-Z0-9]{3,}"
