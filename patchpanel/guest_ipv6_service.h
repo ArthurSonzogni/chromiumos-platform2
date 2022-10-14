@@ -67,16 +67,18 @@ class GuestIPv6Service {
   // purpose. This will be exposed by Manager through dbus for tast.
   void SetForwardMethod(const std::string& ifname_uplink, ForwardMethod method);
 
+ protected:
+  virtual void SendNDProxyControl(
+      NDProxyControlMessage::NDProxyRequestType type,
+      int32_t if_id_primary,
+      int32_t if_id_secondary);
+
  private:
   struct ForwardEntry {
     ForwardMethod method;
     std::optional<std::string> upstream_ifname;
     std::set<std::string> downstream_ifnames;
   };
-
-  void SendNDProxyControl(NDProxyControlMessage::NDProxyRequestType type,
-                          int32_t if_id_primary,
-                          int32_t if_id_secondary);
 
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
   // address to guest-facing interface.

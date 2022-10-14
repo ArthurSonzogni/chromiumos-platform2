@@ -66,6 +66,10 @@ class FakeShillClient : public ShillClient {
     return interface_names_[device_path.value()];
   }
 
+  void SetFakeDeviceProperties(const std::string& name, const Device& device) {
+    fake_device_properties_[name] = device;
+  }
+
   void NotifyManagerPropertyChange(const std::string& name,
                                    const brillo::Any& value) {
     OnManagerPropertyChange(name, value);
@@ -79,6 +83,9 @@ class FakeShillClient : public ShillClient {
 
   bool GetDeviceProperties(const std::string& device, Device* output) override {
     get_device_properties_calls_.insert(device);
+    if (fake_device_properties_.find(device) != fake_device_properties_.end()) {
+      *output = fake_device_properties_[device];
+    }
     return true;
   }
 
@@ -90,6 +97,7 @@ class FakeShillClient : public ShillClient {
   std::map<std::string, std::string> interface_names_;
   std::string fake_default_logical_ifname_;
   std::string fake_default_physical_ifname_;
+  std::map<std::string, Device> fake_device_properties_;
   std::set<std::string> get_device_properties_calls_;
 };
 

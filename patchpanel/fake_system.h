@@ -72,6 +72,7 @@ class FakeSystem : public System {
                     const std::string& content,
                     const std::string& iface));
   MOCK_METHOD1(IfNametoindex, int(const std::string& ifname));
+  MOCK_METHOD1(IfIndextoname, std::string(int ifindex));
 
   std::vector<ioctl_req_t> ioctl_reqs;
   std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;

@@ -31,9 +31,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  cflags = [
-    "-Wconversion",
-  ]
+  cflags = [ "-Wconversion" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -110,17 +108,15 @@ shared_library("libpatchpanel-util") {
 }
 
 static_library("libpatchpanel") {
-  cflags = [
-    "-Wconversion",
-  ]
   sources = libpatchpanel_sources + util_sources
   configs += [ ":target_defaults" ]
+  cflags = [ "-Wconversion" ]
+  defines = [ "USE_ARCVM=${use.arcvm}" ]
   all_dependent_pkg_deps = [
     "protobuf",
     "system_api",
   ]
   deps = [ ":patchpanel_ipc_protos" ]
-  defines = [ "USE_ARCVM=${use.arcvm}" ]
 }
 
 executable("patchpaneld") {
@@ -249,6 +245,7 @@ if (use.test) {
       "dns/dns_query_test.cc",
       "dns/dns_response_test.cc",
       "firewall_test.cc",
+      "guest_ipv6_service_test.cc",
       "mac_address_generator_test.cc",
       "minijailed_process_runner_test.cc",
       "ndproxy_test.cc",
