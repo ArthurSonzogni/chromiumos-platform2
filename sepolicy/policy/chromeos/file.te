@@ -43,6 +43,7 @@ type cros_attestationd_exec, exec_type, file_type, cros_file_type, cros_system_f
 type cros_audispd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_auditd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_avahi_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_backlight_tool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_biod_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_blockdev_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bluetoothd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
