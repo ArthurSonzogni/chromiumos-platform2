@@ -865,7 +865,8 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // When the pin is entered wrong and AuthBlock fails to derive the KeyBlobs
     // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
     // be set here.
-    if (status->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED) {
+    if (!status.ok() &&
+        status->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED) {
       // Get the corresponding encrypted vault keyset for the user and the label
       // to set the auth_locked.
       std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
