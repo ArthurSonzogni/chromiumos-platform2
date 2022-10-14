@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_
-#define CRYPTOHOME_BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_
+#ifndef BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_
+#define BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_
 
 #include <map>
 #include <string>
@@ -103,4 +103,4 @@ class NVRamBootLockbox {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_
+#endif  // BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_

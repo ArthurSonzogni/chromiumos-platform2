@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
-#define CRYPTOHOME_BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
+#ifndef BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
+#define BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
 
 #include <string>
 
@@ -37,4 +37,4 @@ class MockNVRamBootLockbox : public NVRamBootLockbox {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
+#endif  // BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_

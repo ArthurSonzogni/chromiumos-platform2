@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
-#define CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
+#ifndef BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
+#define BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
 
 #include <memory>
 #include <vector>
@@ -55,4 +55,4 @@ class BootLockboxDBusAdaptor
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
+#endif  // BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_
