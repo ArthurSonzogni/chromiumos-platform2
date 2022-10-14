@@ -9,7 +9,6 @@
 
 #include <base/memory/scoped_refptr.h>
 #include <brillo/errors/error.h>
-#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

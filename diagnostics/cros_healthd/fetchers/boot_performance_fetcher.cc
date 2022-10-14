@@ -13,7 +13,6 @@
 #include <base/strings/string_split.h>
 #include <re2/re2.h>
 
-#include <chromeos/dbus/service_constants.h>
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
