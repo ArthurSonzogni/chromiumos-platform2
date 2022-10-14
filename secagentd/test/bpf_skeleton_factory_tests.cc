@@ -11,7 +11,6 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/factories.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
 #include "testing/gmock/include/gmock/gmock.h"
 

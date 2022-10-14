@@ -9,7 +9,6 @@
 #include <utility>
 
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/factories.h"
 #include "testing/gmock/include/gmock/gmock.h"
 namespace secagentd {
 

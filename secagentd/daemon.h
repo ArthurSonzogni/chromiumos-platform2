@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
-#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 

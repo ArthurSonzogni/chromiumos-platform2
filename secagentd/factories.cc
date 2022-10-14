@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 

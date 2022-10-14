@@ -10,7 +10,6 @@
 #include "base/strings/string_tokenizer.h"
 #include "base/strings/stringprintf.h"
 #include "secagentd/bpf/process.h"
-#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 

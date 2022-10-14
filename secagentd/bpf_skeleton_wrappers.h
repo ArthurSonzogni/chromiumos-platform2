@@ -76,5 +76,42 @@ class ProcessBpfSkeleton : public BpfSkeletonInterface {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
 };
 
+class BpfSkeletonFactoryInterface
+    : public ::base::RefCounted<BpfSkeletonFactoryInterface> {
+ public:
+  enum class BpfSkeletonType { kProcess };
+  struct SkeletonInjections {
+    std::unique_ptr<BpfSkeletonInterface> process;
+  };
+
+  // Creates a BPF Handler class that loads and attaches a BPF application.
+  // The passed in callback will be invoked when an event is available from the
+  // BPF application.
+  virtual std::unique_ptr<BpfSkeletonInterface> Create(BpfSkeletonType type,
+                                                       BpfCallbacks cbs) = 0;
+  virtual ~BpfSkeletonFactoryInterface() = default;
+};
+
+namespace Types {
+using BpfSkeleton = BpfSkeletonFactoryInterface::BpfSkeletonType;
+}  // namespace Types
+
+std::ostream& operator<<(
+    std::ostream& out,
+    const BpfSkeletonFactoryInterface::BpfSkeletonType& type);
+
+class BpfSkeletonFactory : public BpfSkeletonFactoryInterface {
+ public:
+  BpfSkeletonFactory() = default;
+  explicit BpfSkeletonFactory(SkeletonInjections di) : di_(std::move(di)) {}
+
+  std::unique_ptr<BpfSkeletonInterface> Create(BpfSkeletonType type,
+                                               BpfCallbacks cbs) override;
+
+ private:
+  SkeletonInjections di_;
+  absl::flat_hash_set<BpfSkeletonType> created_skeletons_;
+};
+
 }  //  namespace secagentd
 #endif  // SECAGENTD_BPF_SKELETON_WRAPPERS_H_

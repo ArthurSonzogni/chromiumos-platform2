@@ -10,9 +10,7 @@
 
 #include "absl/status/status.h"
 #include "base/memory/scoped_refptr.h"
-
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
 
 namespace secagentd {
@@ -46,6 +44,37 @@ class ProcessPlugin : public PluginInterface {
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
+};
+
+class PluginFactoryInterface {
+ public:
+  enum class PluginType { kAgent, kProcess };
+
+  virtual std::unique_ptr<PluginInterface> Create(
+      PluginType type,
+      scoped_refptr<MessageSenderInterface> message_sender) = 0;
+  virtual ~PluginFactoryInterface() = default;
+};
+
+namespace Types {
+using Plugin = PluginFactoryInterface::PluginType;
+}  // namespace Types
+
+std::ostream& operator<<(std::ostream& out,
+                         const PluginFactoryInterface::PluginType& type);
+
+class PluginFactory : public PluginFactoryInterface {
+ public:
+  PluginFactory();
+  explicit PluginFactory(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory)
+      : bpf_skeleton_factory_(bpf_skeleton_factory) {}
+  std::unique_ptr<PluginInterface> Create(
+      PluginType type,
+      scoped_refptr<MessageSenderInterface> message_sender) override;
+
+ private:
+  scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory_;
 };
 
 }  // namespace secagentd

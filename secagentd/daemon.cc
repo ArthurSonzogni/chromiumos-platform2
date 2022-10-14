@@ -12,8 +12,8 @@
 #include "brillo/daemons/dbus_daemon.h"
 #include "missive/client/missive_client.h"
 #include "secagentd/daemon.h"
-#include "secagentd/factories.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/plugins.h"
 
 namespace secagentd {
 
