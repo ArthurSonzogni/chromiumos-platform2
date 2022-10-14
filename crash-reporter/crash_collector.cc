@@ -123,6 +123,11 @@ constexpr size_t kMaxParentProcessLogs = 8;
 
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 
+#define NON_CAPTURING_GROUP(x) "(?:" x ")"
+#define DEC_OCTET \
+  NON_CAPTURING_GROUP("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
+#define IPV4ADDRESS DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET
+
 }  // namespace
 
 const char* const CrashCollector::kUnknownValue = "unknown";
@@ -763,6 +768,7 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   // At the moment, only specific data patterns are used for stripping.
   StripMacAddresses(contents);
   StripEmailAddresses(contents);
+  StripIPv4Addresses(contents);
   StripSerialNumbers(contents);
   StripRecoveryId(contents);
 }
@@ -847,6 +853,13 @@ void CrashCollector::StripEmailAddresses(std::string* contents) {
   CHECK_EQ("", email_re.error());
 
   RE2::GlobalReplace(contents, email_re, "<redacted email address>");
+}
+
+void CrashCollector::StripIPv4Addresses(std::string* contents) {
+  RE2 ipv4_re(IPV4ADDRESS);
+  // Ensure RegEx has no parsing errors and is valid.
+  CHECK_EQ("", ipv4_re.error());
+  RE2::GlobalReplace(contents, ipv4_re, "<redacted ip address>");
 }
 
 void CrashCollector::StripSerialNumbers(std::string* contents) {

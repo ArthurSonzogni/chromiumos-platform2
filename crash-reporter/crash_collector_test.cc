@@ -965,6 +965,20 @@ TEST_F(CrashCollectorTest, StripEmailAddresses) {
   EXPECT_EQ(std::string::npos, logs.find("dev.reallylong"));
 }
 
+TEST_F(CrashCollectorTest, StripIPv4Addresses) {
+  std::string logs =
+      "stay.1.2.3 remove.1.2.3.4."
+      "stay 255.255 255.255.255 255.255.259.255 remove 255.255.255.255 0.0.0.0 "
+      "stay 19.259.243.255 19.243.343.255 remove 19.143.29.255";
+  std::string redacted_log =
+      "stay.1.2.3 remove.<redacted ip address>."
+      "stay 255.255 255.255.255 255.255.259.255 remove <redacted ip address> "
+      "<redacted ip address> "
+      "stay 19.259.243.255 19.243.343.255 remove <redacted ip address>";
+  collector_.StripSensitiveData(&logs);
+  EXPECT_EQ(logs, redacted_log);
+}
+
 TEST_F(CrashCollectorTest, StripSerialNumbers) {
   // Test calling StripSensitiveData w/ some actual lines from a real crash;
   // included two serial numbers (though replaced them with some bogusness).
