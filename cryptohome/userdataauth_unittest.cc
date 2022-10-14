@@ -5199,7 +5199,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
     SetupMount(kUser);
     ON_CALL(*session_, VerifyUser(GetObfuscatedUsername(kUser)))
         .WillByDefault(Return(true));
-    session_->set_key_data(key_data_);
+    ON_CALL(*session_, key_data()).WillByDefault(ReturnRef(key_data_));
   }
 
  protected:

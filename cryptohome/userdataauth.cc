@@ -2483,7 +2483,7 @@ MountStatus UserDataAuth::AttemptUserMount(
   // Mount ephemerally using authsession
   if (mount_args.is_ephemeral) {
     // Store the credentials in the cache to use on session unlock.
-    user_session->set_key_data(auth_session->current_key_data());
+    user_session->TakeCredentialsFrom(auth_session);
     MountStatus err = user_session->MountEphemeral(auth_session->username());
     return MakeStatus<CryptohomeMountError>(
                CRYPTOHOME_ERR_LOC(
@@ -2506,7 +2506,7 @@ MountStatus UserDataAuth::AttemptUserMount(
 
   if (mount_status.ok()) {
     // Store the credentials in the cache to use on session unlock.
-    user_session->set_key_data(auth_session->current_key_data());
+    user_session->TakeCredentialsFrom(auth_session);
     return OkStatus<CryptohomeMountError>();
   }
   return MakeStatus<CryptohomeMountError>(
@@ -4232,7 +4232,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
 
   if (!session->HasCredentialVerifier() ||
       override_existing_credential_verifier) {
-    session->set_key_data(auth_session->current_key_data());
+    session->TakeCredentialsFrom(auth_session);
   }
 }
 

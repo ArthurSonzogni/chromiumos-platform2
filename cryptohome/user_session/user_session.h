@@ -25,6 +25,8 @@
 
 namespace cryptohome {
 
+class AuthSession;
+
 class UserSession {
  public:
   UserSession() = default;
@@ -88,6 +90,11 @@ class UserSession {
   // Logs warning in case anything went wrong in setting up new re-auth state.
   virtual void AddCredentials(const Credentials& credentials) = 0;
 
+  // Takes the credentials from the given (auth) session and merges them into
+  // this (user) session. Any existing credentials that have the same label as
+  // the newly taken ones will be overwritten.
+  virtual void TakeCredentialsFrom(AuthSession* auth_session) = 0;
+
   // Adds a new credential verifier to this session. Note that verifiers are
   // stored by label with new verifiers replacing old ones with the same label.
   virtual void AddCredentialVerifier(
@@ -110,9 +117,8 @@ class UserSession {
   // state.
   virtual bool VerifyCredentials(const Credentials& credentials) const = 0;
 
-  // Returns or sets key_data of the current session credentials.
+  // Returns key_data of the current session credentials.
   virtual const KeyData& key_data() const = 0;
-  virtual void set_key_data(KeyData key_data) = 0;
 
   // Returns PKCS11 token associated with the session.
   virtual Pkcs11Token* GetPkcs11Token() = 0;
