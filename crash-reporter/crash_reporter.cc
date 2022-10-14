@@ -212,10 +212,6 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
     minijail_bind(j, "/dev/log", "/dev/log", 0);
   minijail_no_new_privs(j);
 
-  // We need access to /sys/class/watchdog to determine if the device rebooted
-  // due to a watchdog timeout.
-  minijail_bind(j, "/sys/class/watchdog", "/sys/class/watchdog", 0);
-
   // If we're initializing the system, we need to write to /proc/sys/.
   if (!write_proc) {
     minijail_remount_proc_readonly(j);

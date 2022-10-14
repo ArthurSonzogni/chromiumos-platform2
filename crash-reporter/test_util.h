@@ -66,12 +66,6 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
                                  const std::string& pattern,
                                  base::FilePath* found_file_path);
 
-// Returns true if at least one file in this directory matches the |pattern|
-// and contains the string |contents|.
-bool DirectoryHasFileWithPatternAndContents(const base::FilePath& directory,
-                                            const std::string& pattern,
-                                            const std::string& contents);
-
 // Return path to an input files used by unit tests.
 // use_testdata: Whether to add "testdata/" in front of the filename.
 base::FilePath GetTestDataPath(const std::string& name, bool use_testdata);

@@ -813,12 +813,9 @@ TEST(KernelUtilTest, WatchdogSignature) {
       "17:58:05 PST 2021\n"
       "";
 
-  const std::string kWatchdogRebootReason = "-(WATCHDOG)";
-
   EXPECT_EQ(
       "kernel-(WATCHDOG)-Linux version 4.4.252-19740-gcbe014496e3-082847C6",
-      kernel_util::WatchdogSignature(kConsoleRamoopsWithLongLastLine,
-                                     kWatchdogRebootReason));
+      kernel_util::WatchdogSignature(kConsoleRamoopsWithLongLastLine));
 
   const char kConsoleRamoopsWithShortLastLine[] =
       "<6>[    0.000000] microcode: microcode updated early to revision 0xde, "
@@ -830,13 +827,11 @@ TEST(KernelUtilTest, WatchdogSignature) {
       "";
 
   EXPECT_EQ("kernel-(WATCHDOG)-last line-3D7C5AEC",
-            kernel_util::WatchdogSignature(kConsoleRamoopsWithShortLastLine,
-                                           kWatchdogRebootReason));
+            kernel_util::WatchdogSignature(kConsoleRamoopsWithShortLastLine));
 
   const char kBrokenConsoleRamoops[] = "broken";
   EXPECT_EQ("kernel-(WATCHDOG)-broken-28348215",
-            kernel_util::WatchdogSignature(kBrokenConsoleRamoops,
-                                           kWatchdogRebootReason));
+            kernel_util::WatchdogSignature(kBrokenConsoleRamoops));
 }
 
 TEST(KernelUtilTest, IsHypervisor) {

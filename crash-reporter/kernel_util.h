@@ -44,8 +44,7 @@ std::string ComputeNoCErrorSignature(const std::string& dump);
 
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
-std::string WatchdogSignature(const std::string& console_ramoops,
-                              const std::string& watchdogRebootReason);
+std::string WatchdogSignature(const std::string& console_ramoops);
 
 // If console_log contains a hypervisor log snippet, copy it to hypervisor_log
 // and remove it from console_log, otherwise leave both unchanged. Returns true

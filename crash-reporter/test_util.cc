@@ -99,27 +99,6 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
   return !path.empty();
 }
 
-bool DirectoryHasFileWithPatternAndContents(const base::FilePath& directory,
-                                            const std::string& pattern,
-                                            const std::string& contents) {
-  base::FileEnumerator enumerator(
-      directory, false, base::FileEnumerator::FileType::FILES, pattern);
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    LOG(INFO) << "Checking " << path.value();
-    std::string actual_contents;
-    if (!base::ReadFileToString(path, &actual_contents)) {
-      LOG(ERROR) << "Failed to read file " << path.value();
-      return false;
-    }
-    std::size_t found = actual_contents.find(contents);
-    if (found != std::string::npos) {
-      return true;
-    }
-  }
-  return false;
-}
-
 base::FilePath GetTestDataPath(const std::string& name, bool use_testdata) {
   base::FilePath src = base::FilePath(getenv("SRC"));
   if (use_testdata) {
