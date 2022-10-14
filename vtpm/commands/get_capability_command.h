@@ -15,6 +15,7 @@
 #include <trunks/response_serializer.h>
 
 #include "vtpm/backends/tpm_handle_manager.h"
+#include "vtpm/backends/tpm_property_manager.h"
 
 namespace vtpm {
 
@@ -22,7 +23,8 @@ class GetCapabilityCommand : public Command {
  public:
   GetCapabilityCommand(trunks::CommandParser* command_parser,
                        trunks::ResponseSerializer* response_serializer,
-                       TpmHandleManager* tpm_handle_manager);
+                       TpmHandleManager* tpm_handle_manager,
+                       TpmPropertyManager* tpm_property_manager);
   void Run(const std::string& command,
            CommandResponseCallback callback) override;
 
@@ -32,11 +34,23 @@ class GetCapabilityCommand : public Command {
                                          trunks::TPMI_YES_NO& has_more,
                                          trunks::TPML_HANDLE& handles);
 
+  trunks::TPM_RC GetCapabilityCommands(trunks::UINT32 property,
+                                       trunks::UINT32 property_count,
+                                       trunks::TPMI_YES_NO& has_more,
+                                       trunks::TPML_CCA& command);
+
+  trunks::TPM_RC GetCapabilityTpmProperties(
+      trunks::UINT32 property,
+      trunks::UINT32 property_count,
+      trunks::TPMI_YES_NO& has_more,
+      trunks::TPML_TAGGED_TPM_PROPERTY& tpm_properties);
+
   void ReturnWithError(trunks::TPM_RC rc, CommandResponseCallback callback);
 
   trunks::CommandParser* const command_parser_;
   trunks::ResponseSerializer* const response_serializer_;
   TpmHandleManager* const tpm_handle_manager_;
+  TpmPropertyManager* const tpm_property_manager_;
 };
 
 }  // namespace vtpm

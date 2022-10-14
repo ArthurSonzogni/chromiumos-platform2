@@ -54,13 +54,16 @@ std::string CapabilityToString(trunks::TPM_CAP cap) {
 GetCapabilityCommand::GetCapabilityCommand(
     trunks::CommandParser* command_parser,
     trunks::ResponseSerializer* response_serializer,
-    TpmHandleManager* tpm_handle_manager)
+    TpmHandleManager* tpm_handle_manager,
+    TpmPropertyManager* tpm_property_manager)
     : command_parser_(command_parser),
       response_serializer_(response_serializer),
-      tpm_handle_manager_(tpm_handle_manager) {
+      tpm_handle_manager_(tpm_handle_manager),
+      tpm_property_manager_(tpm_property_manager) {
   CHECK(command_parser_);
   CHECK(response_serializer_);
   CHECK(tpm_handle_manager_);
+  CHECK(tpm_property_manager_);
 }
 
 void GetCapabilityCommand::Run(const std::string& command,
@@ -91,6 +94,14 @@ void GetCapabilityCommand::Run(const std::string& command,
     case trunks::TPM_CAP_HANDLES:
       rc = GetCapabilityTpmHandles(property, property_count, has_more,
                                    cap_data.data.handles);
+      break;
+    case trunks::TPM_CAP_COMMANDS:
+      rc = GetCapabilityCommands(property, property_count, has_more,
+                                 cap_data.data.command);
+      break;
+    case trunks::TPM_CAP_TPM_PROPERTIES:
+      rc = GetCapabilityTpmProperties(property, property_count, has_more,
+                                      cap_data.data.tpm_properties);
       break;
     default:
       LOG(ERROR) << __func__
@@ -138,6 +149,47 @@ trunks::TPM_RC GetCapabilityCommand::GetCapabilityTpmHandles(
   std::copy(found_handles.begin(), found_handles.begin() + handles.count,
             handles.handle);
 
+  return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC GetCapabilityCommand::GetCapabilityCommands(
+    trunks::UINT32 property,
+    trunks::UINT32 property_count,
+    trunks::TPMI_YES_NO& has_more,
+    trunks::TPML_CCA& commands) {
+  const std::vector<trunks::TPM_CC>& command_list =
+      tpm_property_manager_->GetCommandList();
+  // Get the commands from the lower bound.
+  auto iter =
+      std::lower_bound(command_list.cbegin(), command_list.cend(), property);
+  const size_t command_count = std::distance(iter, command_list.cend());
+  commands.count = std::min({static_cast<size_t>(property_count), command_count,
+                             std::size(commands.command_attributes)});
+  has_more = (commands.count < command_count ? YES : NO);
+  for (int i = 0; i < commands.count; ++i, ++iter) {
+    commands.command_attributes[i] = *iter;
+  }
+  return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC GetCapabilityCommand::GetCapabilityTpmProperties(
+    trunks::UINT32 property,
+    trunks::UINT32 property_count,
+    trunks::TPMI_YES_NO& has_more,
+    trunks::TPML_TAGGED_TPM_PROPERTY& tpm_properties) {
+  has_more = 0;
+  tpm_properties.count = 0;
+  if (property == trunks::TPM_PT_TOTAL_COMMANDS) {
+    has_more = (property_count < 1 ? YES : NO);
+    tpm_properties.count = (has_more == NO ? 1 : 0);
+    // Set the value regardless; it will be discarded by serialization.
+    tpm_properties.tpm_property[0].property = trunks::TPM_PT_TOTAL_COMMANDS;
+    tpm_properties.tpm_property[0].value =
+        tpm_property_manager_->GetCommandList().size();
+  } else {
+    LOG(ERROR) << ": Unsupported TPM property: " << property;
+    return trunks::TPM_RC_VALUE;
+  }
   return trunks::TPM_RC_SUCCESS;
 }
 
