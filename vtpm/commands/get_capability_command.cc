@@ -99,6 +99,10 @@ void GetCapabilityCommand::Run(const std::string& command,
       rc = GetCapabilityCommands(property, property_count, has_more,
                                  cap_data.data.command);
       break;
+    case trunks::TPM_CAP_PCRS:
+      rc = GetCapabilityPCRs(property, property_count, has_more,
+                             cap_data.data.assigned_pcr);
+      break;
     case trunks::TPM_CAP_TPM_PROPERTIES:
       rc = GetCapabilityTpmProperties(property, property_count, has_more,
                                       cap_data.data.tpm_properties);
@@ -169,6 +173,16 @@ trunks::TPM_RC GetCapabilityCommand::GetCapabilityCommands(
   for (int i = 0; i < commands.count; ++i, ++iter) {
     commands.command_attributes[i] = *iter;
   }
+  return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC GetCapabilityCommand::GetCapabilityPCRs(
+    trunks::UINT32 property,
+    trunks::UINT32 property_count,
+    trunks::TPMI_YES_NO& has_more,
+    trunks::TPML_PCR_SELECTION& assigned_pcr) {
+  // we don't support PCR; just set the everything to 0.
+  assigned_pcr.count = 0;
   return trunks::TPM_RC_SUCCESS;
 }
 

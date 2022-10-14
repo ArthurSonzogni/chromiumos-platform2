@@ -39,6 +39,11 @@ class GetCapabilityCommand : public Command {
                                        trunks::TPMI_YES_NO& has_more,
                                        trunks::TPML_CCA& command);
 
+  trunks::TPM_RC GetCapabilityPCRs(trunks::UINT32 property,
+                                   trunks::UINT32 property_count,
+                                   trunks::TPMI_YES_NO& has_more,
+                                   trunks::TPML_PCR_SELECTION& assigned_pcr);
+
   trunks::TPM_RC GetCapabilityTpmProperties(
       trunks::UINT32 property,
       trunks::UINT32 property_count,

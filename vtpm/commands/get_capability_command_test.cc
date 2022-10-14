@@ -79,6 +79,10 @@ MATCHER(IsEmptyPropertyList, "") {
   return arg.data.tpm_properties.count == 0;
 }
 
+MATCHER(IsEmptyPcrSelection, "") {
+  return arg.data.assigned_pcr.count == 0;
+}
+
 }  // namespace
 
 // A placeholder test fixture.
@@ -602,6 +606,28 @@ TEST_F(GetCapabilityCommandTest, CommandsSuccessHasMore) {
           YES,
           IsCommandListOf(kFakeFirstTpmCommandCode, kFakeTotalCommandCount - 1),
           _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, PCRsSuccess) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_PCRS),
+                      SetArgPointee<2>(kFakeFirstTpmCommandCode),
+                      SetArgPointee<3>(kFakeTotalCommandCount - 1),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeResponseGetCapability(NO, IsEmptyPcrSelection(), _))
       .WillOnce(SetArgPointee<2>(kTestResponse));
 
   command_.Run(kFakeRequest, std::move(callback));
