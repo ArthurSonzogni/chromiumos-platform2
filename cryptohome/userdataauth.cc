@@ -2484,11 +2484,14 @@ MountStatus UserDataAuth::AttemptUserMount(
   if (mount_args.is_ephemeral) {
     // Store the credentials in the cache to use on session unlock.
     user_session->TakeCredentialsFrom(auth_session);
-    MountStatus err = user_session->MountEphemeral(auth_session->username());
+    MountStatus status = user_session->MountEphemeral(auth_session->username());
+    if (status.ok()) {
+      return OkStatus<CryptohomeMountError>();
+    }
     return MakeStatus<CryptohomeMountError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthEphemeralFailedInAttemptUserMountAS))
-        .Wrap(std::move(err));
+        .Wrap(std::move(status));
   }
 
   // Cannot proceed with mount if the AuthSession is not authenticated yet.
