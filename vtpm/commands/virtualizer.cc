@@ -122,8 +122,8 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         &v->real_command_parser_, &v->real_response_serializer_,
         v->real_tpm_handle_manager_.get()));
 
-    v->command_table_.emplace(trunks::TPM_CC_GetCapability,
-                              v->commands_.back().get());
+    v->AddCommandSupport(trunks::TPM_CC_GetCapability,
+                         v->commands_.back().get());
 
     // Add `NvReadCommand`.
     // Since the only nv sapce is vEK certificate, and no known potential use of
@@ -132,16 +132,15 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         &v->real_command_parser_, &v->real_response_serializer_,
         v->vek_cert_manager_.get()));
 
-    v->command_table_.emplace(trunks::TPM_CC_NV_Read,
-                              v->commands_.back().get());
+    v->AddCommandSupport(trunks::TPM_CC_NV_Read, v->commands_.back().get());
 
     // Add `NvReadPublicCommand`.
     v->commands_.emplace_back(std::make_unique<NvReadPublicCommand>(
         &v->real_command_parser_, &v->real_response_serializer_,
         v->vek_cert_manager_.get(), &v->real_static_analyzer_));
 
-    v->command_table_.emplace(trunks::TPM_CC_NV_ReadPublic,
-                              v->commands_.back().get());
+    v->AddCommandSupport(trunks::TPM_CC_NV_ReadPublic,
+                         v->commands_.back().get());
 
     // Add forwarded command w/ handle translateion.
     v->commands_.emplace_back(std::make_unique<ForwardCommand>(
@@ -150,11 +149,11 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         v->endorsement_password_changer_.get(), &v->direct_forwarder_));
 
     for (trunks::TPM_CC cc : kSupportedForwardCommands) {
-      v->command_table_.emplace(cc, v->commands_.back().get());
+      v->AddCommandSupport(cc, v->commands_.back().get());
     }
 
     // Add `SelfTestCommand`.
-    v->command_table_.emplace(trunks::TPM_CC_SelfTest, &v->self_test_command_);
+    v->AddCommandSupport(trunks::TPM_CC_SelfTest, &v->self_test_command_);
 
     // Use an `UnsupportedCommand` as fallback.
     v->commands_.emplace_back(
@@ -163,6 +162,10 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     // Others are not implemented yet.
   }
   return v;
+}
+
+void Virtualizer::AddCommandSupport(trunks::TPM_CC cc, Command* command) {
+  command_table_.emplace(cc, command);
 }
 
 Virtualizer::Virtualizer(trunks::CommandParser* parser,

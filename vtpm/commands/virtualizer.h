@@ -63,6 +63,9 @@ class Virtualizer : public Command {
  private:
   Virtualizer() = default;
 
+  // Adds support for `cc` with `command` as the handler.
+  void AddCommandSupport(trunks::TPM_CC cc, Command* command);
+
   // Functional object candidates for all profiles.
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
