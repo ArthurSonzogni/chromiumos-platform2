@@ -33,6 +33,7 @@
 #include "vtpm/backends/endorsement_password_changer.h"
 #include "vtpm/backends/real_static_analyzer.h"
 #include "vtpm/backends/real_tpm_handle_manager.h"
+#include "vtpm/backends/real_tpm_property_manager.h"
 #include "vtpm/backends/vek.h"
 #include "vtpm/backends/vek_cert.h"
 #include "vtpm/backends/vek_cert_manager.h"
@@ -67,6 +68,7 @@ class Virtualizer : public Command {
   void AddCommandSupport(trunks::TPM_CC cc, Command* command);
 
   // Functional object candidates for all profiles.
+  RealTpmPropertyManager real_tpm_property_manager_;
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
   RealStaticAnalyzer real_static_analyzer_;

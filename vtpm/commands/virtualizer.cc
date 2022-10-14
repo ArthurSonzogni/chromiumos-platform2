@@ -166,6 +166,7 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
 
 void Virtualizer::AddCommandSupport(trunks::TPM_CC cc, Command* command) {
   command_table_.emplace(cc, command);
+  real_tpm_property_manager_.AddCommand(cc);
 }
 
 Virtualizer::Virtualizer(trunks::CommandParser* parser,
