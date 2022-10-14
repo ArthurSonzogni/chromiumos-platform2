@@ -1349,6 +1349,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockFailedRecoveryIdReadInCreate = 3507,
   /* ./auth_session.cc */
   kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS = 3508,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound = 3509,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

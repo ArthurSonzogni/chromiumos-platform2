@@ -5166,9 +5166,23 @@ void UserDataAuth::PrepareAuthFactor(
         on_done) {
   AssertOnMountThread();
   user_data_auth::PrepareAuthFactorReply reply;
-  // TODO(b/244237788): Implement PrepareAuthFactor.
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-  std::move(on_done).Run(reply);
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+    return;
+  }
+  auth_session->PrepareAuthFactor(
+      request,
+      base::BindOnce(&ReplyWithStatus<user_data_auth::PrepareAuthFactorReply>,
+                     std::move(on_done)));
 }
 
 void UserDataAuth::GetAuthSessionStatus(
