@@ -12,7 +12,7 @@ group("all") {
     ":install_policy",
   ]
   if (use.test) {
-    deps += [ ":boot_lockbox_unittests" ]
+    deps += [ ":boot_lockbox_test" ]
   }
   if (!use.systemd) {
     deps += [ ":install_init" ]
@@ -69,14 +69,14 @@ executable("bootlockboxd") {
 }
 
 if (use.test) {
-  executable("boot_lockbox_unittests") {
+  executable("boot_lockbox_test") {
     run_test = true
     sources = [
       "boot_lockbox_dbus_adaptor.cc",
-      "boot_lockbox_service_unittest.cc",
+      "boot_lockbox_service_test.cc",
       "fake_tpm_nvspace.cc",
-      "nvram_boot_lockbox_unittest.cc",
-      "tpm_nvspace_impl_unittest.cc",
+      "nvram_boot_lockbox_test.cc",
+      "tpm_nvspace_impl_test.cc",
     ]
     libs = [ "tpm_manager" ]
     configs += [ "//common-mk:test" ]
