@@ -45,7 +45,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
   void OnEnrollScanDone(ScanResult scan_result,
                         const AuthStackManager::EnrollStatus& enroll_status,
                         brillo::Blob auth_nonce);
-  void OnAuthScanDone();
+  void OnAuthScanDone(brillo::Blob auth_nonce);
   void OnSessionFailed();
   bool StartEnrollSession(brillo::ErrorPtr* error,
                           dbus::Message* message,
@@ -55,6 +55,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
                         const CreateCredentialRequest& request);
   bool StartAuthSession(brillo::ErrorPtr* error,
                         dbus::Message* message,
+                        std::string user_id,
                         dbus::ObjectPath* auth_session_path);
   void AuthenticateCredential(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

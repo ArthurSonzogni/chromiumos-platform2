@@ -175,9 +175,26 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
   return reply;
 }
 
-BioSession CrosFpAuthStackManager::StartAuthSession() {
-  NOTREACHED();
-  return BioSession(base::NullCallback());
+BioSession CrosFpAuthStackManager::StartAuthSession(std::string user_id) {
+  if (!CanStartAuth()) {
+    LOG(ERROR) << "Can't start an auth session now, current state is: "
+               << CurrentStateToString();
+    return BioSession(base::NullCallback());
+  }
+
+  if (!LoadUser(user_id)) {
+    LOG(ERROR) << "Failed to load user for authentication.";
+    return BioSession(base::NullCallback());
+  }
+
+  // Make sure context is cleared before starting auth session.
+  cros_dev_->ResetContext();
+  if (!RequestMatchFingerDown())
+    return BioSession(base::NullCallback());
+  state_ = State::kAuth;
+
+  return BioSession(base::BindOnce(&CrosFpAuthStackManager::EndAuthSession,
+                                   session_weak_factory_.GetWeakPtr()));
 }
 
 AuthenticateCredentialReply CrosFpAuthStackManager::AuthenticateCredential(
@@ -259,11 +276,22 @@ void CrosFpAuthStackManager::OnEnrollScanDone(
   on_enroll_scan_done_.Run(result, enroll_status, std::move(auth_nonce));
 }
 
+void CrosFpAuthStackManager::OnAuthScanDone(brillo::Blob auth_nonce) {
+  on_auth_scan_done_.Run(std::move(auth_nonce));
+}
+
 void CrosFpAuthStackManager::OnSessionFailed() {
   on_session_failed_.Run();
 }
 
 bool CrosFpAuthStackManager::LoadUser(std::string user_id) {
+  const std::optional<std::string>& current_user = session_manager_->GetUser();
+  if (current_user.has_value() && current_user.value() == user_id) {
+    // No action required, the user is already loaded.
+    return true;
+  } else if (current_user.has_value()) {
+    session_manager_->UnloadUser();
+  }
   if (!session_manager_->LoadUser(std::move(user_id))) {
     LOG(ERROR) << "Failed to start user session.";
     state_ = State::kLocked;
@@ -383,6 +411,36 @@ void CrosFpAuthStackManager::DoEnrollFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
+bool CrosFpAuthStackManager::RequestMatchFingerDown() {
+  next_session_action_ = base::BindRepeating(
+      &CrosFpAuthStackManager::OnMatchFingerDown, base::Unretained(this));
+  if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kFingerDown))) {
+    next_session_action_ = SessionAction();
+    LOG(ERROR) << "Failed to start finger down mode";
+    return false;
+  }
+  return true;
+}
+
+void CrosFpAuthStackManager::OnMatchFingerDown(uint32_t event) {
+  if (!(event & EC_MKBP_FP_FINGER_DOWN)) {
+    LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
+    // Continue waiting for the proper event, do not abort session.
+    return;
+  }
+
+  std::optional<brillo::Blob> auth_nonce = cros_dev_->GetNonce();
+  if (!auth_nonce) {
+    LOG(ERROR) << "Failed to get auth nonce.";
+    OnSessionFailed();
+    return;
+  }
+
+  OnTaskComplete();
+  state_ = State::kAuthDone;
+  OnAuthScanDone(std::move(*auth_nonce));
+}
+
 std::string CrosFpAuthStackManager::CurrentStateToString() {
   switch (state_) {
     case State::kNone:
@@ -391,6 +449,10 @@ std::string CrosFpAuthStackManager::CurrentStateToString() {
       return "Enroll";
     case State::kEnrollDone:
       return "EnrollDone";
+    case State::kAuth:
+      return "Auth";
+    case State::kAuthDone:
+      return "AuthDone";
     case State::kLocked:
       return "Locked";
   }
@@ -399,9 +461,11 @@ std::string CrosFpAuthStackManager::CurrentStateToString() {
 bool CrosFpAuthStackManager::IsActiveState() {
   switch (state_) {
     case State::kEnroll:
+    case State::kAuth:
       return true;
     case State::kNone:
     case State::kEnrollDone:
+    case State::kAuthDone:
     case State::kLocked:
       return false;
   }
@@ -413,6 +477,8 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
     case State::kEnrollDone:
       return true;
     case State::kEnroll:
+    case State::kAuth:
+    case State::kAuthDone:
     case State::kLocked:
       return false;
   }
@@ -420,6 +486,23 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
 
 bool CrosFpAuthStackManager::CanCreateCredential() {
   return state_ == State::kEnrollDone;
+}
+
+bool CrosFpAuthStackManager::CanStartAuth() {
+  switch (state_) {
+    case State::kNone:
+    case State::kEnrollDone:
+    case State::kAuthDone:
+      return true;
+    case State::kEnroll:
+    case State::kAuth:
+    case State::kLocked:
+      return false;
+  }
+}
+
+bool CrosFpAuthStackManager::CanAuthenticateCredential() {
+  return state_ == State::kAuthDone;
 }
 
 }  // namespace biod

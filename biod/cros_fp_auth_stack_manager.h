@@ -37,6 +37,11 @@ class CrosFpAuthStackManager : public AuthStackManager {
     // An EnrollSession is completed successfully and we're expecting a
     // CreateCredential command.
     kEnrollDone,
+    // An AuthSession is ongoing.
+    kAuth,
+    // An AuthSession is completed successfully and we're expecting a
+    // AuthenticateCredential command.
+    kAuthDone,
     // Something went wrong in keeping sync between biod and FPMCU, and it's
     // better to not process any Enroll/Auth commands in this state.
     kLocked,
@@ -62,7 +67,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::Session StartEnrollSession() override;
   CreateCredentialReply CreateCredential(
       const CreateCredentialRequest& request) override;
-  AuthStackManager::Session StartAuthSession() override;
+  AuthStackManager::Session StartAuthSession(std::string user_id) override;
   AuthenticateCredentialReply AuthenticateCredential(
       const AuthenticateCredentialRequest& request) override;
   void OnUserLoggedOut() override;
@@ -96,6 +101,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void OnEnrollScanDone(ScanResult result,
                         const AuthStackManager::EnrollStatus& enroll_status,
                         brillo::Blob auth_nonce);
+  void OnAuthScanDone(brillo::Blob auth_nonce);
   void OnSessionFailed();
 
   bool LoadUser(std::string user_id);
@@ -104,12 +110,16 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool RequestEnrollFingerUp();
   void DoEnrollImageEvent(uint32_t event);
   void DoEnrollFingerUpEvent(uint32_t event);
+  bool RequestMatchFingerDown();
+  void OnMatchFingerDown(uint32_t event);
 
   std::string CurrentStateToString();
   // Whether current state is waiting for a next session action.
   bool IsActiveState();
   bool CanStartEnroll();
   bool CanCreateCredential();
+  bool CanStartAuth();
+  bool CanAuthenticateCredential();
 
   BiodMetricsInterface* biod_metrics_ = nullptr;
   std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;

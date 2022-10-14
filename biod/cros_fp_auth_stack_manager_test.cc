@@ -527,6 +527,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialPersistRecordFailed) {
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
+  const std::optional<std::string> kNoUser = std::nullopt;
   const std::string kUserId("testuser");
   const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
       {
@@ -536,6 +537,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
           .tmpl = VendorTemplate(32, 2),
       }};
 
+  EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
   for (int i = 0; i < 2; i++) {
@@ -548,8 +550,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInLoadUserFailed) {
+  const std::optional<std::string> kNoUser = std::nullopt;
   const std::string kUserId("testuser");
 
+  EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId))
       .WillOnce(Return(false));
   cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
@@ -558,6 +562,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInLoadUserFailed) {
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
+  const std::optional<std::string> kNoUser = std::nullopt;
   const std::string kUserId("testuser");
   const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
       {
@@ -567,6 +572,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
           .tmpl = VendorTemplate(32, 2),
       }};
 
+  EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
   EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(0, kRecords[0].tmpl))
@@ -580,6 +586,100 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedOut) {
   const std::string kUserId("testuser");
   EXPECT_CALL(*mock_session_manager_, UnloadUser);
   cros_fp_auth_stack_manager_->OnUserLoggedOut();
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
+  const std::string kUserId("testuser");
+  const std::optional<std::string> kNoUser = std::nullopt;
+  const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
+      {
+          .tmpl = VendorTemplate(32, 1),
+      },
+      {
+          .tmpl = VendorTemplate(32, 2),
+      }};
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
+  for (int i = 0; i < 2; i++) {
+    EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(i, kRecords[i].tmpl))
+        .WillOnce(Return(true));
+  }
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId);
+  EXPECT_TRUE(auth_session);
+
+  // When auth session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Stop auth session
+  auth_session.RunAndReset();
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopNoUserFailed) {
+  const std::string kUserId("testuser");
+  const std::optional<std::string> kNoUser = std::nullopt;
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId))
+      .WillOnce(Return(false));
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId);
+  EXPECT_FALSE(auth_session);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessSameUser) {
+  const std::optional<std::string> kUserId("testuser");
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+      .WillOnce(Return(true));
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  EXPECT_TRUE(auth_session);
+
+  // When auth session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Stop auth session
+  auth_session.RunAndReset();
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartFailIncorrectUser) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kWrongUserId("fakeuser");
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kWrongUserId);
+  EXPECT_FALSE(auth_session);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionFingerDownModeFailed) {
+  const std::optional<std::string> kUserId("testuser");
+  AuthStackManager::Session auth_session;
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+      .WillOnce(Return(false));
+
+  // Auth session should fail to start when FPMCU refuses to set finger down
+  // mode.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  EXPECT_FALSE(auth_session);
 }
 
 }  // namespace biod

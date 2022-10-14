@@ -28,7 +28,7 @@ class MockAuthStackManager : public AuthStackManager {
               CreateCredential,
               (const CreateCredentialRequest&),
               (override));
-  MOCK_METHOD(Session, StartAuthSession, (), (override));
+  MOCK_METHOD(Session, StartAuthSession, (std::string user_id), (override));
   MOCK_METHOD(AuthenticateCredentialReply,
               AuthenticateCredential,
               (const AuthenticateCredentialRequest&),

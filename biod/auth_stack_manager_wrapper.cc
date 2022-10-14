@@ -164,14 +164,16 @@ void AuthStackManagerWrapper::OnEnrollScanDone(
   }
 }
 
-void AuthStackManagerWrapper::OnAuthScanDone() {
+void AuthStackManagerWrapper::OnAuthScanDone(brillo::Blob auth_nonce) {
   if (!auth_session_dbus_object_)
     return;
 
-  // TODO(b/251089506): Return necessary values to be included in AuthScanDone
-  // signal.
   dbus::Signal auth_scan_done_signal(kAuthStackManagerInterface,
                                      kBiometricsManagerAuthScanDoneSignal);
+  dbus::MessageWriter writer(&auth_scan_done_signal);
+  AuthScanDone proto;
+  proto.set_auth_nonce(brillo::BlobToString(auth_nonce));
+  writer.AppendProtoAsArrayOfBytes(proto);
   dbus_object_.SendSignal(&auth_scan_done_signal);
 }
 
@@ -234,9 +236,10 @@ void AuthStackManagerWrapper::CreateCredential(
 
 bool AuthStackManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
                                                dbus::Message* message,
+                                               std::string user_id,
                                                ObjectPath* auth_session_path) {
   AuthStackManager::Session auth_session =
-      auth_stack_manager_->StartAuthSession();
+      auth_stack_manager_->StartAuthSession(std::move(user_id));
   if (!auth_session) {
     *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,

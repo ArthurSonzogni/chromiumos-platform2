@@ -34,6 +34,7 @@ using testing::ReturnRef;
 using testing::SaveArg;
 
 constexpr char kClientConnectionName[] = ":1.33";
+constexpr char kTestUser[] = "testuser";
 
 MATCHER_P(EqualsProto,
           message,
@@ -122,12 +123,12 @@ class AuthStackManagerWrapperTest : public ::testing::Test {
   std::unique_ptr<dbus::Response> CreateCredential(
       const CreateCredentialRequest& request, CreateCredentialReply* reply);
   std::unique_ptr<dbus::Response> StartAuthSession(
-      dbus::ObjectPath* object_path);
+      std::string user_id, dbus::ObjectPath* object_path);
   void EmitNameOwnerChangedSignal(const std::string& name,
                                   const std::string& old_owner,
                                   const std::string& new_owner);
   void ExpectStartEnrollSession();
-  void ExpectStartAuthSession();
+  void ExpectStartAuthSession(const std::string& user_id);
 
  private:
   std::map<std::string, dbus::ObjectProxy::SignalCallback> signal_callbacks_;
@@ -280,9 +281,11 @@ std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::CreateCredential(
 }
 
 std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::StartAuthSession(
-    dbus::ObjectPath* object_path) {
+    std::string user_id, dbus::ObjectPath* object_path) {
   dbus::MethodCall start_auth_session(kAuthStackManagerInterface,
                                       kAuthStackManagerStartAuthSessionMethod);
+  dbus::MessageWriter writer(&start_auth_session);
+  writer.AppendString(std::move(user_id));
 
   auto response = CallMethod(&start_auth_session);
   if (response->GetMessageType() == dbus::Message::MESSAGE_METHOD_RETURN) {
@@ -301,11 +304,12 @@ void AuthStackManagerWrapperTest::ExpectStartEnrollSession() {
       .WillOnce(Return(ByMove(std::move(enroll_session))));
 }
 
-void AuthStackManagerWrapperTest::ExpectStartAuthSession() {
+void AuthStackManagerWrapperTest::ExpectStartAuthSession(
+    const std::string& user_id) {
   auto auth_session = AuthStackManager::Session(
       base::BindOnce(&MockAuthStackManager::EndAuthSession,
                      bio_manager_->session_weak_factory_.GetWeakPtr()));
-  EXPECT_CALL(*bio_manager_, StartAuthSession)
+  EXPECT_CALL(*bio_manager_, StartAuthSession(user_id))
       .WillOnce(Return(ByMove(std::move(auth_session))));
 }
 
@@ -528,9 +532,9 @@ TEST_F(AuthStackManagerWrapperTest, TestEnrollSessionOwnerDies) {
 
 TEST_F(AuthStackManagerWrapperTest, TestStartAuthSession) {
   dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  ExpectStartAuthSession(kTestUser);
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
   dbus::ObjectPath expected_object_path(mock_bio_path_.value() +
@@ -549,9 +553,9 @@ TEST_F(AuthStackManagerWrapperTest, TestStartAuthSession) {
 
 TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionThenEnd) {
   dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  ExpectStartAuthSession(kTestUser);
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
@@ -573,10 +577,12 @@ TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionThenEnd) {
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionSuccess) {
-  dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  const brillo::Blob kAuthNonce(32, 1);
 
-  auto response = StartAuthSession(&object_path);
+  dbus::ObjectPath object_path;
+  ExpectStartAuthSession(kTestUser);
+
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
@@ -587,7 +593,7 @@ TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionSuccess) {
   EXPECT_CALL(*object, Unregister).Times(0);
   EXPECT_CALL(*bio_manager_, EndAuthSession).Times(0);
 
-  on_auth_scan_done.Run();
+  on_auth_scan_done.Run(kAuthNonce);
 
   // Expect that auth session will be killed on destruction of the auth_session
   // object. EXPECT_CALL is able to catch calls from auth_session destructor
@@ -597,10 +603,12 @@ TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionSuccess) {
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionSuccessSignal) {
-  dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  const brillo::Blob kAuthNonce(32, 1);
 
-  auto response = StartAuthSession(&object_path);
+  dbus::ObjectPath object_path;
+  ExpectStartAuthSession(kTestUser);
+
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
@@ -608,30 +616,34 @@ TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionSuccessSignal) {
   auto iter = exported_objects_.find(mock_bio_path_.value());
   ASSERT_TRUE(iter != exported_objects_.end());
   scoped_refptr<dbus::MockExportedObject> object = iter->second;
-  EXPECT_CALL(*object, SendSignal).WillOnce([](dbus::Signal* signal) {
+  EXPECT_CALL(*object, SendSignal).WillOnce([kAuthNonce](dbus::Signal* signal) {
     EXPECT_EQ(signal->GetInterface(), kAuthStackManagerInterface);
     EXPECT_EQ(signal->GetMember(), kBiometricsManagerAuthScanDoneSignal);
+    dbus::MessageReader reader(signal);
+    AuthScanDone proto;
+    reader.PopArrayOfBytesAsProto(&proto);
+    EXPECT_EQ(proto.auth_nonce(), brillo::BlobToString(kAuthNonce));
   });
 
-  on_auth_scan_done.Run();
+  on_auth_scan_done.Run(kAuthNonce);
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestStartAuthSessionFailed) {
   dbus::ObjectPath object_path;
   // Empty auth session indicates that we were not able to start
   // enroll session.
-  EXPECT_CALL(*bio_manager_, StartAuthSession)
+  EXPECT_CALL(*bio_manager_, StartAuthSession(kTestUser))
       .WillOnce(Return(ByMove(AuthStackManager::Session())));
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestOnSessionFailedEndsAuthSession) {
   dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  ExpectStartAuthSession(kTestUser);
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
@@ -652,9 +664,9 @@ TEST_F(AuthStackManagerWrapperTest, TestOnSessionFailedEndsAuthSession) {
 
 TEST_F(AuthStackManagerWrapperTest, TestAuthOnSessionFailedSendsSignal) {
   dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  ExpectStartAuthSession(kTestUser);
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
@@ -672,9 +684,9 @@ TEST_F(AuthStackManagerWrapperTest, TestAuthOnSessionFailedSendsSignal) {
 
 TEST_F(AuthStackManagerWrapperTest, TestAuthSessionOwnerDies) {
   dbus::ObjectPath object_path;
-  ExpectStartAuthSession();
+  ExpectStartAuthSession(kTestUser);
 
-  auto response = StartAuthSession(&object_path);
+  auto response = StartAuthSession(kTestUser, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
               dbus::Message::MESSAGE_METHOD_RETURN);
 
