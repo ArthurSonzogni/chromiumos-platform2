@@ -307,6 +307,9 @@ if [ -L "${RESET_FILE}" ] || [ -e "${RESET_FILE}" ]; then
     CLOBBER_ARGS='keepimg'
   else
     CLOBBER_ARGS="$(cat "${RESET_FILE}")"
+    if [ -z "${CLOBBER_ARGS}" ]; then
+      CLOBBER_ARGS='keepimg'
+    fi
   fi
 elif [ -z "${STATE_DEV}" ]; then
   # No physical stateful partition available, usually due to initramfs
