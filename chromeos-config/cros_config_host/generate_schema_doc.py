@@ -156,6 +156,7 @@ def PopulateTypeDef(
                 attr_type = "[%s](#%s)" % (attr_name, attr_anchor)
             elif type_attrs["type"] == "array":
                 description = type_attrs["items"].get("description", "")
+                description = description.replace("\n", " ")
                 if type_attrs["items"]["type"] == "object":
                     child_types[attr_name] = type_attrs["items"]
                     if build_only:

@@ -1243,7 +1243,7 @@ properties:
                           minimum: 0
                           maximum: 100
                       additionalProperties: false
-                    fingerprint:
+                    fingerprint-health:
                       type: object
                       properties:
                         routine-enable:
@@ -1323,7 +1323,7 @@ properties:
                           items:
                             type: object
                             description: |
-                              Rrectangles [x1, y1, x2, y2].
+                              Rectangles [x1, y1, x2, y2].
                             properties:
                               x1:
                                 type: integer

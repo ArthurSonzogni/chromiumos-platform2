@@ -572,7 +572,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | battery-health | [battery-health](#battery_health) |  | False |  | False |  |
-| fingerprint | [fingerprint](#fingerprint) |  | False |  | False |  |
+| fingerprint-health | [fingerprint-health](#fingerprint_health) |  | False |  | False |  |
 | nvme-wear-level | [nvme-wear-level](#nvme_wear_level) |  | False |  | False |  |
 
 ### battery-health
@@ -580,11 +580,10 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | percent-battery-wear-allowed | integer |  | False |  | False | Upper bound for the battery's wear percentage. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. Maximum value: 0x64. |
 
-### fingerprint
+### fingerprint-health
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| detect-zones | array - [detect-zones](#detect_zones) |  | True |  | False | Rrectangles [x1, y1, x2, y2].
- |
+| detect-zones | array - [detect-zones](#detect_zones) |  | True |  | False | Rectangles [x1, y1, x2, y2].  |
 | max-dead-pixels | integer |  | True |  | False | The maximum allowed number of dead pixels on the fingerprint sensor.  Minimum value: 0x0. |
 | max-dead-pixels-in-detect-zone | integer |  | True |  | False | The maximum allowed number of dead pixels in the detection zone.  Minimum value: 0x0. |
 | max-pixel-dev | integer |  | True |  | False | The maximum deviation from the median for a pixel.  Minimum value: 0x0. |
