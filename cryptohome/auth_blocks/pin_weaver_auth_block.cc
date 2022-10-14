@@ -315,6 +315,30 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
+CryptoStatus PinWeaverAuthBlock::PrepareForRemoval(
+    const AuthBlockState& auth_block_state) {
+  // Read supported_intents only for AuthFactors with a PinWeaver backend.
+  auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
+      &auth_block_state.state);
+  if (!state) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocPinWeaverAuthBlockFailedToGetStateFailedInPrepareForRemoval),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
+  }
+
+  // Ensure that the AuthFactor has le_label.
+  if (!state->le_label.has_value()) {
+    LOG(ERROR) << "PinWeaver AuthBlockState does not have le_label";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInPrepareForRemoval),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
+  }
+  return le_manager_->RemoveCredential(state->le_label.value());
+}
+
 bool PinWeaverAuthBlock::IsLocked(uint64_t label) {
   LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
   if (!delay.ok()) {

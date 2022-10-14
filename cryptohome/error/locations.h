@@ -1317,6 +1317,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionInvalidPurposeInPrepareAuthFactor = 3502,
   /* ./auth_session.cc */
   kLocAuthSessionPrepareBadAuthFactorType = 3503,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3504,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoLabelInPrepareForRemoval = 3505,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
