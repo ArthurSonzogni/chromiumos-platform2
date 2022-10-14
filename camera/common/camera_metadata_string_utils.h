@@ -49,6 +49,8 @@ CROS_CAMERA_EXPORT std::string ColorGainToString(double gain);
 CROS_CAMERA_EXPORT const char* AWBStateToString(
     camera_metadata_enum_android_control_awb_state_t state);
 
+CROS_CAMERA_EXPORT std::string HdrRatioToString(float hdr_ratio);
+
 }  // namespace cros
 
 #endif  // CAMERA_COMMON_CAMERA_METADATA_STRING_UTILS_H_

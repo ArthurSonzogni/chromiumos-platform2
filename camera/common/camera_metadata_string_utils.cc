@@ -147,4 +147,8 @@ const char* AWBStateToString(
   }
 }
 
+std::string HdrRatioToString(float hdr_ratio) {
+  return base::StringPrintf("%.2f", hdr_ratio);
+}
+
 }  // namespace cros

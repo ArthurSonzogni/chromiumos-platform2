@@ -114,6 +114,8 @@ bool MetadataPreviewerFrameAnnotator::ProcessCaptureResult(
         awb_state[0]);
   }
 
+  hdr_ratio_ = result->feature_metadata().hdr_ratio;
+
   return true;
 }
 
@@ -250,6 +252,11 @@ bool MetadataPreviewerFrameAnnotator::Plot(SkCanvas* canvas) {
               blue_info_color},
              {awb_state_ ? AWBStateToString(*awb_state_) : "", info_color}}) +
         font_size + 5;
+  top =
+      draw_metadata(
+          left, top, "HDR Ratio", title_colors[1],
+          {{hdr_ratio_ ? HdrRatioToString(*hdr_ratio_) : "N/A", info_color}}) +
+      font_size + 5;
 
   canvas->restore();
 

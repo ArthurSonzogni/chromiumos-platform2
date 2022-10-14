@@ -50,6 +50,8 @@ class MetadataPreviewerFrameAnnotator : public FrameAnnotator {
   std::optional<float> wb_gain_red_;
   std::optional<float> wb_gain_blue_;
   std::optional<camera_metadata_enum_android_control_awb_state_t> awb_state_;
+
+  std::optional<float> hdr_ratio_;
 };
 
 }  // namespace cros
