@@ -12,7 +12,7 @@
 #include "bootlockbox/boot_lockbox_dbus_adaptor.h"
 #include "bootlockbox/nvram_boot_lockbox.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 // BootLockboxService that implements the top level setups of bootlockboxd.
 class BootLockboxService : public brillo::DBusServiceDaemon {
@@ -36,6 +36,6 @@ class BootLockboxService : public brillo::DBusServiceDaemon {
   base::WeakPtrFactory<BootLockboxService> weak_factory_{this};
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_BOOT_LOCKBOX_SERVICE_H_

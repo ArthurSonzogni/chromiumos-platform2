@@ -27,7 +27,7 @@ brillo::ErrorPtr CreateError(const std::string& code,
 
 }  // namespace
 
-namespace cryptohome {
+namespace bootlockbox {
 
 BootLockboxDBusAdaptor::BootLockboxDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                                                NVRamBootLockbox* boot_lockbox)
@@ -46,8 +46,8 @@ void BootLockboxDBusAdaptor::RegisterAsync(
 
 void BootLockboxDBusAdaptor::StoreBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::StoreBootLockboxReply>> response,
-    const cryptohome::StoreBootLockboxRequest& in_request) {
+        bootlockbox::StoreBootLockboxReply>> response,
+    const bootlockbox::StoreBootLockboxRequest& in_request) {
   if (!in_request.has_key() || !in_request.has_data()) {
     brillo::ErrorPtr error =
         CreateError(DBUS_ERROR_INVALID_ARGS,
@@ -56,8 +56,8 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
     return;
   }
 
-  cryptohome::StoreBootLockboxReply reply;
-  cryptohome::BootLockboxErrorCode boot_lockbox_error;
+  bootlockbox::StoreBootLockboxReply reply;
+  bootlockbox::BootLockboxErrorCode boot_lockbox_error;
   if (!boot_lockbox_->Store(in_request.key(), in_request.data(),
                             &boot_lockbox_error)) {
     reply.set_error(boot_lockbox_error);
@@ -67,8 +67,8 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
 
 void BootLockboxDBusAdaptor::ReadBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::ReadBootLockboxReply>> response,
-    const cryptohome::ReadBootLockboxRequest& in_request) {
+        bootlockbox::ReadBootLockboxReply>> response,
+    const bootlockbox::ReadBootLockboxRequest& in_request) {
   if (!in_request.has_key()) {
     brillo::ErrorPtr error =
         CreateError(DBUS_ERROR_INVALID_ARGS,
@@ -76,9 +76,9 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
     response->ReplyWithError(error.get());
     return;
   }
-  cryptohome::ReadBootLockboxReply reply;
+  bootlockbox::ReadBootLockboxReply reply;
   std::string data;
-  cryptohome::BootLockboxErrorCode boot_lockbox_error;
+  bootlockbox::BootLockboxErrorCode boot_lockbox_error;
   if (!boot_lockbox_->Read(in_request.key(), &data, &boot_lockbox_error)) {
     reply.set_error(boot_lockbox_error);
   } else {
@@ -89,14 +89,14 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
 
 void BootLockboxDBusAdaptor::FinalizeBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        cryptohome::FinalizeBootLockboxReply>> response,
-    const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) {
-  cryptohome::FinalizeBootLockboxReply reply;
+        bootlockbox::FinalizeBootLockboxReply>> response,
+    const bootlockbox::FinalizeNVRamBootLockboxRequest& in_request) {
+  bootlockbox::FinalizeBootLockboxReply reply;
   if (!boot_lockbox_->Finalize()) {
     // Failed to finalize, could be communication error or other error.
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);
+    reply.set_error(bootlockbox::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);
   }
   response->Return(reply);
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

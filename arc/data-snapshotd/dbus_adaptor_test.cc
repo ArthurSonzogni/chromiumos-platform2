@@ -57,7 +57,7 @@ MATCHER_P(nEq, expected, "") {
 
 }  // namespace
 
-class MockBootLockboxClient : public cryptohome::BootLockboxClient {
+class MockBootLockboxClient : public bootlockbox::BootLockboxClient {
  public:
   explicit MockBootLockboxClient(scoped_refptr<dbus::Bus> bus)
       : BootLockboxClient(

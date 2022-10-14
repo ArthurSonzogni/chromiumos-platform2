@@ -6,7 +6,7 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
-package cryptohome;
+package bootlockbox;
 
 message SerializedKeyValueMap {
   optional uint32 version = 1 [default = 1];

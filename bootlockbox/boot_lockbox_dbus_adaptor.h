@@ -13,7 +13,7 @@
 
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 // Implements DBus BootLockboxInterface.
 class BootLockboxDBusAdaptor
     : public org::chromium::BootLockboxInterfaceInterface,
@@ -32,27 +32,27 @@ class BootLockboxDBusAdaptor
   // Stores a digest in bootlockbox.
   void StoreBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::StoreBootLockboxReply>> response,
-      const cryptohome::StoreBootLockboxRequest& in_request) override;
+          bootlockbox::StoreBootLockboxReply>> response,
+      const bootlockbox::StoreBootLockboxRequest& in_request) override;
 
   // Reads a digest from bootlockbox.
   void ReadBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::ReadBootLockboxReply>> response,
-      const cryptohome::ReadBootLockboxRequest& in_request) override;
+          bootlockbox::ReadBootLockboxReply>> response,
+      const bootlockbox::ReadBootLockboxRequest& in_request) override;
 
   // Finalizes the BootLockbox and locks the signing key. |response| is of type
   // BaseReply.
   void FinalizeBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::FinalizeBootLockboxReply>> response,
-      const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) override;
+          bootlockbox::FinalizeBootLockboxReply>> response,
+      const bootlockbox::FinalizeNVRamBootLockboxRequest& in_request) override;
 
  private:
   NVRamBootLockbox* boot_lockbox_;
   brillo::dbus_utils::DBusObject dbus_object_;
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_BOOT_LOCKBOX_DBUS_ADAPTOR_H_

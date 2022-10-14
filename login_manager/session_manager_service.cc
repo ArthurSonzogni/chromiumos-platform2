@@ -224,8 +224,8 @@ bool SessionManagerService::Initialize() {
 
 #if USE_ARC_ADB_SIDELOADING
   boot_lockbox_dbus_proxy_ = bus_->GetObjectProxy(
-      cryptohome::kBootLockboxServiceName,
-      dbus::ObjectPath(cryptohome::kBootLockboxServicePath));
+      bootlockbox::kBootLockboxServiceName,
+      dbus::ObjectPath(bootlockbox::kBootLockboxServicePath));
 
   ArcSideloadStatusInterface* arc_sideload_status =
       new ArcSideloadStatus(boot_lockbox_dbus_proxy_);

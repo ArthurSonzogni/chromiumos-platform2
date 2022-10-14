@@ -18,7 +18,7 @@ using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
 
-namespace cryptohome {
+namespace bootlockbox {
 
 // DBus Mock
 class MockDBusBus : public dbus::Bus {
@@ -97,7 +97,7 @@ class BootLockboxDBusAdaptorTest : public ::testing::Test {
 };
 
 TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
-  cryptohome::StoreBootLockboxRequest store_request;
+  bootlockbox::StoreBootLockboxRequest store_request;
   store_request.set_key("test_key");
   store_request.set_data("test_data");
 
@@ -105,29 +105,29 @@ TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->StoreBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::StoreBootLockboxReply>(),
+      capturer.CreateMethodResponse<bootlockbox::StoreBootLockboxReply>(),
       store_request);
 }
 
 TEST_F(BootLockboxDBusAdaptorTest, ReadBootLockbox) {
   // Read the data back.
-  cryptohome::ReadBootLockboxRequest read_request;
+  bootlockbox::ReadBootLockboxRequest read_request;
   read_request.set_key("test_key");
 
   EXPECT_CALL(boot_lockbox_, Read("test_key", _, _)).WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->ReadBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::ReadBootLockboxReply>(),
+      capturer.CreateMethodResponse<bootlockbox::ReadBootLockboxReply>(),
       read_request);
 }
 
 TEST_F(BootLockboxDBusAdaptorTest, FinalizeBootLockbox) {
-  cryptohome::FinalizeNVRamBootLockboxRequest request;
+  bootlockbox::FinalizeNVRamBootLockboxRequest request;
   EXPECT_CALL(boot_lockbox_, Finalize());
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->FinalizeBootLockbox(
-      capturer.CreateMethodResponse<cryptohome::FinalizeBootLockboxReply>(),
+      capturer.CreateMethodResponse<bootlockbox::FinalizeBootLockboxReply>(),
       request);
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

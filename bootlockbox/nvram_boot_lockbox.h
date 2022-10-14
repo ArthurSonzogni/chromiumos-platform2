@@ -16,7 +16,7 @@
 #include "bootlockbox/key_value_map.pb.h"
 #include "bootlockbox/tpm_nvspace.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 // A map that stores key-value pairs.
 using KeyValueMap = std::map<std::string, std::string>;
@@ -101,6 +101,6 @@ class NVRamBootLockbox {
   FRIEND_TEST(NVRamBootLockboxTest, FirstStoreReadSuccess);
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_NVRAM_BOOT_LOCKBOX_H_

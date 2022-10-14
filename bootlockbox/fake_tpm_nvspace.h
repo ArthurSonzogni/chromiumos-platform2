@@ -9,7 +9,7 @@
 
 #include "bootlockbox/tpm_nvspace.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class FakeTpmNVSpace : public TPMNVSpace {
  public:
@@ -34,6 +34,6 @@ class FakeTpmNVSpace : public TPMNVSpace {
   std::string digest_;
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_

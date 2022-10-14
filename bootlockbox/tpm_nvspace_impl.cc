@@ -35,7 +35,7 @@ uint32_t GetBootLockboxNVRamIndex() {
 
 using tpm_manager::NvramResult;
 
-namespace cryptohome {
+namespace bootlockbox {
 
 NVSpaceState MapReadNvramError(NvramResult r) {
   switch (r) {
@@ -320,4 +320,4 @@ void TPMNVSpaceImpl::OnOwnershipTaken(
   callback.Run();
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client =
-      cryptohome::BootLockboxClient::CreateBootLockboxClient();
+  std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client =
+      bootlockbox::BootLockboxClient::CreateBootLockboxClient();
 
   if (FLAGS_action == kActionFinalize) {
     if (!boot_lockbox_client->Finalize()) {

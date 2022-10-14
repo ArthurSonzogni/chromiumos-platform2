@@ -41,7 +41,7 @@ const char kPreviousSnapshotPublicKey[] = "snapshot_public_key_previous";
 
 DBusAdaptor::DBusAdaptor()
     : DBusAdaptor(base::FilePath(kCommonSnapshotPath),
-                  cryptohome::BootLockboxClient::CreateBootLockboxClient(),
+                  bootlockbox::BootLockboxClient::CreateBootLockboxClient(),
                   nullptr) {}
 
 DBusAdaptor::~DBusAdaptor() = default;
@@ -49,7 +49,7 @@ DBusAdaptor::~DBusAdaptor() = default;
 // static
 std::unique_ptr<DBusAdaptor> DBusAdaptor::CreateForTesting(
     const base::FilePath& snapshot_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
     std::unique_ptr<BlockUiController> block_ui_controller) {
   return base::WrapUnique(new DBusAdaptor(snapshot_directory,
                                           std::move(boot_lockbox_client),
@@ -196,7 +196,7 @@ void DBusAdaptor::SendCancelSignal() {
 
 DBusAdaptor::DBusAdaptor(
     const base::FilePath& snapshot_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
     std::unique_ptr<BlockUiController> block_ui_controller)
     : org::chromium::ArcDataSnapshotdAdaptor(this),
       last_snapshot_directory_(snapshot_directory.Append(kLastSnapshotPath)),

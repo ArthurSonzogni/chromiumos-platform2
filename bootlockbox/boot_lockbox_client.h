@@ -23,7 +23,7 @@ class BootLockboxInterfaceProxy;
 }  // namespace chromium
 }  // namespace org
 
-namespace cryptohome {
+namespace bootlockbox {
 
 // A class that that manages the communication with BootLockbox.
 class BRILLO_EXPORT BootLockboxClient {
@@ -55,6 +55,6 @@ class BRILLO_EXPORT BootLockboxClient {
   scoped_refptr<dbus::Bus> bus_;
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_BOOT_LOCKBOX_CLIENT_H_

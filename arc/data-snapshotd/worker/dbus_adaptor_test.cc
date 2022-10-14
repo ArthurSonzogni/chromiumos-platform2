@@ -46,7 +46,7 @@ constexpr char kFakeAccountID2[] = "fake_aacount_id_2";
 
 }  // namespace
 
-class MockBootLockboxClient : public cryptohome::BootLockboxClient {
+class MockBootLockboxClient : public bootlockbox::BootLockboxClient {
  public:
   explicit MockBootLockboxClient(scoped_refptr<dbus::Bus> bus)
       : BootLockboxClient(

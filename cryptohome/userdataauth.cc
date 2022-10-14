@@ -1319,7 +1319,8 @@ void UserDataAuth::EnsureBootLockboxFinalized() {
   AssertOnMountThread();
 
   // Lock NVRamBootLockbox
-  auto nvram_boot_lockbox_client = BootLockboxClient::CreateBootLockboxClient();
+  auto nvram_boot_lockbox_client =
+      bootlockbox::BootLockboxClient::CreateBootLockboxClient();
   if (!nvram_boot_lockbox_client) {
     LOG(WARNING) << "Failed to create nvram_boot_lockbox_client";
     return;

@@ -50,7 +50,7 @@ const char kDataDirectory[] = "data";
 DBusAdaptor::DBusAdaptor()
     : DBusAdaptor(base::FilePath(kCommonSnapshotPath),
                   base::FilePath(kHomeRootDirectory),
-                  cryptohome::BootLockboxClient::CreateBootLockboxClient(),
+                  bootlockbox::BootLockboxClient::CreateBootLockboxClient(),
                   "" /* system_salt */) {}
 
 DBusAdaptor::~DBusAdaptor() = default;
@@ -59,7 +59,7 @@ DBusAdaptor::~DBusAdaptor() = default;
 std::unique_ptr<DBusAdaptor> DBusAdaptor::CreateForTesting(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
     const std::string& system_salt) {
   return base::WrapUnique(
       new DBusAdaptor(snapshot_directory, home_root_directory,
@@ -208,7 +208,7 @@ void DBusAdaptor::LoadSnapshot(const std::string& account_id,
 DBusAdaptor::DBusAdaptor(
     const base::FilePath& snapshot_directory,
     const base::FilePath& home_root_directory,
-    std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+    std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
     const std::string& system_salt)
     : org::chromium::ArcDataSnapshotdWorkerAdaptor(this),
       previous_snapshot_directory_(

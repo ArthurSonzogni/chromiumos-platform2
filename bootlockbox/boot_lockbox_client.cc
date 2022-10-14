@@ -19,7 +19,7 @@
 
 #include "bootlockbox/dbus-proxies.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 std::unique_ptr<BootLockboxClient>
 BootLockboxClient::CreateBootLockboxClient() {
@@ -50,11 +50,11 @@ BootLockboxClient::~BootLockboxClient() {
 bool BootLockboxClient::Store(const std::string& key,
                               const std::string& digest) {
   base::ElapsedTimer timer;
-  cryptohome::StoreBootLockboxRequest request;
+  bootlockbox::StoreBootLockboxRequest request;
   request.set_key(key);
   request.set_data(digest);
 
-  cryptohome::StoreBootLockboxReply reply;
+  bootlockbox::StoreBootLockboxReply reply;
   brillo::ErrorPtr error;
   if (!bootlockbox_->StoreBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call StoreBootLockbox, error: "
@@ -74,10 +74,10 @@ bool BootLockboxClient::Store(const std::string& key,
 
 bool BootLockboxClient::Read(const std::string& key, std::string* digest) {
   base::ElapsedTimer timer;
-  cryptohome::ReadBootLockboxRequest request;
+  bootlockbox::ReadBootLockboxRequest request;
   request.set_key(key);
 
-  cryptohome::ReadBootLockboxReply reply;
+  bootlockbox::ReadBootLockboxReply reply;
   brillo::ErrorPtr error;
   if (!bootlockbox_->ReadBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call ReadBootLockbox, error: "
@@ -100,9 +100,9 @@ bool BootLockboxClient::Read(const std::string& key, std::string* digest) {
 
 bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
-  cryptohome::FinalizeNVRamBootLockboxRequest request;
+  bootlockbox::FinalizeNVRamBootLockboxRequest request;
 
-  cryptohome::FinalizeBootLockboxReply reply;
+  bootlockbox::FinalizeBootLockboxReply reply;
   brillo::ErrorPtr error;
   if (!bootlockbox_->FinalizeBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call FinalizeBootLockbox";
@@ -119,4 +119,4 @@ bool BootLockboxClient::Finalize() {
   return true;
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

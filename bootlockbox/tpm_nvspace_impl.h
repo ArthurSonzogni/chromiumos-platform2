@@ -16,7 +16,7 @@
 
 #include "bootlockbox/tpm_nvspace.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 struct BootLockboxNVSpace {
   uint16_t version;
@@ -92,6 +92,6 @@ class TPMNVSpaceImpl : public TPMNVSpace {
   org::chromium::TpmManagerProxyInterface* tpm_owner_;
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_TPM_NVSPACE_IMPL_H_

@@ -20,7 +20,7 @@
 
 using ::hwsec_foundation::Sha256;
 
-namespace cryptohome {
+namespace bootlockbox {
 
 NVRamBootLockbox::NVRamBootLockbox(TPMNVSpace* tpm_nvspace)
     : boot_lockbox_filepath_(base::FilePath(kNVRamBootLockboxFilePath)),
@@ -238,4 +238,4 @@ void NVRamBootLockbox::SetState(const NVSpaceState state) {
   nvspace_state_ = state;
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

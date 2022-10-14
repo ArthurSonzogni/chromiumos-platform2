@@ -27,11 +27,11 @@ class RSAPrivateKey;
 
 }  // namespace crypto
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class BootLockboxClient;
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 namespace arc {
 namespace data_snapshotd {
@@ -56,7 +56,7 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
 
   static std::unique_ptr<DBusAdaptor> CreateForTesting(
       const base::FilePath& snapshot_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
       std::unique_ptr<BlockUiController> block_ui_controller);
 
   // Registers the D-Bus object that the arc-data-snapshotd daemon exposes and
@@ -103,7 +103,7 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
  private:
   DBusAdaptor(
       const base::FilePath& snapshot_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
       std::unique_ptr<BlockUiController> block_ui_controller);
 
   void DelegateTakingSnapshot(
@@ -127,7 +127,7 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   const base::FilePath previous_snapshot_directory_;
 
   // Manages the communication with BootLockbox.
-  std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client_;
+  std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client_;
 
   // Initialized in RegisterAsync.
   scoped_refptr<dbus::Bus> bus_;

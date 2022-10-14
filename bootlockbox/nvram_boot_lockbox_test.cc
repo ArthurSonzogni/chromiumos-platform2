@@ -19,7 +19,7 @@ namespace {
 const char kTestFilePath[] = "test_file_path.pb";
 }
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class NVRamBootLockboxTest : public testing::Test {
  public:
@@ -103,4 +103,4 @@ TEST_F(NVRamBootLockboxTest, FirstStoreReadSuccess) {
   EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_MISSING_KEY);
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

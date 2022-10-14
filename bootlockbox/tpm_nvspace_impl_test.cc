@@ -38,7 +38,7 @@ uint32_t GetBootLockboxNVRamIndex() {
 
 }  // namespace
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class TPMNVSpaceImplTest : public testing::Test {
  public:
@@ -422,4 +422,4 @@ TEST_F(TPMNVSpaceImplTest, LockNVSpaceFail) {
       }));
   EXPECT_FALSE(nvspace_utility_->LockNVSpace());
 }
-}  // namespace cryptohome
+}  // namespace bootlockbox

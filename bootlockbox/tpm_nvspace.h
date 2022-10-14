@@ -9,7 +9,7 @@
 
 #include <base/callback.h>
 
-namespace cryptohome {
+namespace bootlockbox {
 
 enum class NVSpaceState {
   kNVSpaceNormal = 0,
@@ -48,6 +48,6 @@ class TPMNVSpace {
       const base::RepeatingClosure& callback) = 0;
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_TPM_NVSPACE_H_

@@ -9,7 +9,7 @@
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
-  cryptohome::BootLockboxService service;
+  bootlockbox::BootLockboxService service;
   service.Run();
   return 0;
 }

@@ -17,11 +17,11 @@
 
 #include "dbus_adaptors/org.chromium.ArcDataSnapshotdWorker.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class BootLockboxClient;
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 namespace arc {
 namespace data_snapshotd {
@@ -51,7 +51,7 @@ class DBusAdaptor final
   static std::unique_ptr<DBusAdaptor> CreateForTesting(
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
       const std::string& system_salt);
 
   // Registers the D-Bus object that the arc-data-snapshotd-worker daemon
@@ -93,7 +93,7 @@ class DBusAdaptor final
   DBusAdaptor(
       const base::FilePath& snapshot_directory,
       const base::FilePath& home_root_directory,
-      std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
+      std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client,
       const std::string& system_salt);
 
   // Tries to load a snapshot stored in |snapshot_dir| to |android_data_dir|
@@ -115,7 +115,7 @@ class DBusAdaptor final
   const base::FilePath home_root_directory_;
 
   // Manages the communication with BootLockbox.
-  std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client_;
+  std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client_;
   // System salt to get a cryptohome id for user name.
   std::string system_salt_;
 

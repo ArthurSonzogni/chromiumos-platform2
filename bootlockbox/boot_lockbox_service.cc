@@ -12,7 +12,7 @@
 #include "bootlockbox/tpm_nvspace.h"
 #include "bootlockbox/tpm_nvspace_impl.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 int BootLockboxService::OnInit() {
   nvspace_utility_ = std::make_unique<TPMNVSpaceImpl>();
@@ -71,4 +71,4 @@ BootLockboxService::BootLockboxService()
 
 BootLockboxService::~BootLockboxService() {}
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

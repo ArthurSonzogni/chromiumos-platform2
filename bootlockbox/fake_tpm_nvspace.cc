@@ -6,7 +6,7 @@
 
 #include "bootlockbox/fake_tpm_nvspace.h"
 
-namespace cryptohome {
+namespace bootlockbox {
 
 bool FakeTpmNVSpace::Initialize() {
   return true;
@@ -40,4 +40,4 @@ void FakeTpmNVSpace::SetDigest(const std::string& digest) {
   digest_ = digest;
 }
 
-}  // namespace cryptohome
+}  // namespace bootlockbox

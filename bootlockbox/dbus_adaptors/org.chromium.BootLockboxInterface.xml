@@ -16,11 +16,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::StoreBootLockboxRequest" />
+                    value="bootlockbox::StoreBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::StoreBootLockboxReply" />
+                    value="bootlockbox::StoreBootLockboxReply" />
       </arg>
     </method>
     <!-- May be called asynchronously. Both arguments are protobufs:
@@ -31,11 +31,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::ReadBootLockboxRequest" />
+                    value="bootlockbox::ReadBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::ReadBootLockboxReply" />
+                    value="bootlockbox::ReadBootLockboxReply" />
       </arg>
     </method>
    <!-- May be called asynchronously.  Both arguments are protobufs:
@@ -46,11 +46,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::FinalizeNVRamBootLockboxRequest" />
+                    value="bootlockbox::FinalizeNVRamBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome::FinalizeBootLockboxReply" />
+                    value="bootlockbox::FinalizeBootLockboxReply" />
       </arg>
     </method>
   </interface>

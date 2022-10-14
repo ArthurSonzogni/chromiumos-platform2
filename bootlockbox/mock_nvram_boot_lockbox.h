@@ -13,7 +13,7 @@
 
 #include <gmock/gmock.h>
 
-namespace cryptohome {
+namespace bootlockbox {
 
 class MockNVRamBootLockbox : public NVRamBootLockbox {
  public:
@@ -35,6 +35,6 @@ class MockNVRamBootLockbox : public NVRamBootLockbox {
   MOCK_METHOD(bool, Load, (), (override));
 };
 
-}  // namespace cryptohome
+}  // namespace bootlockbox
 
 #endif  // BOOTLOCKBOX_MOCK_NVRAM_BOOT_LOCKBOX_H_
