@@ -152,4 +152,13 @@ ACTION_P(ReturnValue, p1) {
 }  // namespace error
 }  // namespace hwsec_foundation
 
+// The Assert* API would be useful to ensure the consumable state of
+// StatusChain/StatusChainOr. This is a workaround for CHECK/DCHECK/ASSERT
+// macros that doesn't work with the consumable attribute.
+// For more information: crbug/1336752#c12, b/223361459
+#define ASSERT_OK(x) \
+  ASSERT_THAT((x).HintOk(), ::hwsec_foundation::error::testing::IsOk())
+#define ASSERT_NOT_OK(x) \
+  ASSERT_THAT((x).HintNotOk(), ::hwsec_foundation::error::testing::NotOk())
+
 #endif  // LIBHWSEC_FOUNDATION_ERROR_TESTING_HELPER_H_

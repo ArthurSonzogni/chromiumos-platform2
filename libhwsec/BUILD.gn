@@ -48,6 +48,10 @@ pkg_config("target_defaults") {
     "USE_TPM2=${use.tpm2}||${use.test}",
     "BIOMETRICS_DEV=true",
   ]
+
+  if (!use.test) {
+    cflags = [ "-Wconsumed" ]
+  }
 }
 
 static_library("overalls_library") {

@@ -41,6 +41,7 @@ pkg_config("target_defaults") {
     "openssl",
     "re2",
   ]
+  cflags = [ "-Wconsumed" ]
 }
 
 shared_library("libhwsec-foundation") {

@@ -62,7 +62,7 @@
 // }
 // int value = status_or.value();
 // ...
-// ASSIGN_OR_RETURN(int value, g(), _.WithStatus<AnotherErrorType>(args));
+// ASSIGN_OR_RETURN(int value, g()).WithStatus<AnotherErrorType>(args);
 //
 // If the code only needs to propagate the error without modification:
 //
@@ -71,12 +71,12 @@
 // if the returned value of the function is not StatusChain, As() use as
 // value.
 //
-// ASSIGN_OR_RETURN(int value, g(), _.As(42));
+// ASSIGN_OR_RETURN(int value, g()).As(42);
 //
 // Log* variant prints the error message and status.ToFullString before
 // returning.
 //
-// ASSIGN_OR_RETURN(int value, g(), _.LogError() << "some log");
+// ASSIGN_OR_RETURN(int value, g()).LogError() << "some log";
 
 #ifdef RETURN_IF_ERROR
 #error "RETURN_IF_ERROR is defined in the scope."
@@ -99,13 +99,17 @@ struct StatusLinkerLogDetail {
 template <typename T>
 class StatusLinker {
  public:
-  StatusLinker(const char* file, int line, StatusChain<T>&& status)
+  StatusLinker(const char* file,
+               int line,
+               StatusChain<T>&& status [[clang::param_typestate(unconsumed)]])
       : internal_(std::move(status)),
         log_detail_({
             .file = file,
             .line = line,
         }) {}
-  StatusLinker(StatusChain<T>&& status, StatusLinkerLogDetail&& detail)
+
+  StatusLinker(StatusChain<T>&& status [[clang::param_typestate(unconsumed)]],
+               StatusLinkerLogDetail&& detail)
       : internal_(std::move(status)), log_detail_(std::move(detail)) {}
 
   StatusLinker(StatusLinker&& linker)
@@ -204,9 +208,9 @@ StatusLinker(StatusChain<T>&&) -> StatusLinker<T>;
 }  // namespace hwsec_foundation
 
 #define RETURN_IF_ERROR(expr)                                         \
-  if (auto status = (expr); !status.ok())                             \
+  if (auto _status_ = (expr); !_status_.ok())                         \
   return ::hwsec_foundation::status::StatusLinker(__FILE__, __LINE__, \
-                                                  std::move(status))
+                                                  std::move(_status_))
 
 // Internal helper for concatenating macro values.
 #define STATUS_MACROS_CONCAT_NAME_INNER(x, y) x##y

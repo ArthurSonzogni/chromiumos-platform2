@@ -157,14 +157,16 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
   // intends to ensure that all TPMError object propagated contain an action
   // either explicitly specified or inherited from a specific tpm-type dependent
   // error object.
-  struct MakeStatusTrait {
+  struct MakeStatusTrait : public hwsec_foundation::status::AlwaysNotOk {
     class Unactioned {
      public:
       explicit Unactioned(std::string error_message)
           : error_message_(error_message) {}
 
       // Wrap will convert the stab into the appropriate Status type.
-      auto Wrap(hwsec_foundation::status::StatusChain<TPMErrorBase> status) && {
+      [[clang::return_typestate(unconsumed)]] auto Wrap(
+          hwsec_foundation::status::StatusChain<TPMErrorBase> status
+          [[clang::param_typestate(unconsumed)]]) && {
         using hwsec_foundation::status::NewStatus;
         return NewStatus<TPMError>(error_message_, status->ToTPMRetryAction())
             .Wrap(std::move(status));
@@ -179,7 +181,8 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
       explicit Unmessaged(TPMRetryAction action) : action_(action) {}
 
       // Wrap will convert the stab into the appropriate Status type.
-      auto Wrap(brillo::ErrorPtr err) && {
+      [[clang::return_typestate(unconsumed)]] auto Wrap(
+          brillo::ErrorPtr err) && {
         using hwsec_foundation::status::NewStatus;
         std::string result;
         if (err) {
@@ -207,7 +210,8 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
     auto operator()(TPMRetryAction action) { return Unmessaged(action); }
 
     // If we get action as an argument - create the Status directly.
-    auto operator()(std::string error_message, TPMRetryAction action) {
+    [[clang::return_typestate(unconsumed)]] auto operator()(
+        std::string error_message, TPMRetryAction action) {
       using hwsec_foundation::status::NewStatus;
       return NewStatus<TPMError>(error_message, action);
     }

@@ -67,13 +67,24 @@ struct WrapTransformOnly {};
 // codebase adopts |ok()| checks.
 // TODO(dlunev): Remove get/operator-> semantics when |ok()| is adopted.
 //
+// The consumable state meaning:
+// * consumed => The stackable error is in the OK state.
+// * unconsumed => The stackable error contains error.
+// * unknown => The stackable error needs to be checked before using it.
+//
+// The purpose of consumable attribute is to achieve these checks.
+// * go/clang-tidy/checks/google3-runtime-statusor-ok-status.md
+// * go/clang-tidy/checks/google3-runtime-unchecked-statusor-access.md
+//
 // Template parameters meaning:
 // _Et - head's error type. Must be derived from |Base|. Defaulter to |Base|
 // _Rt - alias for |_Et| to trigger SFINAE in sub-templates.
 // _Ut - uptype of |_Et| Type
 // _Dt - a dynamic castable from |_Et| type
 template <typename _Et = Error>
-class [[nodiscard]] StackableError {
+class [[clang::consumable(unknown)]]   //
+[[clang::consumable_auto_cast_state]]  //
+[[nodiscard]] StackableError {
  public:
   static_assert(has_make_status_trait_v<_Et>,
                 "|_Et| type doesn't define |MakeStatusTrait|");
@@ -151,13 +162,17 @@ class [[nodiscard]] StackableError {
   // Backend interface.
 
   // Resets the stack.
-  void ResetInternal() { error_stack_.clear(); }
+  [[clang::set_typestate(consumed)]] void ResetInternal() {
+    error_stack_.clear();
+  }
 
-  void ResetInternal(pointer ptr) {
+  [[clang::set_typestate(unconsumed)]] void ResetInternal(pointer ptr) {
     DCHECK_NE(ptr, pointer()) << " Reset with |nullptr|";
     error_stack_.clear();
     error_stack_.emplace_back(std::move(ptr));
   }
+
+  void ResetInternal(std::nullptr_t ptr) = delete;
 
   // Swaps the stacks of two chains.
   void SwapInternal(StackableError& other) noexcept {
@@ -165,7 +180,9 @@ class [[nodiscard]] StackableError {
   }
 
   // Return true if the object represents an |ok()| sequence.
-  bool IsOkInternal() const noexcept { return error_stack_.empty(); }
+  [[clang::test_typestate(consumed)]] bool IsOkInternal() const noexcept {
+    return error_stack_.empty();
+  }
 
   // Returns the pointer to the head error object or |nullptr| representing
   // value.
@@ -176,6 +193,15 @@ class [[nodiscard]] StackableError {
       return pointer();
     }
 
+    return GetErrInternal();
+  }
+
+  // Returns the pointer to the head error object.
+  // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
+  [[clang::callable_when("unconsumed")]]  //
+  [[clang::set_typestate(unconsumed)]]    //
+  pointer
+  GetErrInternal() const noexcept {
     // It is an invariant that the type of the head can cast to |pointer|. This
     // cast allows us to keep a uniformly typed internal stack across
     // polymorphic type specializations of the |StackableError| container -
@@ -189,7 +215,11 @@ class [[nodiscard]] StackableError {
   }
 
   // Make current error to wrap another stack.
-  void WrapInternal(stack_holder&& error_stack) noexcept {
+  [[clang::callable_when("unconsumed")]]  //
+  [[clang::set_typestate(unconsumed)]]    //
+  void
+  WrapInternal(stack_holder && error_stack
+               [[clang::return_typestate(consumed)]]) noexcept {
     DCHECK(!error_stack_.empty())
         << " |WrapInternal| is called without checking |!ok()| of the wrapping "
         << "object";
@@ -205,10 +235,17 @@ class [[nodiscard]] StackableError {
   }
 
   // Pop an error from the stack.
-  void UnwrapInternal() { error_stack_.pop_front(); }
+  [[clang::callable_when("unconsumed")]]  //
+  [[clang::set_typestate(unknown)]]       //
+  void
+  UnwrapInternal() {
+    error_stack_.pop_front();
+  }
 
   // Check if the object already wraps a stack.
-  bool IsWrappingInternal() const noexcept { return error_stack_.size() > 1; }
+  bool IsWrappingInternal() const noexcept {
+    return error_stack_.size() > 1;
+  }
 
   // Returns a range object to use with range-for loops. Ensures const access
   // to the underlying object.
@@ -231,24 +268,29 @@ class [[nodiscard]] StackableError {
   // only use the backend interface methods.
 
   // Creates a chain that represents an Ok result.
-  static StackableError<_Et> Ok() { return StackableError<_Et>(); }
+  [[clang::return_typestate(consumed)]] static StackableError<_Et> Ok() {
+    return StackableError<_Et>();
+  }
 
   // Creates a chain that represents an error case. Delegates Status creation to
   // the class'es trait.
   template <typename... Args>
-  static StackableError<_Et> Make(Args&&... args) {
+  [[clang::return_typestate(unconsumed)]] static StackableError<_Et> Make(
+      Args && ... args) {
     using MakeStatusTrait = typename _Et::MakeStatusTrait;
     return MakeStatusTrait()(std::forward<Args>(args)...);
   }
 
   // Default constructor creates an empty stack to represent success.
-  constexpr StackableError() noexcept : error_stack_() {}
+  [[clang::return_typestate(consumed)]] constexpr StackableError() noexcept
+      : error_stack_() {}
 
-  StackableError(nullptr_t) = delete;
+  StackableError(std::nullptr_t) = delete;
 
   // Constructor from a raw pointer takes ownership of the pointer and puts it
   // on top of the stack.
-  explicit StackableError(pointer ptr) : error_stack_() {
+  [[clang::return_typestate(unconsumed)]] explicit StackableError(pointer ptr)
+      : error_stack_() {
     ResetInternal(std::move(ptr));
   }
 
@@ -266,15 +308,15 @@ class [[nodiscard]] StackableError {
   // specialization to bypass SFINAE. Manually specialized call can break the
   // invariant of the the head being castable to the class template argument
   // |_Et|.
-  template <int&... ExplicitArgumentBarrier,
-            typename _Rt = _Et,
+  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
             typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  explicit StackableError(stack_holder&& error_stack)
+  [[clang::return_typestate(unconsumed)]] explicit StackableError(
+      stack_holder && error_stack)
       : error_stack_(std::move(error_stack)) {}
 
   // Move constructor. Releases the backend object of |other| into our
   // backend object.
-  StackableError(StackableError&& other)
+  StackableError(StackableError && other [[clang::return_typestate(consumed)]])
       : error_stack_(other.release_stack()) {}
 
   // Converting move constructor from a compatible type. It is fine, since
@@ -284,10 +326,10 @@ class [[nodiscard]] StackableError {
   // breaking invariant of the head object being castable to class template type
   // |_Et|, we use |ExplicitArgumentBarrier| idiom to make |_Ut| auto-deducible
   // only.
-  template <int&... ExplicitArgumentBarrier,
-            typename _Ut,
+  template <int&... ExplicitArgumentBarrier, typename _Ut,
             typename = std::enable_if_t<std::is_convertible_v<_Ut*, pointer>>>
-  StackableError(StackableError<_Ut>&& other)
+  [[clang::return_typestate(unconsumed)]] StackableError(
+      StackableError<_Ut> && other [[clang::return_typestate(consumed)]])
       : error_stack_(other.release_stack()) {
     static_assert(
         std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
@@ -296,17 +338,18 @@ class [[nodiscard]] StackableError {
 
   // Move-assign operator. Releases the backend object of |other| into our
   // backend object.
-  StackableError& operator=(StackableError&& other) {
+  StackableError& operator=(StackableError&& other
+                            [[clang::return_typestate(consumed)]]) {
     error_stack_ = other.release_stack();
     return *this;
   }
 
   // Converting move-assign operator from a compatible type. See the comments
   // on converting constructor for the template arguments explanation.
-  template <int&... ExplicitArgumentBarrier,
-            typename _Ut,
+  template <int&... ExplicitArgumentBarrier, typename _Ut,
             typename = std::enable_if_t<std::is_convertible_v<_Ut*, pointer>>>
-  StackableError& operator=(StackableError<_Ut>&& other) {
+  [[clang::return_typestate(unconsumed)]] StackableError& operator=(
+      StackableError<_Ut>&& other [[clang::return_typestate(consumed)]]) {
     static_assert(
         std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
         "|BaseErrorType| of |other| must be the same with |this|.");
@@ -324,14 +367,106 @@ class [[nodiscard]] StackableError {
   // unspecified behaviour and is subject to change at any time without prior
   // notice. The return object loses type information and only can be supplied
   // to |StackableError<base_element_type>| specialization.
-  stack_holder&& release_stack() { return std::move(error_stack_); }
+  [[clang::set_typestate(consumed)]] stack_holder&& release_stack() {
+    return std::move(error_stack_);
+  }
 
   // Returns true if StackableError represents a success.
-  bool ok() const noexcept { return IsOkInternal(); }
+  [[clang::test_typestate(consumed)]] bool ok() const noexcept {
+    return IsOkInternal();
+  }
+
+  // The Assert* API would be useful to ensure the consumable state of stackable
+  // error. This is a workaround for CHECK/DCHECK/ASSERT macros that doesn't
+  // work with the consumable attribute.
+  // For more information: crbug/1336752#c12, b/223361459
+  [[clang::set_typestate(consumed)]]               //
+  [[clang::return_typestate(consumed)]]            //
+  [[clang::callable_when("consumed", "unknown")]]  //
+  StackableError
+  AssertOk()&& {
+    CHECK(ok()) << "The status should be ok.";
+    return std::move(*this);
+  }
+
+  [[clang::set_typestate(consumed)]]               //
+  [[clang::return_typestate(consumed)]]            //
+  [[clang::callable_when("consumed", "unknown")]]  //
+  const StackableError&
+  AssertOk() const& {
+    CHECK(ok()) << "The status should be ok.";
+    return *this;
+  }
+
+  [[clang::set_typestate(unconsumed)]]               //
+  [[clang::return_typestate(unconsumed)]]            //
+  [[clang::callable_when("unconsumed", "unknown")]]  //
+  StackableError
+  AssertNotOk()&& {
+    CHECK(!ok()) << "The status should not be ok.";
+    return std::move(*this);
+  }
+
+  [[clang::set_typestate(unconsumed)]]               //
+  [[clang::return_typestate(unconsumed)]]            //
+  [[clang::callable_when("unconsumed", "unknown")]]  //
+  const StackableError&
+  AssertNotOk() const& {
+    CHECK(!ok()) << "The status should not be ok.";
+    return *this;
+  }
+
+  // Hints the compiler the consumable state of a specific stackable error.
+  [[clang::set_typestate(consumed)]]               //
+  [[clang::return_typestate(consumed)]]            //
+  [[clang::callable_when("consumed", "unknown")]]  //
+  StackableError
+  HintOk()&& noexcept {
+    return std::move(*this);
+  }
+
+  [[clang::set_typestate(consumed)]]               //
+  [[clang::return_typestate(consumed)]]            //
+  [[clang::callable_when("consumed", "unknown")]]  //
+  constexpr const StackableError&
+  HintOk() const& noexcept {
+    return *this;
+  }
+
+  [[clang::set_typestate(unconsumed)]]               //
+  [[clang::return_typestate(unconsumed)]]            //
+  [[clang::callable_when("unconsumed", "unknown")]]  //
+  StackableError
+  HintNotOk()&& noexcept {
+    return std::move(*this);
+  }
+
+  [[clang::set_typestate(unconsumed)]]               //
+  [[clang::return_typestate(unconsumed)]]            //
+  [[clang::callable_when("unconsumed", "unknown")]]  //
+  constexpr const StackableError&
+  HintNotOk() const& noexcept {
+    return *this;
+  }
 
   // Returns self.
   constexpr const StackableError& status() const& noexcept { return *this; }
   StackableError status()&& noexcept { return std::move(*this); }
+
+  // Returns error status.
+  [[clang::callable_when("unconsumed")]]   //
+  [[clang::return_typestate(unconsumed)]]  //
+  constexpr const StackableError&
+  err_status() const& noexcept {
+    return *this;
+  }
+
+  [[clang::callable_when("unconsumed")]]   //
+  [[clang::return_typestate(unconsumed)]]  //
+  StackableError
+  err_status()&& noexcept {
+    return std::move(*this);
+  }
 
   // Const reference to the top error object. It is a logic error to query
   // |error()| or dereference a |StackableError| that represents success.
@@ -347,39 +482,50 @@ class [[nodiscard]] StackableError {
   //   |true|, and |false| otherwise.
   // * The outer |noexcept| will consume the value, and based on it will declare
   //   the function as either throwing or non-throwing.
-  std::add_lvalue_reference_t<element_type> error() const
-      noexcept(noexcept(*std::declval<pointer>())) {
+  [[clang::callable_when("unconsumed")]]  //
+  std::add_lvalue_reference_t<element_type>
+  error() const noexcept(noexcept(*std::declval<pointer>())) {
     CHECK(!ok()) << " Dereferencing an OK chain is not allowed";
-    return *GetInternal();
+    return *GetErrInternal();
   }
 
   // Dereferencing the stack is equivalent to calling |error()| method on it -
   // it returns const reference to the top error object.
   // See the explanation for |noexcept(noexcept(...))| in |error()| method
   // comment.
-  std::add_lvalue_reference_t<element_type> operator*() const
-      noexcept(noexcept(*std::declval<pointer>())) {
+  [[clang::callable_when("unconsumed")]]  //
+  std::add_lvalue_reference_t<element_type>
+  operator*() const noexcept(noexcept(*std::declval<pointer>())) {
     return error();
   }
 
   // Returns the pointer to the head of the error stack or the value
   // representing a nullptr pointer.
   // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
-  pointer get() const noexcept { return GetInternal(); }
+  pointer get() const noexcept {
+    return GetInternal();
+  }
 
   // Returns the pointer to the head of the error stack or the value
   // representing a nullptr pointer.
   // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
-  pointer operator->() const noexcept {
+  [[clang::callable_when("unconsumed")]] pointer operator->() const noexcept {
     CHECK(!ok()) << " Arrow operator on an OK chain is not allowed";
     return get();
   }
 
   // Resets current stack.
-  void reset() { ResetInternal(); }
+  [[clang::set_typestate(consumed)]] void reset() {
+    ResetInternal();
+  }
+
+  // Don't reset from the std::nullptr_t.
+  void reset(std::nullptr_t) = delete;
 
   // Resets current stack with a new error.
-  void reset(pointer ptr) { ResetInternal(std::move(ptr)); }
+  [[clang::set_typestate(unconsumed)]] void reset(pointer ptr) {
+    ResetInternal(std::move(ptr));
+  }
 
   // Swaps two stacks.
   void swap(StackableError& other) noexcept { SwapInternal(other); }
@@ -420,7 +566,9 @@ class [[nodiscard]] StackableError {
 
   // Returns |true| if the object is wrapping another stack.
   // Returns |false| if the object is a stand alone error or is ok() object.
-  bool IsWrapping() const noexcept { return IsWrappingInternal(); }
+  [[clang::test_typestate(unconsumed)]] bool IsWrapping() const noexcept {
+    return IsWrappingInternal();
+  }
 
   // Make current error to wrap another stack. Do it in place without moving
   // ourselves out. Doesn't return a value, because it is not allowed to wrap
@@ -430,7 +578,9 @@ class [[nodiscard]] StackableError {
   // add |ExplicitArgumentBarrier| just for the safety of mind to make |_Ut|
   // automatically deducible only.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
-  void WrapInPlace(StackableError<_Ut>&& other) {
+  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+      StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
+                             [[clang::return_typestate(consumed)]]) {
     static_assert(
         std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
         "|BaseErrorType| of |other| must be the same with |this|. "
@@ -453,7 +603,10 @@ class [[nodiscard]] StackableError {
   // |other|'s |BaseErrorType| to extract necessary info from the previous
   // stack.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
-  void WrapInPlace(StackableError<_Ut>&& other, WrapTransformOnly tag) {
+  [[clang::callable_when("unconsumed")]] void WrapInPlace(
+      StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
+                             [[clang::return_typestate(consumed)]],
+      WrapTransformOnly tag) {
     CHECK(!other.ok()) << " Can't wrap an OK object.";
     CHECK(!ok()) << " OK object can't be wrapping.";
     CHECK(!IsWrapping()) << " Object can wrap only once.";
@@ -472,7 +625,11 @@ class [[nodiscard]] StackableError {
   // Make current error to wrap another stack. See template arguments
   // explanation in |WrapInPlace| comments.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
-  [[nodiscard]] auto&& Wrap(StackableError<_Ut>&& other) && {
+  [[clang::return_typestate(unconsumed)]]  //
+  [[clang::callable_when("unconsumed")]]   //
+  [[nodiscard]] auto&&
+  Wrap(StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
+                              [[clang::return_typestate(consumed)]])&& {
     WrapInPlace(std::move(other));
     return std::move(*this);
   }
@@ -481,8 +638,12 @@ class [[nodiscard]] StackableError {
   // the code relies on a |WrapTransform| overload provided for the |other|'s
   // |BaseErrorType| to extract necessary info from the previous stack.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
-  [[nodiscard]] auto&& Wrap(StackableError<_Ut>&& other,
-                            WrapTransformOnly tag) && {
+  [[clang::return_typestate(unconsumed)]]  //
+  [[clang::callable_when("unconsumed")]]   //
+  [[nodiscard]] auto&&
+  Wrap(StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
+                              [[clang::return_typestate(consumed)]],
+       WrapTransformOnly tag)&& {
     WrapInPlace(std::move(other), tag);
     return std::move(*this);
   }
@@ -492,10 +653,12 @@ class [[nodiscard]] StackableError {
   // recreate the object with |Base| template argument.
   // See the explanation for the template arguments in converting
   // ctor/assignment operator.
-  template <int&... ExplicitArgumentBarrier,
-            typename _Rt = _Et,
+  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
             typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  auto& UnwrapInPlace() {
+  [[clang::return_typestate(unconsumed)]]  //
+  [[clang::callable_when("unconsumed")]]   //
+  auto&
+  UnwrapInPlace() {
     CHECK(!ok()) << " OK object can't be unwrapped.";
     UnwrapInternal();
     return *this;
@@ -507,10 +670,11 @@ class [[nodiscard]] StackableError {
   // constructor.
   // See the explanation for the template arguments in converting
   // ctor/assignment operator.
-  template <int&... ExplicitArgumentBarrier,
-            typename _Rt = _Et,
+  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
             typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  [[nodiscard]] StackableError<base_element_type>&& Unwrap() && {
+  [[clang::callable_when("unconsumed")]]  //
+  [[nodiscard]] StackableError<base_element_type>&&
+  Unwrap()&& {
     CHECK(!ok()) << " OK object can't be unwrapped.";
     UnwrapInternal();
     return std::move(*this);
@@ -521,14 +685,25 @@ class [[nodiscard]] StackableError {
   // Note, that in this case we verify that |_Et| IS NOT |Base|.
   // See the explanation for the template arguments in converting
   // ctor/assignment operator.
-  template <
-      int&... ExplicitArgumentBarrier,
-      typename _Rt = _Et,
-      typename = std::enable_if_t<!std::is_same_v<base_element_type, _Rt>>>
-  [[nodiscard]] StackableError<base_element_type> Unwrap() && {
+  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
+            typename =
+                std::enable_if_t<!std::is_same_v<base_element_type, _Rt>>>
+  [[clang::callable_when("unconsumed")]]  //
+  [[nodiscard]] StackableError<base_element_type>
+  Unwrap()&& {
     CHECK(!ok()) << " OK object can't be unwrapped.";
     UnwrapInternal();
     return std::move(*this);
+  }
+
+  // A workaround for the StatusChainOr that the param_typestate doesn't work
+  // with the constructor.
+  template <typename _Vt, typename _Et2>
+  [[clang::callable_when("unconsumed")]]   //
+  [[clang::return_typestate(unconsumed)]]  //
+  [[clang::set_typestate(consumed)]]       //
+  operator StatusChainOr<_Vt, _Et2>()&& {  // NOLINT(runtime/explicit)
+    return StatusChainOr<_Vt, _Et2>::MakeFromStatusChain(std::move(*this));
   }
 };
 

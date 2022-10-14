@@ -203,7 +203,8 @@ class Middleware {
     if constexpr (std::is_same_v<Arg, Key>) {
       auto* key_mgr = backend->Get<Backend::KeyManagement>();
       if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
-        LOG(WARNING) << "Failed to reload key parameter: " << status.status();
+        LOG(WARNING) << "Failed to reload key parameter: "
+                     << status.err_status();
         return false;
       }
       return true;
@@ -235,7 +236,7 @@ class Middleware {
       if (result.ok()) {
         return result;
       }
-      switch (result.status()->ToTPMRetryAction()) {
+      switch (result.err_status()->ToTPMRetryAction()) {
         case TPMRetryAction::kCommunication:
           RetryDelayHandler(&retry_data);
           break;
@@ -252,10 +253,11 @@ class Middleware {
       }
       if (retry_data.try_count <= 0) {
         return MakeStatus<TPMError>("Retry Failed", TPMRetryAction::kReboot)
-            .Wrap(std::move(result).status());
+            .Wrap(std::move(result).err_status());
       }
 
-      LOG(WARNING) << "Retry libhwsec error: " << std::move(result).status();
+      LOG(WARNING) << "Retry libhwsec error: "
+                   << std::move(result).err_status();
     }
   }
 

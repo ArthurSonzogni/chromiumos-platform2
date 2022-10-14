@@ -69,13 +69,14 @@ StatusOr<int> Calc(int x) {
 class ErrorTestingHelperTest : public ::testing::Test {};
 
 template <ErrorCode code>
-bool MatchErrorCode(const Status& status) {
+bool MatchErrorCode(const Status& status
+                    [[clang::param_typestate(unconsumed)]]) {
   return status->code() == code;
 }
 
 TEST_F(ErrorTestingHelperTest, IsOk) {
   StatusOr<int> result = Calc(1);
-  ASSERT_THAT(result, IsOk());
+  ASSERT_OK(result);
   EXPECT_EQ(result.value(), 1);
 
   EXPECT_THAT(Calc(5), IsOkAndHolds(5 * 5));

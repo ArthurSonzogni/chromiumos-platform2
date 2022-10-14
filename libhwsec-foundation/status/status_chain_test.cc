@@ -58,8 +58,9 @@ class Fake1Error : public FakeBaseError {
 
 class Fake2Error : public FakeBaseError {
  public:
-  struct MakeStatusTrait {
-    auto operator()(std::string message, int val) {
+  struct MakeStatusTrait : public AlwaysNotOk {
+    [[clang::return_typestate(unconsumed)]] auto operator()(std::string message,
+                                                            int val) {
       return NewStatus<Fake2Error>(message + ": FROM TRAIT", val);
     }
   };
@@ -172,6 +173,8 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   EXPECT_EQ(ptr1.error().val(), 3);
 
   std::swap(ptr1, ptr2);
+  ptr1.AssertNotOk();
+  ptr2.AssertNotOk();
   EXPECT_EQ(ptr1->val(), 1);
   EXPECT_EQ(ptr1.get()->val(), 1);
   EXPECT_EQ((*ptr1).val(), 1);
@@ -183,6 +186,8 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   EXPECT_EQ(ptr2.error().val(), 3);
 
   ptr1.swap(ptr2);
+  ptr1.AssertNotOk();
+  ptr2.AssertNotOk();
   EXPECT_EQ(ptr1->val(), 3);
   EXPECT_EQ(ptr1.get()->val(), 3);
   EXPECT_EQ((*ptr1).val(), 3);
@@ -242,6 +247,7 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
   auto e1_unwrap = std::move(e2).Unwrap();
   EXPECT_FALSE(e2.IsWrapping());
   EXPECT_TRUE(e1_unwrap.IsWrapping());
+  e1_unwrap.AssertNotOk();
   EXPECT_EQ(e1_unwrap->val(), 1);
 
   StatusChain<FakeBaseError> e3 =
@@ -250,9 +256,10 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
   EXPECT_TRUE(e3.IsWrapping());
   EXPECT_EQ(e3->val(), 3);
 
-  auto e0_unwrap = std::move(e3).Unwrap().Unwrap();
+  auto e0_unwrap = std::move(e3).Unwrap().HintNotOk().Unwrap();
   EXPECT_FALSE(e3.IsWrapping());
   EXPECT_FALSE(e0_unwrap.IsWrapping());
+  e0_unwrap.AssertNotOk();
   EXPECT_EQ(e0_unwrap->val(), -1);
 
   e0_unwrap.WrapInPlace(MakeStatus<Fake2Error>("e4", 4));
@@ -450,10 +457,10 @@ TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
   // Make sure the StatusChainOr is only constructable with expected nullptr.
   static_assert(
       std::is_constructible_v<StatusChainOr<std::unique_ptr<int>, Fake1Error>,
-                              nullptr_t>,
+                              std::nullptr_t>,
       "should be constructable with nullptr");
   static_assert(
-      !std::is_constructible_v<StatusChainOr<int, Fake1Error>, nullptr_t>,
+      !std::is_constructible_v<StatusChainOr<int, Fake1Error>, std::nullptr_t>,
       "should not be constructable with nullptr");
 
   // Make sure converting between StatusChainOr and bool work as intended.
@@ -479,10 +486,6 @@ TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
   StatusChainOr<std::string, Fake1Error> status_or4 = std::move(status_or1);
   EXPECT_TRUE(status_or4.ok());
   EXPECT_EQ(*status_or4, "data");
-
-  EXPECT_DEATH_IF_SUPPORTED(
-      (StatusChainOr<std::string, Fake1Error>(OkStatus<Fake1Error>()).ok()),
-      "Check failed");
 }
 
 TEST_F(StatusChainTest, StatusChainOrLambda) {
@@ -515,7 +518,7 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
     StatusChainOrType1 result = lambda1(value);
     if (!result.ok()) {
       return MakeStatus<Fake4Error>("lambda1 failed", 4)
-          .Wrap(std::move(result).status());
+          .Wrap(std::move(result).err_status());
     }
     return std::move(*result);
   };
@@ -569,6 +572,7 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
   EXPECT_TRUE(result123_status.ok());
 
   EXPECT_EQ(result0.status().ToFullString(), "Fake1: value shouldn't be zero");
+  result123.AssertOk();
   EXPECT_EQ(**result123, 123);
 
   EXPECT_FALSE(lambda2(0).ok());
@@ -589,6 +593,8 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
   EXPECT_TRUE(result3123.ok());
   EXPECT_TRUE(result3123.status().ok());
 
+  result3123.AssertOk();
+
   EXPECT_EQ(result30.status().ToFullString(),
             "Fake4: lambda1 failed: Fake1: value shouldn't be zero");
   EXPECT_EQ(**result3123, 123);
@@ -607,6 +613,9 @@ TEST_F(StatusChainTest, StatusChainOrLambda) {
   EXPECT_FALSE(result50.ok());
   EXPECT_TRUE(result51.ok());
   EXPECT_TRUE(result5123.ok());
+
+  result51.AssertOk();
+  result5123.AssertOk();
 
   EXPECT_TRUE(result51->empty());
   EXPECT_EQ(result5123->size(), 4);

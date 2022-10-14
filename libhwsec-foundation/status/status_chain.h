@@ -56,22 +56,12 @@ using StatusChain = _impl_::StackableError<_Et>;
 // Make a usable discard tag.
 constexpr _impl_::WrapTransformOnly WrapTransformOnly;
 
-// Creates a new error object, wrapped in |StatusChain|. Custom overloads for
-// error types may return a different object type, that might need to be dealt
-// with in a certain way to get an object convertible to status type.
-template <typename _Et, typename... Args>
-auto MakeStatus(Args&&... args) {
-  static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
-                "Supplied type is not derived from |Error|.");
-  using MakeStatusTrait = typename _Et::MakeStatusTrait;
-  return MakeStatusTrait()(std::forward<Args>(args)...);
-}
-
 // Factory function for |StatusChain| which by-passes the trait overload for
 // creating a status. While it is not enforceable, this function should ONLY be
 // used from inside |MakeStatusTrait| customization.
 template <typename _Et, typename... Args>
-StatusChain<_Et> NewStatus(Args&&... args) {
+[[clang::return_typestate(unconsumed)]] StatusChain<_Et> NewStatus(
+    Args&&... args) {
   static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
                 "Supplied type is not derived from |Error|.");
   return StatusChain<_Et>(new _Et(std::forward<Args>(args)...));
@@ -79,7 +69,7 @@ StatusChain<_Et> NewStatus(Args&&... args) {
 
 // Return |nullptr| error object in a typed |StatusChain| container.
 template <typename _Et>
-StatusChain<_Et> OkStatus() {
+[[clang::return_typestate(consumed)]] StatusChain<_Et> OkStatus() {
   static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
                 "Supplied type is not derived from |Error|.");
   return StatusChain<_Et>();
@@ -87,7 +77,8 @@ StatusChain<_Et> OkStatus() {
 
 // Return |nullptr| error object in a typed |const StatusChain| container.
 template <typename _Et>
-const StatusChain<_Et>& ConstRefOkStatus() {
+[[clang::return_typestate(consumed)]] const StatusChain<_Et>&
+ConstRefOkStatus() {
   // thread_local variable instances are initialized much like static
   // variables, except that they must be initialized separately for each
   // thread, rather than once at program startup. This means that
@@ -100,18 +91,56 @@ const StatusChain<_Et>& ConstRefOkStatus() {
   return kOkStatus;
 }
 
+// Indicates the MakeStatusTrait will always make not ok status.
+struct AlwaysNotOk {};
+
 // Specifies default behaviour of the MakeStatus on the object. Default is to
 // pass the arguments to the constructor of |_Et|.
 template <typename _Et>
-struct DefaultMakeStatus {
+struct DefaultMakeStatus : public AlwaysNotOk {
   template <typename... Args>
-  auto operator()(Args&&... args) {
+  [[clang::return_typestate(unconsumed)]] auto operator()(Args&&... args) {
     return StatusChain<_Et>(new _Et(std::forward<Args>(args)...));
   }
 };
 
 // Forbids MakeStatus on the object.
 struct ForbidMakeStatus {};
+
+// Creates a new error object, wrapped in |StatusChain|. Custom overloads for
+// error types may return a different object type, that might need to be dealt
+// with in a certain way to get an object convertible to status type.
+template <typename _Et,
+          typename... Args,
+          typename MakeStatusTrait = typename _Et::MakeStatusTrait,
+          typename _Rt = decltype(MakeStatusTrait()(
+              std::forward<Args>(std::declval<Args&&>())...)),
+          std::enable_if_t<
+              std::is_base_of_v<AlwaysNotOk, typename _Et::MakeStatusTrait> &&
+                  is_status_chain_v<_Rt>,
+              int> = 0>
+[[clang::return_typestate(unconsumed)]] auto MakeStatus(Args&&... args) {
+  static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
+                "Supplied type is not derived from |Error|.");
+  return MakeStatusTrait()(std::forward<Args>(args)...);
+}
+
+// It the MakeStatusTrait is not derived from the AlwaysNotOk, we should check
+// the result of it before using it.
+template <typename _Et,
+          typename... Args,
+          typename MakeStatusTrait = typename _Et::MakeStatusTrait,
+          typename _Rt = decltype(MakeStatusTrait()(
+              std::forward<Args>(std::declval<Args&&>())...)),
+          std::enable_if_t<
+              !(std::is_base_of_v<AlwaysNotOk, typename _Et::MakeStatusTrait> &&
+                is_status_chain_v<_Rt>),
+              int> = 0>
+auto MakeStatus(Args&&... args) {
+  static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
+                "Supplied type is not derived from |Error|.");
+  return MakeStatusTrait()(std::forward<Args>(args)...);
+}
 
 }  // namespace status
 }  // namespace hwsec_foundation
