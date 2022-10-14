@@ -12,11 +12,44 @@
 #include <base/callback.h>
 #include <base/logging.h>
 #include <trunks/command_parser.h>
+#include <trunks/error_codes.h>
 #include <trunks/response_serializer.h>
 
 #include "vtpm/backends/tpm_handle_manager.h"
 
 namespace vtpm {
+
+namespace {
+
+std::string CapabilityToString(trunks::TPM_CAP cap) {
+  switch (cap) {
+    case trunks::TPM_CAP_ALGS:
+      return "TPM_CAP_ALGS";
+    case trunks::TPM_CAP_HANDLES:
+      return "TPM_CAP_HANDLES";
+    case trunks::TPM_CAP_COMMANDS:
+      return "TPM_CAP_COMMANDS";
+    case trunks::TPM_CAP_PP_COMMANDS:
+      return "TPM_CAP_PP_COMMANDS";
+    case trunks::TPM_CAP_AUDIT_COMMANDS:
+      return "TPM_CAP_AUDIT_COMMANDS";
+    case trunks::TPM_CAP_PCRS:
+      return "TPM_CAP_PCRS";
+    case trunks::TPM_CAP_TPM_PROPERTIES:
+      return "TPM_CAP_TPM_PROPERTIES";
+    case trunks::TPM_CAP_PCR_PROPERTIES:
+      return "TPM_CAP_PCR_PROPERTIES";
+    case trunks::TPM_CAP_ECC_CURVES:
+      return "TPM_CAP_ECC_CURVES";
+    case trunks::TPM_CAP_VENDOR_PROPERTY:
+      return "TPM_CAP_VENDOR_PROPERTY";
+    default:
+      LOG(DFATAL) << __func__ << " only supports defined TPM-CAP; got: " << cap;
+      return "(Unknown TPM_CAP)";
+  }
+}
+
+}  // namespace
 
 GetCapabilityCommand::GetCapabilityCommand(
     trunks::CommandParser* command_parser,
@@ -42,44 +75,70 @@ void GetCapabilityCommand::Run(const std::string& command,
     ReturnWithError(rc, std::move(callback));
     return;
   }
-  // Only "handles" capability is supported. Also, the supported handle types
-  // are judged by `tpm_handle_manager_`.
-  if (cap != trunks::TPM_CAP_HANDLES) {
-    rc = trunks::TPM_RC_VALUE;
-  } else if (!tpm_handle_manager_->IsHandleTypeSuppoerted(property)) {
-    rc = trunks::TPM_RC_HANDLE;
+
+  // If the capability is not defined by TPM2.0 spec, return error.
+  if ((cap < trunks::TPM_CAP_FIRST || cap > trunks::TPM_CAP_LAST) &&
+      cap != trunks::TPM_CAP_VENDOR_PROPERTY) {
+    LOG(ERROR) << __func__ << ": Unexpected capability: " << cap;
+    ReturnWithError(trunks::TPM_RC_VALUE, std::move(callback));
+    return;
   }
+
+  trunks::TPMI_YES_NO has_more = NO;
+  trunks::TPMS_CAPABILITY_DATA cap_data = {.capability = cap};
+
+  switch (cap) {
+    case trunks::TPM_CAP_HANDLES:
+      rc = GetCapabilityTpmHandles(property, property_count, has_more,
+                                   cap_data.data.handles);
+      break;
+    default:
+      LOG(ERROR) << __func__
+                 << ": Unimplemented capability: " << CapabilityToString(cap);
+      rc = trunks::TPM_RC_VALUE;
+      break;
+  }
+
   if (rc) {
     ReturnWithError(rc, std::move(callback));
     return;
   }
-
-  trunks::TPMS_CAPABILITY_DATA cap_data = {.capability =
-                                               trunks::TPM_CAP_HANDLES};
-  std::vector<trunks::TPM_HANDLE> found_handles;
-  rc = tpm_handle_manager_->GetHandleList(property, &found_handles);
-  if (rc) {
-    ReturnWithError(rc, std::move(callback));
-    return;
-  }
-
-  if (property_count > MAX_CAP_HANDLES)
-    property_count = MAX_CAP_HANDLES;
-
-  const trunks::TPMI_YES_NO has_more =
-      (found_handles.size() > property_count ? YES : NO);
-  cap_data.data.handles.count =
-      has_more ? property_count : found_handles.size();
-
-  std::copy(found_handles.begin(),
-            found_handles.begin() + cap_data.data.handles.count,
-            cap_data.data.handles.handle);
 
   std::string response;
   response_serializer_->SerializeResponseGetCapability(has_more, cap_data,
                                                        &response);
   std::move(callback).Run(response);
   return;
+}
+
+trunks::TPM_RC GetCapabilityCommand::GetCapabilityTpmHandles(
+    trunks::UINT32 property,
+    trunks::UINT32 property_count,
+    trunks::TPMI_YES_NO& has_more,
+    trunks::TPML_HANDLE& handles) {
+  if (!tpm_handle_manager_->IsHandleTypeSuppoerted(property)) {
+    return trunks::TPM_RC_HANDLE;
+  }
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  trunks::TPM_RC rc =
+      tpm_handle_manager_->GetHandleList(property, &found_handles);
+  if (rc) {
+    LOG(ERROR) << __func__
+               << ": Failed to get handle list: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+
+  if (property_count > MAX_CAP_HANDLES) {
+    property_count = MAX_CAP_HANDLES;
+  }
+
+  has_more = (found_handles.size() > property_count ? YES : NO);
+  handles.count = has_more ? property_count : found_handles.size();
+
+  std::copy(found_handles.begin(), found_handles.begin() + handles.count,
+            handles.handle);
+
+  return trunks::TPM_RC_SUCCESS;
 }
 
 void GetCapabilityCommand::ReturnWithError(trunks::TPM_RC rc,

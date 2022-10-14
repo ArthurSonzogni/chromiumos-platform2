@@ -315,7 +315,29 @@ TEST_F(GetCapabilityCommandTest, FailureUnsupportedCap) {
   EXPECT_CALL(
       mock_cmd_parser_,
       ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_FIRST),
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_ALGS),
+                      SetArgPointee<2>(kFakeHandle),
+                      SetArgPointee<3>(kFakeRequestedPropertyCount),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeHeaderOnlyResponse(trunks::TPM_RC_VALUE, _))
+      .WillOnce(SetArgPointee<1>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, FailureUnknownCap) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_LAST + 1),
                       SetArgPointee<2>(kFakeHandle),
                       SetArgPointee<3>(kFakeRequestedPropertyCount),
                       Return(trunks::TPM_RC_SUCCESS)));

@@ -7,6 +7,7 @@
 
 #include "vtpm/commands/command.h"
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
@@ -26,6 +27,11 @@ class GetCapabilityCommand : public Command {
            CommandResponseCallback callback) override;
 
  private:
+  trunks::TPM_RC GetCapabilityTpmHandles(trunks::UINT32 property,
+                                         trunks::UINT32 property_count,
+                                         trunks::TPMI_YES_NO& has_more,
+                                         trunks::TPML_HANDLE& handles);
+
   void ReturnWithError(trunks::TPM_RC rc, CommandResponseCallback callback);
 
   trunks::CommandParser* const command_parser_;
