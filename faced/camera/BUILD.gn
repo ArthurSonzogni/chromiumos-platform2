@@ -25,15 +25,18 @@ source_set("camera") {
     "fake_camera_client.cc",
     "fake_camera_service.cc",
     "frame_utils.cc",
+    "cros_camera_manager.cc",
     "test_utils.cc",
   ]
   public = [
     "camera_client.h",
+    "camera_manager.h",
     "camera_service.h",
     "cros_camera_service.h",
     "fake_camera_client.h",
     "fake_camera_service.h",
     "frame_utils.h",
+    "cros_camera_manager.h",
     "test_utils.h",
   ]
   configs += [ ":target_defaults" ]
@@ -48,6 +51,7 @@ if (use.test) {
     sources = [
       "camera_client_test.cc",
       "fake_camera_client_test.cc",
+      "cros_camera_manager_test.cc",
     ]
     configs += [
       "//common-mk:test",
