@@ -42,7 +42,7 @@ void BindMountIfPathExists(struct minijail* jail,
 
 }  // namespace
 
-void ConfigureAndEnterMinijail() {
+void EnterHealthdMinijail() {
   ScopedMinijail jail(minijail_new());
   minijail_no_new_privs(jail.get());           // The no_new_privs bit.
   minijail_remount_proc_readonly(jail.get());  // Remount /proc readonly.
@@ -213,7 +213,7 @@ void ConfigureAndEnterMinijail() {
   minijail_enter(jail.get());
 }
 
-void NewMountNamespace() {
+void EnterExecutorMinijail() {
   ScopedMinijail j(minijail_new());
 
   // Create a minimalistic mount namespace with just the bare minimum required.

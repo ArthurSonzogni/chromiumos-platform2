@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     }
 
     // Put the root-level executor in a light sandbox.
-    diagnostics::NewMountNamespace();
+    diagnostics::EnterExecutorMinijail();
 
     // Run the root-level executor.
     healthd_endpoint.reset();
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
   }
 
   // Sandbox the Healthd process.
-  diagnostics::ConfigureAndEnterMinijail();
+  diagnostics::EnterHealthdMinijail();
 
   // Run the cros_healthd daemon.
   executor_endpoint.reset();
