@@ -181,6 +181,10 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureRequest(
 
 bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
+  if (frame_annotators_.empty()) {
+    return true;
+  }
+
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,

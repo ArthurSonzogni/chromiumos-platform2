@@ -6,7 +6,11 @@
 
 #include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
 
+#include <utility>
+
 #include <dlfcn.h>
+
+#include <base/files/file_util.h>
 
 #include "features/frame_annotator/libs/utils.h"
 
@@ -14,23 +18,41 @@ namespace cros {
 
 namespace {
 
-constexpr char kFrameAnnotatorLibPath[] =
-    "/usr/lib64/libcros_camera_frame_annotator.so";
+constexpr std::array<const char*, 4> kFrameAnnotatorLibPath = {
+    // Check rootfs first for ease of local development.
+    "/usr/lib64/libcros_camera_frame_annotator.so",
+    "/usr/lib/libcros_camera_frame_annotator.so",
 
-}
+    // By default the .so is installed in the stateful partition on test images.
+    "/usr/local/lib64/libcros_camera_frame_annotator.so",
+    "/usr/local/lib/libcros_camera_frame_annotator.so",
+};
+
+}  // namespace
 
 //
 // FrameAnnotatorLoaderStreamManipulator implementations.
 //
 
-FrameAnnotatorLoaderStreamManipulator::FrameAnnotatorLoaderStreamManipulator()
-    : frame_annotator_lib_(base::FilePath(kFrameAnnotatorLibPath)) {
-  if (auto make_frame_annotator_stream_manipulator =
-          reinterpret_cast<decltype(&MakeFrameAnnotatorStreamManipulator)>(
-              frame_annotator_lib_.GetFunctionPointer(
-                  "MakeFrameAnnotatorStreamManipulator"))) {
-    stream_manipulator_ = std::unique_ptr<StreamManipulator>(
-        make_frame_annotator_stream_manipulator());
+FrameAnnotatorLoaderStreamManipulator::FrameAnnotatorLoaderStreamManipulator() {
+  for (auto* p : kFrameAnnotatorLibPath) {
+    if (base::PathExists(base::FilePath(p))) {
+      auto native_lib = base::ScopedNativeLibrary(base::FilePath(p));
+      if (auto make_frame_annotator_stream_manipulator =
+              reinterpret_cast<decltype(&MakeFrameAnnotatorStreamManipulator)>(
+                  native_lib.GetFunctionPointer(
+                      "MakeFrameAnnotatorStreamManipulator"))) {
+        stream_manipulator_ = std::unique_ptr<StreamManipulator>(
+            make_frame_annotator_stream_manipulator());
+        frame_annotator_lib_ = std::move(native_lib);
+        LOGF(INFO) << "FrameAnnotatorLoaderStreamManipulator loaded from " << p;
+        break;
+      } else {
+        LOGF(INFO)
+            << "Failed to load FrameAnnotatorLoaderStreamManipulator from " << p
+            << " with error: " << native_lib.GetError()->ToString();
+      }
+    }
   }
 }
 
