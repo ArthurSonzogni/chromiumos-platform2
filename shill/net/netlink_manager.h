@@ -104,15 +104,16 @@ class SHILL_EXPORT NetlinkManager {
   using NetlinkMessageHandler =
       base::RepeatingCallback<void(const NetlinkMessage&)>;
   using ControlNetlinkMessageHandler =
-      base::Callback<void(const ControlNetlinkMessage&)>;
-  using Nl80211MessageHandler = base::Callback<void(const Nl80211Message&)>;
+      base::RepeatingCallback<void(const ControlNetlinkMessage&)>;
+  using Nl80211MessageHandler =
+      base::RepeatingCallback<void(const Nl80211Message&)>;
   // NetlinkAuxilliaryMessageHandler handles netlink error messages, things
   // like the DoneMessage at the end of a multi-part message, and any errors
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
   // there is no way to reserve a part of the ErrorAckMessage space for
   // non-netlink errors).
-  using NetlinkAuxilliaryMessageHandler =
-      base::Callback<void(AuxilliaryMessageType type, const NetlinkMessage*)>;
+  using NetlinkAuxilliaryMessageHandler = base::RepeatingCallback<void(
+      AuxilliaryMessageType type, const NetlinkMessage*)>;
   // NetlinkAckHandler handles netlink Ack messages, which are a special type
   // of netlink error message carrying an error code of 0. Since Ack messages
   // contain no useful data (other than the error code of 0 to differentiate
@@ -123,11 +124,12 @@ class SHILL_EXPORT NetlinkManager {
   // removed after this callback is executed. This allows a sender of an NL80211
   // message to handle both an Ack and another response message, rather than
   // handle only the first response received.
-  using NetlinkAckHandler = base::Callback<void(bool*)>;
+  using NetlinkAckHandler = base::RepeatingCallback<void(bool*)>;
 
-  // ResponseHandlers provide a polymorphic context for the base::Callback
-  // message handlers so that handlers for different types of messages can be
-  // kept in the same container (namely, |message_handlers_|).
+  // ResponseHandlers provide a polymorphic context for the
+  // base::RepeatingCallback message handlers so that handlers for different
+  // types of messages can be kept in the same container (namely,
+  // |message_handlers_|).
   class NetlinkResponseHandler
       : public base::RefCounted<NetlinkResponseHandler> {
    public:
@@ -426,8 +428,8 @@ class SHILL_EXPORT NetlinkManager {
   std::queue<NetlinkPendingMessage> pending_messages_;
 
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
-  base::CancelableClosure pending_dump_timeout_callback_;
-  base::CancelableClosure resend_dump_message_callback_;
+  base::CancelableOnceClosure pending_dump_timeout_callback_;
+  base::CancelableOnceClosure resend_dump_message_callback_;
   std::unique_ptr<IOHandler> dispatcher_handler_;
 
   std::unique_ptr<NetlinkSocket> sock_;

@@ -541,9 +541,10 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   RTNLHandler::GetInstance()->SetInterfaceMac(
       3, ByteString::CreateFromHexString("abcdef123456"),
       base::BindOnce(
-          [](base::Closure callback, int32_t expected_error, int32_t error) {
+          [](base::OnceClosure callback, int32_t expected_error,
+             int32_t error) {
             EXPECT_EQ(expected_error, error);
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure(), kErrorNumber));
 
@@ -574,9 +575,10 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   RTNLHandler::GetInstance()->AddInterface(
       kIfName, kIfType, ByteString{},
       base::BindOnce(
-          [](base::Closure callback, int32_t expected_error, int32_t error) {
+          [](base::OnceClosure callback, int32_t expected_error,
+             int32_t error) {
             EXPECT_EQ(expected_error, error);
-            callback.Run();
+            std::move(callback).Run();
           },
           run_loop.QuitClosure(), kErrorNumber));
 

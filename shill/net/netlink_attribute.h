@@ -289,10 +289,10 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // _no_ array).
   struct NestedData {
     using AttributeParser =
-        base::Callback<bool(AttributeList* list,
-                            size_t id,
-                            const std::string& attribute_name,
-                            ByteString data)>;
+        base::RepeatingCallback<bool(AttributeList* list,
+                                     size_t id,
+                                     const std::string& attribute_name,
+                                     ByteString data)>;
     using NestedDataMap = std::map<size_t, NestedData>;
 
     NestedData();

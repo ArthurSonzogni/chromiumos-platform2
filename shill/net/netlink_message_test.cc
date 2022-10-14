@@ -278,7 +278,7 @@ class NetlinkMessageTest : public Test {
  public:
   NetlinkMessageTest() {
     message_factory_.AddFactoryMethod(
-        kNl80211FamilyId, base::Bind(&Nl80211Message::CreateMessage));
+        kNl80211FamilyId, base::BindRepeating(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
   }
 

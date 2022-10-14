@@ -110,7 +110,7 @@ class NetlinkManagerTest : public Test {
             {kGroupZeppoString, kGroupZeppoNumber},
             {kGroupGummoString, kGroupGummoNumber}};
     netlink_manager_->message_factory_.AddFactoryMethod(
-        kNl80211FamilyId, base::Bind(&Nl80211Message::CreateMessage));
+        kNl80211FamilyId, base::BindRepeating(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     netlink_socket_->sockets_.reset(sockets_);       // Passes ownership.
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
@@ -196,8 +196,8 @@ class NetlinkManagerTest : public Test {
    public:
     MockHandlerNetlinkAuxilliary()
         : on_netlink_message_(
-              base::Bind(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
-                         base::Unretained(this))) {}
+              base::BindRepeating(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
+                                  base::Unretained(this))) {}
     MockHandlerNetlinkAuxilliary(const MockHandlerNetlinkAuxilliary&) = delete;
     MockHandlerNetlinkAuxilliary& operator=(
         const MockHandlerNetlinkAuxilliary&) = delete;
@@ -217,8 +217,8 @@ class NetlinkManagerTest : public Test {
   class MockHandler80211 {
    public:
     MockHandler80211()
-        : on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
-                                         base::Unretained(this))) {}
+        : on_netlink_message_(base::BindRepeating(
+              &MockHandler80211::OnNetlinkMessage, base::Unretained(this))) {}
     MockHandler80211(const MockHandler80211&) = delete;
     MockHandler80211& operator=(const MockHandler80211&) = delete;
 
@@ -234,8 +234,8 @@ class NetlinkManagerTest : public Test {
   class MockHandlerNetlinkAck {
    public:
     MockHandlerNetlinkAck()
-        : on_netlink_message_(base::Bind(&MockHandlerNetlinkAck::OnAckHandler,
-                                         base::Unretained(this))) {}
+        : on_netlink_message_(base::BindRepeating(
+              &MockHandlerNetlinkAck::OnAckHandler, base::Unretained(this))) {}
     MockHandlerNetlinkAck(const MockHandlerNetlinkAck&) = delete;
     MockHandlerNetlinkAck& operator=(const MockHandlerNetlinkAck&) = delete;
 

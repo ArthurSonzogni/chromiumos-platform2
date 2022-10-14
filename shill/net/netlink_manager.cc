@@ -280,7 +280,7 @@ bool NetlinkManager::Init() {
   // statically-known message type.
   message_factory_.AddFactoryMethod(
       ControlNetlinkMessage::kMessageType,
-      base::Bind(&ControlNetlinkMessage::CreateMessage));
+      base::BindRepeating(&ControlNetlinkMessage::CreateMessage));
   if (!sock_) {
     sock_.reset(new NetlinkSocket);
     if (!sock_) {
@@ -327,11 +327,12 @@ uint16_t NetlinkManager::GetFamily(
     LOG(ERROR) << "Couldn't set string attribute";
     return false;
   }
-  SendControlMessage(&msg,
-                     base::Bind(&NetlinkManager::OnNewFamilyMessage,
-                                weak_ptr_factory_.GetWeakPtr()),
-                     base::Bind(&NetlinkManager::OnAckDoNothing),
-                     base::Bind(&NetlinkManager::OnNetlinkMessageError));
+  SendControlMessage(
+      &msg,
+      base::BindRepeating(&NetlinkManager::OnNewFamilyMessage,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 
   // Wait for a response.  The code absolutely needs family_ids for its
   // message types so we do a synchronous wait.  It's OK to do this because
@@ -541,7 +542,7 @@ bool NetlinkManager::SendMessageInternal(
     VLOG(5) << "Waiting for replies to NL dump message "
             << pending_message.sequence_number;
     dump_pending_ = true;
-    pending_dump_timeout_callback_.Reset(base::Bind(
+    pending_dump_timeout_callback_.Reset(base::BindOnce(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
@@ -816,8 +817,8 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   VLOG(3) << "Resending NL dump message " << PendingDumpSequenceNumber()
           << " after " << kNlMessageRetryDelay.InMilliseconds() << " ms";
   resend_dump_message_callback_.Reset(
-      base::Bind(&NetlinkManager::ResendPendingDumpMessage,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&NetlinkManager::ResendPendingDumpMessage,
+                     weak_ptr_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       kNlMessageRetryDelay);

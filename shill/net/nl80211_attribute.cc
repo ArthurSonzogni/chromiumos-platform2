@@ -78,7 +78,8 @@ Nl80211AttributeBss::Nl80211AttributeBss()
   nested_template_.insert(AttrDataPair(
       NL80211_BSS_INFORMATION_ELEMENTS,
       NestedData(kTypeRaw, "NL80211_BSS_INFORMATION_ELEMENTS", false,
-                 base::Bind(&Nl80211AttributeBss::ParseInformationElements))));
+                 base::BindRepeating(
+                     &Nl80211AttributeBss::ParseInformationElements))));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SIGNAL_MBM,
                    NestedData(kTypeU32, "NL80211_BSS_SIGNAL_MBM", false)));
@@ -928,9 +929,9 @@ Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
       kArrayAttrEnumVal,
-      NestedData(
-          kTypeU32, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true,
-          base::Bind(&Nl80211AttributeSupportedIftypes::ParseIfaceTypes))));
+      NestedData(kTypeU32, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true,
+                 base::BindRepeating(
+                     &Nl80211AttributeSupportedIftypes::ParseIfaceTypes))));
 }
 
 bool Nl80211AttributeSupportedIftypes::ParseIfaceTypes(

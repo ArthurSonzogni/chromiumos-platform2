@@ -223,7 +223,7 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
 class SHILL_EXPORT NetlinkMessageFactory {
  public:
-  using FactoryMethod = base::Callback<std::unique_ptr<NetlinkMessage>(
+  using FactoryMethod = base::RepeatingCallback<std::unique_ptr<NetlinkMessage>(
       const NetlinkPacket& packet)>;
 
   NetlinkMessageFactory() = default;
