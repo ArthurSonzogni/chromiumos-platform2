@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <linux/videodev2.h>
 
-#include "faced/camera/camera_service.h"
+#include "faced/camera/fake_camera_service.h"
 #include "faced/camera/test_utils.h"
 #include "faced/testing/status.h"
 #include "faced/util/blocking_future.h"
