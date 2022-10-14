@@ -72,7 +72,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                                  const AuthInput& auth_input,
                                  CryptohomeStatusCallback callback) override;
 
-  CryptohomeStatus StopAuthFactor(AuthFactorType auth_factor_type) override;
+  CryptohomeStatus TerminateAuthFactor(
+      AuthFactorType auth_factor_type) override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,

@@ -406,20 +406,20 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 }
 
-TEST_F(AuthBlockUtilityImplTest, StopPasswordSuccess) {
+TEST_F(AuthBlockUtilityImplTest, TerminatePasswordSuccess) {
   MakeAuthBlockUtilityImpl();
   // password auth factor always succeed the stop.
   CryptohomeStatus status =
-      auth_block_utility_impl_->StopAuthFactor(AuthFactorType::kPassword);
+      auth_block_utility_impl_->TerminateAuthFactor(AuthFactorType::kPassword);
 
   EXPECT_THAT(status, IsOk());
 }
 
-TEST_F(AuthBlockUtilityImplTest, StopLegacyFingerprintSuccess) {
+TEST_F(AuthBlockUtilityImplTest, TerminateLegacyFingerprintSuccess) {
   MakeAuthBlockUtilityImpl();
   EXPECT_CALL(fp_manager_, EndAuthSession());
 
-  CryptohomeStatus status = auth_block_utility_impl_->StopAuthFactor(
+  CryptohomeStatus status = auth_block_utility_impl_->TerminateAuthFactor(
       AuthFactorType::kLegacyFingerprint);
 
   EXPECT_THAT(status, IsOk());

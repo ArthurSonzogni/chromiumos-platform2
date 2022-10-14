@@ -280,7 +280,7 @@ AuthSession::~AuthSession() {
   ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
                       authenticated_time_, append_string);
   for (auto auth_factor_type : active_auth_factor_types) {
-    auto status = auth_block_utility_->StopAuthFactor(auth_factor_type);
+    auto status = auth_block_utility_->TerminateAuthFactor(auth_factor_type);
     if (!status.ok()) {
       LOG(ERROR) << "Stopping auth factor "
                  << AuthFactorTypeToString(auth_factor_type)
@@ -1686,8 +1686,12 @@ void AuthSession::PrepareAuthFactor(
     active_auth_factor_types.emplace(*auth_factor_type);
   } else {
     // For auth factor types that do not require PrepareAuthFactor,
-    // simply return a success status.
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    // return an invalid argument error.
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionPrepareBadAuthFactorType),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
   }
 }
 

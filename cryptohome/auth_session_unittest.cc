@@ -3250,7 +3250,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
         std::move(callback).Run(OkStatus<CryptohomeError>());
       });
   EXPECT_CALL(auth_block_utility_,
-              StopAuthFactor(AuthFactorType::kLegacyFingerprint))
+              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
       .Times(1);
 
   // Test.
@@ -3294,7 +3294,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordSuccess) {
   auth_session.PrepareAuthFactor(request, prepare_future.GetCallback());
 
   // Verify.
-  ASSERT_THAT(prepare_future.Get(), IsOk());
+  ASSERT_EQ(prepare_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 // Test that AuthenticateAuthFactor succeeds and doesn't use the credential

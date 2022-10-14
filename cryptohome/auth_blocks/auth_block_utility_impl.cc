@@ -238,7 +238,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
   std::move(callback).Run(std::move(status));
 }
 
-CryptohomeStatus AuthBlockUtilityImpl::StopAuthFactor(
+CryptohomeStatus AuthBlockUtilityImpl::TerminateAuthFactor(
     AuthFactorType auth_factor_type) {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {

@@ -95,7 +95,8 @@ class AuthBlockUtility {
 
   // Given an AuthFactorType, stop an auth factor's pending async Prepare or
   // Verify.
-  virtual CryptohomeStatus StopAuthFactor(AuthFactorType auth_factor_type) = 0;
+  virtual CryptohomeStatus TerminateAuthFactor(
+      AuthFactorType auth_factor_type) = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from

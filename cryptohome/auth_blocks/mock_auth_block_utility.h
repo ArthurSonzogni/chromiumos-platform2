@@ -63,7 +63,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                CryptohomeStatusCallback callback),
               (override));
   MOCK_METHOD(CryptohomeStatus,
-              StopAuthFactor,
+              TerminateAuthFactor,
               (AuthFactorType auth_factor_type),
               (override));
   MOCK_METHOD(CryptoStatus,
