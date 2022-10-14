@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
+#include <chromeos/constants/vm_tools.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
@@ -49,6 +50,12 @@ constexpr char kPstoreExtension[] = ".pstore";
 // in low memory devices.
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
     "CrOSLateBootArcVmLowMemJemallocArenas";
+
+// The timeout in ms for LMKD to read from it's vsock connection to concierge.
+// 100ms is long enough to allow concierge to respond even under extreme system
+// load, but short enough that LMKD can still kill processes before the linux
+// OOM killer wakes up.
+constexpr uint32_t kLmkdVsockTimeoutMs = 100;
 
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmLowMemJemallocArenasFeature{
@@ -316,33 +323,9 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   features.low_mem_jemalloc_arenas_enabled =
       platform_features_->IsEnabledBlocking(kArcVmLowMemJemallocArenasFeature);
 
-  if (request.has_balloon_policy()) {
-    const auto& policy_params = request.balloon_policy();
-    int64_t responsive_max_deflate_bytes =
-        policy_params.responsive()
-            ? policy_params.responsive_max_deflate_bytes()
-            : 0;
-    int responsive_timeout_ms =
-        policy_params.responsive() ? policy_params.responsive_timeout_ms() : 0;
-
-    if (responsive_max_deflate_bytes <= 0 || responsive_timeout_ms <= 0) {
-      // Responsive is enabled, but one of the parameters is not valid.
-      // Log a warning and don't enable the responsive balloon policy.
-      LOG(WARNING) << "LimitCacheBalloonPolicy is set as responsive, but not "
-                   << "all responsive paramters are set.";
-      responsive_max_deflate_bytes = 0;
-      responsive_timeout_ms = 0;
-    }
-    features.balloon_policy_params = (LimitCacheBalloonPolicy::Params){
-        .reclaim_target_cache = policy_params.reclaim_target_cache(),
-        .critical_target_cache = policy_params.critical_target_cache(),
-        .moderate_target_cache = policy_params.moderate_target_cache(),
-        .responsive_max_deflate_bytes = responsive_max_deflate_bytes};
-    if (responsive_timeout_ms > 0) {
-      params.emplace_back(base::StringPrintf(
-          "androidboot.lmkd.vsock_timeout=%d", responsive_timeout_ms));
-    }
-  }
+  // Enable the responsive balloon feature in LMKD
+  params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
+                                         kLmkdVsockTimeoutMs));
 
   const auto pstore_path = GetPstoreDest(request.owner_id());
 

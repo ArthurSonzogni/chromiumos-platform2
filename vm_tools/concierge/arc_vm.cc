@@ -122,6 +122,15 @@ constexpr char kUnknown[] = "unknown";
 // bassed on the zone watermarks, since they can change during boot.
 constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
 
+// The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
+static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
+    {
+        .reclaim_target_cache = 322560 * KIB,
+        .critical_target_cache = 322560 * KIB,
+        .moderate_target_cache = 0,
+        .responsive_max_deflate_bytes = 256 * MIB,
+};
+
 int GetIntFromVsockBuffer(const uint8_t* buf, size_t index) {
   int ret = 0;
   std::memcpy(&ret, &buf[index * sizeof(int)], sizeof(int));
@@ -569,25 +578,24 @@ std::optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
 void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
                                     const std::string& vm) {
   balloon_init_attempts_--;
-  if (features_.balloon_policy_params) {
-    // Only log on error if this is our last attempt. We expect some failures
-    // early in boot, so we shouldn't spam the log with them.
-    auto guest_stats = ArcVmZoneStats(vsock_cid_, balloon_init_attempts_ == 0);
-    auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
-    if (guest_stats && host_lwm) {
-      balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
-          margins, *host_lwm, *guest_stats, *features_.balloon_policy_params,
-          vm);
-      return;
-    } else if (balloon_init_attempts_ > 0) {
-      // We still have attempts left. Leave balloon_policy_ uninitialized, and
-      // we will try again next time.
-      return;
-    } else {
-      LOG(ERROR) << "Failed to initialize LimitCacheBalloonPolicy, falling "
-                 << "back to BalanceAvailableBalloonPolicy";
-    }
+
+  // Only log on error if this is our last attempt. We expect some failures
+  // early in boot, so we shouldn't spam the log with them.
+  auto guest_stats = ArcVmZoneStats(vsock_cid_, balloon_init_attempts_ == 0);
+  auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
+  if (guest_stats && host_lwm) {
+    balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
+        margins, *host_lwm, *guest_stats, kArcVmLimitCachePolicyParams, vm);
+    return;
+  } else if (balloon_init_attempts_ > 0) {
+    // We still have attempts left. Leave balloon_policy_ uninitialized, and
+    // we will try again next time.
+    return;
+  } else {
+    LOG(ERROR) << "Failed to initialize LimitCacheBalloonPolicy, falling "
+               << "back to BalanceAvailableBalloonPolicy";
   }
+
   // No balloon policy parameters, so fall back to older policy.
   // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
   balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
