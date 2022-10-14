@@ -250,6 +250,26 @@ TEST_F(ServiceProvidersTest, CheckApnNames) {
   }
 }
 
+TEST_F(ServiceProvidersTest, CheckApnTypes) {
+  // Verify that all apns have an ApnType.
+
+  for (const auto& mno : database_->mno()) {
+    for (const auto& mobile_apn : mno.data().mobile_apn()) {
+      ASSERT_TRUE(mobile_apn.type().size() > 0)
+          << " MVNO with uuid: " << mno.data().uuid() << ", apn:'"
+          << mobile_apn.apn() << "' has no ApnType.";
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& mobile_apn : mvno->data().mobile_apn()) {
+      ASSERT_TRUE(mobile_apn.type().size() > 0)
+          << " MVNO with uuid: " << mvno->data().uuid() << ", apn:'"
+          << mobile_apn.apn() << "' has no ApnType.";
+    }
+  }
+}
+
 TEST_F(ServiceProvidersTest, CheckConflictingFilters) {
   // Verify that some filter configurations don't exist.
   // regex && exclude_regex is OK

@@ -22,6 +22,7 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_helpers.h"
@@ -1870,6 +1871,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
           brillo::GetVariantValueOrDefault<uint32_t>(
               profile, CellularBearer::kMMIpTypeProperty)));
     }
+    // If the APN doesn't have an APN type, assume it's a DEFAULT APN.
+    if (apn_info.apn_types.empty())
+      apn_info.apn_types = {kApnTypeDefault};
+
     profiles_.push_back(std::move(apn_info));
   }
 
@@ -1885,7 +1890,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildApnTryList();
   base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
-    return !base::Contains(apn_info, kApnAttachProperty);
+    return !ApnList::IsAttachApn(apn_info);
   });
 
   if (attach_apn_try_list_.size() > 0) {

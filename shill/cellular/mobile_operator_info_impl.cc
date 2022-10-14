@@ -74,6 +74,29 @@ std::optional<std::string> GetIpType(
   }
 }
 
+std::set<std::string> GetApnTypes(
+    const shill::mobile_operator_db::MobileAPN& apn) {
+  if (apn.type().size() == 0) {
+    // We should never reach this point. Unit tests validate that at least 1
+    // ApnType exist.
+    LOG(ERROR) << " APN: " << apn.apn() << " does not contain an APN type.";
+    DCHECK(false);
+    return {kApnTypeDefault};
+  }
+  std::set<std::string> apn_types;
+  for (const auto& apn_type : apn.type()) {
+    switch (apn_type) {
+      case mobile_operator_db::MobileAPN_ApnType_DEFAULT:
+        apn_types.insert(kApnTypeDefault);
+        break;
+      case mobile_operator_db::MobileAPN_ApnType_IA:
+        apn_types.insert(kApnTypeIA);
+        break;
+    }
+  }
+  return apn_types;
+}
+
 }  // namespace
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(
@@ -911,8 +934,7 @@ void MobileOperatorInfoImpl::HandleAPNListUpdate() {
           {localized_name.name(), localized_name.language()});
     }
     apn.authentication = GetApnAuthentication(apn_data);
-    apn.is_attach_apn =
-        apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
+    apn.apn_types = GetApnTypes(apn_data);
     std::optional<std::string> ip_type = GetIpType(apn_data);
     if (!ip_type.has_value()) {
       LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";

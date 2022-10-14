@@ -22,10 +22,17 @@ class ApnList {
   ~ApnList() = default;
 
   enum class ApnSource { kModb, kModem };
+  enum class ApnType { kDefault, kAttach };
   void AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
                ApnSource source);
 
   const Stringmaps& GetList() { return apn_dict_list_; }
+
+  static bool IsApnType(const Stringmap& apn_info, enum ApnType apn_type);
+  static bool IsAttachApn(const Stringmap& apn_info);
+  static bool IsDefaultApn(const Stringmap& apn_info);
+
+  static std::string JoinApnTypes(std::vector<std::string> apn_types);
 
  private:
   using ApnIndexKey =
@@ -35,6 +42,7 @@ class ApnList {
   void AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
               ApnSource source);
 
+  static std::string GetApnTypeString(enum ApnType apn_type);
   Stringmaps apn_dict_list_;
   std::map<ApnIndexKey, int> apn_index_;
 

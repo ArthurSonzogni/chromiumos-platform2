@@ -13,12 +13,14 @@ mno {
     mccmnc : "01"
     mobile_apn {
       apn : "zeros_default"
+      type : DEFAULT
       localized_name {
         name : "Def0"
       }
     }
     mobile_apn {
       apn : "onesies_default"
+      type : DEFAULT
       localized_name {
         name : "Def1"
       }

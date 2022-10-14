@@ -2131,8 +2131,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
       apn_try_list.back()[cellular::kApnSource] = cellular::kApnSourceUi;
       SLOG(this, 3) << __func__ << " Adding User Specified APN:"
                     << GetStringmapValue(*custom_apn_info, kApnProperty)
-                    << " Is attach:"
-                    << GetStringmapValue(*custom_apn_info, kApnAttachProperty);
+                    << " Is attach:" << ApnList::IsAttachApn(*custom_apn_info);
       if (last_good_apn_info &&
           CompareApns(*last_good_apn_info, *custom_apn_info)) {
         add_last_good_apn = false;
@@ -2181,8 +2180,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     apn_try_list.push_back(*last_good_apn_info);
     LOG(INFO) << __func__ << " Adding last good APN (fallback):"
               << GetStringmapValue(*last_good_apn_info, kApnProperty)
-              << " Is attach:"
-              << GetStringmapValue(*last_good_apn_info, kApnAttachProperty);
+              << " Is attach:" << ApnList::IsAttachApn(*last_good_apn_info);
   }
 
   return apn_try_list;

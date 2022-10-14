@@ -53,14 +53,14 @@ message MobileAPN {
   repeated string OBSOLETE_dns = 7;
 
   enum Authentication {
-    DEFAULT = 0;
+    DEFAULT_AUTH = 0;
     PAP = 1;
     CHAP = 2;
   }
   // Shill will default to CHAP when an username or password is used, and no
   // authentication is provided.
   optional Authentication authentication = 8;
-  optional bool is_attach_apn = 9 [default = false];
+  optional bool OBSOLETE_is_attach_apn = 9;
 
   enum IpType {
     UNKNOWN = 0;
@@ -71,6 +71,15 @@ message MobileAPN {
   optional IpType ip_type = 10 [default = IPV4];
   // When a filter is present, only select the APN if all filters match.
   repeated Filter apn_filter = 11;
+
+  // The types of data connections that this APN supports.
+  // Follow the same naming convention used in Android's carrierapns.
+  enum ApnType {
+    DEFAULT = 0;  // internet data
+    IA = 1;       // Initial Attach
+  }
+  // At least one type has to be set.
+  repeated ApnType type = 12;
 }
 
 message OnlinePortal {

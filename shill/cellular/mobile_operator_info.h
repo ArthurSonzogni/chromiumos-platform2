@@ -6,7 +6,9 @@
 #define SHILL_CELLULAR_MOBILE_OPERATOR_INFO_H_
 
 #include <memory>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -133,8 +135,8 @@ class MobileOperatorInfo {
     // * "chap" (kApnAuthenticationChap):
     //   - Challenge-Handshake Authentication Protocol (CHAP) for authentication
     std::string authentication;
-    // Specify whether this APN should be requested as part of an LTE Attach.
-    bool is_attach_apn = false;
+    // A list of APN types.
+    std::set<std::string> apn_types;
     // IP type as one of "ipv4", "ipv6", "ipv4v6" (dual-stack)
     std::string ip_type;
   };

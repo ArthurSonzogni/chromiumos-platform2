@@ -17,7 +17,11 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "base/containers/contains.h"
+#include "base/strings/string_piece_forward.h"
+#include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
+#include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_service_provider.h"
@@ -47,6 +51,7 @@ const char CellularService::kAutoConnSimUnselected[] = "SIM not selected";
 const char CellularService::kAutoConnConnectFailed[] =
     "previous connect failed";
 const char CellularService::kAutoConnInhibited[] = "inhibited";
+const char CellularService::kStorageAPN[] = "Cellular.APN";
 const char CellularService::kStorageIccid[] = "Cellular.Iccid";
 const char CellularService::kStorageImsi[] = "Cellular.Imsi";
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
@@ -59,7 +64,6 @@ namespace {
 
 const char kGenericServiceNamePrefix[] = "MobileNetwork";
 
-const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 const char kStorageLastConnectedDefaultAPN[] =
     "Cellular.LastConnectedDefaultAPN";
@@ -121,14 +125,28 @@ void LoadApn(const StoreInterface* storage,
 
   if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
     return;
-  if (keytag == kStorageAPN)
+  if (keytag == CellularService::kStorageAPN)
     FetchDetailsFromApnList(apn_list, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
                apn_info);
   LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnTypesProperty, apn_info);
+  // b/251512775: kApnAttachProperty used to be used to indicate that an APN
+  // was an Attach APN. That property was replaced by |kApnTypesProperty| in
+  // 2022Q4, but shill needs to migrate the old property into kApnTypesProperty
+  // for devices updating from old OS versions.
+  if (!base::Contains(*apn_info, kApnTypesProperty)) {
+    LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
+    if (base::Contains(*apn_info, kApnAttachProperty)) {
+      (*apn_info)[kApnTypesProperty] =
+          ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
+      apn_info->erase(kApnAttachProperty);
+    } else {
+      (*apn_info)[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+    }
+  }
   LoadApnField(storage, storage_group, keytag, cellular::kApnVersionProperty,
                apn_info);
 }
@@ -156,7 +174,7 @@ void SaveApn(StoreInterface* storage,
   SaveApnField(storage, storage_group, apn_info, keytag,
                kApnAuthenticationProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnAttachProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnTypesProperty);
   SaveApnField(storage, storage_group, apn_info, keytag,
                cellular::kApnVersionProperty);
 }
@@ -803,8 +821,16 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
       new_apn_info[kApnPasswordProperty] = str;
     if (GetNonEmptyField(value, kApnAuthenticationProperty, &str))
       new_apn_info[kApnAuthenticationProperty] = str;
-    if (GetNonEmptyField(value, kApnAttachProperty, &str))
-      new_apn_info[kApnAttachProperty] = str;
+    // TODO(b/251512775): Chrome will keep sending the "attach" value until the
+    // old UI is obsoleted. Convert the attach value into |kApnTypesProperty|.
+    // SetApn should not contain the key |kApnTypesProperty|.
+    if (GetNonEmptyField(value, kApnAttachProperty, &str)) {
+      new_apn_info[kApnTypesProperty] =
+          ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
+    } else {
+      new_apn_info[kApnTypesProperty] =
+          ApnList::JoinApnTypes({kApnTypeDefault});
+    }
 
     new_apn_info[cellular::kApnVersionProperty] =
         base::NumberToString(cellular::kCurrentApnCacheVersion);
@@ -815,8 +841,8 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
 
-  if (apn_info_.count(kApnAttachProperty) ||
-      last_attach_apn_info_.count(kApnAttachProperty)) {
+  if (ApnList::IsAttachApn(apn_info_) ||
+      ApnList::IsAttachApn(last_attach_apn_info_)) {
     // If the new APN is an 'attach APN',we need to detach and re-attach
     // to the LTE network in order to use it.
     // If we were using an attach APN, and we are no longer using it, we should

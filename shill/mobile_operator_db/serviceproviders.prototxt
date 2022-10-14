@@ -29,6 +29,7 @@ mno {
       }
       username : "mnet"
       password : "mnet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "etisalat.ae"
@@ -37,6 +38,7 @@ mno {
       }
       username : "etisalat.ae"
       password : "etisalat.ae"
+      type : DEFAULT
     }
   }
 }
@@ -51,6 +53,7 @@ mno {
     mccmnc : "42403"
     mobile_apn {
       apn : "du"
+      type : DEFAULT
     }
   }
 }
@@ -67,6 +70,7 @@ mno {
       apn : "internet"
       username : "awcc"
       password : "1111"
+      type : DEFAULT
     }
   }
 }
@@ -81,6 +85,7 @@ mno {
     mccmnc : "27601"
     mobile_apn {
       apn : "internet.t"
+      type : DEFAULT
     }
   }
 }
@@ -98,12 +103,14 @@ mno {
       localized_name {
         name : "TWA"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vodafoneweb"
       localized_name {
         name : "Vodafone Web"
       }
+      type : DEFAULT
     }
   }
 }
@@ -120,6 +127,7 @@ mno {
       apn : "internet.beeline.am"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -137,6 +145,7 @@ mno {
       localized_name {
         name : "KT_MARK"
       }
+      type : DEFAULT
     }
   }
 }
@@ -154,12 +163,14 @@ mno {
       localized_name {
         name : "Internet Hima (USB)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -177,12 +188,14 @@ mno {
       localized_name {
         name : "MTS connect"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "inet.vivacell.am"
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -197,6 +210,7 @@ mno {
     mccmnc : "63102"
     mobile_apn {
       apn : "internet.unitel.co.ao"
+      type : DEFAULT
     }
   }
 }
@@ -211,6 +225,7 @@ mno {
     mccmnc : "722340"
     mobile_apn {
       apn : "arnet.personal.com"
+      type : DEFAULT
     }
   }
 }
@@ -232,6 +247,7 @@ mno {
       }
       username : "clarogprs"
       password : "clarogprs999"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.ctimovil.com.ar"
@@ -240,6 +256,7 @@ mno {
       }
       username : "clarogprs"
       password : "clarogprs999"
+      type : DEFAULT
     }
   }
 }
@@ -260,6 +277,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.gprs.unifon.com.ar"
@@ -268,6 +286,7 @@ mno {
       }
       username : "Internet"
       password : "Internet"
+      type : DEFAULT
     }
   }
 }
@@ -288,6 +307,7 @@ mno {
       }
       username : "gprs"
       password : "adgj"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "datos.personal.com"
@@ -296,6 +316,7 @@ mno {
       }
       username : "datos"
       password : "datos"
+      type : DEFAULT
     }
   }
 }
@@ -315,6 +336,7 @@ mno {
       }
       username : "ppp@A1plus.at"
       password : "ppp"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aon.data"
@@ -323,6 +345,7 @@ mno {
       }
       username : "mobile@aon.at"
       password : "ppp"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aon.at"
@@ -331,6 +354,7 @@ mno {
       }
       username : "mobile@aon.at"
       password : "ppp"
+      type : DEFAULT
     }
   }
 }
@@ -350,6 +374,7 @@ mno {
       }
       username : "mdata@mdata.com"
       password : "ppp"
+      type : DEFAULT
     }
   }
 }
@@ -366,16 +391,19 @@ mno {
       apn : "bob.at"
       username : "data@bob.at"
       password : "ppp"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bob.at"
       username : "ppp@bob.at"
       password : "ppp"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms.bob.at"
       username : "data@bob.at"
       password : "ppp"
+      type : DEFAULT
     }
   }
 }
@@ -393,6 +421,7 @@ mno {
     mccmnc : "23210"
     mobile_apn {
       apn : "drei.at"
+      type : DEFAULT
     }
   }
 }
@@ -412,6 +441,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.one.at"
@@ -420,6 +450,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms.one.at"
@@ -428,6 +459,7 @@ mno {
       }
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "fullspeed"
@@ -436,6 +468,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange.web"
@@ -444,6 +477,7 @@ mno {
       }
       username : "Orange"
       password : "Orange"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange.mms"
@@ -452,6 +486,7 @@ mno {
       }
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -471,6 +506,7 @@ mno {
       }
       username : "t-mobile"
       password : "tm"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsinternet"
@@ -479,6 +515,7 @@ mno {
       }
       username : "t-mobile"
       password : "tm"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "business.gprsinternet"
@@ -487,6 +524,7 @@ mno {
       }
       username : "t-mobile"
       password : "tm"
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -502,6 +540,7 @@ mno {
     mccmnc : "23203"
     mobile_apn {
       apn : "volmobil"
+      type : DEFAULT
     }
   }
 }
@@ -516,6 +555,7 @@ mno {
     mccmnc : "23212"
     mobile_apn {
       apn : "web.yesss.at"
+      type : DEFAULT
     }
   }
 }
@@ -535,6 +575,7 @@ mno {
       }
       username : "web@telering.at"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -549,6 +590,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -563,6 +605,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "splns357"
+      type : DEFAULT
     }
   }
 }
@@ -580,12 +623,14 @@ mno {
       localized_name {
         name : "BLiNK (services after 04/08/09)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "connect"
       localized_name {
         name : "BLiNK (services prior to 04/08/09)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -600,6 +645,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "splns357"
+      type : DEFAULT
     }
   }
 }
@@ -618,12 +664,14 @@ mno {
       localized_name {
         name : "Crazy NET"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "purtona.wap"
       localized_name {
         name : "Crazy WAP/MMS"
       }
+      type : DEFAULT
     }
   }
 }
@@ -641,12 +689,14 @@ mno {
       localized_name {
         name : "Postpaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "dodolns1"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -661,6 +711,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "splns357"
+      type : DEFAULT
     }
   }
 }
@@ -678,24 +729,28 @@ mno {
       localized_name {
         name : "Exetel (Optus Based HSPA plans)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) not iPhone"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "optuswap"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) not iPhone"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "yesinternet"
       localized_name {
         name : "Exetel (Optus Based CAP Plans) iPhone"
       }
+      type : DEFAULT
     }
   }
 }
@@ -713,6 +768,7 @@ mno {
       localized_name {
         name : "Exetel (Vodafone Based)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -727,6 +783,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "splns357"
+      type : DEFAULT
     }
   }
 }
@@ -744,12 +801,14 @@ mno {
       localized_name {
         name : "NodeMobile Data"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "splns333a1"
       localized_name {
         name : "Old NodeMobile Data (before 2009-08-26)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -767,37 +826,43 @@ mno {
       localized_name {
         name : "Mobile Internet (handsets)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "yesinternet"
       localized_name {
         name : "Optus Yes Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "connect"
       localized_name {
         name : "Wireless Broadband"
       }
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "connectcap"
       localized_name {
         name : "Post-Paid Mobile Broadband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "preconnect"
       localized_name {
         name : "Pre-Paid Mobile Broadband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms"
       localized_name {
         name : "Optus MMS"
       }
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -816,12 +881,14 @@ mno {
       localized_name {
         name : "Pennytel (Vodafone) live.vodafone.com"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vfinternet.au"
       localized_name {
         name : "Pennytel (Vodafone) vfinternet.au"
       }
+      type : DEFAULT
     }
   }
 }
@@ -836,6 +903,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "splns357"
+      type : DEFAULT
     }
   }
 }
@@ -853,18 +921,21 @@ mno {
       localized_name {
         name : "TPG (iPhone)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "TPG (all except iPhone)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms"
       localized_name {
         name : "MMS"
       }
+      type : DEFAULT
     }
   }
 }
@@ -880,6 +951,7 @@ mno {
     mobile_apn {
       apn : "telstra.wap"
       ip_type : IPV6
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telstra.datapack"
@@ -887,6 +959,7 @@ mno {
         name : "Telstra (3G data pack)"
       }
       password : "Telstra"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telstra.internet"
@@ -894,7 +967,8 @@ mno {
         name : "Telstra (Next G)"
       }
       ip_type : IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "telstra.pcpack"
@@ -902,24 +976,28 @@ mno {
         name : "Telstra (3G PC pack - pay by time)"
       }
       password : "Telstra"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telstra.iph"
       localized_name {
         name : "Telstra Internet/Wap"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telstra.mms"
       localized_name {
         name : "Telstra MMS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telstra.bigpond"
       localized_name {
         name : "Telstra BigPond"
       }
+      type : DEFAULT
     }
   }
 }
@@ -938,6 +1016,7 @@ mno {
       localized_name {
         name : "Telstra LANES"
       }
+      type : DEFAULT
     }
   }
 }
@@ -954,6 +1033,7 @@ mno {
       apn : "3netaccess"
       username : "a"
       password : "a"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3services"
@@ -962,6 +1042,7 @@ mno {
       }
       username : "a"
       password : "a"
+      type : DEFAULT
     }
   }
 }
@@ -981,12 +1062,14 @@ mno {
       }
       username : "guest"
       password : "guest"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "virginbroadband"
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1004,18 +1087,21 @@ mno {
       localized_name {
         name : "Postpaid and some prepaid phone plans"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vfprepaymbb"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "live.vodafone.com"
       localized_name {
         name : "Vodafone Internet"
       }
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -1034,12 +1120,14 @@ mno {
       localized_name {
         name : "Westnet (iPhone)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Westnet (all except iPhone)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1054,6 +1142,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "primuslns1"
+      type : DEFAULT
     }
   }
 }
@@ -1068,6 +1157,7 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "iinet"
+      type : DEFAULT
     }
   }
 }
@@ -1082,6 +1172,7 @@ mno {
     mccmnc : "40001"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -1096,6 +1187,7 @@ mno {
     mccmnc : "40004"
     mobile_apn {
       apn : "azerfon"
+      type : DEFAULT
     }
   }
 }
@@ -1110,6 +1202,7 @@ mno {
     mccmnc : "40002"
     mobile_apn {
       apn : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -1124,6 +1217,7 @@ mno {
     mccmnc : "21890"
     mobile_apn {
       apn : "mms.bhmobile.ba"
+      type : DEFAULT
     }
   }
 }
@@ -1138,6 +1232,7 @@ mno {
     mccmnc : "21803"
     mobile_apn {
       apn : "gprs.eronet.ba"
+      type : DEFAULT
     }
   }
 }
@@ -1155,30 +1250,35 @@ mno {
       localized_name {
         name : "Package 1"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mtelgprs2"
       localized_name {
         name : "Package 2"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mtelgprs3"
       localized_name {
         name : "Package 3"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mtelgprs4"
       localized_name {
         name : "Package 4"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mtelfun"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1193,6 +1293,7 @@ mno {
     mccmnc : "342750"
     mobile_apn {
       apn : "isp.digicelbarbados.com"
+      type : DEFAULT
     }
   }
 }
@@ -1210,6 +1311,7 @@ mno {
       localized_name {
         name : "Web"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1224,6 +1326,7 @@ mno {
     mccmnc : "47001"
     mobile_apn {
       apn : "gpinternet"
+      type : DEFAULT
     }
   }
 }
@@ -1241,6 +1344,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1258,6 +1362,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1274,6 +1379,7 @@ mno {
       apn : "gprs.base.be"
       username : "BASE"
       password : "BASE"
+      type : DEFAULT
     }
   }
 }
@@ -1290,6 +1396,7 @@ mno {
       apn : "web.be"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -1304,6 +1411,7 @@ mno {
     mccmnc : "20610"
     mobile_apn {
       apn : "mworld.be"
+      type : DEFAULT
     }
   }
 }
@@ -1319,6 +1427,7 @@ mno {
     mobile_apn {
       apn : "internet.proximus.be"
       ip_type : IPV4V6
+      type : DEFAULT
     }
   }
 }
@@ -1333,6 +1442,7 @@ mno {
     mccmnc : "20605"
     mobile_apn {
       apn : "telenetwap.be"
+      type : DEFAULT
     }
   }
 }
@@ -1347,6 +1457,7 @@ mno {
     mccmnc : "20608"
     mobile_apn {
       apn : "internet.voo.be"
+      type : DEFAULT
     }
   }
 }
@@ -1361,6 +1472,7 @@ mno {
     mccmnc : "61302"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -1376,6 +1488,7 @@ mno {
     mobile_apn {
       apn : "internet.globul.bg"
       username : "globul"
+      type : DEFAULT
     }
   }
 }
@@ -1390,6 +1503,7 @@ mno {
     mccmnc : "28401"
     mobile_apn {
       apn : "inet-gprs.mtel.bg"
+      type : DEFAULT
     }
   }
 }
@@ -1409,6 +1523,7 @@ mno {
       }
       username : "vivacom"
       password : "vivacom"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.vivatel.bg"
@@ -1417,6 +1532,7 @@ mno {
       }
       username : "vivatel"
       password : "vivatel"
+      type : DEFAULT
     }
   }
 }
@@ -1436,6 +1552,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -1453,6 +1570,7 @@ mno {
       localized_name {
         name : "Viva"
       }
+      type : DEFAULT
     }
   }
 }
@@ -1472,6 +1590,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "hsdpa"
@@ -1480,6 +1599,7 @@ mno {
       }
       username : "hsdpa"
       password : "hsdpa"
+      type : DEFAULT
     }
   }
 }
@@ -1494,6 +1614,7 @@ mno {
     mccmnc : "64203"
     mobile_apn {
       apn : "ucnet"
+      type : DEFAULT
     }
   }
 }
@@ -1508,6 +1629,7 @@ mno {
     mccmnc : "64202"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -1522,6 +1644,7 @@ mno {
     mccmnc : "52802"
     mobile_apn {
       apn : "bmobilewap"
+      type : DEFAULT
     }
   }
 }
@@ -1538,6 +1661,7 @@ mno {
       apn : "dst.wap"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -1554,6 +1678,7 @@ mno {
       apn : "brt.br"
       username : "BrT"
       password : "BrT"
+      type : DEFAULT
     }
   }
 }
@@ -1573,6 +1698,7 @@ mno {
       apn : "ctbc.br"
       username : "ctbc"
       password : "1212"
+      type : DEFAULT
     }
   }
 }
@@ -1589,6 +1715,7 @@ mno {
       apn : "claro.com.br"
       username : "claro"
       password : "claro"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bandalarga.claro.com.br"
@@ -1597,6 +1724,7 @@ mno {
       }
       username : "claro"
       password : "claro"
+      type : DEFAULT
     }
   }
 }
@@ -1614,6 +1742,7 @@ mno {
     mobile_apn {
       apn : "gprs.oi.com.br"
       password : "oioioi"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wapgprs.oi.com.br"
@@ -1622,6 +1751,7 @@ mno {
       }
       username : "oiwap"
       password : "oioioi"
+      type : DEFAULT
     }
   }
 }
@@ -1641,6 +1771,7 @@ mno {
       apn : "tim.br"
       username : "tim"
       password : "tim"
+      type : DEFAULT
     }
   }
 }
@@ -1656,6 +1787,7 @@ mno {
       apn : "wap.telcel.com"
       username : "iesgprs"
       password : "iesgprs2002"
+      type : DEFAULT
     }
   }
 }
@@ -1675,6 +1807,7 @@ mno {
       apn : "zap.vivo.com.br"
       username : "vivo"
       password : "vivo"
+      type : DEFAULT
     }
   }
 }
@@ -1689,6 +1822,7 @@ mno {
     mccmnc : "364390"
     mobile_apn {
       apn : "internet.btcbahamas.com"
+      type : DEFAULT
     }
   }
 }
@@ -1703,6 +1837,7 @@ mno {
     mccmnc : "65201"
     mobile_apn {
       apn : "internet.mascom"
+      type : DEFAULT
     }
   }
 }
@@ -1717,6 +1852,7 @@ mno {
     mccmnc : "65202"
     mobile_apn {
       apn : "internet.orange.co.bw"
+      type : DEFAULT
     }
   }
 }
@@ -1733,6 +1869,7 @@ mno {
       apn : "internet.mts.by"
       username : "mts"
       password : "mts"
+      type : DEFAULT
     }
   }
 }
@@ -1747,6 +1884,7 @@ mno {
     mccmnc : "25703"
     mobile_apn {
       apn : "internet.life.com.by"
+      type : DEFAULT
     }
   }
 }
@@ -1766,6 +1904,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.velcom.by"
@@ -1774,6 +1913,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "plus.velcom.by"
@@ -1782,6 +1922,7 @@ mno {
       }
       username : "plus"
       password : "plus"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "privet.velcom.by"
@@ -1790,6 +1931,7 @@ mno {
       }
       username : "privet"
       password : "privet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web1.velcom.by"
@@ -1798,6 +1940,7 @@ mno {
       }
       username : "web1"
       password : "web1"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web2.velcom.by"
@@ -1806,6 +1949,7 @@ mno {
       }
       username : "web2"
       password : "web2"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web3.velcom.by"
@@ -1814,6 +1958,7 @@ mno {
       }
       username : "web3"
       password : "web3"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vmi.velcom.by"
@@ -1822,6 +1967,7 @@ mno {
       }
       username : "vmi"
       password : "vmi"
+      type : DEFAULT
     }
   }
 }
@@ -1845,7 +1991,8 @@ mno {
         name : "Internet"
       }
       ip_type : IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
   mvno {
@@ -1900,7 +2047,8 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel.crs.bell.ca.ioe"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -1921,7 +2069,8 @@ mno {
       mobile_apn {
         apn : "connect"
         ip_type : IPV4V6
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -1990,6 +2139,7 @@ mno {
       apn : "internet.fido.ca"
       username : "fido"
       password : "fido"
+      type : DEFAULT
     }
   }
 }
@@ -2007,12 +2157,14 @@ mno {
       localized_name {
         name : "Mobile Web"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.davewireless.com"
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2029,6 +2181,7 @@ mno {
       apn : "internet.com"
       username : "wapuser1"
       password : "wap"
+      type : DEFAULT
     }
   }
   mvno {
@@ -2059,7 +2212,8 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel.apn"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -2100,24 +2254,28 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vpn.telus.com"
       localized_name {
         name : "Internet (with VPN)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bb.telus.com"
       localized_name {
         name : "Blackberry"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "sp.telus.com"
       localized_name {
         name : "Mobile Web/Smartphone"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2146,12 +2304,14 @@ mno {
       localized_name {
         name : "Telephony data"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ihvm.videotron"
       localized_name {
         name : "IHVM"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2169,12 +2329,14 @@ mno {
       localized_name {
         name : "Laptop (data stick)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.windmobile.ca"
       localized_name {
         name : "Mobile (add-on for phone)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2190,6 +2352,7 @@ mno {
     mobile_apn {
       apn : "vodanet"
       username : "vodalive"
+      type : DEFAULT
     }
   }
 }
@@ -2204,6 +2367,7 @@ mno {
     mccmnc : "63086"
     mobile_apn {
       apn : "iew.orange.com"
+      type : DEFAULT
     }
   }
 }
@@ -2221,6 +2385,7 @@ mno {
       localized_name {
         name : "Migros Data"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2238,24 +2403,28 @@ mno {
       localized_name {
         name : "Internet Everywhere - Standard"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "click"
       localized_name {
         name : "Internet Everywhere - Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "intranetaccess"
       localized_name {
         name : "Internet Everywhere - Intranet Access"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Internet Everywhere - Postpaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2272,16 +2441,19 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.sunrise.ch"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms.sunrise.ch"
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -2300,6 +2472,7 @@ mno {
       localized_name {
         name : "Swisscom GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "corporate.swisscom.ch"
@@ -2308,12 +2481,14 @@ mno {
       }
       username : "testprofil"
       password : "temporary"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "event.swisscom.ch"
       localized_name {
         name : "Swisscom MMS"
       }
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -2331,6 +2506,7 @@ mno {
 	apn : "orangeweb"
         username : "web"
         password : "web"
+        type : DEFAULT
     }
   }
 }
@@ -2345,6 +2521,7 @@ mno {
     mccmnc : "61101"
     mobile_apn {
 	apn : "internetogn"
+ type : DEFAULT
     }
   }
 }
@@ -2359,6 +2536,7 @@ mno {
     mccmnc : "63203"
     mobile_apn {
 	apn : "internetogw"
+ type : DEFAULT
     }
   }
 }
@@ -2375,6 +2553,7 @@ mno {
 	apn : "orangeciweb"
         username : "web"
         password : "web"
+        type : DEFAULT
     }
   }
 }
@@ -2389,6 +2568,7 @@ mno {
     mccmnc : "61205"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -2405,6 +2585,7 @@ mno {
       apn : "bam.clarochile.cl"
       username : "clarochile"
       password : "clarochile"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bap.clarochile.cl"
@@ -2413,6 +2594,7 @@ mno {
       }
       username : "clarochile"
       password : "clarochile"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.clarochile.cl"
@@ -2421,6 +2603,7 @@ mno {
       }
       username : "clarochile"
       password : "clarochile"
+      type : DEFAULT
     }
   }
 }
@@ -2440,6 +2623,7 @@ mno {
       }
       username : "entelpcs"
       password : "entelpcs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bam.entelpcs.cl"
@@ -2448,6 +2632,7 @@ mno {
       }
       username : "entelpcs"
       password : "entelpcs"
+      type : DEFAULT
     }
   }
 }
@@ -2469,6 +2654,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.gtdmovil.cl"
@@ -2477,6 +2663,7 @@ mno {
       }
       username : "webgtd"
       password : "webgtd"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.tmovil.cl"
@@ -2485,6 +2672,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -2501,6 +2689,7 @@ mno {
       apn : "internet"
       username : "guest"
       password : "guest"
+      type : DEFAULT
     }
   }
 }
@@ -2517,6 +2706,7 @@ mno {
       apn : "orangecmgprs"
       username : "orange"
       password : "orange"
+      type : DEFAULT
     }
   }
 }
@@ -2538,6 +2728,7 @@ mno {
       }
       username : "guest"
       password : "guest"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "cmnet"
@@ -2547,7 +2738,8 @@ mno {
       username : "guest"
       password : "guest"
       ip_type : IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -2567,6 +2759,7 @@ mno {
       }
       username : "ctnet@mycdma.cn"
       password : "vnet.mobi"
+      type : DEFAULT
     }
   }
 }
@@ -2582,6 +2775,7 @@ mno {
     mobile_apn {
       apn : "3gnet"
       username : "uninet"
+      type : DEFAULT
     }
   }
 }
@@ -2598,6 +2792,7 @@ mno {
       apn : "internet.comcel.com.co"
       username : "COMCELWEB"
       password : "COMCELWEB"
+      type : DEFAULT
     }
   }
 }
@@ -2615,6 +2810,7 @@ mno {
       apn : "internet.movistar.com.co"
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
   }
 }
@@ -2630,6 +2826,7 @@ mno {
     mccmnc : "732111"
     mobile_apn {
       apn : "web.colombiamovil.com.co"
+      type : DEFAULT
     }
   }
 }
@@ -2647,12 +2844,14 @@ mno {
       apn : "www.une.net.co"
       username : "une"
       password : "une"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "une4glte.net.co"
       localized_name {
         name : "LTE (4G)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2666,6 +2865,7 @@ mno {
     }
     mobile_apn {
       apn : "web.uffmovil.com.co"
+      type : DEFAULT
     }
   }
 }
@@ -2680,6 +2880,7 @@ mno {
     mccmnc : "732123"
     mobile_apn {
       apn : "web.vmc.net.co"
+      type : DEFAULT
     }
   }
 }
@@ -2695,6 +2896,7 @@ mno {
       apn : "moviletb.net.co"
       username : "etb"
       password : "etb"
+      type : DEFAULT
     }
   }
 }
@@ -2712,6 +2914,7 @@ mno {
       apn : "icecelular"
       username : "guest"
       password : "guest"
+      type : DEFAULT
     }
   }
 }
@@ -2729,6 +2932,7 @@ mno {
       localized_name {
         name : "Kolbi 3g"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2746,12 +2950,14 @@ mno {
       localized_name {
         name : "Contract"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pp.internet"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -2768,6 +2974,7 @@ mno {
       apn : "internet"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -2782,9 +2989,11 @@ mno {
     mccmnc : "23002"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.open"
+      type : DEFAULT
     }
   }
 }
@@ -2799,6 +3008,7 @@ mno {
     mccmnc : "23001"
     mobile_apn {
       apn : "internet.t-mobile.cz"
+      type : DEFAULT
     }
   }
 }
@@ -2813,7 +3023,8 @@ mno {
     mccmnc : "23003"
     mobile_apn {
       apn : "internet"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -2834,6 +3045,7 @@ mno {
       username : "telekom"
       password : "telekom"
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -2856,6 +3068,7 @@ mno {
         username : "congstar"
         password : "cs"
         ip_type: IPV4V6
+        type : DEFAULT
       }
     }
   }
@@ -2881,6 +3094,7 @@ mno {
         name : "o2 Internet"
       }
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -2904,6 +3118,7 @@ mno {
         }
         username : "eplus"
         password : "gprs"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "tagesflat.eplus.de"
@@ -2915,6 +3130,7 @@ mno {
         }
         username : "eplus"
         password : "gprs"
+        type : DEFAULT
       }
     }
   }
@@ -2934,6 +3150,7 @@ mno {
         apn : "internet.netcologne.de"
         username : "web"
         password : "password"
+        type : DEFAULT
       }
     }
   }
@@ -2955,6 +3172,7 @@ mno {
         apn : "internet.eplus.de"
         username : "blau"
         password : "blau"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "tagesflat.eplus.de"
@@ -2966,6 +3184,7 @@ mno {
         }
         username : "blau"
         password : "blau"
+        type : DEFAULT
       }
     }
   }
@@ -2987,6 +3206,7 @@ mno {
         apn : "internet.eplus.de"
         username : "simyo"
         password : "simyo"
+        type : DEFAULT
       }
     }
   }
@@ -3006,6 +3226,7 @@ mno {
       mccmnc : "26211"
       mobile_apn {
         apn : "internet.partner1"
+        type : DEFAULT
       }
     }
   }
@@ -3025,6 +3246,7 @@ mno {
       mccmnc : "26211"
       mobile_apn {
         apn : "webmobil1"
+        type : DEFAULT
       }
     }
   }
@@ -3049,6 +3271,7 @@ mno {
         }
         username : "fonic"
         password : "fonic"
+        type : DEFAULT
       }
     }
   }
@@ -3066,6 +3289,7 @@ mno {
       apn : "internet.t-mobile"
       username : "t-mobile"
       password : "tm"
+      type : DEFAULT
     }
   }
 }
@@ -3086,7 +3310,8 @@ mno {
         name : "VF DE Web"
       }
       ip_type: IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
   mvno {
@@ -3108,7 +3333,8 @@ mno {
         localized_name {
           name : "Mobile Broadband"
         }
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "mail.partner.de"
@@ -3117,6 +3343,7 @@ mno {
         }
         username : "D2"
         password : "Web"
+        type : DEFAULT
       }
     }
   }
@@ -3137,19 +3364,22 @@ mno {
         localized_name {
           name : "BILD Mobilportal"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "web.vodafone.de"
         localized_name {
           name : "Contract"
         }
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "event.vodafone.de"
         localized_name {
           name : "BILDmobil Speedstick (Surfpakete)"
         }
+        type : DEFAULT
       }
     }
   }
@@ -3168,24 +3398,28 @@ mno {
       localized_name {
         name : "Bredbånd (standard)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "net.tre.dk"
       localized_name {
         name : "Bredbånd Premium Kontant"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "data.tre.dk"
       localized_name {
         name : "3 (standard for mobilkunder; spærret for indgående trafik)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "static.tre.dk"
       localized_name {
         name : "3 (statisk IP)"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -3205,12 +3439,14 @@ mno {
         localized_name {
           name : "Mobile Broadband"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "data.dk"
         localized_name {
           name : "Mobile Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -3226,6 +3462,7 @@ mno {
     mccmnc : "23802"
     mobile_apn {
       apn : "internet.bibob.dk"
+      type : DEFAULT
     }
   }
 }
@@ -3241,6 +3478,7 @@ mno {
     mccmnc : "23877"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -3256,6 +3494,7 @@ mno {
       apn : "internet"
       username : "Fullrate"
       password : "Fullrate"
+      type : DEFAULT
     }
   }
 }
@@ -3270,12 +3509,15 @@ mno {
     mccmnc : "23801"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.no"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.se"
+      type : DEFAULT
     }
   }
   mvno {
@@ -3292,6 +3534,7 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -3309,6 +3552,7 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -3326,6 +3570,7 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -3343,6 +3588,7 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -3359,6 +3605,7 @@ mno {
     mccmnc : "23877"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -3375,6 +3622,7 @@ mno {
     mccmnc : "23830"
     mobile_apn {
       apn : "www.internet.mtelia.dk"
+      type : DEFAULT
     }
   }
 }
@@ -3389,6 +3637,7 @@ mno {
     mccmnc : "37002"
     mobile_apn {
       apn : "internet.ideasclaro.com.do"
+      type : DEFAULT
     }
   }
 }
@@ -3403,6 +3652,7 @@ mno {
     mccmnc : "37001"
     mobile_apn {
       apn : "orangenet.com.do"
+      type : DEFAULT
     }
   }
 }
@@ -3419,6 +3669,7 @@ mno {
       apn : "edge.viva.net.do"
       username : "viva"
       password : "viva"
+      type : DEFAULT
     }
   }
 }
@@ -3433,6 +3684,7 @@ mno {
     mccmnc : "60302"
     mobile_apn {
       apn : "djezzy.internet"
+      type : DEFAULT
     }
   }
 }
@@ -3449,6 +3701,7 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -3468,6 +3721,7 @@ mno {
       }
       username : "nedjma"
       password : "nedjma"
+      type : DEFAULT
     }
   }
 }
@@ -3484,6 +3738,7 @@ mno {
       apn : "navega.movistar.ec"
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
   }
 }
@@ -3498,6 +3753,7 @@ mno {
     mccmnc : "74001"
     mobile_apn {
       apn : "internet.porta.com.ec"
+      type : DEFAULT
     }
   }
 }
@@ -3512,6 +3768,7 @@ mno {
     mccmnc : "24801"
     mobile_apn {
       apn : "internet.emt.ee"
+      type : DEFAULT
     }
   }
 }
@@ -3526,6 +3783,7 @@ mno {
     mccmnc : "24802"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -3540,6 +3798,7 @@ mno {
     mccmnc : "24801"
     mobile_apn {
       apn : "internet.emt.ee"
+      type : DEFAULT
     }
   }
 }
@@ -3556,6 +3815,7 @@ mno {
       apn : "internet.tele2.ee"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -3570,6 +3830,7 @@ mno {
     mccmnc : "60203"
     mobile_apn {
       apn : "etisalat"
+      type : DEFAULT
     }
   }
 }
@@ -3584,6 +3845,7 @@ mno {
     mccmnc : "60201"
     mobile_apn {
       apn : "mobinilweb"
+      type : DEFAULT
     }
   }
 }
@@ -3600,6 +3862,7 @@ mno {
       apn : "internet.vodafone.net"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -3616,6 +3879,7 @@ mno {
       apn : "orangeworld"
       username : "orange"
       password : "orange"
+      type : DEFAULT
     }
   }
 }
@@ -3629,6 +3893,7 @@ mno {
     }
     mobile_apn {
       apn : "carrefourinternet"
+      type : DEFAULT
     }
   }
 }
@@ -3648,6 +3913,7 @@ mno {
       }
       username : "wap@wap"
       password : "wap125"
+      type : DEFAULT
     }
   }
 }
@@ -3664,6 +3930,7 @@ mno {
       apn : "internet.euskaltel.mobi"
       username : "CLIENTE"
       password : "EUSKALTEL"
+      type : DEFAULT
     }
   }
 }
@@ -3678,6 +3945,7 @@ mno {
     mccmnc : "21421"
     mobile_apn {
       apn : "jazzinternet"
+      type : DEFAULT
     }
   }
 }
@@ -3692,6 +3960,7 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "moreinternet"
+      type : DEFAULT
     }
   }
 }
@@ -3712,6 +3981,7 @@ mno {
       }
       username : "telefonica"
       password : "telefonica"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "movistar.es"
@@ -3720,6 +3990,7 @@ mno {
       }
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
   }
   mvno {
@@ -3742,6 +4013,7 @@ mno {
         apn : "tuenti.com"
         username : "tuenti"
         password : "tuenti"
+        type : DEFAULT
       }
     }
   }
@@ -3757,6 +4029,7 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "internetmas"
+      type : DEFAULT
     }
   }
 }
@@ -3771,6 +4044,7 @@ mno {
     mccmnc : "21418"
     mobile_apn {
       apn : "internet.ono.com"
+      type : DEFAULT
     }
   }
 }
@@ -3791,6 +4065,7 @@ mno {
       }
       username : "ORANGE"
       password : "ORANGE"
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -3809,12 +4084,14 @@ mno {
       localized_name {
         name : "Pepephone"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsmov.pepephone.com"
       localized_name {
         name : "Pepephone (Mobile)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -3829,6 +4106,7 @@ mno {
     mccmnc : "21419"
     mobile_apn {
       apn : "gprs-service.com"
+      type : DEFAULT
     }
   }
 }
@@ -3845,6 +4123,7 @@ mno {
       apn : "internet.telecable.es"
       username : "telecable"
       password : "telecable"
+      type : DEFAULT
     }
   }
 }
@@ -3865,7 +4144,8 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "airtelnet.es"
@@ -3874,6 +4154,7 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
   }
 }
@@ -3888,6 +4169,7 @@ mno {
     mccmnc : "21404"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -3902,6 +4184,7 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "internettph"
+      type : DEFAULT
     }
   }
 }
@@ -3916,6 +4199,7 @@ mno {
     mccmnc : "21417"
     mobile_apn {
       apn : "internet.mundo-r.com"
+      type : DEFAULT
     }
   }
 }
@@ -3930,6 +4214,7 @@ mno {
     mccmnc : "63601"
     mobile_apn {
       apn : "etc.com"
+      type : DEFAULT
     }
   }
 }
@@ -3947,6 +4232,7 @@ mno {
       localized_name {
         name : "dna internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -3964,6 +4250,7 @@ mno {
       localized_name {
         name : "dna internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -3981,6 +4268,7 @@ mno {
       localized_name {
         name : "dna internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -3998,6 +4286,7 @@ mno {
       localized_name {
         name : "dna internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4012,6 +4301,7 @@ mno {
     mccmnc : "24405"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4029,6 +4319,7 @@ mno {
       localized_name {
         name : "Kuiri Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4046,18 +4337,21 @@ mno {
       localized_name {
         name : "Postpaid (contract) NAT (available for all subscribers)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet4"
       localized_name {
         name : "Postpaid (contract) public IP address (needs to be ordered)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Prepaid (no contract)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4072,12 +4366,14 @@ mno {
     mccmnc : "24491"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "prointernet"
       localized_name {
         name : "Prointernet (public IP)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4094,6 +4390,7 @@ mno {
       localized_name {
         name : "Wekkula"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4108,12 +4405,15 @@ mno {
     mccmnc : "54201"
     mobile_apn {
       apn : "vfinternet.fj"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "kidanet.fj"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "prepay.vfinternet.fj"
+      type : DEFAULT
     }
   }
 }
@@ -4128,6 +4428,7 @@ mno {
     mccmnc : "28802"
     mobile_apn {
       apn : "vmc.vodafone.fo"
+      type : DEFAULT
     }
   }
 }
@@ -4141,6 +4442,7 @@ mno {
     }
     mobile_apn {
       apn : "wap65"
+      type : DEFAULT
     }
   }
 }
@@ -4160,30 +4462,35 @@ mno {
       localized_name {
         name : "Contrat Pro Data Illimité"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "b2bouygtel.com"
       localized_name {
         name : "B2Bouygtel"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ebouygtel.com"
       localized_name {
         name : "Forfait Data"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mmsbouygtel.com"
       localized_name {
         name : "Forfait Data"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pcebouygtel.com"
       localized_name {
         name : "Contrat Pro Data"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4203,12 +4510,14 @@ mno {
       }
       username : "free"
       password : "free"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mmsfree"
       localized_name {
         name : "Free-Mobile"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -4227,6 +4536,7 @@ mno {
         localized_name {
           name : "iliad"
         }
+        type : DEFAULT
       }
     }
   }
@@ -4246,12 +4556,14 @@ mno {
       localized_name {
         name : "Orange Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet-entreprise"
       localized_name {
         name : "Business Contract"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange"
@@ -4260,6 +4572,7 @@ mno {
       }
       username : "orange"
       password : "orange"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange-mib"
@@ -4268,6 +4581,7 @@ mno {
       }
       username : "mportail"
       password : "mib"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange-acte"
@@ -4276,12 +4590,14 @@ mno {
       }
       username : "orange"
       password : "orange"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "orange.ie"
       localized_name {
         name : "Internet Everywhere 3G"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -4304,6 +4620,7 @@ mno {
         apn : "ao.fr"
         username : "orange"
         password : "orange"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "ofnew.fr"
@@ -4312,6 +4629,7 @@ mno {
         }
         username : "orange"
         password : "orange"
+        type : DEFAULT
       }
     }
   }
@@ -4331,42 +4649,49 @@ mno {
       localized_name {
         name : "Web / Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wapsfr"
       localized_name {
         name : "WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internetpro"
       localized_name {
         name : "SFR internetpro"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ipnet"
       localized_name {
         name : "SFR ipnet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "slsfr"
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "sl2sfr"
       localized_name {
         name : "Full Internet (Webphone)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internetneuf"
       localized_name {
         name : "Internet (Neuf Telecom)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4381,6 +4706,7 @@ mno {
     mccmnc : "20822"
     mobile_apn {
       apn : "netgprs.com"
+      type : DEFAULT
     }
   }
 }
@@ -4398,12 +4724,14 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "three.co.uk"
       localized_name {
         name : "Handsets"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -4418,6 +4746,7 @@ mno {
       }
       mobile_apn {
         apn : "hpdp-internet.foggmobile.com"
+        type : DEFAULT
       }
     }
   }
@@ -4435,6 +4764,7 @@ mno {
       apn : "asdamobiles.co.uk"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -4451,6 +4781,7 @@ mno {
       apn : "btmobile.bt.com"
       username : "bt"
       password : "bt"
+      type : DEFAULT
     }
   }
 }
@@ -4472,7 +4803,8 @@ mno {
       }
       username : "o2web"
       password : "password"
-      is_attach_apn : true
+      type: DEFAULT
+      type: IA
     }
     mobile_apn {
       apn : "mobile.o2.co.uk"
@@ -4481,6 +4813,7 @@ mno {
       }
       username : "faster"
       password : "password"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "payandgo.o2.co.uk"
@@ -4489,6 +4822,7 @@ mno {
       }
       username : "payandgo"
       password : "password"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "idata.o2.co.uk"
@@ -4497,6 +4831,7 @@ mno {
       }
       username : "vertigo"
       password : "password"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "m-bb.o2.co.uk"
@@ -4505,6 +4840,7 @@ mno {
       }
       username : "o2bb"
       password : "password"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.o2.co.uk"
@@ -4513,6 +4849,7 @@ mno {
       }
       username : "o2wap"
       password : "password"
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -4534,6 +4871,7 @@ mno {
       password : "secure"
       authentication : PAP
       ip_type : IPV4V6
+      type : DEFAULT
     }
   }
 }
@@ -4549,6 +4887,7 @@ mno {
       apn : "mobile.talktalk.co.uk"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -4567,6 +4906,7 @@ mno {
       apn : "prepay.tesco-mobile.com"
       username : "tescowap"
       password : "password"
+      type : DEFAULT
     }
   }
 }
@@ -4582,10 +4922,12 @@ mno {
     mccmnc : "23432"
     mobile_apn {
       apn : "vdata"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "goto.virginmobile.uk"
       username : "user"
+      type : DEFAULT
     }
   }
 }
@@ -4606,6 +4948,7 @@ mno {
       username : "wap"
       password : "wap"
       ip_type : IPV4V6
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
@@ -4614,6 +4957,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ppbundle.internet"
@@ -4622,6 +4966,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "smart"
@@ -4630,6 +4975,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pp.internet"
@@ -4638,6 +4984,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pp.vodafone.co.uk"
@@ -4646,6 +4993,7 @@ mno {
       }
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -4668,6 +5016,7 @@ mno {
       }
       username : "giffgaff"
       password : "password"
+      type : DEFAULT
     }
   }
 }
@@ -4682,6 +5031,7 @@ mno {
     mccmnc : "28201"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4696,6 +5046,7 @@ mno {
     mccmnc : "23403"
     mobile_apn {
       apn : "airtel-ci-gprs.com"
+      type : DEFAULT
     }
   }
 }
@@ -4713,12 +5064,14 @@ mno {
       localized_name {
         name : "WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4733,6 +5086,7 @@ mno {
     mccmnc : "23450"
     mobile_apn {
       apn : "pepper"
+      type : DEFAULT
     }
   }
 }
@@ -4747,6 +5101,7 @@ mno {
     mccmnc : "62006"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4761,6 +5116,7 @@ mno {
     mccmnc : "62007"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4775,6 +5131,7 @@ mno {
     mccmnc : "62001"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4790,6 +5147,7 @@ mno {
     mobile_apn {
       apn : "web.tigo.com.gh"
       username : "web"
+      type : DEFAULT
     }
   }
 }
@@ -4804,6 +5162,7 @@ mno {
     mccmnc : "62002"
     mobile_apn {
       apn : "browse"
+      type : DEFAULT
     }
   }
 }
@@ -4817,6 +5176,7 @@ mno {
     }
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4831,6 +5191,7 @@ mno {
     mccmnc : "20201"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4848,12 +5209,14 @@ mno {
       localized_name {
         name : "Contract"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.session"
       localized_name {
         name : "Mobile Broadband On Demand"
       }
+      type : DEFAULT
     }
   }
 }
@@ -4871,6 +5234,7 @@ mno {
       apn : "gint.b-online.gr"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -4885,6 +5249,7 @@ mno {
     mccmnc : "70401"
     mobile_apn {
       apn : "internet.ideasclaro"
+      type : DEFAULT
     }
   }
 }
@@ -4901,6 +5266,7 @@ mno {
       apn : "wap.tigo.gt"
       username : "Wap"
       password : "Wap"
+      type : DEFAULT
     }
   }
 }
@@ -4917,6 +5283,7 @@ mno {
       apn : "internet.movistar.gt"
       username : "movistargt"
       password : "movistargt"
+      type : DEFAULT
     }
   }
 }
@@ -4933,6 +5300,7 @@ mno {
       apn : "internet"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -4949,6 +5317,7 @@ mno {
       apn : "wap.cellinkgy.com"
       username : "test"
       password : "test"
+      type : DEFAULT
     }
   }
 }
@@ -4964,6 +5333,7 @@ mno {
     mccmnc : "45402"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -4979,6 +5349,7 @@ mno {
     mccmnc : "45413"
     mobile_apn {
       apn : "cmhk"
+      type : DEFAULT
     }
   }
 }
@@ -4993,6 +5364,7 @@ mno {
     mccmnc : "45410"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -5011,18 +5383,21 @@ mno {
       localized_name {
         name : "Sunday (Old)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pccwdata"
       localized_name {
         name : "PCCW 2G/GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pccw"
       localized_name {
         name : "PCCW 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5037,6 +5412,7 @@ mno {
     mccmnc : "45406"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -5051,6 +5427,7 @@ mno {
     mccmnc : "45416"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -5069,12 +5446,14 @@ mno {
       localized_name {
         name : "4G LTE"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mobile.three.com.hk"
       localized_name {
         name : "3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5089,6 +5468,7 @@ mno {
     mccmnc : "70802"
     mobile_apn {
       apn : "internet.tigo.hn"
+      type : DEFAULT
     }
   }
 }
@@ -5105,6 +5485,7 @@ mno {
       apn : "carnet.tele2.hr"
       username : "AAIEDU"
       password : ""
+      type : DEFAULT
     }
   }
 }
@@ -5121,6 +5502,7 @@ mno {
       apn : "carnet.vip.hr"
       username : "AAIEDU"
       password : ""
+      type : DEFAULT
     }
   }
 }
@@ -5135,6 +5517,7 @@ mno {
     mccmnc : "21901"
     mobile_apn {
       apn : "web.htgprs"
+      type : DEFAULT
     }
   }
 }
@@ -5149,6 +5532,7 @@ mno {
     mccmnc : "21902"
     mobile_apn {
       apn : "mobileinternet.tele2.hr"
+      type : DEFAULT
     }
   }
 }
@@ -5166,6 +5550,7 @@ mno {
       localized_name {
         name : "Contract and Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprs5.vipnet.hr"
@@ -5174,6 +5559,7 @@ mno {
       }
       username : "38591"
       password : "38591"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprs0.vipnet.hr"
@@ -5182,6 +5568,7 @@ mno {
       }
       username : "38591"
       password : "38591"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3g.vip.hr"
@@ -5190,6 +5577,7 @@ mno {
       }
       username : "38591"
       password : "38591"
+      type : DEFAULT
     }
   }
 }
@@ -5207,6 +5595,7 @@ mno {
       localized_name {
         name : "DIGI Move"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5223,6 +5612,7 @@ mno {
       localized_name {
         name : "net.and.go"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5237,6 +5627,7 @@ mno {
     mccmnc : "21630"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms-westel"
@@ -5244,6 +5635,7 @@ mno {
         name : "MMS"
       }
       username : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -5261,6 +5653,7 @@ mno {
       localized_name {
         name : "mobilinternet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5280,24 +5673,28 @@ mno {
       }
       username : "vodawap"
       password : "vodawap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.vodafone.net"
       localized_name {
         name : "Előf. töm."
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vitamax.snet.vodafone.net"
       localized_name {
         name : "Felt. norm."
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vitamax.internet.vodafone.net"
       localized_name {
         name : "Vodafone (felt. töm.)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5317,6 +5714,7 @@ mno {
       }
       username : "3gprs"
       password : "3gprs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3data"
@@ -5328,6 +5726,7 @@ mno {
       }
       username : "3data"
       password : "3data"
+      type : DEFAULT
     }
   }
 }
@@ -5344,6 +5743,7 @@ mno {
       apn : "axis"
       username : "axis"
       password : "123456"
+      type : DEFAULT
     }
   }
 }
@@ -5360,6 +5760,7 @@ mno {
       apn : "www.xlgprs.net"
       username : "xlgprs"
       password : "proxl"
+      type : DEFAULT
     }
   }
 }
@@ -5380,6 +5781,7 @@ mno {
       }
       username : "indosat@durasi"
       password : "indosat@durasi"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "indosatgprs"
@@ -5388,6 +5790,7 @@ mno {
       }
       username : "indosat"
       password : "indosat"
+      type : DEFAULT
     }
   }
 }
@@ -5405,6 +5808,7 @@ mno {
       apn : "telkomsel"
       username : "wap"
       password : "wap123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "flash"
@@ -5413,6 +5817,7 @@ mno {
       }
       username : "foo"
       password : "bar"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
@@ -5421,6 +5826,7 @@ mno {
       }
       username : "foo"
       password : "bar"
+      type : DEFAULT
     }
   }
 }
@@ -5440,12 +5846,14 @@ mno {
       }
       username : "my"
       password : "meteor"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "broadband.mymeteor.ie"
       localized_name {
         name : "Broadband To Go"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "isp.mymeteor.ie"
@@ -5454,6 +5862,7 @@ mno {
       }
       username : "my"
       password : "isp"
+      type : DEFAULT
     }
   }
   mvno {
@@ -5473,6 +5882,7 @@ mno {
         localized_name {
           name : "Broadband To Go"
         }
+        type : DEFAULT
       }
     }
   }
@@ -5493,6 +5903,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pp.internet"
@@ -5501,12 +5912,14 @@ mno {
       }
       username : "faster"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Old Config Internet and MMS"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5521,6 +5934,7 @@ mno {
     mccmnc : "27205"
     mobile_apn {
       apn : "3ireland.ie"
+      type : DEFAULT
     }
   }
 }
@@ -5537,7 +5951,8 @@ mno {
       apn : "hs.vodafone.ie"
       username : "vodafone"
       password : "vodafone"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "isp.vodafone.ie"
@@ -5546,6 +5961,7 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "live.vodafone.com"
@@ -5554,6 +5970,7 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
   }
 }
@@ -5568,6 +5985,7 @@ mno {
     mccmnc : "42502"
     mobile_apn {
       apn : "internetg"
+      type : DEFAULT
     }
   }
 }
@@ -5582,6 +6000,7 @@ mno {
     mccmnc : "42508"
     mobile_apn {
       apn : "internet.golantelecom.net.il"
+      type : DEFAULT
     }
   }
 }
@@ -5596,6 +6015,7 @@ mno {
     mccmnc : "42515"
     mobile_apn {
       apn : "hcminternet"
+      type : DEFAULT
     }
   }
 }
@@ -5610,6 +6030,7 @@ mno {
     mccmnc : "42507"
     mobile_apn {
       apn : "net.hotm"
+      type : DEFAULT
     }
   }
 }
@@ -5627,6 +6048,7 @@ mno {
       localized_name {
         name : "3G Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5646,6 +6068,7 @@ mno {
       }
       username : "pcl@3g"
       password : "pcl"
+      type : DEFAULT
     }
   }
 }
@@ -5662,6 +6085,7 @@ mno {
       apn : "internet.rl"
       username : "rl@3g"
       password : "rl"
+      type : DEFAULT
     }
   }
 }
@@ -5676,6 +6100,7 @@ mno {
     mccmnc : "42514"
     mobile_apn {
       apn : "data.youphone.co.il"
+      type : DEFAULT
     }
   }
 }
@@ -5690,6 +6115,7 @@ mno {
     mccmnc : "23458"
     mobile_apn {
       apn : "3gpronto"
+      type : DEFAULT
     }
   }
 }
@@ -5708,12 +6134,14 @@ mno {
       localized_name {
         name : "WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5750,24 +6178,28 @@ mno {
       localized_name {
         name : "Web"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aircelgprs"
       localized_name {
         name : "GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aircelgprs.po"
       localized_name {
         name : "GPRS (Postpaid)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aircelgprs.pr"
       localized_name {
         name : "GPRS (Prepaid)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5804,6 +6236,7 @@ mno {
     mccmnc : "40556"
     mobile_apn {
       apn : "airtelgprs.com"
+      type : DEFAULT
     }
   }
 }
@@ -5841,48 +6274,56 @@ mno {
       localized_name {
         name : "New GPRS/3G"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bsnlwap"
       localized_name {
         name : "New WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bsnlsouth"
       localized_name {
         name : "Old South Zone A (Karnatka, Andhra Pradesh, Chennai, Tamil Nadu, Kerala)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprssouth.cellone.in"
       localized_name {
         name : "Old South Zone B (Karnatka, Andhra Pradesh, Chennai, Tamil Nadu, Kerala)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsnorth.cellone.in"
       localized_name {
         name : "Old North Zone (Haryana, Punjab, UP(East), UP(West), Himachal Pradesh, Rajasthan, Jammu & Kashmir)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprswest.cellone.in"
       localized_name {
         name : "Old West Zone (Maharashtra, Gujrat, Madhya Pradesh, Chattishgarh)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.e.pr"
       localized_name {
         name : "Old East Zone Prepaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.e.po"
       localized_name {
         name : "Old East Zone Postpaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -5911,6 +6352,7 @@ mno {
     mccmnc : "405850"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -5931,12 +6373,14 @@ mno {
       }
       username : "mtnl"
       password : "mtnl123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mtnl.net"
       localized_name {
         name : "Mumbai (3G Prepaid / Postpaid)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsmtnldel"
@@ -5945,6 +6389,7 @@ mno {
       }
       username : "mtnl"
       password : "mtnl123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsppsmum"
@@ -5953,6 +6398,7 @@ mno {
       }
       username : "mtnl"
       password : "mtnl123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprsmtnlmum"
@@ -5961,6 +6407,7 @@ mno {
       }
       username : "mtnl"
       password : "mtnl123"
+      type : DEFAULT
     }
   }
 }
@@ -5995,18 +6442,21 @@ mno {
       localized_name {
         name : "Smart Net"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "smartwap"
       localized_name {
         name : "Smart WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "rcomnet"
       localized_name {
         name : "Netconnect (RCOMNET)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6034,12 +6484,14 @@ mno {
       apn : "simplyenjoy"
       username : "spice"
       password : "spice"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "simplydownload"
       localized_name {
         name : "kar"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6076,12 +6528,14 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "tatadocomo3g"
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6131,12 +6585,14 @@ mno {
       localized_name {
         name : "Vodafone Connect"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "portalnmms"
       localized_name {
         name : "Vodafone Live"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6175,6 +6631,7 @@ mno {
       localized_name {
         name : "Jio 4G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6189,6 +6646,7 @@ mno {
     mccmnc : "41850"
     mobile_apn {
       apn : "net.asiacell.com"
+      type : DEFAULT
     }
   }
 }
@@ -6205,6 +6663,7 @@ mno {
       apn : "net.korek.com"
       username : "korek"
       password : "korek"
+      type : DEFAULT
     }
   }
 }
@@ -6219,6 +6678,7 @@ mno {
     mccmnc : "43235"
     mobile_apn {
       apn : "mtnirancell"
+      type : DEFAULT
     }
   }
 }
@@ -6233,6 +6693,7 @@ mno {
     mccmnc : "43211"
     mobile_apn {
       apn : "mcinet"
+      type : DEFAULT
     }
   }
 }
@@ -6247,6 +6708,7 @@ mno {
     mccmnc : "27411"
     mobile_apn {
       apn : "internet.nova.is"
+      type : DEFAULT
     }
   }
 }
@@ -6261,6 +6723,7 @@ mno {
     mccmnc : "27401"
     mobile_apn {
       apn : "wap.simi.is"
+      type : DEFAULT
     }
   }
 }
@@ -6276,6 +6739,7 @@ mno {
     mccmnc : "27403"
     mobile_apn {
       apn : "vmc.gprs.is"
+      type : DEFAULT
     }
   }
 }
@@ -6294,6 +6758,7 @@ mno {
       localized_name {
         name : "WINDTRE"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -6313,6 +6778,7 @@ mno {
         localized_name {
           name : "Megabip Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6333,12 +6799,14 @@ mno {
         localized_name {
           name : "Fastweb WEB"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "datacard.fastweb.it"
         localized_name {
           name : "Solo dati"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6360,6 +6828,7 @@ mno {
         localized_name {
           name : "Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6380,6 +6849,7 @@ mno {
       }
       username : "WAPTIM"
       password : "WAPTIM"
+      type : DEFAULT
     }
   }
   mvno {
@@ -6399,6 +6869,7 @@ mno {
         localized_name {
           name : "Internet Mobile"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6416,6 +6887,7 @@ mno {
       mccmnc : "22201"
       mobile_apn {
         apn : "internet.btitalia.it"
+        type : DEFAULT
       }
     }
   }
@@ -6433,6 +6905,7 @@ mno {
       mccmnc : "22201"
       mobile_apn {
         apn : "internet.btitalia.it"
+        type : DEFAULT
       }
     }
   }
@@ -6453,6 +6926,7 @@ mno {
         localized_name {
           name : "Internet Mobile"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6473,6 +6947,7 @@ mno {
         localized_name {
           name : "Kena Mobile web"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6493,6 +6968,7 @@ mno {
         localized_name {
           name : "Tiscali Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6521,6 +6997,7 @@ mno {
         localized_name {
           name : "Kena Mobile web"
         }
+        type : DEFAULT
       }
     }
   }
@@ -6549,6 +7026,7 @@ mno {
           name : "Fastweb WEB"
         }
         ip_type : IPV4V6
+        type : DEFAULT
       }
     }
   }
@@ -6574,6 +7052,7 @@ mno {
       mccmnc : "22233"
       mobile_apn {
         apn : "wap.postemobile.it"
+        type : DEFAULT
       }
     }
   }
@@ -6599,6 +7078,7 @@ mno {
       mccmnc : "22234"
       mobile_apn {
         apn : "internet.btitalia.it"
+        type : DEFAULT
       }
     }
   }
@@ -6617,12 +7097,14 @@ mno {
       localized_name {
         name : "Mobile Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.omnitel.it"
       localized_name {
         name : "Internet Facile (old)"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -6642,12 +7124,15 @@ mno {
         localized_name {
           name : "ho."
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "internet.ho-mobile.it"
         localized_name {
           name : "ho. (Tethering)"
-        }      }
+        }
+        type : DEFAULT
+      }
     }
   }
   mvno {
@@ -6664,6 +7149,7 @@ mno {
       mccmnc : "22210"
       mobile_apn {
         apn : "internet.postemobile.it"
+        type : DEFAULT
       }
     }
   }
@@ -6679,6 +7165,7 @@ mno {
     mccmnc : "22250"
     mobile_apn {
       apn : "iliad"
+      type : DEFAULT
     }
   }
 }
@@ -6698,6 +7185,7 @@ mno {
       }
       username : "Wind"
       password : "Wind"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.wind.biz"
@@ -6706,6 +7194,7 @@ mno {
       }
       username : "Wind"
       password : "Wind"
+      type : DEFAULT
     }
   }
 }
@@ -6720,6 +7209,7 @@ mno {
     mccmnc : "23403"
     mobile_apn {
       apn : "airtel-ci-gprs.com"
+      type : DEFAULT
     }
   }
 }
@@ -6736,6 +7226,7 @@ mno {
       apn : "pepper"
       username : "abc"
       password : "abc"
+      type : DEFAULT
     }
   }
 }
@@ -6753,12 +7244,14 @@ mno {
       localized_name {
         name : "WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -6773,6 +7266,7 @@ mno {
     mccmnc : "338020"
     mobile_apn {
       apn : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -6789,6 +7283,7 @@ mno {
       apn : "web.digiceljamaica.com"
       username : "wapuser"
       password : "wap03jam"
+      type : DEFAULT
     }
   }
 }
@@ -6808,6 +7303,7 @@ mno {
       }
       username : "net"
       password : "net"
+      type : DEFAULT
     }
   }
 }
@@ -6827,6 +7323,7 @@ mno {
       }
       username : "Zain"
       password : "Zain"
+      type : DEFAULT
     }
   }
 }
@@ -6890,14 +7387,16 @@ mno {
       }
       authentication : CHAP
       ip_type: IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "mopera.net"
       localized_name {
         name : "mopera U"
       }
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "lte-d.ocn.ne.jp"
@@ -6906,7 +7405,8 @@ mno {
       }
       username : "mobileid@ocn"
       password : "mobile"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
   mvno {
@@ -6932,7 +7432,8 @@ mno {
         }
         username : "bmobile@u300"
         password : "bmobile"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -6948,6 +7449,7 @@ mno {
     mccmnc : "44002"
     mobile_apn {
       apn : "APN9"
+      type : DEFAULT
     }
   }
 }
@@ -6972,7 +7474,8 @@ mno {
       username : "ym"
       password : "ym"
       authentication : CHAP
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
       ip_type: IPV4V6
     }
     mobile_apn {
@@ -6987,7 +7490,8 @@ mno {
       username : "cmn@mgx"
       password : "mgx"
       authentication : PAP
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn_filter {
@@ -7001,7 +7505,8 @@ mno {
       username : "plus"
       password : "4g"
       authentication : CHAP
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn_filter {
@@ -7015,7 +7520,8 @@ mno {
       username : "plus"
       password : "4g"
       authentication : CHAP
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -7057,7 +7563,8 @@ mno {
       password : "au"
       authentication : CHAP
       ip_type: IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "uno.au-net.ne.jp"
@@ -7068,7 +7575,8 @@ mno {
       password : "KpyrR6BP"
       authentication : CHAP
       ip_type: IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -7085,6 +7593,7 @@ mno {
       apn : "emb.ne.jp"
       username : "em"
       password : "em"
+      type : DEFAULT
     }
   }
 }
@@ -7102,7 +7611,8 @@ mno {
       localized_name {
         name : "楽天(rakuten.jp)"
       }
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
       ip_type : IPV4V6
     }
   }
@@ -7118,6 +7628,7 @@ mno {
     mccmnc : "63903"
     mobile_apn {
       apn : "ke.celtel.com"
+      type : DEFAULT
     }
   }
 }
@@ -7132,6 +7643,7 @@ mno {
     mccmnc : "63907"
     mobile_apn {
       apn : "bew.orange.co.ke"
+      type : DEFAULT
     }
   }
 }
@@ -7161,21 +7673,25 @@ mno {
       }
       username : "saf"
       password : "data"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "safaricom"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "pp.internet"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ppbundle.internet"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -7190,6 +7706,7 @@ mno {
     mccmnc : "63905"
     mobile_apn {
       apn : "internet.econet.co.ke"
+      type : DEFAULT
     }
   }
 }
@@ -7204,6 +7721,7 @@ mno {
     mccmnc : "43701"
     mobile_apn {
       apn : "internet.beeline.kg"
+      type : DEFAULT
     }
   }
 }
@@ -7218,6 +7736,7 @@ mno {
     mccmnc : "43705"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7232,6 +7751,7 @@ mno {
     mccmnc : "43709"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7246,6 +7766,7 @@ mno {
     mccmnc : "45609"
     mobile_apn {
       apn : "gprs.beeline.com.kh"
+      type : DEFAULT
     }
   }
 }
@@ -7262,6 +7783,7 @@ mno {
       apn : "cellcard"
       username : "mobitel"
       password : "mobitel"
+      type : DEFAULT
     }
   }
 }
@@ -7286,6 +7808,7 @@ mno {
     mccmnc : "45602"
     mobile_apn {
       apn : "hellowww"
+      type : DEFAULT
     }
   }
 }
@@ -7300,6 +7823,7 @@ mno {
     mccmnc : "45608"
     mobile_apn {
       apn : "metfone"
+      type : DEFAULT
     }
   }
 }
@@ -7314,6 +7838,7 @@ mno {
     mccmnc : "45618"
     mobile_apn {
       apn : "mfone"
+      type : DEFAULT
     }
   }
 }
@@ -7328,6 +7853,7 @@ mno {
     mccmnc : "45606"
     mobile_apn {
       apn : "smart"
+      type : DEFAULT
     }
   }
 }
@@ -7342,6 +7868,7 @@ mno {
     mccmnc : "45604"
     mobile_apn {
       apn : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -7359,12 +7886,14 @@ mno {
       localized_name {
         name : "KT LTE"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "alwayson.ktfwing.com"
       localized_name {
         name : "KT 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7379,7 +7908,8 @@ mno {
     mccmnc : "45006"
     mobile_apn {
       apn : "internet.lguplus.co.kr"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -7407,12 +7937,14 @@ mno {
       localized_name {
         name : "SKT LTE"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.sktelecom.com"
       localized_name {
         name : "SKT 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7427,6 +7959,7 @@ mno {
     mccmnc : "41904"
     mobile_apn {
       apn : "viva"
+      type : DEFAULT
     }
   }
 }
@@ -7441,6 +7974,7 @@ mno {
     mccmnc : "41903"
     mobile_apn {
       apn : "action.wataniya.com"
+      type : DEFAULT
     }
   }
 }
@@ -7460,12 +7994,14 @@ mno {
       }
       username : "pps"
       password : "pps"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "apn01"
       localized_name {
         name : "Corporate"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7480,6 +8016,7 @@ mno {
     mccmnc : "40102"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7495,6 +8032,7 @@ mno {
     mobile_apn {
       apn : "internet.beeline.kz"
       username : "@internet.beeline"
+      type : DEFAULT
     }
   }
 }
@@ -7509,6 +8047,7 @@ mno {
     mccmnc : "40102"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7523,6 +8062,7 @@ mno {
     mccmnc : "40177"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7537,6 +8077,7 @@ mno {
     mccmnc : "45708"
     mobile_apn {
       apn : "beelinenet"
+      type : DEFAULT
     }
   }
 }
@@ -7551,6 +8092,7 @@ mno {
     mccmnc : "45702"
     mobile_apn {
       apn : "etlnet"
+      type : DEFAULT
     }
   }
 }
@@ -7565,6 +8107,7 @@ mno {
     mccmnc : "45701"
     mobile_apn {
       apn : "ltcnet"
+      type : DEFAULT
     }
   }
 }
@@ -7582,12 +8125,14 @@ mno {
       localized_name {
         name : "Unitel (2G)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "unitel3g"
       localized_name {
         name : "Unitel (3G)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7602,6 +8147,7 @@ mno {
     mccmnc : "41503"
     mobile_apn {
       apn : "gprs.mtctouch.com.lb"
+      type : DEFAULT
     }
   }
 }
@@ -7616,6 +8162,7 @@ mno {
     mccmnc : "358110"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7630,6 +8177,7 @@ mno {
     mccmnc : "41305"
     mobile_apn {
       apn : "www.wap.airtel.lk"
+      type : DEFAULT
     }
   }
 }
@@ -7647,24 +8195,28 @@ mno {
       localized_name {
         name : "Postpaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ppinternet"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "dialogbb"
       localized_name {
         name : "Unlimited Broadband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "kitbb.com"
       localized_name {
         name : "Prepaid (Kitbb)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7679,6 +8231,7 @@ mno {
     mccmnc : "41308"
     mobile_apn {
       apn : "htwap"
+      type : DEFAULT
     }
   }
 }
@@ -7693,6 +8246,7 @@ mno {
     mccmnc : "41301"
     mobile_apn {
       apn : "isp"
+      type : DEFAULT
     }
   }
 }
@@ -7707,6 +8261,7 @@ mno {
     mccmnc : "41303"
     mobile_apn {
       apn : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -7721,6 +8276,7 @@ mno {
     mccmnc : "65101"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -7735,6 +8291,7 @@ mno {
     mccmnc : "24602"
     mobile_apn {
       apn : "banga"
+      type : DEFAULT
     }
   }
 }
@@ -7752,6 +8309,7 @@ mno {
       localized_name {
         name : "Contract"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprs.startas.lt"
@@ -7760,6 +8318,7 @@ mno {
       }
       username : "omni"
       password : "omni"
+      type : DEFAULT
     }
   }
 }
@@ -7774,6 +8333,7 @@ mno {
     mccmnc : "24603"
     mobile_apn {
       apn : "internet.tele2.lt"
+      type : DEFAULT
     }
   }
 }
@@ -7789,6 +8349,7 @@ mno {
     mobile_apn {
       apn : "web.pt.lu"
       ip_type: IPV4
+      type : DEFAULT
     }
   }
   mvno {
@@ -7805,6 +8366,7 @@ mno {
       mccmnc : "27001"
       mobile_apn {
         apn : "join"
+        type : DEFAULT
       }
     }
   }
@@ -7820,6 +8382,7 @@ mno {
     mccmnc : "27099"
     mobile_apn {
       apn : "orange.lu"
+      type : DEFAULT
     }
   }
 }
@@ -7839,6 +8402,7 @@ mno {
       }
       username : "tango"
       password : "tango"
+      type : DEFAULT
     }
   }
 }
@@ -7856,12 +8420,14 @@ mno {
       localized_name {
         name : "Bite plus"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Prepaid/Contract"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7876,18 +8442,21 @@ mno {
     mccmnc : "24701"
     mobile_apn {
       apn : "internet.lmt.lv"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "open.lmt.lv"
       localized_name {
         name : "O!Karte internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "okarte.lmt.lv"
       localized_name {
         name : "O!Karte"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7907,6 +8476,7 @@ mno {
       }
       username : "gprs"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mobileinternet.tele2.lv"
@@ -7915,6 +8485,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "data.tele2.lv"
@@ -7923,6 +8494,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -7940,12 +8512,14 @@ mno {
       localized_name {
         name : "Abonnement"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.iamgprs2.ma"
       localized_name {
         name : "Pre-payé"
       }
+      type : DEFAULT
     }
   }
 }
@@ -7965,6 +8539,7 @@ mno {
       }
       username : "MEDINET"
       password : "MEDINET"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet2.meditel.ma"
@@ -7973,6 +8548,7 @@ mno {
       }
       username : "MEDINET"
       password : "MEDINET"
+      type : DEFAULT
     }
   }
 }
@@ -7990,6 +8566,7 @@ mno {
       localized_name {
         name : "INWI"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8009,6 +8586,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
   }
 }
@@ -8028,6 +8606,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
   }
 }
@@ -8047,6 +8626,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet3g.unite.md"
@@ -8055,6 +8635,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
   }
 }
@@ -8069,6 +8650,7 @@ mno {
     mccmnc : "29701"
     mobile_apn {
       apn : "gprs.promonte.com"
+      type : DEFAULT
     }
   }
 }
@@ -8088,6 +8670,7 @@ mno {
       }
       username : "38267"
       password : "38267"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "tmcg-nw"
@@ -8096,18 +8679,21 @@ mno {
       }
       username : "38267"
       password : "38267"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet-postpaid"
       localized_name {
         name : "Postpaid (old)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet-prepaid"
       localized_name {
         name : "Prepaid (old)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8122,6 +8708,7 @@ mno {
     mccmnc : "29703"
     mobile_apn {
       apn : "gprsinternet"
+      type : DEFAULT
     }
   }
 }
@@ -8136,6 +8723,7 @@ mno {
     mccmnc : "64601"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8152,6 +8740,7 @@ mno {
       apn : "orangeworld"
       username : "world"
       password : "orange"
+      type : DEFAULT
     }
   }
 }
@@ -8166,6 +8755,7 @@ mno {
     mccmnc : "64604"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8183,6 +8773,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8199,6 +8790,7 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8215,6 +8807,7 @@ mno {
       apn : "vipoperator"
       username : "vipoperator"
       password : "vipoperator"
+      type : DEFAULT
     }
   }
 }
@@ -8234,6 +8827,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8253,6 +8847,7 @@ mno {
       }
       username : "iew"
       password : "iew"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
@@ -8261,6 +8856,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8280,6 +8876,7 @@ mno {
       }
       username : "mptnet"
       password : "mptnet"
+      type : DEFAULT
     }
   }
 }
@@ -8294,6 +8891,7 @@ mno {
     mccmnc : "42899"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8311,6 +8909,7 @@ mno {
       apn : "web.hutchisonmacau.com"
       username : "hutchison"
       password : "1234"
+      type : DEFAULT
     }
   }
 }
@@ -8326,6 +8925,7 @@ mno {
     mccmnc : "45504"
     mobile_apn {
       apn : "ctm-mobile"
+      type : DEFAULT
     }
   }
 }
@@ -8353,12 +8953,14 @@ mno {
       localized_name {
         name : "Postpaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "rtgsurfing"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8375,6 +8977,7 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8389,6 +8992,7 @@ mno {
     mccmnc : "61404"
     mobile_apn {
 	apn : "orange.ne"
+ type : DEFAULT
     }
   }
 }
@@ -8403,6 +9007,7 @@ mno {
     mccmnc : "61701"
     mobile_apn {
 	apn : "orange"
+ type : DEFAULT
     }
   }
 }
@@ -8417,6 +9022,7 @@ mno {
     mccmnc : "61710"
     mobile_apn {
       apn : "web"
+      type : DEFAULT
     }
   }
 }
@@ -8431,6 +9037,7 @@ mno {
     mccmnc : "47201"
     mobile_apn {
       apn : "internet.dhimobile"
+      type : DEFAULT
     }
   }
 }
@@ -8445,6 +9052,7 @@ mno {
     mccmnc : "47202"
     mobile_apn {
       apn : "wataniyanet"
+      type : DEFAULT
     }
   }
 }
@@ -8459,6 +9067,7 @@ mno {
     mccmnc : "65001"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8486,6 +9095,7 @@ mno {
       apn : "internet.movistar.mx"
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
   }
 }
@@ -8502,6 +9112,7 @@ mno {
       apn : "internet.itelcel.com"
       username : "webgprs"
       password : "webgprs2002"
+      type : DEFAULT
     }
   }
 }
@@ -8522,18 +9133,21 @@ mno {
       localized_name {
         name : "Celcom Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "celcom.net.my"
       localized_name {
         name : "GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "celcom3g"
       localized_name {
         name : "Celcom 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8554,12 +9168,14 @@ mno {
       localized_name {
         name : "DiGi Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3gdgnet"
       localized_name {
         name : "Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8583,6 +9199,7 @@ mno {
       username : "maxis"
       password : "wap"
       authentication : PAP
+      type : DEFAULT
     }
     mobile_apn {
       apn : "maxisbb"
@@ -8591,6 +9208,7 @@ mno {
       }
       username : "maxis"
       password : "wap"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "net"
@@ -8599,6 +9217,7 @@ mno {
       }
       username : "maxis"
       password : "net"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "unet"
@@ -8607,6 +9226,7 @@ mno {
       }
       username : "maxis"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -8624,6 +9244,7 @@ mno {
       localized_name {
         name : "unifi"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8643,6 +9264,7 @@ mno {
         name : "U Mobile"
       }
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
 }
@@ -8661,6 +9283,7 @@ mno {
         name : "yesnet"
       }
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
 }
@@ -8677,6 +9300,7 @@ mno {
       apn : "isp.mcel.mz"
       username : "guest"
       password : "guest"
+      type : DEFAULT
     }
   }
 }
@@ -8694,6 +9318,7 @@ mno {
       localized_name {
         name : "Contract / Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8711,6 +9336,7 @@ mno {
       localized_name {
         name : "Leo"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8730,12 +9356,14 @@ mno {
       }
       username : "ppsuser"
       password : "ppsuser"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Contract"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8753,6 +9381,7 @@ mno {
       apn : "internet.ng.airtel.com.ng"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8770,6 +9399,7 @@ mno {
       localized_name {
         name : "Etisalat Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -8790,6 +9420,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gloflat"
@@ -8798,6 +9429,7 @@ mno {
       }
       username : "flat"
       password : "flat"
+      type : DEFAULT
     }
   }
 }
@@ -8815,6 +9447,7 @@ mno {
       apn : "web.gprs.mtnnigeria.net"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -8845,6 +9478,7 @@ mno {
       }
       username : "wapemovil"
       password : "wapemovil"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web.emovil"
@@ -8853,6 +9487,7 @@ mno {
       }
       username : "webemovil"
       password : "webemovil"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.ideasalo.ni"
@@ -8861,6 +9496,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "wap.ideasalo.ni"
@@ -8869,6 +9505,7 @@ mno {
       }
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -8885,6 +9522,7 @@ mno {
       apn : "internet.movistar.ni"
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -8900,6 +9538,7 @@ mno {
     mobile_apn {
       apn : "internet"
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -8916,6 +9555,7 @@ mno {
       mccmnc : "20408"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -8933,6 +9573,7 @@ mno {
       mccmnc : "20408"
       mobile_apn {
         apn : "portalmmm.nl"
+        type : DEFAULT
       }
     }
   }
@@ -8954,6 +9595,7 @@ mno {
         localized_name {
           name : "Aldi Talk Mobiel Prepaid Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -8971,6 +9613,7 @@ mno {
       apn : "data.lycamobile.nl"
       username : "lmnl"
       password : "plus"
+      type : DEFAULT
     }
   }
 }
@@ -8987,6 +9630,7 @@ mno {
     mobile_apn {
       apn : "smartsites.t-mobile"
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -9004,6 +9648,7 @@ mno {
       mobile_apn {
         apn : "smartsites.t-mobile"
         ip_type: IPV4V6
+        type : DEFAULT
       }
     }
   }
@@ -9019,6 +9664,7 @@ mno {
     mccmnc : "20416"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
   mvno {
@@ -9035,6 +9681,7 @@ mno {
       mccmnc : "20416"
       mobile_apn {
         apn : "internet.ben"
+        type : DEFAULT
       }
     }
   }
@@ -9051,6 +9698,7 @@ mno {
     mccmnc : "20418"
     mobile_apn {
       apn : "internet.ziggo.nl"
+      type : DEFAULT
     }
   }
 }
@@ -9065,9 +9713,11 @@ mno {
     mccmnc : "20402"
     mobile_apn {
       apn : "internet.tele2.nl"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "data.tele2.nl"
+      type : DEFAULT
     }
   }
 }
@@ -9083,6 +9733,7 @@ mno {
     mobile_apn {
       apn : "internet"
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -9099,6 +9750,7 @@ mno {
       mccmnc : "20412"
       mobile_apn {
         apn : "multimedia.lebara.nl"
+        type : DEFAULT
       }
     }
   }
@@ -9120,6 +9772,7 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
   }
 }
@@ -9135,6 +9788,7 @@ mno {
       apn : "umts.xs4all.nl"
       username : "xs4all"
       password : "xs4all"
+      type : DEFAULT
     }
   }
 }
@@ -9148,6 +9802,7 @@ mno {
     }
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -9162,6 +9817,7 @@ mno {
     mccmnc : "24207"
     mobile_apn {
       apn : "internet.ventelo.no"
+      type : DEFAULT
     }
   }
 }
@@ -9177,6 +9833,7 @@ mno {
     mobile_apn {
       apn : "telia"
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -9195,6 +9852,7 @@ mno {
         apn : "netcom"
         username : "chess"
         password : "chess"
+        type : DEFAULT
       }
     }
   }
@@ -9210,6 +9868,7 @@ mno {
     mccmnc : "24205"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
   mvno {
@@ -9226,6 +9885,7 @@ mno {
       mccmnc : "24205"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -9243,6 +9903,7 @@ mno {
       mccmnc : "24205"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -9261,6 +9922,7 @@ mno {
       mobile_apn {
         apn : "internet"
         ip_type: IPV4V6
+        type : DEFAULT
       }
     }
   }
@@ -9277,6 +9939,7 @@ mno {
     mccmnc : "24208"
     mobile_apn {
       apn : "internet.no"
+      type : DEFAULT
     }
   }
 }
@@ -9294,12 +9957,14 @@ mno {
       localized_name {
         name : "Mobilt internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mobileinternet.tele2.no"
       localized_name {
         name : "Mobilt bredbånd"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9315,9 +9980,11 @@ mno {
     mccmnc : "24212"
     mobile_apn {
       apn : "telenor"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "telenor.mbb"
+      type : DEFAULT
     }
   }
 }
@@ -9332,6 +9999,7 @@ mno {
     mccmnc : "24207"
     mobile_apn {
       apn : "internet.ventelo.no"
+      type : DEFAULT
     }
   }
 }
@@ -9350,6 +10018,7 @@ mno {
         name : "ice.net"
       }
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
 }
@@ -9364,6 +10033,7 @@ mno {
     mccmnc : "42902"
     mobile_apn {
       apn : "mero"
+      type : DEFAULT
     }
   }
 }
@@ -9378,6 +10048,7 @@ mno {
     mccmnc : "42901"
     mobile_apn {
       apn : "ntnet"
+      type : DEFAULT
     }
   }
 }
@@ -9395,12 +10066,14 @@ mno {
       localized_name {
         name : "MMS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9417,6 +10090,7 @@ mno {
       localized_name {
         name : "Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9435,24 +10109,28 @@ mno {
       localized_name {
         name : "XT mobile (WAP)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.telecom.co.nz"
       localized_name {
         name : "XT mobile (Internet with Firewall)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "direct.telecom.co.nz"
       localized_name {
         name : "XT mobile (Direct Internet)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "oa.telecom.co.nz"
       localized_name {
         name : "XT mobile (One Office/Remote Office)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9469,6 +10147,7 @@ mno {
       localized_name {
         name : "Broadband"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9486,24 +10165,28 @@ mno {
       localized_name {
         name : "WAP"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.vodafone.net.nz"
       localized_name {
         name : "Contract / Prepaid (Restricted)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Unrestricted (public)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vodafone"
       localized_name {
         name : "Contract"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9518,6 +10201,7 @@ mno {
     mccmnc : "42203"
     mobile_apn {
       apn : "isp.nawras.com.om"
+      type : DEFAULT
     }
   }
 }
@@ -9537,12 +10221,14 @@ mno {
       }
       username : "taif"
       password : "taif"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Internet (old)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9557,6 +10243,7 @@ mno {
     mccmnc : "71401"
     mobile_apn {
       apn : "apn01.cwpanama.com.pa"
+      type : DEFAULT
     }
   }
 }
@@ -9573,6 +10260,7 @@ mno {
       apn : "internet.movistar.pa"
       username : "movistarpa"
       password : "movistarpa"
+      type : DEFAULT
     }
   }
 }
@@ -9589,6 +10277,7 @@ mno {
       apn : "tim.pe"
       username : "tim"
       password : "tulibertad"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ba.amx"
@@ -9597,6 +10286,7 @@ mno {
       }
       username : "amx"
       password : "amx"
+      type : DEFAULT
     }
   }
 }
@@ -9613,6 +10303,7 @@ mno {
       apn : "movistar.pe"
       username : "movistar@datos"
       password : "movistar"
+      type : DEFAULT
     }
   }
 }
@@ -9627,6 +10318,7 @@ mno {
     mccmnc : "71607"
     mobile_apn {
       apn : "datacard.nextel.com.pe"
+      type : DEFAULT
     }
   }
 }
@@ -9641,6 +10333,7 @@ mno {
     mccmnc : "54720"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -9658,6 +10351,7 @@ mno {
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9672,6 +10366,7 @@ mno {
     mccmnc : "51505"
     mobile_apn {
       apn : "minternet"
+      type : DEFAULT
     }
   }
 }
@@ -9691,6 +10386,7 @@ mno {
       }
       username : "globe"
       password : "globe"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "http.globe.com.ph"
@@ -9699,6 +10395,7 @@ mno {
       }
       username : "globe"
       password : "globe"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.globe.com.ph"
@@ -9707,6 +10404,7 @@ mno {
       }
       username : "globe"
       password : "globe"
+      type : DEFAULT
     }
   }
 }
@@ -9723,6 +10421,7 @@ mno {
       apn : "internet"
       username : "witsductoor"
       password : "banonoy"
+      type : DEFAULT
     }
   }
 }
@@ -9739,6 +10438,7 @@ mno {
       apn : "internet"
       username : "telenor"
       password : "telenor"
+      type : DEFAULT
     }
   }
 }
@@ -9756,12 +10456,14 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "jazzconnect.mobilinkworld.com"
       localized_name {
         name : "Jazz"
       }
+      type : DEFAULT
     }
   }
 }
@@ -9778,6 +10480,7 @@ mno {
       apn : "internet"
       username : "telenor"
       password : "telenor"
+      type : DEFAULT
     }
   }
 }
@@ -9794,6 +10497,7 @@ mno {
       apn : "ufone.internet"
       username : "ufone"
       password : "ufone"
+      type : DEFAULT
     }
   }
 }
@@ -9808,6 +10512,7 @@ mno {
     mccmnc : "51507"
     mobile_apn {
       apn : "warid"
+      type : DEFAULT
     }
   }
 }
@@ -9832,6 +10537,7 @@ mno {
     mccmnc : "51504"
     mobile_apn {
       apn : "zonginternet"
+      type : DEFAULT
     }
   }
 }
@@ -9846,6 +10552,7 @@ mno {
     mccmnc : "26012"
     mobile_apn {
       apn : "multi.internet"
+      type : DEFAULT
     }
   }
 }
@@ -9868,6 +10575,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vpn"
@@ -9879,6 +10587,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
   mvno {
@@ -9897,6 +10606,7 @@ mno {
         apn : "aster.internet"
         username : "internet"
         password : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -9915,6 +10625,7 @@ mno {
       mobile_apn {
         apn : "telogic.internet"
         username : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -9937,6 +10648,7 @@ mno {
         }
         username : "internet"
         password : "internet"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "mni.internet"
@@ -9944,6 +10656,7 @@ mno {
           name : "APN: mni.internet"
         }
         username : "mni.internet"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "telogic.internet"
@@ -9951,6 +10664,7 @@ mno {
           name : "APN: telogic.internet"
         }
         username : "telogic.internet"
+        type : DEFAULT
       }
     }
   }
@@ -9966,6 +10680,7 @@ mno {
     mccmnc : "26006"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
   mvno {
@@ -9982,6 +10697,7 @@ mno {
       mccmnc : "26006"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -9999,6 +10715,7 @@ mno {
       mccmnc : "26006"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -10017,6 +10734,7 @@ mno {
       localized_name {
         name : "LTE Plus"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -10033,6 +10751,7 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "freedata.pl"
+        type : DEFAULT
       }
     }
   }
@@ -10050,6 +10769,7 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "internet.gadu-gadu.pl"
+        type : DEFAULT
       }
     }
   }
@@ -10069,6 +10789,7 @@ mno {
         apn : "www.plusgsm.pl"
         username : "internet"
         password : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -10086,6 +10807,7 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "www.mobile.pl"
+        type : DEFAULT
       }
     }
   }
@@ -10101,6 +10823,7 @@ mno {
     mccmnc : "26002"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
   mvno {
@@ -10119,6 +10842,7 @@ mno {
         apn : "heyah.pl"
         username : "heyah"
         password : "heyah"
+        type : DEFAULT
       }
     }
   }
@@ -10138,6 +10862,7 @@ mno {
         apn : "wapmobilking"
         username : "mobilking"
         password : "mobilking"
+        type : DEFAULT
       }
     }
   }
@@ -10153,6 +10878,7 @@ mno {
     mccmnc : "26017"
     mobile_apn {
       apn : "darmowy"
+      type : DEFAULT
     }
   }
 }
@@ -10167,6 +10893,7 @@ mno {
     mccmnc : "26803"
     mobile_apn {
       apn : "clixinternetmovel"
+      type : DEFAULT
     }
   }
 }
@@ -10187,24 +10914,28 @@ mno {
       localized_name {
         name : "Portátil"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "kanguru-tempo"
       localized_name {
         name : "Tempo (Prepaid)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "kangurufixo"
       localized_name {
         name : "Fixo"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "noapn"
       localized_name {
         name : "Apn dinâmico (no apn)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10222,12 +10953,14 @@ mno {
       localized_name {
         name : "3G"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "GPRS"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10247,6 +10980,7 @@ mno {
       }
       username : "tmn"
       password : "tmn"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mmsc.tmn.pt"
@@ -10255,6 +10989,7 @@ mno {
       }
       username : "tmn"
       password : "tmnnet"
+      type : DEFAULT
     }
   }
 }
@@ -10271,12 +11006,14 @@ mno {
       apn : "internet.vodafone.pt"
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "net2.vodafone.pt"
       localized_name {
         name : "Vodafone Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vas.vodafone.pt"
@@ -10285,6 +11022,7 @@ mno {
       }
       username : "vas"
       password : "vas"
+      type : DEFAULT
     }
   }
   mvno {
@@ -10304,6 +11042,7 @@ mno {
         localized_name {
           name : "Dados Móveis"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "vas.zon.pt"
@@ -10312,6 +11051,7 @@ mno {
         }
         username : "vas"
         password : "vas"
+        type : DEFAULT
       }
     }
   }
@@ -10330,6 +11070,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10344,6 +11085,7 @@ mno {
     mccmnc : "74405"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -10361,6 +11103,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "broadband.tigo.py"
@@ -10372,6 +11115,7 @@ mno {
       }
       username : "tigo"
       password : "tigo"
+      type : DEFAULT
     }
   }
 }
@@ -10386,6 +11130,7 @@ mno {
     mccmnc : "74401"
     mobile_apn {
       apn : "vox.wap"
+      type : DEFAULT
     }
   }
 }
@@ -10405,6 +11150,7 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
   }
 }
@@ -10422,12 +11168,14 @@ mno {
       localized_name {
         name : "Web"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "vodafone.com.qa"
       localized_name {
         name : "Web (old)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10445,24 +11193,28 @@ mno {
       localized_name {
         name : "Contract / Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "slsfr"
       localized_name {
         name : "SFR slsfr"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internetpro"
       localized_name {
         name : "SFR internetpro"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "ipnet"
       localized_name {
         name : "SFR ipnet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10481,6 +11233,7 @@ mno {
       localized_name {
         name : "Telekom.ro"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10498,12 +11251,14 @@ mno {
       localized_name {
         name : "Home"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "static"
       localized_name {
         name : "Business (static)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10518,6 +11273,7 @@ mno {
     mccmnc : "22610"
     mobile_apn {
       apn : "net"
+      type : DEFAULT
     }
   }
 }
@@ -10537,6 +11293,7 @@ mno {
       }
       username : "tobe.vodafone.ro"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.vodafone.ro"
@@ -10545,6 +11302,7 @@ mno {
       }
       username : "internet.vodafone.ro"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.pre.vodafone.ro"
@@ -10553,6 +11311,7 @@ mno {
       }
       username : "internet.pre.vodafone.ro"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "live.vodafone.com"
@@ -10561,6 +11320,7 @@ mno {
       }
       username : "live"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "live.pre.vodafone.ro"
@@ -10569,6 +11329,7 @@ mno {
       }
       username : "live.pre.vodafone.com"
       password : "vodafone"
+      type : DEFAULT
     }
   }
 }
@@ -10585,6 +11346,7 @@ mno {
       apn : "gprsinternet"
       username : "mts"
       password : "064"
+      type : DEFAULT
     }
   }
 }
@@ -10601,6 +11363,7 @@ mno {
       apn : "internet"
       username : "telenor"
       password : "gprs"
+      type : DEFAULT
     }
   }
 }
@@ -10617,6 +11380,7 @@ mno {
       apn : "vipmobile"
       username : "vipmobile"
       password : "vipmobile"
+      type : DEFAULT
     }
   }
 }
@@ -10636,6 +11400,7 @@ mno {
       apn : "inet.bwc.ru"
       username : "bwc"
       password : "bwc"
+      type : DEFAULT
     }
   }
 }
@@ -10662,6 +11427,7 @@ mno {
       }
       username : "beeline"
       password : "beeline"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.beeline.ru"
@@ -10673,6 +11439,7 @@ mno {
       }
       username : "beeline"
       password : "beeline"
+      type : DEFAULT
     }
   }
 }
@@ -10687,6 +11454,7 @@ mno {
     mccmnc : "25005"
     mobile_apn {
       apn : "wap.etk.ru"
+      type : DEFAULT
     }
   }
 }
@@ -10705,6 +11473,7 @@ mno {
     mobile_apn {
       apn : "internet.etk.ru"
       username : "etk"
+      type : DEFAULT
     }
   }
 }
@@ -10721,6 +11490,7 @@ mno {
       apn : "internet.mts.ru"
       username : "mts"
       password : "mts"
+      type : DEFAULT
     }
   }
 }
@@ -10746,6 +11516,7 @@ mno {
       }
       username : "gdata"
       password : "gdata"
+      type : DEFAULT
     }
   }
 }
@@ -10764,6 +11535,7 @@ mno {
     mobile_apn {
       apn : "inet.ycc.ru"
       username : "motiv"
+      type : DEFAULT
     }
   }
 }
@@ -10779,6 +11551,7 @@ mno {
     mobile_apn {
       apn : "internet"
       username : "ncc"
+      type : DEFAULT
     }
   }
 }
@@ -10793,6 +11566,7 @@ mno {
     mccmnc : "25016"
     mobile_apn {
       apn : "internet.ntc"
+      type : DEFAULT
     }
   }
 }
@@ -10811,6 +11585,7 @@ mno {
       apn : "internet.tatincom.ru"
       username : "tatincom"
       password : "tatincom"
+      type : DEFAULT
     }
   }
 }
@@ -10828,6 +11603,7 @@ mno {
     mccmnc : "25020"
     mobile_apn {
       apn : "internet.tele2.ru"
+      type : DEFAULT
     }
   }
 }
@@ -10842,6 +11618,7 @@ mno {
     mccmnc : "25039"
     mobile_apn {
       apn : "internet.usi.ru"
+      type : DEFAULT
     }
   }
 }
@@ -10856,6 +11633,7 @@ mno {
     mccmnc : "63510"
     mobile_apn {
       apn : "internet.mtn"
+      type : DEFAULT
     }
   }
 }
@@ -10870,6 +11648,7 @@ mno {
     mccmnc : "63513"
     mobile_apn {
       apn : "web.tigo.rw"
+      type : DEFAULT
     }
   }
 }
@@ -10887,12 +11666,14 @@ mno {
       localized_name {
         name : "Postpaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "web2"
       localized_name {
         name : "Prepaid"
       }
+      type : DEFAULT
     }
   }
 }
@@ -10907,6 +11688,7 @@ mno {
     mccmnc : "42001"
     mobile_apn {
       apn : "jawalnet.com.sa"
+      type : DEFAULT
     }
   }
 }
@@ -10921,6 +11703,7 @@ mno {
     mccmnc : "42004"
     mobile_apn {
       apn : "zain"
+      type : DEFAULT
     }
   }
 }
@@ -10935,6 +11718,7 @@ mno {
     mccmnc : "63402"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -10951,6 +11735,7 @@ mno {
       apn : "sudaninet"
       username : "sudani"
       password : "sudani"
+      type : DEFAULT
     }
   }
 }
@@ -10965,6 +11750,7 @@ mno {
     mccmnc : "63401"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -10983,18 +11769,21 @@ mno {
       localized_name {
         name : "Mobiltelefon"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bredband.tre.se"
       localized_name {
         name : "Bredband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "net.tre.se"
       localized_name {
         name : "Bredband Kontantkort"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -11012,6 +11801,7 @@ mno {
       mccmnc : "24004"
       mobile_apn {
         apn : "bredband.comhem.se"
+        type : DEFAULT
       }
     }
   }
@@ -11032,18 +11822,21 @@ mno {
         localized_name {
           name : "Mobilt Internet"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "services.telenor.se"
         localized_name {
           name : "Mobilsurf med maxtaxa"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "bredband.telenor.se"
         localized_name {
           name : "Mobilt Bredband"
         }
+        type : DEFAULT
       }
     }
   }
@@ -11062,18 +11855,21 @@ mno {
       localized_name {
         name : "Surf"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.tele2.se"
       localized_name {
         name : "Tele2 Comviq 3G"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mobileinternet.tele2.se"
       localized_name {
         name : "Tele2 Comviq 3G (7,2 Mbit/s)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11088,6 +11884,7 @@ mno {
     mccmnc : "24001"
     mobile_apn {
       apn : "halebop.telia.se"
+      type : DEFAULT
     }
   }
 }
@@ -11106,6 +11903,7 @@ mno {
       localized_name {
         name : "Mobiflex"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11120,6 +11918,7 @@ mno {
     mccmnc : "24007"
     mobile_apn {
       apn : "internet.parlino.se"
+      type : DEFAULT
     }
   }
 }
@@ -11134,6 +11933,7 @@ mno {
     mccmnc : "24014"
     mobile_apn {
       apn : "internet.se"
+      type : DEFAULT
     }
   }
 }
@@ -11152,12 +11952,14 @@ mno {
       localized_name {
         name : "Mobilt Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mobileinternet.tele2.se"
       localized_name {
         name : "Mobilt Bredband"
       }
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -11177,18 +11979,21 @@ mno {
       localized_name {
         name : "Mobilt Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "services.telenor.se"
       localized_name {
         name : "Mobilsurf med maxtaxa"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "bredband.telenor.se"
       localized_name {
         name : "Mobilt Bredband"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -11212,12 +12017,14 @@ mno {
         localized_name {
           name : "Mobilt Bredband"
         }
+        type : DEFAULT
       }
       mobile_apn {
         apn : "internet.glocalnet.se"
         localized_name {
           name : "Glocalnet Internet"
         }
+        type : DEFAULT
       }
     }
   }
@@ -11237,6 +12044,7 @@ mno {
       localized_name {
         name : "Telia"
       }
+      type : DEFAULT
     }
   }
   earmarked : true
@@ -11252,6 +12060,7 @@ mno {
     mccmnc : "24001"
     mobile_apn {
       apn : "online.telia.se"
+      type : DEFAULT
     }
   }
 }
@@ -11268,12 +12077,14 @@ mno {
       localized_name {
         name : "Mobilt Bredband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.uvtc.com"
       localized_name {
         name : "Mobilt Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11288,6 +12099,7 @@ mno {
     mccmnc : "24009"
     mobile_apn {
       apn : "internet.djuice.se"
+      type : DEFAULT
     }
   }
 }
@@ -11306,6 +12118,7 @@ mno {
         name : "SunSurf/Mobile Broadband (postpaid)"
       }
       username : "65"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "miworld"
@@ -11314,6 +12127,7 @@ mno {
       }
       username : "65(mobilenumber)"
       password : "user123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "miworldcard"
@@ -11322,18 +12136,21 @@ mno {
       }
       username : "65(mobilenumber)"
       password : "user123"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "prepaidbb"
       localized_name {
         name : "Mobile Broadband (prepaid)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "sunsurfmcard"
       localized_name {
         name : "M Card (prepaid)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11349,6 +12166,7 @@ mno {
     mccmnc : "52502"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11368,18 +12186,21 @@ mno {
       }
       username : "star"
       password : "hub"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "shppd"
       localized_name {
         name : "MaxMobile Broadband (prepaid)"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "shinternet"
       localized_name {
         name : "MaxMobile Broadband (postpaid)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11399,11 +12220,13 @@ mno {
       }
       username : "mobitel"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internetpro"
       username : "mobitel"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11418,6 +12241,7 @@ mno {
     mccmnc : "29364"
     mobile_apn {
       apn : "internet.t-2.net"
+      type : DEFAULT
     }
   }
 }
@@ -11434,6 +12258,7 @@ mno {
       apn : "internet.simobil.si"
       username : "simobil"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11451,6 +12276,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11465,6 +12291,7 @@ mno {
     mccmnc : "23101"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11480,6 +12307,7 @@ mno {
     mccmnc : "23104"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11494,6 +12322,7 @@ mno {
     mccmnc : "60802"
     mobile_apn {
       apn : "wap.sentelgsm.com"
+      type : DEFAULT
     }
   }
 }
@@ -11511,6 +12340,7 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11527,6 +12357,7 @@ mno {
       apn : "internet.movistar.sv"
       username : "movistarsv"
       password : "movistarsv"
+      type : DEFAULT
     }
   }
 }
@@ -11541,6 +12372,7 @@ mno {
     mccmnc : "70603"
     mobile_apn {
       apn : "internet.tigo.sv"
+      type : DEFAULT
     }
   }
 }
@@ -11555,6 +12387,7 @@ mno {
     mccmnc : "70602"
     mobile_apn {
       apn : "wap.digicelsv.com"
+      type : DEFAULT
     }
   }
 }
@@ -11569,6 +12402,7 @@ mno {
     mccmnc : "52001"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11583,6 +12417,7 @@ mno {
     mccmnc : "52018"
     mobile_apn {
       apn : "www.dtac.co.th"
+      type : DEFAULT
     }
   }
 }
@@ -11597,6 +12432,7 @@ mno {
     mccmnc : "52015"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11613,6 +12449,7 @@ mno {
       apn : "internet"
       username : "true"
       password : "true"
+      type : DEFAULT
     }
   }
 }
@@ -11630,24 +12467,28 @@ mno {
       localized_name {
         name : "Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mms.otun"
       localized_name {
         name : "Internet + MMS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "keygp"
       localized_name {
         name : "Internet Everywhere Prepaid"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "keypro"
       localized_name {
         name : "Internet Everywhere Professional"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11667,6 +12508,7 @@ mno {
       }
       username : "internet"
       password : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11686,6 +12528,7 @@ mno {
       }
       username : "mms@tt1"
       password : "mms"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprs.tn"
@@ -11694,12 +12537,14 @@ mno {
       }
       username : "gprs"
       password : "gprs"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.tn"
       localized_name {
         name : "WEB DATA"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11715,12 +12560,14 @@ mno {
     mccmnc : "28604"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "aycell"
       localized_name {
         name : "(former Aycell)"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11738,12 +12585,14 @@ mno {
       localized_name {
         name : "Turkcell internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "mgb"
       localized_name {
         name : "Turkcell 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11763,12 +12612,14 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "edge.kktctelsim.com"
       localized_name {
         name : "KKTC Telsim"
       }
+      type : DEFAULT
     }
   }
 }
@@ -11785,6 +12636,7 @@ mno {
       apn : "wap.digiceltt.com"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -11801,6 +12653,7 @@ mno {
       apn : "internet"
       username : "wap"
       password : "wap"
+      type : DEFAULT
     }
   }
 }
@@ -11818,6 +12671,7 @@ mno {
     mccmnc : "46605"
     mobile_apn {
       apn : "gtnet"
+      type : DEFAULT
     }
   }
 }
@@ -11835,12 +12689,14 @@ mno {
     mccmnc : "46692"
     mobile_apn {
       apn : "internet"
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "emome"
       username : "web"
       password : "web"
+      type : DEFAULT
     }
   }
 }
@@ -11859,6 +12715,7 @@ mno {
     mccmnc : "46688"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11877,6 +12734,7 @@ mno {
     mccmnc : "46699"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11894,6 +12752,7 @@ mno {
     mccmnc : "46689"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11908,6 +12767,7 @@ mno {
     mccmnc : "64005"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11932,6 +12792,7 @@ mno {
     mccmnc : "64004"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11946,6 +12807,7 @@ mno {
     mccmnc : "64003"
     mobile_apn {
       apn : "znet"
+      type : DEFAULT
     }
   }
 }
@@ -11960,6 +12822,7 @@ mno {
     mccmnc : "64002"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -11974,6 +12837,7 @@ mno {
     mccmnc : "25502"
     mobile_apn {
       apn : "internet.beeline.ua"
+      type : DEFAULT
     }
   }
 }
@@ -11991,18 +12855,21 @@ mno {
       localized_name {
         name : "Internet GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "xl.kyivstar.net"
       localized_name {
         name : "Internet XL"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3g.kyivstar.net"
       localized_name {
         name : "Internet 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12017,12 +12884,14 @@ mno {
     mccmnc : "25501"
     mobile_apn {
       apn : "www.jeans.ua"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "hyper.net"
       localized_name {
         name : "Hyper.NET"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12041,24 +12910,28 @@ mno {
         name : "GPRS Internet"
       }
       username : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "hyper.net"
       localized_name {
         name : "Hyper.NET"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "active"
       localized_name {
         name : "HyperActive"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.umc.ua"
       localized_name {
         name : "umc.ua"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12073,6 +12946,7 @@ mno {
     mccmnc : "25507"
     mobile_apn {
       apn : "3g.utel.ua"
+      type : DEFAULT
     }
   }
 }
@@ -12092,18 +12966,21 @@ mno {
       }
       username : "igprs"
       password : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "www.kyivstar.net"
       localized_name {
         name : "Contract GPRS"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "3g.kyivstar.net"
       localized_name {
         name : "Internet 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12121,12 +12998,14 @@ mno {
       localized_name {
         name : "Standard"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "speed"
       localized_name {
         name : "Faster"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12141,6 +13020,7 @@ mno {
     mccmnc : "64110"
     mobile_apn {
       apn : "yellopix.mtn.co.ug"
+      type : DEFAULT
     }
   }
 }
@@ -12155,6 +13035,7 @@ mno {
     mccmnc : "64114"
     mobile_apn {
       apn : "orange.ug"
+      type : DEFAULT
     }
   }
 }
@@ -12172,12 +13053,14 @@ mno {
       localized_name {
         name : "Mobile Broadband"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "utweb"
       localized_name {
         name : "Mobile Internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12192,6 +13075,7 @@ mno {
     mccmnc : "64122"
     mobile_apn {
       apn : "web.waridtel.co.ug"
+      type : DEFAULT
     }
   }
 }
@@ -12206,6 +13090,7 @@ mno {
     mccmnc : "64101"
     mobile_apn {
       apn : "web.ug.zain.com"
+      type : DEFAULT
     }
   }
 }
@@ -12245,7 +13130,8 @@ mno {
         name : "ATT Broadband"
       }
       ip_type: IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
     mtu : 1430
   }
@@ -12270,7 +13156,8 @@ mno {
           name : "ATT NR Broadband"
         }
         ip_type: IPV4V6
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "broadband"
@@ -12278,7 +13165,8 @@ mno {
           name : "ATT Broadband"
         }
         ip_type: IPV4V6
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mtu : 1430
     }
@@ -12343,15 +13231,18 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel01.com.attz"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "sentinelent01.com.attz"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "sentinelnb01.com.attz"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mtu : 1430
     }
@@ -12370,9 +13261,11 @@ mno {
       mccmnc : "310410"
       mobile_apn {
         apn : "att.mvno"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "tfdata"
+        type : DEFAULT
       }
       mtu : 1430
     }
@@ -12391,7 +13284,8 @@ mno {
       mccmnc : "310150"
       mobile_apn {
         apn : "mht"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -12414,7 +13308,8 @@ mno {
       mccmnc : "313140"
       mobile_apn {
         apn : "firstnet-broadband"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mtu : 1342
     }
@@ -12435,7 +13330,8 @@ mno {
       localized_name {
         name : "LaptopConnect (data cards)"
       }
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -12453,6 +13349,7 @@ mno {
       localized_name {
         name : "C Spire internet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -12468,6 +13365,7 @@ mno {
     mccmnc : "311370"
     mobile_apn {
       apn : "web.gci"
+      type : DEFAULT
     }
   }
 }
@@ -12503,6 +13401,7 @@ mno {
     mccmnc : "311570"
     mobile_apn {
       apn : "isp"
+      type : DEFAULT
     }
   }
 }
@@ -12538,6 +13437,7 @@ mno {
     mobile_apn {
       apn : "wap.gocbw.com"
       username : "cbw"
+      type : DEFAULT
     }
   }
 }
@@ -12572,6 +13472,7 @@ mno {
     mccmnc : "310570"
     mobile_apn {
       apn : "wapgw.chinookwireless.net"
+      type : DEFAULT
     }
   }
 }
@@ -12597,9 +13498,11 @@ mno {
     mccmnc : "311490"
     mobile_apn {
       apn : "r.ispsn"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "n.sprpre.ispsn"
+      type : DEFAULT
     }
   }
   mvno {
@@ -12618,11 +13521,13 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "spl2419.i.dlsn"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
       mobile_apn {
         apn : "spl0400.i.dlsn"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -12658,6 +13563,7 @@ mno {
         name : "fast.t-mobile.com"
       }
       ip_type: IPV4V6
+      type: DEFAULT
     }
   }
   mvno {
@@ -12678,6 +13584,7 @@ mno {
       mobile_apn {
         apn : "asw.data"
         ip_type : IPV6
+        type : DEFAULT
       }
     }
   }
@@ -12695,7 +13602,8 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "iot.kajeet"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }
@@ -12730,6 +13638,7 @@ mno {
       }
       mobile_apn {
         apn : "wholesale"
+        type : DEFAULT
       }
     }
   }
@@ -12759,6 +13668,7 @@ mno {
         localized_name {
           name : "IOT"
         }
+        type : DEFAULT
       }
     }
   }
@@ -12860,6 +13770,7 @@ mno {
       mccmnc : "310260"
       mobile_apn {
         apn : "fast.metropcs.com"
+        type : DEFAULT
       }
     }
   }
@@ -12881,6 +13792,7 @@ mno {
       mccmnc : "310260"
       mobile_apn {
         apn : "h2g2"
+        type : DEFAULT
       }
     }
   }
@@ -12903,6 +13815,7 @@ mno {
       mccmnc : "310240"
       mobile_apn {
         apn : "h2g2"
+        type : DEFAULT
       }
     }
   }
@@ -12934,6 +13847,7 @@ mno {
       localized_name {
         name : "LTE"
       }
+      type : DEFAULT
     }
   }
   mvno {
@@ -12952,9 +13866,11 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "uscc05016.enterprise3.usc-cdp"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "uscc05140.enterprise3.usc-cdp"
+        type : DEFAULT
       }
     }
   }
@@ -12981,6 +13897,7 @@ mno {
       }
       mobile_apn {
         apn : "uscc00000.enterprise0.usc-cdp"
+        type : DEFAULT
       }
     }
   }
@@ -12996,6 +13913,7 @@ mno {
     mccmnc : "90137"
     mobile_apn {
       apn : "mbb"
+      type : DEFAULT
     }
   }
 }
@@ -13044,6 +13962,7 @@ mno {
         name : "4G LTE Contract"
       }
       ip_type: IPV4V6
+      type : DEFAULT
     }
   }
   mvno {
@@ -13078,9 +13997,11 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "kajeet.gw12.vzwentp"
+        type : DEFAULT
       }
       mobile_apn {
         apn : "sentinel.vzwentp"
+        type : DEFAULT
       }
     }
   }
@@ -13100,6 +14021,7 @@ mno {
       localized_name {
         name : "ADSL Móvil"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "prepago.ancel"
@@ -13108,12 +14030,14 @@ mno {
       }
       username : "BAM"
       password : "BAM"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "gprs.ancel"
       localized_name {
         name : "GPRS"
       }
+      type : DEFAULT
     }
   }
 }
@@ -13133,6 +14057,7 @@ mno {
       }
       username : "ctigprs"
       password : "ctigprs999"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "internet.ctimovil.com.uy"
@@ -13141,6 +14066,7 @@ mno {
       }
       username : "ctiweb"
       password : "ctiweb999"
+      type : DEFAULT
     }
   }
 }
@@ -13160,6 +14086,7 @@ mno {
       }
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "webapn.movistar.com.uy"
@@ -13168,6 +14095,7 @@ mno {
       }
       username : "movistar"
       password : "movistar"
+      type : DEFAULT
     }
   }
 }
@@ -13184,6 +14112,7 @@ mno {
       apn : "internet.beeline.uz"
       username : "beeline"
       password : "beeline"
+      type : DEFAULT
     }
   }
 }
@@ -13200,6 +14129,7 @@ mno {
       apn : "net.mts.uz"
       username : "mts"
       password : "mts"
+      type : DEFAULT
     }
   }
 }
@@ -13216,6 +14146,7 @@ mno {
       apn : "internet"
       username : ""
       password : ""
+      type : DEFAULT
     }
   }
 }
@@ -13232,6 +14163,7 @@ mno {
       apn : "wap.digiceloecs.com"
       username : "wapoecs"
       password : "wap03oecs"
+      type : DEFAULT
     }
   }
 }
@@ -13248,6 +14180,7 @@ mno {
     mccmnc : "73403"
     mobile_apn {
       apn : "gprsweb.digitel.ve"
+      type : DEFAULT
     }
   }
 }
@@ -13262,6 +14195,7 @@ mno {
     mccmnc : "73406"
     mobile_apn {
       apn : "int.movilnet.com.ve"
+      type : DEFAULT
     }
   }
 }
@@ -13276,6 +14210,7 @@ mno {
     mccmnc : "73404"
     mobile_apn {
       apn : "internet.movistar.ve"
+      type : DEFAULT
     }
   }
 }
@@ -13290,6 +14225,7 @@ mno {
     mccmnc : "45207"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -13307,6 +14243,7 @@ mno {
       localized_name {
         name : "EVNTelecomNet"
       }
+      type : DEFAULT
     }
   }
 }
@@ -13323,6 +14260,7 @@ mno {
       apn : "m-wap"
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -13337,6 +14275,7 @@ mno {
     mccmnc : "45205"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -13354,12 +14293,14 @@ mno {
       localized_name {
         name : "Mobile Internet"
       }
+      type : DEFAULT
     }
     mobile_apn {
       apn : "e-connect"
       localized_name {
         name : "D-com 3G"
       }
+      type : DEFAULT
     }
   }
 }
@@ -13379,6 +14320,7 @@ mno {
       }
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "m3-card"
@@ -13387,6 +14329,7 @@ mno {
       }
       username : "mms"
       password : "mms"
+      type : DEFAULT
     }
   }
 }
@@ -13401,6 +14344,7 @@ mno {
     mccmnc : "65502"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -13415,6 +14359,7 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -13429,6 +14374,7 @@ mno {
     mccmnc : "65510"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
   }
 }
@@ -13443,6 +14389,7 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "vdata"
+      type : DEFAULT
     }
   }
 }
@@ -13457,12 +14404,14 @@ mno {
     mccmnc : "65501"
     mobile_apn {
       apn : "internet"
+      type : DEFAULT
     }
     mobile_apn {
       apn : "unrestricted"
       localized_name {
         name : "Unrestricted"
       }
+      type : DEFAULT
     }
   }
 }
@@ -13478,17 +14427,20 @@ mno {
     mobile_apn {
       apn : "internet"
       ip_type: IPV4V6
-      is_attach_apn: true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "internet-ipv6"
       ip_type: IPV6
-      is_attach_apn: true
+      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "internet-ipv4"
       ip_type: IPV4
-      is_attach_apn: true
+      type : DEFAULT
+      type : IA
     }
   }
   mvno {
@@ -13500,6 +14452,7 @@ mno {
       uuid : "78c9e001-6628-444e-b5e0-09d1f4bbf2ee"
       mobile_apn {
         apn : "internet"
+        type : DEFAULT
       }
     }
   }
@@ -13528,7 +14481,8 @@ mvno {
         name : "楽天(rakuten.jp)"
       }
       ip_type : IPV4V6
-      is_attach_apn : true
+      type : DEFAULT
+      type : IA
     }
   }
 }
@@ -13546,6 +14500,7 @@ mno {
     mccmnc : "312620"
     mobile_apn {
       apn : "hpdp-internet.foggmobile.com"
+      type : DEFAULT
     }
   }
   # If the IMSI range is correct, we still want to treat this as an MVNO.
@@ -13587,6 +14542,7 @@ mno {
       localized_name {
         name : "Test Network APN"
       }
+      type : DEFAULT
     }
   }
 }
@@ -13603,6 +14559,7 @@ mno {
       localized_name {
         name : "Test Network APN"
       }
+      type : DEFAULT
     }
     olp {
       olp_filter {
@@ -13649,7 +14606,8 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel.vf"
-        is_attach_apn : true
+        type : DEFAULT
+        type : IA
       }
     }
   }

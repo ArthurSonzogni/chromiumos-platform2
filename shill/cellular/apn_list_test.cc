@@ -8,6 +8,7 @@
 
 #include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
+#include "dbus/shill/dbus-constants.h"
 
 using testing::Test;
 
@@ -18,7 +19,7 @@ TEST(ApnListTest, AddApn) {
   MobileOperatorInfo::MobileAPN mobile_apn1;
   mobile_apn1.apn = "apn1";
   mobile_apn1.ip_type = "IPV4";
-  mobile_apn1.is_attach_apn = true;
+  mobile_apn1.apn_types = {"DEFAULT", "IA"};
   mobile_apn1.username = "user1";
   mobile_apn1.password = "pass1";
   mobile_apn1.authentication = "PAP";
@@ -26,7 +27,7 @@ TEST(ApnListTest, AddApn) {
   MobileOperatorInfo::MobileAPN mobile_apn2;
   mobile_apn2.apn = "apn2";
   mobile_apn2.ip_type = "IPV4V6";
-  mobile_apn2.is_attach_apn = false;
+  mobile_apn2.apn_types = {"DEFAULT"};
   mobile_apn2.username = "user2";
   mobile_apn2.password = "pass2";
   mobile_apn2.authentication = "CHAP";
@@ -43,8 +44,9 @@ TEST(ApnListTest, AddApn) {
 
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn1");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4");
-  EXPECT_TRUE(base::Contains(*apn, kApnAttachProperty));
-  EXPECT_STREQ(apn->at(kApnAttachProperty).c_str(), kApnAttachProperty);
+  EXPECT_TRUE(ApnList::IsAttachApn(*apn));
+  EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(),
+               ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
   EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(),
@@ -53,7 +55,8 @@ TEST(ApnListTest, AddApn) {
   apn = &apns.at(1);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn2");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4V6");
-  EXPECT_FALSE(base::Contains(*apn, kApnAttachProperty));
+  EXPECT_FALSE(ApnList::IsAttachApn(*apn));
+  EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(), "DEFAULT");
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user2");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
   EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(),
@@ -69,8 +72,9 @@ TEST(ApnListTest, AddApn) {
   apn = &apns.at(0);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn1");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4");
-  EXPECT_TRUE(base::Contains(*apn, kApnAttachProperty));
-  EXPECT_STREQ(apn->at(kApnAttachProperty).c_str(), kApnAttachProperty);
+  EXPECT_TRUE(ApnList::IsAttachApn(*apn));
+  EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(),
+               ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
   EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(), cellular::kApnSourceMoDb);

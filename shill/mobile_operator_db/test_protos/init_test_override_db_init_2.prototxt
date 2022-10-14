@@ -13,12 +13,14 @@ mno {
     mccmnc : "02"
     mobile_apn {
       apn : "zeroes_override"
+      type : DEFAULT
       localized_name {
         name : "Ovr0"
       }
     }
     mobile_apn {
       apn : "twosies_override"
+      type : DEFAULT
       localized_name {
         name : "Ovr2"
       }

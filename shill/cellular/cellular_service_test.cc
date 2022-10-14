@@ -7,6 +7,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "base/containers/contains.h"
+#include "dbus/shill/dbus-constants.h"
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
@@ -208,8 +210,9 @@ TEST_F(CellularServiceTest, SetAttachApn) {
   EXPECT_TRUE(error.IsSuccess());
   Stringmap::const_iterator it = resultapn.find(kApnProperty);
   EXPECT_TRUE(it != resultapn.end() && it->second == kApn);
-  it = resultapn.find(kApnAttachProperty);
-  EXPECT_TRUE(it != resultapn.end() && it->second == kApnAttachProperty);
+  it = resultapn.find(kApnTypesProperty);
+  ASSERT_TRUE(it != resultapn.end());
+  EXPECT_STREQ(it->second.c_str(), "DEFAULT,IA");
   EXPECT_NE(nullptr, service_->GetUserSpecifiedApn());
 }
 
@@ -462,6 +465,9 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   static const char kPassword[] = "arlet";
   static const char kAuthentication[] = "chap";
 
+  std::string attach;
+  const std::string attach_key =
+      std::string(CellularService::kStorageAPN) + "." + kApnAttachProperty;
   Error error;
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
@@ -472,6 +478,12 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   service_->SetApn(testapn, &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->Save(&storage_));
+  // kApnAttachProperty will be converted into kApnTypesProperty
+  EXPECT_FALSE(storage_.GetString(storage_id_, attach_key, &attach));
+  EXPECT_TRUE(storage_.GetString(
+      storage_id_,
+      std::string(CellularService::kStorageAPN) + "." + kApnTypesProperty,
+      &attach));
 
   // Clear the APN, and then load it from storage again.
   Stringmap emptyapn;
@@ -486,7 +498,19 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_EQ(kUsername, resultapn[kApnUsernameProperty]);
   EXPECT_EQ(kPassword, resultapn[kApnPasswordProperty]);
   EXPECT_EQ(kAuthentication, resultapn[kApnAuthenticationProperty]);
-  EXPECT_EQ(kApnAttachProperty, kApnAttachProperty);
+  // kApnAttachProperty will be converted into kApnTypesProperty
+  EXPECT_FALSE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
+
+  // Force storing kApnAttachProperty and reset kApnTypesProperty to verify the
+  // value is migrated on Load.
+  EXPECT_TRUE(storage_.SetString(storage_id_, attach_key, kApnAttachProperty));
+  EXPECT_TRUE(storage_.DeleteKey(storage_id_, kApnTypesProperty));
+  EXPECT_TRUE(service_->Save(&storage_));
+  EXPECT_TRUE(service_->Load(&storage_));
+  resultapn = service_->GetApn(&error);
+  EXPECT_FALSE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
 }
 
 TEST_F(CellularServiceTest, IgnoreUnversionedLastGoodApn) {

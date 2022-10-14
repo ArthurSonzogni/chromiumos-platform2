@@ -45,6 +45,7 @@ mno {
     mccmnc: "200003"  # Used in FilteredOLP
     mobile_apn {
       apn: "test@test.com"
+      type : DEFAULT
       localized_name {
         name: "name200003"
         language: "hi"
@@ -79,6 +80,7 @@ mno {
       mccmnc: "200102"
       mobile_apn {
         apn: "test2@test.com"
+        type : DEFAULT
         username: "testuser2"
         password: "is_public_boohoohoo_too"
       }

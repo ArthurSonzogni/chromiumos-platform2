@@ -118,6 +118,7 @@ class CellularService : public Service {
 
   void NotifySubscriptionStateChanged(SubscriptionState subscription_state);
 
+  static const char kStorageAPN[];
   static const char kStorageIccid[];
   static const char kStorageImsi[];
   static const char kStoragePPPUsername[];

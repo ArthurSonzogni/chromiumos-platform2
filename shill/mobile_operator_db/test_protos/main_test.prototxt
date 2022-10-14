@@ -647,6 +647,7 @@ mno {
         exclude_regex: "13000111[0-9]{7}"
       }
       apn : "apn_regex"
+      type : DEFAULT
     }
     mobile_apn {
       apn_filter {
@@ -654,6 +655,7 @@ mno {
         exclude_regex: "130001[3-4]{1}[0-9]{8}"
       }
       apn : "apn_exclude_regex"
+      type : DEFAULT
     }
   }
 }

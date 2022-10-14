@@ -529,6 +529,7 @@ const char kApnNameProperty[] = "name";
 const char kApnLocalizedNameProperty[] = "localized_name";
 const char kApnLanguageProperty[] = "language";
 const char kApnAuthenticationProperty[] = "authentication";
+// TODO(b/251551314): Remove kApnAttachProperty after 2025Q2
 const char kApnAttachProperty[] = "attach";
 const char kApnIpTypeProperty[] = "ip_type";
 const char kApnTypesProperty[] = "apn_types";

@@ -1129,6 +1129,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     mtu_ = 1400;
     mccmnc_list_ = {"200001", "200002", "200003"};
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
+    apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
     MobileOperatorInfo::MobileAPN apn;
@@ -1136,6 +1137,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
     apn.operator_name_list = {{"name200003", "hi"}};
+    apn.apn_types = apn_types_;
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"some@random.com", "POST", "random_data"}};
@@ -1149,12 +1151,14 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     mtu_ = 1200;
     mccmnc_list_ = {"200001", "200102"};
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
+    apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
     MobileOperatorInfo::MobileAPN apn;
     apn.apn = "test2@test.com";
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
+    apn.apn_types = apn_types_;
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"someother@random.com", "GET", ""}};
@@ -1164,6 +1168,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   std::string country_;
   bool requires_roaming_;
   int32_t mtu_;
+  std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
