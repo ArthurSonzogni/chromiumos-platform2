@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <gmock/gmock.h>
+
 #include "patchpanel/datapath.h"
 
 namespace patchpanel {
@@ -15,7 +17,7 @@ namespace patchpanel {
 // ARC networking data path configuration utility.
 class MockDatapath : public Datapath {
  public:
-  explicit MockDatapath() : Datapath(nullptr, nullptr, nullptr) {}
+  MockDatapath() : Datapath(nullptr, nullptr, nullptr) {}
   MockDatapath(const MockDatapath&) = delete;
   MockDatapath& operator=(const MockDatapath&) = delete;
 
@@ -89,6 +91,17 @@ class MockDatapath : public Datapath {
                     const std::string& table,
                     const std::vector<std::string>& argv,
                     bool log_failures));
+  MOCK_METHOD2(AddIPv6NeighborProxy,
+               bool(const std::string& ifname, const std::string& ipv6_addr));
+  MOCK_METHOD2(RemoveIPv6NeighborProxy,
+               void(const std::string& ifname, const std::string& ipv6_addr));
+  MOCK_METHOD4(AddIPv6HostRoute,
+               bool(const std::string& ifname,
+                    const std::string& ipv6_addr,
+                    int ipv6_prefix_len,
+                    const std::string& src_addr));
+  MOCK_METHOD2(RemoveIPv6HostRoute,
+               void(const std::string& ipv6_addr, int ipv6_prefix_len));
 };
 
 }  // namespace patchpanel

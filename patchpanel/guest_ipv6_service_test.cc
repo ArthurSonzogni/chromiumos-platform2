@@ -30,6 +30,17 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
                void(NDProxyControlMessage::NDProxyRequestType type,
                     int32_t if_id_primary,
                     int32_t if_id_secondary));
+
+  void FakeNDProxyNeighborDetectionSignal(int if_id, const in6_addr& ip6addr) {
+    NeighborDetectedSignal msg;
+    msg.set_if_id(if_id);
+    msg.set_ip(&ip6addr, sizeof(in6_addr));
+    NDProxySignalMessage nm;
+    *nm.mutable_neighbor_detected_signal() = msg;
+    FeedbackMessage fm;
+    *fm.mutable_ndproxy_signal() = nm;
+    OnNDProxyMessage(fm);
+  }
 };
 
 }  // namespace
@@ -164,6 +175,72 @@ TEST_F(GuestIPv6ServiceTest, MultipleUpstreamMultipleDownstream) {
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
       .With(Args<1, 2>(AreTheseTwo(102, 103)));
   target.StopUplink("up2");
+}
+
+TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
+  GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
+                                   system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("up2")).WillByDefault(Return(2));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+  ON_CALL(*system_, IfIndextoname(101)).WillByDefault(Return("down1"));
+
+  // StartForwarding() and OnUplinkIPv6Changed() can be triggered in different
+  // order in different scenario so we need to verify both.
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
+  target.StartForwarding("up1", "down1");
+
+  EXPECT_CALL(*datapath_, AddIPv6NeighborProxy("down1", "2001:db8:0:100::1234"))
+      .WillOnce(Return(true));
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:100::1234");
+
+  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:100::abcd", 128,
+                                           "2001:db8:0:100::1234"));
+  target.FakeNDProxyNeighborDetectionSignal(
+      101, StringToIPv6Address("2001:db8:0:100::abcd"));
+
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
+      .With(Args<1, 2>(AreTheseTwo(1, 101)));
+  EXPECT_CALL(*datapath_,
+              RemoveIPv6NeighborProxy("down1", "2001:db8:0:100::1234"));
+  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:100::abcd", 128));
+  target.StopForwarding("up1", "down1");
+
+  // OnUplinkIPv6Changed -> StartForwarding
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
+
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
+  EXPECT_CALL(*datapath_, AddIPv6NeighborProxy("down1", "2001:db8:0:200::1234"))
+      .WillOnce(Return(true));
+  target.StartForwarding("up1", "down1");
+
+  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:200::abcd", 128,
+                                           "2001:db8:0:200::1234"));
+  target.FakeNDProxyNeighborDetectionSignal(
+      101, StringToIPv6Address("2001:db8:0:200::abcd"));
+
+  EXPECT_CALL(*datapath_, AddIPv6HostRoute("down1", "2001:db8:0:200::9876", 128,
+                                           "2001:db8:0:200::1234"));
+  target.FakeNDProxyNeighborDetectionSignal(
+      101, StringToIPv6Address("2001:db8:0:200::9876"));
+
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
+      .With(Args<1, 2>(AreTheseTwo(1, 101)));
+  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:200::abcd", 128));
+  EXPECT_CALL(*datapath_, RemoveIPv6HostRoute("2001:db8:0:200::9876", 128));
+  EXPECT_CALL(*datapath_,
+              RemoveIPv6NeighborProxy("down1", "2001:db8:0:200::1234"));
+  target.StopUplink("up1");
 }
 
 }  // namespace patchpanel

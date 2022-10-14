@@ -73,16 +73,16 @@ class GuestIPv6Service {
       int32_t if_id_primary,
       int32_t if_id_secondary);
 
+  // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
+  // address to guest-facing interface.
+  void OnNDProxyMessage(const FeedbackMessage& msg);
+
  private:
   struct ForwardEntry {
     ForwardMethod method;
     std::optional<std::string> upstream_ifname;
     std::set<std::string> downstream_ifnames;
   };
-
-  // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
-  // address to guest-facing interface.
-  void OnNDProxyMessage(const FeedbackMessage& msg);
 
   // Helper functions to find corresponding uplink interface for a downlink and
   // all downlink interfaces for an uplink.
