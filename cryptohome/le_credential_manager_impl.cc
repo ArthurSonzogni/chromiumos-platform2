@@ -615,8 +615,9 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
       // do much else now. We block further LE operations until at least the
       // next boot.
       is_locked_ = true;
+    } else {
+      root_hash_ = remove_result->new_root;
     }
-    root_hash_ = remove_result->new_root;
 
     ReportLEResult(uma_log_op, kLEActionBackendRecoverInsert, LE_CRED_SUCCESS);
 
