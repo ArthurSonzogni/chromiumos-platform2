@@ -50,6 +50,7 @@ TEST_F(TestingTPMManagerErrorTest, TPMRetryAction) {
   EXPECT_EQ(status2->ToTPMRetryAction(), TPMRetryAction::kCommunication);
 
   EXPECT_EQ(MakeStatus<TPMManagerError>(TpmManagerStatus::STATUS_DEVICE_ERROR)
+                .HintNotOk()
                 ->ToTPMRetryAction(),
             TPMRetryAction::kReboot);
 }

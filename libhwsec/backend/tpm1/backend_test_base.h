@@ -18,6 +18,7 @@
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy_for_test.h"
 #include "libhwsec/status.h"
+#include "libhwsec-foundation/error/testing_helper.h"
 
 namespace hwsec {
 
@@ -135,6 +136,7 @@ class BackendTpm1TestBase : public ::testing::Test {
   }
 
   void SetupDelegate() {
+    using hwsec_foundation::error::testing::IsOkAndHolds;
     using testing::_;
     using testing::Args;
     using testing::AtMost;
@@ -145,9 +147,7 @@ class BackendTpm1TestBase : public ::testing::Test {
     using tpm_manager::TpmManagerStatus;
 
     // Cache the default user TPM handle.
-    auto user_tpm = backend_->GetUserTpmHandle();
-    ASSERT_TRUE(user_tpm.ok());
-    EXPECT_EQ(*user_tpm, kDefaultTpm);
+    EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kDefaultTpm));
 
     TSS_HPOLICY kPolicy1 = 0x9909;
 

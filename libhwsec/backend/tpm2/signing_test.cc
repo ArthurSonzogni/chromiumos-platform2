@@ -15,6 +15,7 @@
 #undef TPM_ALG_RSA
 
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -77,7 +78,7 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               Sign(kFakeKeyHandle, trunks::TPM_ALG_RSASSA,
@@ -85,11 +86,10 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto signature = middleware_->CallSync<&Backend::Signing::Sign>(
-      kFakePolicy, key->GetKey(), brillo::BlobFromString(kDataToSign));
-
-  ASSERT_TRUE(signature.ok());
-  EXPECT_EQ(*signature, brillo::BlobFromString(kSignature));
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Signing::Sign>(
+          kFakePolicy, key->GetKey(), brillo::BlobFromString(kDataToSign)),
+      IsOkAndHolds(brillo::BlobFromString(kSignature)));
 }
 
 TEST_F(BackendSigningTpm2Test, SignECC) {
@@ -148,7 +148,7 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_THAT(key, IsOk());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               Sign(kFakeKeyHandle, trunks::TPM_ALG_ECDSA,
@@ -156,11 +156,10 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto signature = middleware_->CallSync<&Backend::Signing::Sign>(
-      kFakePolicy, key->GetKey(), brillo::BlobFromString(kDataToSign));
-
-  ASSERT_THAT(signature, IsOk());
-  EXPECT_EQ(*signature, brillo::BlobFromString(kSignature));
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Signing::Sign>(
+          kFakePolicy, key->GetKey(), brillo::BlobFromString(kDataToSign)),
+      IsOkAndHolds(brillo::BlobFromString(kSignature)));
 }
 
 TEST_F(BackendSigningTpm2Test, SignUnknown) {
@@ -188,7 +187,7 @@ TEST_F(BackendSigningTpm2Test, SignUnknown) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_THAT(key, IsOk());
+  ASSERT_OK(key);
 
   auto signature = middleware_->CallSync<&Backend::Signing::Sign>(
       kFakePolicy, key->GetKey(), brillo::BlobFromString(kDataToSign));

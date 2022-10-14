@@ -11,6 +11,7 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -87,11 +88,9 @@ TEST_F(BackendSealingTpm1Test, Seal) {
                       SetArgPointee<4>(sealed_data.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::Seal>(
-      kFakePolicy, kFakeUnsealedData);
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeSealedData);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Seal>(kFakePolicy,
+                                                             kFakeUnsealedData),
+              IsOkAndHolds(kFakeSealedData));
 }
 
 TEST_F(BackendSealingTpm1Test, PreloadSealedData) {
@@ -101,7 +100,7 @@ TEST_F(BackendSealingTpm1Test, PreloadSealedData) {
   auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_FALSE(result->has_value());
 }
 
@@ -156,11 +155,10 @@ TEST_F(BackendSealingTpm1Test, Unseal) {
                       SetArgPointee<3>(unsealed_data.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::Unseal>(
-      kFakePolicy, kFakeSealedData, Backend::Sealing::UnsealOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeUnsealedData);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Sealing::Unseal>(
+          kFakePolicy, kFakeSealedData, Backend::Sealing::UnsealOptions{}),
+      IsOkAndHolds(kFakeUnsealedData));
 }
 
 }  // namespace hwsec

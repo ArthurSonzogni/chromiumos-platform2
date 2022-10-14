@@ -22,6 +22,7 @@
 using hwsec_foundation::SecureBlobToBigNum;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -37,11 +38,9 @@ namespace hwsec {
 class BackendRecoveryCryptoTpm2Test : public BackendTpm2TestBase {};
 
 TEST_F(BackendRecoveryCryptoTpm2Test, GenerateKeyAuthValue) {
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateKeyAuthValue>();
-
-  ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result.value(), std::nullopt);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateKeyAuthValue>(),
+      IsOkAndHolds(std::nullopt));
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
@@ -107,7 +106,7 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
       middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
           std::move(encrypt_request_destination_share));
 
-  ASSERT_THAT(result, IsOk());
+  ASSERT_OK(result);
   EXPECT_EQ(result->encrypted_own_priv_key, encrypted_own_priv_key);
   EXPECT_TRUE(result->extended_pcr_bound_own_priv_key.empty());
 }
@@ -248,7 +247,7 @@ TEST_F(BackendRecoveryCryptoTpm2Test, GenerateDiffieHellmanSharedSecret) {
       &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
       std::move(decrypt_request_destination_share));
 
-  ASSERT_THAT(result, IsOk());
+  ASSERT_OK(result);
   EXPECT_NE(result.value(), nullptr);
 }
 
@@ -416,20 +415,16 @@ TEST_F(BackendRecoveryCryptoTpm2Test,
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, GenerateRsaKeyPair) {
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateRsaKeyPair>();
-
-  ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result.value(), std::nullopt);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateRsaKeyPair>(),
+      IsOkAndHolds(std::nullopt));
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, SignRequestPayload) {
-  auto result =
+  EXPECT_THAT(
       middleware_->CallSync<&Backend::RecoveryCrypto::SignRequestPayload>(
-          brillo::Blob(), brillo::Blob());
-
-  ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result.value(), std::nullopt);
+          brillo::Blob(), brillo::Blob()),
+      IsOkAndHolds(std::nullopt));
 }
 
 }  // namespace hwsec

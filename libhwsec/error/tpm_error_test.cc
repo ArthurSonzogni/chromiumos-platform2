@@ -28,6 +28,7 @@ class TestingTPMErrorTest : public ::testing::Test {
 TEST_F(TestingTPMErrorTest, TPMRetryAction) {
   StatusChain<TPMError> status =
       MakeStatus<TPMError>("OuOb", TPMRetryAction::kReboot);
+  ASSERT_NOT_OK(status);
   EXPECT_EQ(status->ToTPMRetryAction(), TPMRetryAction::kReboot);
   StatusChain<TPMError> status2 =
       MakeStatus<TPMError>("OuQ", status->ToTPMRetryAction())
@@ -36,27 +37,9 @@ TEST_F(TestingTPMErrorTest, TPMRetryAction) {
   EXPECT_EQ(status2->ToTPMRetryAction(), TPMRetryAction::kReboot);
 }
 
-TEST_F(TestingTPMErrorTest, TPMRetryHandler) {
-  StatusChain<TPMErrorBase> status = HANDLE_TPM_COMM_ERROR(
-      MakeStatus<TPMError>("OuOb", TPMRetryAction::kReboot));
-  EXPECT_EQ("OuOb", status.ToFullString());
-  EXPECT_EQ(TPMRetryAction::kReboot, status->ToTPMRetryAction());
-
-  int counter = 0;
-  auto func = base::BindLambdaForTesting([&counter]() {
-    counter++;
-    return MakeStatus<TPMError>("OwO", TPMRetryAction::kCommunication);
-  });
-
-  StatusChain<TPMErrorBase> status2 = HANDLE_TPM_COMM_ERROR(func.Run());
-  EXPECT_EQ("Retry Failed: OwO", status2.ToFullString());
-  EXPECT_EQ(TPMRetryAction::kLater, status2->ToTPMRetryAction());
-  EXPECT_EQ(counter, 5);
-}
-
 TEST_F(TestingTPMErrorTest, UnifiedErrorCode) {
-  StatusChain<TPMErrorBase> status1 = HANDLE_TPM_COMM_ERROR(
-      MakeStatus<TPMError>("QAQ", TPMRetryAction::kReboot));
+  StatusChain<TPMErrorBase> status1 =
+      MakeStatus<TPMError>("QAQ", TPMRetryAction::kReboot);
   // Test LogUnifiedErrorCodeMapping to make sure it doesn't cause trouble, and
   // also makes debugging easier.
   status1->LogUnifiedErrorCodeMapping();

@@ -14,6 +14,9 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -62,7 +65,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetSupportedAlgo) {
   auto result =
       middleware_->CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_TRUE(result->count(KeyAlgoType::kRsa));
   EXPECT_FALSE(result->count(KeyAlgoType::kEcc));
 }
@@ -113,20 +116,20 @@ TEST_F(BackendKeyManagementTpm1Test, GetPersistentKey) {
         middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
             Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
-    ASSERT_TRUE(result.ok());
+    EXPECT_THAT(result, IsOk());
 
     auto result2 =
         middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
             Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
-    ASSERT_TRUE(result2.ok());
+    EXPECT_THAT(result2, IsOk());
   }
 
   auto result3 =
       middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
           Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
-  ASSERT_TRUE(result3.ok());
+  EXPECT_THAT(result3, IsOk());
 }
 
 TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
@@ -211,7 +214,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
           .allow_sign = true,
       });
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, kFakeKeyBlob);
 }
 
@@ -289,7 +292,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKey) {
               .allow_sign = true,
           });
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, kFakeKeyBlob);
 }
 
@@ -316,19 +319,15 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
 
-  auto result2 =
-      middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-          result->GetKey());
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
+                  result->GetKey()),
+              IsOk());
 
-  ASSERT_TRUE(result2.ok());
-
-  auto result3 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-      result->GetKey());
-
-  ASSERT_TRUE(result3.ok());
-  EXPECT_EQ(*result3, kFakeKeyHandle);
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
+                  result->GetKey()),
+              IsOkAndHolds(kFakeKeyHandle));
 }
 
 TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
@@ -357,19 +356,15 @@ TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
       middleware_->CallSync<&Backend::KeyManagement::LoadAutoReloadKey>(
           kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
 
-  auto result2 =
-      middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-          result->GetKey());
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
+                  result->GetKey()),
+              IsOk());
 
-  ASSERT_TRUE(result2.ok());
-
-  auto result3 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-      result->GetKey());
-
-  ASSERT_TRUE(result3.ok());
-  EXPECT_EQ(*result3, kFakeKeyHandle2);
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
+                  result->GetKey()),
+              IsOkAndHolds(kFakeKeyHandle2));
 }
 
 TEST_F(BackendKeyManagementTpm1Test, SideLoadKey) {
@@ -387,13 +382,11 @@ TEST_F(BackendKeyManagementTpm1Test, SideLoadKey) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::SideLoadKey>(
       kFakeKeyHandle);
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
 
-  auto result2 = middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-      result->GetKey());
-
-  ASSERT_TRUE(result2.ok());
-  EXPECT_EQ(*result2, kFakeKeyHandle);
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
+                  result->GetKey()),
+              IsOkAndHolds(kFakeKeyHandle));
 }
 
 TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpki) {
@@ -401,20 +394,20 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpki) {
   brillo::Blob public_key_spki_der;
   EXPECT_TRUE(GenerateRsaKey(2048, &pkey, &public_key_spki_der));
 
-  auto result = backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
-      public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
-
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
+          public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
+      IsOk());
 }
 
 TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
   // Wrong format key.
   brillo::Blob public_key_spki_der(64, '?');
 
-  auto result = backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
-      public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384);
-
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
+          public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
+      NotOk());
 }
 
 }  // namespace hwsec

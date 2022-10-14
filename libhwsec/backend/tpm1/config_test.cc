@@ -11,6 +11,8 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -56,7 +58,7 @@ TEST_F(BackendConfigTpm1Test, ToOperationPolicy) {
   auto result =
       middleware_->CallSync<&Backend::Config::ToOperationPolicy>(kFakeSetting);
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   ASSERT_TRUE(result->permission.auth_value.has_value());
   EXPECT_EQ(result->permission.auth_value.value(), kFakeAuthValue);
   EXPECT_EQ(result->device_configs, (DeviceConfigs{
@@ -73,10 +75,9 @@ TEST_F(BackendConfigTpm1Test, SetCurrentUser) {
               Ospi_TPM_PcrExtend(kDefaultTpm, _, _, _, _, _, _))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result =
-      middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser);
-
-  EXPECT_TRUE(result.ok());
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser),
+      IsOk());
 }
 
 TEST_F(BackendConfigTpm1Test, IsCurrentUserSet) {
@@ -88,10 +89,8 @@ TEST_F(BackendConfigTpm1Test, IsCurrentUserSet) {
                       SetArgPointee<3>(non_zero_pcr.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
@@ -102,10 +101,8 @@ TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
       .WillOnce(DoAll(SetArgPointee<2>(zero_pcr.size()),
                       SetArgPointee<3>(zero_pcr.data()), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_FALSE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+              IsOkAndHolds(false));
 }
 
 }  // namespace hwsec

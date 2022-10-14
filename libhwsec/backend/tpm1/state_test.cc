@@ -10,6 +10,8 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -31,9 +33,8 @@ TEST_F(BackendStateTpm1Test, IsEnabled) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::State::IsEnabled>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::State::IsEnabled>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendStateTpm1Test, IsReady) {
@@ -44,9 +45,8 @@ TEST_F(BackendStateTpm1Test, IsReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::State::IsReady>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::State::IsReady>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendStateTpm1Test, Prepare) {
@@ -55,8 +55,7 @@ TEST_F(BackendStateTpm1Test, Prepare) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, TakeOwnership(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::State::Prepare>();
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::State::Prepare>(), IsOk());
 }
 
 }  // namespace hwsec

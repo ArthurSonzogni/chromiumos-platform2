@@ -11,6 +11,7 @@
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -25,10 +26,8 @@ namespace hwsec {
 class BackendSealingTpm2Test : public BackendTpm2TestBase {};
 
 TEST_F(BackendSealingTpm2Test, IsSupported) {
-  auto result = middleware_->CallSync<&Backend::Sealing::IsSupported>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::IsSupported>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendSealingTpm2Test, Seal) {
@@ -61,11 +60,9 @@ TEST_F(BackendSealingTpm2Test, Seal) {
       .WillOnce(DoAll(SetArgPointee<5>(kFakeSealedData),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::Seal>(
-      kFakePolicy, brillo::SecureBlob(kFakeData));
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::BlobFromString(kFakeSealedData));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Seal>(
+                  kFakePolicy, brillo::SecureBlob(kFakeData)),
+              IsOkAndHolds(brillo::BlobFromString(kFakeSealedData)));
 }
 
 TEST_F(BackendSealingTpm2Test, PreloadSealedData) {
@@ -84,7 +81,7 @@ TEST_F(BackendSealingTpm2Test, PreloadSealedData) {
   auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_TRUE(result->has_value());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
@@ -107,12 +104,10 @@ TEST_F(BackendSealingTpm2Test, Unseal) {
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::Unseal>(
-      kFakePolicy, brillo::BlobFromString(kFakeSealedData),
-      Backend::Sealing::UnsealOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::SecureBlob(kFakeData));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Unseal>(
+                  kFakePolicy, brillo::BlobFromString(kFakeSealedData),
+                  Backend::Sealing::UnsealOptions{}),
+              IsOkAndHolds(brillo::SecureBlob(kFakeData)));
 }
 
 TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
@@ -139,7 +134,7 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
   auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_TRUE(result->has_value());
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
@@ -147,14 +142,12 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result2 = middleware_->CallSync<&Backend::Sealing::Unseal>(
-      kFakePolicy, brillo::BlobFromString(kFakeSealedData),
-      Backend::Sealing::UnsealOptions{
-          .preload_data = result->value().GetKey(),
-      });
-
-  ASSERT_TRUE(result2.ok());
-  EXPECT_EQ(*result2, brillo::SecureBlob(kFakeData));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Unseal>(
+                  kFakePolicy, brillo::BlobFromString(kFakeSealedData),
+                  Backend::Sealing::UnsealOptions{
+                      .preload_data = result->value().GetKey(),
+                  }),
+              IsOkAndHolds(brillo::SecureBlob(kFakeData)));
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));

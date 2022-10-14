@@ -10,6 +10,7 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -39,7 +40,7 @@ TEST_F(BackendTpm1Test, GetScopedTssContext) {
       .WillOnce(Return(TPM_SUCCESS));
 
   auto result = backend_->GetScopedTssContext();
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_EQ(result->value(), kFakeContext);
 }
 
@@ -56,14 +57,10 @@ TEST_F(BackendTpm1Test, GetTssContext) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result = backend_->GetTssContext();
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeContext);
+  EXPECT_THAT(backend_->GetTssContext(), IsOkAndHolds(kFakeContext));
 
   // Run again to check the cache works correctly.
-  result = backend_->GetTssContext();
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeContext);
+  EXPECT_THAT(backend_->GetTssContext(), IsOkAndHolds(kFakeContext));
 }
 
 TEST_F(BackendTpm1Test, GetUserTpmHandle) {
@@ -84,14 +81,10 @@ TEST_F(BackendTpm1Test, GetUserTpmHandle) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result = backend_->GetUserTpmHandle();
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeTpm);
+  EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kFakeTpm));
 
   // Run again to check the cache works correctly.
-  result = backend_->GetUserTpmHandle();
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeTpm);
+  EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kFakeTpm));
 }
 
 TEST_F(BackendTpm1Test, GetDelegateTpmHandle) {
@@ -165,11 +158,11 @@ TEST_F(BackendTpm1Test, GetDelegateTpmHandle) {
       .WillOnce(Return(TPM_SUCCESS));
 
   auto result1 = backend_->GetDelegateTpmHandle();
-  ASSERT_TRUE(result1.ok());
+  ASSERT_OK(result1);
   EXPECT_EQ(result1->value(), kFakeTpm1);
 
   auto result2 = backend_->GetDelegateTpmHandle();
-  ASSERT_TRUE(result2.ok());
+  ASSERT_OK(result2);
   EXPECT_EQ(result2->value(), kFakeTpm2);
 }
 

@@ -21,6 +21,8 @@
 #include "libhwsec/structures/signature_sealed_data_test_utils.h"
 
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -189,7 +191,7 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
 
 TEST_F(BackendSignatureSealingTpm2Test, SealChallengeUnseal) {
   StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+  ASSERT_OK(seal_result);
   SignatureSealedData expected_seal_result = Tpm2PolicySignedData{
       .public_key_spki_der = public_key_spki_der_,
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
@@ -208,7 +210,7 @@ TEST_F(BackendSignatureSealingTpm2Test, SealChallengeUnseal) {
   StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
       SetupChallenge(seal_result.value());
 
-  ASSERT_THAT(challenge_result, IsOk());
+  ASSERT_OK(challenge_result);
   EXPECT_EQ(challenge_result->algorithm, Algorithm::kRsassaPkcs1V15Sha256);
 
   brillo::Blob challenge_value = brillo::CombineBlobs(
@@ -237,20 +239,17 @@ TEST_F(BackendSignatureSealingTpm2Test, SealChallengeUnseal) {
       .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto unseal_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
-          challenge_result->challenge_id,
-          brillo::BlobFromString(fake_challenge_response_));
-  ASSERT_THAT(unseal_result, IsOk());
-  EXPECT_EQ(unseal_result.value(), unsealed_data_);
+  EXPECT_THAT(middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
+                  challenge_result->challenge_id,
+                  brillo::BlobFromString(fake_challenge_response_)),
+              IsOkAndHolds(unsealed_data_));
 }
 
 TEST_F(BackendSignatureSealingTpm2Test, SealWithSha1) {
   key_algorithms_ = std::vector<Algorithm>{
       Algorithm::kRsassaPkcs1V15Sha1,
   };
-  StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+
   SignatureSealedData expected_seal_result = Tpm2PolicySignedData{
       .public_key_spki_der = public_key_spki_der_,
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
@@ -264,7 +263,8 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWithSha1) {
                                    brillo::BlobFromString(fake_digests2_)},
           },
   };
-  EXPECT_EQ(seal_result.value(), expected_seal_result);
+
+  EXPECT_THAT(SetupSealing(), IsOkAndHolds(expected_seal_result));
 }
 
 TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriority) {
@@ -274,8 +274,7 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriority) {
       Algorithm::kRsassaPkcs1V15Sha384,
       Algorithm::kRsassaPkcs1V15Sha1,
   };
-  StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+
   SignatureSealedData expected_seal_result = Tpm2PolicySignedData{
       .public_key_spki_der = public_key_spki_der_,
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
@@ -289,7 +288,8 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriority) {
                                    brillo::BlobFromString(fake_digests2_)},
           },
   };
-  EXPECT_EQ(seal_result.value(), expected_seal_result);
+
+  EXPECT_THAT(SetupSealing(), IsOkAndHolds(expected_seal_result));
 }
 
 TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriorityReverse) {
@@ -299,8 +299,7 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriorityReverse) {
       Algorithm::kRsassaPkcs1V15Sha256,
       Algorithm::kRsassaPkcs1V15Sha512,
   };
-  StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+
   SignatureSealedData expected_seal_result = Tpm2PolicySignedData{
       .public_key_spki_der = public_key_spki_der_,
       .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
@@ -314,7 +313,8 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriorityReverse) {
                                    brillo::BlobFromString(fake_digests2_)},
           },
   };
-  EXPECT_EQ(seal_result.value(), expected_seal_result);
+
+  EXPECT_THAT(SetupSealing(), IsOkAndHolds(expected_seal_result));
 }
 
 TEST_F(BackendSignatureSealingTpm2Test, SealNoPubKey) {
@@ -408,7 +408,7 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWrongDigestLength) {
 
 TEST_F(BackendSignatureSealingTpm2Test, ChallengeWrongData) {
   StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+  ASSERT_OK(seal_result);
 
   // Wrong method.
   SignatureSealedData sealed_data = Tpm12CertifiedMigratableKeyData{};
@@ -507,21 +507,22 @@ TEST_F(BackendSignatureSealingTpm2Test, UnsealWrongData) {
   EXPECT_FALSE(unseal_result.ok());
 
   StatusOr<SignatureSealedData> seal_result = SetupSealing();
-  ASSERT_THAT(seal_result, IsOk());
+  ASSERT_OK(seal_result);
 
   StatusOr<Backend::SignatureSealing::ChallengeResult> challenge_result =
       SetupChallenge(seal_result.value());
 
-  ASSERT_THAT(challenge_result, IsOk());
+  ASSERT_OK(challenge_result);
 
   // Wrong challenge ID.
   Backend::SignatureSealing::ChallengeID challenge_id =
       challenge_result->challenge_id;
   challenge_id = static_cast<Backend::SignatureSealing::ChallengeID>(
       static_cast<uint32_t>(challenge_id) + 3);
-  unseal_result = middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
-      challenge_id, brillo::BlobFromString(fake_challenge_response_));
-  EXPECT_FALSE(unseal_result.ok());
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
+          challenge_id, brillo::BlobFromString(fake_challenge_response_)),
+      NotOk());
 }
 
 }  // namespace hwsec

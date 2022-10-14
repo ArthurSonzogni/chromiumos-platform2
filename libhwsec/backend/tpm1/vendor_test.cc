@@ -13,6 +13,7 @@
 
 using hwsec_foundation::kWellKnownExponent;
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -43,35 +44,26 @@ TEST_F(BackendVendorTpm1Test, GetVersionInfo) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto family = middleware_->CallSync<&Backend::Vendor::GetFamily>();
-  ASSERT_TRUE(family.ok());
-  EXPECT_EQ(*family, 0x312E3200);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFamily>(),
+              IsOkAndHolds(0x312E3200));
 
-  auto spec_level = middleware_->CallSync<&Backend::Vendor::GetSpecLevel>();
-  ASSERT_TRUE(spec_level.ok());
-  EXPECT_EQ(*spec_level, 0x200000003);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetSpecLevel>(),
+              IsOkAndHolds(0x200000003));
 
-  auto manufacturer =
-      middleware_->CallSync<&Backend::Vendor::GetManufacturer>();
-  ASSERT_TRUE(manufacturer.ok());
-  EXPECT_EQ(*manufacturer, 0x49465800);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetManufacturer>(),
+              IsOkAndHolds(0x49465800));
 
-  auto model = middleware_->CallSync<&Backend::Vendor::GetTpmModel>();
-  ASSERT_TRUE(model.ok());
-  EXPECT_EQ(*model, 0xFFFFFFFF);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetTpmModel>(),
+              IsOkAndHolds(0xFFFFFFFF));
 
-  auto fw_ver = middleware_->CallSync<&Backend::Vendor::GetFirmwareVersion>();
-  ASSERT_TRUE(fw_ver.ok());
-  EXPECT_EQ(*fw_ver, 0x62B);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFirmwareVersion>(),
+              IsOkAndHolds(0x62B));
 
-  auto vendor_specific =
-      middleware_->CallSync<&Backend::Vendor::GetVendorSpecific>();
-  ASSERT_TRUE(vendor_specific.ok());
-  EXPECT_EQ(*vendor_specific, kFakeVendorSpecific);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetVendorSpecific>(),
+              IsOkAndHolds(kFakeVendorSpecific));
 
-  auto fingerprint = middleware_->CallSync<&Backend::Vendor::GetFingerprint>();
-  ASSERT_TRUE(fingerprint.ok());
-  EXPECT_EQ(*fingerprint, 0x2081EE27);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFingerprint>(),
+              IsOkAndHolds(0x2081EE27));
 }
 
 TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerable) {
@@ -152,9 +144,8 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerable) {
       .WillOnce(DoAll(SetArgPointee<0>(sizeof(kFakeParms)),
                       SetArgPointee<3>(key_parms), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableFalse) {
@@ -229,9 +220,8 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableFalse) {
       .WillOnce(DoAll(SetArgPointee<0>(sizeof(kFakeParms)),
                       SetArgPointee<3>(key_parms), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_FALSE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>(),
+              IsOkAndHolds(false));
 }
 
 TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed) {
@@ -245,7 +235,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed) {
                       SetArgPointee<3>(fake_pub_key), Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
-  ASSERT_FALSE(result.ok());
+  ASSERT_NOT_OK(result);
 }
 
 TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed2) {
@@ -266,7 +256,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed2) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
-  ASSERT_FALSE(result.ok());
+  ASSERT_NOT_OK(result);
 }
 
 TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfo) {
@@ -286,10 +276,8 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfo) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  auto result =
-      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
-
-  ASSERT_THAT(result, IsOk());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
+              IsOk());
 }
 
 TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoLengthMismatch) {
@@ -307,10 +295,8 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoLengthMismatch) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  auto result =
-      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
-
-  EXPECT_THAT(result, NotOk());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
+              NotOk());
 }
 
 TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoUnknownLength) {
@@ -328,10 +314,8 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoUnknownLength) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  auto result =
-      middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
-
-  EXPECT_THAT(result, NotOk());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
+              NotOk());
 }
 
 }  // namespace hwsec

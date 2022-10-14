@@ -11,6 +11,8 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -54,10 +56,9 @@ TEST_F(BackendStorageTpm1Test, IsReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::IsReady>(
-      Space::kInstallAttributes);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, Backend::Storage::ReadyState::kReady);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
+                  Space::kInstallAttributes),
+              IsOkAndHolds(Backend::Storage::ReadyState::kReady));
 }
 
 TEST_F(BackendStorageTpm1Test, IsReadyPreparable) {
@@ -84,10 +85,9 @@ TEST_F(BackendStorageTpm1Test, IsReadyPreparable) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::IsReady>(
-      Space::kInstallAttributes);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, Backend::Storage::ReadyState::kPreparable);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
+                  Space::kInstallAttributes),
+              IsOkAndHolds(Backend::Storage::ReadyState::kPreparable));
 }
 
 TEST_F(BackendStorageTpm1Test, IsReadyNotAvailable) {
@@ -116,7 +116,7 @@ TEST_F(BackendStorageTpm1Test, IsReadyNotAvailable) {
 
   auto result = middleware_->CallSync<&Backend::Storage::IsReady>(
       Space::kInstallAttributes);
-  ASSERT_FALSE(result.ok());
+  ASSERT_NOT_OK(result);
 }
 
 TEST_F(BackendStorageTpm1Test, Prepare) {
@@ -152,9 +152,9 @@ TEST_F(BackendStorageTpm1Test, Prepare) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Prepare>(
-      Space::kInstallAttributes, kFakeSize);
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Prepare>(
+                  Space::kInstallAttributes, kFakeSize),
+              IsOk());
 }
 
 TEST_F(BackendStorageTpm1Test, PrepareNotAvailable) {
@@ -166,7 +166,7 @@ TEST_F(BackendStorageTpm1Test, PrepareNotAvailable) {
 
   auto result = middleware_->CallSync<&Backend::Storage::Prepare>(
       Space::kPlatformFirmwareManagementParameters, kFakeSize);
-  ASSERT_FALSE(result.ok());
+  ASSERT_NOT_OK(result);
 }
 
 TEST_F(BackendStorageTpm1Test, PrepareReady) {
@@ -187,9 +187,9 @@ TEST_F(BackendStorageTpm1Test, PrepareReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Prepare>(
-      Space::kFirmwareManagementParameters, kFakeSize);
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Prepare>(
+                  Space::kFirmwareManagementParameters, kFakeSize),
+              IsOk());
 }
 
 TEST_F(BackendStorageTpm1Test, Load) {
@@ -201,10 +201,9 @@ TEST_F(BackendStorageTpm1Test, Load) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, ReadSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Load>(
-      Space::kFirmwareManagementParameters);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::BlobFromString(kFakeData));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Load>(
+                  Space::kFirmwareManagementParameters),
+              IsOkAndHolds(brillo::BlobFromString(kFakeData)));
 }
 
 TEST_F(BackendStorageTpm1Test, Store) {
@@ -230,9 +229,9 @@ TEST_F(BackendStorageTpm1Test, Store) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Store>(
-      Space::kInstallAttributes, brillo::BlobFromString(kFakeData));
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Store>(
+                  Space::kInstallAttributes, brillo::BlobFromString(kFakeData)),
+              IsOk());
 }
 
 TEST_F(BackendStorageTpm1Test, Lock) {
@@ -252,12 +251,13 @@ TEST_F(BackendStorageTpm1Test, Lock) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Lock>(
-      Space::kBootlockbox, Backend::Storage::LockOptions{
-                               .read_lock = false,
-                               .write_lock = true,
-                           });
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
+                  Space::kBootlockbox,
+                  Backend::Storage::LockOptions{
+                      .read_lock = false,
+                      .write_lock = true,
+                  }),
+              IsOk());
 }
 
 TEST_F(BackendStorageTpm1Test, IsWriteLocked) {
@@ -271,10 +271,9 @@ TEST_F(BackendStorageTpm1Test, IsWriteLocked) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::IsWriteLocked>(
-      Space::kInstallAttributes);
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsWriteLocked>(
+                  Space::kInstallAttributes),
+              IsOkAndHolds(true));
 }
 
 }  // namespace hwsec

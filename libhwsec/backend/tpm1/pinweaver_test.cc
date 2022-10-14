@@ -10,6 +10,7 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -24,10 +25,8 @@ namespace hwsec {
 class BackendPinweaverTpm1Test : public BackendTpm1TestBase {};
 
 TEST_F(BackendPinweaverTpm1Test, IsEnabled) {
-  auto result = middleware_->CallSync<&Backend::PinWeaver::IsEnabled>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_FALSE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::PinWeaver::IsEnabled>(),
+              IsOkAndHolds(false));
 }
 
 }  // namespace hwsec

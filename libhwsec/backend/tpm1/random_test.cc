@@ -10,6 +10,7 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -32,9 +33,8 @@ TEST_F(BackendRandomTpm1Test, RandomBlob) {
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Random::RandomBlob>(kFakeSize);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeData);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Random::RandomBlob>(kFakeSize),
+              IsOkAndHolds(kFakeData));
 }
 
 TEST_F(BackendRandomTpm1Test, RandomSecureBlob) {
@@ -46,10 +46,9 @@ TEST_F(BackendRandomTpm1Test, RandomSecureBlob) {
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 
-  auto result =
-      middleware_->CallSync<&Backend::Random::RandomSecureBlob>(kFakeSize);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kFakeData);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Random::RandomSecureBlob>(kFakeSize),
+      IsOkAndHolds(kFakeData));
 }
 
 }  // namespace hwsec

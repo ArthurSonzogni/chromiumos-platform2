@@ -48,6 +48,7 @@ TEST_F(TestingTPMNvramErrorTest, TPMRetryAction) {
   EXPECT_EQ(status2->ToTPMRetryAction(), TPMRetryAction::kCommunication);
 
   EXPECT_EQ(MakeStatus<TPMNvramError>(NvramResult::NVRAM_RESULT_DEVICE_ERROR)
+                .HintNotOk()
                 ->ToTPMRetryAction(),
             TPMRetryAction::kReboot);
 }

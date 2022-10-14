@@ -12,6 +12,7 @@
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -54,7 +55,7 @@ TEST_F(BackendSigningTpm1Test, Sign) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_THAT(key, IsOk());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_HASH,
@@ -71,11 +72,9 @@ TEST_F(BackendSigningTpm1Test, Sign) {
       .WillOnce(DoAll(SetArgPointee<2>(signature.size()),
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Signing::Sign>(
-      kFakePolicy, key->GetKey(), kFakeData);
-
-  ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(*result, signature);
+  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::Sign>(
+                  kFakePolicy, key->GetKey(), kFakeData),
+              IsOkAndHolds(signature));
 }
 
 TEST_F(BackendSigningTpm1Test, SignWithUnsupportedPolicy) {
@@ -108,7 +107,7 @@ TEST_F(BackendSigningTpm1Test, SignWithUnsupportedPolicy) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_THAT(key, IsOk());
+  ASSERT_OK(key);
 
   auto result = middleware_->CallSync<&Backend::Signing::Sign>(
       kFakePolicy, key->GetKey(), kFakeData);

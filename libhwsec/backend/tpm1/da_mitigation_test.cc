@@ -11,6 +11,8 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -34,9 +36,8 @@ TEST_F(BackendDAMitigationTpm1Test, IsReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::DAMitigation::IsReady>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::IsReady>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendDAMitigationTpm1Test, IsNotReady) {
@@ -49,9 +50,8 @@ TEST_F(BackendDAMitigationTpm1Test, IsNotReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::DAMitigation::IsReady>();
-  ASSERT_TRUE(result.ok());
-  EXPECT_FALSE(*result);
+  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::IsReady>(),
+              IsOkAndHolds(false));
 }
 
 TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
@@ -66,7 +66,7 @@ TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
   auto result = middleware_->CallSync<&Backend::DAMitigation::GetStatus>();
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   EXPECT_TRUE(result->lockout);
   EXPECT_EQ(result->remaining, kRemaining);
 }
@@ -78,8 +78,8 @@ TEST_F(BackendDAMitigationTpm1Test, Mitigate) {
               ResetDictionaryAttackLock(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::DAMitigation::Mitigate>();
-  ASSERT_TRUE(result.ok());
+  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::Mitigate>(),
+              IsOk());
 }
 
 }  // namespace hwsec

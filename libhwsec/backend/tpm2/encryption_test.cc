@@ -18,6 +18,7 @@
 #undef TPM_ALG_RSA
 
 using hwsec_foundation::Sha256;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -56,7 +57,7 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_OAEP,
@@ -64,12 +65,10 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Encryption::Encrypt>(
-      key->GetKey(), brillo::SecureBlob(kFakeBlob),
-      Backend::Encryption::EncryptionOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::BlobFromString(kFakeOutput));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Encryption::Encrypt>(
+                  key->GetKey(), brillo::SecureBlob(kFakeBlob),
+                  Backend::Encryption::EncryptionOptions{}),
+              IsOkAndHolds(brillo::BlobFromString(kFakeOutput)));
 }
 
 TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
@@ -97,7 +96,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_NULL,
@@ -105,14 +104,13 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Encryption::Encrypt>(
-      key->GetKey(), brillo::SecureBlob(kFakeBlob),
-      Backend::Encryption::EncryptionOptions{
-          .schema = Backend::Encryption::EncryptionOptions::Schema::kNull,
-      });
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::BlobFromString(kFakeOutput));
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+          key->GetKey(), brillo::SecureBlob(kFakeBlob),
+          Backend::Encryption::EncryptionOptions{
+              .schema = Backend::Encryption::EncryptionOptions::Schema::kNull,
+          }),
+      IsOkAndHolds(brillo::BlobFromString(kFakeOutput)));
 }
 
 TEST_F(BackendEncryptionTpm2Test, Decrypt) {
@@ -140,7 +138,7 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               AsymmetricDecrypt(kFakeKeyHandle, trunks::TPM_ALG_OAEP,
@@ -148,12 +146,10 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Encryption::Decrypt>(
-      key->GetKey(), brillo::BlobFromString(kFakeBlob),
-      Backend::Encryption::EncryptionOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, brillo::SecureBlob(kFakeOutput));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Encryption::Decrypt>(
+                  key->GetKey(), brillo::BlobFromString(kFakeBlob),
+                  Backend::Encryption::EncryptionOptions{}),
+              IsOkAndHolds(brillo::SecureBlob(kFakeOutput)));
 }
 
 }  // namespace hwsec

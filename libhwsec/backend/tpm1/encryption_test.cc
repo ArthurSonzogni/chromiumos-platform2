@@ -11,6 +11,7 @@
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -50,7 +51,7 @@ TEST_F(BackendEncryptionTpm1Test, Encrypt) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(
       proxy_->GetMock().overalls,
@@ -70,11 +71,10 @@ TEST_F(BackendEncryptionTpm1Test, Encrypt) {
                       SetArgPointee<4>(mutable_ciphertext.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Encryption::Encrypt>(
-      key->GetKey(), kPlaintext, Backend::Encryption::EncryptionOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kCiphertext);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+          key->GetKey(), kPlaintext, Backend::Encryption::EncryptionOptions{}),
+      IsOkAndHolds(kCiphertext));
 }
 
 TEST_F(BackendEncryptionTpm1Test, Decrypt) {
@@ -103,7 +103,7 @@ TEST_F(BackendEncryptionTpm1Test, Decrypt) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, kFakeKeyBlob);
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(
       proxy_->GetMock().overalls,
@@ -123,11 +123,10 @@ TEST_F(BackendEncryptionTpm1Test, Decrypt) {
                       SetArgPointee<3>(mutable_plaintext.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Encryption::Decrypt>(
-      key->GetKey(), kCiphertext, Backend::Encryption::EncryptionOptions{});
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, kPlaintext);
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Encryption::Decrypt>(
+          key->GetKey(), kCiphertext, Backend::Encryption::EncryptionOptions{}),
+      IsOkAndHolds(kPlaintext));
 }
 
 }  // namespace hwsec

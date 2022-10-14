@@ -11,6 +11,7 @@
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -56,7 +57,7 @@ TEST_F(BackendConfigTpm2Test, ToOperationPolicy) {
   auto result =
       middleware_->CallSync<&Backend::Config::ToOperationPolicy>(kFakeSetting);
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_OK(result);
   ASSERT_TRUE(result->permission.auth_value.has_value());
   EXPECT_EQ(result->permission.auth_value.value(), kFakeAuthValue);
   EXPECT_EQ(result->device_configs, (DeviceConfigs{
@@ -88,10 +89,8 @@ TEST_F(BackendConfigTpm2Test, IsCurrentUserSet) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kNonZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_TRUE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
@@ -101,10 +100,8 @@ TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Config::IsCurrentUserSet>();
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_FALSE(result.value());
+  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+              IsOkAndHolds(false));
 }
 
 }  // namespace hwsec

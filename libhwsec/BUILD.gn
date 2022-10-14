@@ -49,9 +49,7 @@ pkg_config("target_defaults") {
     "BIOMETRICS_DEV=true",
   ]
 
-  if (!use.test) {
-    cflags = [ "-Wconsumed" ]
-  }
+  cflags = [ "-Wconsumed" ]
 }
 
 static_library("overalls_library") {

@@ -18,6 +18,7 @@
 #undef TPM_ALG_RSA
 
 using hwsec_foundation::Sha256;
+using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -80,7 +81,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility,
               AsymmetricDecrypt(kFakeKeyHandle, trunks::TPM_ALG_NULL,
@@ -88,11 +89,9 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Deriving::SecureDerive>(
-      key->GetKey(), brillo::SecureBlob(kFakeBlob));
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, Sha256(brillo::SecureBlob(kFakeOutput)));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::SecureDerive>(
+                  key->GetKey(), brillo::SecureBlob(kFakeBlob)),
+              IsOkAndHolds(Sha256(brillo::SecureBlob(kFakeOutput))));
 }
 
 TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
@@ -162,17 +161,15 @@ TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   EXPECT_CALL(proxy_->GetMock().tpm_utility, ECDHZGen(kFakeKeyHandle, _, _, _))
       .WillOnce(
           DoAll(SetArgPointee<3>(kFakeZPoint), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Deriving::Derive>(
-      key->GetKey(), brillo::BlobFromString(kFakeBlob));
-
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(*result, Sha256(brillo::BlobFromString("9876543210")));
+  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::Derive>(
+                  key->GetKey(), brillo::BlobFromString(kFakeBlob)),
+              IsOkAndHolds(Sha256(brillo::BlobFromString("9876543210"))));
 }
 
 TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
@@ -234,13 +231,13 @@ TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
 
-  ASSERT_TRUE(key.ok());
+  ASSERT_OK(key);
 
   auto result = middleware_->CallSync<&Backend::Deriving::Derive>(key->GetKey(),
                                                                   fake_blob);
 
-  ASSERT_FALSE(result.ok());
-  EXPECT_EQ(result.status()->ToTPMRetryAction(),
+  ASSERT_NOT_OK(result);
+  EXPECT_EQ(result.err_status()->ToTPMRetryAction(),
             TPMRetryAction::kEllipticCurveScalarOutOfRange);
 }
 
