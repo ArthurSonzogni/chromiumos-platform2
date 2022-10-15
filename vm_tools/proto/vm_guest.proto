@@ -81,6 +81,9 @@ message UpdateStorageBalloonResponse {
 message ConfigureContainerGuestRequest {
   // Token which cicerone will check to verify that the guest spawned.
   string container_token = 1;
+  // Optional suggested username of the owner of the VM. Only used by
+  // VM types that support dynamic usernames.
+  string vm_username = 2;
 }
 
 // Description of a single process that should be spawned by maitre'd.

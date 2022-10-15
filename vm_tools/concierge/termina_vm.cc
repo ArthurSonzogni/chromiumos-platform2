@@ -680,6 +680,7 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
 }
 
 bool TerminaVm::ConfigureContainerGuest(const std::string& vm_token,
+                                        const std::string& vm_username,
                                         std::string* out_error) {
   LOG(INFO) << "Configuring container guest for for VM " << vsock_cid_;
 
@@ -687,6 +688,7 @@ bool TerminaVm::ConfigureContainerGuest(const std::string& vm_token,
   vm_tools::EmptyMessage response;
 
   request.set_container_token(vm_token);
+  request.set_vm_username(vm_username);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

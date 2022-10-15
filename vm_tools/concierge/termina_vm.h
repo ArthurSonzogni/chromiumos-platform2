@@ -135,6 +135,7 @@ class TerminaVm final : public VmBaseImpl {
   // Configures the VM to allow it to support a (single) container guest API
   // endpoint using |vm_token| as the container token.
   bool ConfigureContainerGuest(const std::string& vm_token,
+                               const std::string& vm_username,
                                std::string* out_error);
 
   // Mounts a file system inside the VM.  Both |source| (if it is a file path)

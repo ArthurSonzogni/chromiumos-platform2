@@ -77,9 +77,11 @@ enum ChromeOSError {
     FailedStartLxdStatus(StartLxdResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
     FailedUpdateContainerDevices(String),
+    InvalidEmail,
     InvalidExportPath,
     InvalidImportPath,
     InvalidSourcePath,
+    MissingActiveSession,
     NoSuchVm,
     NoVmTechnologyEnabled,
     NotAvailableForPluginVm,
@@ -182,9 +184,14 @@ impl fmt::Display for ChromeOSError {
             FailedUpdateContainerDevices(reason) => {
                 write!(f, "Failed to update container devices: {}", reason)
             }
+            InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidExportPath => write!(f, "disk export path is invalid"),
             InvalidImportPath => write!(f, "disk import path is invalid"),
             InvalidSourcePath => write!(f, "source media path is invalid"),
+            MissingActiveSession => write!(
+                f,
+                "missing active session corresponding to $CROS_USER_ID_HASH"
+            ),
             NoSuchVm => write!(f, "VM with such name does not exist"),
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
@@ -1237,6 +1244,7 @@ impl Methods {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
+        username: &str,
         features: VmFeatures,
         stateful_disk_path: String,
         user_disks: UserDisks,
@@ -1258,6 +1266,7 @@ impl Methods {
         }
         request.start_termina = start_termina;
         request.owner_id = user_id_hash.to_owned();
+        request.vm_username = username.to_owned();
         request.enable_gpu = features.gpu;
         request.enable_vulkan = features.vulkan;
         request.enable_big_gl = features.big_gl;
@@ -2048,6 +2057,23 @@ impl Methods {
         }
     }
 
+    pub fn user_id_hash_to_username(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<String, Box<dyn Error>> {
+        let sessions = self.sessions_list()?;
+        let email = sessions
+            .iter()
+            .find(|(_, hash)| hash == &user_id_hash)
+            .map(|(email, _)| email)
+            .ok_or(MissingActiveSession)?;
+
+        match email.find('@') {
+            Some(0) | None => Err(InvalidEmail.into()),
+            Some(end) => Ok(email[..end].into()),
+        }
+    }
+
     pub fn vm_create<T: AsRef<str>>(
         &mut self,
         name: &str,
@@ -2089,6 +2115,7 @@ impl Methods {
         &mut self,
         name: &str,
         user_id_hash: &str,
+        username: &str,
         features: VmFeatures,
         user_disks: UserDisks,
         start_lxd: bool,
@@ -2114,6 +2141,7 @@ impl Methods {
             self.start_vm_with_disk(
                 name,
                 user_id_hash,
+                username,
                 features,
                 disk_image_path,
                 user_disks,

@@ -43,11 +43,9 @@ enum VmcError {
     ExpectedVmDeviceUpdates,
     ExpectedVmPort,
     UnexpectedSizeWithPluginVm,
-    InvalidEmail,
     InvalidPath(std::ffi::OsString),
     InvalidVmDevice(String),
     InvalidVmDeviceAction(String),
-    MissingActiveSession,
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
     UserCancelled,
@@ -149,14 +147,9 @@ impl fmt::Display for VmcError {
             UnexpectedSizeWithPluginVm => {
                 write!(f, "unexpected --size parameter; -p doesn't support --size")
             }
-            InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
             InvalidVmDevice(v) => write!(f, "invalid vm device {}", v),
             InvalidVmDeviceAction(a) => write!(f, "invalid vm device action {}", a),
-            MissingActiveSession => write!(
-                f,
-                "missing active session corresponding to $CROS_USER_ID_HASH"
-            ),
             ExpectedPrivilegedFlagValue => {
                 write!(f, "Expected <true/false> after the privileged flag")
             }
@@ -317,6 +310,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let vm_name = &matches.free[0];
         let user_id_hash = get_user_hash(self.environ)?;
+        let username = self.methods.user_id_hash_to_username(&user_id_hash)?;
 
         let vulkan = matches.opt_present("enable-vulkan");
         let big_gl = matches.opt_present("enable-big-gl");
@@ -357,6 +351,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         try_command!(self.methods.vm_start(
             vm_name,
             &user_id_hash,
+            &username,
             features,
             user_disks,
             !matches.opt_present("no-start-lxd"),
@@ -826,18 +821,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         };
 
         let user_id_hash = get_user_hash(self.environ)?;
-
-        let sessions = try_command!(self.methods.sessions_list());
-        let email = sessions
-            .iter()
-            .find(|(_, hash)| hash == &user_id_hash)
-            .map(|(email, _)| email)
-            .ok_or(MissingActiveSession)?;
-
-        let username = match email.find('@') {
-            Some(0) | None => return Err(InvalidEmail.into()),
-            Some(end) => &email[..end],
-        };
+        let username = self.methods.user_id_hash_to_username(&user_id_hash)?;
 
         try_command!(self.methods.container_create(
             vm_name,
@@ -850,7 +834,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             vm_name,
             &user_id_hash,
             container_name,
-            username
+            &username
         ));
 
         // If the container was already running then this will update the privilege level of the
@@ -1186,7 +1170,13 @@ mod tests {
             &["vmc", "start", "termina", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-gpu", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-virtgpu-native-context"],
-            &["vmc", "start", "termina", "--enable-gpu", "--enable-virtgpu-native-context"],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--enable-gpu",
+                "--enable-virtgpu-native-context",
+            ],
             &[
                 "vmc",
                 "start",

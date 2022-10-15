@@ -2293,7 +2293,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   if (!vm_token.empty() &&
-      !vm->ConfigureContainerGuest(vm_token, &failure_reason)) {
+      !vm->ConfigureContainerGuest(vm_token, request.vm_username(),
+                                   &failure_reason)) {
     failure_reason =
         "Failed to configure the container guest: " + failure_reason;
     // TODO(b/162562622): This request is temporarily non-fatal. Once we are
