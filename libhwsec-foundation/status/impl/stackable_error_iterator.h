@@ -11,7 +11,7 @@
 
 namespace hwsec_foundation {
 namespace status {
-namespace __impl {
+namespace _impl_ {
 
 // Const iterator to the objects of the stack. The value of the iterator is a
 // const pointer to the underlying error object.
@@ -203,7 +203,7 @@ inline bool operator!=(const _Ct1<_Et>& it1, const _Ct2<_Et>& it2) noexcept {
   return !(it1 == it2);
 }
 
-}  // namespace __impl
+}  // namespace _impl_
 }  // namespace status
 }  // namespace hwsec_foundation
 

@@ -12,7 +12,7 @@
 
 namespace hwsec_foundation {
 namespace status {
-namespace __impl {
+namespace _impl_ {
 
 // Range primitive is added as a transitional functionality and may be removed
 // later.
@@ -178,7 +178,7 @@ inline bool operator!=(const _Ct1<_Et>& range1,
   return !(range1 == range2);
 }
 
-}  // namespace __impl
+}  // namespace _impl_
 }  // namespace status
 }  // namespace hwsec_foundation
 

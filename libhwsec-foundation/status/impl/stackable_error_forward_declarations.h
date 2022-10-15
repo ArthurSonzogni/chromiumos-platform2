@@ -10,7 +10,7 @@
 
 namespace hwsec_foundation {
 namespace status {
-namespace __impl {
+namespace _impl_ {
 
 // Base instantiable error class.
 class Error;
@@ -44,7 +44,11 @@ class StackableErrorConstRange;
 template <typename _Bt>
 class StackableErrorRange;
 
-}  // namespace __impl
+}  // namespace _impl_
+
+template <typename _Vt, typename _Et>
+class StatusChainOr;
+
 }  // namespace status
 }  // namespace hwsec_foundation
 

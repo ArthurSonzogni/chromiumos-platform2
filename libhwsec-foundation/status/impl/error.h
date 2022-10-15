@@ -16,7 +16,7 @@
 
 namespace hwsec_foundation {
 namespace status {
-namespace __impl {
+namespace _impl_ {
 
 // Base class for error in the hwsec code.
 // Note, the export qualifier will be ignored if the class is built as a static
@@ -68,7 +68,7 @@ class HWSEC_FOUNDATION_EXPORT Error {
   std::string message_;
 };
 
-}  // namespace __impl
+}  // namespace _impl_
 }  // namespace status
 }  // namespace hwsec_foundation
 

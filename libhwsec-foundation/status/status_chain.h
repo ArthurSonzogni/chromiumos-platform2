@@ -18,7 +18,7 @@ namespace hwsec_foundation {
 namespace status {
 
 // Trait check for being a |StatusChain| holding type.
-namespace __impl {
+namespace _impl_ {
 
 template <typename T>
 std::false_type __is_status_chain(const T&);
@@ -27,34 +27,34 @@ std::false_type __is_status_chain(const T&);
 template <typename _Et>
 std::true_type __is_status_chain(const StackableError<_Et>&);
 
-}  // namespace __impl
+}  // namespace _impl_
 
 // Alias the traits to be publicly visible.
 template <typename T>
-using is_status_chain = decltype(__impl::__is_status_chain(std::declval<T>()));
+using is_status_chain = decltype(_impl_::__is_status_chain(std::declval<T>()));
 template <typename T>
 constexpr inline bool is_status_chain_v = is_status_chain<T>::value;
 template <typename _Et>
-using has_make_status_trait = __impl::has_make_status_trait<_Et>;
+using has_make_status_trait = _impl_::has_make_status_trait<_Et>;
 template <typename _Et>
 inline constexpr bool has_make_status_trait_v =
-    __impl::has_make_status_trait_v<_Et>;
+    _impl_::has_make_status_trait_v<_Et>;
 template <typename _Et>
-using has_base_error_type = __impl::has_base_error_type<_Et>;
+using has_base_error_type = _impl_::has_base_error_type<_Et>;
 template <typename _Et>
 inline constexpr bool has_base_error_type_v =
-    __impl::has_base_error_type_v<_Et>;
+    _impl_::has_base_error_type_v<_Et>;
 
 // Declare base |Error| type
-using Error = __impl::Error;
+using Error = _impl_::Error;
 
 // |StackableError| is the canonical Status holder for use in hwsec. Alias it
 // to a Status resambling name.
 template <typename _Et>
-using StatusChain = __impl::StackableError<_Et>;
+using StatusChain = _impl_::StackableError<_Et>;
 
 // Make a usable discard tag.
-constexpr __impl::WrapTransformOnly WrapTransformOnly;
+constexpr _impl_::WrapTransformOnly WrapTransformOnly;
 
 // Creates a new error object, wrapped in |StatusChain|. Custom overloads for
 // error types may return a different object type, that might need to be dealt

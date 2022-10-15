@@ -21,7 +21,7 @@
 
 namespace hwsec_foundation {
 namespace status {
-namespace __impl {
+namespace _impl_ {
 
 // Type trait checkers to determine if the class, intended to use with the
 // status chain, is well-formed.
@@ -539,7 +539,7 @@ std::ostream& operator<<(std::ostream& os, const StackableError<_Et>& error) {
   return os;
 }
 
-}  // namespace __impl
+}  // namespace _impl_
 }  // namespace status
 }  // namespace hwsec_foundation
 
@@ -547,8 +547,8 @@ std::ostream& operator<<(std::ostream& os, const StackableError<_Et>& error) {
 namespace std {
 template <typename _Et>
 inline void swap(
-    hwsec_foundation::status::__impl::StackableError<_Et>& s1,
-    hwsec_foundation::status::__impl::StackableError<_Et>& s2) noexcept {
+    hwsec_foundation::status::_impl_::StackableError<_Et>& s1,
+    hwsec_foundation::status::_impl_::StackableError<_Et>& s2) noexcept {
   s1.swap(s2);
 }
 }  // namespace std
