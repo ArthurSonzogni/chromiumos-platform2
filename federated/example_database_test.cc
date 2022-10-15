@@ -220,22 +220,6 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmptyWithTimeRange) {
   EXPECT_TRUE(db_->Close());
 }
 
-TEST_F(ExampleDatabaseTest, DatabaseReadWithInvalidTimeRange) {
-  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-
-  // start_time must <= end_time
-  EXPECT_DEATH(db_->GetIterator("test_client_1", SecondsAfterEpoch(11),
-                                SecondsAfterEpoch(10)),
-               "Invalid time range: start_time must <= end_time");
-
-  // start_time >= UnixEpoch
-  EXPECT_DEATH(db_->GetIterator("test_client_1", SecondsAfterEpoch(-1),
-                                SecondsAfterEpoch(10)),
-               "Invalid time range: start_time must > UnixEpoch()");
-
-  EXPECT_TRUE(db_->Close());
-}
-
 TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
   ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
@@ -567,15 +551,6 @@ TEST_F(ExampleDatabaseTest, CountExamplesWithTimeRange) {
   EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
                               SecondsAfterEpoch(200)),
             90);
-  // CHECK fails if start_time > end_time.
-  EXPECT_DEATH(db_->ExampleCount("test_client_1", SecondsAfterEpoch(11),
-                                 SecondsAfterEpoch(10)),
-               "Invalid time range: start_time must <= end_time");
-
-  // CHECK fails if start_time < UnixEpoch.
-  EXPECT_DEATH(db_->ExampleCount("test_client_1", SecondsAfterEpoch(-1),
-                                 SecondsAfterEpoch(10)),
-               "Invalid time range: start_time must > UnixEpoch()");
 }
 
 TEST_F(ExampleDatabaseTest, CountExamplesMalformed) {
