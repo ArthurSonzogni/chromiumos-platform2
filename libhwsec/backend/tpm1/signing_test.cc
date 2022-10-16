@@ -53,7 +53,7 @@ TEST_F(BackendSigningTpm1Test, Sign) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -105,7 +105,7 @@ TEST_F(BackendSigningTpm1Test, SignWithUnsupportedPolicy) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 

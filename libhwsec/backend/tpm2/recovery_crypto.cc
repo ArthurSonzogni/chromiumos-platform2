@@ -255,7 +255,8 @@ RecoveryCryptoTpm2::GenerateDiffieHellmanSharedSecret(
   brillo::Blob key_blob = request.encrypted_own_priv_key;
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.GetKeyManagementTpm2().LoadKey(OperationPolicy{}, key_blob),
+      backend_.GetKeyManagementTpm2().LoadKey(
+          OperationPolicy{}, key_blob, KeyManagement::AutoReload::kFalse),
       _.WithStatus<TPMError>("Failed to load encrypted ECC private key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,

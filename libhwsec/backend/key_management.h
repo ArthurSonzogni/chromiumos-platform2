@@ -16,13 +16,15 @@
 
 namespace hwsec {
 
-class BackendTpm2;
-
 // KeyManagement provide the functions to manager key.
 class KeyManagement {
  public:
   enum class PersistentKeyType {
     kStorageRootKey,
+  };
+  enum class AutoReload {
+    kFalse,
+    kTrue,
   };
   struct CreateKeyOptions {
     bool allow_software_gen = false;
@@ -41,22 +43,13 @@ class KeyManagement {
   virtual StatusOr<CreateKeyResult> CreateKey(
       const OperationPolicySetting& policy,
       KeyAlgoType key_algo,
+      AutoReload auto_reload,
       CreateKeyOptions options) = 0;
 
   // Loads a key from |key_blob| with |policy|.
   virtual StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
-                                      const brillo::Blob& key_blob) = 0;
-
-  // Creates an auto-reload key with |key_algo| algorithm, |policy| and
-  // optional |options|.
-  virtual StatusOr<CreateKeyResult> CreateAutoReloadKey(
-      const OperationPolicySetting& policy,
-      KeyAlgoType key_algo,
-      CreateKeyOptions options) = 0;
-
-  // Loads an auto-reload key from |key_blob| with |policy|.
-  virtual StatusOr<ScopedKey> LoadAutoReloadKey(
-      const OperationPolicy& policy, const brillo::Blob& key_blob) = 0;
+                                      const brillo::Blob& key_blob,
+                                      AutoReload auto_reload) = 0;
 
   // Loads the persistent key with specific |key_type|.
   virtual StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) = 0;

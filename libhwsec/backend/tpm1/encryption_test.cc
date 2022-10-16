@@ -49,7 +49,7 @@ TEST_F(BackendEncryptionTpm1Test, Encrypt) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -101,7 +101,7 @@ TEST_F(BackendEncryptionTpm1Test, Decrypt) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 

@@ -114,23 +114,11 @@ KeyManagementTpm1::GetSupportedAlgo() {
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
+    AutoReload auto_reload,
     CreateKeyOptions options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
-      return CreateRsaKey(policy, options, /*auto_reload=*/false);
-    default:
-      return MakeStatus<TPMError>("Unsupported key creation algorithm",
-                                  TPMRetryAction::kNoRetry);
-  }
-}
-
-StatusOr<KeyManagementTpm1::CreateKeyResult>
-KeyManagementTpm1::CreateAutoReloadKey(const OperationPolicySetting& policy,
-                                       KeyAlgoType key_algo,
-                                       CreateKeyOptions options) {
-  switch (key_algo) {
-    case KeyAlgoType::kRsa:
-      return CreateRsaKey(policy, options, /*auto_reload=*/true);
+      return CreateRsaKey(policy, options, auto_reload);
     default:
       return MakeStatus<TPMError>("Unsupported key creation algorithm",
                                   TPMRetryAction::kNoRetry);
@@ -140,7 +128,7 @@ KeyManagementTpm1::CreateAutoReloadKey(const OperationPolicySetting& policy,
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
-    bool auto_reload) {
+    AutoReload auto_reload) {
   ASSIGN_OR_RETURN(
       const ConfigTpm1::PcrMap& setting,
       backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
@@ -243,7 +231,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
   KeyTpm1::Type key_type = KeyTpm1::Type::kTransientKey;
   std::optional<KeyReloadDataTpm1> reload_data;
 
-  if (auto_reload) {
+  if (auto_reload == AutoReload::kTrue) {
     key_type = KeyTpm1::Type::kReloadableTransientKey;
     reload_data = KeyReloadDataTpm1{
         .policy = op_policy,
@@ -266,7 +254,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 StatusOr<KeyManagementTpm1::CreateKeyResult>
 KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                            const CreateKeyOptions& options,
-                                           bool auto_reload) {
+                                           AutoReload auto_reload) {
   brillo::SecureBlob public_modulus;
   brillo::SecureBlob prime_factor;
   if (!hwsec_foundation::CreateRsaKey(kDefaultTpmRsaKeyBits, &public_modulus,
@@ -370,9 +358,7 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
-      ScopedKey key,
-      auto_reload ? LoadAutoReloadKey(op_policy, key_blob)
-                  : LoadKey(op_policy, key_blob),
+      ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
       _.WithStatus<TPMError>("Failed to load created software RSA key"));
 
   return CreateKeyResult{
@@ -382,27 +368,24 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
-                                               const brillo::Blob& key_blob) {
+                                               const brillo::Blob& key_blob,
+                                               AutoReload auto_reload) {
   ASSIGN_OR_RETURN(ScopedTssKey key, LoadKeyBlob(policy, key_blob),
                    _.WithStatus<TPMError>("Failed to load key blob"));
 
   uint32_t key_handle = key.value();
-  return LoadKeyInternal(KeyTpm1::Type::kTransientKey, key_handle,
-                         std::move(key), /*reload_data=*/std::nullopt);
-}
 
-StatusOr<ScopedKey> KeyManagementTpm1::LoadAutoReloadKey(
-    const OperationPolicy& policy, const brillo::Blob& key_blob) {
-  ASSIGN_OR_RETURN(ScopedTssKey key, LoadKeyBlob(policy, key_blob),
-                   _.WithStatus<TPMError>("Failed to load key blob"));
+  KeyTpm1::Type key_type = KeyTpm1::Type::kTransientKey;
+  std::optional<KeyReloadDataTpm1> reload_data;
+  if (auto_reload == AutoReload::kTrue) {
+    key_type = KeyTpm1::Type::kReloadableTransientKey;
+    reload_data = KeyReloadDataTpm1{
+        .policy = policy,
+        .key_blob = key_blob,
+    };
+  }
 
-  uint32_t key_handle = key.value();
-  return LoadKeyInternal(KeyTpm1::Type::kReloadableTransientKey, key_handle,
-                         std::move(key),
-                         KeyReloadDataTpm1{
-                             .policy = policy,
-                             .key_blob = key_blob,
-                         });
+  return LoadKeyInternal(key_type, key_handle, std::move(key), reload_data);
 }
 
 StatusOr<ScopedTssKey> KeyManagementTpm1::LoadKeyBlob(

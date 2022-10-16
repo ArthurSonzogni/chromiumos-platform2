@@ -207,7 +207,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -283,14 +283,13 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result =
-      middleware_->CallSync<&Backend::KeyManagement::CreateAutoReloadKey>(
-          kFakePolicy, kFakeAlgo,
-          Backend::KeyManagement::CreateKeyOptions{
-              .allow_software_gen = true,
-              .allow_decrypt = true,
-              .allow_sign = true,
-          });
+  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = true,
+          .allow_decrypt = true,
+          .allow_sign = true,
+      });
 
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, kFakeKeyBlob);
@@ -317,7 +316,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(result);
 
@@ -352,9 +351,8 @@ TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result =
-      middleware_->CallSync<&Backend::KeyManagement::LoadAutoReloadKey>(
-          kFakePolicy, kFakeKeyBlob);
+  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kTrue);
 
   ASSERT_OK(result);
 

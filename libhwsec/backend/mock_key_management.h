@@ -30,21 +30,14 @@ class MockKeyManagement : public KeyManagement {
               CreateKey,
               (const OperationPolicySetting& policy,
                KeyAlgoType key_algo,
+               AutoReload auto_reload,
                CreateKeyOptions options),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               LoadKey,
-              (const OperationPolicy& policy, const brillo::Blob& key_blob),
-              (override));
-  MOCK_METHOD(StatusOr<CreateKeyResult>,
-              CreateAutoReloadKey,
-              (const OperationPolicySetting& policy,
-               KeyAlgoType key_algo,
-               CreateKeyOptions options),
-              (override));
-  MOCK_METHOD(StatusOr<ScopedKey>,
-              LoadAutoReloadKey,
-              (const OperationPolicy& policy, const brillo::Blob& key_blob),
+              (const OperationPolicy& policy,
+               const brillo::Blob& key_blob,
+               AutoReload auto_reload),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               GetPersistentKey,

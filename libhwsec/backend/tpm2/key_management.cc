@@ -125,27 +125,13 @@ KeyManagementTpm2::GetSupportedAlgo() {
 StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
+    AutoReload auto_reload,
     CreateKeyOptions options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
-      return CreateRsaKey(policy, options, /*auto_reload=*/false);
+      return CreateRsaKey(policy, options, auto_reload);
     case KeyAlgoType::kEcc:
-      return CreateEccKey(policy, options, /*auto_reload=*/false);
-    default:
-      return MakeStatus<TPMError>("Unsupported key creation algorithm",
-                                  TPMRetryAction::kNoRetry);
-  }
-}
-
-StatusOr<KeyManagementTpm2::CreateKeyResult>
-KeyManagementTpm2::CreateAutoReloadKey(const OperationPolicySetting& policy,
-                                       KeyAlgoType key_algo,
-                                       CreateKeyOptions options) {
-  switch (key_algo) {
-    case KeyAlgoType::kRsa:
-      return CreateRsaKey(policy, options, /*auto_reload=*/true);
-    case KeyAlgoType::kEcc:
-      return CreateEccKey(policy, options, /*auto_reload=*/true);
+      return CreateEccKey(policy, options, auto_reload);
     default:
       return MakeStatus<TPMError>("Unsupported key creation algorithm",
                                   TPMRetryAction::kNoRetry);
@@ -155,7 +141,7 @@ KeyManagementTpm2::CreateAutoReloadKey(const OperationPolicySetting& policy,
 StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
-    bool auto_reload) {
+    AutoReload auto_reload) {
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& setting,
       backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
@@ -218,9 +204,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
       backend_.GetConfigTpm2().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
-  ASSIGN_OR_RETURN(ScopedKey key,
-                   auto_reload ? LoadAutoReloadKey(op_policy, key_blob)
-                               : LoadKey(op_policy, key_blob),
+  ASSIGN_OR_RETURN(ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
                    _.WithStatus<TPMError>("Failed to load created RSA key"));
 
   return CreateKeyResult{
@@ -232,7 +216,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
 StatusOr<KeyManagementTpm2::CreateKeyResult>
 KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                            const CreateKeyOptions& options,
-                                           bool auto_reload) {
+                                           AutoReload auto_reload) {
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
@@ -278,9 +262,7 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
-      ScopedKey key,
-      auto_reload ? LoadAutoReloadKey(op_policy, key_blob)
-                  : LoadKey(op_policy, key_blob),
+      ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
       _.WithStatus<TPMError>("Failed to load created software RSA key"));
 
   return CreateKeyResult{
@@ -292,7 +274,7 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
 StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
-    bool auto_reload) {
+    AutoReload auto_reload) {
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
@@ -350,9 +332,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
       backend_.GetConfigTpm2().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
-  ASSIGN_OR_RETURN(ScopedKey key,
-                   auto_reload ? LoadAutoReloadKey(op_policy, key_blob)
-                               : LoadKey(op_policy, key_blob),
+  ASSIGN_OR_RETURN(ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
                    _.WithStatus<TPMError>("Failed to load created RSA key"));
 
   return CreateKeyResult{
@@ -362,7 +342,8 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
-                                               const brillo::Blob& key_blob) {
+                                               const brillo::Blob& key_blob,
+                                               AutoReload auto_reload) {
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   uint32_t key_handle;
@@ -373,27 +354,17 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
                       BlobToString(key_blob), delegate.get(), &key_handle)))
       .WithStatus<TPMError>("Failed to load SRK wrapped key");
 
-  return LoadKeyInternal(KeyTpm2::Type::kTransientKey, key_handle,
-                         /*reload_data=*/std::nullopt);
-}
+  KeyTpm2::Type key_type = KeyTpm2::Type::kTransientKey;
+  std::optional<KeyReloadDataTpm2> reload_data;
+  if (auto_reload == AutoReload::kTrue) {
+    key_type = KeyTpm2::Type::kReloadableTransientKey;
+    reload_data = KeyReloadDataTpm2{
+        .policy = policy,
+        .key_blob = key_blob,
+    };
+  }
 
-StatusOr<ScopedKey> KeyManagementTpm2::LoadAutoReloadKey(
-    const OperationPolicy& policy, const brillo::Blob& key_blob) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  uint32_t key_handle;
-  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
-
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadKey(
-                      BlobToString(key_blob), delegate.get(), &key_handle)))
-      .WithStatus<TPMError>("Failed to load SRK wrapped key");
-
-  return LoadKeyInternal(KeyTpm2::Type::kReloadableTransientKey, key_handle,
-                         KeyReloadDataTpm2{
-                             .policy = policy,
-                             .key_blob = key_blob,
-                         });
+  return LoadKeyInternal(key_type, key_handle, reload_data);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(

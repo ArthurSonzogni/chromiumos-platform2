@@ -55,7 +55,8 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -94,7 +95,8 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -136,7 +138,8 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -179,7 +182,8 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 

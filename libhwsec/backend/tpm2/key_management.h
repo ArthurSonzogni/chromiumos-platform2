@@ -57,15 +57,11 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
   StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
                                       KeyAlgoType key_algo,
+                                      AutoReload auto_reload,
                                       CreateKeyOptions options) override;
   StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
-                              const brillo::Blob& key_blob) override;
-  StatusOr<CreateKeyResult> CreateAutoReloadKey(
-      const OperationPolicySetting& policy,
-      KeyAlgoType key_algo,
-      CreateKeyOptions options) override;
-  StatusOr<ScopedKey> LoadAutoReloadKey(const OperationPolicy& policy,
-                                        const brillo::Blob& key_blob) override;
+                              const brillo::Blob& key_blob,
+                              AutoReload auto_reload) override;
   StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) override;
   StatusOr<brillo::Blob> GetPubkeyHash(Key key) override;
   Status Flush(Key key) override;
@@ -90,14 +86,14 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
  private:
   StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,
                                          const CreateKeyOptions& options,
-                                         bool auto_reload);
+                                         AutoReload auto_reload);
   StatusOr<CreateKeyResult> CreateSoftwareGenRsaKey(
       const OperationPolicySetting& policy,
       const CreateKeyOptions& options,
-      bool auto_reload);
+      AutoReload auto_reload);
   StatusOr<CreateKeyResult> CreateEccKey(const OperationPolicySetting& policy,
                                          const CreateKeyOptions& options,
-                                         bool auto_reload);
+                                         AutoReload auto_reload);
   StatusOr<ScopedKey> LoadKeyInternal(
       KeyTpm2::Type key_type,
       uint32_t key_handle,

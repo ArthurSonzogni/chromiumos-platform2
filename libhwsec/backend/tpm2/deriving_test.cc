@@ -79,7 +79,8 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -159,7 +160,8 @@ TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
@@ -229,7 +231,8 @@ TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob));
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
 
   ASSERT_OK(key);
 
