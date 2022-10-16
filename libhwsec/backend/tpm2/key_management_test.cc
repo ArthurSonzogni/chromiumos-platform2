@@ -23,6 +23,7 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
+using hwsec_foundation::error::testing::NotOkWith;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -601,6 +602,223 @@ TEST_F(BackendKeyManagementTpm2Test, LoadPublicKeyFromSpkiFailed) {
       backend_->GetKeyManagementTpm2().LoadPublicKeyFromSpki(
           public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
       NotOk());
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
+  const std::string kFakeAuthValue = "auth_value";
+  const OperationPolicySetting kFakePolicy{
+      .permission =
+          Permission{
+              .auth_value = brillo::SecureBlob(kFakeAuthValue),
+          },
+  };
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakeModulus(1024 / 8, 'Z');
+  const std::string kFakePrime(1024 / 8, 'X');
+  const brillo::Blob kExponent{0x03};
+  const uint32_t kFakeKeyHandle = 0x1337;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              ImportRSAKey(trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
+                           kFakeModulus, 3, kFakePrime, kFakeAuthValue, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(kFakeKeyBlob),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeModulus),
+      brillo::SecureBlob(kFakePrime),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = false,
+          .allow_sign = true,
+          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_exponent = kExponent,
+      });
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyNotSupportedConfig) {
+  const OperationPolicySetting kFakePolicy{
+      .device_config_settings =
+          DeviceConfigSettings{
+              .boot_mode =
+                  DeviceConfigSettings::BootModeSetting{
+                      .mode = std::nullopt,
+                  },
+          },
+  };
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakeModulus(1024 / 8, 'Z');
+  const std::string kFakePrime(1024 / 8, 'X');
+  const brillo::Blob kExponent{0x03};
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeModulus),
+      brillo::SecureBlob(kFakePrime),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = false,
+          .allow_sign = true,
+          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_exponent = kExponent,
+      });
+
+  EXPECT_THAT(result, NotOkWith("Unsupported device config"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyExponentTooLarge) {
+  const OperationPolicySetting kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakeModulus(1024 / 8, 'Z');
+  const std::string kFakePrime(1024 / 8, 'X');
+  const brillo::Blob kExponent{0x01, 0x00, 0x00, 0x00, 0x00, 0x01};
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeModulus),
+      brillo::SecureBlob(kFakePrime),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = false,
+          .allow_sign = true,
+          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_exponent = kExponent,
+      });
+
+  EXPECT_THAT(result, NotOkWith("Exponent too large"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapEccKey) {
+  const std::string kFakeAuthValue = "auth_value";
+  const OperationPolicySetting kFakePolicy{
+      .permission =
+          Permission{
+              .auth_value = brillo::SecureBlob(kFakeAuthValue),
+          },
+  };
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakePointX = "point_x";
+  const std::string kFakePointY = "point_y";
+  const std::string kFakePrivateVal = "private_value";
+  const uint32_t kFakeKeyHandle = 0x1337;
+
+  EXPECT_CALL(
+      proxy_->GetMock().tpm_utility,
+      ImportECCKey(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+                   trunks::TPM_ECC_NIST_P256, _, _, _, kFakeAuthValue, _, _))
+      .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+      kFakePolicy, brillo::BlobFromString(kFakePointX),
+      brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = true,
+          .allow_sign = true,
+          .ecc_nid = NID_X9_62_prime256v1,
+      });
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedConfig) {
+  const OperationPolicySetting kFakePolicy{
+      .device_config_settings =
+          DeviceConfigSettings{
+              .boot_mode =
+                  DeviceConfigSettings::BootModeSetting{
+                      .mode = std::nullopt,
+                  },
+          },
+  };
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakePointX = "point_x";
+  const std::string kFakePointY = "point_y";
+  const std::string kFakePrivateVal = "private_value";
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+      kFakePolicy, brillo::BlobFromString(kFakePointX),
+      brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = true,
+          .allow_sign = true,
+          .ecc_nid = NID_X9_62_prime256v1,
+      });
+
+  EXPECT_THAT(result, NotOkWith("Unsupported device config"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedNID) {
+  const OperationPolicySetting kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakePointX = "point_x";
+  const std::string kFakePointY = "point_y";
+  const std::string kFakePrivateVal = "private_value";
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+      kFakePolicy, brillo::BlobFromString(kFakePointX),
+      brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = true,
+          .allow_sign = false,
+          .ecc_nid = NID_X9_62_prime239v3,
+      });
+
+  EXPECT_THAT(result, NotOkWith("Unsupported curve"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyUseless) {
+  const OperationPolicySetting kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kFakePointX = "point_x";
+  const std::string kFakePointY = "point_y";
+  const std::string kFakePrivateVal = "private_value";
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+      kFakePolicy, brillo::BlobFromString(kFakePointX),
+      brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = false,
+          .allow_sign = false,
+          .ecc_nid = NID_X9_62_prime256v1,
+      });
+
+  EXPECT_THAT(result, NotOkWith("Useless key"));
 }
 
 }  // namespace hwsec

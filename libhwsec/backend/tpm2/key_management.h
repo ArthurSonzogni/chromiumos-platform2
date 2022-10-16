@@ -58,7 +58,7 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
   StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
                                       KeyAlgoType key_algo,
                                       AutoReload auto_reload,
-                                      CreateKeyOptions options) override;
+                                      const CreateKeyOptions& options) override;
   StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
                               const brillo::Blob& key_blob,
                               AutoReload auto_reload) override;
@@ -69,6 +69,20 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
 
   StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
   StatusOr<uint32_t> GetKeyHandle(Key key) override;
+
+  StatusOr<CreateKeyResult> WrapRSAKey(
+      const OperationPolicySetting& policy,
+      const brillo::Blob& public_modulus,
+      const brillo::SecureBlob& private_prime_factor,
+      AutoReload auto_reload,
+      const CreateKeyOptions& options) override;
+  StatusOr<CreateKeyResult> WrapECCKey(
+      const OperationPolicySetting& policy,
+      const brillo::Blob& public_point_x,
+      const brillo::Blob& public_point_y,
+      const brillo::SecureBlob& private_value,
+      AutoReload auto_reload,
+      const CreateKeyOptions& options) override;
 
   // Below are TPM2.0 specific code.
 

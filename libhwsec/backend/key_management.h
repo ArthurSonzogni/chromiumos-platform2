@@ -30,6 +30,9 @@ class KeyManagement {
     bool allow_software_gen = false;
     bool allow_decrypt = false;
     bool allow_sign = false;
+    std::optional<uint32_t> rsa_modulus_bits;
+    std::optional<brillo::Blob> rsa_exponent;
+    std::optional<uint32_t> ecc_nid;
   };
   struct CreateKeyResult {
     ScopedKey key;
@@ -44,7 +47,7 @@ class KeyManagement {
       const OperationPolicySetting& policy,
       KeyAlgoType key_algo,
       AutoReload auto_reload,
-      CreateKeyOptions options) = 0;
+      const CreateKeyOptions& options) = 0;
 
   // Loads a key from |key_blob| with |policy|.
   virtual StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
@@ -70,6 +73,23 @@ class KeyManagement {
   // Loads the raw |key_handle| from key.
   // TODO(174816474): deprecated legacy APIs.
   virtual StatusOr<uint32_t> GetKeyHandle(Key key) = 0;
+
+  // Wraps a RSA key with the |policy| and the given parameters.
+  virtual StatusOr<CreateKeyResult> WrapRSAKey(
+      const OperationPolicySetting& policy,
+      const brillo::Blob& public_modulus,
+      const brillo::SecureBlob& private_prime_factor,
+      AutoReload auto_reload,
+      const CreateKeyOptions& options) = 0;
+
+  // Wraps an ECC key with the |policy| and the given parameters.
+  virtual StatusOr<CreateKeyResult> WrapECCKey(
+      const OperationPolicySetting& policy,
+      const brillo::Blob& public_point_x,
+      const brillo::Blob& public_point_y,
+      const brillo::SecureBlob& private_value,
+      AutoReload auto_reload,
+      const CreateKeyOptions& options) = 0;
 
  protected:
   KeyManagement() = default;

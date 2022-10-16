@@ -17,10 +17,13 @@
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
+using hwsec_foundation::error::testing::NotOkWith;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
+using testing::Args;
 using testing::DoAll;
+using testing::ElementsAreArray;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -406,6 +409,109 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
       backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
           public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
       NotOk());
+}
+
+TEST_F(BackendKeyManagementTpm1Test, WrapRsaKey) {
+  const OperationPolicySetting kFakePolicy{};
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
+  const brillo::Blob kFakeModulus(1024 / 8, 'Z');
+  const brillo::SecureBlob kFakePrime(1024 / 8, 'X');
+  const brillo::Blob kExponent{0x03};
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const uint32_t kFakeKeyHandle2 = 0x1338;
+  const uint32_t kFakePolicyHandle = 0x7331;
+
+  SetupSrk();
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_RSAKEY, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribUint32(kFakeKeyHandle, TSS_TSPATTRIB_KEY_INFO,
+                                   TSS_TSPATTRIB_KEYINFO_SIGSCHEME, _))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                        TSS_POLICY_MIGRATION, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakePolicyHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Policy_SetSecret(kFakePolicyHandle, TSS_SECRET_MODE_PLAIN, _, _))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Policy_AssignToObject(kFakePolicyHandle, kFakeKeyHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
+                                 TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, _, _))
+      .With(Args<4, 3>(ElementsAreArray(kExponent)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
+                                 TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
+      .With(Args<4, 3>(ElementsAreArray(kFakeModulus)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
+                                 TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY, _, _))
+      .With(Args<4, 3>(ElementsAreArray(kFakePrime)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_WrapKey(kFakeKeyHandle, kDefaultSrkHandle, 0))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  brillo::Blob key_blob = kFakeKeyBlob;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_GetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
+                                 TSS_TSPATTRIB_KEYBLOB_BLOB, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(key_blob.size()),
+                      SetArgPointee<4>(key_blob.data()), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle2), Return(TPM_SUCCESS)));
+
+  brillo::Blob fake_pubkey = kFakePubkey;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_GetPubKey(kFakeKeyHandle2, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
+                      SetArgPointee<2>(fake_pubkey.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+      kFakePolicy, kFakeModulus, kFakePrime,
+      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = false,
+          .allow_sign = true,
+          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_exponent = kExponent,
+      });
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->key_blob, kFakeKeyBlob);
+}
+
+TEST_F(BackendKeyManagementTpm1Test, WrapECCKeyUnsupported) {
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().WrapECCKey(
+          OperationPolicySetting{}, brillo::Blob(), brillo::Blob(),
+          brillo::SecureBlob(), Backend::KeyManagement::AutoReload::kFalse,
+          KeyManagement::CreateKeyOptions{}),
+      NotOkWith("Unsupported"));
 }
 
 }  // namespace hwsec

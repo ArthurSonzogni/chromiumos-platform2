@@ -43,6 +43,8 @@ constexpr uint8_t kDefaultSrkAuth[] = {};
 constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
 constexpr uint32_t kDefaultDiscardableWrapPasswordLength = 32;
 constexpr uint32_t kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
+constexpr uint32_t kDefaultTpmRsaKeyModulusBit = TSS_KEY_SIZEVAL_2048BIT;
+constexpr uint8_t kDefaultTpmPublicExponentArray[] = {0x01, 0x00, 0x01};
 
 struct RsaParameters {
   uint32_t key_exponent;
@@ -90,6 +92,25 @@ StatusOr<RsaParameters> ParseSpkiDer(const brillo::Blob& public_key_spki_der) {
   };
 }
 
+TSS_FLAG GetKeySize(int modulus_bits) {
+  switch (modulus_bits) {
+    case TSS_KEY_SIZEVAL_512BIT:
+      return TSS_KEY_SIZE_512;
+    case TSS_KEY_SIZEVAL_1024BIT:
+      return TSS_KEY_SIZE_1024;
+    case TSS_KEY_SIZEVAL_2048BIT:
+      return TSS_KEY_SIZE_2048;
+    case TSS_KEY_SIZEVAL_4096BIT:
+      return TSS_KEY_SIZE_4096;
+    case TSS_KEY_SIZEVAL_8192BIT:
+      return TSS_KEY_SIZE_8192;
+    case TSS_KEY_SIZEVAL_16384BIT:
+      return TSS_KEY_SIZE_16384;
+    default:
+      return TSS_KEY_SIZE_DEFAULT;
+  }
+}
+
 }  // namespace
 
 KeyManagementTpm1::~KeyManagementTpm1() {
@@ -115,7 +136,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
     AutoReload auto_reload,
-    CreateKeyOptions options) {
+    const CreateKeyOptions& options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
       return CreateRsaKey(policy, options, auto_reload);
@@ -263,6 +284,24 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                 TPMRetryAction::kNoRetry);
   }
 
+  return WrapRSAKey(
+      policy,
+      brillo::Blob(std::begin(public_modulus), std::end(public_modulus)),
+      prime_factor, auto_reload, options);
+}
+
+StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
+    const OperationPolicySetting& policy,
+    const brillo::Blob& public_modulus,
+    const brillo::SecureBlob& private_prime_factor,
+    AutoReload auto_reload,
+    const CreateKeyOptions& options) {
+  brillo::Blob exponent = options.rsa_exponent.value_or(
+      brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
+                   std::end(kDefaultTpmPublicExponentArray)));
+  brillo::Blob modulus = public_modulus;
+  brillo::SecureBlob prime_factor = private_prime_factor;
+
   ASSIGN_OR_RETURN(ScopedKey srk,
                    GetPersistentKey(PersistentKeyType::kStorageRootKey));
 
@@ -271,8 +310,9 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
   // Create the key object
-  TSS_FLAG init_flags =
-      TSS_KEY_VOLATILE | TSS_KEY_MIGRATABLE | kDefaultTpmRsaKeyFlag;
+  TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_MIGRATABLE |
+                        GetKeySize(options.rsa_modulus_bits.value_or(
+                            kDefaultTpmRsaKeyModulusBit));
 
   // In this case, the key is not decrypt only. It can be used to sign the
   // data too. No easy way to make a decrypt only key here.
@@ -327,10 +367,19 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                       policy_handle, local_key_handle)))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
-                      local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
-                      TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, public_modulus.size(),
-                      public_modulus.data())))
+  if (exponent != brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
+                               std::end(kDefaultTpmPublicExponentArray))) {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+                        local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+                        TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, exponent.size(),
+                        exponent.data())))
+        .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
+  }
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+          local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+          TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, modulus.size(), modulus.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
@@ -365,6 +414,16 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
       .key = std::move(key),
       .key_blob = std::move(key_blob),
   };
+}
+
+StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapECCKey(
+    const OperationPolicySetting& policy,
+    const brillo::Blob& public_point_x,
+    const brillo::Blob& public_point_y,
+    const brillo::SecureBlob& private_value,
+    AutoReload auto_reload,
+    const CreateKeyOptions& options) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
