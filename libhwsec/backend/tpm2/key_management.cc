@@ -40,6 +40,10 @@ constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
 constexpr uint32_t kDefaultTpmPublicExponent = 0x10001;
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
 
+// Min and max supported RSA modulus sizes (in bytes).
+constexpr uint32_t kMinModulusSize = 128;
+constexpr uint32_t kMaxModulusSize = 256;
+
 constexpr struct {
   trunks::TPM_ALG_ID trunks_id;
   int openssl_nid;
@@ -167,6 +171,40 @@ KeyManagementTpm2::GetSupportedAlgo() {
       KeyAlgoType::kRsa,
       KeyAlgoType::kEcc,
   });
+}
+
+Status KeyManagementTpm2::IsSupported(KeyAlgoType key_algo,
+                                      const CreateKeyOptions& options) {
+  switch (key_algo) {
+    case KeyAlgoType::kRsa: {
+      if (options.rsa_exponent.has_value()) {
+        RETURN_IF_ERROR(
+            GetIntegerExponent(options.rsa_exponent.value()).status());
+      }
+      if (options.rsa_modulus_bits.has_value()) {
+        uint32_t bits = options.rsa_modulus_bits.value();
+        if (bits < kMinModulusSize * 8) {
+          return MakeStatus<TPMError>("Modulus bits too small",
+                                      TPMRetryAction::kNoRetry);
+        }
+        if (bits > kMaxModulusSize * 8) {
+          return MakeStatus<TPMError>("Modulus bits too big",
+                                      TPMRetryAction::kNoRetry);
+        }
+      }
+      return OkStatus();
+    }
+    case KeyAlgoType::kEcc: {
+      if (options.ecc_nid.has_value()) {
+        RETURN_IF_ERROR(
+            ConvertNIDToTrunksCurveID(options.ecc_nid.value()).status());
+      }
+      return OkStatus();
+    }
+    default:
+      return MakeStatus<TPMError>("Unsupported key creation algorithm",
+                                  TPMRetryAction::kNoRetry);
+  }
 }
 
 StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateKey(

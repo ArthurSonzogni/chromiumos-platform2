@@ -905,4 +905,44 @@ TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
   EXPECT_EQ(result->modulus, kModulus);
 }
 
+TEST_F(BackendKeyManagementTpm1Test, IsSupported) {
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                  }),
+              IsOk());
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 16,
+                  }),
+              NotOkWith("Modulus bits too small"));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 2147483648U,
+                  }),
+              NotOkWith("Modulus bits too big"));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kEcc,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                  }),
+              NotOkWith("Unsupported key creation algorithm"));
+}
+
 }  // namespace hwsec

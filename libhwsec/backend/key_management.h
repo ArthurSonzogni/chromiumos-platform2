@@ -53,6 +53,10 @@ class KeyManagement {
   // Gets the supported algorithm.
   virtual StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() = 0;
 
+  // Checks a specific key creation combination is valid or not.
+  virtual Status IsSupported(KeyAlgoType key_algo,
+                             const CreateKeyOptions& options) = 0;
+
   // Creates a key with |key_algo| algorithm, |policy| and optional |options|.
   virtual StatusOr<CreateKeyResult> CreateKey(
       const OperationPolicySetting& policy,

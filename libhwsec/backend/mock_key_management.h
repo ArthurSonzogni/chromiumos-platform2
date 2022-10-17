@@ -26,6 +26,10 @@ class MockKeyManagement : public KeyManagement {
               GetSupportedAlgo,
               (),
               (override));
+  MOCK_METHOD(Status,
+              IsSupported,
+              (KeyAlgoType key_algo, const CreateKeyOptions& options),
+              (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               CreateKey,
               (const OperationPolicySetting& policy,

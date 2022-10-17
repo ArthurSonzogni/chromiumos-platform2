@@ -56,6 +56,8 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
 
   ~KeyManagementTpm1();
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
+  Status IsSupported(KeyAlgoType key_algo,
+                     const CreateKeyOptions& options) override;
   StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
                                       KeyAlgoType key_algo,
                                       AutoReload auto_reload,

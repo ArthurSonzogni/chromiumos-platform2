@@ -44,6 +44,10 @@ constexpr uint32_t kDefaultDiscardableWrapPasswordLength = 32;
 constexpr uint32_t kDefaultTpmRsaKeyModulusBit = TSS_KEY_SIZEVAL_2048BIT;
 constexpr uint8_t kDefaultTpmPublicExponentArray[] = {0x01, 0x00, 0x01};
 
+// Min and max supported RSA modulus sizes (in bytes).
+constexpr uint32_t kMinModulusSize = 64;
+constexpr uint32_t kMaxModulusSize = 256;
+
 struct RsaParameters {
   uint32_t key_exponent;
   brillo::Blob key_modulus;
@@ -156,6 +160,28 @@ KeyManagementTpm1::GetSupportedAlgo() {
   return absl::flat_hash_set<KeyAlgoType>({
       KeyAlgoType::kRsa,
   });
+}
+
+Status KeyManagementTpm1::IsSupported(KeyAlgoType key_algo,
+                                      const CreateKeyOptions& options) {
+  switch (key_algo) {
+    case KeyAlgoType::kRsa:
+      if (options.rsa_modulus_bits.has_value()) {
+        uint32_t bits = options.rsa_modulus_bits.value();
+        if (bits < kMinModulusSize * 8) {
+          return MakeStatus<TPMError>("Modulus bits too small",
+                                      TPMRetryAction::kNoRetry);
+        }
+        if (bits > kMaxModulusSize * 8) {
+          return MakeStatus<TPMError>("Modulus bits too big",
+                                      TPMRetryAction::kNoRetry);
+        }
+      }
+      return OkStatus();
+    default:
+      return MakeStatus<TPMError>("Unsupported key creation algorithm",
+                                  TPMRetryAction::kNoRetry);
+  }
 }
 
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(

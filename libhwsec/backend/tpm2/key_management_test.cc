@@ -1119,4 +1119,76 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoWrongType) {
               NotOkWith("Get ECC public info for none-ECC key"));
 }
 
+TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                  }),
+              IsOk());
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 2048,
+                  }),
+              IsOk());
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 1024,
+                      .rsa_exponent = brillo::Blob(
+                          {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}),
+                  }),
+              NotOkWith("Exponent too large"));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 16,
+                  }),
+              NotOkWith("Modulus bits too small"));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kRsa,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .rsa_modulus_bits = 2147483648U,
+                  }),
+              NotOkWith("Modulus bits too big"));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kEcc,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                  }),
+              IsOk());
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+                  KeyAlgoType::kEcc,
+                  KeyManagement::CreateKeyOptions{
+                      .allow_software_gen = false,
+                      .allow_decrypt = true,
+                      .allow_sign = true,
+                      .ecc_nid = NID_X9_62_prime239v3,
+                  }),
+              NotOkWith("Unsupported curve"));
+}
+
 }  // namespace hwsec
