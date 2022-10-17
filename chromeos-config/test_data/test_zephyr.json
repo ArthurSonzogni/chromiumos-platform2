@@ -72,6 +72,7 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Some",
           "platform-name": "Some",
           "sku-id": 2,
           "smbios-name-match": "Some"
@@ -178,6 +179,7 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Some",
           "platform-name": "Some",
           "sku-id": 3,
           "smbios-name-match": "Some"

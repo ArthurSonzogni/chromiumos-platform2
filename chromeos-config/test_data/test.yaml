@@ -106,6 +106,7 @@ some_config: &some_config
   identity:
     platform-name: "Some"
     smbios-name-match: "Some"
+    frid: "{{$frid}}"
     sku-id: "{{$sku-id}}"
   modem:
     attach-apn-required: True
@@ -113,6 +114,7 @@ some_config: &some_config
     wedge-reboot-delay-ms : "20000"
   wallpaper: "some"
   $oem-id: "0"
+  $frid: "Some"
 
 some_whitelabel_config: &some_whitelabel_config
   <<: *some_base_config
@@ -173,6 +175,7 @@ chromeos:
                 build-path: "build-path/wifi_sar_2.hex"
                 system-path: "/firmware/cbfs-rw-raw/proj/wifi_sar_2.hex"
         - $sku-id: 1
+          $frid: "Some_Other"
           config:
             <<: *some_config
             hardware-properties:

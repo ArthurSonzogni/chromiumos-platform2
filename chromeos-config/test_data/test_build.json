@@ -80,6 +80,156 @@
           "is-lid-convertible": true
         },
         "identity": {
+          "frid": "Some",
+          "platform-name": "Some",
+          "sku-id": 0,
+          "smbios-name-match": "Some"
+        },
+        "modem": {
+          "attach-apn-required": true,
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
+        },
+        "name": "some",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "thermal": {
+          "dptf-dv": "/etc/dptf/some_touch/dptf.dv",
+          "files": [
+            {
+              "destination": "/etc/dptf/some_touch/dptf.dv",
+              "source": "some_touch/dptf.dv"
+            }
+          ]
+        },
+        "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex",
+              "source": "some_stylus_vendor/some-version.hex",
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
+            },
+            {
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin",
+              "source": "some_touch_vendor/some-pid_some-version.bin",
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
+            },
+            {
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin",
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin",
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
+            }
+          ]
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "some"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        },
+        "wallpaper": "some",
+        "wifi": {
+          "sar-file": {
+            "build-path": "build-path/wifi_sar_2.hex",
+            "system-path": "/firmware/cbfs-rw-raw/proj/wifi_sar_2.hex"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "some_cheets",
+            "metrics-tag": "abc123",
+            "product": "some"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "some",
+            "files": [
+              {
+                "destination": "/etc/cras/some/a-card",
+                "source": "cras-config/some/a-card"
+              },
+              {
+                "destination": "/etc/cras/some/dsp.ini",
+                "source": "cras-config/some/dsp.ini"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some/HiFi.conf",
+                "source": "ucm-config/a-card.some/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some/a-card.some.conf",
+                "source": "ucm-config/a-card.some/a-card.some.conf"
+              },
+              {
+                "destination": "/lib/firmware/some-tplg.bin",
+                "source": "topology/some-tplg.bin"
+              }
+            ],
+            "ucm-suffix": "some"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-some-private",
+          "build-targets": {
+            "coreboot": "some",
+            "depthcharge": "some",
+            "ec": "some",
+            "libpayload": "some",
+            "u-boot": "some"
+          },
+          "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "main-ro-image": "bcs://Some.1111.11.1.tbz2",
+          "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "SOME",
+          "signature-id": "some"
+        },
+        "hardware-properties": {
+          "has-base-accelerometer": true,
+          "has-base-gyroscope": true,
+          "has-lid-accelerometer": true,
+          "is-lid-convertible": true
+        },
+        "identity": {
+          "frid": "Some_Other",
           "platform-name": "Some",
           "sku-id": 0,
           "smbios-name-match": "Some"
@@ -229,6 +379,156 @@
         },
         "hwid-override": "SOME-ZZCR A6B-C5D-A4E",
         "identity": {
+          "frid": "Some",
+          "platform-name": "Some",
+          "sku-id": 1,
+          "smbios-name-match": "Some"
+        },
+        "modem": {
+          "attach-apn-required": true,
+          "firmware-variant": "some",
+          "wedge-reboot-delay-ms": "20000"
+        },
+        "name": "some",
+        "oem-id": "0",
+        "power": {
+          "allow-ambient-eq": "1",
+          "charging-ports": "CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n",
+          "cutoff-power-ua": "-1",
+          "hibernate-power-ua": "-1",
+          "keyboard-backlight-no-als-brightness": "98.7",
+          "low-battery-shutdown-percent": "100.0",
+          "power-supply-full-factor": "0.0",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
+          "smart-discharge-to-zero-hr": "-1",
+          "suspend-to-idle": "0",
+          "touchpad-wakeup": "1"
+        },
+        "thermal": {
+          "files": [
+            {
+              "destination": "/etc/dptf/some_notouch/dptf.dv",
+              "source": "some_notouch/dptf.dv"
+            }
+          ]
+        },
+        "touch": {
+          "files": [
+            {
+              "destination": "/opt/google/touch/firmware/some_stylus_vendor/some-version.hex",
+              "source": "some_stylus_vendor/some-version.hex",
+              "symlink": "/lib/firmware/some_stylus_vendor_firmware_SOME.bin"
+            },
+            {
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin",
+              "source": "some_touch_vendor/some-pid_some-version.bin",
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-pid.bin"
+            },
+            {
+              "destination": "/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin",
+              "source": "some_touch_vendor/some-other-pid_some-other-version.bin",
+              "symlink": "/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin"
+            }
+          ]
+        },
+        "ui": {
+          "apps": {
+            "extra-web-apps-dir": "some"
+          },
+          "power-button": {
+            "edge": "left",
+            "position": "0.3"
+          }
+        },
+        "wallpaper": "some",
+        "wifi": {
+          "sar-file": {
+            "build-path": "build-path/wifi_sar_2.hex",
+            "system-path": "/firmware/cbfs-rw-raw/proj/wifi_sar_2.hex"
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "some_cheets",
+            "metrics-tag": "abc123",
+            "product": "some"
+          },
+          "hardware-features": {
+            "build-path": "some/hardware_features.xml",
+            "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-profiles": {
+            "build-path": "some/media_profiles.xml",
+            "system-path": "/etc/some_media_profiles.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "some",
+            "files": [
+              {
+                "destination": "/etc/cras/some/a-card",
+                "source": "cras-config/some/a-card"
+              },
+              {
+                "destination": "/etc/cras/some/dsp.ini",
+                "source": "cras-config/some/dsp.ini"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some/HiFi.conf",
+                "source": "ucm-config/a-card.some/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/a-card.some/a-card.some.conf",
+                "source": "ucm-config/a-card.some/a-card.some.conf"
+              },
+              {
+                "destination": "/lib/firmware/some-tplg.bin",
+                "source": "topology/some-tplg.bin"
+              }
+            ],
+            "ucm-suffix": "some"
+          }
+        },
+        "camera": {
+          "count": 1
+        },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
+        },
+        "efi": {
+          "bootvar-name-override": "Some OS"
+        },
+        "fingerprint": {
+          "board": "bloonchipper",
+          "ro-version": "VERSION1"
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-some-private",
+          "build-targets": {
+            "coreboot": "some",
+            "depthcharge": "some",
+            "ec": "some",
+            "libpayload": "some",
+            "u-boot": "some"
+          },
+          "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "main-ro-image": "bcs://Some.1111.11.1.tbz2",
+          "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "SOME",
+          "signature-id": "some"
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
+        "hwid-override": "SOME-ZZCR A6B-C5D-A4E",
+        "identity": {
+          "frid": "Some_Other",
           "platform-name": "Some",
           "sku-id": 1,
           "smbios-name-match": "Some"
@@ -368,6 +668,7 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Some",
           "platform-name": "Some",
           "sku-id": 2,
           "smbios-name-match": "Some"
@@ -474,6 +775,7 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Some",
           "platform-name": "Some",
           "sku-id": 3,
           "smbios-name-match": "Some"

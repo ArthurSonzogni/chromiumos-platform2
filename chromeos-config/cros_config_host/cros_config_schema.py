@@ -547,6 +547,52 @@ def FilterNonZephyrDevices(config):
     return libcros_schema.FormatJson({CHROMEOS: {CONFIGS: new_device_configs}})
 
 
+def GenerateFridMatches(json_config):
+    """Generate covering FRID matches.
+
+    For models with configs where FRID values are not uniform, generate identity
+    configs with all FRID values for each rest of the identity object for that
+    model.
+
+    Args:
+        json_config: JSON config dictionary
+
+    Returns:
+        A new JSON config dictionary with per-model FRID coverage filled in.
+    """
+    # Maps model name to all possible FRIDs for this model.
+    model_frid_matches = collections.defaultdict(set)
+    for config in json_config[CHROMEOS][CONFIGS]:
+        name = config["name"]
+        identity = config.get("identity", {})
+        model_frid_matches[name].add(identity.get("frid"))
+    sorted_model_frid_matches = {
+        k: sorted(v) for k, v in model_frid_matches.items()
+    }
+
+    new_configs = []
+    model_identity_matches = collections.defaultdict(set)
+    for config in json_config[CHROMEOS][CONFIGS]:
+        name = config["name"]
+        matches = sorted_model_frid_matches[name]
+        if len(matches) == 1:
+            new_configs.append(config)
+            continue
+
+        template_identity = config.get("identity", {})
+
+        for frid in matches:
+            new_identity = dict(template_identity, frid=frid)
+            hashable_new_identity = tuple(sorted(new_identity.items()))
+            if hashable_new_identity in model_identity_matches[name]:
+                continue
+            model_identity_matches[name].add(hashable_new_identity)
+            new_config = dict(config, identity=new_identity)
+            new_configs.append(new_config)
+
+    return {CHROMEOS: {CONFIGS: new_configs}}
+
+
 @functools.lru_cache()
 def GetValidSchemaProperties(
     schema=os.path.join(this_dir, "cros_config_schema.yaml")
@@ -851,7 +897,7 @@ def MergeConfigs(configs):
             if not matched:
                 result_json["chromeos"]["configs"].append(to_merge_config)
 
-    return libcros_schema.FormatJson(result_json)
+    return libcros_schema.FormatJson(GenerateFridMatches(result_json))
 
 
 def ReadSchema(schema=None):

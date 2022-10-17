@@ -341,6 +341,65 @@ directories, and properties representing files.
 This file gets installed at `/usr/share/chromeos-config/configfs.img`, and is
 used internally by the `cros_configfs` tool.
 
+### FRID identity combination generation
+
+Some models may use multiple FRID match values in their identity configurations.
+While only the configured combinations should be present in finalized production
+devices, for devices in the factory process and for development devices, the
+FRID may be set to another FRID used by that model until the firmware has been
+updated to one with the final FRID. To support devices in this state, identity
+configurations are generated to cover all FRID combinations. That is, for each
+identity object with the FRID ignored, one config instance is generated for each
+FRID value used within that model. For example, given the example input below:
+
+```yaml
+chromeos:
+  models:
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform"
+        sku-id: 0
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform_WithSuffix"
+        sku-id: 1
+    - name: "AnotherDevice"
+      identity:
+        frid: "AnotherPlatform"
+        sku-id: 2
+```
+
+a configuration equivalent to the following would be generated to cover all
+combinations of sku-id and frid:
+
+```yaml
+chromeos:
+  models:
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform"
+        sku-id: 0
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform_WithSuffix"
+        sku-id: 0
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform"
+        sku-id: 1
+    - name: "SomeDevice"
+      identity:
+        frid: "SomePlatform_WithSuffix"
+        sku-id: 1
+    - name: "AnotherDevice"
+      identity:
+        frid: "AnotherPlatform"
+        sku-id: 2
+```
+
+In practice, this step takes place during the YAML transform step above, once
+the configuration has been flattened.
+
 ### Making changes to a YAML model file
 
 When modifying a `model.yaml` file there are few steps that need to be taken to
