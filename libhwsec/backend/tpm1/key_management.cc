@@ -109,6 +109,34 @@ TSS_FLAG GetKeySize(int modulus_bits) {
   }
 }
 
+StatusOr<ScopedTssPolicy> AddAuthPolicy(overalls::Overalls& overalls,
+                                        TSS_HCONTEXT context,
+                                        TSS_HKEY key,
+                                        brillo::SecureBlob auth_value) {
+  ScopedTssPolicy auth_policy(overalls, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+                      context, TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
+                      auth_policy.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
+
+  if (auth_value.empty()) {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
+                        auth_policy, TSS_SECRET_MODE_NONE, 0, nullptr)))
+        .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
+  } else {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
+                        auth_policy, TSS_SECRET_MODE_SHA1, auth_value.size(),
+                        auth_value.data())))
+        .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
+  }
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(
+                      overalls.Ospi_Policy_AssignToObject(auth_policy, key)))
+      .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
+
+  return auth_policy;
+}
+
 }  // namespace
 
 KeyManagementTpm1::~KeyManagementTpm1() {
@@ -152,11 +180,6 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
       const ConfigTpm1::PcrMap& setting,
       backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
-
-  if (policy.permission.auth_value.has_value()) {
-    return MakeStatus<TPMError>("Unsupported policy permission",
-                                TPMRetryAction::kNoRetry);
-  }
 
   if (options.allow_software_gen && setting.empty()) {
     return CreateSoftwareGenRsaKey(policy, options, auto_reload);
@@ -235,6 +258,14 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
                         TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, exponent.size(),
                         exponent.data())))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
+  }
+
+  ScopedTssPolicy auth_policy(overalls, context);
+  if (policy.permission.auth_value.has_value()) {
+    ASSIGN_OR_RETURN(auth_policy,
+                     AddAuthPolicy(overalls, context, pcr_bound_key,
+                                   policy.permission.auth_value.value()),
+                     _.WithStatus<TPMError>("Failed to add auth policy"));
   }
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_CreateKey(
@@ -379,6 +410,14 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_AssignToObject(
                       policy_handle, local_key_handle)))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
+
+  ScopedTssPolicy auth_policy(overalls, context);
+  if (policy.permission.auth_value.has_value()) {
+    ASSIGN_OR_RETURN(auth_policy,
+                     AddAuthPolicy(overalls, context, local_key_handle,
+                                   policy.permission.auth_value.value()),
+                     _.WithStatus<TPMError>("Failed to add auth policy"));
+  }
 
   if (exponent != brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
                                std::end(kDefaultTpmPublicExponentArray))) {
