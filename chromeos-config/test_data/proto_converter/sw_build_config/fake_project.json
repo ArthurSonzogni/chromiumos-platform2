@@ -64,6 +64,9 @@
             "ucm-suffix": "alc5682i.2uf.fake_ref_design"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": true
+        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -310,6 +313,9 @@
             ],
             "ucm-suffix": "alc5682i.1uf2wf.fake_ref_design"
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": true
         },
         "brand-code": "AAAA",
         "branding": {

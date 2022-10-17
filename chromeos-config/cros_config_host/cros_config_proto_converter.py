@@ -1873,6 +1873,18 @@ def _build_audio(config):
     return result
 
 
+def _build_battery(hw_topology):
+    hw_features = hw_topology.hw_design_config.hardware_features
+    hw_feat_battery = hw_features.battery
+
+    result = {}
+    if hw_feat_battery.no_battery_boot_supported:
+        result[
+            "no-battery-boot-supported"
+        ] = hw_feat_battery.no_battery_boot_supported
+    return result
+
+
 def _build_camera(hw_topology):
     camera_pb = topology_pb2.HardwareFeatures.Camera
     camera = hw_topology.camera.hardware_feature.camera
@@ -2193,6 +2205,7 @@ def _transform_build_config(config, config_files, whitelabel):
 
     _upsert(_build_arc(config, config_files), result, "arc")
     _upsert(_build_audio(config), result, "audio")
+    _upsert(_build_battery(config), result, "battery")
     _upsert(_build_bluetooth(config), result, "bluetooth")
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
