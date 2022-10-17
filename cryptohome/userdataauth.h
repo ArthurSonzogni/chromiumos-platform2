@@ -780,6 +780,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::PrepareAuthFactorReply&)>
           on_done);
 
+  void TerminateAuthFactor(
+      user_data_auth::TerminateAuthFactorRequest request,
+      base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
+          on_done);
+
   void GetAuthSessionStatus(
       user_data_auth::GetAuthSessionStatusRequest request,
       base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>

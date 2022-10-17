@@ -1361,6 +1361,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS = 3508,
   /* ./userdataauth.cc */
   kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound = 3509,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound = 3510,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidAuthFactorTypeInTerminateAuthFactor = 3511,
+  /* ./auth_session.cc */
+  kLocAuthSessionTerminateBadAuthFactorType = 3512,
+  /* ./auth_session.cc */
+  kLocAuthSessionTerminateInactiveAuthFactor = 3513,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

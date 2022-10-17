@@ -162,6 +162,12 @@ class AuthSession final {
       const user_data_auth::PrepareAuthFactorRequest& request,
       StatusCallback on_done);
 
+  // TerminatesAuthFactor stops an async auth factor, e.g. fingerprint auth
+  // factor.
+  void TerminateAuthFactor(
+      const user_data_auth::TerminateAuthFactorRequest& request,
+      StatusCallback on_done);
+
   // Generates a payload that will be sent to the server for cryptohome recovery
   // AuthFactor authentication. GetRecoveryRequest saves data in the
   // AuthSession state. This call is required before the AuthenticateAuthFactor

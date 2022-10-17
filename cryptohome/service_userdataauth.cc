@@ -576,6 +576,34 @@ void UserDataAuthAdaptor::DoPrepareAuthFactor(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::TerminateAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::TerminateAuthFactorReply>> response,
+    const user_data_auth::TerminateAuthFactorRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoTerminateAuthFactor,
+                                base::Unretained(this),
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::TerminateAuthFactorReply>::
+                                    MakeThreadSafe(std::move(response)),
+                                in_request));
+}
+
+void UserDataAuthAdaptor::DoTerminateAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::TerminateAuthFactorReply>> response,
+    const user_data_auth::TerminateAuthFactorRequest& in_request) {
+  service_->TerminateAuthFactor(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::TerminateAuthFactorReply>> local_response,
+             const user_data_auth::TerminateAuthFactorReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::GetRecoveryRequest(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetRecoveryRequestReply>> response,

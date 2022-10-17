@@ -1741,6 +1741,52 @@ void AuthSession::PrepareAuthFactor(
   }
 }
 
+void AuthSession::TerminateAuthFactor(
+    const user_data_auth::TerminateAuthFactorRequest& request,
+    StatusCallback on_done) {
+  std::optional<AuthFactorType> auth_factor_type =
+      AuthFactorTypeFromProto(request.auth_factor_type());
+  if (!auth_factor_type.has_value()) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionInvalidAuthFactorTypeInTerminateAuthFactor),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // For auth factor types that do not need Prepare, neither do they need
+  // Terminate, return an invalid argument error.
+  if (!auth_block_utility_->IsPrepareAuthFactorRequired(*auth_factor_type)) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateBadAuthFactorType),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // Throw error if the auth factor is not in the active list.
+  const auto iter = active_auth_factor_types.find(*auth_factor_type);
+  if (iter == active_auth_factor_types.end()) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateInactiveAuthFactor),
+        ErrorActionSet({ErrorAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // The auth factor should be in the active list, terminate it.
+  CryptohomeStatus status =
+      auth_block_utility_->TerminateAuthFactor(*auth_factor_type);
+  if (status.ok()) {
+    active_auth_factor_types.erase(iter);
+  }
+  std::move(on_done).Run(std::move(status));
+}
+
 bool AuthSession::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>

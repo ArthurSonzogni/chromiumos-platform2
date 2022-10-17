@@ -5185,6 +5185,31 @@ void UserDataAuth::PrepareAuthFactor(
                      std::move(on_done)));
 }
 
+void UserDataAuth::TerminateAuthFactor(
+    user_data_auth::TerminateAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::TerminateAuthFactorReply reply;
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+    return;
+  }
+  auth_session->TerminateAuthFactor(
+      request,
+      base::BindOnce(&ReplyWithStatus<user_data_auth::TerminateAuthFactorReply>,
+                     std::move(on_done)));
+}
+
 void UserDataAuth::GetAuthSessionStatus(
     user_data_auth::GetAuthSessionStatusRequest request,
     base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>

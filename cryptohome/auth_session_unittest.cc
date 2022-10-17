@@ -3354,7 +3354,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
 }
 
 // Test that PrepareAuthFactor succeeded for password.
-TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordSuccess) {
+TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
   // Setup.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Add the user session. Configure the credential verifier mock to succeed.
@@ -3382,6 +3382,114 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordSuccess) {
   // Verify.
   ASSERT_EQ(prepare_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Configure the credential verifier mock to succeed.
+  auto user_session = std::make_unique<MockUserSession>();
+  // Create an AuthSession
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kVerifyOnly,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
+      /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
+      .WillOnce(Return(false));
+
+  // Test.
+  user_data_auth::TerminateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  TestFuture<CryptohomeStatus> terminate_future;
+  auth_session.TerminateAuthFactor(request, terminate_future.GetCallback());
+
+  // Verify.
+  ASSERT_EQ(terminate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       TerminateAuthFactorInactiveFactorFailure) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Configure the credential verifier mock to succeed.
+  auto user_session = std::make_unique<MockUserSession>();
+  // Create an AuthSession
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kVerifyOnly,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
+      /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
+      .WillOnce(Return(true));
+
+  // Test.
+  user_data_auth::TerminateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  TestFuture<CryptohomeStatus> terminate_future;
+  auth_session.TerminateAuthFactor(request, terminate_future.GetCallback());
+
+  // Verify.
+  ASSERT_EQ(terminate_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       TerminateAuthFactorLegacyFingerprintSuccess) {
+  // Setup.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Add the user session. Configure the credential verifier mock to succeed.
+  auto user_session = std::make_unique<MockUserSession>();
+  // Create an AuthSession
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+      AuthIntent::kVerifyOnly,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
+      /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      auth_block_utility_,
+      PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
+      .WillOnce([](AuthFactorType, const std::string&,
+                   AuthBlockUtility::CryptohomeStatusCallback callback) {
+        std::move(callback).Run(OkStatus<CryptohomeError>());
+      });
+  EXPECT_CALL(auth_block_utility_,
+              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
+      .WillOnce([](AuthFactorType) { return OkStatus<CryptohomeError>(); });
+  TestFuture<CryptohomeStatus> prepare_future;
+  user_data_auth::PrepareAuthFactorRequest prepare_request;
+  prepare_request.set_auth_session_id(auth_session.serialized_token());
+  prepare_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  prepare_request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  auth_session.PrepareAuthFactor(prepare_request, prepare_future.GetCallback());
+  ASSERT_THAT(prepare_future.Get(), IsOk());
+
+  // Test.
+  user_data_auth::TerminateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  TestFuture<CryptohomeStatus> terminate_future;
+  auth_session.TerminateAuthFactor(request, terminate_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(terminate_future.Get(), IsOk());
 }
 
 // Test that AuthenticateAuthFactor succeeds and doesn't use the credential

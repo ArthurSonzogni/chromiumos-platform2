@@ -5330,6 +5330,198 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorPasswordFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
+  // Setup.
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+
+  // Execute a successful PrepareAuthFactor with mocked response.
+  user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
+  prepare_auth_factor_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  prepare_auth_factor_req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  prepare_auth_factor_req.set_purpose(
+      user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      auth_block_utility_,
+      PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
+      .WillOnce([](AuthFactorType, const std::string&,
+                   AuthBlockUtility::CryptohomeStatusCallback callback) {
+        std::move(callback).Run(OkStatus<CryptohomeError>());
+      });
+  user_data_auth::PrepareAuthFactorReply prepare_auth_factor_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->PrepareAuthFactor(
+        prepare_auth_factor_req,
+        base::BindOnce(
+            [](user_data_auth::PrepareAuthFactorReply&
+                   prepare_auth_factor_reply,
+               const user_data_auth::PrepareAuthFactorReply& reply) {
+              prepare_auth_factor_reply = reply;
+            },
+            std::ref(prepare_auth_factor_reply)));
+  }
+  EXPECT_EQ(prepare_auth_factor_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_CALL(auth_block_utility_,
+              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
+      .WillOnce([](AuthFactorType) { return OkStatus<CryptohomeError>(); });
+
+  // Test.
+  user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
+  terminate_auth_factor_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  terminate_auth_factor_req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  user_data_auth::TerminateAuthFactorReply terminate_auth_factor_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->TerminateAuthFactor(
+        terminate_auth_factor_req,
+        base::BindOnce(
+            [](user_data_auth::TerminateAuthFactorReply&
+                   terminate_auth_factor_reply,
+               const user_data_auth::TerminateAuthFactorReply& reply) {
+              terminate_auth_factor_reply = reply;
+            },
+            std::ref(terminate_auth_factor_reply)));
+  }
+
+  // Verify.
+  EXPECT_EQ(terminate_auth_factor_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
+  // Setup.
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
+      .WillOnce(Return(true));
+
+  // Test. TerminateAuthFactor fails when there is
+  // no pending fingerprint auth factor to be terminated.
+  user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
+  terminate_auth_factor_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  terminate_auth_factor_req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  user_data_auth::TerminateAuthFactorReply terminate_auth_factor_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->TerminateAuthFactor(
+        terminate_auth_factor_req,
+        base::BindOnce(
+            [](user_data_auth::TerminateAuthFactorReply&
+                   terminate_auth_factor_reply,
+               const user_data_auth::TerminateAuthFactorReply& reply) {
+              terminate_auth_factor_reply = reply;
+            },
+            std::ref(terminate_auth_factor_reply)));
+  }
+
+  // Verify.
+  EXPECT_EQ(terminate_auth_factor_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
+  // Setup.
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
+      .WillOnce(Return(false));
+
+  // Test. TerminateAuthFactor fails when the auth factor type
+  // does not support PrepareAuthFactor.
+  user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
+  terminate_auth_factor_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  terminate_auth_factor_req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  user_data_auth::TerminateAuthFactorReply terminate_auth_factor_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->TerminateAuthFactor(
+        terminate_auth_factor_req,
+        base::BindOnce(
+            [](user_data_auth::TerminateAuthFactorReply&
+                   terminate_auth_factor_reply,
+               const user_data_auth::TerminateAuthFactorReply& reply) {
+              terminate_auth_factor_reply = reply;
+            },
+            std::ref(terminate_auth_factor_reply)));
+  }
+
+  // Verify.
+  EXPECT_EQ(terminate_auth_factor_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
  public:
   static constexpr const char* kUser = "chromeos-user";
