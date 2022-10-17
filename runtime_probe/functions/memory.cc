@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "runtime_probe/functions/memory.h"
+#include "runtime_probe/system/context.h"
 
 #include <algorithm>
 #include <memory>
@@ -20,7 +21,7 @@ namespace runtime_probe {
 
 namespace {
 
-constexpr char kSysfsDmiPath[] = "/sys/firmware/dmi/entries";
+constexpr char kSysfsDmiPath[] = "sys/firmware/dmi/entries";
 constexpr auto kMemoryType = 17;
 
 // Refer to SMBIOS specification.
@@ -64,6 +65,7 @@ uint16_t MemorySize(uint16_t size) {
 // SmbiosString gets the string associated with the given SMBIOS raw data.
 // If the arguments are valid, |id|-th string in the SMBIOS string table is
 // returned; otherwise, nullptr is returned.
+// See 6.1.3 Text strings in SMBIOS specification for more information.
 std::unique_ptr<std::string> SmbiosString(const std::vector<uint8_t>& blob,
                                           uint8_t skip_bytes,
                                           uint8_t id) {
@@ -116,7 +118,8 @@ std::unique_ptr<DmiMemory> GetDmiMemoryFromBlobData(
 MemoryFunction::DataType GetMemoryInfo() {
   MemoryFunction::DataType results{};
 
-  const base::FilePath dmi_dirname(kSysfsDmiPath);
+  const base::FilePath dmi_dirname(
+      Context::Get()->root_dir().Append(kSysfsDmiPath));
   for (int entry = 0;; ++entry) {
     const base::FilePath dmi_basename(
         base::StringPrintf("%d-%d", kMemoryType, entry));
