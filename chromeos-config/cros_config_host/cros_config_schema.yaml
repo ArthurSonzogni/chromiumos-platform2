@@ -458,6 +458,12 @@ properties:
               additionalProperties: false
               required:
               - main
+            battery:
+              type: object
+              properties:
+                no-battery-boot-supported:
+                  description: Device supports booting without a battery.
+                  type: boolean
             bluetooth:
               type: object
               properties:

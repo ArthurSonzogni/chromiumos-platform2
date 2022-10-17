@@ -64,6 +64,9 @@
             "ucm-suffix": "alc5682i.2uf.fake_ref_design"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": true
+        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -311,6 +314,9 @@
             "ucm-suffix": "alc5682i.1uf2wf.fake_ref_design"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": true
+        },
         "brand-code": "AAAA",
         "branding": {
           "marketing-name": "Fake ChromeOS Device Brandname",
@@ -512,6 +518,9 @@
             ],
             "ucm-suffix": "2mic"
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "bluetooth": {
           "flags": {
@@ -765,6 +774,9 @@
             "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_b"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -948,6 +960,9 @@
             "speaker-amp": "MAX98373",
             "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_b"
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "bluetooth": {
           "flags": {
@@ -1157,6 +1172,9 @@
             "ucm-suffix": "card_suffix.max98373.alc5682i.2uf.project_b"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -1351,6 +1369,9 @@
             "ucm-suffix": "alc5682i.2uf.project_b"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -1527,6 +1548,9 @@
             ]
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "brand-code": "WLZZ",
         "branding": {
           "marketing-name": "ChromeOS Device Brandname WL"
@@ -1685,6 +1709,9 @@
               }
             ]
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "brand-code": "WLAA",
         "branding": {
@@ -1847,6 +1874,9 @@
             ]
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "brand-code": "WLBB",
         "branding": {
           "marketing-name": "ChromeOS Device Brandname WL-B",
@@ -2007,6 +2037,9 @@
               }
             ]
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "brand-code": "WLCC",
         "branding": {
@@ -2182,6 +2215,9 @@
             "ucm-suffix": "alc5682i.2uf.project_rebrand"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "brand-code": "RBDD",
         "branding": {
           "marketing-name": "ChromeOS Device Brandname REBRAND-D",
@@ -2351,6 +2387,9 @@
             "ucm-suffix": "card_suffix.max98373.alc5682i.0pos.0uf0wf0total"
           }
         },
+        "battery": {
+          "no-battery-boot-supported": false
+        },
         "brand-code": "FDBX",
         "branding": {
           "marketing-name": "ChromeOS Device Brandname Box",
@@ -2497,6 +2536,9 @@
             ],
             "ucm-suffix": "alc5682i.project_box"
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "brand-code": "FDBX",
         "branding": {
@@ -2646,6 +2688,9 @@
             "speaker-amp": "MAX98373",
             "ucm-suffix": "card_suffix.fixed_suffix"
           }
+        },
+        "battery": {
+          "no-battery-boot-supported": false
         },
         "brand-code": "FDBX",
         "branding": {
