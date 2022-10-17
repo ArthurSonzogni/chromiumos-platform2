@@ -64,14 +64,11 @@ AuthenticationSession::AuthenticationSession(
       delegate_(std::move(delegate)),
       rpc_client_(std::move(client)) {}
 
-void AuthenticationSession::RegisterCompletionHandler(
-    CompletionCallback completion_handler) {
-  completion_callback_ = std::move(completion_handler);
-}
-
-void AuthenticationSession::Start(StartCallback callback) {
-  PostToCurrentSequence(base::BindOnce(
-      std::move(callback), absl::UnimplementedError("Not yet implemented")));
+void AuthenticationSession::Start(StartCallback start_callback,
+                                  CompletionCallback completion_callback) {
+  PostToCurrentSequence(
+      base::BindOnce(std::move(completion_callback),
+                     absl::UnimplementedError("Not yet implemented")));
 }
 
 void AuthenticationSession::NotifyUpdate(FaceOperationStatus status) {
@@ -83,13 +80,13 @@ void AuthenticationSession::NotifyUpdate(FaceOperationStatus status) {
 void AuthenticationSession::NotifyComplete() {
   delegate_->OnAuthenticationComplete(AuthenticationCompleteMessage::New());
 
-  FinishSession();
+  FinishSession(absl::OkStatus());
 }
 
 void AuthenticationSession::NotifyCancelled() {
   delegate_->OnAuthenticationCancelled();
 
-  FinishSession();
+  FinishSession(absl::CancelledError());
 }
 
 void AuthenticationSession::NotifyError(absl::Status error) {
@@ -97,33 +94,29 @@ void AuthenticationSession::NotifyError(absl::Status error) {
   SessionError session_error = SessionError::UNKNOWN;
   delegate_->OnAuthenticationError(session_error);
 
-  FinishSession();
+  FinishSession(error);
 }
 
 void AuthenticationSession::OnSessionDisconnect() {
-  receiver_.reset();
-
   // TODO(b/249184053): cancel authentication session operation
 
   NotifyCancelled();
 }
 
 void AuthenticationSession::OnDelegateDisconnect() {
-  receiver_.reset();
-  delegate_.reset();
-
   // TODO(b/249184053): cancel authentication session operation
 
-  FinishSession();
+  FinishSession(absl::CancelledError());
 }
 
-void AuthenticationSession::FinishSession() {
+void AuthenticationSession::FinishSession(absl::Status status) {
   // Close the connections to the authentication session interfaces.
   delegate_.reset();
   receiver_.reset();
 
   if (completion_callback_) {
-    PostToCurrentSequence(std::move(completion_callback_));
+    PostToCurrentSequence(
+        base::BindOnce(std::move(completion_callback_), status));
   }
 }
 

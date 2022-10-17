@@ -16,11 +16,12 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "faced/camera/frame.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/proto/face_service.grpc.pb.h"
-#include "faced/proto/face_service.pb.h"
 #include "faced/session.h"
 #include "faced/util/lease.h"
+#include "faced/util/stream.h"
 
 namespace faced {
 
@@ -30,6 +31,8 @@ class EnrollmentSession
     : public SessionInterface,
       public chromeos::faceauth::mojom::FaceEnrollmentSession {
  public:
+  using InputFrame = absl::StatusOr<std::unique_ptr<Frame>>;
+
   static absl::StatusOr<std::unique_ptr<EnrollmentSession>> Create(
       absl::BitGen& bitgen,
       mojo::PendingReceiver<chromeos::faceauth::mojom::FaceEnrollmentSession>
@@ -37,7 +40,8 @@ class EnrollmentSession
       mojo::PendingRemote<
           chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
       chromeos::faceauth::mojom::EnrollmentSessionConfigPtr config,
-      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      std::unique_ptr<StreamReader<InputFrame>> stream_reader);
 
   ~EnrollmentSession() override = default;
 
@@ -47,9 +51,8 @@ class EnrollmentSession
 
   // `SessionInterface` implementation.
   uint64_t session_id() override { return session_id_; }
-  void RegisterCompletionHandler(
-      CompletionCallback completion_handler) override;
-  void Start(StartCallback callback) override;
+  void Start(StartCallback start_callback,
+             CompletionCallback completion_callback) override;
 
   // Notify FaceEnrollmentSessionDelegate of enrollment state changes.
   //
@@ -69,41 +72,54 @@ class EnrollmentSession
           receiver,
       mojo::PendingRemote<
           chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate> delegate,
-      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client);
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      std::unique_ptr<StreamReader<InputFrame>> stream_reader);
 
-  // Handle the disconnection of the session receiver.
-  void OnSessionDisconnect();
-  // Handle the disconnection of the remote delegate.
-  void OnDelegateDisconnect();
+  // Attempt to abort cancel the current operation.
+  //
+  // Any long running operations will be signalled to finish up and abort.
+  // There is no guarantee that the operation will actually be cancelled,
+  // and this class instance still must not be deleted until the current
+  // operation's complete callback is called.
+  void TryCancel();
 
+  void StartEnrollment(StartCallback callback);
   // Callback to process the response from StartEnrollment.
   void CompleteStartEnrollment(
       StartCallback callback,
       grpc::Status status,
       std::unique_ptr<faceauth::eora::StartEnrollmentResponse> response);
 
+  // Callback to process frame provided by StreamReader.
+  void ProcessAvailableFrame(StreamValue<InputFrame> frame);
+
   using AbortCallback = base::OnceCallback<void(
-      grpc::Status, std::unique_ptr<faceauth::eora::AbortEnrollmentResponse>)>;
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response)>;
   void AbortEnrollment(AbortCallback callback);
 
-  // Callbacks to process the response from AbortEnrollment.
-  void FinishOnSessionDisconnect(
+  void CompleteCancelEnrollment(
       grpc::Status status,
       std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response);
-  void FinishOnDelegateDisconnect(
+  void CompleteAbortEnrollment(
+      absl::Status error,
       grpc::Status status,
       std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response);
 
-  void FinishSession();
+  void FinishSession(absl::Status status);
 
   int64_t session_id_;
   mojo::Receiver<chromeos::faceauth::mojom::FaceEnrollmentSession> receiver_;
   mojo::Remote<chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate>
       delegate_;
+
   CompletionCallback completion_callback_;
+  bool abort_requested_ = false;
 
   // Async gRPC client that uses an internal completion queue.
   Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;
+
+  std::unique_ptr<StreamReader<InputFrame>> stream_reader_;
 };
 
 }  // namespace faced

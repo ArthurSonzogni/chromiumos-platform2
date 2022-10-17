@@ -34,6 +34,8 @@ using ::chromeos::faceauth::mojom::Result;
 using ::chromeos::faceauth::mojom::SessionCreationError;
 using ::chromeos::faceauth::mojom::SessionInfo;
 
+constexpr int kMaxCameraQueueSize = 3;
+
 FaceAuthServiceImpl::FaceAuthServiceImpl(
     mojo::PendingReceiver<FaceAuthenticationService> receiver,
     DisconnectionCallback disconnect_handler,
@@ -86,20 +88,27 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
     return;
   }
 
+  // Create a camera stream.
+  stream_ =
+      std::make_unique<QueueingStream<absl::StatusOr<std::unique_ptr<Frame>>>>(
+          /*max_queue_size=*/kMaxCameraQueueSize);
+
   // Create a new session, and register for callbacks when it is closed.
   absl::StatusOr<std::unique_ptr<EnrollmentSession>> session =
-      EnrollmentSession::Create(bitgen_, std::move(receiver),
-                                std::move(delegate), std::move(config),
-                                std::move(face_service_client.value()));
+      EnrollmentSession::Create(
+          bitgen_, std::move(receiver), std::move(delegate), std::move(config),
+          std::move(face_service_client.value()), stream_->GetReader());
 
   // TODO(b/246196994): handle session creation error propagation
 
   session_ = std::move(session.value());
-  session_->RegisterCompletionHandler(base::BindOnce(
-      &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
+
+  create_session_callback_ = std::move(callback);
 
   session_->Start(base::BindOnce(&FaceAuthServiceImpl::CompleteSessionStart,
-                                 base::Unretained(this), std::move(callback)));
+                                 base::Unretained(this)),
+                  base::BindOnce(&FaceAuthServiceImpl::CompleteSessionDone,
+                                 base::Unretained(this)));
 }
 
 void FaceAuthServiceImpl::CreateAuthenticationSession(
@@ -136,32 +145,31 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
   // TODO(b/246196994): handle session creation error propagation
 
   session_ = std::move(session.value());
-  session_->RegisterCompletionHandler(base::BindOnce(
-      &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
+
+  create_session_callback_ = std::move(callback);
 
   PostToCurrentSequence(base::BindOnce(
-      &FaceAuthServiceImpl::CompleteSessionStart, base::Unretained(this),
-      std::move(callback), absl::OkStatus()));
+      &FaceAuthServiceImpl::CompleteSessionStart, base::Unretained(this)));
 }
 
-void FaceAuthServiceImpl::CompleteSessionStart(StartSessionCallback callback,
-                                               absl::Status status) {
-  if (!status.ok()) {
-    session_.reset();
+void FaceAuthServiceImpl::CompleteSessionStart() {
+  // Return session information to the caller.
+  CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
+      SessionInfo::New(session_->session_id())));
+  PostToCurrentSequence(
+      base::BindOnce(std::move(create_session_callback_), std::move(result)));
+}
 
+void FaceAuthServiceImpl::CompleteSessionDone(absl::Status status) {
+  if (!status.ok() && create_session_callback_) {
     // Return session error to the caller.
     CreateSessionResultPtr result(
         CreateSessionResult::NewError(SessionCreationError::UNKNOWN));
     PostToCurrentSequence(
-        base::BindOnce(std::move(callback), std::move(result)));
-
-    return;
+        base::BindOnce(std::move(create_session_callback_), std::move(result)));
   }
 
-  // Return session information to the caller.
-  CreateSessionResultPtr result(CreateSessionResult::NewSessionInfo(
-      SessionInfo::New(session_->session_id())));
-  PostToCurrentSequence(base::BindOnce(std::move(callback), std::move(result)));
+  session_.reset();
 }
 
 void FaceAuthServiceImpl::ListEnrollments(ListEnrollmentsCallback callback) {

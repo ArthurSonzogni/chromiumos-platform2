@@ -9,15 +9,18 @@
 #include <string>
 
 #include <absl/random/random.h>
+#include <absl/status/status.h>
 #include <base/files/file_path.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "faced/camera/frame.h"
 #include "faced/enrollment_storage.h"
 #include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
 #include "faced/session.h"
+#include "faced/util/queueing_stream.h"
 
 namespace faced {
 
@@ -76,16 +79,15 @@ class FaceAuthServiceImpl
                       IsUserEnrolledCallback callback) override;
 
  private:
-  void ClearSession() { session_.reset(); }
-
   // Handle the disconnection of the receiver.
   void HandleDisconnect(base::OnceClosure callback);
 
-  using StartSessionCallback = base::OnceCallback<void(
-      chromeos::faceauth::mojom::CreateSessionResultPtr)>;
+  // Called when the session has started.
+  void CompleteSessionStart();
+  CreateEnrollmentSessionCallback create_session_callback_;
 
-  // Called with the result of session start.
-  void CompleteSessionStart(StartSessionCallback callback, absl::Status status);
+  // Called with the result of completed session.
+  void CompleteSessionDone(absl::Status status);
 
   // Primordial receiver bootstrapped over D-Bus. Once opened, is never closed.
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationService>
@@ -98,6 +100,9 @@ class FaceAuthServiceImpl
   absl::BitGen bitgen_;
 
   std::unique_ptr<SessionInterface> session_;
+
+  std::unique_ptr<QueueingStream<absl::StatusOr<std::unique_ptr<Frame>>>>
+      stream_;
 
   EnrollmentStorage enrollment_storage_;
   FaceServiceManagerInterface& face_service_manager_;

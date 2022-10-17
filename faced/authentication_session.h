@@ -46,9 +46,8 @@ class AuthenticationSession
 
   // `SessionInterface` implementation.
   uint64_t session_id() override { return session_id_; }
-  void RegisterCompletionHandler(
-      CompletionCallback completion_handler) override;
-  void Start(StartCallback callback) override;
+  void Start(StartCallback start_callback,
+             CompletionCallback completion_callback) override;
 
   // Notify FaceAuthenticationSessionDelegate of session state changes.
   //
@@ -76,7 +75,7 @@ class AuthenticationSession
   // Handle the disconnection of the remote delegate.
   void OnDelegateDisconnect();
 
-  void FinishSession();
+  void FinishSession(absl::Status status);
 
   int64_t session_id_;
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationSession>

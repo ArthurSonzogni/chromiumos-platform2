@@ -53,53 +53,9 @@ absl::BitGen bitgen;
 
 }  // namespace
 
-TEST(TestSession, TestAuthenticationSessionComplete) {
-  // Create a mock session delegate, that expects a completion event to be
-  // triggered.
+TEST(TestAuthenticationSession, TestStartSessionError) {
+  // Create a mock session delegate, that expects no events to be triggered.
   StrictMock<MockFaceAuthenticationSessionDelegate> mock_delegate;
-  EXPECT_CALL(mock_delegate, OnAuthenticationComplete(_)).Times(1);
-
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<FaceServiceManagerInterface> service_mgr,
-      FakeFaceServiceManager::Create());
-
-  FACE_ASSERT_OK_AND_ASSIGN(
-      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
-      service_mgr->LeaseClient());
-
-  // Create an authentication session.
-  mojo::Remote<FaceAuthenticationSession> session_remote;
-  mojo::Receiver<FaceAuthenticationSessionDelegate> delegate(&mock_delegate);
-
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<AuthenticationSession> session,
-      AuthenticationSession::Create(
-          bitgen, session_remote.BindNewPipeAndPassReceiver(),
-          delegate.BindNewPipeAndPassRemote(),
-          AuthenticationSessionConfig::New(SampleUserHash()),
-          std::move(client)));
-
-  // Set up a loop to run until the client disconnects.
-  base::RunLoop run_loop;
-  session->RegisterCompletionHandler(
-      base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
-
-  // Notify the client is complete, and run the loop until the service
-  // is disconnected.
-  session->NotifyComplete();
-  run_loop.Run();
-
-  // On destruction, `mock_delegate` will ensure OnAuthenticationComplete
-  // was called.
-}
-
-TEST(TestSession, TestAuthenticationSessionError) {
-  // Create a mock session delegate, that expects an error event to be
-  // triggered.
-  StrictMock<MockFaceAuthenticationSessionDelegate> mock_delegate;
-  EXPECT_CALL(mock_delegate, OnAuthenticationError(_))
-      .WillOnce(Invoke(
-          [](SessionError error) { EXPECT_EQ(error, SessionError::UNKNOWN); }));
 
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<FaceServiceManagerInterface> service_mgr,
@@ -122,12 +78,17 @@ TEST(TestSession, TestAuthenticationSessionError) {
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session->RegisterCompletionHandler(
-      base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
-  // Notify the client of an internal error, and run the loop until the service
-  // is disconnected.
-  session->NotifyError(absl::InternalError(""));
+  // Start the session and run the loop until the service is disconnected.
+  session->Start(
+      base::BindLambdaForTesting([&]() {
+        EXPECT_FALSE(true);  // The start callback should not be invoked.
+      }),
+      base::BindLambdaForTesting([&](absl::Status status) {
+        EXPECT_FALSE(status.ok());
+        run_loop.Quit();
+      }));
+
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnAuthenticationError
