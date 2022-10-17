@@ -11,12 +11,14 @@
 #include <absl/random/random.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <brillo/grpc/async_grpc_client.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "faced/face_service.h"
 #include "faced/mojom/faceauth.mojom.h"
+#include "faced/proto/face_service.grpc.pb.h"
 #include "faced/session.h"
+#include "faced/util/lease.h"
 
 namespace faced {
 
@@ -44,8 +46,8 @@ class AuthenticationSession
 
   // `SessionInterface` implementation.
   uint64_t session_id() override { return session_id_; }
-  void RegisterDisconnectHandler(
-      DisconnectCallback disconnect_handler) override;
+  void RegisterCompletionHandler(
+      CompletionCallback completion_handler) override;
   void Start(StartCallback callback) override;
 
   // Notify FaceAuthenticationSessionDelegate of session state changes.
@@ -74,13 +76,15 @@ class AuthenticationSession
   // Handle the disconnection of the remote delegate.
   void OnDelegateDisconnect();
 
+  void FinishSession();
+
   int64_t session_id_;
   mojo::Receiver<chromeos::faceauth::mojom::FaceAuthenticationSession>
       receiver_;
   mojo::Remote<chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate>
       delegate_;
 
-  DisconnectCallback disconnect_callback_;
+  CompletionCallback completion_callback_;
 
   // Async gRPC client that uses an internal completion queue.
   Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;

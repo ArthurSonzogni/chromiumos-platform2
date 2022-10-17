@@ -95,7 +95,7 @@ void FaceAuthServiceImpl::CreateEnrollmentSession(
   // TODO(b/246196994): handle session creation error propagation
 
   session_ = std::move(session.value());
-  session_->RegisterDisconnectHandler(base::BindOnce(
+  session_->RegisterCompletionHandler(base::BindOnce(
       &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
 
   session_->Start(base::BindOnce(&FaceAuthServiceImpl::CompleteSessionStart,
@@ -136,7 +136,7 @@ void FaceAuthServiceImpl::CreateAuthenticationSession(
   // TODO(b/246196994): handle session creation error propagation
 
   session_ = std::move(session.value());
-  session_->RegisterDisconnectHandler(base::BindOnce(
+  session_->RegisterCompletionHandler(base::BindOnce(
       &FaceAuthServiceImpl::ClearSession, base::Unretained(this)));
 
   PostToCurrentSequence(base::BindOnce(

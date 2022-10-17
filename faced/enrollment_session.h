@@ -47,8 +47,8 @@ class EnrollmentSession
 
   // `SessionInterface` implementation.
   uint64_t session_id() override { return session_id_; }
-  void RegisterDisconnectHandler(
-      DisconnectCallback disconnect_handler) override;
+  void RegisterCompletionHandler(
+      CompletionCallback completion_handler) override;
   void Start(StartCallback callback) override;
 
   // Notify FaceEnrollmentSessionDelegate of enrollment state changes.
@@ -76,13 +76,6 @@ class EnrollmentSession
   // Handle the disconnection of the remote delegate.
   void OnDelegateDisconnect();
 
-  int64_t session_id_;
-  mojo::Receiver<chromeos::faceauth::mojom::FaceEnrollmentSession> receiver_;
-  mojo::Remote<chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate>
-      delegate_;
-
-  DisconnectCallback disconnect_callback_;
-
   // Callback to process the response from StartEnrollment.
   void CompleteStartEnrollment(
       StartCallback callback,
@@ -100,6 +93,14 @@ class EnrollmentSession
   void FinishOnDelegateDisconnect(
       grpc::Status status,
       std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response);
+
+  void FinishSession();
+
+  int64_t session_id_;
+  mojo::Receiver<chromeos::faceauth::mojom::FaceEnrollmentSession> receiver_;
+  mojo::Remote<chromeos::faceauth::mojom::FaceEnrollmentSessionDelegate>
+      delegate_;
+  CompletionCallback completion_callback_;
 
   // Async gRPC client that uses an internal completion queue.
   Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;

@@ -36,14 +36,13 @@ class SessionInterface {
   // It is for debugging purposes only.
   virtual uint64_t session_id() = 0;
 
-  using DisconnectCallback = base::OnceCallback<void()>;
+  using CompletionCallback = base::OnceCallback<void()>;
 
-  // Register a callback to be called when the session is disconnected.
+  // Register a callback to be called when the session is closed.
   //
-  // It is invoked when the remote session delegate is disconnected or when
-  // the session ends and closes the connection.
-  virtual void RegisterDisconnectHandler(
-      DisconnectCallback disconnect_handler) = 0;
+  // It is invoked when the when the session ends and closes the connection.
+  virtual void RegisterCompletionHandler(
+      CompletionCallback completion_handler) = 0;
 };
 
 }  // namespace faced

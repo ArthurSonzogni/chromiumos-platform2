@@ -85,7 +85,7 @@ TEST(TestSession, TestEnrollmentSessionComplete) {
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session->RegisterDisconnectHandler(
+  session->RegisterCompletionHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client is complete, and run the loop until the service
@@ -128,7 +128,7 @@ TEST(TestSession, TestEnrollmentSessionError) {
 
   // Set up a loop to run until the client disconnects.
   base::RunLoop run_loop;
-  session->RegisterDisconnectHandler(
+  session->RegisterCompletionHandler(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
 
   // Notify the client of an internal error, and run the loop until the service

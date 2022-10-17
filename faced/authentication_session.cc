@@ -65,9 +65,9 @@ AuthenticationSession::AuthenticationSession(
       delegate_(std::move(delegate)),
       rpc_client_(std::move(client)) {}
 
-void AuthenticationSession::RegisterDisconnectHandler(
-    DisconnectCallback disconnect_handler) {
-  disconnect_callback_ = std::move(disconnect_handler);
+void AuthenticationSession::RegisterCompletionHandler(
+    CompletionCallback completion_handler) {
+  completion_callback_ = std::move(completion_handler);
 }
 
 void AuthenticationSession::Start(StartCallback callback) {
@@ -86,23 +86,13 @@ void AuthenticationSession::NotifyComplete(FaceOperationStatus status) {
       AuthenticationCompleteMessage::New(status));
   delegate_->OnAuthenticationComplete(std::move(message));
 
-  // Close connection to delegate interface
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void AuthenticationSession::NotifyCancelled() {
   delegate_->OnAuthenticationCancelled();
 
-  // Close connection to delegate interface
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void AuthenticationSession::NotifyError(absl::Status error) {
@@ -110,12 +100,7 @@ void AuthenticationSession::NotifyError(absl::Status error) {
   SessionError session_error = SessionError::UNKNOWN;
   delegate_->OnAuthenticationError(session_error);
 
-  // Close connection to delegate interface
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void AuthenticationSession::OnSessionDisconnect() {
@@ -132,8 +117,16 @@ void AuthenticationSession::OnDelegateDisconnect() {
 
   // TODO(b/249184053): cancel authentication session operation
 
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
+  FinishSession();
+}
+
+void AuthenticationSession::FinishSession() {
+  // Close the connections to the authentication session interfaces.
+  delegate_.reset();
+  receiver_.reset();
+
+  if (completion_callback_) {
+    PostToCurrentSequence(std::move(completion_callback_));
   }
 }
 

@@ -71,9 +71,9 @@ EnrollmentSession::EnrollmentSession(
       delegate_(std::move(delegate)),
       rpc_client_(std::move(client)) {}
 
-void EnrollmentSession::RegisterDisconnectHandler(
-    DisconnectCallback disconnect_handler) {
-  disconnect_callback_ = std::move(disconnect_handler);
+void EnrollmentSession::RegisterCompletionHandler(
+    CompletionCallback completion_handler) {
+  completion_callback_ = std::move(completion_handler);
 }
 
 void EnrollmentSession::NotifyUpdate(FaceOperationStatus status) {
@@ -86,23 +86,13 @@ void EnrollmentSession::NotifyComplete(FaceOperationStatus status) {
   EnrollmentCompleteMessagePtr message(EnrollmentCompleteMessage::New(status));
   delegate_->OnEnrollmentComplete(std::move(message));
 
-  // Close the connection to the delegate interface.
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void EnrollmentSession::NotifyCancelled() {
   delegate_->OnEnrollmentCancelled();
 
-  // Close the connection to the delegate interface.
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void EnrollmentSession::NotifyError(absl::Status error) {
@@ -110,12 +100,7 @@ void EnrollmentSession::NotifyError(absl::Status error) {
   SessionError session_error = SessionError::UNKNOWN;
   delegate_->OnEnrollmentError(session_error);
 
-  // Close the connection to the delegate interface.
-  delegate_.reset();
-
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
-  }
+  FinishSession();
 }
 
 void EnrollmentSession::Start(StartCallback callback) {
@@ -168,9 +153,7 @@ void EnrollmentSession::FinishOnSessionDisconnect(
     grpc::Status status, std::unique_ptr<AbortEnrollmentResponse> response) {
   if (!delegate_.is_bound()) {
     VLOG(1) << "Cannot notify of session disconnect as delegate is not bound.";
-    if (disconnect_callback_) {
-      PostToCurrentSequence(std::move(disconnect_callback_));
-    }
+    FinishSession();
     return;
   }
 
@@ -189,10 +172,18 @@ void EnrollmentSession::FinishOnSessionDisconnect(
 }
 
 void EnrollmentSession::FinishOnDelegateDisconnect(
-    grpc::Status status, std::unique_ptr<AbortEnrollmentResponse> response) {
-  // Ignore status and response as we are disconnecting without notification
-  if (disconnect_callback_) {
-    PostToCurrentSequence(std::move(disconnect_callback_));
+    grpc::Status status,
+    std::unique_ptr<faceauth::eora::AbortEnrollmentResponse> response) {
+  FinishSession();
+}
+
+void EnrollmentSession::FinishSession() {
+  // Close the connections to the enrollment session interfaces.
+  delegate_.reset();
+  receiver_.reset();
+
+  if (completion_callback_) {
+    PostToCurrentSequence(std::move(completion_callback_));
   }
 }
 
