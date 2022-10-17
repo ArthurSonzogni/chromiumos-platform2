@@ -26,6 +26,22 @@
 
 namespace faced {
 
+namespace {
+
+// Convert the data in the given `cros_cam_info_t` struct into a
+// `CameraClient::DeviceInfo` type.
+CameraClient::DeviceInfo ToDeviceInfo(const cros_cam_info_t& info) {
+  CameraClient::DeviceInfo result;
+  result.id = info.id;
+  result.name = std::string(info.name);
+  for (int i = 0; i < info.format_count; i++) {
+    result.formats.push_back(info.format_info[i]);
+  }
+  return result;
+}
+
+}  // namespace
+
 std::string FourccToString(uint32_t fourcc) {
   uint32_t fourcc_processing = fourcc;
   std::string result;
@@ -55,66 +71,71 @@ absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
     return absl::UnavailableError("Failed to initialise camera client");
   }
 
-  // Probes the cros camera service for information around what cameras and
-  // formats are available for capture
-  std::unique_ptr<CameraClient> camera_client =
-      base::WrapUnique(new CameraClient(std::move(camera_service)));
-  FACE_RETURN_IF_ERROR(camera_client->ProbeAndPrintCameraInfo());
-
-  return camera_client;
+  // Create the camera.
+  return base::WrapUnique(new CameraClient(std::move(camera_service)));
 }
 
-absl::Status CameraClient::ProbeAndPrintCameraInfo() {
-  // GetCameraInfo sends out all existing camera info via the callback
-  // synchronously before returning a result, so there are no multithreaded
-  // implications. Additionally, GetCameraInfo registers a callback so that
-  // future updates can be called asynchronously
-  if (camera_service_->GetCameraInfo(&CameraClient::GetCamInfoCallback, this) !=
-      0) {
-    return absl::NotFoundError("Failed to get camera info");
+absl::StatusOr<std::vector<CameraClient::DeviceInfo>>
+CameraClient::GetDevices() {
+  std::vector<CameraClient::DeviceInfo> result;
+
+  // Enumerate all the cameras, and record them in `result`.
+  //
+  // `GetDeviceInfo` takes a callback that is called in two phases:
+  //
+  // 1. An initial, synchronous phase, where the callback is called once
+  //    per camera;
+  //
+  // 2. A further, asynchronous phase, where the callback may be called
+  //    at arbitrary points to provide updated information about changes
+  //    to camera in the system.
+  //
+  // We don't attempt to provide support for updates, so we simply wait
+  // for all the synchronous callbacks to occur, and then unregister
+  // our callback.
+  //
+  // Additionally, because the callback is a C-style callback (i.e., a pure
+  // function pointer and with a void* parameter), we can't just use a lambda
+  // containing any captures, but instead pass through a pointer to `result`.
+  int error_code = camera_service_->GetCameraInfo(
+      [](void* context, const cros_cam_info_t* info, int is_removed) -> int {
+        auto* result =
+            static_cast<std::vector<CameraClient::DeviceInfo>*>(context);
+        result->push_back(ToDeviceInfo(*info));
+        return 0;
+      },
+      &result);
+  if (error_code != 0) {
+    return absl::UnknownError(base::StringPrintf(
+        "Unable to fetch device camera information (status code %d).",
+        error_code));
   }
 
-  // camera_info_frozen_ is set to ignore future asynchronous calls to the
-  // callback
-  camera_info_frozen_ = true;
-  return absl::OkStatus();
+  // Register with a no-op callback, ignoring any errors.
+  (void)camera_service_->GetCameraInfo(
+      [](void* context, const cros_cam_info_t* info, int is_removed) {
+        return 1;
+      },
+      nullptr);
+
+  return {std::move(result)};
 }
 
-int CameraClient::GetCamInfoCallback(void* context,
-                                     const cros_cam_info_t* info,
-                                     int is_removed) {
-  auto* client = reinterpret_cast<CameraClient*>(context);
-  return client->GotCameraInfo(info, is_removed);
-}
-
-int CameraClient::GotCameraInfo(const cros_cam_info_t* info, int is_removed) {
-  // Ignore all asynchronous calls from hotplugging
-  if (camera_info_frozen_) {
-    return 0;
-  }
-
-  if (is_removed) {
-    camera_infos_.erase(info->id);
-    LOG(INFO) << "Camera removed: " << info->id;
-    return 0;
-  }
-
-  LOG(INFO) << "Gotten camera info of " << info->id << " (name = " << info->name
-            << ", format_count = " << info->format_count << ")";
-  for (int i = 0; i < info->format_count; i++) {
-    LOG(INFO) << "format = " << FourccToString(info->format_info[i].fourcc)
-              << ", width = " << info->format_info[i].width
-              << ", height = " << info->format_info[i].height
-              << ", fps = " << info->format_info[i].fps;
-    if (camera_infos_.count(info->id) == 0) {
-      camera_infos_[info->id] = std::vector<cros_cam_info_t>();
-      LOG(INFO) << "Camera added: " << info->id;
+absl::StatusOr<CameraClient::DeviceInfo> CameraClient::GetDevice(int id) {
+  // Search through the devices to find the requested device.
+  //
+  // The underlying API doesn't give us a way to access a particular device,
+  // so we simply ask for all of them and then pull out the requested device.
+  FACE_ASSIGN_OR_RETURN(std::vector<CameraClient::DeviceInfo> devices,
+                        GetDevices());
+  for (const CameraClient::DeviceInfo& device : devices) {
+    if (device.id == id) {
+      return device;
     }
-
-    camera_infos_[info->id].push_back(*info);
   }
 
-  return 0;
+  return absl::NotFoundError(
+      base::StringPrintf("Camera device with id %d not found.", id));
 }
 
 void CameraClient::CaptureFrames(
@@ -132,20 +153,6 @@ void CameraClient::CaptureFrames(
       base::BindRepeating(&FrameProcessor::ProcessFrame, frame_processor));
 
   capture_complete_ = std::move(capture_complete);
-
-  if (!FormatIsAvailable(config.camera_id, config.format)) {
-    task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            std::move(capture_complete_),
-            absl::NotFoundError(absl::StrFormat(
-                "Unable to find capture for device = %d, fourcc = %s, "
-                "width = %d, height = %d, fps = %d",
-                config.camera_id, FourccToString(config.format.fourcc),
-                config.format.width, config.format.height,
-                config.format.fps))));
-    return;
-  }
 
   LOG(INFO) << "Starting capture: device = " << config.camera_id
             << ", fourcc = " << FourccToString(config.format.fourcc)
@@ -225,50 +232,35 @@ void CameraClient::CompletedProcessFrame(
   pending_request_ = false;
 }
 
-bool CameraClient::FormatIsAvailable(int32_t camera_id,
-                                     cros_cam_format_info_t info) {
-  if (camera_infos_.count(camera_id) == 0) {
-    return false;
-  }
+std::optional<CameraClient::CaptureFramesConfig> GetHighestResolutionFormat(
+    const CameraClient::DeviceInfo& device,
+    std::function<bool(const cros_cam_format_info_t&)> predicate) {
+  std::optional<CameraClient::CaptureFramesConfig> result;
+  std::optional<int> best_resolution = 0;
 
-  for (const cros_cam_info_t& stored_cam_info : camera_infos_[camera_id]) {
-    for (int i = 0; i < stored_cam_info.format_count; i++) {
-      if (IsFormatEqual(info, stored_cam_info.format_info[i])) {
-        return true;
-      }
+  // Enumerate all devices and resolutions.
+  for (const cros_cam_format_info_t& info : device.formats) {
+    // Ignore resolutions that are strictly worse than something we have
+    // already found.
+    int current_resolution = info.height * info.width;
+    if (best_resolution.has_value() && current_resolution < *best_resolution) {
+      continue;
     }
-  }
 
-  return false;
-}
-
-std::optional<cros_cam_format_info_t>
-CameraClient::GetMaxSupportedResolutionFormat(
-    int32_t camera_id,
-    uint32_t fourcc,
-    std::function<bool(int width, int height)> is_supported) {
-  std::optional<cros_cam_format_info_t> res = std::nullopt;
-
-  for (const cros_cam_info_t& stored_cam_info : camera_infos_[camera_id]) {
-    for (int i = 0; i < stored_cam_info.format_count; i++) {
-      const cros_cam_format_info_t& stored_cam_format =
-          stored_cam_info.format_info[i];
-
-      if (!is_supported(stored_cam_format.width, stored_cam_format.height)) {
-        continue;
-      }
-
-      if (fourcc == stored_cam_format.fourcc) {
-        if (!res.has_value() ||
-            (res->width * res->height <
-             stored_cam_format.width * stored_cam_format.height)) {
-          res = stored_cam_format;
-        }
-      }
+    // Ignore unsupported devices or formats.
+    if (!predicate(info)) {
+      continue;
     }
+
+    // We found a candidate.
+    best_resolution = current_resolution;
+    result = CameraClient::CaptureFramesConfig{
+        .camera_id = device.id,
+        .format = info,
+    };
   }
 
-  return res;
+  return result;
 }
 
 }  // namespace faced

@@ -12,12 +12,14 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/thread.h>
+#include <cros-camera/camera_service_connector.h>
 #include <unordered_map>
 
 #include "faced/camera/camera_service.h"
@@ -96,36 +98,28 @@ class CameraClient {
                      const scoped_refptr<FrameProcessor>& frame_processor,
                      StopCaptureCallback capture_complete);
 
-  // Checks if a particular camera id and format info is available
-  bool FormatIsAvailable(int32_t camera_id, cros_cam_format_info_t info);
+  // Return devices, capture formats, and resolutions supported by this
+  // CameraClient.
+  struct DeviceInfo {
+    // Camera ID
+    int id;
 
-  // Given a specified camera_id and fourcc returns the largest resolution
-  // format available that is supported as defined by the input is_supported
-  // function.
-  //
-  // Largest resolution is defined by the largest width * height.
-  // If there are no formats, return std::nullopt
-  std::optional<cros_cam_format_info_t> GetMaxSupportedResolutionFormat(
-      int32_t camera_id,
-      uint32_t fourcc,
-      std::function<bool(int width, int height)> is_supported);
+    // User-friendly camera name, UTF-8.
+    std::string name;
+
+    // Supported formats and resolutions.
+    std::vector<cros_cam_format_info_t> formats;
+  };
+  absl::StatusOr<std::vector<DeviceInfo>> GetDevices();
+
+  // Return information about the given device.
+  absl::StatusOr<DeviceInfo> GetDevice(int id);
 
  private:
   // CameraClient can only be constructed via CameraClient::Create()
   explicit CameraClient(std::unique_ptr<CameraService> camera_service)
       : task_runner_(base::SequencedTaskRunnerHandle::Get()),
         camera_service_(std::move(camera_service)) {}
-
-  // Gets and prints the details of each camera
-  absl::Status ProbeAndPrintCameraInfo();
-
-  // Callback on receiving camera info
-  int GotCameraInfo(const cros_cam_info_t* info, int is_removed);
-
-  // Callback for the cros-camera-service to process camera info when it arrives
-  static int GetCamInfoCallback(void* context,
-                                const cros_cam_info_t* info,
-                                int is_removed);
 
   // Callback for the cros-camera-service to process camera captures when they
   // arrive
@@ -140,10 +134,6 @@ class CameraClient {
   // Calling with any status, stops capture and calls capture_complete_ with
   // that status
   void CompletedProcessFrame(std::optional<absl::Status> opt_status);
-
-  // Camera info is frozen after calling ProbeCameraInfo()
-  bool camera_info_frozen_ = false;
-  std::unordered_map<int32_t, std::vector<cros_cam_info_t>> camera_infos_;
 
   // Details about an active capture
   int camera_id_ = 0;
@@ -167,6 +157,14 @@ class CameraClient {
 
   std::unique_ptr<CameraService> camera_service_;
 };
+
+// Return the highest resolution format of the given device.
+//
+// If provided, only formats fulfilling the given predicate will be considered.
+std::optional<CameraClient::CaptureFramesConfig> GetHighestResolutionFormat(
+    const CameraClient::DeviceInfo& device,
+    std::function<bool(const cros_cam_format_info_t&)> predicate =
+        [](const cros_cam_format_info_t&) { return true; });
 
 }  // namespace faced
 

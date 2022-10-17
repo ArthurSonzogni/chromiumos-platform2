@@ -22,20 +22,14 @@
 namespace faced {
 namespace {
 
-// All camera formats are supported
-bool AllSupported(int width, int height) {
-  return true;
-}
+using ::testing::IsEmpty;
 
-// No camera formats are supported
-//
-// Returns false for function of type
-// std::function<bool(int width, int height)> is_supported
-bool NoneSupported(int width, int height) {
-  return false;
-}
-
-// Tests free functions not using CameraClient
+// CameraClient tests require a task environment present.
+class CameraClientTest : public ::testing::Test {
+ private:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+};
 
 // Tests conversions of common fourcc codes
 TEST(FourccToStringTest, FourccToString) {
@@ -55,13 +49,10 @@ TEST(IsFormatEqualTest, IsFormatEqual) {
 }
 
 // Tests CameraClient::Create()
+//
 // Tests that the camera client is able to probe info for a single fake camera
 // info.
-// Case where is_removed = false
-TEST(CameraClientTest, Create1) {
-  // Required for threading in tests
-  base::test::TaskEnvironment task_environment;
-
+TEST_F(CameraClientTest, Create) {
   testing::FakeCameraService fake_camera_service_connector;
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
   fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
@@ -73,161 +64,17 @@ TEST(CameraClientTest, Create1) {
       CameraClient::Create(std::make_unique<testing::FakeCameraService>(
           fake_camera_service_connector)));
 
-  // Check that formats are available
-  for (const cros_cam_format_info_t& format_info :
-       yuv_camera_set.format_infos) {
-    EXPECT_TRUE(camera_client->FormatIsAvailable(yuv_camera_set.camera_id,
-                                                 format_info));
-  }
-
-  // Expect GetMaxSupportedResolutionFormat to return a valid format equal to
-  // the yuv format with the largest resolution
-  std::optional<cros_cam_format_info_t> max_resolution_format =
-      camera_client->GetMaxSupportedResolutionFormat(
-          yuv_camera_set.camera_id, yuv_camera_set.format_infos[0].fourcc,
-          &AllSupported);
-
-  EXPECT_NE(max_resolution_format, std::nullopt);
-  EXPECT_TRUE(IsFormatEqual(max_resolution_format.value(),
-                            yuv_camera_set.format_infos[0]));
-
-  // Expect GetMaxSupportedResolutionFormat to return no valid format when
-  // passed in NoneSupported
-  std::optional<cros_cam_format_info_t> max_resolution_format2 =
-      camera_client->GetMaxSupportedResolutionFormat(
-          yuv_camera_set.camera_id, yuv_camera_set.format_infos[0].fourcc,
-          &NoneSupported);
-
-  EXPECT_EQ(max_resolution_format2, std::nullopt);
-}
-
-// Tests CameraClient::Create()
-// Tests that the camera client is able to probe info for a single fake camera
-// info.
-// Case where is_removed = true
-TEST(CameraClientTest, Create2) {
-  // Required for threading in tests
-  base::test::TaskEnvironment task_environment;
-
-  testing::FakeCameraService fake_camera_service_connector;
-  testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/true);
-
-  // Create a camera client.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
-          fake_camera_service_connector)));
-
-  // Check that formats are unavailable
-  for (const cros_cam_format_info_t& format_info :
-       yuv_camera_set.format_infos) {
-    EXPECT_FALSE(camera_client->FormatIsAvailable(yuv_camera_set.camera_id,
-                                                  format_info));
-  }
-
-  // Expect GetMaxSupportedResolutionFormat to return no valid format
-  std::optional<cros_cam_format_info_t> max_resolution_format =
-      camera_client->GetMaxSupportedResolutionFormat(
-          yuv_camera_set.camera_id, yuv_camera_set.format_infos[0].fourcc,
-          &AllSupported);
-
-  EXPECT_EQ(max_resolution_format, std::nullopt);
-}
-
-// Tests CameraClient::Create()
-// Tests that the camera client is able to process multiple fake camera infos
-TEST(CameraClientTest, Create3) {
-  // Required for threading in tests
-  base::test::TaskEnvironment task_environment;
-
-  testing::FakeCameraService fake_camera_service_connector;
-
-  testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/false);
-
-  testing::CameraSet mjpg_camera_set = testing::MjpgCameraSet();
-  fake_camera_service_connector.AddCameraInfo(mjpg_camera_set.camera_info,
-                                              /*is_removed=*/true);
-
-  // Create a camera client.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
-          fake_camera_service_connector)));
-
-  // Check that formats from the first camera info (is_removed = false) are
-  // available
-  for (const cros_cam_format_info_t& format_info :
-       yuv_camera_set.format_infos) {
-    EXPECT_TRUE(camera_client->FormatIsAvailable(yuv_camera_set.camera_id,
-                                                 format_info));
-  }
-
-  // Expect GetMaxSupportedResolutionFormat to return a valid format equal to
-  // the yuv format with the largest resolution
-  std::optional<cros_cam_format_info_t> max_resolution_format_yuv =
-      camera_client->GetMaxSupportedResolutionFormat(
-          yuv_camera_set.camera_id, yuv_camera_set.format_infos[0].fourcc,
-          &AllSupported);
-
-  EXPECT_NE(max_resolution_format_yuv, std::nullopt);
-  EXPECT_TRUE(IsFormatEqual(max_resolution_format_yuv.value(),
-                            yuv_camera_set.format_infos[0]));
-
-  // Check that formats from the second camera info (is_removed = true) are
-  // unavailable
-  for (const cros_cam_format_info_t& format_info :
-       mjpg_camera_set.format_infos) {
-    EXPECT_FALSE(camera_client->FormatIsAvailable(mjpg_camera_set.camera_id,
-                                                  format_info));
-  }
-
-  // Expect GetMaxSupportedResolutionFormat to return no valid format for mjpg
-  std::optional<cros_cam_format_info_t> max_resolution_format_mjpg =
-      camera_client->GetMaxSupportedResolutionFormat(
-          mjpg_camera_set.camera_id, mjpg_camera_set.format_infos[0].fourcc,
-          &AllSupported);
-
-  EXPECT_EQ(max_resolution_format_mjpg, std::nullopt);
-}
-
-// Tests CameraClient::Create()
-// Contrived setup where a camera is added and then removed
-TEST(CameraClientTest, Create4) {
-  // Required for threading in tests
-  base::test::TaskEnvironment task_environment;
-
-  testing::FakeCameraService fake_camera_service_connector;
-
-  testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/false);
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/true);
-
-  // Create a camera client.
-  FACE_ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
-          fake_camera_service_connector)));
-
-  // Check that formats are unavailable
-  for (const cros_cam_format_info_t& format_info :
-       yuv_camera_set.format_infos) {
-    EXPECT_FALSE(camera_client->FormatIsAvailable(yuv_camera_set.camera_id,
-                                                  format_info));
-  }
-
-  // Expect GetMaxSupportedResolutionFormat to return no valid format
-  std::optional<cros_cam_format_info_t> max_resolution_format =
-      camera_client->GetMaxSupportedResolutionFormat(
-          yuv_camera_set.camera_id, yuv_camera_set.format_infos[0].fourcc,
-          &AllSupported);
-
-  EXPECT_EQ(max_resolution_format, std::nullopt);
+  // Check that the expected formats are reported.
+  FACE_ASSERT_OK_AND_ASSIGN(std::vector<CameraClient::DeviceInfo> devices,
+                            camera_client->GetDevices());
+  ASSERT_EQ(devices.size(), 1);
+  EXPECT_EQ(devices[0].id, 0);
+  EXPECT_EQ(devices[0].name, "TestYuvCamera");
+  ASSERT_EQ(devices[0].formats.size(), 2);
+  EXPECT_TRUE(IsFormatEqual(devices[0].formats[0],
+                            testing::YuvCameraSet().format_infos[0]));
+  EXPECT_TRUE(IsFormatEqual(devices[0].formats[1],
+                            testing::YuvCameraSet().format_infos[1]));
 }
 
 // Simple subclass of FrameProcessor that processes a certain number of
@@ -260,11 +107,7 @@ class SimpleFrameProcessor : public FrameProcessor {
 };
 
 // Tests CameraClient::CaptureFrames() with a custom FrameProcessor
-TEST(CameraClientTest, CaptureFrames) {
-  // Required for threading in tests
-  base::test::TaskEnvironment task_environment{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-
+TEST_F(CameraClientTest, CaptureFrames) {
   testing::FakeCameraService fake_camera_service_connector;
 
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
@@ -294,5 +137,66 @@ TEST(CameraClientTest, CaptureFrames) {
   EXPECT_TRUE(status.Wait().ok());
   ASSERT_EQ(frame_processor->FramesProcessed(), frames_to_process);
 }
+
+TEST(GetHighestResolutionFormat, EmptyDevice) {
+  EXPECT_EQ(GetHighestResolutionFormat(CameraClient::DeviceInfo{}),
+            std::nullopt);
+}
+
+cros_cam_format_info_t MakeFormat(uint32_t fourcc, int width, int height) {
+  return cros_cam_format_info_t{
+      .fourcc = fourcc,
+      .width = width,
+      .height = height,
+  };
+}
+
+TEST(GetHighestResolutionFormat, LargestResolutionChosen) {
+  // Create a device with three resolutions.
+  std::optional<CameraClient::CaptureFramesConfig> config =
+      GetHighestResolutionFormat(CameraClient::DeviceInfo{
+          .id = 42,
+          .formats =
+              {
+                  MakeFormat(/*fourcc=*/100, 1, 1),
+                  MakeFormat(/*fourcc=*/101, 3, 3),  // max resolution
+                  MakeFormat(/*fourcc=*/102, 2, 2),
+              },
+      });
+
+  // Ensure the largest resolution was found.
+  ASSERT_TRUE(config.has_value());
+  EXPECT_EQ(config->camera_id, 42);
+  EXPECT_EQ(config->format.fourcc, 101);
+  EXPECT_EQ(config->format.height, 3);
+  EXPECT_EQ(config->format.width, 3);
+}
+
+TEST(GetHighestResolutionFormat, PredicateRespected) {
+  // Create a device with three resolutions.
+  CameraClient::DeviceInfo device{
+      .id = 42,
+      .formats =
+          {
+              MakeFormat(/*fourcc=*/100, 1, 1),
+              MakeFormat(/*fourcc=*/101, 3, 3),
+              MakeFormat(/*fourcc=*/102, 2, 2),
+          },
+  };
+
+  // Get the maximum resolution that is not 3x3.
+  std::optional<CameraClient::CaptureFramesConfig> config =
+      GetHighestResolutionFormat(
+          device,
+          [](const cros_cam_format_info_t& info) { return info.width != 3; });
+
+  // Ensure we found the 2x2 format.
+  ASSERT_TRUE(config.has_value());
+  EXPECT_EQ(config->camera_id, 42);
+  EXPECT_EQ(config->format.fourcc, 102);
+  EXPECT_EQ(config->format.height, 2);
+  EXPECT_EQ(config->format.width, 2);
+}
+
 }  // namespace
 }  // namespace faced
