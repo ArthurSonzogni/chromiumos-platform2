@@ -380,6 +380,10 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    deps = [ ":libcros_camera" ]
+    deps = [
+      ":stream_manipulator",
+      "//camera/features",
+      "//camera/features/zsl",
+    ]
   }
 }
