@@ -1913,9 +1913,13 @@ def _build_camera(hw_topology):
     return result
 
 
-def _build_identity(hw_scan_config, program, brand_scan_config=None):
+def _build_identity(config):
+    hw_scan_config = config.sw_config.id_scan_config
+    program = config.program
+    brand_scan_config = config.brand_config.scan_config
     identity = {}
-    _upsert(hw_scan_config.frid, identity, "frid")
+    ap_fw_suffix = _calculate_image_name_suffix(config.hw_design_config).title()
+    _upsert(hw_scan_config.frid, identity, "frid", suffix=ap_fw_suffix)
     _upsert(
         hw_scan_config.device_tree_compatible_match,
         identity,
@@ -2179,11 +2183,7 @@ def _transform_build_config(config, config_files, whitelabel):
         Unique config payload based on the platform JSON schema.
     """
     result = {
-        "identity": _build_identity(
-            config.sw_config.id_scan_config,
-            config.program,
-            config.brand_config.scan_config,
-        ),
+        "identity": _build_identity(config),
         "name": config.hw_design.name.lower(),
     }
 

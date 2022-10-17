@@ -380,9 +380,9 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Google_Fake_0Db_1Custom_2Cameras",
           "platform-name": "fake",
-          "sku-id": 0,
-          "smbios-name-match": "FAKE_REF_DESIGN"
+          "sku-id": 0
         },
         "keyboard": {
           "backlight": true,
