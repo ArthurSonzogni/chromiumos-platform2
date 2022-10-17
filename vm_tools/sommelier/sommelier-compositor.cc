@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2018 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -889,6 +889,7 @@ static void sl_surface_enter(void* data,
 
   wl_surface_send_enter(host->resource, host_output->resource);
   host->has_output = 1;
+  host->output = host_output;
 }
 
 static void sl_surface_leave(void* data,
@@ -901,6 +902,8 @@ static void sl_surface_leave(void* data,
       static_cast<sl_host_output*>(wl_output_get_user_data(output));
 
   wl_surface_send_leave(host->resource, host_output->resource);
+  host->has_output = 0;
+  host->output.Reset();
 }
 
 static const struct wl_surface_listener sl_surface_listener = {
@@ -998,6 +1001,7 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->current_buffer = NULL;
   host_surface->proxy_buffer = NULL;
   host_surface->contents_shaped = false;
+  host_surface->output = NULL;
   pixman_region32_init(&host_surface->contents_shape);
   wl_list_init(&host_surface->released_buffers);
   wl_list_init(&host_surface->busy_buffers);

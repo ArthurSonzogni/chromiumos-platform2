@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2018 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@
 #include "sommelier-mmap.h"    // NOLINT(build/include_directory)
 #include "sommelier-util.h"    // NOLINT(build/include_directory)
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
+#include "weak-resource-ptr.h"  // NOLINT(build/include_directory)
 
 #define SOMMELIER_VERSION "0.20"
 
@@ -47,6 +48,7 @@ struct sl_relative_pointer_manager;
 struct sl_pointer_constraints;
 struct sl_window;
 struct sl_host_surface;
+struct sl_host_output;
 struct zaura_shell;
 struct zcr_keyboard_extension_v1;
 struct zxdg_output_manager_v1;
@@ -159,6 +161,7 @@ struct sl_host_surface {
   struct zwp_linux_surface_synchronization_v1* surface_sync;
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
+  WeakResourcePtr<sl_host_output> output;
 };
 MAP_STRUCTS(wl_surface, sl_host_surface);
 

@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2022 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +15,9 @@ static void sl_transform_get_scale_factors(
   if (ctx->use_direct_scale && surface && surface->has_own_scale) {
     *scalex = surface->xdg_scale_x;
     *scaley = surface->xdg_scale_y;
+  } else if (surface && surface->output) {
+    *scalex = surface->output.get()->xdg_scale_x;
+    *scaley = surface->output.get()->xdg_scale_y;
   } else {
     *scalex = ctx->xdg_scale_x;
     *scaley = ctx->xdg_scale_y;
