@@ -37,6 +37,7 @@ static_library("libsecanomaly") {
     "processes.cc",
     "reporter.cc",
     "system_context.cc",
+    "text_file_reader.cc",
   ]
   configs += [
     ":target_defaults",
@@ -67,6 +68,7 @@ if (use.test) {
       "mounts_test.cc",
       "processes_test.cc",
       "reporter_test.cc",
+      "text_file_reader_test.cc",
     ]
     configs += [
       "//common-mk:test",
