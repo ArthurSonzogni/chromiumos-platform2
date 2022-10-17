@@ -29,8 +29,12 @@ extern void detect_label_by_board_name(void);
 /* util.c */
 extern int do_ioctl(int fd, int request, void* arg);
 extern bool is_any_device(const char* pattern, bool (*func)(int fd));
-extern bool is_any_device_with_path(const char* pattern,
-                                    bool (*func)(const char* dev_path, int fd));
+extern bool does_any_device_support_resolution(const char* pattern,
+                                               bool (*func)(int fd,
+                                                            int min_width,
+                                                            int min_height),
+                                               int32_t min_width,
+                                               int32_t min_height);
 extern void convert_fourcc_to_str(uint32_t fourcc, char* str);
 
 /* util_v4l2 */
@@ -91,6 +95,12 @@ bool detect_4k_device_av1(void);
 bool detect_4k_device_av1_10bpp(void);
 bool detect_4k_device_hevc(void);
 bool detect_4k_device_hevc_10bpp(void);
+bool detect_8k_device_h264(void);
+bool detect_8k_device_vp9(void);
+bool detect_8k_device_av1(void);
+bool detect_8k_device_av1_10bpp(void);
+bool detect_8k_device_hevc(void);
+bool detect_8k_device_hevc_10bpp(void);
 bool detect_4k_device_enc_h264(void);
 bool detect_4k_device_enc_vp8(void);
 bool detect_4k_device_enc_vp9(void);

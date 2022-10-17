@@ -47,11 +47,12 @@ bool is_any_device(const char* pattern, bool (*func)(int fd)) {
   return found;
 }
 
-/* Loops files matching a pattern to find any device satisfied predicate
- * func() that requires the device's path.
- */
-bool is_any_device_with_path(const char* pattern,
-                             bool (*func)(const char* path, int fd)) {
+bool does_any_device_support_resolution(const char* pattern,
+                                        bool (*func)(int fd,
+                                                     int min_width,
+                                                     int min_height),
+                                        int32_t min_width,
+                                        int32_t min_height) {
   int i;
   glob_t g;
   bool found = false;
@@ -65,7 +66,7 @@ bool is_any_device_with_path(const char* pattern,
       TRACE("failed to open device\n");
       continue;
     }
-    if (func(g.gl_pathv[i], fd)) {
+    if (func(fd, min_width, min_height)) {
       found = true;
       close(fd);
       break;
