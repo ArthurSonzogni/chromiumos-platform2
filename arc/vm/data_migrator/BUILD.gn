@@ -1,0 +1,47 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":arcvm_data_migrator",
+    ":install_init",
+    ":install_systemd",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "protobuf-lite",
+    "system_api",
+  ]
+}
+
+generate_dbus_adaptors("data_migrator_adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/arc/vm/data_migrator/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.ArcVmDataMigrator.xml" ]
+}
+
+executable("arcvm_data_migrator") {
+  sources = [ "data_migrator.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":data_migrator_adaptors" ]
+}
+
+install_config("install_init") {
+  sources = [ "init/arcvm-data-migrator.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_systemd") {
+  sources = [ "init/dbus-1/org.chromium.ArcVmDataMigrator.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
