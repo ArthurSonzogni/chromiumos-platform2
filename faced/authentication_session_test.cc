@@ -57,10 +57,7 @@ TEST(TestSession, TestAuthenticationSessionComplete) {
   // Create a mock session delegate, that expects a completion event to be
   // triggered.
   StrictMock<MockFaceAuthenticationSessionDelegate> mock_delegate;
-  EXPECT_CALL(mock_delegate, OnAuthenticationComplete(_))
-      .WillOnce(Invoke([](AuthenticationCompleteMessagePtr message) {
-        EXPECT_EQ(message->status, FaceOperationStatus::OK);
-      }));
+  EXPECT_CALL(mock_delegate, OnAuthenticationComplete(_)).Times(1);
 
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<FaceServiceManagerInterface> service_mgr,
@@ -89,7 +86,7 @@ TEST(TestSession, TestAuthenticationSessionComplete) {
 
   // Notify the client is complete, and run the loop until the service
   // is disconnected.
-  session->NotifyComplete(FaceOperationStatus::OK);
+  session->NotifyComplete();
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnAuthenticationComplete

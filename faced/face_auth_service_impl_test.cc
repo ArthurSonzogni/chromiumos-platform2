@@ -47,14 +47,10 @@ using ::testing::ElementsAre;
 using ::testing::Invoke;
 using ::testing::StrictMock;
 
-using ::chromeos::faceauth::mojom::AuthenticationCompleteMessagePtr;
 using ::chromeos::faceauth::mojom::AuthenticationSessionConfig;
-using ::chromeos::faceauth::mojom::AuthenticationUpdateMessagePtr;
 using ::chromeos::faceauth::mojom::CreateSessionResultPtr;
-using ::chromeos::faceauth::mojom::EnrollmentCompleteMessagePtr;
 using ::chromeos::faceauth::mojom::EnrollmentMetadataPtr;
 using ::chromeos::faceauth::mojom::EnrollmentSessionConfig;
-using ::chromeos::faceauth::mojom::EnrollmentUpdateMessagePtr;
 using ::chromeos::faceauth::mojom::FaceAuthenticationService;
 using ::chromeos::faceauth::mojom::FaceAuthenticationSession;
 using ::chromeos::faceauth::mojom::FaceAuthenticationSessionDelegate;

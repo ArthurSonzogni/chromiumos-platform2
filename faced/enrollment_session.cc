@@ -82,9 +82,8 @@ void EnrollmentSession::NotifyUpdate(FaceOperationStatus status) {
   delegate_->OnEnrollmentUpdate(std::move(message));
 }
 
-void EnrollmentSession::NotifyComplete(FaceOperationStatus status) {
-  EnrollmentCompleteMessagePtr message(EnrollmentCompleteMessage::New(status));
-  delegate_->OnEnrollmentComplete(std::move(message));
+void EnrollmentSession::NotifyComplete() {
+  delegate_->OnEnrollmentComplete(EnrollmentCompleteMessage::New());
 
   FinishSession();
 }

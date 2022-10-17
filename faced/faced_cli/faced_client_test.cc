@@ -85,7 +85,7 @@ TEST(EnrollWithRemoteService, HandleCompleteEnrollmentSuccess) {
                                          SessionInfo::New(kSessionId))));
 
             session_delegate->OnEnrollmentComplete(
-                EnrollmentCompleteMessage::New(FaceOperationStatus::OK));
+                EnrollmentCompleteMessage::New());
           }));
 
   BlockingFuture<absl::Status> enrollment_result;
@@ -123,7 +123,7 @@ TEST(EnrollWithRemoteService, HandleCompleteEnrollmentSuccessComplex) {
                 EnrollmentUpdateMessage::New(FaceOperationStatus::NO_FACE,
                                              /*poses=*/std::vector<bool>()));
             session_delegate->OnEnrollmentComplete(
-                EnrollmentCompleteMessage::New(FaceOperationStatus::OK));
+                EnrollmentCompleteMessage::New());
           }));
 
   BlockingFuture<absl::Status> enrollment_result;

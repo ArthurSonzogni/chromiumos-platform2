@@ -55,7 +55,7 @@ class AuthenticationSession
   // Notify of authentication progress.
   void NotifyUpdate(chromeos::faceauth::mojom::FaceOperationStatus status);
   // Notify of completed authentication and close the connection.
-  void NotifyComplete(chromeos::faceauth::mojom::FaceOperationStatus status);
+  void NotifyComplete();
   // Notify of cancelled enrollment and close the connection.
   void NotifyCancelled();
   // Notify of unrecoverable error and close the connection.

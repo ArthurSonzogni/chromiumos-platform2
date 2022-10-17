@@ -20,7 +20,6 @@
 namespace faced {
 
 using ::chromeos::faceauth::mojom::AuthenticationCompleteMessage;
-using ::chromeos::faceauth::mojom::AuthenticationCompleteMessagePtr;
 using ::chromeos::faceauth::mojom::AuthenticationSessionConfigPtr;
 using ::chromeos::faceauth::mojom::AuthenticationUpdateMessage;
 using ::chromeos::faceauth::mojom::AuthenticationUpdateMessagePtr;
@@ -81,10 +80,8 @@ void AuthenticationSession::NotifyUpdate(FaceOperationStatus status) {
   delegate_->OnAuthenticationUpdate(std::move(message));
 }
 
-void AuthenticationSession::NotifyComplete(FaceOperationStatus status) {
-  AuthenticationCompleteMessagePtr message(
-      AuthenticationCompleteMessage::New(status));
-  delegate_->OnAuthenticationComplete(std::move(message));
+void AuthenticationSession::NotifyComplete() {
+  delegate_->OnAuthenticationComplete(AuthenticationCompleteMessage::New());
 
   FinishSession();
 }

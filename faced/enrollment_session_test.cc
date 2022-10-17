@@ -58,10 +58,7 @@ TEST(TestSession, TestEnrollmentSessionComplete) {
   // Create a mock session delegate, that expects a completion event to be
   // triggered.
   StrictMock<MockFaceEnrollmentSessionDelegate> mock_delegate;
-  EXPECT_CALL(mock_delegate, OnEnrollmentComplete(_))
-      .WillOnce(Invoke([&](EnrollmentCompleteMessagePtr message) {
-        EXPECT_EQ(message->status, FaceOperationStatus::OK);
-      }));
+  EXPECT_CALL(mock_delegate, OnEnrollmentComplete(_)).Times(1);
 
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<FaceServiceManagerInterface> service_mgr,
@@ -90,7 +87,7 @@ TEST(TestSession, TestEnrollmentSessionComplete) {
 
   // Notify the client is complete, and run the loop until the service
   // is disconnected.
-  session->NotifyComplete(FaceOperationStatus::OK);
+  session->NotifyComplete();
   run_loop.Run();
 
   // On destruction, `mock_delegate` will ensure OnEnrollmentComplete

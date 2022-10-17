@@ -138,8 +138,6 @@ interface FaceEnrollmentSessionDelegate {
 
   // Called when enrollment is complete.
   //
-  // |message| contains the final status of the enrollment session.
-  //
   // Session remote will close the connection once called.
   OnEnrollmentComplete(EnrollmentCompleteMessage message);
 
@@ -175,7 +173,6 @@ struct EnrollmentUpdateMessage {
 
 // Result of the enrollment operation.
 struct EnrollmentCompleteMessage {
-  FaceOperationStatus status;
 };
 
 // This empty interface represents an authentication session.
@@ -197,8 +194,6 @@ interface FaceAuthenticationSessionDelegate {
   // OnAuthenticationError will be called to signal the end of a session.
 
   // Called when authentication is complete.
-  //
-  // |message| contains the final status of the authentication session.
   //
   // Session remote will close the connection once called.
   OnAuthenticationComplete(AuthenticationCompleteMessage message);
@@ -230,5 +225,4 @@ struct AuthenticationUpdateMessage {
 
 // Result of the authentication operation.
 struct AuthenticationCompleteMessage {
-  FaceOperationStatus status;
 };

@@ -50,8 +50,7 @@ void FaceEnrollmentSessionDelegateImpl::OnEnrollmentUpdate(
 
 void FaceEnrollmentSessionDelegateImpl::OnEnrollmentComplete(
     EnrollmentCompleteMessagePtr message) {
-  std::cout << "Enrollment completed: "
-            << FaceOperationStatusString(message->status) << "\n";
+  std::cout << "Enrollment completed";
 
   PostToCurrentSequence(
       base::BindOnce(std::move(enrollment_complete_), absl::OkStatus()));
