@@ -46,6 +46,9 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
@@ -148,6 +151,10 @@ class AuthSessionTest : public ::testing::Test {
         .WillRepeatedly(ReturnValue(brillo::Blob()));
     EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     crypto_.Init();
+
+    homedirs_ = std::make_unique<HomeDirs>(
+        &platform_, std::make_unique<policy::PolicyProvider>(nullptr),
+        HomeDirs::RemoveCallback());
   }
 
  protected:
@@ -213,7 +220,11 @@ class AuthSessionTest : public ::testing::Test {
     if (UserSession* session = user_session_map_.Find(username)) {
       return session;
     }
-    user_session_map_.Add(username, std::make_unique<RealUserSession>());
+    user_session_map_.Add(
+        username, std::make_unique<RealUserSession>(
+                      username, homedirs_.get(), &keyset_management_,
+                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
+                      new NiceMock<MockMount>()));
     return user_session_map_.Find(username);
   }
 
@@ -227,7 +238,11 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<MockPlatform> platform_;
+  UserOldestActivityTimestampManager user_activity_timestamp_manager_{
+      &platform_};
+  std::unique_ptr<HomeDirs> homedirs_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+  NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
