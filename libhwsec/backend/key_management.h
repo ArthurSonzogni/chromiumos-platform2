@@ -16,6 +16,17 @@
 
 namespace hwsec {
 
+struct RSAPublicInfo {
+  brillo::Blob exponent;
+  brillo::Blob modulus;
+};
+
+struct ECCPublicInfo {
+  int nid;
+  brillo::Blob x_point;
+  brillo::Blob y_point;
+};
+
 // KeyManagement provide the functions to manager key.
 class KeyManagement {
  public:
@@ -90,6 +101,12 @@ class KeyManagement {
       const brillo::SecureBlob& private_value,
       AutoReload auto_reload,
       const CreateKeyOptions& options) = 0;
+
+  // Gets the public information of a RSA |key|.
+  virtual StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) = 0;
+
+  // Gets the public information of a ECC |key|.
+  virtual StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) = 0;
 
  protected:
   KeyManagement() = default;

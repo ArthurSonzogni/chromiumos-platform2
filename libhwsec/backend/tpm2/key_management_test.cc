@@ -861,4 +861,262 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyUseless) {
   EXPECT_THAT(result, NotOkWith("Useless key"));
 }
 
+TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfo) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_RSA,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .rsa_detail =
+                  trunks::TPMS_RSA_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_RSA_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .key_bits = 2048,
+                      .exponent = 3,
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .rsa =
+                  trunks::TPM2B_PUBLIC_KEY_RSA{
+                      .size = 10,
+                      .buffer = "9876543210",
+                  },
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  auto result =
+      middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
+          key->GetKey());
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->exponent, brillo::Blob({0x00, 0x00, 0x00, 0x03}));
+  EXPECT_EQ(result->modulus, brillo::BlobFromString("9876543210"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfoWrongType) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_ECC,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
+                  key->GetKey()),
+              NotOkWith("Get RSA public info for none-RSA key"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfo) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_ECC,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .ecc_detail =
+                  trunks::TPMS_ECC_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_ECC_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .curve_id = trunks::TPM_ECC_NIST_P256,
+                      .kdf =
+                          trunks::TPMT_KDF_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .ecc =
+                  trunks::TPMS_ECC_POINT{
+                      .x =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "0123456789",
+                          },
+                      .y =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "9876543210",
+                          },
+                  },
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  auto result =
+      middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
+          key->GetKey());
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->nid, NID_X9_62_prime256v1);
+  EXPECT_EQ(result->x_point, brillo::BlobFromString("0123456789"));
+  EXPECT_EQ(result->y_point, brillo::BlobFromString("9876543210"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoUnsupportedCurve) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_ECC,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .ecc_detail =
+                  trunks::TPMS_ECC_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_ECC_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .curve_id = trunks::TPM_ECC_NIST_P192,
+                      .kdf =
+                          trunks::TPMT_KDF_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .ecc =
+                  trunks::TPMS_ECC_POINT{
+                      .x =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "0123456789",
+                          },
+                      .y =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "9876543210",
+                          },
+                  },
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
+                  key->GetKey()),
+              NotOkWith("Unsupported curve"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoWrongType) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_RSA,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
+                  key->GetKey()),
+              NotOkWith("Get ECC public info for none-ECC key"));
+}
+
 }  // namespace hwsec

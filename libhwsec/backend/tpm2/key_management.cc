@@ -128,6 +128,15 @@ StatusOr<trunks::TPMI_ECC_CURVE> ConvertNIDToTrunksCurveID(int curve_nid) {
   return MakeStatus<TPMError>("Unsupported curve", TPMRetryAction::kNoRetry);
 }
 
+StatusOr<int> ConvertTrunksCurveIDToNID(trunks::TPMI_ECC_CURVE trunks_id) {
+  for (auto curve_info : kSupportedECCurveAlgorithms) {
+    if (curve_info.trunks_id == trunks_id) {
+      return curve_info.openssl_nid;
+    }
+  }
+  return MakeStatus<TPMError>("Unsupported curve", TPMRetryAction::kNoRetry);
+}
+
 // Padding '\0' at the beginning of the string until it matches the length.
 // This is for padding elliptic curve points and keys, and not for ordinary
 // string. It's needed to normalize the format of the curve point.
@@ -559,6 +568,55 @@ StatusOr<brillo::Blob> KeyManagementTpm2::GetPubkeyHash(Key key) {
 
   return MakeStatus<TPMError>("Unknown key algorithm",
                               TPMRetryAction::kNoRetry);
+}
+
+StatusOr<RSAPublicInfo> KeyManagementTpm2::GetRSAPublicInfo(Key key) {
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+
+  const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
+
+  if (public_data.type != trunks::TPM_ALG_RSA) {
+    return MakeStatus<TPMError>("Get RSA public info for none-RSA key",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  std::string exponent;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(trunks::Serialize_UINT32(
+                      public_data.parameters.rsa_detail.exponent, &exponent)))
+      .WithStatus<TPMError>("Failed to serialize uint32");
+
+  std::string modulus =
+      trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa);
+
+  return RSAPublicInfo{
+      .exponent = brillo::BlobFromString(exponent),
+      .modulus = brillo::BlobFromString(modulus),
+  };
+}
+
+StatusOr<ECCPublicInfo> KeyManagementTpm2::GetECCPublicInfo(Key key) {
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+
+  const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
+
+  if (public_data.type != trunks::TPM_ALG_ECC) {
+    return MakeStatus<TPMError>("Get ECC public info for none-ECC key",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  ASSIGN_OR_RETURN(int nid, ConvertTrunksCurveIDToNID(
+                                public_data.parameters.ecc_detail.curve_id));
+
+  std::string x_point =
+      trunks::StringFrom_TPM2B_ECC_PARAMETER(public_data.unique.ecc.x);
+  std::string y_point =
+      trunks::StringFrom_TPM2B_ECC_PARAMETER(public_data.unique.ecc.y);
+
+  return ECCPublicInfo{
+      .nid = nid,
+      .x_point = brillo::BlobFromString(x_point),
+      .y_point = brillo::BlobFromString(y_point),
+  };
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::SideLoadKey(uint32_t key_handle) {

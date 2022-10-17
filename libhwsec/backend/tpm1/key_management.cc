@@ -557,6 +557,40 @@ StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyHash(Key key) {
   return Sha1(key_data.cache.pubkey_blob);
 }
 
+StatusOr<RSAPublicInfo> KeyManagementTpm1::GetRSAPublicInfo(Key key) {
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
+
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+
+  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+
+  uint32_t exponent_len = 0;
+  ScopedTssMemory exponent(overalls, context);
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+          key_data.key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+          TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, &exponent_len, exponent.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
+
+  uint32_t modulus_len = 0;
+  ScopedTssMemory modulus(overalls, context);
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+          key_data.key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+          TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &modulus_len, modulus.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
+
+  return RSAPublicInfo{
+      .exponent =
+          brillo::Blob(exponent.value(), exponent.value() + exponent_len),
+      .modulus = brillo::Blob(modulus.value(), modulus.value() + modulus_len),
+  };
+}
+
+StatusOr<ECCPublicInfo> KeyManagementTpm1::GetECCPublicInfo(Key key) {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
+
 StatusOr<ScopedKey> KeyManagementTpm1::SideLoadKey(uint32_t key_handle) {
   return LoadKeyInternal(KeyTpm1::Type::kPersistentKey, key_handle,
                          /*scoped_key=*/std::nullopt,

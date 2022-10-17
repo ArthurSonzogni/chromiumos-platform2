@@ -83,6 +83,8 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
       const brillo::SecureBlob& private_value,
       AutoReload auto_reload,
       const CreateKeyOptions& options) override;
+  StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) override;
+  StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) override;
 
   // Below are TPM2.0 specific code.
 

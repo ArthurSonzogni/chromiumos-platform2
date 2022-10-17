@@ -8,12 +8,14 @@
 
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 
+using hwsec_foundation::Sha1;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
@@ -821,6 +823,86 @@ TEST_F(BackendKeyManagementTpm1Test, WrapECCKeyUnsupported) {
           brillo::SecureBlob(), Backend::KeyManagement::AutoReload::kFalse,
           KeyManagement::CreateKeyOptions{}),
       NotOkWith("Unsupported"));
+}
+
+TEST_F(BackendKeyManagementTpm1Test, GetPubkeyHash) {
+  const OperationPolicy kFakePolicy{};
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
+  const uint32_t kFakeKeyHandle = 0x1337;
+
+  SetupSrk();
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
+
+  brillo::Blob fake_pubkey = kFakePubkey;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
+                      SetArgPointee<2>(fake_pubkey.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetPubkeyHash>(
+                  key->GetKey()),
+              IsOkAndHolds(Sha1(kFakePubkey)));
+}
+
+TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
+  const OperationPolicy kFakePolicy{};
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
+  const brillo::Blob kExponent = brillo::BlobFromString("exponent");
+  const brillo::Blob kModulus = brillo::BlobFromString("modulus");
+  const uint32_t kFakeKeyHandle = 0x1337;
+
+  SetupSrk();
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
+
+  brillo::Blob fake_pubkey = kFakePubkey;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
+                      SetArgPointee<2>(fake_pubkey.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(key);
+
+  brillo::Blob exponent = kExponent;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_GetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
+                                 TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(exponent.size()),
+                      SetArgPointee<4>(exponent.data()), Return(TPM_SUCCESS)));
+
+  brillo::Blob modulus = kModulus;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_GetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
+                                 TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(modulus.size()),
+                      SetArgPointee<4>(modulus.data()), Return(TPM_SUCCESS)));
+
+  auto result =
+      middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
+          key->GetKey());
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->exponent, kExponent);
+  EXPECT_EQ(result->modulus, kModulus);
 }
 
 }  // namespace hwsec

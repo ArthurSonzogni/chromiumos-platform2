@@ -68,6 +68,8 @@ class MockKeyManagement : public KeyManagement {
                AutoReload auto_reload,
                const CreateKeyOptions& options),
               (override));
+  MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicInfo, (Key key), (override));
+  MOCK_METHOD(StatusOr<ECCPublicInfo>, GetECCPublicInfo, (Key key), (override));
 };
 
 }  // namespace hwsec
