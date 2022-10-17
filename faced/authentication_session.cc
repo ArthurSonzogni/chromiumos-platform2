@@ -46,11 +46,11 @@ AuthenticationSession::Create(
 
   session->delegate_.set_disconnect_handler(
       base::BindOnce(&AuthenticationSession::OnDelegateDisconnect,
-                     session->weak_ptr_factory_.GetWeakPtr()));
+                     base::Unretained(session.get())));
 
   session->receiver_.set_disconnect_handler(
       base::BindOnce(&AuthenticationSession::OnSessionDisconnect,
-                     session->weak_ptr_factory_.GetWeakPtr()));
+                     base::Unretained(session.get())));
 
   return session;
 }

@@ -103,9 +103,6 @@ class EnrollmentSession
 
   // Async gRPC client that uses an internal completion queue.
   Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> rpc_client_;
-
-  // Must be last member.
-  base::WeakPtrFactory<EnrollmentSession> weak_ptr_factory_{this};
 };
 
 }  // namespace faced

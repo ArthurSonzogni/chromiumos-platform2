@@ -52,11 +52,11 @@ absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
 
   session->delegate_.set_disconnect_handler(
       base::BindOnce(&EnrollmentSession::OnDelegateDisconnect,
-                     session->weak_ptr_factory_.GetWeakPtr()));
+                     base::Unretained(session.get())));
 
   session->receiver_.set_disconnect_handler(
       base::BindOnce(&EnrollmentSession::OnSessionDisconnect,
-                     session->weak_ptr_factory_.GetWeakPtr()));
+                     base::Unretained(session.get())));
 
   return session;
 }

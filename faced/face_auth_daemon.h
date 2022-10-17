@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "faced/dbus_adaptor.h"
@@ -36,8 +35,6 @@ class FaceAuthDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<DBusAdaptor> adaptor_;
 
   std::unique_ptr<FaceAuthServiceInterface> face_auth_service_;
-
-  base::WeakPtrFactory<FaceAuthDaemon> weak_ptr_factory_{this};
 };
 
 }  // namespace faced
