@@ -147,6 +147,45 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
+TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
+  const OperationPolicySetting kFakePolicy{};
+  const KeyAlgoType kFakeAlgo = KeyAlgoType::kRsa;
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const brillo::Blob kExponent{0x01, 0x00, 0x01};
+
+  EXPECT_CALL(
+      proxy_->GetMock().tpm_utility,
+      CreateRSAKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+                       1024, 0x10001, "", "", false, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<8>(kFakeKeyBlob),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = false,
+          .allow_decrypt = true,
+          .allow_sign = false,
+          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_exponent = kExponent,
+      });
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
 TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
   const OperationPolicySetting kFakePolicy{};
   const KeyAlgoType kFakeAlgo = KeyAlgoType::kEcc;
@@ -174,6 +213,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
           .allow_software_gen = true,
           .allow_decrypt = true,
           .allow_sign = false,
+          .ecc_nid = NID_X9_62_prime256v1,
       });
 
   ASSERT_OK(result);

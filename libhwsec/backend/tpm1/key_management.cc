@@ -40,9 +40,7 @@ namespace hwsec {
 namespace {
 
 constexpr uint8_t kDefaultSrkAuth[] = {};
-constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
 constexpr uint32_t kDefaultDiscardableWrapPasswordLength = 32;
-constexpr uint32_t kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 constexpr uint32_t kDefaultTpmRsaKeyModulusBit = TSS_KEY_SIZEVAL_2048BIT;
 constexpr uint8_t kDefaultTpmPublicExponentArray[] = {0x01, 0x00, 0x01};
 
@@ -193,8 +191,9 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   // Create a non-migratable key restricted to |pcrs|.
   ScopedTssKey pcr_bound_key(overalls, context);
-  TSS_FLAG init_flags =
-      TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE | kDefaultTpmRsaKeyFlag;
+  TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE |
+                        GetKeySize(options.rsa_modulus_bits.value_or(
+                            kDefaultTpmRsaKeyModulusBit));
 
   // In this case, the key is not decrypt only. It can be used to sign the
   // data too. No easy way to make a decrypt only key here.
@@ -203,6 +202,10 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
   } else {
     init_flags |= TSS_KEY_TYPE_LEGACY;
   }
+
+  brillo::Blob exponent = options.rsa_exponent.value_or(
+      brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
+                   std::end(kDefaultTpmPublicExponentArray)));
 
   RETURN_IF_ERROR(
       MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
@@ -223,6 +226,15 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
                         pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
+  }
+
+  if (exponent != brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
+                               std::end(kDefaultTpmPublicExponentArray))) {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+                        pcr_bound_key, TSS_TSPATTRIB_RSAKEY_INFO,
+                        TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, exponent.size(),
+                        exponent.data())))
+        .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
   }
 
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_CreateKey(
@@ -278,8 +290,9 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                            AutoReload auto_reload) {
   brillo::SecureBlob public_modulus;
   brillo::SecureBlob prime_factor;
-  if (!hwsec_foundation::CreateRsaKey(kDefaultTpmRsaKeyBits, &public_modulus,
-                                      &prime_factor)) {
+  if (!hwsec_foundation::CreateRsaKey(
+          options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyModulusBit),
+          &public_modulus, &prime_factor)) {
     return MakeStatus<TPMError>("Failed to creating software RSA key",
                                 TPMRetryAction::kNoRetry);
   }

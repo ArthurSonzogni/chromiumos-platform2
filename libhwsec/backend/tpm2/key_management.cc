@@ -37,7 +37,6 @@ namespace hwsec {
 namespace {
 
 constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
-constexpr uint32_t kDefaultTpmRsaModulusSize = 2048;
 constexpr uint32_t kDefaultTpmPublicExponent = 0x10001;
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
 
@@ -215,6 +214,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     use_only_policy_authorization = true;
   }
 
+  uint32_t exponent = kDefaultTpmPublicExponent;
+  if (options.rsa_exponent.has_value()) {
+    ASSIGN_OR_RETURN(exponent,
+                     GetIntegerExponent(options.rsa_exponent.value()));
+  }
+
   std::string auth_value;
   if (policy.permission.auth_value.has_value()) {
     auth_value = policy.permission.auth_value.value().to_string();
@@ -231,9 +236,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->CreateRSAKeyPair(
-          usage, kDefaultTpmRsaModulusSize, kDefaultTpmPublicExponent,
-          auth_value, policy_digest, use_only_policy_authorization, pcr_list,
-          delegate.get(), &tpm_key_blob, nullptr /* No creation_blob */)))
+          usage, options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits),
+          exponent, auth_value, policy_digest, use_only_policy_authorization,
+          pcr_list, delegate.get(), &tpm_key_blob,
+          nullptr /* No creation_blob */)))
       .WithStatus<TPMError>("Failed to create RSA key");
 
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
@@ -258,7 +264,8 @@ KeyManagementTpm2::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
                                            AutoReload auto_reload) {
   brillo::SecureBlob n;
   brillo::SecureBlob p;
-  if (!hwsec_foundation::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
+  if (!hwsec_foundation::CreateRsaKey(
+          options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits), &n, &p)) {
     return MakeStatus<TPMError>("Failed to creating software RSA key",
                                 TPMRetryAction::kNoRetry);
   }
@@ -443,6 +450,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     auth_value = policy.permission.auth_value.value().to_string();
   }
 
+  trunks::TPMI_ECC_CURVE curve = kDefaultTpmCurveId;
+
+  if (options.ecc_nid.has_value()) {
+    ASSIGN_OR_RETURN(curve, ConvertNIDToTrunksCurveID(options.ecc_nid.value()));
+  }
+
   // Cleanup the data from secure blob.
   base::ScopedClosureRunner cleanup_auth_value(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
@@ -453,7 +466,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
   std::string tpm_key_blob;
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->CreateECCKeyPair(
-                      usage, kDefaultTpmCurveId, auth_value, policy_digest,
+                      usage, curve, auth_value, policy_digest,
                       use_only_policy_authorization, pcr_list, delegate.get(),
                       &tpm_key_blob, /*creation_blob=*/nullptr)))
       .WithStatus<TPMError>("Failed to create ECC key");
