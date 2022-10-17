@@ -267,7 +267,12 @@ void AuthStackManagerWrapper::AuthenticateCredential(
     std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
         response,
     const AuthenticateCredentialRequest& request) {
-  response->Return(auth_stack_manager_->AuthenticateCredential(request));
+  auto callback =
+      [](std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
+             response,
+         AuthenticateCredentialReply reply) { response->Return(reply); };
+  auth_stack_manager_->AuthenticateCredential(
+      request, base::BindOnce(std::move(callback), std::move(response)));
 }
 
 bool AuthStackManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {

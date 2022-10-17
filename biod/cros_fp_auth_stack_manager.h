@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/timer/timer.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_session_manager.h"
@@ -42,6 +43,11 @@ class CrosFpAuthStackManager : public AuthStackManager {
     // An AuthSession is completed successfully and we're expecting a
     // AuthenticateCredential command.
     kAuthDone,
+    // An asynchronous matching operation is ongoing.
+    kMatch,
+    // An AuthenticateCredential is completed, and we're waiting for user to
+    // lift their finger before the next auth attempt.
+    kWaitForFingerUp,
     // Something went wrong in keeping sync between biod and FPMCU, and it's
     // better to not process any Enroll/Auth commands in this state.
     kLocked,
@@ -68,8 +74,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
   CreateCredentialReply CreateCredential(
       const CreateCredentialRequest& request) override;
   AuthStackManager::Session StartAuthSession(std::string user_id) override;
-  AuthenticateCredentialReply AuthenticateCredential(
-      const AuthenticateCredentialRequest& request) override;
+  void AuthenticateCredential(
+      const AuthenticateCredentialRequest& request,
+      AuthStackManager::AuthenticateCredentialCallback callback) override;
   void OnUserLoggedOut() override;
   void OnUserLoggedIn(const std::string& user_id) override;
   void SetEnrollScanDoneHandler(const AuthStackManager::EnrollScanDoneCallback&
@@ -112,6 +119,16 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void DoEnrollFingerUpEvent(uint32_t event);
   bool RequestMatchFingerDown();
   void OnMatchFingerDown(uint32_t event);
+  void DoMatch(const AuthenticateCredentialRequest& request,
+               AuthStackManager::AuthenticateCredentialCallback callback);
+  void DoMatchEvent(
+      AuthenticateCredentialRequest request,
+      std::shared_ptr<AuthStackManager::AuthenticateCredentialCallback>
+          callback,
+      uint32_t event);
+  void AbortDoMatch(AuthStackManager::AuthenticateCredentialCallback callback);
+  bool RequestFingerUp();
+  void OnFingerUpEvent(uint32_t event);
 
   std::string CurrentStateToString();
   // Whether current state is waiting for a next session action.
@@ -131,6 +148,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::SessionFailedCallback on_session_failed_;
 
   State state_ = State::kNone;
+
+  // A timer that aborts the match session when time is up.
+  base::OneShotTimer do_match_timer_;
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 

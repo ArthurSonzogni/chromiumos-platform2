@@ -60,13 +60,15 @@ class AuthStackManager {
   // AuthenticateCredential.
   virtual Session StartAuthSession(std::string user_id) = 0;
 
+  using AuthenticateCredentialCallback =
+      base::OnceCallback<void(AuthenticateCredentialReply)>;
   // Loads the fingerprint records and perform the fingerprint match. Should
   // only be called after an auth session completes successfully. See
   // AuthenticateCredentialRequest/Reply protos for the detailed function
-  // signature. This function should actually be async but we will change that
-  // later, and keeping it sync corresponding to CreateCredential at first.
-  virtual AuthenticateCredentialReply AuthenticateCredential(
-      const AuthenticateCredentialRequest& request) = 0;
+  // signature.
+  virtual void AuthenticateCredential(
+      const AuthenticateCredentialRequest& request,
+      AuthenticateCredentialCallback callback) = 0;
 
   // This will be called when a user logs out.
   virtual void OnUserLoggedOut() = 0;

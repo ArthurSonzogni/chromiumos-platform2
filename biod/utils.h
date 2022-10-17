@@ -44,6 +44,14 @@ void LogOnSignalConnected(const std::string& interface_name,
  * @return std::string The description string of |result|.
  */
 std::string EnrollResultToString(int result);
+
+/**
+ * @brief Convert fingerprint match result to a description string.
+ *
+ * @param result An EC result code representing an match result.
+ * @return std::string The description string of |result|.
+ */
+std::string MatchResultToString(int result);
 }  // namespace biod
 
 #endif  // BIOD_UTILS_H_

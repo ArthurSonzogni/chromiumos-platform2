@@ -44,4 +44,27 @@ std::string EnrollResultToString(int result) {
   }
 }
 
+std::string MatchResultToString(int result) {
+  switch (result) {
+    case EC_MKBP_FP_ERR_MATCH_NO:
+      return "No match";
+    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
+      return "Internal error";
+    case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
+      return "No templates";
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
+      return "Low quality";
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
+      return "Low coverage";
+    case EC_MKBP_FP_ERR_MATCH_YES:
+      return "Finger matched";
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
+      return "Finger matched, template updated";
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
+      return "Finger matched, template updated failed";
+    default:
+      return "Unknown matcher result";
+  }
+}
+
 }  // namespace biod
