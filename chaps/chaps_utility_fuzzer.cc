@@ -37,9 +37,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   const CK_RSA_PKCS_PSS_PARAMS* params_out;
   const EVP_MD* hash_out;
+  chaps::DigestAlgorithm signing_algorithm =
+      chaps::DigestAlgorithm(data_provider.ConsumeIntegral<int>());
   chaps::DigestAlgorithm digest_algorithm_out;
   const std::string inputs = data_provider.ConsumeBytesAsString(input_size);
-  chaps::ParseRSAPSSParams(inputs, &params_out, &hash_out,
+  chaps::ParseRSAPSSParams(inputs, signing_algorithm, &params_out, &hash_out,
                            &digest_algorithm_out);
   return 0;
 }

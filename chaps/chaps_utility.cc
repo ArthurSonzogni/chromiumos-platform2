@@ -1034,6 +1034,7 @@ const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf) {
 }
 
 bool ParseRSAPSSParams(const std::string& mechanism_parameter,
+                       const DigestAlgorithm signing_digest_algorithm_in,
                        const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
                        const EVP_MD** mgf1_hash_out,
                        DigestAlgorithm* digest_algorithm_out) {
@@ -1057,7 +1058,7 @@ bool ParseRSAPSSParams(const std::string& mechanism_parameter,
   }
   // If no Hash algorithm is specified in the signing mechanism, then we'll have
   // to use the one in the PSS parameters.
-  if (*digest_algorithm_out == DigestAlgorithm::NoDigest) {
+  if (signing_digest_algorithm_in == DigestAlgorithm::NoDigest) {
     *digest_algorithm_out = GetDigestAlgorithm(pss_params->hashAlg);
     if (*digest_algorithm_out == DigestAlgorithm::NoDigest) {
       // PSS can't accept signing of generic data without hash algorithm
@@ -1065,6 +1066,8 @@ bool ParseRSAPSSParams(const std::string& mechanism_parameter,
                     "CKM_RSA_PKCS_PSS in ParseRSAPSSParams().";
       return false;
     }
+  } else {
+    *digest_algorithm_out = signing_digest_algorithm_in;
   }
 
   *pss_params_out = pss_params;
