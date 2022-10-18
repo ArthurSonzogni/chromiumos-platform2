@@ -82,6 +82,7 @@ _IUSE = [
     "fuzzer",
     "generic_tpm2",
     "hammerd_api",
+    "hibernate",
     "houdini",
     "houdini64",
     "hw_details",
