@@ -106,6 +106,12 @@ enum RequestRestartReason {
   REQUEST_RESTART_FOR_UPDATE = 1,
   // Some other reason.
   REQUEST_RESTART_OTHER = 2,
+  // DeviceScheduledReboot policy.
+  REQUEST_RESTART_SCHEDULED_REBOOT_POLICY = 3,
+  // Remote action reboot from the admin console.
+  REQUEST_RESTART_REMOTE_ACTION_REBOOT = 4,
+  // chrome.runtime.restart API.
+  REQUEST_RESTART_API = 5,
 };
 enum RequestShutdownReason {
   // An explicit user request (e.g. clicking a button).

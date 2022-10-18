@@ -1485,6 +1485,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
         reason = ShutdownReason::SYSTEM_UPDATE;
         break;
       case REQUEST_RESTART_OTHER:
+      case REQUEST_RESTART_SCHEDULED_REBOOT_POLICY:
+      case REQUEST_RESTART_REMOTE_ACTION_REBOOT:
+      case REQUEST_RESTART_API:
         reason = ShutdownReason::OTHER_REQUEST_TO_POWERD;
         break;
       default:
