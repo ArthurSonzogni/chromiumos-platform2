@@ -366,8 +366,8 @@ Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
          ++lut_index) {
       gtm_lut_buffer_[lut_index] = interpolate(
           static_cast<float>(lut_index) / num_curve_points_, x0, y0, x1, y1);
-      VLOGF(1) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
-                                     gtm_lut_buffer_[lut_index], inverse);
+      DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
+                                      gtm_lut_buffer_[lut_index], inverse);
     }
     x0 = x1;
     y0 = y1;
@@ -375,8 +375,8 @@ Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
   for (; lut_index < num_curve_points_; ++lut_index) {
     gtm_lut_buffer_[lut_index] = interpolate(
         static_cast<float>(lut_index) / num_curve_points_, x0, y0, 1.0, 1.0);
-    VLOGF(1) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
-                                   gtm_lut_buffer_[lut_index], inverse);
+    DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
+                                    gtm_lut_buffer_[lut_index], inverse);
   }
 
   Texture2D lut_texture(GL_R16F, num_curve_points_, 1);
