@@ -3307,7 +3307,7 @@ def main(argv=None):
         opts.project_configs = [fake_config_mod.FAKE_PROJECT_CONFIG]
         opts.program_config = fake_config_mod.FAKE_PROGRAM_CONFIG
         opts.output = pathlib.Path(
-            "test_data/proto_converter/fake_project.json"
+            "test_data/proto_converter/sw_build_config/fake_project.json"
         )
         opts.dtd_path = pathlib.Path(__file__).parent / "media_profiles.dtd"
     Main(opts.project_configs, opts.program_config, opts.output, opts.dtd_path)

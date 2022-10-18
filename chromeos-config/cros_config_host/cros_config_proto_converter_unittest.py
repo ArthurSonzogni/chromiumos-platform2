@@ -58,7 +58,8 @@ class ParseArgsTests(unittest.TestCase):
 
 class MainTest(cros_test_lib.TempDirTestCase):
     def test_full_transform(self):
-        output_file = self.tempdir / "fake_project.json"
+        output_dir = self.tempdir / "proto_converter"
+        output_file = output_dir / "sw_build_config/fake_project.json"
         dtd_path = THIS_DIR / "media_profiles.dtd"
         cros_config_proto_converter.Main(
             project_configs=[PROJECT_CONFIG_FILE],
@@ -72,7 +73,7 @@ class MainTest(cros_test_lib.TempDirTestCase):
         contents = contents.replace(str(self.tempdir), str(TEST_DATA_DIR))
         output_file.write_text(contents)
 
-        dircmp = filecmp.dircmp(self.tempdir, TEST_DATA_DIR)
+        dircmp = filecmp.dircmp(output_dir, TEST_DATA_DIR)
         if (
             dircmp.diff_files
             or dircmp.left_only
