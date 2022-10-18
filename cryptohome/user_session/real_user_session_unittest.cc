@@ -32,11 +32,13 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 
 using brillo::SecureBlob;
+using brillo::cryptohome::home::SanitizeUserName;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnOk;
@@ -496,6 +498,87 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   }
 }
 
+TEST_F(RealUserSessionReAuthTest, VerifyInputFromCredentials) {
+  Credentials credentials_1("username", SecureBlob("password"));
+  Credentials credentials_2("username", SecureBlob("password2"));
+  Credentials credentials_3("username2", SecureBlob("password2"));
+
+  // Helper function to convert credentials to input.
+  auto creds_to_input = [](const Credentials& creds) {
+    return AuthInput{.user_input = creds.passkey(),
+                     .obfuscated_username = creds.GetObfuscatedUsername()};
+  };
+  AuthInput input_1 = creds_to_input(credentials_1);
+  AuthInput input_2 = creds_to_input(credentials_2);
+  AuthInput input_3 = creds_to_input(credentials_3);
+
+  {
+    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.AddCredentials(credentials_1);
+    EXPECT_TRUE(session.VerifyInput("", input_1));
+    EXPECT_FALSE(session.VerifyInput("", input_2));
+    EXPECT_FALSE(session.VerifyInput("", input_3));
+  }
+
+  {
+    RealUserSession session(credentials_2.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.AddCredentials(credentials_2);
+    EXPECT_FALSE(session.VerifyInput("", input_1));
+    EXPECT_TRUE(session.VerifyInput("", input_2));
+    EXPECT_FALSE(session.VerifyInput("", input_3));
+  }
+
+  {
+    RealUserSession session(credentials_3.username(), nullptr, nullptr, nullptr,
+                            nullptr, nullptr);
+    session.AddCredentials(credentials_3);
+    EXPECT_FALSE(session.VerifyInput("", input_1));
+    EXPECT_FALSE(session.VerifyInput("", input_2));
+    EXPECT_TRUE(session.VerifyInput("", input_3));
+  }
+}
+
+TEST_F(RealUserSessionReAuthTest, VerifyInputFromVerifiers) {
+  AuthInput input_1 = {.user_input = SecureBlob("password"),
+                       .obfuscated_username = SanitizeUserName("username")};
+  AuthInput input_2 = {.user_input = SecureBlob("password2"),
+                       .obfuscated_username = SanitizeUserName("username")};
+  AuthInput input_3 = {.user_input = SecureBlob("password2"),
+                       .obfuscated_username = SanitizeUserName("username2")};
+
+  {
+    RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
+                            nullptr);
+    session.AddCredentialVerifier(
+        ScryptVerifier::Create("label1", SecureBlob(*input_1.user_input)));
+    EXPECT_TRUE(session.VerifyInput("label1", input_1));
+    EXPECT_FALSE(session.VerifyInput("label1", input_2));
+    EXPECT_FALSE(session.VerifyInput("label1", input_3));
+  }
+
+  {
+    RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
+                            nullptr);
+    session.AddCredentialVerifier(
+        ScryptVerifier::Create("label2", SecureBlob(*input_2.user_input)));
+    EXPECT_FALSE(session.VerifyInput("label2", input_1));
+    EXPECT_TRUE(session.VerifyInput("label2", input_2));
+    EXPECT_FALSE(session.VerifyInput("label2", input_3));
+  }
+
+  {
+    RealUserSession session("username2", nullptr, nullptr, nullptr, nullptr,
+                            nullptr);
+    session.AddCredentialVerifier(
+        ScryptVerifier::Create("label3", SecureBlob(*input_3.user_input)));
+    EXPECT_FALSE(session.VerifyInput("label3", input_1));
+    EXPECT_FALSE(session.VerifyInput("label3", input_2));
+    EXPECT_TRUE(session.VerifyInput("label3", input_3));
+  }
+}
+
 TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
   Credentials credentials_1("username", SecureBlob("password"));
   KeyData key_data1;
@@ -514,7 +597,8 @@ TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
     EXPECT_TRUE(session.VerifyCredentials(credentials_1));
     EXPECT_FALSE(session.VerifyCredentials(credentials_2));
 
-    // Removing another label that is not the same as this session was set with.
+    // Removing another label that is not the same as this session was set
+    // with.
     session.RemoveCredentialVerifierForKeyLabel(
         credentials_2.key_data().label());
     // Verification should still work.

@@ -7,11 +7,11 @@
 #include <memory>
 #include <variant>
 
-#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 namespace {
@@ -27,7 +27,7 @@ class TestVerifier : public CredentialVerifier {
                            std::move(auth_factor_label),
                            std::move(auth_factor_metadata)) {}
 
-  bool Verify(const brillo::SecureBlob& secret) const override { return false; }
+  bool Verify(const AuthInput&) const override { return false; }
 };
 
 class CredentialVerifierTest : public ::testing::Test {

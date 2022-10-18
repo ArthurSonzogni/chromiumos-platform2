@@ -12,16 +12,14 @@
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/keyset_management.h"
+#include "cryptohome/key_objects.h"
+#include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
-#include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
-#include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
 
@@ -109,6 +107,12 @@ class UserSession {
   // credentials were successfully re-authenticated against the saved re-auth
   // state.
   virtual bool VerifyCredentials(const Credentials& credentials) const = 0;
+
+  // Verifies input against stored re-auth state for the given label. Returns
+  // true if the credentials were successfully re-authenticated against the
+  // saved state.
+  virtual bool VerifyInput(const std::string& label,
+                           const AuthInput& input) const = 0;
 
   // Returns or sets key_data of the current session credentials.
   virtual const KeyData& key_data() const = 0;

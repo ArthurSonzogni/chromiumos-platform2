@@ -9,13 +9,14 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "base/memory/ptr_util.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/key_objects.h"
 
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Scrypt;
@@ -46,13 +47,19 @@ std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
   return nullptr;
 }
 
-bool ScryptVerifier::Verify(const brillo::SecureBlob& secret) const {
+bool ScryptVerifier::Verify(const AuthInput& input) const {
+  // The input must contain user input, otherwise there's nothing to verify.
+  if (!input.user_input) {
+    return false;
+  }
+  // Scrypt the input using the verifier salt.
   brillo::SecureBlob hashed_secret(kScryptOutputSize, 0);
-  if (!Scrypt(secret, scrypt_salt_, kScryptNFactor, kScryptRFactor,
+  if (!Scrypt(*input.user_input, scrypt_salt_, kScryptNFactor, kScryptRFactor,
               kScryptPFactor, &hashed_secret)) {
     LOG(ERROR) << "Scrypt failed.";
     return false;
   }
+  // Compare the encrypted input against the hashed secret.
   if (verifier_.size() != hashed_secret.size()) {
     return false;
   }

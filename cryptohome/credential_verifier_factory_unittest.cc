@@ -36,7 +36,7 @@ TEST(CredentialVerifierFactoryTest, CreateCredentialVerifierPassword) {
       CreateCredentialVerifier(AuthFactorType::kPassword, kLabel, auth_input);
   ASSERT_TRUE(verifier);
   EXPECT_EQ(verifier->auth_factor_type(), AuthFactorType::kPassword);
-  EXPECT_TRUE(verifier->Verify(*auth_input.user_input));
+  EXPECT_TRUE(verifier->Verify(auth_input));
 }
 
 TEST(CredentialVerifierFactoryTest, CreateCredentialVerifierUnsupported) {

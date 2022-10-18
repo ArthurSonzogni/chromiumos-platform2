@@ -1426,7 +1426,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
                            keyset_management_);
   // Set up a user session with a mocked credential verifier.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyCredentials(_)).WillOnce(Return(true));
+  EXPECT_CALL(*user_session, VerifyInput(kPasswordLabel, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
   // Create an AuthSession.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(

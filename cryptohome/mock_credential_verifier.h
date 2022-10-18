@@ -8,12 +8,12 @@
 #include <string>
 #include <utility>
 
-#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
@@ -24,7 +24,7 @@ class MockCredentialVerifier : public CredentialVerifier {
   MockCredentialVerifier(const MockCredentialVerifier&) = delete;
   MockCredentialVerifier& operator=(const MockCredentialVerifier&) = delete;
 
-  MOCK_METHOD(bool, Verify, (const brillo::SecureBlob&), (const, override));
+  MOCK_METHOD(bool, Verify, (const AuthInput&), (const, override));
 };
 
 }  // namespace cryptohome

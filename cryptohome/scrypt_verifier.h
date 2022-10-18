@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
@@ -24,15 +25,15 @@ class ScryptVerifier final : public CredentialVerifier {
   ScryptVerifier(const ScryptVerifier&) = delete;
   ScryptVerifier& operator=(const ScryptVerifier&) = delete;
 
-  bool Verify(const brillo::SecureBlob& secret) const override;
+  bool Verify(const AuthInput& secret) const override;
 
  private:
   ScryptVerifier(std::string auth_factor_label,
                  brillo::SecureBlob scrypt_salt,
                  brillo::SecureBlob verifier);
 
-  brillo::SecureBlob scrypt_salt_;
-  brillo::SecureBlob verifier_;
+  const brillo::SecureBlob scrypt_salt_;
+  const brillo::SecureBlob verifier_;
 };
 
 }  // namespace cryptohome

@@ -304,8 +304,6 @@ bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
   return obfuscated_username_ == obfuscated_username;
 }
 
-// TODO(betuls): Move credential verification to AuthBlocks once AuthBlock
-// refactor is completed.
 bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   ReportTimerStart(kSessionUnlockTimer);
 
@@ -326,10 +324,33 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   }
 
   // Try testing the secret now.
-  bool status = verifier_iter->second->Verify(credentials.passkey());
+  bool status = verifier_iter->second->Verify(
+      {.user_input = credentials.passkey(),
+       .obfuscated_username = credentials.GetObfuscatedUsername()});
 
   ReportTimerStop(kSessionUnlockTimer);
 
+  return status;
+}
+
+bool RealUserSession::VerifyInput(const std::string& label,
+                                  const AuthInput& input) const {
+  ReportTimerStart(kSessionUnlockTimer);
+
+  // Fail if this user does not match the input user.
+  if (!input.obfuscated_username || !VerifyUser(*input.obfuscated_username)) {
+    return false;
+  }
+
+  // Fail if there is no verifier available.
+  auto verifier_iter = label_to_credential_verifier_.find(label);
+  if (verifier_iter == label_to_credential_verifier_.end()) {
+    return false;
+  }
+
+  // Try the verify and report the result.
+  bool status = verifier_iter->second->Verify(input);
+  ReportTimerStop(kSessionUnlockTimer);
   return status;
 }
 

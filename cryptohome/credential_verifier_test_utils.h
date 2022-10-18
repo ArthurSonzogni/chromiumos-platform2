@@ -37,7 +37,7 @@ class IsVerifierPtrWithLabelAndPasswordMatcher
       matches = false;
       *listener << "label is: " << verifier->auth_factor_label() << "\n";
     }
-    if (!verifier->Verify(brillo::SecureBlob(password_))) {
+    if (!verifier->Verify({.user_input = brillo::SecureBlob(password_)})) {
       matches = false;
       *listener << "expected password does not verify\n";
     }

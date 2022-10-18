@@ -2436,16 +2436,7 @@ bool AuthSession::AuthenticateViaCredentialVerifier(
   }
   // Attempt to verify the auth input against the verifier attached to the
   // user's session.
-  // TODO(b/240596931): Switch the verifier to using `AuthInput`.
-  if (!auth_input_status.value().user_input.has_value()) {
-    return false;
-  }
-  KeyData key_data;
-  key_data.set_label(auth_factor_label);
-  Credentials credentials(username_,
-                          auth_input_status.value().user_input.value());
-  credentials.set_key_data(std::move(key_data));
-  return user_session->VerifyCredentials(credentials);
+  return user_session->VerifyInput(auth_factor_label, *auth_input_status);
 }
 
 void AuthSession::AuthenticateViaUserSecretStash(

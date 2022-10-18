@@ -3227,7 +3227,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Add the user session. Configure the credential verifier mock to succeed.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyCredentials(_)).WillOnce(Return(true));
+  EXPECT_CALL(*user_session, VerifyInput(kFakeLabel, _)).WillOnce(Return(true));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
   // Create an AuthSession with a fake factor. No authentication mocks are set
   // up, because the lightweight authentication should be used in the test.
@@ -3383,7 +3383,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Add the user session. Expect that no verification calls are made.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyCredentials(_)).Times(0);
+  EXPECT_CALL(*user_session, VerifyInput(_, _)).Times(0);
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
   // Create an AuthSession with a fake factor.
   AuthSession auth_session(

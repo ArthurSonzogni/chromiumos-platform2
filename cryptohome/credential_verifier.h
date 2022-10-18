@@ -8,10 +8,9 @@
 #include <string>
 #include <utility>
 
-#include <brillo/secure_blob.h>
-
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
@@ -36,8 +35,8 @@ class CredentialVerifier {
     return auth_factor_metadata_;
   }
 
-  // Verifies the |secret| against previously Set() state.
-  virtual bool Verify(const brillo::SecureBlob& secret) const = 0;
+  // Verifies in input against the verifiers internal credentials.
+  virtual bool Verify(const AuthInput& input) const = 0;
 
  private:
   const AuthFactorType auth_factor_type_;

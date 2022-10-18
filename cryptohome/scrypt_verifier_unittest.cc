@@ -40,13 +40,18 @@ TEST_F(ScryptVerifierTest, AuthFactorMetadata) {
 }
 
 TEST_F(ScryptVerifierTest, Ok) {
-  brillo::SecureBlob secret("good");
+  AuthInput secret = {.user_input = brillo::SecureBlob("good")};
   EXPECT_TRUE(verifier_->Verify(secret));
 }
 
-TEST_F(ScryptVerifierTest, Fail) {
-  brillo::SecureBlob wrong_secret("wrong");
+TEST_F(ScryptVerifierTest, FailWithBadSecret) {
+  AuthInput wrong_secret = {.user_input = brillo::SecureBlob("wrong")};
   EXPECT_FALSE(verifier_->Verify(wrong_secret));
+}
+
+TEST_F(ScryptVerifierTest, FailWithNoSecret) {
+  AuthInput no_secret;
+  EXPECT_FALSE(verifier_->Verify(no_secret));
 }
 
 }  // namespace
