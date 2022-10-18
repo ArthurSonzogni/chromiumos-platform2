@@ -1215,6 +1215,18 @@ void AuthSession::RemoveAuthFactor(
     return;
   }
 
+  // Authenticated |vault_keyset_| of the current session (backup VaultKeyset or
+  // regular VaultKeyset) cannot be removed.
+  if (vault_keyset_ && auth_factor_label == vault_keyset_->GetLabel()) {
+    LOG(ERROR) << "AuthSession: Cannot remove the authenticated VaultKeyset.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveSameVKInRemoveAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+    return;
+  }
+
   if (user_secret_stash_) {
     CryptohomeStatus remove_status = RemoveAuthFactorViaUserSecretStash(
         auth_factor_label, *label_to_auth_factor_iter->second /*AuthFactor*/);
@@ -1228,28 +1240,24 @@ void AuthSession::RemoveAuthFactor(
               .Wrap(std::move(remove_status)));
       return;
     }
-    // Remove operation completed successfully, remove the AuthFactor from the
-    // map.
-    label_to_auth_factor_.erase(label_to_auth_factor_iter);
-    // Report time taken for a successful remove.
-    ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
-                        remove_timer_start, "" /*append_string*/);
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
-    return;
+    if (!enable_create_backup_vk_with_uss_) {
+      // If backup VaultKeysets are not enabled return before removing the
+      // VaultKeyset as there are no VaultKeysets together with USS.
+
+      // Removal of the AuthFactor completed successfully, remove the
+      // AuthFactor from the map.
+      label_to_auth_factor_.erase(label_to_auth_factor_iter);
+      // Report time taken for a successful remove.
+      ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
+                          remove_timer_start, "" /*append_string*/);
+      std::move(on_done).Run(OkStatus<CryptohomeError>());
+      return;
+    }
   }
 
-  // UserSecretStash is not enabled, remove VaultKeyset backed factor.
-  // Authenticated vault_keyset of the current session cannot be removed.
-  if (vault_keyset_ && auth_factor_label == vault_keyset_->GetLabel()) {
-    LOG(ERROR) << "AuthSession: Cannot remove the authenticated VaultKeyset.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveSameVKInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
-    return;
-  }
-
+  // At this point either USS is not enabled or removal of the USS AuthFactor
+  // succeeded & rollback enabled. Remove the VaultKeyset with the given label
+  // from disk regardless of its purpose, i.e backup, regular or migrated.
   CryptohomeStatus remove_status = RemoveKeysetByLabel(
       *keyset_management_, obfuscated_username_, auth_factor_label);
   if (!remove_status.ok()) {
@@ -1261,11 +1269,16 @@ void AuthSession::RemoveAuthFactor(
             CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
     return;
   }
-  // Remove the VaultKeyset from the map.
+
+  // Remove the AuthFactor from the map.
   label_to_auth_factor_.erase(label_to_auth_factor_iter);
+
   // Report time taken for a successful remove.
-  ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer, remove_timer_start,
-                      "" /*append_string*/);
+  user_secret_stash_
+      ? ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
+                            remove_timer_start, "" /*append_string*/)
+      : ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer,
+                            remove_timer_start, "" /*append_string*/);
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 

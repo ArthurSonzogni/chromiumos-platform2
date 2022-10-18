@@ -206,6 +206,17 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     }
   }
 
+  void RemoveFactor(AuthSession& auth_session,
+                    const std::string& label,
+                    const std::string& secret) {
+    user_data_auth::RemoveAuthFactorRequest request;
+    request.set_auth_factor_label(label);
+    request.set_auth_session_id(auth_session.serialized_token());
+    TestFuture<CryptohomeStatus> remove_future;
+    auth_session.RemoveAuthFactor(request, remove_future.GetCallback());
+    EXPECT_THAT(remove_future.Get(), IsOk());
+  }
+
   void AddFactor(AuthSession& auth_session,
                  const std::string& label,
                  const std::string& secret) {
@@ -389,6 +400,51 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
   EXPECT_NE(vk2, nullptr);
   EXPECT_FALSE(vk2->IsForBackup());
   EXPECT_TRUE(auth_session.user_has_configured_credential());
+}
+
+// Test that backup VaultKeysets are removed together with the AuthFactor.
+TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
+  // Setup
+  // Set the UserSecretStash experiment for testing to enable USS path in the
+  // test
+  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  AuthSession auth_session(
+      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
+      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
+      auth_block_utility_.get(), &auth_factor_manager_,
+      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  // Add factors and see backup VaultKeysets are also added.
+  AddFactor(auth_session, kPasswordLabel, kPassword);
+  AddFactor(auth_session, kPasswordLabel2, kPassword2);
+  std::unique_ptr<VaultKeyset> vk1 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
+  EXPECT_NE(vk1, nullptr);
+  EXPECT_TRUE(vk1->IsForBackup());
+  std::unique_ptr<VaultKeyset> vk2 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
+  EXPECT_NE(vk2, nullptr);
+  EXPECT_TRUE(vk2->IsForBackup());
+  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
+  EXPECT_FALSE(auth_session.user_has_configured_credential());
+
+  // Test
+  RemoveFactor(auth_session, kPasswordLabel2, kPassword2);
+
+  // Verify that only the backup VaultKeyset for the removed label is deleted.
+  std::unique_ptr<VaultKeyset> vk3 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
+  EXPECT_EQ(vk3, nullptr);
+  std::unique_ptr<VaultKeyset> vk4 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
+  EXPECT_NE(vk4, nullptr);
 }
 
 // Test that when user updates their credentials with USS backup VautlKeysets
