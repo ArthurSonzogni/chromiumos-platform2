@@ -307,6 +307,9 @@ TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialSuccess) {
       }));
   EXPECT_CALL(*mock_session_manager_, CreateRecord(_, Pointee(kTemplate)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(1, kTemplate))
+      .WillOnce(Return(true));
 
   CreateCredentialRequest request = MakeCreateCredentialRequest(
       kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
@@ -319,6 +322,54 @@ TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialSuccess) {
   EXPECT_EQ(reply.pub().x(), BlobToString(kPubOutX));
   EXPECT_EQ(reply.pub().y(), BlobToString(kPubOutY));
   EXPECT_FALSE(reply.record_id().empty());
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialPreloadFailed) {
+  const std::optional<std::string> kUserId("testuser");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
+  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
+  const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
+  const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
+  const brillo::Blob kTemplate(10, 8);
+
+  cros_fp_auth_stack_manager_->SetStateForTest(State::kEnrollDone);
+
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate(-1))
+      .WillOnce(Return(ByMove(std::make_unique<VendorTemplate>(kTemplate))));
+  EXPECT_CALL(*mock_cros_dev_,
+              GetPositiveMatchSecretWithPubkey(-1, kPubInX, kPubInY))
+      .WillOnce(Return(GetSecretReply{
+          .encrypted_secret = kEncryptedSecret,
+          .iv = kSecretIv,
+          .pk_out_x = kPubOutX,
+          .pk_out_y = kPubOutY,
+      }));
+  EXPECT_CALL(*mock_session_manager_, CreateRecord(_, Pointee(kTemplate)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(1, kTemplate))
+      .WillOnce(Return(false));
+
+  CreateCredentialRequest request = MakeCreateCredentialRequest(
+      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
+      kPubInY);
+
+  auto reply = cros_fp_auth_stack_manager_->CreateCredential(request);
+  ASSERT_EQ(reply.status(), CreateCredentialReply::SUCCESS);
+  EXPECT_EQ(reply.encrypted_secret(), BlobToString(kEncryptedSecret));
+  EXPECT_EQ(reply.iv(), BlobToString(kSecretIv));
+  EXPECT_EQ(reply.pub().x(), BlobToString(kPubOutX));
+  EXPECT_EQ(reply.pub().y(), BlobToString(kPubOutY));
+  EXPECT_FALSE(reply.record_id().empty());
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kLocked);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialNotReady) {
@@ -475,10 +526,54 @@ TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialPersistRecordFailed) {
   EXPECT_EQ(reply.status(), CreateCredentialReply::CREATE_RECORD_FAILED);
 }
 
-TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedIn) {
+TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
   const std::string kUserId("testuser");
-  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId));
+  const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
+      {
+          .tmpl = VendorTemplate(32, 1),
+      },
+      {
+          .tmpl = VendorTemplate(32, 2),
+      }};
+
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
+  for (int i = 0; i < 2; i++) {
+    EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(i, kRecords[i].tmpl))
+        .WillOnce(Return(true));
+  }
   cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInLoadUserFailed) {
+  const std::string kUserId("testuser");
+
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId))
+      .WillOnce(Return(false));
+  cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kLocked);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
+  const std::string kUserId("testuser");
+  const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
+      {
+          .tmpl = VendorTemplate(32, 1),
+      },
+      {
+          .tmpl = VendorTemplate(32, 2),
+      }};
+
+  EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
+  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(0, kRecords[0].tmpl))
+      .WillOnce(Return(false));
+  cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kLocked);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedOut) {

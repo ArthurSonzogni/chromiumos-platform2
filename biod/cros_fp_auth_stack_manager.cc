@@ -145,6 +145,7 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
       .label = "",
       .validation_val = {},
   };
+  VendorTemplate actual_tmpl = *tmpl;
 
   if (!session_manager_->CreateRecord(record, std::move(tmpl))) {
     LOG(ERROR) << "Failed to create record for template.";
@@ -152,7 +153,18 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
     return reply;
   }
 
-  state_ = State::kNone;
+  // We need to upload the newly-enrolled template to the preloaded buffer, so
+  // that we can load it properly with other preloaded templates the next time
+  // we want to AuthenticateCredential.
+  LOG(INFO) << "Upload record " << LogSafeID(record_id) << ".";
+  if (!cros_dev_->PreloadTemplate(session_manager_->GetNumOfTemplates() - 1,
+                                  std::move(actual_tmpl))) {
+    LOG(ERROR) << "Preload template failed.";
+    state_ = State::kLocked;
+  } else {
+    state_ = State::kNone;
+  }
+
   reply.set_status(CreateCredentialReply::SUCCESS);
   reply.set_encrypted_secret(
       brillo::BlobToString(secret_reply->encrypted_secret));
@@ -180,9 +192,7 @@ void CrosFpAuthStackManager::OnUserLoggedOut() {
 }
 
 void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
-  if (!session_manager_->LoadUser(user_id)) {
-    LOG(ERROR) << "Failed to start user session when user logged in.";
-  }
+  LoadUser(user_id);
 }
 
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
@@ -251,6 +261,28 @@ void CrosFpAuthStackManager::OnEnrollScanDone(
 
 void CrosFpAuthStackManager::OnSessionFailed() {
   on_session_failed_.Run();
+}
+
+bool CrosFpAuthStackManager::LoadUser(std::string user_id) {
+  if (!session_manager_->LoadUser(std::move(user_id))) {
+    LOG(ERROR) << "Failed to start user session.";
+    state_ = State::kLocked;
+    return false;
+  }
+  std::vector<CrosFpSessionManager::SessionRecord> records =
+      session_manager_->GetRecords();
+  for (size_t i = 0; i < records.size(); i++) {
+    const auto& record = records[i];
+    // TODO(b/253993586): Send record format version metrics here.
+    LOG(INFO) << "Upload record " << LogSafeID(record.record_metadata.record_id)
+              << ".";
+    if (!cros_dev_->PreloadTemplate(i, record.tmpl)) {
+      LOG(ERROR) << "Preload template failed.";
+      state_ = State::kLocked;
+      return false;
+    }
+  }
+  return true;
 }
 
 bool CrosFpAuthStackManager::RequestEnrollImage() {
@@ -359,6 +391,8 @@ std::string CrosFpAuthStackManager::CurrentStateToString() {
       return "Enroll";
     case State::kEnrollDone:
       return "EnrollDone";
+    case State::kLocked:
+      return "Locked";
   }
 }
 
@@ -368,6 +402,7 @@ bool CrosFpAuthStackManager::IsActiveState() {
       return true;
     case State::kNone:
     case State::kEnrollDone:
+    case State::kLocked:
       return false;
   }
 }
@@ -378,6 +413,7 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
     case State::kEnrollDone:
       return true;
     case State::kEnroll:
+    case State::kLocked:
       return false;
   }
 }

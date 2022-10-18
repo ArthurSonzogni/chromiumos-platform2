@@ -37,6 +37,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
     // An EnrollSession is completed successfully and we're expecting a
     // CreateCredential command.
     kEnrollDone,
+    // Something went wrong in keeping sync between biod and FPMCU, and it's
+    // better to not process any Enroll/Auth commands in this state.
+    kLocked,
   };
 
   CrosFpAuthStackManager(
@@ -71,6 +74,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void SetSessionFailedHandler(const AuthStackManager::SessionFailedCallback&
                                    on_session_failed) override;
 
+  State GetState() const { return state_; }
+
   void SetStateForTest(State state) { state_ = state; }
 
  protected:
@@ -92,6 +97,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
                         const AuthStackManager::EnrollStatus& enroll_status,
                         brillo::Blob auth_nonce);
   void OnSessionFailed();
+
+  bool LoadUser(std::string user_id);
 
   bool RequestEnrollImage();
   bool RequestEnrollFingerUp();
