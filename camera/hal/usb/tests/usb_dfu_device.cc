@@ -398,7 +398,7 @@ bool UsbDfuDevice::SyncDownload() const {
 }
 
 bool UsbDfuDevice::SyncManifest() const {
-  constexpr base::TimeDelta kTimeout = base::Seconds(5);
+  constexpr base::TimeDelta kTimeout = base::Seconds(15);
 
   // TODO(kamesan): Support non-bitManifestationTolerant devices when needed.
   // Some devices still work but not setting this flag.
