@@ -12,6 +12,7 @@ use log::{info, warn};
 use crate::cookie::{
     cookie_description, get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue,
 };
+use crate::files::create_resume_in_progress_file;
 use crate::hiberutil::{HibernateError, ResumeInitOptions};
 use crate::volume::VolumeManager;
 
@@ -75,6 +76,9 @@ impl ResumeInitConductor {
         }
 
         self.setup_snapshots()?;
+        // Create the resume_in_progress file other system services use as a
+        // quick check to determine a resume is underway.
+        create_resume_in_progress_file()?;
         // The snapshots are valid, so indicate that a resume is in progress,
         // and the main resume process later should go for it.
         set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::ResumeInProgress)

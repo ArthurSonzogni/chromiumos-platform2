@@ -17,11 +17,10 @@ use openssl::derive::Deriver;
 use openssl::pkey::{Id, PKey, Private, Public};
 use zeroize::Zeroizing;
 
+use crate::files::TMPFS_DIR;
 use crate::hibermeta::{HibernateMetadata, META_ASYMMETRIC_KEY_SIZE, META_SYMMETRIC_KEY_SIZE};
 use crate::hiberutil::HibernateError;
 
-/// Define the ramfs location where the hibernate public key is stored.
-static PUBLIC_KEY_DIR: &str = "/run/hibernate/";
 /// Define the name where the hibernate public key is stored.
 static PUBLIC_KEY_NAME: &str = "pubkey";
 /// Define the fixed test key seed, used when a developer wants to hibernate or
@@ -81,11 +80,11 @@ impl HibernateKeyManager {
             HibernateError::KeyManagerError("No private key to derive public key from".to_string())
         })?;
 
-        if !Path::new(PUBLIC_KEY_DIR).exists() {
-            create_dir(PUBLIC_KEY_DIR).context("Cannot create directory to save public key")?;
+        if !Path::new(TMPFS_DIR).exists() {
+            create_dir(TMPFS_DIR).context("Cannot create directory to save public key")?;
         }
 
-        let key_path = Path::new(PUBLIC_KEY_DIR).join(PUBLIC_KEY_NAME);
+        let key_path = Path::new(TMPFS_DIR).join(PUBLIC_KEY_NAME);
         info!("Saving public key to {}", key_path.display());
         let mut key_file = File::create(&key_path).context("Cannot create public key file")?;
         let public_key = private_key.raw_public_key().unwrap();
@@ -102,7 +101,7 @@ impl HibernateKeyManager {
     /// Load the public key from a ramfs file, that was previously saved by a
     /// different instance of this application calling save_public_key().
     pub fn load_public_key(&mut self) -> Result<()> {
-        let key_path = Path::new(PUBLIC_KEY_DIR).join(PUBLIC_KEY_NAME);
+        let key_path = Path::new(TMPFS_DIR).join(PUBLIC_KEY_NAME);
         info!("Loading public key from {}", key_path.display());
         // Cryptohome should have handed the hibernate key to another instance
         // of this program. If you see this message, that instance probably

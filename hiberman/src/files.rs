@@ -5,14 +5,13 @@
 //! High level support for creating and opening the files used by hibernate.
 
 use std::convert::TryInto;
-use std::fs;
-use std::fs::{File, OpenOptions};
+use std::fs::{create_dir, metadata, remove_file, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use log::debug;
+use log::{debug, warn};
 
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::hiberlog::HiberlogFile;
@@ -25,6 +24,13 @@ use crate::splitter::HIBER_HEADER_MAX_SIZE;
 pub const HIBERNATE_DIR: &str = "/mnt/hibernate";
 /// Define the root of the stateful partition mount.
 pub const STATEFUL_DIR: &str = "/mnt/stateful_partition";
+/// Define the ramfs location where ephemeral files are stored that should not
+/// persist across even an unexpected reboot.
+pub const TMPFS_DIR: &str = "/run/hibernate/";
+/// Define the name of the token file indicating resume is in progress. Note:
+/// Services outside of hiberman use this file, so don't change this name
+/// carelessly.
+const RESUME_IN_PROGRESS_FILE: &str = "resume_in_progress";
 /// Define the name of the hibernate metadata.
 const HIBER_META_NAME: &str = "metadata";
 /// Define the preallocated size of the hibernate metadata file.
@@ -145,7 +151,7 @@ pub fn open_hiberfile() -> Result<DiskFile> {
 /// Helper function to determine if the hiberfile already exists.
 pub fn does_hiberfile_exist() -> bool {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
-    fs::metadata(hiberfile_path).is_ok()
+    metadata(hiberfile_path).is_ok()
 }
 
 /// Open a pre-existing kernel key file with read and write permissions.
@@ -241,6 +247,42 @@ pub fn increment_file_counter(file: &mut File) -> Result<()> {
     file.rewind()?;
     file.write_all(value.to_string().as_bytes())
         .context("Failed to increment counter")
+}
+
+/// Add the resuming file token that other services can check to quickly see if
+/// a resume is in progress.
+pub fn create_resume_in_progress_file() -> Result<()> {
+    if !Path::new(TMPFS_DIR).exists() {
+        create_dir(TMPFS_DIR).context("Cannot create tmpfs directory")?;
+    }
+
+    let rip_path = Path::new(TMPFS_DIR).join(RESUME_IN_PROGRESS_FILE);
+    if rip_path.exists() {
+        warn!("{} unexpectedly already exists", rip_path.display());
+    }
+
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(rip_path)
+        .context("Failed to create resume token file")?;
+
+    Ok(())
+}
+
+/// Remove the resume_in_progress file if it exists. A result is not returned
+/// because besides logging (done here) there's really no handling of this error
+/// that could be done.
+pub fn remove_resume_in_progress_file() {
+    let rip_path = Path::new(TMPFS_DIR).join(RESUME_IN_PROGRESS_FILE);
+    if rip_path.exists() {
+        if let Err(e) = remove_file(&rip_path) {
+            warn!("Failed to remove {}: {}", rip_path.display(), e);
+            if rip_path.exists() {
+                warn!("{} still exists!", rip_path.display());
+            }
+        }
+    }
 }
 
 /// Helper function to get the total amount of physical memory on this system,

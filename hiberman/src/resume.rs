@@ -20,7 +20,7 @@ use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
     open_header_file, open_hiberfile, open_kernel_key_file, open_log_file, open_metafile,
-    open_metrics_file,
+    open_metrics_file, remove_resume_in_progress_file,
 };
 use crate::hiberlog::{redirect_log, replay_logs, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{
@@ -97,6 +97,8 @@ impl ResumeConductor {
         replay_logs(true, !self.options.dry_run);
         // Allow trunksd to start if not already done.
         self.emit_tpm_done_event()?;
+        // Remove the resume_in_progress token file if it exists.
+        remove_resume_in_progress_file();
         // Since resume_inner() returned, we are no longer in a viable resume
         // path. Drop the pending merge object, causing the stateful
         // dm-snapshots to merge with their origins.
