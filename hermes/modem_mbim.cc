@@ -99,6 +99,13 @@ void ModemMbim::TransmitFromQueue() {
   }
 
   auto mbim_cmd = tx_queue_[0].msg_.get();
+
+  // The tx_queue is expected to have only one message queued for Transmit,
+  // except when the LPA queues APDU's.
+  if (mbim_cmd->mbim_type() != MbimCmd::MbimType::kMbimSendApdu) {
+    DCHECK(tx_queue_.size() == 1)
+        << "Multiple MBIM messages are not expected to be queued.";
+  }
   switch (mbim_cmd->mbim_type()) {
     case MbimCmd::MbimType::kMbimOpenChannel:
       TransmitOpenChannel();
@@ -1228,6 +1235,9 @@ void ModemMbim::OnEidReadFailed(const uint32_t physical_slot,
 }
 
 void ModemMbim::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
+  DCHECK(tx_queue_.empty())
+      << __func__
+      << ": expected tx queue to be empty, size=" << tx_queue_.size();
   LOG(INFO) << __func__ << ": " << event;
   if (event.step == EuiccStep::START) {
     auto on_euicc_event_start = base::BindOnce(
@@ -1289,6 +1299,9 @@ void ModemMbim::CloseDeviceAndUninhibit(ResultCallback cb) {
 }
 
 void ModemMbim::RestoreActiveSlot(ResultCallback cb) {
+  DCHECK(tx_queue_.empty())
+      << __func__
+      << " : expected tx queue to be empty, size=" << tx_queue_.size();
   LOG(INFO) << __func__;
   if (!libmbim_->MbimDeviceCheckMsMbimexVersion(device_.get(), 2, 0)) {
     std::move(cb).Run(kModemSuccess);
@@ -1331,6 +1344,9 @@ bool ModemMbim::IsSimValidAfterDisable() {
 void ModemMbim::OpenConnection(
     const std::vector<uint8_t>& aid,
     base::OnceCallback<void(std::vector<uint8_t>)> cb) {
+  DCHECK(tx_queue_.empty())
+      << __func__
+      << ": expected tx queue to be empty, size=" << tx_queue_.size();
   LOG(INFO) << __func__ << base::HexEncode(aid.data(), aid.size());
   ReacquireChannel(EuiccEventStep::CLOSE_CHANNEL, aid,
                    base::BindOnce(&ModemMbim::OpenConnectionResponse,
@@ -1340,6 +1356,9 @@ void ModemMbim::OpenConnection(
 void ModemMbim::TransmitApdu(
     const std::vector<uint8_t>& apduCommand,
     base::OnceCallback<void(std::vector<uint8_t>)> cb) {
+  DCHECK(tx_queue_.empty())
+      << __func__
+      << ": expected tx queue to be empty, size=" << tx_queue_.size();
   LOG(INFO) << __func__ << ": APDU command="
             << base::HexEncode(apduCommand.data(), apduCommand.size());
   DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
