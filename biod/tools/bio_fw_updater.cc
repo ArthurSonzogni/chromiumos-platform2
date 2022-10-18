@@ -107,8 +107,10 @@ int main(int argc, char* argv[]) {
 
   biod::LogVersion();
 
+  biod::BiodSystem system;
+
   // Check for firmware disable mechanism
-  if (biod::updater::UpdateDisallowed()) {
+  if (biod::updater::UpdateDisallowed(system)) {
     LOG(INFO) << "FPMCU update disabled, exiting.";
     return EXIT_SUCCESS;
   }
@@ -171,7 +173,6 @@ int main(int argc, char* argv[]) {
 
   biod::CrosFpDeviceUpdate ec_device;
   biod::CrosFpBootUpdateCtrl boot_ctrl;
-  biod::BiodSystem system;
 
   auto ecver = ec_device.GetVersion();
   if (!ecver) {

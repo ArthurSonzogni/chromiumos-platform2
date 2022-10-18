@@ -113,11 +113,21 @@ performs an update if the two do not match. Note that it does not consider
 whether the version of the firmware is semantically "newer"; it's strictly
 checking for an exact version match.
 
-To disable the automatic update, you can create the `.disable_fp_updater` file:
+To disable the automatic update, you can create the `.disable_fp_updater` file
+in the firmware directory (requires disabled rootfs verification):
 
 ```bash
 (dut) $ touch /opt/google/biod/fw/.disable_fp_updater
 ```
+
+or in the stateful partition:
+
+```bash
+(dut) $ touch /mnt/stateful_partition/.disable_fp_updater
+```
+
+For security reasons this will work only when we are allowed to boot developer
+mode from unsigned kernels (`crossystem dev_boot_signed_only` reports 0).
 
 When hardware and [software write protect] for the FPMCU are enabled,
 [`bio_fw_updater`] will only update the RW portion of the firmware.

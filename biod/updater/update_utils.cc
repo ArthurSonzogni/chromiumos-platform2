@@ -22,6 +22,8 @@ namespace {
 
 constexpr char kFirmwareGlobSuffix[] = "_*.bin";
 constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
+constexpr char kUpdateDisableFileAlt[] =
+    "/mnt/stateful_partition/.disable_fp_updater";
 
 }  // namespace
 
@@ -34,8 +36,23 @@ std::string UpdaterVersion() {
   return std::string(*brillo::kVCSID);
 }
 
-bool UpdateDisallowed() {
-  return base::PathExists(base::FilePath(kUpdateDisableFile));
+bool UpdateDisallowed(const BiodSystem& system) {
+  // Disable updates when /mnt/stateful_partition/.disable_fp_updater exists
+  // and Developer Mode can boot from unsigned kernel (it's a bit stronger check
+  // than developer mode only).
+  if (!system.OnlyBootSignedKernel() &&
+      base::PathExists(base::FilePath(kUpdateDisableFileAlt))) {
+    return true;
+  }
+
+  // Disable updates when /opt/google/biod/fw/.disable_fp_updater exists.
+  // To create this file rootfs verification must be disabled.
+  // TODO(b/269718617) Drop support for disabling FP updater using this path.
+  if (base::PathExists(base::FilePath(kUpdateDisableFile))) {
+    return true;
+  }
+
+  return false;
 }
 
 FindFirmwareFileStatus FindFirmwareFile(
