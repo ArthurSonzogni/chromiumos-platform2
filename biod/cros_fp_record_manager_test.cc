@@ -101,13 +101,36 @@ TEST_F(CrosFpRecordManagerTest, TestGetRecordMetadataValidInvalid) {
                                          kUserID1, kLabel,
                                          std::vector<uint8_t>()};
 
-  std::vector<Record> test_records = {
-      Record{valid_record_metadata, kData1},
-      Record{invalid_record_metadata, kData2, /* valid= */ false}};
+  std::vector<Record> test_records = {Record{valid_record_metadata, kData1},
+                                      Record{invalid_record_metadata, kData2}};
   EXPECT_CALL(*mock_biod_storage_, ReadRecordsForSingleUser)
       .WillOnce(Return(test_records));
 
-  record_manager_->GetRecordsForUser(kUserID1);
+  // record_manager should mark the second record without validation value as
+  // invalid, and not include it in the returned list.
+  EXPECT_EQ(record_manager_->GetRecordsForUser(kUserID1).size(), 1);
+  auto metadata1 = record_manager_->GetRecordMetadata(kRecordID1);
+  auto metadata2 = record_manager_->GetRecordMetadata(kRecordID2);
+  EXPECT_TRUE(metadata1);
+  EXPECT_TRUE(metadata2);
+  EXPECT_EQ(valid_record_metadata, *metadata1);
+  EXPECT_EQ(invalid_record_metadata, *metadata2);
+}
+
+TEST_F(CrosFpRecordManagerTest, TestGetRecordMetadataAllowNoValidationVal) {
+  RecordMetadata valid_record_metadata{kRecordFormatVersion, kRecordID1,
+                                       kUserID1, kLabel, kFakeValidationValue1};
+  RecordMetadata invalid_record_metadata{kRecordFormatVersion, kRecordID2,
+                                         kUserID1, kLabel,
+                                         std::vector<uint8_t>()};
+
+  std::vector<Record> test_records = {Record{valid_record_metadata, kData1},
+                                      Record{invalid_record_metadata, kData2}};
+  EXPECT_CALL(*mock_biod_storage_, ReadRecordsForSingleUser)
+      .WillOnce(Return(test_records));
+
+  record_manager_->SetAllowNoValidationValue(true);
+  EXPECT_EQ(record_manager_->GetRecordsForUser(kUserID1).size(), 2);
   auto metadata1 = record_manager_->GetRecordMetadata(kRecordID1);
   auto metadata2 = record_manager_->GetRecordMetadata(kRecordID2);
   EXPECT_TRUE(metadata1);

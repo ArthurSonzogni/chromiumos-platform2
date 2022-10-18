@@ -21,6 +21,10 @@ void CrosFpRecordManager::SetAllowAccess(bool allow) {
   biod_storage_->set_allow_access(allow);
 }
 
+void CrosFpRecordManager::SetAllowNoValidationValue(bool allow) {
+  allow_no_validation_value_ = allow;
+}
+
 std::optional<RecordMetadata> CrosFpRecordManager::GetRecordMetadata(
     const std::string& record_id) {
   auto entry = records_metadata_.find(record_id);
@@ -46,8 +50,11 @@ std::vector<Record> CrosFpRecordManager::GetRecordsForUser(
     const std::string& user_id) {
   std::vector<Record> result = biod_storage_->ReadRecordsForSingleUser(user_id);
 
-  // We don't support records without validation value, so mark them as invalid.
-  MakeRecordsWithoutValidationValInvalid(&result);
+  if (!allow_no_validation_value_) {
+    // We don't support records without validation value, so mark them as
+    // invalid.
+    MakeRecordsWithoutValidationValInvalid(&result);
+  }
 
   // Add records that are not present in records_metadata_.
   // Please note that try_emplace changes the map only when no element with

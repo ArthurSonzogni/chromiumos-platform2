@@ -49,6 +49,8 @@ class CrosFpRecordManager : public CrosFpRecordManagerInterface {
   explicit CrosFpRecordManager(const CrosFpRecordManager&) = delete;
   CrosFpRecordManager& operator=(const CrosFpRecordManager&) = delete;
 
+  void SetAllowNoValidationValue(bool allow);
+
   void SetAllowAccess(bool allow) override;
 
   // Returns RecordMetadata for given record.
@@ -77,6 +79,7 @@ class CrosFpRecordManager : public CrosFpRecordManagerInterface {
     bool valid = true;
   };
 
+  bool allow_no_validation_value_ = false;
   // Map in which the key is Record ID and the value is record metadata.
   std::unordered_map<std::string, CrosFpRecordMetadata> records_metadata_;
 };

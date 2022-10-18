@@ -70,6 +70,8 @@ BiometricsDaemon::BiometricsDaemon() {
     biod_storage->set_allow_access(true);
     auto record_manager =
         std::make_unique<CrosFpRecordManager>(std::move(biod_storage));
+    // We don't use validation value in AuthStackManager flow.
+    record_manager->SetAllowNoValidationValue(true);
     auto session_manager =
         std::make_unique<CrosFpSessionManagerImpl>(std::move(record_manager));
     auto pk_storage = std::make_unique<PairingKeyStorageImpl>(
