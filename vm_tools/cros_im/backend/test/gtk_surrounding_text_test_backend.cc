@@ -8,7 +8,7 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkSetSurroundingTextTest, BasicTextInput) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);
@@ -34,7 +34,7 @@ BACKEND_TEST(GtkSetSurroundingTextTest, BasicTextInput) {
 }
 
 BACKEND_TEST(GtkSetSurroundingTextTest, CursorMovement) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);
@@ -60,7 +60,7 @@ BACKEND_TEST(GtkSetSurroundingTextTest, CursorMovement) {
 }
 
 BACKEND_TEST(GtkSetSurroundingTextTest, MultiLine) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);
@@ -90,7 +90,7 @@ BACKEND_TEST(GtkSetSurroundingTextTest, DirectTextChanges) {
   // Test that text changes made directly by an app (not as a result of user
   // input) are reported to us.
 
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);
@@ -106,7 +106,7 @@ BACKEND_TEST(GtkSetSurroundingTextTest, DirectTextChanges) {
 }
 
 BACKEND_TEST(GtkDeleteSurroundingTextTest, Basic) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);
@@ -134,7 +134,7 @@ BACKEND_TEST(GtkDeleteSurroundingTextTest, Basic) {
 }
 
 BACKEND_TEST(GtkDeleteSurroundingTextTest, NonAscii) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   Unignore(Request::kSetSurroundingText);
 
   ExpectSetSurroundingText("", 0, 0);

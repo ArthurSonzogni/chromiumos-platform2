@@ -11,7 +11,7 @@ namespace test {
 // implemented.
 
 BACKEND_TEST(GtkSetPreeditRegionTest, AsciiLeft) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   // Tests for SetPreeditRegion where the region is to the left of the cursor.
 
   Expect(Request::kActivate);
@@ -39,7 +39,7 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiLeft) {
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, AsciiRight) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   // Tests for SetPreeditRegion where the region is to the right of the cursor.
 
   Expect(Request::kActivate);
@@ -63,7 +63,7 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiRight) {
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, AsciiContains) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   // Tests for SetPreeditRegion where the region contains the cursor.
 
   Expect(Request::kActivate);
@@ -83,7 +83,7 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiContains) {
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, NonAscii) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   // Tests for SetPreeditRegion with non-ascii characters.
 
   Expect(Request::kActivate);
@@ -108,7 +108,7 @@ BACKEND_TEST(GtkSetPreeditRegionTest, NonAscii) {
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, Invalid) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
   // Tests for SetPreeditRegion with invalid inputs.
 
   Expect(Request::kActivate);

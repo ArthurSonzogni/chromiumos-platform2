@@ -10,7 +10,7 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
   SendKeySym(XKB_KEY_d);
@@ -23,7 +23,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 
@@ -40,7 +40,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 
@@ -58,7 +58,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 
@@ -78,7 +78,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Enter) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 
@@ -93,7 +93,7 @@ BACKEND_TEST(GtkKeySymEntryTest, Enter) {
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Tab) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 

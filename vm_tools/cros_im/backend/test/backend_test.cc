@@ -4,6 +4,7 @@
 
 #include "backend/test/backend_test.h"
 
+#include <algorithm>
 #include <glib.h>
 
 #include "backend/test/backend_test_utils.h"
@@ -52,11 +53,8 @@ BackendTest* BackendTest::GetInstance() {
 }
 
 void BackendTest::ProcessRequest(const Request& request) {
-  for (const auto& ignore : ignored_requests_) {
-    if (ignore->RequestMatches(request)) {
-      return;
-    }
-  }
+  if (FindIgnore(request) != ignored_requests_.end())
+    return;
 
   if (actions_.empty()) {
     FAILED() << "Received request " << request
@@ -99,6 +97,14 @@ void BackendTest::PostEventIfNeeded() {
   // This only applies when running with a GTK frontend and we'll need different
   // logic when we add a XIM server.
   g_idle_add(OnIdle, this);
+}
+
+std::vector<std::unique_ptr<Request>>::iterator BackendTest::FindIgnore(
+    const Request& request) {
+  return std::find_if(ignored_requests_.begin(), ignored_requests_.end(),
+                      [&request](const auto& ignore) {
+                        return ignore->RequestMatches(request);
+                      });
 }
 
 }  // namespace test

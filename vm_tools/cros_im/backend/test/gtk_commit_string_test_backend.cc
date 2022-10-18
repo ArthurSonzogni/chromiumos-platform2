@@ -8,7 +8,7 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkCommitStringTest, SingleCharacters) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 
@@ -24,7 +24,7 @@ BACKEND_TEST(GtkCommitStringTest, SingleCharacters) {
 }
 
 BACKEND_TEST(GtkCommitStringTest, LongStrings) {
-  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput();
 
   Expect(Request::kActivate);
 

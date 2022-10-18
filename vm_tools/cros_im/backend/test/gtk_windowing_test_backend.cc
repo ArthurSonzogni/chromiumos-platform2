@@ -10,8 +10,8 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
-  ExpectCreateTextInput<0>(CreateTextInputOptions::kIgnoreCommon);
-  ExpectCreateTextInput<1>(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput<0>();
+  ExpectCreateTextInput<1>();
 
   Expect<0>(Request::kActivate);
   SendCommitString<0>("ツ");
@@ -33,8 +33,8 @@ BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
 }
 
 BACKEND_TEST(GtkPopoverWindowTest, KeySym) {
-  ExpectCreateTextInput<0>(CreateTextInputOptions::kIgnoreCommon);
-  ExpectCreateTextInput<1>(CreateTextInputOptions::kIgnoreCommon);
+  ExpectCreateTextInput<0>();
+  ExpectCreateTextInput<1>();
 
   Expect<0>(Request::kActivate);
   SendKeySym<0>(XKB_KEY_a);

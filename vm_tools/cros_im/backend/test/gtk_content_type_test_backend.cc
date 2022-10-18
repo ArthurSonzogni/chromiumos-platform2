@@ -18,14 +18,13 @@ uint32_t kDefaultHints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CORRECTION |
 }  // namespace
 
 BACKEND_TEST(GtkContentTypeTest, ContentHints) {
-  ExpectCreateTextInput<0>(CreateTextInputOptions::kDefault);
+  ExpectCreateTextInput<0>();
   Ignore<0>(Request::kActivate);
   Ignore<0>(Request::kDeactivate);
   Ignore<0>(Request::kDestroy);
   Ignore<0>(Request::kReset);
-  Ignore<0>(Request::kSetCursorRectangle);
-  Ignore<0>(Request::kSetSurroundingText);
-  Ignore<0>(Request::kHideInputPanel);
+  Unignore<0>(Request::kShowInputPanel);
+  Unignore<0>(Request::kSetContentType);
 
   ExpectSetContentType<0>(ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CORRECTION |
                               ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_COMPLETION |
@@ -34,14 +33,13 @@ BACKEND_TEST(GtkContentTypeTest, ContentHints) {
   Expect<0>(Request::kShowInputPanel);
   SendCommitString<0>("a");
 
-  ExpectCreateTextInput<1>(CreateTextInputOptions::kDefault);
+  ExpectCreateTextInput<1>();
   Ignore<1>(Request::kActivate);
   Ignore<1>(Request::kDeactivate);
   Ignore<1>(Request::kDestroy);
   Ignore<1>(Request::kReset);
-  Ignore<1>(Request::kSetCursorRectangle);
-  Ignore<1>(Request::kSetSurroundingText);
-  Ignore<1>(Request::kHideInputPanel);
+  Unignore<1>(Request::kShowInputPanel);
+  Unignore<1>(Request::kSetContentType);
 
   ExpectSetContentType<1>(ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_COMPLETION |
                               ZWP_TEXT_INPUT_V1_CONTENT_HINT_LOWERCASE,
@@ -66,29 +64,23 @@ BACKEND_TEST(GtkContentTypeTest, ContentHints) {
 }
 
 BACKEND_TEST(GtkContentTypeTest, ContentPurpose) {
-  ExpectCreateTextInput<0>(CreateTextInputOptions::kDefault);
+  ExpectCreateTextInput<0>();
   Ignore<0>(Request::kActivate);
   Ignore<0>(Request::kDeactivate);
   Ignore<0>(Request::kDestroy);
   Ignore<0>(Request::kReset);
-  Ignore<0>(Request::kSetCursorRectangle);
-  Ignore<0>(Request::kSetSurroundingText);
-  Ignore<0>(Request::kShowInputPanel);
-  Ignore<0>(Request::kHideInputPanel);
+  Unignore<0>(Request::kSetContentType);
 
   ExpectSetContentType<0>(kDefaultHints,
                           ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_ALPHA);
   SendCommitString<0>("a");
 
-  ExpectCreateTextInput<1>(CreateTextInputOptions::kDefault);
+  ExpectCreateTextInput<1>();
   Ignore<1>(Request::kActivate);
   Ignore<1>(Request::kDeactivate);
   Ignore<1>(Request::kDestroy);
   Ignore<1>(Request::kReset);
-  Ignore<1>(Request::kSetCursorRectangle);
-  Ignore<1>(Request::kSetSurroundingText);
-  Ignore<1>(Request::kShowInputPanel);
-  Ignore<1>(Request::kHideInputPanel);
+  Unignore<1>(Request::kSetContentType);
 
   ExpectSetContentType<1>(kDefaultHints,
                           ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DIGITS);

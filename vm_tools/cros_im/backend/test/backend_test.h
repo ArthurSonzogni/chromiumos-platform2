@@ -77,21 +77,23 @@ class BackendTest {
 
   template <int text_input_id = 0>
   void Ignore(Request::RequestType type) {
-    ignored_requests_.push_back(std::make_unique<Request>(text_input_id, type));
+    auto request = std::make_unique<Request>(text_input_id, type);
+    if (FindIgnore(*request) != ignored_requests_.end()) {
+      FAILED() << "Tried to ignore already-ignored request: " << *request;
+      return;
+    }
+    ignored_requests_.push_back(std::move(request));
   }
 
   template <int text_input_id = 0>
   void Unignore(Request::RequestType type) {
     Request request(text_input_id, type);
-    for (auto it = ignored_requests_.begin(); it != ignored_requests_.end();
-         ++it) {
-      if (request.RequestMatches(**it)) {
-        ignored_requests_.erase(it);
-        return;
-      }
+    auto it = FindIgnore(request);
+    if (it == ignored_requests_.end()) {
+      FAILED() << "Couldn't find request to unignore: " << request;
+      return;
     }
-
-    FAILED() << "Couldn't find request to unignore: " << request;
+    ignored_requests_.erase(it);
   }
 
   template <int text_input_id = 0>
@@ -99,26 +101,17 @@ class BackendTest {
     actions_.emplace(std::make_unique<Request>(text_input_id, type));
   }
 
-  enum class CreateTextInputOptions {
-    kDefault,
-    // Ignore set_cursor_rectangle, set_surrounding_text, hide_input_panel.
-    kIgnoreCommon,
-  };
+  // This sets up ignores for various requests for the given id. If these need
+  // to be tested, Unignore() can be used.
   template <int text_input_id = 0>
-  void ExpectCreateTextInput(CreateTextInputOptions options) {
+  void ExpectCreateTextInput() {
     actions_.emplace(
         std::make_unique<Request>(text_input_id, Request::kCreateTextInput));
-    switch (options) {
-      case CreateTextInputOptions::kDefault:
-        break;
-      case CreateTextInputOptions::kIgnoreCommon:
-        Ignore<text_input_id>(Request::kSetCursorRectangle);
-        Ignore<text_input_id>(Request::kSetSurroundingText);
-        Ignore<text_input_id>(Request::kSetContentType);
-        Ignore<text_input_id>(Request::kShowInputPanel);
-        Ignore<text_input_id>(Request::kHideInputPanel);
-        break;
-    }
+    Ignore<text_input_id>(Request::kSetCursorRectangle);
+    Ignore<text_input_id>(Request::kSetSurroundingText);
+    Ignore<text_input_id>(Request::kSetContentType);
+    Ignore<text_input_id>(Request::kShowInputPanel);
+    Ignore<text_input_id>(Request::kHideInputPanel);
   }
 
   template <int text_input_id = 0>
@@ -160,6 +153,10 @@ class BackendTest {
 
   // If the next action is an event, run it asynchronously.
   void PostEventIfNeeded();
+
+  // Returns an entry in ignored_requests_ matching the request if any.
+  std::vector<std::unique_ptr<Request>>::iterator FindIgnore(
+      const Request& request);
 
   bool initialized_ = false;
   std::vector<std::unique_ptr<Request>> ignored_requests_;
