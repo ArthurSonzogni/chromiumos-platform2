@@ -117,6 +117,12 @@ enum Rtw89SARBand {
   kRtw89SarBand5g1 = 1,
   kRtw89SarBand5g3 = 2,
   kRtw89SarBand5g4 = 3,
+  kRtw89SarBand6g1 = 4,
+  kRtw89SarBand6g2 = 5,
+  kRtw89SarBand6g3 = 6,
+  kRtw89SarBand6g4 = 7,
+  kRtw89SarBand6g5 = 8,
+  kRtw89SarBand6g6 = 9,
 };
 
 // For ath10k the driver configures index 0 for 2g and index 1 for 5g.
@@ -169,6 +175,7 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"rtw_pci", WirelessDriver::RTW88},
       {"rtw_8822ce", WirelessDriver::RTW88},
       {"rtw89_8852ae", WirelessDriver::RTW89},
+      {"rtw89_8852ce", WirelessDriver::RTW89},
       {"mt7921e", WirelessDriver::MTK},
       {"mt7921s", WirelessDriver::MTK},
   };
@@ -314,7 +321,7 @@ std::map<enum Rtw89SARBand, uint8_t> GetRtw89ChromeosConfigPowerTable(
       break;
   }
 
-  int offset_2g = 0, offset_5g = 0;
+  int offset_2g = 0, offset_5g = 0, offset_6g = 0;
   if (domain != power_manager::WifiRegDomain::NONE) {
     std::string offset_string;
     if (config->GetString(wifi_geo_offsets_path, "offset-2g", &offset_string)) {
@@ -322,6 +329,9 @@ std::map<enum Rtw89SARBand, uint8_t> GetRtw89ChromeosConfigPowerTable(
     }
     if (config->GetString(wifi_geo_offsets_path, "offset-5g", &offset_string)) {
       offset_5g = std::stoi(offset_string);
+    }
+    if (config->GetString(wifi_geo_offsets_path, "offset-6g", &offset_string)) {
+      offset_6g = std::stoi(offset_string);
     }
   }
 
@@ -358,6 +368,47 @@ std::map<enum Rtw89SARBand, uint8_t> GetRtw89ChromeosConfigPowerTable(
                                      "value cannot exceed 255.";
   power_table[kRtw89SarBand5g4] = power_limit;
 
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-1", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g1] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-2", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g2] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-3", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g3] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-4", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g4] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-5", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g5] = power_limit;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-6g-6", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_6g;
+  CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
+                                     "value cannot exceed 255.";
+  power_table[kRtw89SarBand6g6] = power_limit;
   return power_table;
 }
 

@@ -179,6 +179,36 @@ typeDefs:
         type: integer
         minimum: 0x0
         maximum: 0xFF
+      limit-6g-1:
+        description: "6G band 1 power limit: 5.955G-6.155G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-2:
+        description: "6G band 1 power limit: 6.175G-6.415G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-3:
+        description: "6G band 1 power limit: 6.435G-6.515G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-4:
+        description: "6G band 1 power limit: 6.535G-6.695G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-5:
+        description: "6G band 1 power limit: 6.715G-6.855G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-6:
+        description: "6G band 1 power limit: 6.895G-7.115G channels. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
     additionalProperties: false
   wifi-geo-offsets: &wifi-geo-offsets
     description: "Offsets which are applied to WiFi power limits depending on the
@@ -199,6 +229,11 @@ typeDefs:
         maximum: 0xFF
       offset-5g:
         description: "Value to be added to all 5GHz WiFi bands. (0.125 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      offset-6g:
+        description: "Value to be added to all 6GHz WiFi bands. (0.125 dBm)"
         type: integer
         minimum: 0x0
         maximum: 0xFF

@@ -1664,18 +1664,21 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### geo-offsets-fcc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### geo-offsets-rest-of-world
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### non-tablet-mode-power-table-rtw
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1684,6 +1687,12 @@ In the tables below,
 | limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit: 5.15G-5.35G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-1 | integer |  | False |  | False | 6G band 1 power limit: 5.955G-6.155G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-2 | integer |  | False |  | False | 6G band 1 power limit: 6.175G-6.415G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-3 | integer |  | False |  | False | 6G band 1 power limit: 6.435G-6.515G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-4 | integer |  | False |  | False | 6G band 1 power limit: 6.535G-6.695G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-5 | integer |  | False |  | False | 6G band 1 power limit: 6.715G-6.855G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-6 | integer |  | False |  | False | 6G band 1 power limit: 6.895G-7.115G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### tablet-mode-power-table-rtw
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1692,6 +1701,12 @@ In the tables below,
 | limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit: 5.15G-5.35G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-1 | integer |  | False |  | False | 6G band 1 power limit: 5.955G-6.155G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-2 | integer |  | False |  | False | 6G band 1 power limit: 6.175G-6.415G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-3 | integer |  | False |  | False | 6G band 1 power limit: 6.435G-6.515G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-4 | integer |  | False |  | False | 6G band 1 power limit: 6.535G-6.695G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-5 | integer |  | False |  | False | 6G band 1 power limit: 6.715G-6.855G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-6 | integer |  | False |  | False | 6G band 1 power limit: 6.895G-7.115G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### eu-power-table-mtk
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

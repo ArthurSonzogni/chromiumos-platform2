@@ -1109,24 +1109,36 @@ def _build_rtw89_config(rtw89_config):
             "limit-5g-1": power.limit_5g_1,
             "limit-5g-3": power.limit_5g_3,
             "limit-5g-4": power.limit_5g_4,
+            "limit-6g-1": power.limit_6g_1,
+            "limit-6g-2": power.limit_6g_2,
+            "limit-6g-3": power.limit_6g_3,
+            "limit-6g-4": power.limit_6g_4,
+            "limit-6g-5": power.limit_6g_5,
+            "limit-6g-6": power.limit_6g_6,
         }
 
-    result["tablet-mode-power-table-rtw"] = power_chain(
-        rtw89_config.tablet_mode_power_table
-    )
-    result["non-tablet-mode-power-table-rtw"] = power_chain(
-        rtw89_config.non_tablet_mode_power_table
-    )
+    if rtw89_config.HasField("tablet_mode_power_table"):
+        result["tablet-mode-power-table-rtw"] = power_chain(
+            rtw89_config.tablet_mode_power_table
+        )
+    if rtw89_config.HasField("non_tablet_mode_power_table"):
+        result["non-tablet-mode-power-table-rtw"] = power_chain(
+            rtw89_config.non_tablet_mode_power_table
+        )
 
     def offsets(offset):
         return {
             "offset-2g": offset.offset_2g,
             "offset-5g": offset.offset_5g,
+            "offset-6g": offset.offset_6g,
         }
 
-    result["geo-offsets-fcc"] = offsets(rtw89_config.offset_fcc)
-    result["geo-offsets-eu"] = offsets(rtw89_config.offset_eu)
-    result["geo-offsets-rest-of-world"] = offsets(rtw89_config.offset_other)
+    if rtw89_config.HasField("offset_fcc"):
+        result["geo-offsets-fcc"] = offsets(rtw89_config.offset_fcc)
+    if rtw89_config.HasField("offset_eu"):
+        result["geo-offsets-eu"] = offsets(rtw89_config.offset_eu)
+    if rtw89_config.HasField("offset_other"):
+        result["geo-offsets-rest-of-world"] = offsets(rtw89_config.offset_other)
     return result
 
 
