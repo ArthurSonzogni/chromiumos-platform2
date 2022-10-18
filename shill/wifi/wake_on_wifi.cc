@@ -520,7 +520,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
 }
 
 void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
-    NetlinkManager::AuxilliaryMessageType type,
+    NetlinkManager::AuxiliaryMessageType type,
     const NetlinkMessage* raw_message) {
   Error error(Error::kOperationFailed);
   switch (type) {
@@ -554,7 +554,7 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
     default:
       error.Populate(
           Error::kOperationFailed,
-          "Unexpected auxilliary message type: " + std::to_string(type));
+          "Unexpected auxiliary message type: " + std::to_string(type));
       break;
   }
   RunSuspendActionsDoneCallback(error);

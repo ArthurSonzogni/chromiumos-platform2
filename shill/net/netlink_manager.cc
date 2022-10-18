@@ -39,13 +39,13 @@ const int NetlinkManager::kMaxNlMessageRetries = 1;                 // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAckHandler& ack_handler,
-    const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler)
+    const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler)
     : ack_handler_(ack_handler), error_handler_(error_handler) {}
 
 NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() = default;
 
 void NetlinkManager::NetlinkResponseHandler::HandleError(
-    AuxilliaryMessageType type, const NetlinkMessage* netlink_message) const {
+    AuxiliaryMessageType type, const NetlinkMessage* netlink_message) const {
   if (!error_handler_.is_null())
     error_handler_.Run(type, netlink_message);
 }
@@ -71,7 +71,7 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   ControlResponseHandler(
       const NetlinkManager::NetlinkAckHandler& ack_handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
+      const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler,
       const NetlinkManager::ControlNetlinkMessageHandler& handler)
       : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
         handler_(handler) {}
@@ -113,7 +113,7 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   Nl80211ResponseHandler(
       const NetlinkManager::NetlinkAckHandler& ack_handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
+      const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler,
       const NetlinkManager::Nl80211MessageHandler& handler)
       : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
         handler_(handler) {}
@@ -236,7 +236,7 @@ std::string NetlinkManager::GetRawMessage(const NetlinkMessage* raw_message) {
 }
 
 // static
-void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
+void NetlinkManager::OnNetlinkMessageError(AuxiliaryMessageType type,
                                            const NetlinkMessage* raw_message) {
   switch (type) {
     case kErrorFromKernel:
@@ -440,7 +440,7 @@ bool NetlinkManager::SendControlMessage(
     ControlNetlinkMessage* message,
     const ControlNetlinkMessageHandler& message_handler,
     const NetlinkAckHandler& ack_handler,
-    const NetlinkAuxilliaryMessageHandler& error_handler) {
+    const NetlinkAuxiliaryMessageHandler& error_handler) {
   return SendOrPostMessage(
       message,
       new ControlResponseHandler(ack_handler, error_handler, message_handler));
@@ -450,7 +450,7 @@ bool NetlinkManager::SendNl80211Message(
     Nl80211Message* message,
     const Nl80211MessageHandler& message_handler,
     const NetlinkAckHandler& ack_handler,
-    const NetlinkAuxilliaryMessageHandler& error_handler) {
+    const NetlinkAuxiliaryMessageHandler& error_handler) {
   return SendOrPostMessage(
       message,
       new Nl80211ResponseHandler(ack_handler, error_handler, message_handler));
@@ -796,7 +796,7 @@ void NetlinkManager::ResendPendingDumpMessage() {
 }
 
 void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
-                                      AuxilliaryMessageType type,
+                                      AuxiliaryMessageType type,
                                       const NetlinkMessage* netlink_message) {
   if (base::Contains(message_handlers_, sequence_number)) {
     VLOG(6) << "Found message-specific error handler";

@@ -40,14 +40,14 @@ class MockNetlinkManager : public NetlinkManager {
               (ControlNetlinkMessage*,
                const ControlNetlinkMessageHandler&,
                const NetlinkAckHandler&,
-               const NetlinkAuxilliaryMessageHandler&),
+               const NetlinkAuxiliaryMessageHandler&),
               (override));
   MOCK_METHOD(bool,
               SendNl80211Message,
               (Nl80211Message*,
                const Nl80211MessageHandler&,
                const NetlinkAckHandler&,
-               const NetlinkAuxilliaryMessageHandler&),
+               const NetlinkAuxiliaryMessageHandler&),
               (override));
   MOCK_METHOD(bool,
               SubscribeToEvents,

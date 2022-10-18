@@ -95,7 +95,7 @@ class Nl80211Message;
 //  netlink_manager_->Start();
 class SHILL_EXPORT NetlinkManager {
  public:
-  enum AuxilliaryMessageType {
+  enum AuxiliaryMessageType {
     kDone,
     kErrorFromKernel,
     kTimeoutWaitingForResponse,
@@ -107,13 +107,13 @@ class SHILL_EXPORT NetlinkManager {
       base::RepeatingCallback<void(const ControlNetlinkMessage&)>;
   using Nl80211MessageHandler =
       base::RepeatingCallback<void(const Nl80211Message&)>;
-  // NetlinkAuxilliaryMessageHandler handles netlink error messages, things
+  // NetlinkAuxiliaryMessageHandler handles netlink error messages, things
   // like the DoneMessage at the end of a multi-part message, and any errors
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
   // there is no way to reserve a part of the ErrorAckMessage space for
   // non-netlink errors).
-  using NetlinkAuxilliaryMessageHandler = base::RepeatingCallback<void(
-      AuxilliaryMessageType type, const NetlinkMessage*)>;
+  using NetlinkAuxiliaryMessageHandler = base::RepeatingCallback<void(
+      AuxiliaryMessageType type, const NetlinkMessage*)>;
   // NetlinkAckHandler handles netlink Ack messages, which are a special type
   // of netlink error message carrying an error code of 0. Since Ack messages
   // contain no useful data (other than the error code of 0 to differentiate
@@ -133,16 +133,15 @@ class SHILL_EXPORT NetlinkManager {
   class NetlinkResponseHandler
       : public base::RefCounted<NetlinkResponseHandler> {
    public:
-    NetlinkResponseHandler(
-        const NetlinkAckHandler& ack_handler,
-        const NetlinkAuxilliaryMessageHandler& error_handler);
+    NetlinkResponseHandler(const NetlinkAckHandler& ack_handler,
+                           const NetlinkAuxiliaryMessageHandler& error_handler);
     virtual ~NetlinkResponseHandler();
     // Calls wrapper-type-specific callback for |netlink_message|.  Returns
     // false if |netlink_message| is not the correct type.  Calls callback
     // (which is declared in the private area of derived classes) with
     // properly cast version of |netlink_message|.
     virtual bool HandleMessage(const NetlinkMessage& netlink_message) const = 0;
-    void HandleError(AuxilliaryMessageType type,
+    void HandleError(AuxiliaryMessageType type,
                      const NetlinkMessage* netlink_message) const;
     virtual bool HandleAck() const;
     void set_delete_after(const timeval& time) { delete_after_ = time; }
@@ -156,7 +155,7 @@ class SHILL_EXPORT NetlinkManager {
     NetlinkAckHandler ack_handler_;
 
    private:
-    NetlinkAuxilliaryMessageHandler error_handler_;
+    NetlinkAuxiliaryMessageHandler error_handler_;
     struct timeval delete_after_;
   };
 
@@ -232,18 +231,18 @@ class SHILL_EXPORT NetlinkManager {
       ControlNetlinkMessage* message,
       const ControlNetlinkMessageHandler& message_handler,
       const NetlinkAckHandler& ack_handler,
-      const NetlinkAuxilliaryMessageHandler& error_handler);
+      const NetlinkAuxiliaryMessageHandler& error_handler);
   virtual bool SendNl80211Message(
       Nl80211Message* message,
       const Nl80211MessageHandler& message_handler,
       const NetlinkAckHandler& ack_handler,
-      const NetlinkAuxilliaryMessageHandler& error_handler);
+      const NetlinkAuxiliaryMessageHandler& error_handler);
 
   // Get string version of NetlinkMessage for logging purposes
   static std::string GetRawMessage(const NetlinkMessage* raw_message);
 
   // Generic erroneous message handler everyone can use.
-  static void OnNetlinkMessageError(AuxilliaryMessageType type,
+  static void OnNetlinkMessageError(AuxiliaryMessageType type,
                                     const NetlinkMessage* raw_message);
 
   // Generic Ack handler that does nothing. Other callbacks registered for the
@@ -354,7 +353,7 @@ class SHILL_EXPORT NetlinkManager {
   // and |netlink_message|, then erases the NetlinkResponseHandler from
   // |message_handlers_|.
   void CallErrorHandler(uint32_t sequence_number,
-                        AuxilliaryMessageType type,
+                        AuxiliaryMessageType type,
                         const NetlinkMessage* netlink_message);
 
   // Called by InputHandler on exceptional events.

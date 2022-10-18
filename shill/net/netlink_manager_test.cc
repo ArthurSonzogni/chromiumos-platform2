@@ -192,26 +192,26 @@ class NetlinkManagerTest : public Test {
     NetlinkManager::NetlinkMessageHandler on_netlink_message_;
   };
 
-  class MockHandlerNetlinkAuxilliary {
+  class MockHandlerNetlinkAuxiliary {
    public:
-    MockHandlerNetlinkAuxilliary()
+    MockHandlerNetlinkAuxiliary()
         : on_netlink_message_(
-              base::BindRepeating(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
+              base::BindRepeating(&MockHandlerNetlinkAuxiliary::OnErrorHandler,
                                   base::Unretained(this))) {}
-    MockHandlerNetlinkAuxilliary(const MockHandlerNetlinkAuxilliary&) = delete;
-    MockHandlerNetlinkAuxilliary& operator=(
-        const MockHandlerNetlinkAuxilliary&) = delete;
+    MockHandlerNetlinkAuxiliary(const MockHandlerNetlinkAuxiliary&) = delete;
+    MockHandlerNetlinkAuxiliary& operator=(const MockHandlerNetlinkAuxiliary&) =
+        delete;
 
     MOCK_METHOD(void,
                 OnErrorHandler,
-                (NetlinkManager::AuxilliaryMessageType, const NetlinkMessage*));
-    const NetlinkManager::NetlinkAuxilliaryMessageHandler& on_netlink_message()
+                (NetlinkManager::AuxiliaryMessageType, const NetlinkMessage*));
+    const NetlinkManager::NetlinkAuxiliaryMessageHandler& on_netlink_message()
         const {
       return on_netlink_message_;
     }
 
    private:
-    NetlinkManager::NetlinkAuxilliaryMessageHandler on_netlink_message_;
+    NetlinkManager::NetlinkAuxiliaryMessageHandler on_netlink_message_;
   };
 
   class MockHandler80211 {
@@ -488,7 +488,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   received_message.ResetConsumedBytes();
 
   // Send the message and give our handler.  Verify that we get called back.
-  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAuxiliaryMessageHandler null_error_handler;
   NetlinkManager::NetlinkAckHandler null_ack_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
@@ -543,7 +543,7 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   // Send the message and give a Nl80211 response handlerand an Ack
   // handler that does not remove other callbacks after execution.
   // Receive an Ack message and verify that the Ack handler is invoked.
-  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAuxiliaryMessageHandler null_error_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &sent_message, handler_sent_1.on_netlink_message(),
@@ -599,7 +599,7 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
   Nl80211Message sent_message(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
   MockHandler80211 handler_sent_1;
   MockHandlerNetlinkAck handler_sent_2;
-  MockHandlerNetlinkAuxilliary handler_sent_3;
+  MockHandlerNetlinkAuxiliary handler_sent_3;
 
   // Send the message and receive a netlink reply.
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
@@ -643,14 +643,14 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   // Build a message and send it in order to install a response handler.
   TriggerScanMessage trigger_scan_message;
   MockHandler80211 response_handler;
-  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAuxiliary auxiliary_handler;
   MockHandlerNetlinkAck ack_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAuxiliaryMessageHandler null_error_handler;
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &trigger_scan_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
 
   // Build a multi-part response (well, it's just one message but it'll be
   // received multiple times).
@@ -679,16 +679,16 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   NetlinkPacket done_packet(done_message_bytes.GetData(),
                             done_message_bytes.GetLength());
 
-  // Verify that the message-specific auxilliary handler is called for the done
+  // Verify that the message-specific auxiliary handler is called for the done
   // message, with the correct message type.
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
+  EXPECT_CALL(auxiliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
 
   netlink_manager_->OnNlMessageReceived(&done_packet);
 
   // Verify that broadcast handler is called now that the done message has
   // been seen.
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(auxiliary_handler, OnErrorHandler(_, _)).Times(0);
   EXPECT_CALL(ack_handler, OnAckHandler(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_)).Times(1);
   received_message.ResetConsumedBytes();
@@ -737,12 +737,12 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
 
   GetWiphyMessage get_wiphy_message;
   MockHandler80211 response_handler;
-  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAuxiliary auxiliary_handler;
   MockHandlerNetlinkAck ack_handler;
 
   GetRegMessage get_reg_message;  // Just a message to trigger timeout.
   NetlinkManager::Nl80211MessageHandler null_message_handler;
-  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAuxiliaryMessageHandler null_error_handler;
   NetlinkManager::NetlinkAckHandler null_ack_handler;
 
   // Send two messages within the message handler timeout; verify that we
@@ -750,7 +750,7 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_wiphy_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_reg_message, null_message_handler, null_ack_handler,
@@ -765,11 +765,11 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_wiphy_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   received_message.ResetConsumedBytes();
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(
-      auxilliary_handler,
+      auxiliary_handler,
       OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, nullptr));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_reg_message, null_message_handler, null_ack_handler,
@@ -819,7 +819,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   get_station_message_2.AddFlag(NLM_F_DUMP);
   GetWiphyMessage get_wiphy_message;
   MockHandler80211 response_handler;
-  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAuxiliary auxiliary_handler;
   MockHandlerNetlinkAck ack_handler;
 
   // Send the first get station message, which should be sent immediately and
@@ -828,7 +828,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_1, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_1_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -843,7 +843,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_2, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_2_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -858,7 +858,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_wiphy_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
@@ -877,7 +877,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   // On receiving second part of the message, report done to the error handler,
   // and dispatch the next message in the queue.
   received_message_1_pt2.SetMessageSequence(get_station_message_1_seq_num);
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
+  EXPECT_CALL(auxiliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(&received_message_1_pt2);
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -905,7 +905,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
   GetStationMessage get_station_message_2;
   get_station_message_2.AddFlag(NLM_F_DUMP);
   MockHandler80211 response_handler;
-  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAuxiliary auxiliary_handler;
   MockHandlerNetlinkAck ack_handler;
 
   // Send the first get station message, which should be sent immediately and
@@ -914,7 +914,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_1, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_1_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -929,7 +929,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_2, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_2_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -940,7 +940,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
   // Timeout waiting for responses to the first get station message. This
   // should cause the first get station message to be resent.
   netlink_manager_->pending_messages_.front().retries_left = 1;
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(auxiliary_handler, OnErrorHandler(_, _)).Times(0);
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnPendingDumpTimeout();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -950,7 +950,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
 
   // Another timeout waiting for responses to the first get station message.
   // This should cause the second get station message to be sent.
-  EXPECT_CALL(auxilliary_handler,
+  EXPECT_CALL(auxiliary_handler,
               OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnPendingDumpTimeout();
@@ -979,7 +979,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   GetStationMessage get_station_message_2;
   get_station_message_2.AddFlag(NLM_F_DUMP);
   MockHandler80211 response_handler;
-  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAuxiliary auxiliary_handler;
   MockHandlerNetlinkAck ack_handler;
 
   // Send the first get station message, which should be sent immediately and
@@ -988,7 +988,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_1, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_1_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -1003,7 +1003,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_station_message_2, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
-      auxilliary_handler.on_netlink_message()));
+      auxiliary_handler.on_netlink_message()));
   uint16_t get_station_message_2_seq_num =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
@@ -1017,7 +1017,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   received_ebusy_message.SetMessageSequence(get_station_message_1_seq_num);
   EXPECT_EQ(kNumRetries,
             netlink_manager_->pending_messages_.front().retries_left);
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(auxiliary_handler, OnErrorHandler(_, _)).Times(0);
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);
   // Cancel timeout callback before attempting resend.
@@ -1039,7 +1039,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   received_ebusy_message.ResetConsumedBytes();
   received_ebusy_message.SetMessageSequence(get_station_message_1_seq_num);
   EXPECT_EQ(0, netlink_manager_->pending_messages_.front().retries_left);
-  EXPECT_CALL(auxilliary_handler,
+  EXPECT_CALL(auxiliary_handler,
               OnErrorHandler(NetlinkManager::kErrorFromKernel, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);
@@ -1055,7 +1055,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   received_ebusy_message.ResetConsumedBytes();
   received_ebusy_message.SetMessageSequence(get_station_message_2_seq_num);
   EXPECT_EQ(1, netlink_manager_->pending_messages_.front().retries_left);
-  EXPECT_CALL(auxilliary_handler,
+  EXPECT_CALL(auxiliary_handler,
               OnErrorHandler(NetlinkManager::kErrorFromKernel, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(false));
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);

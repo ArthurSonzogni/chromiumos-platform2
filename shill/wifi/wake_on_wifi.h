@@ -361,7 +361,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
   // programming attempts.
   void OnWakeOnWiFiSettingsErrorResponse(
-      NetlinkManager::AuxilliaryMessageType type,
+      NetlinkManager::AuxiliaryMessageType type,
       const NetlinkMessage* raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
   static void OnSetWakeOnWiFiConnectionResponse(
