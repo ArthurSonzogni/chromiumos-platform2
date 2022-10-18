@@ -30,13 +30,27 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "protobuf-lite",
     "system_api",
   ]
+}
+
+static_library("private_computing_lib") {
+  sources = [
+    "private_computing_adaptor.cc",
+    "private_computing_adaptor.h",
+    "private_computing_daemon.cc",
+    "private_computing_daemon.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":dbus_adaptors_generator" ]
 }
 
 executable("private_computingd") {
   sources = [ "private_computing.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [ ":private_computing_lib" ]
 }
 
 install_config("install_init") {
@@ -70,6 +84,10 @@ if (use.test) {
       ":target_defaults",
     ]
     defines = [ "UNIT_TEST" ]
-    deps = [ "//common-mk/testrunner:testrunner" ]
+    run_test = true
+    deps = [
+      ":private_computing_lib",
+      "//common-mk/testrunner:testrunner",
+    ]
   }
 }

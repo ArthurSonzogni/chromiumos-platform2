@@ -19,7 +19,7 @@
         <arg name="response" type="ay" direction="out">
           Serialized SaveStatusResponse message.
         </arg>
-        <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+        <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       </method>
     <method name="GetLastPingDatesStatus">
       <tp:docstring>
@@ -28,7 +28,7 @@
       <arg name="response" type="ay" direction="out">
         Serialized GetStatusResponse message.
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
  </interface>
 </node>
