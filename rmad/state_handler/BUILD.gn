@@ -40,6 +40,7 @@ source_set("libstate_handler") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//rmad/logs:liblogs",
     "//rmad/metrics:libmetrics",
     "//rmad/system:libsystem",
     "//rmad/udev:libudev",

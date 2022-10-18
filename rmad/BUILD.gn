@@ -81,6 +81,7 @@ if (use.test) {
       "daemon:libdaemon_test",
       "executor:libexecutor_test",
       "interface:libinterface_test",
+      "logs:liblogs_test",
       "metrics:libmetrics_test",
       "state_handler:libstate_handler_test",
       "system:libsystem_test",
