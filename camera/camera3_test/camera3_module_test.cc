@@ -573,9 +573,9 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
   std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
   if (config.has_value()) {
     std::optional<int> usb_count =
-        config->GetCameraCount(cros::Interface::kUsb);
+        config->GetCameraCount(cros::Interface::kUsb, /*detachable=*/false);
     std::optional<int> mipi_count =
-        config->GetCameraCount(cros::Interface::kMipi);
+        config->GetCameraCount(cros::Interface::kMipi, /*detachable=*/false);
     if (camera_hal_path.empty()) {
       if (usb_count.has_value() && mipi_count.has_value()) {
         ASSERT_EQ(cam_module_.GetNumberOfCameras(), *usb_count + *mipi_count)
