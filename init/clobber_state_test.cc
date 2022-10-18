@@ -1498,39 +1498,14 @@ TEST_F(GetDevicesToWipeTest, SDA) {
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }
 
-TEST(IsUFSStorage, NonUFSStorage) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  EXPECT_FALSE(ClobberState::IsUFSStorage(temp_dir.GetPath()));
-}
-
-TEST(IsUFSStorage, UFSStorageOneBSGNode) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath bsg_node_dir = temp_dir.GetPath().Append("dev").Append("bsg");
-  ASSERT_TRUE(CreateDirectoryAndWriteFile(bsg_node_dir.Append("ufs-bsg0"), ""));
-  EXPECT_TRUE(ClobberState::IsUFSStorage(temp_dir.GetPath()));
-}
-
-TEST(IsUFSStorage, UFSStorageMultipleBSGNodes) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath bsg_node_dir = temp_dir.GetPath().Append("dev").Append("bsg");
-  ASSERT_TRUE(CreateDirectoryAndWriteFile(bsg_node_dir.Append("ufs-bsg0"), ""));
-  ASSERT_TRUE(CreateDirectoryAndWriteFile(bsg_node_dir.Append("ufs-bsg1"), ""));
-  EXPECT_FALSE(ClobberState::IsUFSStorage(temp_dir.GetPath()));
-}
-
 TEST(WipeBlockDevice, Nonexistent) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
   ClobberUi ui(DevNull());
 
-  EXPECT_FALSE(
-      ClobberState::WipeBlockDevice(file_system_path, &ui, false, false));
-  EXPECT_FALSE(
-      ClobberState::WipeBlockDevice(file_system_path, &ui, true, false));
+  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, &ui, false));
+  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, &ui, true));
 }
 
 TEST(WipeBlockDevice, Fast) {
@@ -1556,7 +1531,7 @@ TEST(WipeBlockDevice, Fast) {
   device.Close();
 
   ClobberUi ui(DevNull());
-  EXPECT_TRUE(ClobberState::WipeBlockDevice(device_path, &ui, true, false));
+  EXPECT_TRUE(ClobberState::WipeBlockDevice(device_path, &ui, true));
 
   device =
       base::File(device_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
@@ -1608,8 +1583,7 @@ TEST(WipeBlockDevice, Slow) {
   EXPECT_EQ(mkfs.Run(), 0);
 
   ClobberUi ui(DevNull());
-  EXPECT_TRUE(
-      ClobberState::WipeBlockDevice(file_system_path, &ui, false, false));
+  EXPECT_TRUE(ClobberState::WipeBlockDevice(file_system_path, &ui, false));
 
   file_system = base::File(file_system_path,
                            base::File::FLAG_OPEN | base::File::FLAG_READ);
