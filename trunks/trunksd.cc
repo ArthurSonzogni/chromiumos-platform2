@@ -14,6 +14,7 @@
 #include <base/threading/thread.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <libhwsec-foundation/profiling/profiling.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -134,6 +135,10 @@ int main(int argc, char** argv) {
                                      background_thread.task_runner());
   service.set_power_manager(&power_manager);
   LOG(INFO) << "Trunks service started.";
+
+  // Start profiling.
+  hwsec_foundation::SetUpProfiling();
+
   int exit_code = service.Run();
   // Need to stop the background thread before destroying ResourceManager
   // and PowerManager. Otherwise, a task posted by BackgroundCommandTransceiver

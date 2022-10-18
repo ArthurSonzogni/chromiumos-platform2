@@ -211,6 +211,7 @@ pkg_config("trunksd_pkg_deps") {
 
 executable("trunksd") {
   sources = [ "trunksd.cc" ]
+  libs = [ "hwsec-profiling" ]
   configs += [
     ":target_defaults",
     ":trunksd_pkg_deps",
