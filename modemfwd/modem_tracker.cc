@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/shill/dbus-constants.h>
 
@@ -103,6 +104,24 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   on_modem_carrier_id_ready_callback_.Run(std::move(device));
 }
 
+void ModemTracker::DelayedSimCheck(dbus::ObjectPath device_path) {
+  brillo::VariantDictionary properties;
+  bool sim_present;
+  auto device =
+      std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
+
+  if (!device->GetProperties(&properties, NULL) ||
+      !properties[shill::kSIMPresentProperty].GetValue(&sim_present)) {
+    LOG(ERROR) << "Could not get SIMPresent property for device "
+               << device_path.value();
+    return;
+  }
+
+  if (!sim_present) {
+    on_modem_carrier_id_ready_callback_.Run(std::move(device));
+  }
+}
+
 void ModemTracker::OnDeviceListChanged(
     const std::vector<dbus::ObjectPath>& new_list) {
   std::map<dbus::ObjectPath, std::string> new_modems;
@@ -151,6 +170,14 @@ void ModemTracker::OnDeviceListChanged(
                  << " has no SIM Present property, ignoring";
       continue;
     }
+    if (!sim_present) {
+      // Test the SIMPresent property again after short delay before fw update
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE,
+          BindOnce(&ModemTracker::DelayedSimCheck,
+                   weak_ptr_factory_.GetWeakPtr(), device_path),
+          base::Seconds(10));
+    }
 
     // Record the modem device with its current carrier UUID
     std::string carrier_id = operator_info[shill::kOperatorUuidKey];
@@ -163,8 +190,8 @@ void ModemTracker::OnDeviceListChanged(
                             weak_ptr_factory_.GetWeakPtr(), device_path),
         base::BindRepeating(&OnSignalConnected));
 
-    // Try to update if carrier is known or SIM was not detected
-    if (!carrier_id.empty() || !sim_present)
+    // Try to update if carrier is known
+    if (!carrier_id.empty())
       on_modem_carrier_id_ready_callback_.Run(std::move(device));
   }
   modem_objects_ = new_modems;

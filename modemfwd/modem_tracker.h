@@ -50,6 +50,8 @@ class ModemTracker {
   // Called when the device list changes.
   void OnDeviceListChanged(const std::vector<dbus::ObjectPath>& new_list);
 
+  void DelayedSimCheck(dbus::ObjectPath device_path);
+
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> shill_proxy_;
   OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback_;
