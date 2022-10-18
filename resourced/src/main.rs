@@ -9,6 +9,9 @@ mod gpu_freq_scaling;
 mod memory;
 mod power;
 
+#[cfg(target_arch = "x86_64")]
+mod cpu_scaling;
+
 #[cfg(test)]
 mod test;
 
