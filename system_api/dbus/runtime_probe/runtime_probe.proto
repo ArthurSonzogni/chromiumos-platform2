@@ -90,7 +90,7 @@ message Battery {
     // https://chromium.git.corp.google.com/chromiumos/third_party/kernel/+/d7380965752505951668e85de59c128d1d6fd21f%5E%21/#F1
 
     // Index number of this battery, starts from 1.
-    int32 index = 1;
+    int32 index = 1 [deprecated = true];
     // Manufacturer for length not exceeding EC_COMM_TEXT_MAX.
     string manufacturer = 2;
     // Model name for length not exceeding EC_COMM_TEXT_MAX.

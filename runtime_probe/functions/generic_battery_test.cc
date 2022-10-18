@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,28 +35,21 @@ class GenericBatteryTest : public BaseFunctionTest {
     SetFile(bat0_path.Append("technology"), "Li-poly");
     SetFile(bat0_path.Append("type"), "Battery");
 
-    // Invalid battery type "USB".
-    SetFile(bat1_path.Append("manufacturer"), "123-ABC");
-    SetFile(bat1_path.Append("model_name"), "XYZ-00001");
-    SetFile(bat1_path.Append("technology"), "Li-poly");
-    SetFile(bat1_path.Append("type"), "USB");
-
     // Missing battery sysfs file.
-    SetFile(bat2_path.Append("manufacturer"), "123-ABC");
-    SetFile(bat2_path.Append("technology"), "Li-poly");
-    SetFile(bat2_path.Append("type"), "Battery");
+    SetFile(bat1_path.Append("manufacturer"), "123-ABC");
+    SetFile(bat1_path.Append("technology"), "Li-poly");
+    SetFile(bat1_path.Append("type"), "Battery");
 
-    // Invalid battery path "CHARGER0".
+    // Mismatch battery type "USB".
     SetFile(charger_path.Append("manufacturer"), "123-ABC");
     SetFile(charger_path.Append("model_name"), "XYZ-12345");
     SetFile(charger_path.Append("technology"), "Li-poly");
-    SetFile(charger_path.Append("type"), "Battery");
+    SetFile(charger_path.Append("type"), "USB");
   }
 
  protected:
   const base::FilePath bat0_path{"sys/class/power_supply/BAT0"};
   const base::FilePath bat1_path{"sys/class/power_supply/BAT1"};
-  const base::FilePath bat2_path{"sys/class/power_supply/BAT2"};
   const base::FilePath charger_path{"sys/class/power_supply/CHARGER0"};
 };
 
@@ -71,7 +64,6 @@ TEST_F(GenericBatteryTest, Succeed) {
         "chemistry": "LiP",
         "manufacturer": "123-ABCDEF",
         "model_name": "XYZ-00000-ABC",
-        "index": "1",
         "technology": "Li-poly",
         "type": "Battery"
       }
@@ -96,7 +88,6 @@ TEST_F(GenericBatteryTest, CallEctoolFailed) {
       {
         "manufacturer": "123-ABC",
         "model_name": "XYZ-00000",
-        "index": "1",
         "technology": "Li-poly",
         "type": "Battery"
       }
@@ -121,7 +112,6 @@ TEST_F(GenericBatteryTest, ParseEctoolBatteryFailed) {
       {
         "manufacturer": "123-ABC",
         "model_name": "XYZ-00000",
-        "index": "1",
         "technology": "Li-poly",
         "type": "Battery"
       }

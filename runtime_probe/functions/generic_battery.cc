@@ -25,7 +25,7 @@ namespace runtime_probe {
 
 namespace {
 
-constexpr auto kSysfsBatteryPath = "sys/class/power_supply/BAT*";
+constexpr auto kSysfsPowerSupplyPath = "sys/class/power_supply/*";
 constexpr auto kSysfsExpectedType = "Battery";
 
 // Conversion factor from mAh to uAh.
@@ -58,19 +58,6 @@ std::optional<base::Value::Dict> ProbeBatteryFromSysfs(
   }
 
   dict_value.Set("path", battery_path.value());
-
-  // TODO(b/246286694)
-  pcrecpp::RE re(R"(BAT(\d+)$)", pcrecpp::RE_Options());
-  int32_t battery_index;
-  if (!re.PartialMatch(battery_path.value(), &battery_index)) {
-    // Although we tried to extract battery index here, we don't use the index
-    // for now.  Therefore we don't raise exceptions or return null values if
-    // the battery index is not able to extract.
-    VLOG(3) << "Can't extract index from " << battery_path.value();
-  } else {
-    // The extracted index starts from 0. Shift it to start from 1.
-    dict_value.Set("index", base::NumberToString(battery_index + 1));
-  }
   return dict_value;
 }
 
@@ -115,7 +102,7 @@ GenericBattery::DataType GenericBattery::EvalImpl() const {
   DataType result{};
 
   const auto rooted_pattern =
-      Context::Get()->root_dir().Append(kSysfsBatteryPath);
+      Context::Get()->root_dir().Append(kSysfsPowerSupplyPath);
   for (const auto& battery_path : Glob(rooted_pattern)) {
     auto node_res = ProbeBatteryFromSysfs(battery_path);
     if (!node_res)
