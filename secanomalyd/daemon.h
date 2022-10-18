@@ -10,6 +10,7 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "secanomalyd/audit_log_reader.h"
 #include "secanomalyd/mount_entry.h"
 
 namespace secanomalyd {
@@ -26,13 +27,21 @@ class Daemon : public brillo::DBusDaemon {
   int OnEventLoopStarted() override;
 
  private:
+  void InitAuditLogReader();
+
   // This is called at set intervals, dictated by |kScanInterval| and invokes
   // all the anomaly detection tasks one by one.
   void ScanForAnomalies();
-  void DoWXMountScan();
 
-  // Anomalies are reported at set intervals, dictate by |kReportInterval|.
+  // Anomaly detection tasks.
+  void DoWXMountScan();
+  void DoAuditLogScan();
+
+  // Discovered anomalies are reported at set intervals, dictated by
+  // |kReportInterval|.
   void ReportAnomalies();
+
+  // Anomaly reporting tasks.
   void DoWXMountCountReporting();
 
   // Used to keep track of whether this daemon has attempted to send a crash
@@ -45,6 +54,9 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 
   MountEntryMap wx_mounts_;
+
+  // Used for reading and parsing the audit log file.
+  std::unique_ptr<AuditLogReader> audit_log_reader_;
 };
 
 }  // namespace secanomalyd

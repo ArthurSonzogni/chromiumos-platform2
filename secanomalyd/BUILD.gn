@@ -30,6 +30,7 @@ pkg_config("libsecanomaly_config") {
 
 static_library("libsecanomaly") {
   sources = [
+    "audit_log_reader.cc",
     "daemon.cc",
     "metrics.cc",
     "mount_entry.cc",
@@ -64,6 +65,7 @@ if (use.test) {
 
   executable("secanomalyd_testrunner") {
     sources = [
+      "audit_log_reader_test.cc",
       "mount_entry_test.cc",
       "mounts_test.cc",
       "processes_test.cc",

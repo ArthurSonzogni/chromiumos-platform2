@@ -1,0 +1,7 @@
+type=AVC msg=audit(1588751099.358:13): avc:  denied  { module_request } for  pid=1795 comm="init" kmod="fs-cgroup2" scontext=u:r:init:s0 tcontext=u:r:kernel:s0 tclass=system permissive=0
+======== Some Gibberish ======
+type=AVC msg=audit(1589342085.891:21): ChromeOS LSM: memfd execution attempt, cmd="/usr/bin/memfd_test /usr/sbin/trunks_client", pid=666
+type=SYSCALL msg=audit(1629139955.888:3466): arch=c000003e syscall=54 success=yes exit=0 a0=9f a1=1 a2=10 a3=7a34728220d0 items=0 ppid=1865 pid=1887 auid=4294967295 uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 comm="ThreadPoolForeg" exe="/opt/google/chrome/chrome" subj=u:r:cros_browser:s0 key=(null)
+type=AVC msg=audit(1629139959.889:3500): ChromeOS LSM: memfd execution attempt, cmd=(null), pid=777
+type=SYSCALL msg=audit(1666134528.493:8): arch=c000003e syscall=322 success=no exit=-13 a0=4 a1=202905 a2=7ffd4123bc68 a3=7ffd4123bc60 items=0 ppid=3001 pid=3158 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="memfd_test" exe="/usr/bin/memfd_test" subj=u:r:cros_ssh_session:s0 key=(null)^]ARCH=x86_64 SYSCALL=execveat AUID="root" UID="root" GID="root" EUID="root" SUID="root" FSUID="root" EGID="root" SGID="root" FSGID="root"
+type=PROCTITLE msg=audit(1666134528.493:8): proctitle=2F7573722F62696E2F6D656D66645F74657374002F7573722F7362696E2F7472756E6B735F636C69656E74

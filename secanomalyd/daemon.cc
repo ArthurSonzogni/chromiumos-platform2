@@ -23,6 +23,7 @@
 #include <brillo/process/process.h>
 #include <brillo/message_loops/message_loop.h>
 
+#include "secanomalyd/audit_log_reader.h"
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
@@ -61,6 +62,9 @@ int Daemon::OnInit() {
     return ret;
   }
 
+  // Initializes the audit log reader for accessing the audit log file.
+  InitAuditLogReader();
+
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
 
   return EX_OK;
@@ -76,6 +80,8 @@ int Daemon::OnEventLoopStarted() {
 void Daemon::ScanForAnomalies() {
   VLOG(1) << "Scanning for W+X mounts";
   DoWXMountScan();
+  VLOG(1) << "Scanning for audit log anomalies";
+  DoAuditLogScan();
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
@@ -87,6 +93,9 @@ void Daemon::ReportAnomalies() {
   VLOG(1) << "Reporting W+X mount count";
 
   DoWXMountCountReporting();
+
+  // TODO(b/255818130): Add a function for reporting the details of any
+  // discovered memfd execution events through crash reporter.
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
@@ -183,6 +192,26 @@ void Daemon::DoWXMountCountReporting() {
       if (!SendAnomalyUploadResultToUMA(success)) {
         LOG(WARNING) << "Could not upload metrics";
       }
+    }
+  }
+}
+
+void Daemon::InitAuditLogReader() {
+  audit_log_reader_ = std::make_unique<AuditLogReader>(kAuditLogPath);
+}
+
+void Daemon::DoAuditLogScan() {
+  std::string log_message;
+
+  if (!audit_log_reader_)
+    return;
+
+  LogRecord log_record;
+  while (audit_log_reader_->GetNextEntry(&log_record)) {
+    if (log_record.tag == kAVCRecordTag &&
+        IsMemfdExecutionAttempt(log_record.message)) {
+      VLOG(1) << log_record.message;
+      // TODO(b/255420492) Upload Memfd Execution UMA metric here.
     }
   }
 }
