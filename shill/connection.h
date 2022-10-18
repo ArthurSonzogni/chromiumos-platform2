@@ -102,9 +102,7 @@ class Connection {
   // Create a link route to the gateway when the gateway is in a separate
   // subnet. This can work if the host LAN and gateway LAN are bridged
   // together, but is not a recommended network configuration.
-  bool FixGatewayReachability(const IPAddress& local,
-                              IPAddress* peer,
-                              IPAddress* gateway);
+  bool FixGatewayReachability(const IPAddress& local, const IPAddress& gateway);
   // Allow for the routes specified in |properties.routes| to be served by this
   // connection.
   bool SetupIncludedRoutes(const IPConfig::Properties& properties,

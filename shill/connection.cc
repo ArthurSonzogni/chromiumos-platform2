@@ -243,6 +243,20 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     return;
   }
   bool is_p2p = peer.IsValid();
+  if (is_p2p) {
+    // For a PPP connection:
+    // 1) Never set a peer (point-to-point) address, because the kernel
+    //    will create an implicit routing rule in RT_TABLE_MAIN rather
+    //    than our preferred routing table.  If the peer IP is set to the
+    //    public IP of a VPN gateway (see below) this creates a routing loop.
+    //    If not, it still creates an undesired route.
+    // 2) Don't bother setting a gateway address either, because it doesn't
+    //    have an effect on a point-to-point link.  So `ip route show table 1`
+    //    will just say something like:
+    //        default dev ppp0 metric 10
+    peer.SetAddressToDefault();
+    gateway.SetAddressToDefault();
+  }
 
   if (!fixed_ip_params_) {
     if (device_info_->HasOtherAddress(interface_index_, local)) {
@@ -272,7 +286,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     return;
   }
 
-  if (!FixGatewayReachability(local, &peer, &gateway)) {
+  if (!is_p2p && !FixGatewayReachability(local, gateway)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -482,48 +496,31 @@ void Connection::PushDNSConfig() {
 }
 
 bool Connection::FixGatewayReachability(const IPAddress& local,
-                                        IPAddress* peer,
-                                        IPAddress* gateway) {
-  SLOG(2) << __func__ << " local " << local.ToString() << ", peer "
-          << peer->ToString() << ", gateway " << gateway->ToString();
+                                        const IPAddress& gateway) {
+  SLOG(2) << __func__ << " local " << local.ToString() << ", gateway "
+          << gateway.ToString();
 
-  if (peer->IsValid()) {
-    // For a PPP connection:
-    // 1) Never set a peer (point-to-point) address, because the kernel
-    //    will create an implicit routing rule in RT_TABLE_MAIN rather
-    //    than our preferred routing table.  If the peer IP is set to the
-    //    public IP of a VPN gateway (see below) this creates a routing loop.
-    //    If not, it still creates an undesired route.
-    // 2) Don't bother setting a gateway address either, because it doesn't
-    //    have an effect on a point-to-point link.  So `ip route show table 1`
-    //    will just say something like:
-    //        default dev ppp0 metric 10
-    peer->SetAddressToDefault();
-    gateway->SetAddressToDefault();
-    return true;
-  }
-
-  if (!gateway->IsValid()) {
+  if (!gateway.IsValid()) {
     LOG(WARNING) << "No gateway address was provided for this connection.";
     return false;
   }
 
   // The prefix check will usually fail on IPv6 because IPv6 gateways
   // typically use link-local addresses.
-  if (local.CanReachAddress(*gateway) ||
+  if (local.CanReachAddress(gateway) ||
       local.family() == IPAddress::kFamilyIPv6) {
     return true;
   }
 
-  LOG(WARNING) << "Gateway " << gateway->ToString()
+  LOG(WARNING) << "Gateway " << gateway.ToString()
                << " is unreachable from local address/prefix "
                << local.ToString() << "/" << local.prefix();
   LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
-  IPAddress gateway_with_max_prefix(*gateway);
+  IPAddress gateway_with_max_prefix(gateway);
   gateway_with_max_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(gateway_with_max_prefix.family()));
-  IPAddress default_address(gateway->family());
+  IPAddress default_address(gateway.family());
   auto entry = RoutingTableEntry::Create(gateway_with_max_prefix,
                                          default_address, default_address)
                    .SetScope(RT_SCOPE_LINK)

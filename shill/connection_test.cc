@@ -148,9 +148,8 @@ class ConnectionTest : public Test {
   }
 
   bool FixGatewayReachability(const IPAddress& local,
-                              IPAddress* peer,
-                              IPAddress* gateway) {
-    return connection_->FixGatewayReachability(local, peer, gateway);
+                              const IPAddress& gateway) {
+    return connection_->FixGatewayReachability(local, gateway);
   }
 
   void SetMTU(int32_t mtu) { return connection_->SetMTU(mtu); }
@@ -944,6 +943,29 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   connection_->UpdateFromIPConfig(ipv4_properties_);
 }
 
+TEST_F(ConnectionTest, PointToPointNetwork) {
+  auto device = CreateDevice(Technology::kUnknown);
+  connection_ = CreateConnection(device);
+
+  // If this is a peer-to-peer interface, the gateway address should be modified
+  // to allow routing to work correctly.
+  static const char kLocal[] = "10.242.2.13";
+  static const char kRemote[] = "10.242.2.14";
+  IPConfig::Properties properties(ipv4_properties_);
+  properties.peer_address = kRemote;
+  properties.address = kLocal;
+  EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
+  EXPECT_CALL(routing_table_, SetDefaultRoute(_, IsDefaultAddress(), _));
+  EXPECT_CALL(routing_table_, FlushRules(_));
+  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
+                                             IPConfig::kDefaultMTU));
+  connection_->UpdateFromIPConfig(properties);
+
+  EXPECT_TRUE(connection_->gateway().IsDefault());
+}
+
 TEST_F(ConnectionTest, FixGatewayReachability) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
@@ -954,24 +976,19 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   const int kPrefix = 24;
   local.set_prefix(kPrefix);
   IPAddress gateway(IPAddress::kFamilyIPv4);
-  IPAddress peer(IPAddress::kFamilyIPv4);
 
-  // Should fail because no gateway is set and peer address is invalid.
-  EXPECT_FALSE(FixGatewayReachability(local, &peer, &gateway));
+  // Should fail because no gateway is set
+  EXPECT_FALSE(FixGatewayReachability(local, gateway));
   EXPECT_EQ(kPrefix, local.prefix());
-  EXPECT_FALSE(peer.IsValid());
   EXPECT_FALSE(gateway.IsValid());
 
   // Should succeed because with the given prefix, this gateway is reachable.
   static const char kReachableGateway[] = "10.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
   IPAddress gateway_backup(gateway);
-  peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, gateway));
   // Prefix should remain unchanged.
   EXPECT_EQ(kPrefix, local.prefix());
-  // Peer should remain unchanged.
-  EXPECT_FALSE(peer.IsValid());
   // Gateway should remain unchanged.
   EXPECT_TRUE(gateway_backup.Equals(gateway));
 
@@ -980,14 +997,11 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(gateway.SetAddressFromString(kRemoteGateway));
   gateway_backup = gateway;
   gateway_backup.SetAddressToDefault();
-  peer = IPAddress(IPAddress::kFamilyIPv4);
   EXPECT_CALL(routing_table_,
               AddRoute(device->interface_index(), IsLinkRouteTo(gateway)))
       .WillOnce(Return(true));
-  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
+  EXPECT_TRUE(FixGatewayReachability(local, gateway));
 
-  // Invalid peer should not be modified.
-  EXPECT_FALSE(peer.IsValid());
   // Gateway should not be set to default.
   EXPECT_FALSE(gateway_backup.Equals(gateway));
 
@@ -995,25 +1009,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   EXPECT_CALL(routing_table_,
               AddRoute(device->interface_index(), IsLinkRouteTo(gateway)))
       .WillOnce(Return(false));
-  EXPECT_FALSE(FixGatewayReachability(local, &peer, &gateway));
-
-  // Even if there is a peer specified and it does not match the gateway, we
-  // should not fail.
-  local.set_prefix(kPrefix);
-  ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
-  EXPECT_EQ(kPrefix, local.prefix());
-  EXPECT_FALSE(peer.Equals(gateway));
-
-  // If this is a peer-to-peer interface and the peer matches the gateway, the
-  // gateway and peer address should be modified to allow routing to work
-  // correctly.
-  static const char kUnreachableGateway[] = "11.242.2.14";
-  ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
-  ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
-  EXPECT_TRUE(FixGatewayReachability(local, &peer, &gateway));
-  EXPECT_TRUE(peer.IsDefault());
-  EXPECT_TRUE(gateway.IsDefault());
+  EXPECT_FALSE(FixGatewayReachability(local, gateway));
 }
 
 TEST_F(ConnectionTest, SetMTU) {
