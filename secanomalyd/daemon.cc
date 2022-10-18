@@ -46,10 +46,10 @@ constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
     return 2;
 }
 
-constexpr base::TimeDelta kCheckInterval = base::Seconds(30);
+constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
 // users run the reporting.
-constexpr base::TimeDelta kReportWXMountCountInterval = base::Hours(2);
+constexpr base::TimeDelta kReportInterval = base::Hours(2);
 
 }  // namespace
 
@@ -67,34 +67,34 @@ int Daemon::OnInit() {
 }
 
 int Daemon::OnEventLoopStarted() {
-  CheckWXMounts();
-  ReportWXMountCount();
+  ScanForAnomalies();
+  ReportAnomalies();
 
   return EX_OK;
 }
 
-void Daemon::CheckWXMounts() {
-  VLOG(1) << "Checking for W+X mounts";
-
-  DoWXMountCheck();
+void Daemon::ScanForAnomalies() {
+  VLOG(1) << "Scanning for W+X mounts";
+  DoWXMountScan();
 
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::BindOnce(&Daemon::CheckWXMounts, base::Unretained(this)),
-      kCheckInterval);
+      FROM_HERE,
+      base::BindOnce(&Daemon::ScanForAnomalies, base::Unretained(this)),
+      kScanInterval);
 }
 
-void Daemon::ReportWXMountCount() {
+void Daemon::ReportAnomalies() {
   VLOG(1) << "Reporting W+X mount count";
 
   DoWXMountCountReporting();
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Daemon::ReportWXMountCount, base::Unretained(this)),
-      kReportWXMountCountInterval);
+      base::BindOnce(&Daemon::ReportAnomalies, base::Unretained(this)),
+      kReportInterval);
 }
 
-void Daemon::DoWXMountCheck() {
+void Daemon::DoWXMountScan() {
   MaybeMountEntries mount_entries = ReadMounts(MountFilter::kAll);
   if (!mount_entries) {
     LOG(ERROR) << "Failed to read mounts";
@@ -162,9 +162,10 @@ void Daemon::DoWXMountCountReporting() {
     }
 
     // Should we send an anomalous system report?
-    if (generate_reports_ && !has_attempted_report_ && wx_mount_count > 0) {
+    if (generate_reports_ && !has_attempted_wx_mount_report_ &&
+        wx_mount_count > 0) {
       // Stop subsequent reporting attempts for this execution.
-      has_attempted_report_ = true;
+      has_attempted_wx_mount_report_ = true;
       // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
       // |base::RandInt()| returns a random int in [min, max].
       int range = dev_ ? 1 : CalculateSampleFrequency(wx_mount_count);

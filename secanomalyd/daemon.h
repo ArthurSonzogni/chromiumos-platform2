@@ -26,16 +26,21 @@ class Daemon : public brillo::DBusDaemon {
   int OnEventLoopStarted() override;
 
  private:
-  void CheckWXMounts();
-  void DoWXMountCheck();
+  // This is called at set intervals, dictated by |kScanInterval| and invokes
+  // all the anomaly detection tasks one by one.
+  void ScanForAnomalies();
+  void DoWXMountScan();
 
-  void ReportWXMountCount();
+  // Anomalies are reported at set intervals, dictate by |kReportInterval|.
+  void ReportAnomalies();
   void DoWXMountCountReporting();
+
+  // Used to keep track of whether this daemon has attempted to send a crash
+  // report for a W+X mount observation throughout its lifetime.
+  bool has_attempted_wx_mount_report_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;
-
-  bool has_attempted_report_ = false;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 
