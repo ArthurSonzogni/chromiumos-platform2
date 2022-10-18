@@ -542,8 +542,9 @@ Status message: SelfTest status: Test PASS
 Compares the device's NVMe storage's wear level against the input threshold.
 
 Parameters:
--   `--wear_level_threshold` - Acceptable wear level for the device's NVMe
-    storage. Type: `uint32_t`. Default: `50`. Allowable values: `(0,99)`
+-   `--wear_level_threshold` - (Optional) Acceptable wear level for the device's
+    NVMe storage. If not specified, device threshold set in cros-config will be
+    used instead. Type: `uint32_t`. Allowable values: `(0,99)`
 
 To ensure the device's NVMe storage has a wear level no more than 20:
 
