@@ -306,9 +306,14 @@ void CellularController::HandleModemRegulatoryDomainChange(
   UpdateTransmitPower();
 }
 
+/*
+ * The algorithm chosen is - as always - a conservative one where all inputs
+ * need to be in "HIGH-allowed" mode (FAR for proximity, OFF for tablet mode)
+ * in order to allow HIGH power to be selected.
+ */
 RadioTransmitPower CellularController::DetermineTransmitPower() const {
-  RadioTransmitPower proximity_power = RadioTransmitPower::HIGH;
-  RadioTransmitPower tablet_mode_power = RadioTransmitPower::HIGH;
+  RadioTransmitPower proximity_power = RadioTransmitPower::UNSPECIFIED;
+  RadioTransmitPower tablet_mode_power = RadioTransmitPower::UNSPECIFIED;
 
   if (set_transmit_power_for_proximity_) {
     switch (proximity_) {

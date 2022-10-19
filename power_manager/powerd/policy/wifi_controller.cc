@@ -59,16 +59,11 @@ void WifiController::Init(Delegate* delegate,
                << kWifiTransmitPowerModeForStaticDevicePref << " pref set";
   }
 
-  // Update power input source based on prefs.
-  if (set_transmit_power_for_tablet_mode_) {
-    update_power_input_source_ = UpdatePowerInputSource::TABLET_MODE;
-  } else if (set_transmit_power_for_proximity_) {
-    // This is handled by WifiController::ProximitySensorDetected.
-  } else if (!transmit_power_mode_for_static_device_.empty()) {
+  if (!set_transmit_power_for_tablet_mode_ &&
+      !set_transmit_power_for_proximity_ &&
+      !transmit_power_mode_for_static_device_.empty()) {
     static_mode_ = StaticModeFromString(transmit_power_mode_for_static_device_);
-    if (static_mode_ != StaticMode::UNSUPPORTED) {
-      update_power_input_source_ = UpdatePowerInputSource::STATIC_MODE;
-    } else {
+    if (static_mode_ == StaticMode::UNSUPPORTED) {
       LOG(WARNING) << "Invalid configuration: "
                    << kWifiTransmitPowerModeForStaticDevicePref << '='
                    << transmit_power_mode_for_static_device_;
@@ -80,6 +75,9 @@ void WifiController::Init(Delegate* delegate,
 }
 
 void WifiController::HandleTabletModeChange(TabletMode mode) {
+  if (!set_transmit_power_for_tablet_mode_)
+    return;
+
   if (tablet_mode_ == mode)
     return;
 
@@ -99,8 +97,12 @@ void WifiController::ProximitySensorDetected(UserProximity value) {
   if (!set_transmit_power_for_proximity_)
     return;
 
-  update_power_input_source_ = UpdatePowerInputSource::PROXIMITY;
-  LOG(INFO) << "Wifi power will be handled by proximity sensor";
+  if (set_transmit_power_for_tablet_mode_) {
+    LOG(INFO) << "WiFi power will be handled by proximity sensor and "
+                 "tablet mode";
+  } else {
+    LOG(INFO) << "WiFi power will be handled by proximity sensor";
+  }
   HandleProximityChange(value);
 }
 
@@ -119,65 +121,61 @@ void WifiController::OnUdevEvent(const system::UdevEvent& event) {
     UpdateTransmitPower(TriggerSource::UDEV_EVENT);
 }
 
+/*
+ * The algorithm chosen is - as always - a conservative one where all inputs
+ * need to be in "HIGH-allowed" mode (FAR for proximity, OFF for tablet mode)
+ * in order to allow HIGH power to be selected.
+ *
+ * When no input states are known, return |UNSPECIFIED| power level.
+ */
+RadioTransmitPower WifiController::DetermineTransmitPower() const {
+  RadioTransmitPower proximity_power = RadioTransmitPower::UNSPECIFIED;
+  RadioTransmitPower tablet_mode_power = RadioTransmitPower::UNSPECIFIED;
+
+  if (set_transmit_power_for_proximity_) {
+    switch (proximity_) {
+      case UserProximity::UNKNOWN:
+        break;
+      case UserProximity::NEAR:
+        proximity_power = RadioTransmitPower::LOW;
+        break;
+      case UserProximity::FAR:
+        proximity_power = RadioTransmitPower::HIGH;
+        break;
+    }
+  }
+
+  if (set_transmit_power_for_tablet_mode_) {
+    switch (tablet_mode_) {
+      case TabletMode::UNSUPPORTED:
+        break;
+      case TabletMode::ON:
+        tablet_mode_power = RadioTransmitPower::LOW;
+        break;
+      case TabletMode::OFF:
+        tablet_mode_power = RadioTransmitPower::HIGH;
+        break;
+    }
+  }
+
+  if (proximity_power == RadioTransmitPower::UNSPECIFIED &&
+      tablet_mode_power == RadioTransmitPower::UNSPECIFIED &&
+      static_mode_ == StaticMode::UNSUPPORTED)
+    return RadioTransmitPower::UNSPECIFIED;
+
+  if (proximity_power == RadioTransmitPower::LOW ||
+      tablet_mode_power == RadioTransmitPower::LOW ||
+      static_mode_ == StaticMode::LOW_TRANSMIT_POWER)
+    return RadioTransmitPower::LOW;
+
+  return RadioTransmitPower::HIGH;
+}
+
 void WifiController::UpdateTransmitPower(TriggerSource tr_source) {
-  switch (update_power_input_source_) {
-    case UpdatePowerInputSource::TABLET_MODE:
-      UpdateTransmitPowerForTabletMode(tr_source);
-      break;
-    case UpdatePowerInputSource::PROXIMITY:
-      UpdateTransmitPowerForProximity(tr_source);
-      break;
-    case UpdatePowerInputSource::STATIC_MODE:
-      UpdateTransmitPowerForStaticMode(tr_source);
-      break;
-    case UpdatePowerInputSource::NONE:
-      break;
-  }
-}
+  RadioTransmitPower wanted_power = DetermineTransmitPower();
 
-void WifiController::UpdateTransmitPowerForStaticMode(TriggerSource tr_source) {
-  switch (static_mode_) {
-    case StaticMode::UNSUPPORTED:
-      break;
-    case StaticMode::HIGH_TRANSMIT_POWER:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_, tr_source);
-      break;
-    case StaticMode::LOW_TRANSMIT_POWER:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
-                                      tr_source);
-      break;
-  }
-}
-
-void WifiController::UpdateTransmitPowerForTabletMode(TriggerSource tr_source) {
-  switch (tablet_mode_) {
-    case TabletMode::UNSUPPORTED:
-      break;
-    case TabletMode::ON:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
-                                      tr_source);
-      break;
-    case TabletMode::OFF:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_, tr_source);
-      break;
-  }
-}
-
-void WifiController::UpdateTransmitPowerForProximity(TriggerSource tr_source) {
-  switch (proximity_) {
-    case UserProximity::UNKNOWN:
-      break;
-    case UserProximity::NEAR:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
-                                      tr_source);
-      break;
-    case UserProximity::FAR:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_, tr_source);
-      break;
-  }
+  if (wanted_power != RadioTransmitPower::UNSPECIFIED)
+    delegate_->SetWifiTransmitPower(wanted_power, wifi_reg_domain_, tr_source);
 }
 
 }  // namespace policy

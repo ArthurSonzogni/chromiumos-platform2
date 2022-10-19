@@ -83,16 +83,12 @@ class WifiController : public system::UdevSubsystemObserver,
     }
   }
 
-  // Updates transmit power via |delegate_|. Ends up invoking either one of
-  // UpdateTransmitPowerFor*() depending on |update_power_input_source_|.
+  // Updates transmit power via |delegate_|.
+  // Decide which power setting to use based on current input source(s) state.
   void UpdateTransmitPower(TriggerSource source);
 
-  void UpdateTransmitPowerForStaticMode(TriggerSource source);
-  void UpdateTransmitPowerForTabletMode(TriggerSource source);
-  void UpdateTransmitPowerForProximity(TriggerSource source);
+  RadioTransmitPower DetermineTransmitPower() const;
 
-  UpdatePowerInputSource update_power_input_source_ =
-      UpdatePowerInputSource::NONE;
   Delegate* delegate_ = nullptr;           // Not owned.
   system::UdevInterface* udev_ = nullptr;  // Not owned.
 

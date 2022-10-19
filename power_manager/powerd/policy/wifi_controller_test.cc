@@ -203,6 +203,15 @@ TEST_F(WifiControllerTest, IgnoreTabletEventIfProximity) {
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
 }
 
+TEST_F(WifiControllerTest, IgnoreProximityIfTabletEvent) {
+  set_transmit_power_proximity_pref_value_ = true;
+  Init(TabletMode::UNSUPPORTED);
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  controller_.ProximitySensorDetected(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+}
+
 TEST_F(WifiControllerTest, SetRegDomainOnRegDomainEventIfTablet) {
   set_transmit_power_tablet_pref_value_ = true;
   Init(TabletMode::ON);
