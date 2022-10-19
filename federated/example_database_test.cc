@@ -609,4 +609,41 @@ TEST_F(ExampleDatabaseTest, DeleteExamplesMalformed) {
   EXPECT_TRUE(db_->Close());
 }
 
+TEST_F(ExampleDatabaseTest, DeleteOutdatedExamples) {
+  // Prepares the db file, in table test_client_1 there are 100 outdated
+  // examples with timestamp = SecondsAfterEpoch(*), and one example with
+  // timestamp = Now();
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+  ASSERT_TRUE(db_->InsertExample("test_client_1",
+                                 {-1, "manual_example", base::Time::Now()}));
+  ASSERT_TRUE(db_->Close());
+
+  // Creates a new ExampleDatabase instance that loads this db, and calls
+  // `DeleteOutdatedExamples` to delete all expired examples.
+  const base::FilePath db_path = temp_path().Append(kDatabaseFileName);
+  EXPECT_TRUE(base::PathExists(db_path));
+
+  const std::unordered_set<std::string> clients(kTestClients.begin(),
+                                                kTestClients.end());
+  ExampleDatabase db(db_path);
+  EXPECT_TRUE(db.Init(clients));
+  EXPECT_TRUE(db.IsOpen());
+  EXPECT_TRUE(db.CheckIntegrity());
+
+  EXPECT_TRUE(db.DeleteOutdatedExamples(base::Days(10)));
+
+  // Now only the manual example remains in the table.
+  EXPECT_EQ(1, db.ExampleCountForTesting("test_client_1"));
+  ExampleDatabase::Iterator it = db.GetIteratorForTesting("test_client_1");
+  auto record = it.Next();
+  EXPECT_TRUE(record.ok());
+  EXPECT_EQ(record->id, 101);
+  EXPECT_EQ(record->serialized_example, "manual_example");
+
+  record = it.Next();
+  EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+
+  EXPECT_TRUE(db.Close());
+}
+
 }  // namespace federated

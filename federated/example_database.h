@@ -40,7 +40,8 @@ struct ExampleRecord {
 // Example usage:
 // Construct and initialize:
 //    ExampleDatabase db(db_path);
-//    if(!db.Init(kTestClients) || !db.IsOpen() || !db.CheckIntegrity()) {
+//    if(!db.Init(kTestClients) || !db.IsOpen() || !db.CheckIntegrity() ||
+//       !db.DeleteOutdatedExamples(example_ttl)) {
 //      // Error handling.
 //    }
 //
@@ -125,6 +126,10 @@ class ExampleDatabase {
   virtual bool Close();
   // Runs sqlite built-in integrity check. Returns true if no error is found.
   virtual bool CheckIntegrity() const;
+
+  // Deletes expired examples from all client tables in the db. They all have a
+  // timestamp column. Returns true if no error occurred.
+  virtual bool DeleteOutdatedExamples(const base::TimeDelta& example_ttl) const;
 
   // Returns an iterator through the examples for the given client within the
   // time range.

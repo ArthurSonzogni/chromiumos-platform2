@@ -7,6 +7,7 @@
 #include <cinttypes>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -43,8 +44,8 @@ int ExampleCountCallback(void* const /* int* const */ data,
                          const int col_count,
                          char** const cols,
                          char** const /* names */) {
-  CHECK(data != nullptr);
-  CHECK(cols != nullptr);
+  DCHECK(data != nullptr);
+  DCHECK(cols != nullptr);
 
   int example_count = 0;
   if (col_count != 1 || cols[0] == nullptr ||
@@ -64,8 +65,8 @@ int IntegrityCheckCallback(void* const /* std::string* const */ data,
                            int const col_count,
                            char** const cols,
                            char** const /* names */) {
-  CHECK(data != nullptr);
-  CHECK(cols != nullptr);
+  DCHECK(data != nullptr);
+  DCHECK(cols != nullptr);
 
   if (col_count != 1 || cols[0] == nullptr) {
     LOG(ERROR) << "Invalid integrity check results";
@@ -83,8 +84,8 @@ int ClientTableExistsCallback(void* const /* int* const */ data,
                               const int col_count,
                               char** const cols,
                               char** const /* names */) {
-  CHECK(data != nullptr);
-  CHECK(cols != nullptr);
+  DCHECK(data != nullptr);
+  DCHECK(cols != nullptr);
 
   auto* const table_count = static_cast<int*>(data);
   if (col_count != 1 || cols[0] == nullptr ||
@@ -92,6 +93,30 @@ int ClientTableExistsCallback(void* const /* int* const */ data,
     LOG(ERROR) << "Table existence check failed";
     return SQLITE_ERROR;
   }
+  return SQLITE_OK;
+}
+
+int GetAllTableNamesCallback(
+    void* const /* std::vector<std::string>* const */ data,
+    const int col_count,
+    char** const cols,
+    char** const /* names */) {
+  DCHECK(data != nullptr);
+  DCHECK(cols != nullptr);
+
+  auto* const all_table_names = static_cast<std::vector<std::string>*>(data);
+  if (col_count != 1) {
+    LOG(ERROR) << "GetAllTableNames failed";
+    return SQLITE_ERROR;
+  }
+  for (size_t i = 0; i < sizeof(cols) / sizeof(char*); i++) {
+    if (cols[i] == nullptr) {
+      LOG(ERROR) << "GetAllTableNames gets unexpected nullptr at index " << i;
+      return SQLITE_ERROR;
+    }
+    all_table_names->push_back(std::string(cols[i]));
+  }
+
   return SQLITE_OK;
 }
 
@@ -271,6 +296,44 @@ bool ExampleDatabase::CheckIntegrity() const {
   }
 
   return integrity_result == "ok";
+}
+
+bool ExampleDatabase::DeleteOutdatedExamples(
+    const base::TimeDelta& example_ttl) const {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to delete examples from a closed database";
+    return false;
+  }
+
+  std::vector<std::string> all_table_names;
+  const ExecResult result =
+      ExecSql("SELECT name FROM sqlite_master WHERE type = 'table';",
+              GetAllTableNamesCallback, &all_table_names);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to get all table names: " << result.error_msg;
+    return false;
+  }
+
+  base::Time expired_timestamp = base::Time::Now() - example_ttl;
+  int error_count = 0;
+  for (const auto& table_name : all_table_names) {
+    // "sqlite_*" are sqlite reserved table names.
+    if (table_name.find("sqlite_") == 0)
+      continue;
+
+    const ExecResult result = ExecSql(
+        base::StringPrintf("DELETE FROM %s WHERE timestamp < %" PRId64 ";",
+                           table_name.c_str(), expired_timestamp.ToJavaTime()));
+    if (result.code != SQLITE_OK) {
+      error_count++;
+      LOG(ERROR) << "Failed to delete expired examples from table "
+                 << table_name << "with message: " << result.error_msg;
+    } else {
+      DVLOG(1) << "Delete expired examples from table " << table_name
+               << " count = " << sqlite3_changes(db_.get());
+    }
+  }
+  return error_count == 0;
 }
 
 ExampleDatabase::Iterator ExampleDatabase::GetIterator(

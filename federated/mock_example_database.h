@@ -52,6 +52,10 @@ class MockExampleDatabase : public ExampleDatabase {
   MOCK_METHOD(bool, Close, (), (override));
   MOCK_METHOD(bool, CheckIntegrity, (), (const, override));
   MOCK_METHOD(bool,
+              DeleteOutdatedExamples,
+              (const base::TimeDelta&),
+              (const, override));
+  MOCK_METHOD(bool,
               InsertExample,
               (const std::string&, const ExampleRecord&),
               (override));

@@ -25,10 +25,12 @@
 #endif
 
 namespace federated {
+namespace {
+const base::TimeDelta kExampleTtl = base::Days(40);
+
 #if USE_LOCAL_FEDERATED_SERVER
 // When we are testing against a local federated server, we want to populate
 // the test server with generic test data
-namespace {
 using ::chromeos::federated::mojom::Example;
 using ::chromeos::federated::mojom::ExamplePtr;
 using ::chromeos::federated::mojom::Features;
@@ -52,9 +54,9 @@ ExamplePtr CreateExamplePtr(const std::string& query) {
 
   return example;
 }
+#endif
 
 }  // namespace
-#endif
 
 StorageManager::StorageManager() = default;
 StorageManager::~StorageManager() = default;
@@ -173,6 +175,10 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     if (!base::DeleteFile(db_path)) {
       LOG(ERROR) << "Failed to delete corrupted db file " << db_path.value();
     }
+    example_database_.reset();
+  } else if (!example_database_->DeleteOutdatedExamples(kExampleTtl)) {
+    LOG(ERROR) << "Failed to delete outdated examples for user "
+               << sanitized_username_;
     example_database_.reset();
   } else {
 #if USE_LOCAL_FEDERATED_SERVER
