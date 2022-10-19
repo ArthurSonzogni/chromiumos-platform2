@@ -10,6 +10,7 @@
 
 #include "dlcservice/system_state.h"
 
+// TODO(b/254557435): Reduce the # of calls made into lvmd.
 namespace dlcservice {
 namespace {
 
@@ -120,6 +121,17 @@ bool LvmdProxyWrapper::RemoveLogicalVolume(const lvmd::LogicalVolume& lv) {
   return true;
 }
 
+bool LvmdProxyWrapper::ToggleLogicalVolumeActivation(
+    const lvmd::LogicalVolume& lv, bool activate) {
+  brillo::ErrorPtr err;
+  if (!lvmd_proxy_->ToggleLogicalVolumeActivation(lv, activate, &err)) {
+    LOG(WARNING) << "Failed to ToggleLogicalVolumeActivation in lvmd: "
+                 << Error::ToString(err);
+    return false;
+  }
+  return true;
+}
+
 bool LvmdProxyWrapper::CreateLogicalVolumes(
     const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) {
   auto stateful_path =
@@ -153,13 +165,18 @@ bool LvmdProxyWrapper::CreateLogicalVolumes(
   lvmd::LogicalVolume lv;
   for (const auto& lv_config : lv_configs) {
     auto lv_name = lv_config.name();
-    if (!GetLogicalVolume(thinpool.volume_group(), lv_name, &lv) &&
-        !CreateLogicalVolume(thinpool, lv_config, &lv)) {
+    if (GetLogicalVolume(thinpool.volume_group(), lv_name, &lv)) {
+      if (!ToggleLogicalVolumeActivation(lv, /*activate=*/true)) {
+        LOG(ERROR) << "Failed to ToggleLogicalVolumeActivation name="
+                   << lv_name;
+        return false;
+      }
+    } else if (!CreateLogicalVolume(thinpool, lv_config, &lv)) {
       LOG(ERROR) << "Failed to CreateLogicalVolume name=" << lv_name;
       return false;
     }
   }
-  // TODO(b/236007986): Unsparse the logical volumes.
+  // TODO(b/254373821): Unsparse the logical volumes.
   return true;
 }
 
@@ -193,6 +210,35 @@ bool LvmdProxyWrapper::RemoveLogicalVolumes(
     }
   }
   return ret;
+}
+
+bool LvmdProxyWrapper::ActivateLogicalVolume(const std::string& lv_name) {
+  auto stateful_path =
+      SystemState::Get()->boot_slot()->GetStatefulPartitionPath();
+
+  lvmd::PhysicalVolume pv;
+  if (!GetPhysicalVolume(stateful_path.value(), &pv)) {
+    LOG(ERROR) << "Failed to GetPhysicalVolume.";
+    return false;
+  }
+
+  lvmd::VolumeGroup vg;
+  if (!GetVolumeGroup(pv, &vg)) {
+    LOG(ERROR) << "Failed to GetVolumeGroup.";
+    return false;
+  }
+
+  lvmd::LogicalVolume lv;
+  if (!GetLogicalVolume(vg, lv_name, &lv)) {
+    LOG(ERROR) << "Failed to GetLogicalVolume.";
+    return false;
+  }
+
+  if (!ToggleLogicalVolumeActivation(lv, /*activate=*/true)) {
+    LOG(ERROR) << "Failed to ToggleLogicalVolumeActivation from lvmd.";
+    return false;
+  }
+  return true;
 }
 
 std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {

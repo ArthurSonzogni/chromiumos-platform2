@@ -28,6 +28,7 @@ class MockLvmdProxyWrapper : public LvmdProxyWrapperInterface {
               RemoveLogicalVolumes,
               (const std::vector<std::string>&),
               (override));
+  MOCK_METHOD(bool, ActivateLogicalVolume, (const std::string&), (override));
   MOCK_METHOD(std::string,
               GetLogicalVolumePath,
               (const std::string&),
