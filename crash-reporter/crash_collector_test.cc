@@ -1027,6 +1027,27 @@ TEST_F(CrashCollectorTest, StripSerialNumbers) {
   EXPECT_EQ(kCrashWithUsbSerialNumbersStripped, crash_with_usb_serial_numbers);
 }
 
+TEST_F(CrashCollectorTest, StripRecoveryId) {
+  const std::string kCrashWithRecoveryId =
+      "2022-10-13T07:35:34.518810Z INFO cryptohomed[2055]: AuthSession: "
+      "started with is_ephemeral_user=0 intent=decrypt user_exists=1 keys=.\n"
+      "2022-10-13T07:35:34.576054Z INFO cryptohomed[2055]: "
+      "GenerateRecoveryRequestAssociatedData for recovery_id: "
+      "3ecb8fc835a164e741f3e002a93495ea9b2f40dcf16acb393c30c3b18768ddce\n"
+      "2022-10-13T07:35:36.060608Z INFO cryptohomed[2055]: AuthSession: "
+      "decrypt authentication attempt via test-recovery factor.";
+  const std::string kCrashWithRecoveryIdStripped =
+      "2022-10-13T07:35:34.518810Z INFO cryptohomed[2055]: AuthSession: "
+      "started with is_ephemeral_user=0 intent=decrypt user_exists=1 keys=.\n"
+      "2022-10-13T07:35:34.576054Z INFO cryptohomed[2055]: "
+      "GenerateRecoveryRequestAssociatedData for recovery_id: <redacted hash>\n"
+      "2022-10-13T07:35:36.060608Z INFO cryptohomed[2055]: AuthSession: "
+      "decrypt authentication attempt via test-recovery factor.";
+  std::string crash_with_recovery_id(kCrashWithRecoveryId);
+  collector_.StripRecoveryId(&crash_with_recovery_id);
+  EXPECT_EQ(kCrashWithRecoveryIdStripped, crash_with_recovery_id);
+}
+
 TEST_F(CrashCollectorTest, GetCrashDirectoryInfoOld) {
   FilePath path;
   const int kRootUid = 0;

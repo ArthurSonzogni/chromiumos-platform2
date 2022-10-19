@@ -244,6 +244,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, StripSensitiveDataSample);
   FRIEND_TEST(CrashCollectorTest, StripEmailAddresses);
   FRIEND_TEST(CrashCollectorTest, StripSerialNumbers);
+  FRIEND_TEST(CrashCollectorTest, StripRecoveryId);
   FRIEND_TEST(CrashCollectorTest, RemoveNewFileFailsOnNonExistantFiles);
   FRIEND_TEST(CrashCollectorTest,
               RemoveNewFileFailsOnNonExistantFilesInCrashLoopMode);
@@ -345,6 +346,7 @@ class CrashCollector {
   void StripMacAddresses(std::string* contents);
   void StripEmailAddresses(std::string* contents);
   void StripSerialNumbers(std::string* contents);
+  void StripRecoveryId(std::string* contents);
 
   // This is going away once the experiment is done.
   // TODO(b/186659673): Validate daemon-store usage and remove this

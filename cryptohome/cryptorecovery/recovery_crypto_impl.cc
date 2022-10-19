@@ -85,7 +85,8 @@ bool GenerateRecoveryRequestAssociatedData(
     return false;
   }
   // Log the recovery id, to be used for debugging.
-  LOG(INFO) << "GenerateRecoveryRequestAssociatedData for recovery id: "
+  // Note: the log format should match `CrashCollector::StripRecoveryId()`.
+  LOG(INFO) << "GenerateRecoveryRequestAssociatedData for recovery_id: "
             << hsm_associated_data.onboarding_meta_data.recovery_id;
 
   request_ad->hsm_payload = hsm_payload;

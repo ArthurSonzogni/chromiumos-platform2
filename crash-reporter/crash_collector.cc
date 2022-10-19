@@ -760,11 +760,11 @@ std::string CrashCollector::Sanitize(const std::string& name) {
 }
 
 void CrashCollector::StripSensitiveData(std::string* contents) {
-  // At the moment, the only sensitive data we strip is MAC addresses, emails
-  // and serial numbers.
+  // At the moment, only specific data patterns are used for stripping.
   StripMacAddresses(contents);
   StripEmailAddresses(contents);
   StripSerialNumbers(contents);
+  StripRecoveryId(contents);
 }
 
 void CrashCollector::StripMacAddresses(std::string* contents) {
@@ -866,6 +866,23 @@ void CrashCollector::StripSerialNumbers(std::string* contents) {
 
   while (RE2::Consume(&input, serialnumber_re, &pre_re_str, &re_str)) {
     result << pre_re_str << "<redacted serial number>";
+  }
+  result << input;
+  *contents = result.str();
+}
+
+void CrashCollector::StripRecoveryId(std::string* contents) {
+  std::ostringstream result;
+  re2::StringPiece input(*contents);
+  std::string pre_re_str;
+  std::string re_str;
+
+  RE2 recovery_id_re(R"(((?s:.*)recovery_id: )([0-9a-f]*)\b)");
+
+  CHECK_EQ("", recovery_id_re.error());
+
+  while (RE2::Consume(&input, recovery_id_re, &pre_re_str, &re_str)) {
+    result << pre_re_str << "<redacted hash>";
   }
   result << input;
   *contents = result.str();
