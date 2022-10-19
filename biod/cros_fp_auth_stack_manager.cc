@@ -187,11 +187,15 @@ BioSession CrosFpAuthStackManager::StartAuthSession(std::string user_id) {
     return BioSession(base::NullCallback());
   }
 
-  // Make sure context is cleared before starting auth session.
-  cros_dev_->ResetContext();
-  if (!RequestMatchFingerDown())
-    return BioSession(base::NullCallback());
-  state_ = State::kAuth;
+  if (state_ == State::kWaitForFingerUp) {
+    state_ = State::kAuthWaitForFingerUp;
+  } else {
+    // Make sure context is cleared before starting auth session.
+    cros_dev_->ResetContext();
+    if (!RequestMatchFingerDown())
+      return BioSession(base::NullCallback());
+    state_ = State::kAuth;
+  }
 
   return BioSession(base::BindOnce(&CrosFpAuthStackManager::EndAuthSession,
                                    session_weak_factory_.GetWeakPtr()));
@@ -652,6 +656,15 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
   }
   if (state_ == State::kWaitForFingerUp) {
     state_ = State::kNone;
+  } else if (state_ == State::kAuthWaitForFingerUp) {
+    // Make sure context is cleared before starting auth session.
+    cros_dev_->ResetContext();
+    if (!RequestMatchFingerDown()) {
+      OnSessionFailed();
+      state_ = State::kNone;
+    } else {
+      state_ = State::kAuth;
+    }
   } else {
     LOG(ERROR) << "Finger up event receiving in unexpected state: "
                << CurrentStateToString();
@@ -674,6 +687,8 @@ std::string CrosFpAuthStackManager::CurrentStateToString() {
       return "Match";
     case State::kWaitForFingerUp:
       return "WaitForFingerUp";
+    case State::kAuthWaitForFingerUp:
+      return "AuthWaitForFingerUp";
     case State::kLocked:
       return "Locked";
   }
@@ -684,6 +699,7 @@ bool CrosFpAuthStackManager::IsActiveState() {
     case State::kEnroll:
     case State::kAuth:
     case State::kWaitForFingerUp:
+    case State::kAuthWaitForFingerUp:
       return true;
     case State::kNone:
     case State::kEnrollDone:
@@ -704,6 +720,7 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
     case State::kEnroll:
     case State::kAuth:
     case State::kMatch:
+    case State::kAuthWaitForFingerUp:
     case State::kLocked:
       return false;
   }
@@ -724,6 +741,7 @@ bool CrosFpAuthStackManager::CanStartAuth() {
     case State::kAuth:
     case State::kMatch:
     case State::kLocked:
+    case State::kAuthWaitForFingerUp:
       return false;
   }
 }

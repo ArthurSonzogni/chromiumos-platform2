@@ -82,6 +82,22 @@ MATCHER_P(EnrollProgressIs, progress, "") {
   return arg.percent_complete == progress && arg.done == (progress == 100);
 }
 
+// Using a peer class to control access to the class under test is better than
+// making the text fixture a friend class.
+class CrosFpAuthStackManagerPeer {
+ public:
+  explicit CrosFpAuthStackManagerPeer(
+      std::unique_ptr<CrosFpAuthStackManager> cros_fp_biometrics_manager)
+      : cros_fp_auth_stack_manager_(std::move(cros_fp_biometrics_manager)) {}
+
+  // Methods to execute CrosFpAuthStackManager private methods.
+
+  void RequestFingerUp() { cros_fp_auth_stack_manager_->RequestFingerUp(); }
+
+ private:
+  std::unique_ptr<CrosFpAuthStackManager> cros_fp_auth_stack_manager_;
+};
+
 class CrosFpAuthStackManagerTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -118,15 +134,24 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
         .WillByDefault(SaveArg<0>(&on_mkbp_event_));
 
-    cros_fp_auth_stack_manager_ = std::make_unique<CrosFpAuthStackManager>(
+    auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
         std::move(mock_pk_storage));
 
-    cros_fp_auth_stack_manager_->SetEnrollScanDoneHandler(
+    cros_fp_auth_stack_manager->SetEnrollScanDoneHandler(
         base::BindRepeating(&CrosFpAuthStackManagerTest::EnrollScanDoneHandler,
                             base::Unretained(this)));
+    cros_fp_auth_stack_manager->SetAuthScanDoneHandler(
+        base::BindRepeating(&CrosFpAuthStackManagerTest::AuthScanDoneHandler,
+                            base::Unretained(this)));
+    cros_fp_auth_stack_manager_ = cros_fp_auth_stack_manager.get();
+
+    cros_fp_auth_stack_manager_peer_.emplace(
+        std::move(cros_fp_auth_stack_manager));
   }
+
+  MOCK_METHOD(void, AuthScanDoneHandler, (brillo::Blob auth_nonce));
 
  protected:
   MOCK_METHOD(void,
@@ -135,8 +160,9 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  std::optional<CrosFpAuthStackManagerPeer> cros_fp_auth_stack_manager_peer_;
   metrics::MockBiodMetrics mock_metrics_;
-  std::unique_ptr<CrosFpAuthStackManager> cros_fp_auth_stack_manager_;
+  CrosFpAuthStackManager* cros_fp_auth_stack_manager_;
   MockPairingKeyStorage* mock_pk_storage_;
   MockCrosFpSessionManager* mock_session_manager_;
   MockCrosFpDevice* mock_cros_dev_;
@@ -658,24 +684,64 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopNoUserFailed) {
   EXPECT_FALSE(auth_session);
 }
 
-TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessSameUser) {
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
   const std::optional<std::string> kUserId("testuser");
+  const brillo::Blob kAuthNonce(32, 1);
   AuthStackManager::Session auth_session;
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(*mock_cros_dev_, GetNonce).WillOnce(Return(kAuthNonce));
+  EXPECT_CALL(*this, AuthScanDoneHandler(kAuthNonce));
 
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
   EXPECT_TRUE(auth_session);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
 
-  // When auth session ends, FP mode will be set to kNone.
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
+}
+
+TEST_F(CrosFpAuthStackManagerTest,
+       TestAuthSessionSameUserSuccessDuringWaitForFingerUp) {
+  const std::optional<std::string> kUserId("testuser");
+  const brillo::Blob kAuthNonce(32, 1);
+  AuthStackManager::Session auth_session;
+
+  cros_fp_auth_stack_manager_->SetStateForTest(State::kWaitForFingerUp);
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
+  cros_fp_auth_stack_manager_peer_->RequestFingerUp();
 
-  // Stop auth session
-  auth_session.RunAndReset();
+  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+
+  // Start auth session.
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  EXPECT_TRUE(auth_session);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(),
+            State::kAuthWaitForFingerUp);
+
+  // Finger down event should be ignored here.
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(),
+            State::kAuthWaitForFingerUp);
+
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+      .WillOnce(Return(true));
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
+
+  EXPECT_CALL(*this, AuthScanDoneHandler(kAuthNonce));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(*mock_cros_dev_, GetNonce).WillOnce(Return(kAuthNonce));
+
+  // Finger down after lifting the finger first should complete the auth.
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartFailIncorrectUser) {

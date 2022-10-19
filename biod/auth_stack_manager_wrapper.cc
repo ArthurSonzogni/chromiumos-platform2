@@ -246,17 +246,23 @@ bool AuthStackManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
                                    "Failed to start AuthSession");
     return false;
   }
+  // We allow starting an auth session again to enforce fingerprint up between
+  // each auth attempt. In that case, reuse the same dbus object.
+  if (auth_session_) {
+    auto discarded_session = auth_session_.Release();
+  }
   auth_session_ = std::move(auth_session);
-
-  auth_session_dbus_object_ = std::make_unique<DBusObject>(
-      nullptr, dbus_object_.GetBus(), auth_session_object_path_);
-  DBusInterface* auth_session_interface =
-      auth_session_dbus_object_->AddOrGetInterface(kAuthSessionInterface);
-  auth_session_interface->AddSimpleMethodHandlerWithError(
-      kAuthSessionEndMethod,
-      base::BindRepeating(&AuthStackManagerWrapper::AuthSessionEnd,
-                          base::Unretained(this)));
-  auth_session_dbus_object_->RegisterAndBlock();
+  if (!auth_session_dbus_object_) {
+    auth_session_dbus_object_ = std::make_unique<DBusObject>(
+        nullptr, dbus_object_.GetBus(), auth_session_object_path_);
+    DBusInterface* auth_session_interface =
+        auth_session_dbus_object_->AddOrGetInterface(kAuthSessionInterface);
+    auth_session_interface->AddSimpleMethodHandlerWithError(
+        kAuthSessionEndMethod,
+        base::BindRepeating(&AuthStackManagerWrapper::AuthSessionEnd,
+                            base::Unretained(this)));
+    auth_session_dbus_object_->RegisterAndBlock();
+  }
   *auth_session_path = auth_session_object_path_;
   auth_session_owner_ = message->GetSender();
 
