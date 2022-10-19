@@ -1,43 +1,58 @@
-ACTION!="remove", ATTR{power/wakeup}=="*", RUN+="/bin/chown power:power $sys/$devpath/power/wakeup"
-ACTION!="remove", ATTR{power/control}=="*", RUN+="/bin/chown power:power $sys/$devpath/power/control"
-ACTION!="remove", ATTR{inhibited}=="*",    RUN+="/bin/chown power:power $sys/$devpath/inhibited"
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+ACTION!="remove", TEST=="power/wakeup", \
+  RUN+="/bin/chown power:power \"$sys/$devpath/power/wakeup\""
+ACTION!="remove", TEST=="power/control", \
+  RUN+="/bin/chown power:power \"$sys/$devpath/power/control\""
+ACTION!="remove", TEST=="inhibited", \
+  RUN+="/bin/chown power:power \"$sys/$devpath/inhibited\""
 
 # Allow powerd to read bluetooth host controller identity
-ACTION!="remove", SUBSYSTEM=="bluetooth", ENV{DEVTYPE}=="host", RUN+="/bin/chown power:power $sys/$devpath/identity"
+ACTION!="remove", SUBSYSTEM=="bluetooth", ENV{DEVTYPE}=="host", \
+  RUN+="/bin/chown power:power \"$sys/$devpath/identity\""
 
 # Make pluggable keyboard backlights writable by powerd.
-ACTION!="remove", SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", RUN+="/lib/udev/chown-sysfs-backlight-dir.sh $sys/$devpath"
+ACTION!="remove", SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", \
+  RUN+="/lib/udev/chown-sysfs-backlight-dir.sh \"$sys/$devpath\""
 
 # Allow powerd to read activity sensor
 ACTION!="remove", ATTR{name}=="cros-ec-activity", MODE="440", GROUP="power"
-ACTION!="remove", ATTR{name}=="cros-ec-activity", RUN+="/usr/bin/find /sys/bus/iio/devices/$kernel/events -name in_*_en -execdir /bin/chmod 660 {} ; -execdir /bin/chgrp power {} ;"
+ACTION!="remove", ATTR{name}=="cros-ec-activity", \
+  RUN+="/usr/bin/find \"/sys/bus/iio/devices/$kernel/events\" -name in_*_en \
+                      -execdir /bin/chmod 660 {} ; \
+                      -execdir /bin/chgrp power {} ;"
 
 # Older kernels (<v4.19) put cros_fp under the chromeos class
 # The cros_ec-access group is also required by cros_healthd (the associated user
 # that is part of the cros_ec-access group is "healthd_ec").
-SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", GROUP="cros_ec-access" MODE="0660"
+SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", \
+  GROUP="cros_ec-access" MODE="0660"
 
 # Allow powerd to change proximity sensor attributes
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9310|sx9311|sx9324|sx932x|sx9360|cros-ec-mkbp-proximity", \
-  RUN+="/bin/chown -R power:power $sys/$devpath/events"
+  RUN+="/bin/chown -R power:power \"$sys/$devpath/events\""
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9310|sx9311", \
-  RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
-                               $sys/$devpath/in_proximity1_hardwaregain \
-                               $sys/$devpath/in_proximity2_hardwaregain \
-                               $sys/$devpath/in_proximity3_comb_hardwaregain \
-                               $sys/$devpath/sampling_frequency"
+  RUN+="/bin/chown power:power \
+          \"$sys/$devpath/in_proximity0_hardwaregain\" \
+          \"$sys/$devpath/in_proximity1_hardwaregain\" \
+          \"$sys/$devpath/in_proximity2_hardwaregain\" \
+          \"$sys/$devpath/in_proximity3_comb_hardwaregain\" \
+          \"$sys/$devpath/sampling_frequency\""
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9324", \
-  RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
-                               $sys/$devpath/in_proximity1_hardwaregain \
-                               $sys/$devpath/in_proximity2_hardwaregain \
-                               $sys/$devpath/in_proximity3_hardwaregain \
-                               $sys/$devpath/sampling_frequency"
+  RUN+="/bin/chown power:power \
+          \"$sys/$devpath/in_proximity0_hardwaregain\" \
+          \"$sys/$devpath/in_proximity1_hardwaregain\" \
+          \"$sys/$devpath/in_proximity2_hardwaregain\" \
+          \"$sys/$devpath/in_proximity3_hardwaregain\" \
+          \"$sys/$devpath/sampling_frequency\""
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9360", \
-  RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
-                               $sys/$devpath/in_proximity1_hardwaregain \
-                               $sys/$devpath/sampling_frequency"
-
+  RUN+="/bin/chown power:power \
+          \"$sys/$devpath/in_proximity0_hardwaregain\" \
+          \"$sys/$devpath/in_proximity1_hardwaregain\" \
+          \"$sys/$devpath/sampling_frequency\""
