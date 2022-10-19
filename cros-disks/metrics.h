@@ -30,6 +30,10 @@ class Metrics {
   // Records the type of filesystem that cros-disks is trying to mount.
   void RecordFilesystemType(base::StringPiece fs_type);
 
+  // Records the error returned by the umount() system call when trying to
+  // unmount a file system.
+  void RecordUnmountError(base::StringPiece fs_type, error_t error);
+
   // Records a filesystem type that cros-disks had to mount in read-only mode
   // because of an error when trying to mount it in read-write mode.
   void RecordReadOnlyFileSystem(base::StringPiece fs_type);

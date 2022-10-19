@@ -61,6 +61,18 @@ Metrics::ArchiveType Metrics::GetArchiveType(base::StringPiece path) {
   return kArchiveUnknown;
 }
 
+// Strips the prefix "fuse." or "fuseblk." from a filesystem type.
+static base::StringPiece StripPrefix(base::StringPiece fs_type) {
+  for (const base::StringPiece prefix : {"fuse.", "fuseblk."}) {
+    if (base::StartsWith(fs_type, prefix)) {
+      fs_type.remove_prefix(prefix.size());
+      break;
+    }
+  }
+
+  return fs_type;
+}
+
 Metrics::FilesystemType Metrics::GetFilesystemType(
     const base::StringPiece fs_type) {
   static const auto map =
@@ -76,7 +88,7 @@ Metrics::FilesystemType Metrics::GetFilesystemType(
           {"udf", kFilesystemUDF},          //
           {"vfat", kFilesystemVFAT},        //
       });
-  const auto it = map.find(fs_type);
+  const auto it = map.find(StripPrefix(fs_type));
   return it != map.end() ? it->second : kFilesystemOther;
 }
 
@@ -92,6 +104,14 @@ void Metrics::RecordFilesystemType(const base::StringPiece fs_type) {
                                       GetFilesystemType(fs_type),
                                       kFilesystemMaxValue))
     LOG(ERROR) << "Cannot send filesystem type to UMA";
+}
+
+void Metrics::RecordUnmountError(const base::StringPiece fs_type,
+                                 const error_t error) {
+  if (!metrics_library_.SendSparseToUMA(
+          base::StrCat({"CrosDisks.UnmountError.", StripPrefix(fs_type)}),
+          error))
+    LOG(ERROR) << "Cannot send unmount error to UMA";
 }
 
 void Metrics::RecordReadOnlyFileSystem(const base::StringPiece fs_type) {

@@ -249,6 +249,10 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path,
   VLOG(2) << "Unmounting " << filesystem_type << " " << quote(mount_path);
   if (umount(mount_path.value().c_str()) == 0) {
     VLOG(1) << "Unmounted " << filesystem_type << " " << quote(mount_path);
+
+    if (metrics_)
+      metrics_->RecordUnmountError(filesystem_type, 0);
+
     return MOUNT_ERROR_NONE;
   }
 
@@ -272,16 +276,22 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path,
     if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
       LOG(WARNING) << "Force-unmounted " << filesystem_type << " "
                    << redact(mount_path);
-      if (metrics_) {
-        // TODO(crbug.com/1360642) Record filesystem type in an UMA histogram.
-      }
+
+      if (metrics_)
+        metrics_->RecordUnmountError(filesystem_type, EBUSY);
+
       return MOUNT_ERROR_NONE;
     }
   }
 
   const error_t error = errno;
+  DCHECK_GT(error, 0);
+
   PLOG(ERROR) << "Cannot unmount " << filesystem_type << " "
               << redact(mount_path);
+
+  if (metrics_)
+    metrics_->RecordUnmountError(filesystem_type, error);
 
   switch (error) {
     case EINVAL:  // |mount_path| is not a mount point
