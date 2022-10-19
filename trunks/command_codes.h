@@ -12,6 +12,9 @@
 
 namespace trunks {
 
+// Returns a description of |command|;
+TRUNKS_EXPORT std::string GetCommandString(TPM_CC command);
+
 // Creates a command with the given |command_code|.
 TRUNKS_EXPORT std::string CreateCommand(TPM_CC command_code);
 
