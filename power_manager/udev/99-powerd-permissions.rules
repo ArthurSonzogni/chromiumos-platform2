@@ -11,6 +11,7 @@ ACTION!="remove", TEST=="inhibited", \
 
 # Allow powerd to read bluetooth host controller identity
 ACTION!="remove", SUBSYSTEM=="bluetooth", ENV{DEVTYPE}=="host", \
+  TEST=="identity", \
   RUN+="/bin/chown power:power \"$sys/$devpath/identity\""
 
 # Make pluggable keyboard backlights writable by powerd.
