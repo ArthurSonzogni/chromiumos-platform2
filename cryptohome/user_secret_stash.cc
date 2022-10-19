@@ -47,8 +47,10 @@ namespace cryptohome {
 
 namespace {
 
-// TODO(b/230069013): Add guidelines on how to update this version value and its
-// documentation when we need it for the first time.
+// The current experiment version of the USS implementation. When there is a
+// critical bug in USS such that we need to stop and rollback the experiment,
+// this version will be marked as invalid in the server side. After the bug is
+// fixed and USS can be enabled again, this version needs to be incremented.
 constexpr int kCurrentUssVersion = 1;
 
 constexpr char kEnableUssExperimentFlagPath[] =
