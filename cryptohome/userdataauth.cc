@@ -3277,6 +3277,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
   }
 
   Credentials credentials(account_id, SecureBlob(request.secret()));
+  credentials.set_key_data(request.authorization_request().key().data());
 
   Credentials old_credentials(
       account_id, SecureBlob(request.authorization_request().key().secret()));

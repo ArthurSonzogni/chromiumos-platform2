@@ -1356,6 +1356,10 @@ int main(int argc, char** argv) {
     req.mutable_account_id()->set_account_id(account_id);
     req.mutable_authorization_request()->mutable_key()->set_secret(
         old_password);
+    req.mutable_authorization_request()
+        ->mutable_key()
+        ->mutable_data()
+        ->set_label(cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
     req.set_secret(password);
 
     user_data_auth::MigrateKeyReply reply;
