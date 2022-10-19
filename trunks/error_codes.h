@@ -6,7 +6,6 @@
 #define TRUNKS_ERROR_CODES_H_
 
 #include <string>
-#include <optional>
 
 #include "trunks/tpm_generated.h"  // For TPM_RC.
 #include "trunks/trunks_export.h"
@@ -80,17 +79,9 @@ TRUNKS_EXPORT TPM_RC GetFormatOneError(TPM_RC error);
 // Creates a well-formed response with the given |error_code|.
 TRUNKS_EXPORT std::string CreateErrorResponse(TPM_RC error_code);
 
-TRUNKS_EXPORT std::string CreateCommand(TPM_CC command_code);
-
 // Retrieves response code, |rc|, from the response string, |response|.
 // Return TPM_RC_SUCCESS iff success.
 TRUNKS_EXPORT TPM_RC GetResponseCode(const std::string& response, TPM_RC& rc);
-
-// Retrieves command code, |cc|, from the command string, |command|.
-// Return TPM_RC_SUCCESS iff success.
-TRUNKS_EXPORT TPM_RC GetCommandCode(const std::string& command, TPM_CC& cc);
-
-TRUNKS_EXPORT bool IsGenericTpmCommand(TPM_CC command_code);
 
 }  // namespace trunks
 

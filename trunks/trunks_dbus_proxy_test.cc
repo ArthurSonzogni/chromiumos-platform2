@@ -16,6 +16,7 @@
 #include <libhwsec-foundation/tpm_error/mock_tpm_error_uma_reporter.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_data.h>
 
+#include "trunks/command_codes.h"
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
 #include "trunks/mock_dbus_bus.h"

@@ -13,6 +13,7 @@
 #include <libhwsec-foundation/tpm_error/tpm_error_data.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h>
 
+#include "trunks/command_codes.h"
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
 #include "trunks/trunks_interface.pb.h"

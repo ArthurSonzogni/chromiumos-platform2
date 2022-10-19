@@ -105,6 +105,7 @@ shared_library("trunks") {
   sources = [
     "background_command_transceiver.cc",
     "blob_parser.cc",
+    "command_codes.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
     "hmac_session_impl.cc",

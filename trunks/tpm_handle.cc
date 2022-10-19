@@ -5,9 +5,9 @@
 #include "trunks/tpm_handle.h"
 
 #include <fcntl.h>
+#include <optional>
 #include <unistd.h>
 #include <utility>
-#include <optional>
 
 #include <base/callback.h>
 #include <base/check_op.h>
@@ -16,6 +16,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "trunks/command_codes.h"
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"
 
